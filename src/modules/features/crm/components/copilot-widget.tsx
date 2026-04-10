@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, AlertTriangle, Lightbulb, ArrowRight, X } from "lucide-react"
-import { AnalysisRecommendation } from "@\/modules\/infrastructure\/ai/analysis-service"
+import { AnalysisRecommendation } from "@/modules/infrastructure/ai/analysis-service"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface CopilotWidgetProps {

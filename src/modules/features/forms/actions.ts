@@ -1,10 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { FullBriefingTemplate, Briefing, BriefingField } from "@/types/briefings"
 import { revalidatePath } from "next/cache"
 import { Resend } from 'resend'
-import { getBriefingSubmissionEmailHtml } from '@/lib/email-templates'
+import { getBriefingSubmissionEmailHtml } from '@/modules/infrastructure/notifications/services/email-templates'
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { FORM_TEMPLATES } from "./templates-data"
 
@@ -62,7 +62,7 @@ export async function createFormSubmission(templateId: string, clientId: string 
     // Create client notification
     if (clientId) {
         const supabase = await createClient()
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
         const { data: template } = await supabase
             .from('briefing_templates')
             .select('name')
@@ -154,7 +154,7 @@ export async function getSubmissionByToken(token: string) {
 }
 
 export async function saveSubmissionResponse(submissionId: string, fieldId: string, value: any) {
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
 
     let sanitizedValue = value
     if (value instanceof File) sanitizedValue = value.name
@@ -209,7 +209,7 @@ export async function submitForm(submissionId: string) {
     if (error) throw error
 
     // Fetch details for notifications
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
     const { data: submission } = await supabaseAdmin
         .from('briefings')
         .select(`*, template:briefing_templates(name), client:leads!client_id(name, user_id)`)
@@ -248,7 +248,7 @@ export async function submitForm(submissionId: string) {
 }
 
 export async function getSubmissionResponses(submissionId: string) {
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
     const { data } = await supabaseAdmin
         .from('briefing_responses')
         .select('*')

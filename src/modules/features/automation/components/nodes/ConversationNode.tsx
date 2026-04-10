@@ -2,7 +2,7 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { MessageSquare, BotOff, CheckCircle2, MoreHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default function ConversationNode({ data, selected }: NodeProps) {
     const actionLabel: Record<string, string> = {

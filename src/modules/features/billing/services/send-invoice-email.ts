@@ -1,8 +1,8 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
-import { EmailService } from "@\/modules\/features\/notifications/email.service"
-import { TemplateEngine } from "@\/modules\/features\/notifications/template-engine"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { EmailService } from "@/modules/features/notifications/email.service"
+import { TemplateEngine } from "@/modules/features/notifications/template-engine"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 

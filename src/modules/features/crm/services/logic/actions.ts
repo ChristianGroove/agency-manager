@@ -1,8 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
-import { logDomainEvent } from "@/lib/event-logger"
+import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-logger"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Client } from "@/types"
 

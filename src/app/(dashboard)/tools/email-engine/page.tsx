@@ -1,9 +1,9 @@
 import { Suspense } from "react"
-import { getEmailTemplates } from "@\/modules\/features\/notifications/actions/template-actions"
-import { getSmtpConfig } from "@\/modules\/features\/notifications/actions/smtp-actions"
-import { EmailSettingsPage } from "@\/modules\/features\/notifications/components/email-settings-page"
+import { getEmailTemplates } from "@/modules/features/notifications/actions/template-actions"
+import { getSmtpConfig } from "@/modules/features/notifications/actions/smtp-actions"
+import { EmailSettingsPage } from "@/modules/features/notifications/components/email-settings-page"
 import { Loader2 } from "lucide-react"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { redirect } from "next/navigation"
 
 export const metadata = {

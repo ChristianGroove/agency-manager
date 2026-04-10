@@ -157,7 +157,7 @@ export class CRMAdvancedService {
         let metadata: any = {}
         
         try {
-            const { resend } = await import('@/lib/resend')
+            const { resend } = await import('@/modules/infrastructure/notifications/services/resend')
             if (resend) {
                 const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
                 const { data: emailData, error: emailError } = await resend.emails.send({

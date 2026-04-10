@@ -22,7 +22,7 @@ import {
     TableRow
 } from "@/components/ui/table"
 import { CheckCircle2, Clock, Crown, Package, AlertCircle, FileText, Download, Receipt, History } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { format, differenceInDays, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { getSubscriptionHistory } from "@/modules/features/billing/billing-actions"

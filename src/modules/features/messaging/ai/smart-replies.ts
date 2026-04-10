@@ -1,6 +1,6 @@
 "use server"
 
-import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service"
+import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export interface SmartReply {
@@ -97,7 +97,7 @@ export async function logSuggestion(data: {
     generationTimeMs: number
     modelUsed?: string
 }) {
-    const { createClient } = await import('@/lib/supabase-server')
+    const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -125,7 +125,7 @@ export async function markSuggestionUsed(
     finalMessage: string,
     wasEdited: boolean
 ) {
-    const { createClient } = await import('@/lib/supabase-server')
+    const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
 
     await supabase

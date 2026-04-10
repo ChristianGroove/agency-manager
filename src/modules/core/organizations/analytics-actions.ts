@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "./actions/crud"
-import { isSuperAdmin } from "@/lib/auth/platform-roles"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
 /**
  * Hierarchy Analytics Actions

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -17,7 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface AgentWorkload {
     agent_id: string

@@ -1,12 +1,12 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath, revalidateTag } from "next/cache"
-import { requireSuperAdmin } from "@/lib/auth/platform-roles"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { SaasApp, AppModule, AppAddOn, AppWithDetails } from "@/types/saas"
-import { moduleValidator } from "@/lib/module-validator"
+import { moduleValidator } from "@/modules/core/saas/module-validator"
 
 // ============================================
 // PUBLIC ACTIONS - App Browsing

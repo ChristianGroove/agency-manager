@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // import { StaffSelect } from "./staff/staff-select" // We might need to restore/check this later
 import { createWorkOrder, updateWorkOrder } from "../actions/work-order-actions"
 import { WorkOrder } from "@/types"

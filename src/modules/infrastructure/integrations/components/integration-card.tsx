@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Plus, Settings2, ExternalLink } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface IntegrationProvider {
     key: string

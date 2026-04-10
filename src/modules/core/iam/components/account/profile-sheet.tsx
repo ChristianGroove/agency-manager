@@ -16,7 +16,7 @@ import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Fingerprint, Loader2, Plus, X, Shield, Crown, User as UserIcon } from "lucide-react"
 import { usePasskeys } from "@/modules/auth/passkeys/use-passkeys"
-import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 
 interface ProfileSheetProps {
     open: boolean
@@ -126,7 +126,11 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                                         <div className="h-32 bg-gray-100 animate-pulse rounded-xl" />
                                     </div>
                                 ) : (
-                                    <ProfileForm user={user} profile={profile} />
+                                    <ProfileForm 
+                                        user={user} 
+                                        profile={profile} 
+                                        onSuccess={(updatedProfile) => setProfile(updatedProfile)}
+                                    />
                                 )}
 
                                 {/* Extra Info Block - Moved to Bottom */}

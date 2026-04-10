@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { logDomainEvent } from "@/lib/event-logger"
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-logger"
 
 export async function GET() {
     return NextResponse.json({

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { unstable_noStore as noStore } from "next/cache"
 
@@ -186,7 +186,7 @@ export async function getDashboardPayload() {
     let userRole = null
     let perms = null
     if (user) {
-        const { getCachedUserPermissions } = await import("@/modules/core/settings/settings-actions")
+        const { getCachedUserPermissions } = await import("@/modules/core/settings/actions/team")
         perms = await getCachedUserPermissions(user.id, orgId)
         userRole = perms?.role || null
     }

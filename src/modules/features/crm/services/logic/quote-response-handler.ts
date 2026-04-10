@@ -1,6 +1,6 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { MetaProvider } from "@/modules/features/messaging/providers/meta-provider"
 import { MessagingPersistence } from "@/modules/features/messaging/services/persistence"
 
@@ -207,7 +207,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
 
         // Decrypt credentials
-        const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
+        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
         let creds = connection.credentials || {}
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds) } catch (e) { }
@@ -334,7 +334,7 @@ export async function handleRejectionReasonSelected(
 
         const connection = connections?.[0]
         if (connection) {
-            const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
+            const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
             let creds = connection.credentials || {}
             if (typeof creds === 'string') {
                 try { creds = JSON.parse(creds) } catch (e) { }

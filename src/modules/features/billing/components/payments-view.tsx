@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, DollarSign, CalendarClock, Wallet, CreditCard } from "lucide-react"
 import { RegisterPaymentSheet } from "./register-payment-sheet"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface PaymentsViewProps {
     invoices: Invoice[]

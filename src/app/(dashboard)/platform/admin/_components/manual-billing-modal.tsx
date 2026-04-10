@@ -40,12 +40,12 @@ import {
     manualActivateSubscriptionAction as manualActivateSubscription 
 } from "@/modules/features/billing/billing-actions"
 import { getOrganizationBillingProfile } from "@/modules/core/organizations/organization-actions"
-import { generatePlatformInvoicePDF } from "@/lib/platform-pdf-generator"
+import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { toast } from "sonner"
 import { Receipt, CheckCircle2, Loader2, Eye, Building2, ShieldCheck, Copy, Percent } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 const formSchema = z.object({
     amount: z.coerce.number().min(1, "El monto debe ser mayor a 0"),

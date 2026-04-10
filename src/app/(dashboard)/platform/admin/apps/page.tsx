@@ -1,10 +1,10 @@
 import { getAllAppsAdmin, getAppUsageStats } from '@/modules/core/saas/app-management-actions'
-import { requireSuperAdmin } from '@/lib/auth/platform-roles'
+import { requireSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, Users, DollarSign, TrendingUp } from 'lucide-react'
 import { CreateAppDialog } from './_components/create-app-dialog'
 import { AppsList } from './_components/apps-list'
-import { getDictionary } from "@/lib/i18n"
+import { getDictionary } from "@/modules/core/i18n"
 
 export default async function AppsGalleryPage() {
     await requireSuperAdmin()

@@ -1,7 +1,7 @@
 
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
 export async function saveEmailTemplate(

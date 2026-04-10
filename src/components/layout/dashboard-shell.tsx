@@ -4,7 +4,7 @@
 // import { Sidebar } from "@/components/layout/sidebar"
 import { MobileSidebar } from "@/components/layout/mobile-sidebar"
 import { Header } from "@/components/layout/header"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 import { TenantContextIndicator } from "@/modules/core/organizations/components/tenant-context-indicator"
 import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"

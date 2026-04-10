@@ -1,5 +1,5 @@
 import { getPaginatedClients } from "@/modules/features/crm/services/logic/actions"
-import { getSettings } from "@/modules/core/settings/settings-actions"
+import { getSettings } from "@/modules/core/settings/actions/crud"
 import { getClientCategories } from "@/modules/features/crm/services/logic/categories-actions"
 import ClientsView from "@/modules/features/crm/components/clients-view"
 import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"

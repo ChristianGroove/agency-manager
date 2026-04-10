@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { Channel, ChannelConfig } from "./types"
 
@@ -97,7 +97,7 @@ export async function getChannelDetails(channelString: string): Promise<{ name: 
     return { name, provider, iconType };
 }
 
-import { integrationRegistry } from "@\/modules\/infrastructure\/integrations/registry"
+import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 
 export async function checkChannelStatus(id: string) {
     const channel = await getChannel(id)
@@ -359,7 +359,7 @@ async function getChannelByInstanceName(instanceName: string, orgId: string): Pr
  * 3. If exists + different org â†’ error
  * 4. If not exists â†’ create new instance
  */
-import { EvolutionAdapter } from "@\/modules\/infrastructure\/integrations/adapters/evolution-adapter"
+import { EvolutionAdapter } from "@/modules/infrastructure/integrations/adapters/evolution-adapter"
 
 export async function createWhatsAppChannel(phoneNumber: string): Promise<{ channelId: string; qrCode?: string; reconnected?: boolean }> {
     const orgId = await getCurrentOrganizationId()

@@ -83,7 +83,7 @@ export class TagsService {
         await this.repo.clearLeadTags(leadId)
         
         // Parallel sync
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
         await Promise.all([
             this.supabase.from('leads').update({ tags: [] }).eq('id', leadId),
             this.supabase.from('conversations').update({ tags: [] }).eq('lead_id', leadId).neq('state', 'archived')

@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ExternalLink, Globe, Copy, Eye, EyeOff, Server, Terminal, Lock } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { PortalHeader } from "./portal-header"
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface PortalHostingTabProps {
     hostingAccounts: any[]

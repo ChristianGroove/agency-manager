@@ -1,7 +1,7 @@
 import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules, getModules360Data, getIntelligenceMetrics } from '@/modules/core/admin/actions'
 import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
-import { requireSuperAdmin } from '@/lib/auth/platform-roles'
+import { requireSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet } from 'lucide-react'
@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SystemHealthWidget } from './_components/system-health-widget'
-import { getDictionary } from "@/lib/i18n"
+import { getDictionary } from "@/modules/core/i18n"
 
 // Placeholder components - will be implemented in next steps
 import { TenantsManager } from './_components/tenants-manager'

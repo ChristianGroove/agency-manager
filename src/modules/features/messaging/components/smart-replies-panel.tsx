@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Sparkles, Copy, Check, Loader2, Zap } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
 
 interface SmartReply {
@@ -23,7 +23,7 @@ interface SmartRepliesPanelProps {
 // Key: conversationId, Value: { text: lastIncomingMessage, data: replies }
 const replyCache: Record<string, { lastMessage: string, replies: SmartReply[], usedKB: number }> = {}
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function SmartRepliesPanel({
     conversationId,

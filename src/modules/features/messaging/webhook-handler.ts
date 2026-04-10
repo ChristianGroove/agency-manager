@@ -1,11 +1,11 @@
 
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { ChannelType, MessageContentType } from "@/types/messaging"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
 import { MessagingProvider, IncomingMessage, IncomingCall } from "./providers/types"
 import { inboxService } from "./inbox-service"
-import { callingSignalingHandler } from "@/lib/meta/calling/calling-signaling-handler"
+import { callingSignalingHandler } from "@/modules/infrastructure/meta/services/calling/calling-signaling-handler"
 
 export class WebhookManager {
     private providers: Record<string, MessagingProvider> = {}
@@ -134,7 +134,7 @@ export class WebhookManager {
                         console.log(`[WebhookManager] ✅ SDP Answer sent for call ${msg.call_id}`);
 
                         // 3. Notify Frontend about Inbound Call
-                        const { supabaseAdmin } = await import("@/lib/supabase-admin")
+                        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
                         await supabaseAdmin.from('notifications').insert({
                             type: 'inbound_call',
                             recipient_id: null, // Global for the connection/org agents
@@ -165,7 +165,7 @@ export class WebhookManager {
         const msg = inputMsg as IncomingMessage;
 
         // 1. SAVE TO INBOX (Use Admin client for Webhooks)
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
         const result = await inboxService.handleIncomingMessage(msg, supabaseAdmin)
 
         if (!result || !result.success || !result.conversationId) {
@@ -196,7 +196,7 @@ export class WebhookManager {
 
                 try {
                     const { handleQuoteApproval } = await import('@/modules/features/crm/services/logic/quote-response-handler')
-                    const { data: conv } = await (await import('@/lib/supabase-admin')).supabaseAdmin
+                    const { data: conv } = await (await import('@/modules/core/database/supabase-admin')).supabaseAdmin
                         .from('conversations')
                         .select('connection_id, phone')
                         .order('created_at', { ascending: false })
@@ -222,7 +222,7 @@ export class WebhookManager {
 
                 try {
                     const { handleQuoteRejection } = await import('@/modules/features/crm/services/logic/quote-response-handler')
-                    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+                    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
                     const { data: conv } = await supabaseAdmin
                         .from('conversations')
                         .select('connection_id, phone')
@@ -266,8 +266,8 @@ export class WebhookManager {
             if (isApproval || isDenial) {
                 console.log(`[WebhookManager] 🛡️ Recognized Call Permission: ${cleanButtonId} for conversation ${conversationId}`);
                 try {
-                    const { supabaseAdmin } = await import('@/lib/supabase-admin');
-                    const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager');
+                    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
+                    const { CallPermissionManager } = await import('@/modules/infrastructure/meta/services/calling/call-permission-manager');
                     const pm = new CallPermissionManager();
 
                     // Resolve Lead ID from Conversation
@@ -323,7 +323,7 @@ export class WebhookManager {
 
         // 2. CHECK SUSPENDED WORKFLOWS (Pending Inputs)
         // Use Admin client because Webhooks are unauthenticated system events
-        const { fileLogger } = await import('@/lib/file-logger') // Import Logger
+        const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger') // Import Logger
         const supabase = supabaseAdmin
 
         // Find active pending input for this conversation

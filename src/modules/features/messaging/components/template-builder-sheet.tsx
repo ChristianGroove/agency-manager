@@ -19,7 +19,7 @@ import { WhatsAppPreview } from "./whatsapp-preview"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface TemplateBuilderSheetProps {
     open: boolean

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { WorkflowEngine, WorkflowDefinition } from "./engine"
 import { WaitInputNode } from "./nodes/wait-input-node"
 import { IncomingMessage } from "@/modules/features/messaging/providers/types"

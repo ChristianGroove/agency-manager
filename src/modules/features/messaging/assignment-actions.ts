@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { assignConversation as autoAssignConversation, logAssignment } from "./assignment-engine"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -484,13 +484,16 @@ export async function getSidebarAgents() {
 
     const userIds = members.map(m => m.user_id)
 
-    // 2. Get profiles for names and avatars
+    // 2. Get profiles for names, avatars, and platform roles (to filter super_admins)
     const { data: profiles } = await supabaseAdmin
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, platform_role')
         .in('id', userIds)
 
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+    const platformAdminIds = new Set(
+        profiles?.filter(p => p.platform_role === 'super_admin').map(p => p.id) || []
+    )
 
     // 3. Get channel access from agent_availability
     const { data: availability } = await supabaseAdmin
@@ -501,17 +504,19 @@ export async function getSidebarAgents() {
 
     const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
 
-    // 4. Assemble payload
-    const agents = members.map(m => {
-        const profile = profileMap.get(m.user_id)
-        return {
-            id: m.user_id,
-            name: profile?.full_name || 'Agente', // Fast local fallback instead of auth fetch
-            avatar_url: profile?.avatar_url || null,
-            role: m.role,
-            channels: channelsMap.get(m.user_id) || []
-        }
-    })
+    // 4. Assemble payload and filter out platform admins
+    const agents = members
+        .filter(m => !platformAdminIds.has(m.user_id))
+        .map(m => {
+            const profile = profileMap.get(m.user_id)
+            return {
+                id: m.user_id,
+                name: profile?.full_name || 'Agente', // Fast local fallback instead of auth fetch
+                avatar_url: profile?.avatar_url || null,
+                role: m.role,
+                channels: channelsMap.get(m.user_id) || []
+            }
+        })
 
     // Sort alphabetically
     agents.sort((a, b) => a.name.localeCompare(b.name))

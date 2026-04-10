@@ -5,7 +5,7 @@ import { motion, AnimatePresence, Variants } from "framer-motion"
 import { Rocket, Moon, Sun, MessageSquare, Sparkles } from "lucide-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 // Props: Handlers for the actions
 interface UnifiedFloatingFabProps {

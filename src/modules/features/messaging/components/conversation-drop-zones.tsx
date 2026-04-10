@@ -1,7 +1,7 @@
 "use client"
 
 import { useDroppable } from "@dnd-kit/core"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { CheckCircle2, Archive, Clock, RotateCcw } from "lucide-react"
 
 interface DropZone {

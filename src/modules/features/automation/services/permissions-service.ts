@@ -6,7 +6,7 @@
  * Manages access control for individual workflows.
  */
 
-import { createClient } from '@/lib/supabase-server';
+import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 export type WorkflowRole = 'viewer' | 'editor' | 'approver' | 'admin';

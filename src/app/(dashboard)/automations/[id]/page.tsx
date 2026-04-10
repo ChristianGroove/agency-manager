@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid, MousePointer, Clock, Tag, ArrowRightCircle, Smartphone, Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { useRegisterView } from '@\/modules\/features\/caa/context/view-context';
+import { useRegisterView } from '@/modules/features/caa/context/view-context';
 
 import TriggerNode from '@/modules/features/automation/components/nodes/TriggerNode';
 import ActionNode from '@/modules/features/automation/components/nodes/ActionNode';
@@ -36,7 +36,7 @@ import WaitNode from '@/modules/features/automation/components/nodes/WaitNode';
 import CRMNode from '@/modules/features/automation/components/nodes/CRMNode';
 import HTTPNode from '@/modules/features/automation/components/nodes/HTTPNode';
 import EmailNode from '@/modules/features/automation/components/nodes/EmailNode';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 import SMSNode from '@/modules/features/automation/components/nodes/SMSNode';
 import ABTestNode from '@/modules/features/automation/components/nodes/ABTestNode';
 import AIAgentNode from '@/modules/features/automation/components/nodes/AIAgentNode';

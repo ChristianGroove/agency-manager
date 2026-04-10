@@ -2,7 +2,7 @@
 // Generates WebAuthn registration options for a user
 
 import { generateRegistrationOptions } from '@simplewebauthn/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 import { NextResponse } from 'next/server'
 
 export async function POST() {

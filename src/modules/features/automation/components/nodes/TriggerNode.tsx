@@ -1,8 +1,8 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Zap, MessageCircle } from 'lucide-react';
-import { getChannel, getChannelDetails } from '@\/modules\/features\/channels/actions';
-import { cn } from '@/lib/utils';
+import { getChannel, getChannelDetails } from '@/modules/features/channels/actions';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 interface NodeData extends Record<string, unknown> {
     label?: string;

@@ -7,7 +7,7 @@
  * Used by the delay node to pause and resume workflows.
  */
 
-import { createClient } from '@/lib/supabase-server';
+import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 interface ScheduledJob {

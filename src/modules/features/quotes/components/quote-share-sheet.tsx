@@ -6,13 +6,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getSettings } from "@/modules/core/settings/settings-actions"
-import { getWhatsAppLink } from "@/lib/communication-utils"
+import { getSettings } from "@/modules/core/settings/actions/crud"
+import { getWhatsAppLink } from "@/modules/features/messaging/communication-utils"
 import { sendQuoteViaWhatsAppAction as sendQuoteViaWhatsApp, getQuote } from "../quotes-actions"
 import { Quote } from "@/types"
 import { toast } from "sonner"
 import { Loader2, Share2, MessageSquare, ExternalLink, CheckCircle2, ChevronRight, Copy, RefreshCcw } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface QuoteShareSheetProps {
     quote?: Quote | null

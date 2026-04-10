@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { AuditLogEntry } from "../types"
 
 export async function getAuditLogs(entityId?: string): Promise<AuditLogEntry[]> {

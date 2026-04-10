@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { Loader2, Upload, X, FileText, Video, Image as ImageIcon } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface MediaUploadProps {
     value?: string | null

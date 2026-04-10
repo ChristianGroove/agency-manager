@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { FileCode, Activity, Lock, AlertTriangle, CheckCircle, Search, ExternalLink } from "lucide-react"
 import { getFiscalDocumentsAction as getFiscalDocuments } from "../billing-actions"
 import { FiscalDocumentRow } from "../types"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Input } from "@/components/ui/input"
 
 export function FiscalStatusView() {

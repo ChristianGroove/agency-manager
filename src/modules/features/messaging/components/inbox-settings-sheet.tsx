@@ -10,8 +10,8 @@ import { Separator } from "@/components/ui/separator"
 import { NotificationsCard } from "@/modules/core/preferences/components/notifications-card"
 import { ProductivityCard } from "@/modules/core/preferences/components/productivity-card"
 import { DisplayCard } from "@/modules/core/preferences/components/display-card"
-import { useTranslation } from "@/lib/i18n/use-translation"
-import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 
 interface InboxSettingsSheetProps {
     open: boolean

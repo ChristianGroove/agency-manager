@@ -3,7 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { BrandCenter } from "./brand-center"
 import { BrandingConfig } from "@/types/branding"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface BrandCenterSheetProps {
     open: boolean

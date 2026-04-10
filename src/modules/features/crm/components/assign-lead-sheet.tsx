@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Search, UserPlus, Check } from 'lucide-react'
-import { getOrganizationMembers } from '@/modules/core/settings/settings-actions'
+import { getOrganizationMembers } from '@/modules/core/settings/actions/team'
 import { assignLeads } from '../services/logic/crm-advanced-actions'
 import { toast } from 'sonner'
 // Removed useQuery dependency to avoid install issues, using useEffect

@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import { Location, StaffTracker } from '../actions'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { MapPin, Users, Clock, Navigation } from 'lucide-react'
 
 // Solución premium para iconos desaparecidos en Next.js/Leaflet

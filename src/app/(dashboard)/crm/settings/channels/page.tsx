@@ -1,7 +1,7 @@
 import { Suspense } from "react"
-import { getChannels } from "@\/modules\/features\/channels/actions"
-import { ChannelsList } from "@\/modules\/features\/channels/components/channels-list"
-import { getDictionary } from "@/lib/i18n/get-dictionary"
+import { getChannels } from "@/modules/features/channels/actions"
+import { ChannelsList } from "@/modules/features/channels/components/channels-list"
+import { getDictionary } from "@/modules/core/i18n/get-dictionary"
 
 export async function generateMetadata() {
     const dict = await getDictionary()
@@ -12,7 +12,7 @@ export async function generateMetadata() {
 }
 
 import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
-import { getOrganizationMembers } from "@/modules/core/settings/settings-actions"
+import { getOrganizationMembers } from "@/modules/core/settings/actions/team"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export default async function ChannelsPage() {

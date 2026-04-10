@@ -5,7 +5,7 @@ async function seedApps() {
     console.log('🌱 Starting SaaS Apps Seeding...');
 
     // Dynamic import to ensure env vars are loaded BEFORE this module is imported
-    const { supabaseAdmin } = await import('../lib/supabase-admin');
+    const { supabaseAdmin } = await import('../modules/core/database/supabase-admin');
 
     try {
         // 1. Define Apps

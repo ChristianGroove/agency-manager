@@ -1,10 +1,10 @@
 'use server'
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { requireSuperAdmin } from "@/lib/auth/platform-roles"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
-import { EmailService } from "@\/modules\/features\/notifications/email.service"
+import { EmailService } from "@/modules/features/notifications/email.service"
 
 /**
  * =======================
@@ -15,7 +15,7 @@ import { EmailService } from "@\/modules\/features\/notifications/email.service"
 async function logAdminAction(orgId: string | null, action: string, details: any = {}) {
     try {
         // Use createClient from SSR to get the actual session user
-        const { createClient } = await import('@/lib/supabase-server')
+        const { createClient } = await import('@/modules/core/database/supabase-server')
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
@@ -33,7 +33,7 @@ async function logAdminAction(orgId: string | null, action: string, details: any
 export async function inviteOrgOwner(email: string, orgId: string) {
     await requireSuperAdmin()
 
-    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const { getAdminUrlAsync } = await import('@/modules/infrastructure/utils/utils')
     const origin = await getAdminUrlAsync('')
     const redirectUrl = await getAdminUrlAsync('/auth/confirm?next=/platform')
 
@@ -77,8 +77,8 @@ export async function inviteOrgOwner(email: string, orgId: string) {
     const actionLink = props?.action_link
     const verificationType = props?.verification_type || 'invite'
     
-    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
-    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
+    const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
     const redirectBase = getAuthRedirectBase()
     const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/platform')
 
@@ -146,7 +146,7 @@ export async function adminResetUserPassword(userId: string, orgId: string | nul
     if (getError || !user?.email) throw new Error("No se pudo encontrar el correo del usuario")
 
     // 2. Generate Recovery Link
-    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const { getAdminUrlAsync } = await import('@/modules/infrastructure/utils/utils')
     const confirmUrl = await getAdminUrlAsync('/auth/confirm?next=/update-password')
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -159,15 +159,15 @@ export async function adminResetUserPassword(userId: string, orgId: string | nul
         throw new Error(`Error al generar link: ${linkError?.message || 'Link missing'}`)
     }
 
-    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
-    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
+    const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
     const actionLink = linkData.properties.action_link
     const recoveryLink = getSecureAuthLink(actionLink, 'recovery', getAuthRedirectBase(), '/update-password')
 
     // 3. Send Email via PLATFORM context
-    const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
+    const { getAuthRecoveryEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
     // We fetch platform branding
-    const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
+    const { EmailService } = await import('@/modules/features/notifications/email.service')
     
     // We send it!
     const emailResult = await EmailService.send({
@@ -622,7 +622,7 @@ export async function getMetaAssets(clientId: string) {
             return { success: false, error: "No access token found" }
         }
 
-        const { MetaGraphAPI } = await import('@/lib/meta/graph-api')
+        const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api')
         const metaApi = new MetaGraphAPI()
 
         const [adAccounts, pages] = await Promise.all([

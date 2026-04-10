@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { useViewContext } from "@\/modules\/features\/caa/context/view-context"
+import { useViewContext } from "@/modules/features/caa/context/view-context"
 import { actionRegistry, helpRegistry } from "../registry"
 import { ActionDefinition, HelpArticle } from "../types"
 import { Search, Zap, BookOpen, ArrowLeft, Sparkles, X, ChevronRight, ExternalLink, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { AIChatPanel } from "./ai-chat-panel"
 

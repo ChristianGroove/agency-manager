@@ -60,7 +60,7 @@ export async function orchestrateWorkflow(
 
     try {
         // 3. Call AI Engine
-        const { AIEngine } = await import('@\/modules\/infrastructure\/ai-engine/service');
+        const { AIEngine } = await import('@/modules/infrastructure/ai-engine/service');
 
         const response = await AIEngine.executeTask({
             organizationId,

@@ -1,7 +1,7 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { requireSuperAdmin } from "@/lib/auth/platform-roles"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 
 /**

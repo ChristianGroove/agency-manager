@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { formatDistanceToNow } from "date-fns"
 import { es, enUS } from "date-fns/locale"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { 
     Tooltip, 
     TooltipContent, 
@@ -14,7 +14,7 @@ import {
     TooltipTrigger 
 } from "@/components/ui/tooltip"
 import { Inbox } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 
 interface AgentStat {

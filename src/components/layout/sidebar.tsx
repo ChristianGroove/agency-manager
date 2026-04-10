@@ -4,15 +4,15 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LogOut, ChevronDown, Users } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"
 import { OrgBranding } from "@/modules/core/organizations/components/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
-import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, CATEGORY_ICONS, ModuleCategory } from "@/lib/module-config"
+import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, CATEGORY_ICONS, ModuleCategory } from "@/modules/core/saas/module-config"
 import { logout } from "@/modules/core/auth/actions"
 import { SidebarParticles } from "./sidebar-particles"
 import { SidebarFloatingActions } from "./sidebar-floating-actions"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import {
     Tooltip,
     TooltipContent,

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover"
 import { searchCatalog } from "../services/logic/deal-actions"
 import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { useInboxContext } from "@/modules/features/messaging/context/inbox-context"
 
 interface Product {

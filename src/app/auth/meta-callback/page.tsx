@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle2, XCircle } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 
 /**
  * This page handles the final redirect after OAuth callback.

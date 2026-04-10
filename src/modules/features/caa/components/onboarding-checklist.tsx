@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Check, Circle, Sparkles, X, ChevronRight, Gift } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface OnboardingStep {

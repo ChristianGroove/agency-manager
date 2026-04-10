@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { CatalogItemFlipCard } from "@/modules/features/portal/components/catalog-item-flip-card"
 
 import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
@@ -26,7 +26,7 @@ interface CatalogListProps {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListProps) {
     const { t } = useTranslation()

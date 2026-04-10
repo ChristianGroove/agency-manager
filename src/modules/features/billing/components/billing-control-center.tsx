@@ -7,7 +7,7 @@ import { PaymentsView } from "./payments-view"
 import { AuditView } from "./audit-view"
 import { Invoice } from "@/types"
 import { FileText, CreditCard, Scale, ShieldCheck } from "lucide-react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface BillingControlCenterProps {
     initialInvoices: Invoice[]

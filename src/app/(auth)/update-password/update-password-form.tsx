@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { createBrowserClient } from "@supabase/ssr"
 import { updatePassword } from "@/modules/core/auth/actions"
 import { Button } from "@/components/ui/button"

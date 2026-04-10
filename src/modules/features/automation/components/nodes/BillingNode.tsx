@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Receipt, FileText, CreditCard } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 const BillingNode = ({ data, selected }: NodeProps) => {
     return (

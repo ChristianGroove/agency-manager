@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { TagsService } from "./services/tags.service"
 

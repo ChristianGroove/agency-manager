@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 
 export async function GET() {
     try {

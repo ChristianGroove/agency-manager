@@ -1,6 +1,6 @@
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { MessageSquare, Smartphone } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default function SMSNode({ data, selected }: NodeProps) {
     const to = (data.to as string) || '';

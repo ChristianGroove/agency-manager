@@ -1,5 +1,5 @@
 import { getAppBySlug, deleteApp, updateApp } from '@/modules/core/saas/app-management-actions'
-import { requireSuperAdmin } from '@/lib/auth/platform-roles'
+import { requireSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 import { notFound } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,7 @@ import { ArrowLeft, Package, Users, DollarSign, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { EditAppDialog } from './_components/edit-app-dialog'
 import { UIConfigTabs } from './_components/ui-config-tabs'
-import { getDictionary } from "@/lib/i18n"
+import { getDictionary } from "@/modules/core/i18n"
 
 interface PageProps {
     params: Promise<{

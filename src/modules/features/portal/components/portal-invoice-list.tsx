@@ -3,7 +3,7 @@
 import { Invoice } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DollarSign, ChevronRight, ChevronDown, FileText, Printer, Calendar, AlertTriangle } from "lucide-react"
 import { useState, Fragment } from "react"
@@ -20,7 +20,7 @@ interface PortalInvoiceListProps {
     token?: string
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = [], onToggle, onToggleAll, onView, compact = false, token }: PortalInvoiceListProps) {
     const { t } = useTranslation()

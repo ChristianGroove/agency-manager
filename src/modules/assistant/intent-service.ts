@@ -1,7 +1,7 @@
 import { AssistantContext, AssistantResult } from "./types";
 import { IntentValidator } from "./intent-validator";
 import { getIntentDefinition } from "./intent-registry";
-import { createClient } from "@/lib/supabase-server";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export type IntentProposal = {
     status: 'proposed' | 'confirmed' | 'rejected';

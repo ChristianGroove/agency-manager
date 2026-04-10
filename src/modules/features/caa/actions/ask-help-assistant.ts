@@ -1,9 +1,9 @@
 "use server"
 
-import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service"
+import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 
 export interface HelpChatMessage {
     role: "user" | "assistant"

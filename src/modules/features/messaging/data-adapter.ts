@@ -1,7 +1,7 @@
 
 import { DataModule } from "@/modules/infrastructure/data-vault/types"
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 export const messagingDataAdapter: DataModule = {
     key: 'messaging',

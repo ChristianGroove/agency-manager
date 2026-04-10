@@ -1,6 +1,6 @@
 'use server'
 
-import { logDomainEvent as internalLog } from "@/lib/event-logger"
+import { logDomainEvent as internalLog } from "@/modules/infrastructure/logging/services/event-logger"
 
 /**
  * Server Action wrapper to log events from client components.

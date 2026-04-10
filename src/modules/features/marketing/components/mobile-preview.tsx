@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Battery, Wifi, Signal } from "lucide-react"
 
 interface MobilePreviewProps {

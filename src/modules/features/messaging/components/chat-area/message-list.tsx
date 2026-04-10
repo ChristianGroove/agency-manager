@@ -1,7 +1,7 @@
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 import { Message } from "@/modules/features/messaging/hooks/use-chat-logic"
 import { MessageBubble } from "../message-bubble"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { ForwardedRef, forwardRef } from "react"
 
 interface MessageListProps {

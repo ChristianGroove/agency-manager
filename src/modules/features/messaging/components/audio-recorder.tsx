@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Mic, X, Send, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface AudioRecorderProps {
     onSend: (blob: Blob, duration: number, mimeType: string) => void

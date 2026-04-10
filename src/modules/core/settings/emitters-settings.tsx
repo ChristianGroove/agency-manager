@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Emitter, DocumentType } from "@/types/billing"
 import { getEmitters, createEmitter, updateEmitter, deleteEmitter } from "@/modules/core/settings/emitters-actions"
-import { calculateDV, getEmitterDocumentType, getDocumentTypeLabel } from "@/lib/billing-utils"
+import { calculateDV, getEmitterDocumentType, getDocumentTypeLabel } from "@/modules/features/billing/services/billing-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

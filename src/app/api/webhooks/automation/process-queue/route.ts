@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { NextResponse } from "next/server"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
 

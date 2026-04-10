@@ -1,5 +1,25 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
+// Simple in-memory cache for Access Tokens
+class AccessTokenCache {
+    private static cache: Map<string, { token: string, expires: number }> = new Map();
+    private static TTL = 1000 * 60 * 60; // 1 hour
+
+    static get(key: string): string | null {
+        const item = this.cache.get(key);
+        if (!item) return null;
+        if (Date.now() > item.expires) {
+            this.cache.delete(key);
+            return null;
+        }
+        return item.token;
+    }
+
+    static set(key: string, token: string): void {
+        this.cache.set(key, { token, expires: Date.now() + this.TTL });
+    }
+}
+
 export class MetaAdapter implements IntegrationAdapter {
     key: string;
 
@@ -47,7 +67,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
         console.log(`[MetaAdapter] START sendMessage to ${recipient} | Meta:`, JSON.stringify(metadata));
-        const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption');
+        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
 
         let creds: any = credentials;
         if (typeof creds === 'string') {
@@ -83,16 +103,26 @@ export class MetaAdapter implements IntegrationAdapter {
             // Messenger / Instagram
             url = `https://graph.facebook.com/v21.0/me/messages`; // Standard endpoint
 
-            // Auto-fetch Page Access Token if we only have User Token
-            try {
-                const tokenResp = await fetch(`https://graph.facebook.com/v24.0/${pageId}?fields=access_token`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (tokenResp.ok) {
-                    const d = await tokenResp.json();
-                    if (d.access_token) effectiveToken = d.access_token;
-                }
-            } catch (e) { console.warn("[MetaAdapter] Token fetch error", e); }
+            // Auto-fetch Page Access Token if we only have User Token (WITH CACHE)
+            const cacheKey = `pat_${pageId}_${accessToken.substring(0, 10)}`;
+            const cachedToken = AccessTokenCache.get(cacheKey);
+
+            if (cachedToken) {
+                effectiveToken = cachedToken;
+            } else {
+                try {
+                    const tokenResp = await fetch(`https://graph.facebook.com/v24.0/${pageId}?fields=access_token`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (tokenResp.ok) {
+                        const d = await tokenResp.json();
+                        if (d.access_token) {
+                            effectiveToken = d.access_token;
+                            AccessTokenCache.set(cacheKey, effectiveToken);
+                        }
+                    }
+                } catch (e) { console.warn("[MetaAdapter] Token fetch error", e); }
+            }
 
             payload = {
                 recipient: { id: recipient },

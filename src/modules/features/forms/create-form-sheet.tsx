@@ -20,9 +20,9 @@ import {
 } from "lucide-react"
 import { FormTemplate, FormField } from "@/modules/features/forms/actions"
 import { getFormTemplates, createFormSubmission, getContactOptions } from "@/modules/features/forms/actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     Command,
     CommandEmpty,

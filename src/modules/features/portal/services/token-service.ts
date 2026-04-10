@@ -1,6 +1,6 @@
 'use server'
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Token Management and Security for the Portal

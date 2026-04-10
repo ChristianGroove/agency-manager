@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { MessageCircle, Mail, Download, ArrowRight, Share2, Copy, Check, Loader2 } from "lucide-react"
-import { getWhatsAppLink } from "@/lib/communication-utils"
-import { cn } from "@/lib/utils"
+import { getWhatsAppLink } from "@/modules/features/messaging/communication-utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface ShareInvoiceModalProps {
     isOpen: boolean

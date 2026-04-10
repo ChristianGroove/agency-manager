@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
-import { EmbeddingService } from "@\/modules\/infrastructure\/ai-engine/embedding"
+import { EmbeddingService } from "@/modules/infrastructure/ai-engine/embedding"
 
 export interface KnowledgeEntry {
     id: string

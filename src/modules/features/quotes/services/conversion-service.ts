@@ -1,8 +1,8 @@
-import { createClient as supabaseServer } from "@/lib/supabase-server"
-import { logDomainEvent } from "@/lib/event-logger"
+import { createClient as supabaseServer } from "@/modules/core/database/supabase-server"
+import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-logger"
 import { createInvoiceAction as createInvoice } from "@/modules/features/billing/billing-actions"
 import { QuoteItem, InvoiceItem } from "@/types"
-import * as BillingUtils from "@/lib/billing-utils"
+import * as BillingUtils from "@/modules/features/billing/services/billing-utils"
 
 /**
  * Service for converting Quotes to other entities (Invoices, Services).

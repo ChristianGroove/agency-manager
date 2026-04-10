@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { embeddedSignupHandler } from "@/lib/meta/onboarding/embedded-signup-handler";
+import { embeddedSignupHandler } from "@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler";
 
 /**
  * POST /api/integrations/meta/embedded-signup

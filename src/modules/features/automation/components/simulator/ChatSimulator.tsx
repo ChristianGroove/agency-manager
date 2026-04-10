@@ -7,7 +7,7 @@ import { Node, Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, RotateCcw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 interface ChatSimulatorProps {
     nodes: Node[];

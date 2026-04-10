@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getLocations, getStaffTrackers } from "@/modules/features/locations/actions"
 import { getStaff } from "@/modules/features/attendance/actions"

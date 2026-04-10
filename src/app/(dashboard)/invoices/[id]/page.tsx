@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, Share2, Mail, ArrowLeft, CreditCard, Smartphone, Globe } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import Link from "next/link"
 
 import { Invoice } from "@/types"
@@ -12,8 +12,8 @@ import { Invoice } from "@/types"
 import { ShareInvoiceModal } from "@/modules/features/billing/components/share-invoice-modal"
 import { InvoiceTemplate } from "@/modules/features/billing/components/invoice-template"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
-import { getSettings } from "@/modules/core/settings/settings-actions"
-import { getDocumentTypeLabel } from "@/lib/billing-utils"
+import { getSettings } from "@/modules/core/settings/actions/crud"
+import { getDocumentTypeLabel } from "@/modules/features/billing/services/billing-utils"
 
 export default function InvoicePage() {
   const params = useParams()
@@ -37,7 +37,7 @@ export default function InvoicePage() {
   }, [invoice?.organization_id])
 
   const fetchSettings = async (orgId: string) => {
-    const { getPublicInvoiceSettings } = await import("@/modules/core/settings/settings-actions")
+    const { getPublicInvoiceSettings } = await import("@/modules/core/settings/actions/public")
     const data = await getPublicInvoiceSettings(orgId)
     setSettings(data)
   }
@@ -81,7 +81,7 @@ export default function InvoicePage() {
     if (!invoice || !invoice.client) return
     if (!invoice.client.email) return alert('El cliente no tiene un email registrado.')
 
-    if (!confirm(`Â¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
+    if (!confirm(`¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
 
     try {
       // Use efficient Server Action

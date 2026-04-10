@@ -1,6 +1,6 @@
-import { inngest } from "@/lib/inngest/client"
+import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 import { InboxService } from "@/modules/features/messaging/inbox-service"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Handle incoming WhatsApp/Messaging events asynchronously

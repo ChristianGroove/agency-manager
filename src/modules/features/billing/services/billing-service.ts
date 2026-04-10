@@ -1,7 +1,7 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Invoice, InvoiceItem } from "@/types"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Service Layer for Billing Module - Invoices
@@ -147,7 +147,7 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
             if (currentCycle) {
                 const { data: service } = await supabase.from('services').select('id, type, frequency, amount').eq('id', currentCycle.service_id).single()
                 if (service && service.type === 'recurring' && service.frequency) {
-                    const { calculateFrequencyNextDate } = await import('@/lib/billing-utils')
+                    const { calculateFrequencyNextDate } = await import('@/modules/features/billing/services/billing-utils')
                     const nextStart = new Date(currentCycle.end_date)
                     const nextEnd = calculateFrequencyNextDate(nextStart, service.frequency)
 

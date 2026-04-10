@@ -11,8 +11,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { cn } from "@/lib/utils"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface Agent {
     agent_id: string
@@ -80,7 +80,7 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
 
     useEffect(() => {
         const fetchRole = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/settings-actions")
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team")
             const perms = await getCurrentUserPermissions()
             setCurrentUserRole(perms?.role || null)
         }

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { addMinutes, addHours, addDays, isBefore } from "date-fns"
 
@@ -146,7 +146,7 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
             // HSM Template Dispatch via MarketingAPIManager
             debugLogs.push(`[${enrollment.id}] Using HSM Template: ${content.template_name}`)
 
-            const { marketingAPIManager } = await import('@/lib/meta/marketing-api-manager')
+            const { marketingAPIManager } = await import('@/modules/infrastructure/meta/services/marketing-api-manager')
 
             // Resolve phone_number_id from the org's connection
             const { data: connection } = await supabase

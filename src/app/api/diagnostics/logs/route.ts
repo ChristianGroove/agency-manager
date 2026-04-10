@@ -1,5 +1,5 @@
 
-import { fileLogger } from '@/lib/file-logger';
+import { fileLogger } from '@/modules/infrastructure/logging/services/file-logger';
 import { NextResponse } from 'next/server';
 
 export async function GET() {

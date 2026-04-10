@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { inngest } from "@/lib/inngest/client"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 
 
 /**

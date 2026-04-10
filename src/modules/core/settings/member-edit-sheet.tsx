@@ -9,14 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Save, Shield, ChevronDown, ChevronRight, User, Crown, Users, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     updateMemberRole,
     updateMemberPermissions
 } from "./actions/team"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
 import { ChannelAccessSelector } from "@/modules/features/messaging/components/settings/channel-access-selector"
-import { MemberPermissions, FeaturePermissions, ModulePermissions } from "@/lib/permissions/types"
+import { MemberPermissions, FeaturePermissions, ModulePermissions } from "@/modules/core/iam/permissions/types"
 
 interface MemberEditSheetProps {
     open: boolean

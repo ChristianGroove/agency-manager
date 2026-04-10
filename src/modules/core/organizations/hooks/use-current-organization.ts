@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 
 export function useCurrentOrganization() {
     const [organizationId, setOrganizationId] = useState<string | null>(null)

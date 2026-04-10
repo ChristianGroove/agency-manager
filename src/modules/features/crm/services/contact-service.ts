@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { ContactRepository, CreateContactRepositoryInput } from './contact-repository'
 import { Lead, Client } from '@/types'
-import { SecurityLogger } from '@/lib/security/logger'
+import { SecurityLogger } from '@/modules/core/security/logger'
 import { calculateLeadScore as coreCalculateLeadScore } from './logic/scoring'
 
 export class ContactService {

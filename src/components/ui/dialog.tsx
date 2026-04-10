@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { X } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 const Dialog = DialogPrimitive.Root
 
@@ -48,6 +49,12 @@ const DialogContent = React.forwardRef<
             )}
             {...props}
         >
+            <VisuallyHidden.Root>
+                <DialogPrimitive.Title>Dialogo del Sistema</DialogPrimitive.Title>
+                <DialogPrimitive.Description>
+                    Este panel contiene información o acciones adicionales.
+                </DialogPrimitive.Description>
+            </VisuallyHidden.Root>
             {children}
             <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hidden">
                 <X className="h-4 w-4" />

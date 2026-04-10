@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Gauge, Zap, Brain, Save, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 interface RateLimitConfigCardProps {
     organizationId: string

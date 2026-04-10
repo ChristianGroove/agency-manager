@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Bot, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default memo(({ data, selected }: { data: any, selected?: boolean }) => {
     return (

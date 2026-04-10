@@ -1,7 +1,7 @@
 // "use server" removed from top
 
 import OpenAI from "openai"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "stub_key_for_build_only",
@@ -60,7 +60,7 @@ const INTENT_DEFINITIONS = {
     }
 }
 
-import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service"
+import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**

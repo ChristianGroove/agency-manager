@@ -11,12 +11,12 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { MessageSquare, Mail, Send, FileText, CheckCircle2, Loader2, Sparkles, Globe, Briefcase, FileSignature, Wallet, Archive, RefreshCw, User, Phone, AtSign } from "lucide-react"
-import { getWhatsAppLink } from "@/lib/communication-utils"
-import { sendTemplateEmail } from "@\/modules\/features\/notifications/actions/send-template-email"
+import { getWhatsAppLink } from "@/modules/features/messaging/communication-utils"
+import { sendTemplateEmail } from "@/modules/features/notifications/actions/send-template-email"
 import { toast } from "sonner"
-import { cn, getPortalShortUrl } from "@/lib/utils"
+import { cn, getPortalShortUrl } from "@/modules/infrastructure/utils/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { supabase } from "@/lib/supabase" // Client-side instance
+import { supabase } from "@/modules/core/database/supabase" // Client-side instance
 
 interface UnifiedCommunicationModalProps {
     isOpen: boolean

@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { Quote } from "@/types"
-import { normalizePhone } from "@/lib/normalize-phone"
+import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
@@ -206,7 +206,7 @@ export async function duplicateQuote(originalId: string) {
  * @returns {Promise<{success: boolean, data?: any, error?: string}>} Quote with branding settings.
  */
 export async function getPublicQuote(id: string) {
-  const { supabaseAdmin } = await import("@/lib/supabase-admin")
+  const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
 
   try {
     const { data: quote, error } = await supabaseAdmin

@@ -1,5 +1,5 @@
-import { inngest } from "@/lib/inngest/client";
-import { checkAndGenerateCycles } from "@/lib/billing-automation";
+import { inngest } from "@/modules/infrastructure/automation/inngest/client";
+import { checkAndGenerateCycles } from "@/modules/features/billing/services/billing-automation";
 
 /**
  * Automatización de Facturación de Clientes (SaaS Engine)

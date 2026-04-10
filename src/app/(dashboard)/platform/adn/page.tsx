@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { IdentityDashboard } from "@/modules/core/branding/components/identity-dashboard"
-import { supabaseAdmin } from "@/lib/supabase-admin" // For tier fetching optimization
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin" // For tier fetching optimization
 
 export const metadata = {
     title: "ADN - Identidad del Negocio | Pixy Admin",

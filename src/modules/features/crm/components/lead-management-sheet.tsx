@@ -12,7 +12,7 @@ import { Virtuoso } from "react-virtuoso"
 import { Lead } from "@/types"
 import { deleteLeads, deleteAllLeads } from "../services/logic/lead-management-actions"
 import { exportLeadsToCSV, purgeColdLeads } from "../services/logic/leads-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface LeadManagementSheetProps {
     open: boolean

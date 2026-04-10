@@ -32,12 +32,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { CreateServiceSheet } from "@/modules/features/billing/components/create-service-sheet"
 import { ServiceDetailModal } from "@/modules/features/billing/components/service-detail-modal"
 import { ResumeServiceModal } from "@/modules/features/billing/components/resume-service-modal"
 import { toggleServiceStatusAction as toggleServiceStatus } from "@/modules/features/billing/billing-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { SplitText } from "@/components/ui/split-text"
 import { SectionHeader } from "@/components/layout/section-header"
 
@@ -186,8 +186,8 @@ export default function ServicesPage() {
 
     const filteredServices = services.filter(service => {
         const matchesSearch =
-            service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            service.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            service.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            service.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             service.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
         const matchesStatus = statusFilter === "all" || service.status === statusFilter

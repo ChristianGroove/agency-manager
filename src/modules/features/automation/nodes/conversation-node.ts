@@ -11,8 +11,8 @@ export class ConversationNode {
     constructor(private contextManager: ContextManager) { }
 
     async execute(data: ConversationNodeData): Promise<NodeExecutionResult> {
-        const { supabaseAdmin } = await import('@/lib/supabase-admin');
-        const { fileLogger } = await import('@/lib/file-logger');
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
+        const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger');
 
         const executionId = this.contextManager.get('executionId') as string;
         const orgId = this.contextManager.get('organization_id') as string;

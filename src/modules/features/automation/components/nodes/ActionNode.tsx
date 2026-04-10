@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { MessageSquare, Bot, FileText, Video, Image as ImageIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 interface NodeData extends Record<string, unknown> {
     label?: string;

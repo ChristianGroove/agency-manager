@@ -9,7 +9,7 @@ import { Search, ListFilter, CalendarRange, X, ChevronDown } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { PipelineStage } from "../types"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { DateRange } from "react-day-picker"
 
 interface LeadFiltersProps {

@@ -8,7 +8,7 @@ import {
     Share2,
     MoreHorizontal
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { StatusBadge } from "@/components/ui/status-badge"
 import {
     Table,

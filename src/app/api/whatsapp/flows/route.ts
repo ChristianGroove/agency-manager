@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { flowsCrypto } from '@/lib/meta/flows/flows-crypto';
+import { flowsCrypto } from '@/modules/infrastructure/meta/services/flows/flows-crypto';
 
 /**
  * Demo mode flag for screencasts (Fase 6)

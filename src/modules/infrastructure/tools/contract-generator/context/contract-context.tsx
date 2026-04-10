@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { getContractGeneratorData } from "@\/modules\/infrastructure\/tools/contract-generator/contract-actions"
+import { getContractGeneratorData } from "@/modules/infrastructure/tools/contract-generator/contract-actions"
 import { BrandingConfig } from "@/types/branding"
 import { format } from "date-fns"
 
@@ -86,7 +86,7 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
         try {
             console.log("[ContractContext] 🤖 Requesting AI Generation with prompt:", customPrompt)
             console.log("[ContractContext] 📋 Contract context data:", { selectedClientId, selectedServiceIds })
-            const { generateContractWithAi } = await import("@\/modules\/infrastructure\/tools/contract-generator/contract-actions")
+            const { generateContractWithAi } = await import("@/modules/infrastructure/tools/contract-generator/contract-actions")
             const result = await generateContractWithAi({
                 clientId: selectedClientId,
                 serviceIds: selectedServiceIds,
@@ -118,7 +118,7 @@ export function ContractProvider({ children }: { children: React.ReactNode }) {
             // Importar jsPDF para generar PDF real
             const { toJpeg } = await import('html-to-image')
             const { jsPDF } = await import('jspdf')
-            const { exportContractAsPdf } = await import("@\/modules\/infrastructure\/tools/contract-generator/contract-actions")
+            const { exportContractAsPdf } = await import("@/modules/infrastructure/tools/contract-generator/contract-actions")
 
             console.log("[ContractContext] 📄 Starting PDF export process...")
             

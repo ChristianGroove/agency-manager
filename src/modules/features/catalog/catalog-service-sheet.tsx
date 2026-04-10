@@ -13,7 +13,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Plus, Sparkles, Server, CheckCircle2, CreditCard, Upload } from "lucide-react"
 import { useRef } from "react"
-import { optimizeImage, blobToFile } from "@/lib/utils/image-optimization"
+import { optimizeImage, blobToFile } from "@/modules/infrastructure/utils/image-optimization"
 import { uploadCatalogImage } from "./image-actions"
 import { ServiceCatalogItem } from "@/types"
 import { createCatalogItem, updateCatalogItem } from "./actions"
@@ -21,7 +21,7 @@ import { generateCatalogImage } from "./ai-actions"
 import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import { getFormTemplates, FormTemplate } from "@/modules/features/forms/actions"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { CatalogItemFlipCard } from "@/modules/features/portal/components/catalog-item-flip-card"
 
 interface CatalogServiceSheetProps {
@@ -32,7 +32,7 @@ interface CatalogServiceSheetProps {
     spaceType?: string // 'agency' | 'resto' | 'cleaning'
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CatalogServiceSheet({
     open,

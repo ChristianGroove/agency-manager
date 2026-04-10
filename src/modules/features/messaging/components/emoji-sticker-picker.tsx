@@ -5,11 +5,11 @@ import dynamic from "next/dynamic"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { X, Upload, Trash2, Loader2, ImagePlus } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { convertToWhatsAppSticker } from "@/lib/meta/sticker-converter"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { convertToWhatsAppSticker } from "@/modules/infrastructure/meta/services/sticker-converter"
 import { uploadSticker, getStickersGallery, deleteSticker } from "../sticker-actions"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 

@@ -3,7 +3,7 @@ import { DeviceMockup } from './DeviceMockup';
 import { ClientEngine, ChatMessage } from '@/modules/features/automation/simulator/client-engine';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw, X, Send, Paperclip, Smile } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 import { Edge, Node } from '@xyflow/react';
 import { motion, AnimatePresence } from 'framer-motion';
 

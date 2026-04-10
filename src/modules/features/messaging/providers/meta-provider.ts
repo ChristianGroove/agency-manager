@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { decryptObject } from "@\/modules\/infrastructure\/integrations/encryption";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { decryptObject } from "@/modules/infrastructure/integrations/encryption";
 import { 
     MessagingProvider, 
     SendMessageOptions, 

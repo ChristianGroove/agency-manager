@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { Loader2, CheckCircle2, XCircle } from "lucide-react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 /**
  * Global FB SDK type declarations

@@ -23,9 +23,10 @@ interface ProfileFormProps {
         avatar_url: string | null
     } | null
     align?: "center" | "left"
+    onSuccess?: (profile: any) => void
 }
 
-export function ProfileForm({ user, profile, align = "center" }: ProfileFormProps) {
+export function ProfileForm({ user, profile, align = "center", onSuccess }: ProfileFormProps) {
     const [loading, setLoading] = useState(false)
 
     async function onSubmit(formData: FormData) {
@@ -37,6 +38,9 @@ export function ProfileForm({ user, profile, align = "center" }: ProfileFormProp
                 toast.error(result.error)
             } else {
                 toast.success("Perfil guardado correctamente")
+                if (onSuccess && result.profile) {
+                    onSuccess(result.profile)
+                }
             }
         } catch (err) {
             toast.error("Ocurrió un error inesperado")
@@ -66,7 +70,11 @@ export function ProfileForm({ user, profile, align = "center" }: ProfileFormProp
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <form action={onSubmit} className="space-y-4">
+                             <form 
+                                action={onSubmit} 
+                                className="space-y-4"
+                                key={`${profile?.full_name}-${profile?.job_title}-${profile?.phone}`}
+                            >
                         <div className="grid gap-2">
                             <Label htmlFor="email">Correo Electrónico</Label>
                             <Input id="email" value={user.email} disabled className="bg-muted" />

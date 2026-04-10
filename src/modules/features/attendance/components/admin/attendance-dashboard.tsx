@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertTriangle, Clock, MapPin, Search, User, CheckCircle2, XCircle, Camera, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     Select,

@@ -6,9 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callingSignalingHandler } from '@/lib/meta/calling/calling-signaling-handler';
-import { callPermissionManager } from '@/lib/meta/calling/call-permission-manager';
-import { callHoursManager } from '@/lib/meta/calling/call-hours-manager';
+import { callingSignalingHandler } from '@/modules/infrastructure/meta/services/calling/calling-signaling-handler';
+import { callPermissionManager } from '@/modules/infrastructure/meta/services/calling/call-permission-manager';
+import { callHoursManager } from '@/modules/infrastructure/meta/services/calling/call-hours-manager';
 import crypto from 'crypto';
 
 /**

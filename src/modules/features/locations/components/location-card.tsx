@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react'
 import { MapPin, Clock, Users, ChevronRight, Activity, Smartphone, CheckCircle2, Settings, LayoutGrid, Trash2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

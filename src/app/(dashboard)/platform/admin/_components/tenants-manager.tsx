@@ -20,8 +20,8 @@ import { es } from "date-fns/locale"
 import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
 import { TenantConfigurationSheet } from "@/modules/core/organizations/components/tenant-configuration-sheet"
 import { EditLimitsModal } from "@/modules/core/organizations/components/edit-limits-modal"
-import { OrgDetailsSheet } from "@/components/admin/org-details-sheet"
-import { EditOrganizationDialog } from "@/components/admin/edit-organization-dialog"
+import { OrgDetailsSheet } from "@/modules/core/admin/components/org-details-sheet"
+import { EditOrganizationDialog } from "@/modules/core/admin/components/edit-organization-dialog"
 import { updateOrganizationStatus, deleteOrganization, type AdminOrganization } from '@/modules/core/admin/actions'
 import { toast } from 'sonner'
 import { ManualBillingModal } from "./manual-billing-modal"

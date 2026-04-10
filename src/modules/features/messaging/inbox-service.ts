@@ -1,10 +1,10 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import type { IncomingMessage } from "@/modules/features/messaging/providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
-import { normalizePhone } from "@/lib/normalize-phone"
+import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { ChannelResolver, ConnectionMatch } from "@/modules/features/messaging/channel-resolver"
-import { BusinessHoursEngine } from "@/lib/business-hours"
+import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
 import { MessagingPersistence } from "./services/persistence"
 
 export class InboxService {

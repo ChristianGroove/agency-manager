@@ -16,8 +16,8 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
     const [isLoading, setIsLoading] = useState(false)
 
     const handleSubmit = async () => {
-        if (!email || !password || !name) {
-            toast.error("Todos los campos son obligatorios")
+        if (!name || !email || !password || !role) {
+            toast.error("Por favor completa todos los campos")
             return
         }
         if (password.length < 6) {
@@ -26,6 +26,8 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
         }
 
         setIsLoading(true)
+        console.log('[ManualCreationForm] Submitting:', { name, email, role })
+
         try {
             const result = await createUserManually({
                 email,
@@ -65,7 +67,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-email">Correo ElectrÃ³nico</Label>
+                <Label htmlFor="create-email">Correo Electrónico</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -81,13 +83,13 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-password">ContraseÃ±a</Label>
+                <Label htmlFor="create-password">Contraseña</Label>
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                         id="create-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="ContraseÃ±a segura"
+                        placeholder="Contraseña segura"
                         className="pl-9 pr-9"
                         autoComplete="new-password"
                         value={password}
@@ -107,7 +109,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                         )}
                     </Button>
                 </div>
-                <p className="text-xs text-gray-500">MÃ­nimo 6 caracteres.</p>
+                <p className="text-xs text-gray-500">Mínimo 6 caracteres.</p>
             </div>
 
             <div className="space-y-2">
@@ -118,11 +120,11 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                 />
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 text-amber-800 rounded-md text-xs">
-                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-amber-50 text-amber-800 rounded-md text-xs border border-amber-100">
+                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
                 <p>
-                    <strong>Nota Importante:</strong> El usuario serÃ¡ creado y confirmado inmediatamente.
-                    TÃº eres responsable de comunicarle sus credenciales de acceso de forma segura.
+                    <strong>Nota Importante:</strong> El usuario será creado y confirmado inmediatamente. 
+                    Tú eres responsable de comunicarle sus credenciales de acceso de forma segura.
                 </p>
             </div>
 

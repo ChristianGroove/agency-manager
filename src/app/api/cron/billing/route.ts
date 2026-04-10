@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import * as BillingUtils from '@/lib/billing-utils';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import * as BillingUtils from '@/modules/features/billing/services/billing-utils';
 
 // SCR (Server-Side Cron) Implementation
 // This route is designed to be called by a trusted external scheduler (like Vercel Cron, GitHub Actions, or a simple curl loop)

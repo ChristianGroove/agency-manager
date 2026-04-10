@@ -1,7 +1,7 @@
 
 import { ContextManager } from '../context-manager';
 // Import AIEngine dynamically to avoid circular deps if any, though straightforward here
-import { AIEngine } from '@\/modules\/infrastructure\/ai-engine/service';
+import { AIEngine } from '@/modules/infrastructure/ai-engine/service';
 
 export interface AIAgentNodeData {
     systemPrompt?: string;

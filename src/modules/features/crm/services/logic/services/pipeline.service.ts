@@ -63,7 +63,7 @@ export class PipelineService {
         const { getLeads } = await import('../leads-actions')
         const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
         const { getLeadsCount } = await import('../lead-management-actions')
-        const { getCurrentUserPermissions } = await import('@/modules/core/settings/settings-actions')
+        const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team')
 
         const perms = await getCurrentUserPermissions()
         let allowedChannels: string[] | undefined = undefined

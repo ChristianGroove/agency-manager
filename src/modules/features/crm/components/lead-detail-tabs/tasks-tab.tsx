@@ -22,7 +22,7 @@ import {
 import type { LeadTask, TaskPriority, TaskType } from '@/types/crm-advanced'
 import { createLeadTask, updateLeadTask, deleteLeadTask } from '../../services/logic/crm-advanced-actions'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 

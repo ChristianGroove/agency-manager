@@ -1,7 +1,7 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { SaasSubscription, SubscriptionStatus } from "./types"
 

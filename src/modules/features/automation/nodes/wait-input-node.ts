@@ -1,7 +1,7 @@
 
 
 import { ContextManager } from '../context-manager'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 export interface WaitInputNodeData {
     // What we're waiting for

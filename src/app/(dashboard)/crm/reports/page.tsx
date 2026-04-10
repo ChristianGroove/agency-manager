@@ -12,11 +12,11 @@ import {
     BarChart3, PieChart, Activity, RefreshCw, Clock, Calendar as CalendarIcon,
     AlertTriangle, ArrowUpRight, ArrowDownRight, UserCheck, ShieldCheck, Sparkles
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { getAdvancedReports, type AdvancedReportData, getBase64Image } from '@/modules/features/crm/services/logic/analytics-actions'
 import { getEffectiveBranding } from '@/modules/core/branding/actions'
-import { generateCRMReportPDF } from '@/lib/crm-report-generator'
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { generateCRMReportPDF } from '@/modules/features/crm/services/crm-report-generator'
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {

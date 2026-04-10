@@ -11,7 +11,7 @@ export class TagNode {
     constructor(private contextManager: ContextManager) { }
 
     async execute(data: TagNodeData): Promise<{ success: boolean; error?: string }> {
-        const { supabaseAdmin } = await import('@/lib/supabase-admin');
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
         const executionId = this.contextManager.get('executionId') as string;
         const orgId = this.contextManager.get('organization_id') as string || this.contextManager.get('organizationId') as string;
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Check, ChevronsUpDown, Loader2, Sparkles, Zap, Shield, Wrench, Star } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Button } from "@/components/ui/button"
 import {
     Command,

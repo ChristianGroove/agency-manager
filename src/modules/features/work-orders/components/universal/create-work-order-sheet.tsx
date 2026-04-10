@@ -13,7 +13,7 @@ import {
 import { JobForm } from "../job-form"
 import { Plus } from "lucide-react"
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CreateWorkOrderSheet({ children }: { children: React.ReactNode }) {
     const { t: originalT } = useTranslation()

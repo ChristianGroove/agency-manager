@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { Lead, Client } from "@/types"
 import { PaginatedLeadsResponse } from "../../types"
 import { revalidatePath } from "next/cache"

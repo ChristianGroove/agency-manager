@@ -15,7 +15,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { SectionHeader } from "@/components/layout/section-header"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 // Facebook/Messenger icon (lucide doesn't have a good one)
 function FacebookIcon({ className }: { className?: string }) {
@@ -46,7 +46,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
     // OAuth handler with specific channel type
     const handleMetaConnect = async (channelType?: 'whatsapp' | 'messenger' | 'instagram') => {
         try {
-            const { getMetaAuthUrl } = await import('@\/modules\/infrastructure\/integrations/marketplace/marketplace-actions')
+            const { getMetaAuthUrl } = await import('@/modules/infrastructure/integrations/marketplace/marketplace-actions')
             const url = await getMetaAuthUrl(channelType)
             window.location.assign(url)
         } catch (error) {

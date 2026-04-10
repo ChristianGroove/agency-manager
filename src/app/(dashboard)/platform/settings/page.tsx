@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
-import { getSettings } from "@/modules/core/settings/settings-actions"
+import { getSettings } from "@/modules/core/settings/actions/crud"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
 import { getSubscriptionApp } from "@/modules/features/catalog/actions"
-import { getCurrentOrgRole } from "@/lib/auth/org-roles"
+import { getCurrentOrgRole } from "@/modules/core/iam/services/org-roles"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {

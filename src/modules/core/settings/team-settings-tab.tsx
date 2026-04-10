@@ -190,8 +190,8 @@ export function TeamSettingsTab() {
                                     <TableRow key={member.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
-                                                    {(member.user?.email?.[0] || 'U').toUpperCase()}
+                                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                                                    {(member.user?.full_name?.[0] || member.user?.email?.[0] || 'U').toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <div className="font-medium">{member.user?.full_name || 'Sin Nombre'}</div>

@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { createLeadAction as createLead } from "../crm-actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 
 const leadSchema = z.object({
     name: z.string().min(2, "Nombre debe tener al menos 2 caracteres"),
@@ -32,7 +32,7 @@ interface CreateLeadSheetProps {
     onSuccess: () => void
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadSheetProps) {
     const { t: originalT } = useTranslation()

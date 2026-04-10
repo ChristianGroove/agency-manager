@@ -1,6 +1,6 @@
 
 import { createClient } from "@supabase/supabase-js"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { vaultRegistry } from "./registry"
 
 // CONSTANTS

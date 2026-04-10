@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useClients } from "../../context/clients-context"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { 
     Table, 
     TableBody, 
@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { MoreVertical, Phone, FileText, Trash2, Globe, Wifi, Shield, StickyNote } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { VERTICAL_REGISTRY, VerticalType } from "@/modules/core/organizations/vertical-registry"
 import { 
     DropdownMenu, 

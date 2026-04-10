@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Building2, Users, MessageCircle, TrendingUp, Crown, Handshake, User, Loader2 } from "lucide-react"
 import { getHierarchyMetrics, type HierarchyMetrics, type HierarchyStats } from "../analytics-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 /**
  * HierarchyAnalytics

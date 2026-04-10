@@ -16,7 +16,7 @@ interface PortalServiceDetailProps {
     onViewBriefing: (briefingId: string) => void
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalServiceDetail({ service, invoices, briefings, onBack, onPay, onViewInvoice, onViewBriefing }: PortalServiceDetailProps) {
     const { t: originalT } = useTranslation()

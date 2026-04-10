@@ -1,7 +1,7 @@
 
 import { getQuotes } from "@/modules/features/quotes/quotes-actions"
 import { getActiveEmitters } from "@/modules/core/settings/emitters-actions" // Secure import
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { QuotesView } from "@/modules/features/quotes/components/quotes-view"
 import { Suspense } from "react"
 

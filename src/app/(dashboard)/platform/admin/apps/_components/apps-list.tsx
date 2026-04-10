@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Search, Settings, Users, Package, LayoutGrid, CheckCircle2, XCircle } from "lucide-react"
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // Import the new Sheet
 import { AppDetailsSheet } from "./app-details-sheet"
 

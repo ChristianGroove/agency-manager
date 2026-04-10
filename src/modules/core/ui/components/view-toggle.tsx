@@ -1,7 +1,7 @@
 "use client"
 
 import { LayoutGrid, Rows, LayoutTemplate } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export type ViewMode = 'grid' | 'list' | 'compact'
 

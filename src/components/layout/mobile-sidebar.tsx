@@ -15,7 +15,7 @@ interface MobileSidebarProps {
     sidebarContext?: any
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function MobileSidebar({ currentOrgId, isSuperAdmin, user, sidebarContext }: MobileSidebarProps) {
     const { t } = useTranslation()

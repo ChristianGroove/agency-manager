@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createHash, randomUUID } from 'crypto'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 export async function POST(request: Request) {
     try {

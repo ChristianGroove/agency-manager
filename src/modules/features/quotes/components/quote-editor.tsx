@@ -9,7 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Loader2, Plus, Trash, Save, ArrowLeft, Check, ChevronsUpDown, RefreshCw, Box } from "lucide-react"
 import { Quote, QuoteItem, ServiceCatalogItem } from "@/types"
 import { updateQuoteAction as updateQuote } from "../quotes-actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import {
     Command,
     CommandEmpty,
@@ -23,7 +23,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Switch } from "@/components/ui/switch"
 import {
     Select,

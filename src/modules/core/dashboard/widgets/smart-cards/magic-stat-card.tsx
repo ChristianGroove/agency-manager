@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MagicCard } from "@/components/ui/magic-card"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { LucideIcon } from "lucide-react"
 
 export interface MagicStatCardProps {

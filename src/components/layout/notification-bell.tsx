@@ -8,9 +8,9 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { NotificationList } from "./notification-list"
-// import { checkUpcomingPayments } from "@/lib/notifications"
+// import { checkUpcomingPayments } from "@/modules/infrastructure/notifications/services/notifications"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 type Notification = {

@@ -1,6 +1,6 @@
 import { LucideIcon } from "lucide-react"
 import { SplitText } from "@/components/ui/split-text"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface SectionHeaderProps {
     title: string

@@ -12,7 +12,7 @@ import {
     MoreVertical,
     Trash2
 } from 'lucide-react';
-import { getChannelDetails } from '@\/modules\/features\/channels/actions';
+import { getChannelDetails } from '@/modules/features/channels/actions';
 import { ChannelSelector } from './channel-selector';
 import {
     DropdownMenu,

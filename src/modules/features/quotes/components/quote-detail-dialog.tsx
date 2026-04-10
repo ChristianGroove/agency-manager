@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Share2, FileCheck, Edit, Download, Printer, UserPlus } from "lucide-react"
 import { Quote } from "@/types"
 import { QuoteTemplate } from "./quote-template"
-import { getSettings } from "@/modules/core/settings/settings-actions" // Server Action
+import { getSettings } from "@/modules/core/settings/actions/crud" // Server Action
 import { convertQuoteAction as convertQuote } from "../quotes-actions"
 import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { QuoteShareSheet } from "./quote-share-sheet"
 import { CreateQuoteSheet } from "./create-quote-sheet" // For editing
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface QuoteDetailDialogProps {
     quote: Quote

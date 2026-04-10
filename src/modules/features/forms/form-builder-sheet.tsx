@@ -16,7 +16,7 @@ import { FormTemplate } from "@/modules/features/forms/actions"
 import { BriefingField, BriefingFieldType } from "@/types/briefings" // We can keep these types or move them to a 'forms' type file
 import { createFormTemplate, updateFormTemplate } from "@/modules/features/forms/actions"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 // Alias for cleaner code, future-proof
 type FormField = BriefingField

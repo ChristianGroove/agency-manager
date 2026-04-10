@@ -14,7 +14,7 @@ interface SentimentResult {
     needsEscalation: boolean
 }
 
-import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service"
+import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
@@ -101,7 +101,7 @@ export async function saveSentimentAnalysis(
     result: SentimentResult
 ) {
     "use server"
-    const { createClient } = await import('@/lib/supabase-server')
+    const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
 
     // Update message with sentiment
@@ -139,7 +139,7 @@ export async function autoEscalateIfNeeded(
     "use server"
     if (!result.needsEscalation) return
 
-    const { createClient } = await import('@/lib/supabase-server')
+    const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
 
     // Find supervisor or senior agent

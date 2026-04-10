@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { InvoiceTemplate } from "@/modules/features/billing/components/invoice-template"
 import { Loader2, Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"

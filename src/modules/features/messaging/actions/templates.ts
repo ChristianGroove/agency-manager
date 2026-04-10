@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
@@ -170,7 +170,7 @@ async function resolveMetaCredentials(orgId: string, channelId?: string): Promis
     }
 
     // 2. Decrypt credentials
-    const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
+    const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
     let creds = connection.credentials as any
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch (e) { /* noop */ }

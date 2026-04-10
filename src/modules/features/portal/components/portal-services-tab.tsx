@@ -20,7 +20,7 @@ interface PortalServicesTabProps {
     onBriefingClosed?: () => void
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalServicesTab({ token, services, invoices, briefings, onPay, onViewInvoice, initialBriefingId, onBriefingClosed }: PortalServicesTabProps) {
     const { t } = useTranslation()

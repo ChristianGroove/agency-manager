@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { AdsDashboard } from "./ads-dashboard"
 import { PortalHeader } from "../components/portal-header"
 
@@ -20,7 +20,7 @@ import {
     Share2,
     ImageIcon
 } from "lucide-react"
-import { isFeatureEnabled } from "@/lib/features"
+import { isFeatureEnabled } from "@/modules/core/saas/features"
 import { NormalizedAdsMetrics, NormalizedSocialMetrics } from "@/modules/infrastructure/meta/services/types"
 
 interface InsightsTabProps {

@@ -5,7 +5,7 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 import type { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/modules/core/database/supabase'
 
 export function usePasskeys() {
     const [loading, setLoading] = useState(false)

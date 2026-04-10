@@ -24,7 +24,7 @@ import InfraTab from './tabs/InfraTab';
 import AiTab from './tabs/AiTab';
 import { MasterConfigTab } from './tabs/MasterConfigTab';
 
-import { useTranslation } from "@/lib/i18n/use-translation";
+import { useTranslation } from "@/modules/core/i18n/use-translation";
 
 export default function MetaControlSheet({
     open,

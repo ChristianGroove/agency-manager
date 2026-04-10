@@ -1,7 +1,7 @@
 // AuditLog Service - Immutable audit trail for billing operations
 // PHASE 1: Core implementation
 
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 /**
  * Audit Action Types

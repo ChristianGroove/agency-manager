@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2, Zap, CheckCircle2, LayoutGrid, BarChart3, Globe, Smartphone, ArrowRight, Settings2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { MobilePreview } from "@/modules/features/marketing/components/mobile-preview"
 import { InsightsTab } from "@/modules/features/portal/insights/insights-tab"
 import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics, syncClientAdsMetrics, getMetaAssets } from "@/modules/core/admin/actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 
 interface ConnectivitySheetProps {
     client: any

@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { requireSuperAdmin } from "@/lib/auth/platform-roles"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 // ============================================

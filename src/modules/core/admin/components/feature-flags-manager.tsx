@@ -12,8 +12,8 @@ import {
     getOrganizationFeatureFlags,
     toggleFeatureFlag,
     type FeatureFlag
-} from "@/lib/feature-flags"
-import { cn } from "@/lib/utils"
+} from "@/modules/core/saas/feature-flags"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface FeatureFlagsManagerProps {
     organizationId: string

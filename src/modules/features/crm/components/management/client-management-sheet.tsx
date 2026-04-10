@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Client } from "@/types"
 import { Loader2, UserCircle, CalendarClock, Server, FileText, Globe, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useSpacePolicies } from "@/modules/flows/hooks/use-space-policies"
 
 // Hooks

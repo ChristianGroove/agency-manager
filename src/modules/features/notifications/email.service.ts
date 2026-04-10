@@ -1,10 +1,10 @@
 import { Resend } from 'resend';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getEffectiveBranding } from '@/modules/core/branding/actions';
-import { EmailBranding } from '@/lib/email-templates';
+import { EmailBranding } from '@/modules/infrastructure/notifications/services/email-templates';
 import nodemailer from 'nodemailer';
-import { decrypt } from '@/lib/encryption';
-import { EmailStyle } from '@/lib/email-templates';
+import { decrypt } from '@/modules/core/security/encryption';
+import { EmailStyle } from '@/modules/infrastructure/notifications/services/email-templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

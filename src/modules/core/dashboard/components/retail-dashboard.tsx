@@ -3,8 +3,8 @@
 import React, { useState } from "react"
 import { Store, Users, AlertTriangle, ShieldCheck, UserPlus, MapPin, ClipboardCheck, Receipt } from "lucide-react"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
-import { useRegisterView } from "@\/modules\/features\/caa/context/view-context"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useRegisterView } from "@/modules/features/caa/context/view-context"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 

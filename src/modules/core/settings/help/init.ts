@@ -1,5 +1,5 @@
-import { helpRegistry } from "@\/modules\/features\/caa/registry"
-import { HelpArticle } from "@\/modules\/features\/caa/types"
+import { helpRegistry } from "@/modules/features/caa/registry"
+import { HelpArticle } from "@/modules/features/caa/types"
 
 export function registerSettingsHelp() {
     const articles: HelpArticle[] = [

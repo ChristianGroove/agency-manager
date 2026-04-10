@@ -29,7 +29,7 @@ import {
     testStripeConnection,
     PaymentGatewayConfig
 } from "@/modules/billing/platform/gateways/gateway-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 const GATEWAY_ICONS: Record<string, any> = {
     stripe: CreditCard,

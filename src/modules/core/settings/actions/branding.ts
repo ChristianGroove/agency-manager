@@ -1,10 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { type DocumentBrandingSettings } from "@/modules/features/billing/types"
 
 /**

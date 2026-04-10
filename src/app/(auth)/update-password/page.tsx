@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { redirect } from "next/navigation"
 import { UpdatePasswordForm } from "./update-password-form"
 

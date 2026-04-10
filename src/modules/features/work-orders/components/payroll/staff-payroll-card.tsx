@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Clock, DollarSign, MoreVertical, Plus, History, CreditCard } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { QuickPayModal } from "./quick-pay-modal"
 import { AddWorkLogModal } from "./add-work-log-modal"
 import { ViewHistoryDialog } from "./view-history-dialog"

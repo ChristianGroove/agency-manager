@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 export const runtime = 'edge'
 

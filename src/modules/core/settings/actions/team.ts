@@ -1,10 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
-import { MemberPermissions } from "@/lib/permissions/types"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { MemberPermissions } from "@/modules/core/iam/permissions/types"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
@@ -67,7 +67,9 @@ export async function getOrganizationMembers() {
     // Get emails from auth.users (admin only)
     const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
     const userMap = new Map(authUsers?.users?.map(u => [u.id, u.email]) || [])
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+    // Tipar explícitamente el mapa de perfiles para evitar errores de 'unknown'
+    const profileMap = new Map<string, any>(profiles?.map(p => [p.id, p]) || [])
 
     // Filter out platform super_admins - they should not be visible in tenant team views
     const platformAdminIds = new Set(
@@ -77,35 +79,26 @@ export async function getOrganizationMembers() {
     // Combine data and filter out platform admins
     return members
         .filter(member => !platformAdminIds.has(member.user_id))
-        .map(member => ({
-            ...member,
-            permissions: member.permissions as unknown as MemberPermissions, // Ensure type safety
-            role_id: member.role_id,
-            // If they have a dynamic role, use its name, otherwise fallback to legacy enum
-            role_name: (member as any).organization_roles?.name || member.role,
-            agent_channels: channelsByAgent.get(member.user_id) || [], // Attach manually mapped channels
-            user: {
-                id: member.user_id,
-                email: userMap.get(member.user_id) || 'Sin Email',
-                full_name: profileMap.get(member.user_id)?.full_name || null,
-                avatar_url: profileMap.get(member.user_id)?.avatar_url || null,
+        .map(member => {
+            const profile = profileMap.get(member.user_id)
+            return {
+                ...member,
+                permissions: member.permissions as unknown as MemberPermissions, // Ensure type safety
+                role_id: member.role_id,
+                // If they have a dynamic role, use its name, otherwise fallback to legacy enum
+                role_name: (member as any).organization_roles?.name || member.role,
+                agent_channels: channelsByAgent.get(member.user_id) || [], // Attach manually mapped channels
+                user: {
+                    id: member.user_id,
+                    email: userMap.get(member.user_id) || 'Sin Email',
+                    full_name: profile?.full_name || null,
+                    avatar_url: profile?.avatar_url || null,
+                }
             }
-        }))
+        })
 }
 
 
-/**
- * Invite a member to the current organization
- * Uses Admin API to generate link/create user if needed.
- */
-/**
- * Invite a member to the current organization
- * Uses Admin API to generate link/create user if needed.
- */
-/**
- * Invite a member to the current organization
- * Uses Admin API to generate link/create user if needed.
- */
 /**
  * Invite a member to the current organization
  * Uses Admin API to generate link/create user if needed.
@@ -122,7 +115,7 @@ export async function inviteMember(email: string, roleId: string) {
         return { success: false, error: "No tienes permisos para invitar miembros" }
     }
 
-    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const { getAdminUrlAsync } = await import('@/modules/infrastructure/utils/utils')
     const redirectUrl = await getAdminUrlAsync('/auth/confirm?next=/dashboard')
 
     try {
@@ -168,8 +161,8 @@ export async function inviteMember(email: string, roleId: string) {
         const actionLink = (linkData as any).properties?.action_link
         const verificationType = (linkData as any).properties?.verification_type || 'invite'
         
-        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
-        const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+        const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
+        const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
         const redirectBase = getAuthRedirectBase()
         const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/dashboard')
 
@@ -199,8 +192,7 @@ export async function inviteMember(email: string, roleId: string) {
         }
 
         // 4. Send Invite Email (Custom SMTP / Resend)
-        // Dynamically import to avoid top-level circular deps if any
-        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
+        const { EmailService } = await import('@/modules/features/notifications/email.service')
 
         await EmailService.send({
             to: email,
@@ -244,7 +236,6 @@ export async function removeMember(userId: string) {
     }
 
     try {
-        // Use admin client to bypass RLS, we already checked permissions above
         const { error } = await supabaseAdmin
             .from('organization_members')
             .delete()
@@ -252,7 +243,6 @@ export async function removeMember(userId: string) {
 
         if (error) throw error
 
-        // revalidateTag('permissions') - Removed due to build error in Next 16+
         revalidatePath('/settings')
         return { success: true }
     } catch (error: any) {
@@ -268,10 +258,8 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
-    // Only owners/admins can change roles (checked by middleware usually, but here manually)
-    // TODO: Use hasPermission(PERMISSIONS.ORG.MANAGE_MEMBERS)
     try {
-        await requireOrgRole('admin') // Legacy check kept for safety, should upgrade
+        await requireOrgRole('admin')
     } catch (e) {
         return { success: false, error: "No tienes permisos" }
     }
@@ -287,7 +275,6 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
 
         if (error) throw error
 
-        // revalidateTag('permissions')
         revalidatePath('/platform/settings')
         return { success: true }
     } catch (error: any) {
@@ -310,14 +297,12 @@ export async function updateMemberPermissions(
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
-    // Only owners and admins can edit permissions
     try {
         await requireOrgRole('admin')
     } catch (e) {
         return { success: false, error: "No tienes permisos para editar permisos" }
     }
 
-    // Secure fetch including role data
     const { data: member } = await supabaseAdmin
         .from('organization_members')
         .select(`
@@ -334,14 +319,12 @@ export async function updateMemberPermissions(
         return { success: false, error: "Miembro no encontrado" }
     }
 
-    // Cannot edit owner permissions (Hierarchy 100) or if the role specifically says 'owner'
     const hierarchy = (member.role_data as any)?.hierarchy_level
     if (hierarchy === 100 || member.role === 'owner') {
         return { success: false, error: "No se pueden editar los permisos de un DueÃ±o de sistema" }
     }
 
-    // Merge permissions
-    const currentPermissions = member.permissions || {}
+    const currentPermissions = (member.permissions as any) || {}
     const newPermissions = {
         ...currentPermissions,
         modules: { ...currentPermissions.modules, ...permissions.modules },
@@ -387,7 +370,6 @@ export async function getMemberPermissions(userId: string) {
 
     if (!member) return null
 
-    // Merge logic: 1. Role, 2. Overrides
     const rolePermissions = (member.role_data as any)?.permissions || {}
     const memberOverrides = (member.permissions as any) || {}
     
@@ -405,12 +387,6 @@ export async function getMemberPermissions(userId: string) {
         permissions: effectivePermissions
     }
 }
-
-/**
- * Get current logged-in user's permissions for the active organization
- * Used by client hooks to filter UI based on permissions
- */
-import { unstable_cache } from "next/cache"
 
 /**
  * Internal: Fetch user permissions using admin client (Cacheable)
@@ -432,12 +408,9 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
 
     if (!member) return null
 
-    // Merge logic: 1. Role, 2. Overrides
     const rolePermissions = (member.role_data as any)?.permissions || {}
     const memberOverrides = (member.permissions as any) || {}
     
-    // Effective permissions (simplified for now to match structure expected by frontend)
-    // In long term, frontend should consume the unified IAM permission strings
     const effectivePermissions = {
         modules: { ...rolePermissions.modules, ...memberOverrides.modules },
         features: { ...rolePermissions.features, ...memberOverrides.features },
@@ -460,22 +433,15 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
  */
 import { cache as reactCache } from "react"
 
-/**
- * Get current logged-in user's permissions for the active organization.
- * Security: We use React's request-scoped cache() for deduplication within a single render cycle.
- * We REMOVE unstable_cache to ensure data is ALWAYS fresh from DB in production and prevent cross-user identity leaks.
- */
 export const getCachedUserPermissions = reactCache(async (userId: string, orgId: string) => {
     return _getUserPermissionsInternal(userId, orgId)
 })
 
 /**
  * Get current logged-in user's permissions for the active organization
- * Used by client hooks to filter UI based on permissions
  */
 export async function getCurrentUserPermissions(providedOrgId?: string | null) {
     const supabase = await createClient()
-    // Optimization: Use providedOrgId or fall back to cookie/default
     const orgId = providedOrgId || await getCurrentOrganizationId()
 
     if (!orgId) return null
@@ -483,7 +449,6 @@ export async function getCurrentUserPermissions(providedOrgId?: string | null) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
-    // Use cached version
     return getCachedUserPermissions(user.id, orgId)
 }
 
@@ -500,7 +465,6 @@ export async function createUserManually(data: {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
-    // Verify Admin/Owner permissions
     try {
         await requireOrgRole('admin')
     } catch (e) {
@@ -512,23 +476,14 @@ export async function createUserManually(data: {
         let { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
             password: data.password,
-            email_confirm: true, // Auto-confirm since admin is creating it manually
+            email_confirm: true,
             user_metadata: {
                 full_name: data.fullName
             }
         })
 
         if (createError) {
-            // Check if user already exists
             if (createError.message?.includes("already been registered")) {
-                console.log('[createUserManually] User exists, updating password and metadata instead.')
-
-                // Fetch user ID by email via profiles (since they must have a profile if registered)
-                // Alternatively use listUsers filtering, but profiles is indexed by email usually or we can rely on listUsers
-                // Actually, let's use profiles table as it's cleaner if possible, but auth is source of truth.
-                // Supabase Admin doesn't have getUserByEmail exposed easily in all client versions. 
-                // Let's try profiles.
-
                 const { data: profile } = await supabaseAdmin
                     .from('profiles')
                     .select('id')
@@ -536,24 +491,19 @@ export async function createUserManually(data: {
                     .single()
 
                 if (!profile) {
-                    return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario. Contacta soporte." }
+                    return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario." }
                 }
 
-                // Update the existing user's password and name
                 const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
                     profile.id,
                     {
                         password: data.password,
                         user_metadata: { full_name: data.fullName },
-                        email_confirm: true // Ensure they are confirmed
+                        email_confirm: true
                     }
                 )
 
-                if (updateError) {
-                    throw updateError
-                }
-
-                // Continue flow with this user
+                if (updateError) throw updateError
                 userData = { user: updatedUser.user }
             } else {
                 throw createError
@@ -561,46 +511,59 @@ export async function createUserManually(data: {
         }
 
         const user = userData.user
-        if (!user) throw new Error("Error creando usuario")
+        if (!user || !user.id) throw new Error("Error: No se pudo obtener el ID del usuario")
 
-        // 2. Ensure Profile
-        await supabaseAdmin
+        const userId = String(user.id).trim()
+
+        // 2. Asegurar Perfil (Upsert)
+        // Nota: Quitamos 'email' porque no existe en la tabla profiles (está en auth.users y organization_members)
+        const { error: profileError } = await supabaseAdmin
             .from('profiles')
             .upsert({
-                id: user.id,
-                email: data.email,
+                id: userId,
                 full_name: data.fullName,
                 platform_role: 'user',
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'id', ignoreDuplicates: true })
+            }, { onConflict: 'id' })
 
-        // 3. Add to Organization Members
+        if (profileError) {
+            console.error('[createUserManually] Error al sincronizar perfil:', profileError)
+            return { success: false, error: "Error al crear perfil: " + profileError.message }
+        }
+
+        // 3. Añadir a Miembros de la Organización
+        // Obtenemos el nombre del rol para mapearlo a la columna legada 'role' y evitar fallos de constraint
+        const { data: roleData } = await supabaseAdmin
+            .from('organization_roles')
+            .select('name')
+            .eq('id', data.role)
+            .single()
+
+        const roleName = roleData?.name?.toLowerCase() || ''
+        const legacyRole = (roleName.includes('admin') || roleName.includes('administrador')) ? 'admin' : 
+                          (roleName.includes('dueño') || roleName.includes('owner')) ? 'owner' : 'member'
+
         const { error: memberError } = await supabaseAdmin
             .from('organization_members')
             .insert({
                 organization_id: orgId,
-                user_id: user.id,
-                role: 'member',
-                role_id: data.role // In UI we must ensure data.role is a UUID
+                user_id: userId,
+                role: legacyRole,
+                role_id: data.role, // UUID real
             })
 
         if (memberError) {
-            // Rollback user creation? No, maybe just error out. 
-            // Admin can retry invite or delete user.
-            console.error('[createUserManually] Membership Error:', memberError)
             return {
                 success: false,
-                error: "Usuario creado en Auth pero fallÃ³ asignaciÃ³n a la organizaciÃ³n: " + memberError.message
+                error: "Usuario creado pero falló vinculación: " + memberError.message
             }
         }
 
-        // revalidateTag('permissions')
         revalidatePath('/platform/settings')
-        return { success: true, userId: user.id }
+        return { success: true, userId: userId }
 
     } catch (error: any) {
         console.error("Create User Error:", error)
         return { success: false, error: error.message }
     }
 }
-

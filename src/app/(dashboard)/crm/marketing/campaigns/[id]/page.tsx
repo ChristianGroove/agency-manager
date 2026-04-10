@@ -1,5 +1,5 @@
-import { CampaignBuilder } from "@\/modules\/features\/broadcasts/components/campaign-builder"
-import { createClient } from "@/lib/supabase-server"
+import { CampaignBuilder } from "@/modules/features/broadcasts/components/campaign-builder"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { notFound } from "next/navigation"
 
 export default async function CampaignBuilderPage({ params }: { params: Promise<{ id: string }> }) {

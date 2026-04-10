@@ -1,6 +1,6 @@
 'use server'
 
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { DianDocument } from "@/modules/billing/adapters/colombia/entities/DianDocument"
 import { Invoice } from "@/types"
 import { FiscalDocumentRow } from "../types"

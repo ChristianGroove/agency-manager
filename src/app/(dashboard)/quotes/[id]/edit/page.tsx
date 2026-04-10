@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { QuoteEditor } from "@/modules/features/quotes/components/quote-editor"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { Quote } from "@/types"
 import { Loader2 } from "lucide-react"
 

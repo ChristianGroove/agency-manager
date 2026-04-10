@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { ServiceCategory } from "./categories-actions"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 

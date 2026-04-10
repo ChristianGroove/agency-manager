@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play, MapPin } from "lucide-react"
 import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
@@ -24,7 +24,7 @@ interface MessageBubbleProps {
     metadata?: any;
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export const MessageBubble = memo(function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
     const { t } = useTranslation()

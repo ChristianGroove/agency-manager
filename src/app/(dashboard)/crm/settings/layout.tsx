@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     GitBranch,
     MessageCircle,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 
 import { SectionHeader } from "@/components/layout/section-header"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface SettingsLayoutProps {
     children: React.ReactNode

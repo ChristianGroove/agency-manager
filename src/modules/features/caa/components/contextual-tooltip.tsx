@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { HelpCircle, X, ExternalLink } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface ContextualTooltipProps {

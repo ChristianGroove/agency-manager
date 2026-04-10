@@ -2,8 +2,8 @@ import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { ToolsView } from "@\/modules\/infrastructure\/tools/components/tools-view"
-import { getSettings } from "@/modules/core/settings/settings-actions"
+import { ToolsView } from "@/modules/infrastructure/tools/components/tools-view"
+import { getSettings } from "@/modules/core/settings/actions/crud"
 import { BrandingConfig } from "@/types/branding"
 
 export const metadata = {

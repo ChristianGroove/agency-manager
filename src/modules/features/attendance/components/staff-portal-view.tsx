@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { registerAttendanceMark, uploadAttendancePhoto, getDailyAttendanceState } from '../actions'
 import { processAttendancePhoto } from '../utils/photo-processor'
-import { cn, calculateDistanceInMeters } from '@/lib/utils'
+import { cn, calculateDistanceInMeters } from '@/modules/infrastructure/utils/utils'
 
 interface AttendanceStaffPortalProps {
     staff: any

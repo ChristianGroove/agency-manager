@@ -5,7 +5,7 @@ import { ServiceCatalogItem } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MessageCircle, ArrowRight, Info, CheckCircle2, Pencil, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface CatalogItemFlipCardProps {
     item: ServiceCatalogItem
@@ -17,7 +17,7 @@ interface CatalogItemFlipCardProps {
     settings?: { agency_phone?: string }
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CatalogItemFlipCard({
     item,

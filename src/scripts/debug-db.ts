@@ -5,7 +5,7 @@ import path from 'path';
 // Load .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-import { supabaseAdmin } from '../lib/supabase-admin';
+import { supabaseAdmin } from '../modules/core/database/supabase-admin';
 
 async function main() {
     console.log('--- Checking DB Connection and Schema ---');

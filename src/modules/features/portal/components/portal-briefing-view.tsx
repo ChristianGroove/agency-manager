@@ -14,7 +14,7 @@ interface PortalBriefingViewProps {
     onBack: () => void
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefingViewProps) {
     const { t: originalT } = useTranslation()

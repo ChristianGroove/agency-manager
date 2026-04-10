@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { FormTemplate } from "@/modules/features/forms/actions"
 import { Service } from "@/types"
 import { createFormSubmission } from "@/modules/features/forms/actions"
-// import { createClient } from "@/lib/supabase-client" 
-import { supabase } from "@/lib/supabase"
+// import { createClient } from "@/modules/core/database/supabase-client" 
+import { supabase } from "@/modules/core/database/supabase"
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -24,7 +24,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 

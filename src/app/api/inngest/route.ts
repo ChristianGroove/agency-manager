@@ -1,6 +1,6 @@
 import { serve } from "inngest/next";
-import { inngest } from "@/lib/inngest/client";
-import { functions } from "@/lib/inngest/functions";
+import { inngest } from "@/modules/infrastructure/automation/inngest/client";
+import { functions } from "@/modules/infrastructure/automation/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
     client: inngest,

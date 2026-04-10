@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import crypto from "crypto"
 
 /**
@@ -82,7 +82,7 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
 
         // 5. Hooks & Events (Dynamic Imports)
         try {
-            const { logDomainEvent } = await import("@/lib/event-logger")
+            const { logDomainEvent } = await import("@/modules/infrastructure/logging/services/event-logger")
             await logDomainEvent({
                 entity_type: 'invoice', entity_id: invoiceId, event_type: 'invoice.payment_registered',
                 payload: { invoice_id: invoiceId, amount_paid: amount, new_status: newStatus, reference, notes },

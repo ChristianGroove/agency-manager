@@ -2,13 +2,13 @@
 
 import { ClientEvent } from "@/types"
 import { CheckCircle2, Clock, FileText, DollarSign, MessageSquare, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface PortalTimelineProps {
     events: ClientEvent[]
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalTimeline({ events }: PortalTimelineProps) {
     const { t: originalT } = useTranslation()

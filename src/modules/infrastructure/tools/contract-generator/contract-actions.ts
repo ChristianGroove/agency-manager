@@ -1,12 +1,12 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service"
+import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
-import { encryptBuffer } from "@/lib/security/encryption"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { encryptBuffer } from "@/modules/core/security/encryption"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 export async function exportContractAsPdf(payload: {
     contractId?: string
@@ -146,7 +146,7 @@ export async function generateContractWithAi({
             console.error("[CONTRACT_GEN] âŒ Error saving contract record:", saveError);
         } else {
             // C. Emit Inngest Event
-            const { inngest } = await import("@/lib/inngest/client");
+            const { inngest } = await import("@/modules/infrastructure/automation/inngest/client");
             await inngest.send({
                 name: "contract.generated",
                 data: {

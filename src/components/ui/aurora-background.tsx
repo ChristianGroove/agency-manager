@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/modules/infrastructure/utils/utils";
 import React, { ReactNode } from "react";
 import { motion } from "framer-motion";
 

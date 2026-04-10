@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server"
-import { EmailBranding, getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getInvoiceSummaryEmailHtml, getPortalInviteEmailHtml } from "@/lib/email-templates"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { EmailBranding, getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getInvoiceSummaryEmailHtml, getPortalInviteEmailHtml } from "@/modules/infrastructure/notifications/services/email-templates"
 
 export class TemplateEngine {
 
@@ -147,8 +147,8 @@ export class TemplateEngine {
         // 4. Handle Conditionals (Specific optimize for logo_url and general simple booleans)
         const processConditional = (key: string, val: any) => {
             const isTruthy = !!val && val !== "";
-            const ifElseRegex = new RegExp(`{{#if ${key}}}([\\s\\S]*?){{else}}([\\s\\S]*?){{\\/if}}`, "g");
-            const ifRegex = new RegExp(`{{#if ${key}}}([\\s\\S]*?){{\\/if}}`, "g");
+            const ifElseRegex = new RegExp(`{{#if ${key}}}([\\s\\S]*?){{else}}([\\s\\S]*?){{/if}}`, "g");
+            const ifRegex = new RegExp(`{{#if ${key}}}([\\s\\S]*?){{/if}}`, "g");
 
             if (isTruthy) {
                 renderedHtml = renderedHtml.replace(ifElseRegex, "$1");

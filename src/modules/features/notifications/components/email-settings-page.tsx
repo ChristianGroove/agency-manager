@@ -2,17 +2,17 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { EmailTemplate, setActiveTemplate, updateEmailTemplate } from "@\/modules\/features\/notifications/actions"
-import { SmtpConfigFull } from "@\/modules\/features\/notifications/actions/smtp-actions"
+import { EmailTemplate, setActiveTemplate, updateEmailTemplate } from "@/modules/features/notifications/actions"
+import { SmtpConfigFull } from "@/modules/features/notifications/actions/smtp-actions"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ArrowLeft, Check, Layout, Sparkles, Mail, Eye, Info } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // Import Template Generators directly for real-time preview (since DB might have empty HTML for hybrid styles)
-import { getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getPortalInviteEmailHtml, EmailStyle, EmailBranding } from "@/lib/email-templates"
+import { getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getPortalInviteEmailHtml, EmailStyle, EmailBranding } from "@/modules/infrastructure/notifications/services/email-templates"
 import { SmtpConnectionTab } from "./smtp-connection-tab"
-import { TemplateTextEditor } from "@/components/email/TemplateTextEditor"
+import { TemplateTextEditor } from "@/modules/infrastructure/notifications/components/TemplateTextEditor"
 import { toast } from "sonner"
 
 interface EmailSettingsPageProps {

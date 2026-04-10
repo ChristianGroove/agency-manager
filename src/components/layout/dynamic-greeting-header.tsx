@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { LayoutDashboard } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { SpaceStatusBadge } from "@/modules/core/organizations/components/dashboard/SpaceStatusBadge"
 import { useBranding } from "@/components/providers/branding-provider"
 import { useSaaSData } from "@/components/providers/saas-provider"

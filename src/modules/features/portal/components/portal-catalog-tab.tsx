@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { getPortalCatalog } from "@/modules/features/portal/services/portal-service"
 import { registerServiceInterest } from "@/modules/features/portal/services/business-service"
 import { CatalogItemFlipCard } from "./catalog-item-flip-card"
 import { PortalHeader } from "./portal-header"
 import { motion } from "framer-motion"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalCatalogTab({ settings, client, token }: { settings: any, client: any, token: string }) {
     const { t } = useTranslation()

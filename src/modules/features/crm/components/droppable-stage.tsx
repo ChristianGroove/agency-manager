@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useDroppable } from "@dnd-kit/core"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export function DroppableStage({ id, children }: { id: string; children: React.ReactNode }) {
     const { setNodeRef, isOver } = useDroppable({

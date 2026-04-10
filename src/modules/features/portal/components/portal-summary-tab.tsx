@@ -43,7 +43,7 @@ interface PortalSummaryTabProps {
     onViewBriefing: (id: string) => void // New prop to navigate to briefing
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalSummaryTab({ client, invoices, quotes, briefings, events, onViewQuote, onViewBriefing }: PortalSummaryTabProps) {
     const { t } = useTranslation()

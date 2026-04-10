@@ -1,7 +1,7 @@
 "use client"
 
 import { Search, ListFilter } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { useState } from "react"
 
 export interface FilterOption {

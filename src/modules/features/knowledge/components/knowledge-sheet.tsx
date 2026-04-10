@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { KnowledgeEntry } from "@\/modules\/features\/knowledge/knowledge-actions"
+import { KnowledgeEntry } from "@/modules/features/knowledge/knowledge-actions"
 import { Loader2, FileText, Type, UploadCloud, X } from "lucide-react"
 import { toast } from "sonner"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 
 interface KnowledgeSheetProps {
     open: boolean

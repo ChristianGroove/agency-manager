@@ -19,8 +19,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { supabase } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
+import { supabase } from "@/modules/core/database/supabase"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { CreateInvoiceSheet } from "./create-invoice-sheet"
 import {
     DropdownMenu,
@@ -30,7 +30,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { Invoice } from "@/types"
 import { getInvoices } from "../billing-actions"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface InvoicesViewProps {
     initialInvoices: Invoice[]

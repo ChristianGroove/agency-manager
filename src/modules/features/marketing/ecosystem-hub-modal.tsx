@@ -12,11 +12,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Settings, Eye, CheckCircle2, AlertCircle, LayoutGrid, BarChart3, Globe, ExternalLink, Smartphone, Zap } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 // Actions
 import { getMetaConfig, saveMetaConfig } from "@/modules/core/admin/actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { InsightsTab } from "@/modules/features/portal/insights/insights-tab"
 
 interface EcosystemHubModalProps {

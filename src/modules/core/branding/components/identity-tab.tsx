@@ -9,7 +9,7 @@ import { MagicPalette } from "./magic-palette"
 import { EmailSignatureGenerator } from "./email-signature-generator"
 import { Separator } from "@/components/ui/separator"
 import { Globe, Lock } from "lucide-react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface IdentityTabProps {
     settings: BrandingConfig

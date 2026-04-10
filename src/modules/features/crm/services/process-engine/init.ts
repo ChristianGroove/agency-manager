@@ -1,5 +1,5 @@
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Initialize Default CRM Settings for a new Organization.

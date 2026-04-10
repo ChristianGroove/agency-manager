@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Message, SendMessageInput } from '@/types/messaging'
 import { sendMessage, getMessages } from '../actions'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, Image as ImageIcon, Paperclip } from 'lucide-react'

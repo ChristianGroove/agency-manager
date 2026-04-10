@@ -197,7 +197,7 @@ export class EvolutionProvider implements MessagingProvider {
             }
 
             // Convert base64 to buffer and upload to Supabase
-            const { supabaseAdmin } = await import('@/lib/supabase-admin');
+            const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
 
             // Remove data URI prefix if present
             const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');

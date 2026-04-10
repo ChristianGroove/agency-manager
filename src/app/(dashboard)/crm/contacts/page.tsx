@@ -12,11 +12,12 @@ export const metadata = {
 export default async function CRMContactsPage({
     searchParams
 }: {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-    const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1
-    const search = typeof searchParams.search === 'string' ? searchParams.search : ''
-    const filter = typeof searchParams.filter === 'string' ? searchParams.filter : 'all'
+    const params = await searchParams
+    const page = typeof params.page === 'string' ? parseInt(params.page) : 1
+    const search = typeof params.search === 'string' ? params.search : ''
+    const filter = typeof params.filter === 'string' ? params.filter : 'all'
 
     // Use unified CRM Actions
     const [clientsRes, settingsRes, spaceType, categoriesRes] = await Promise.all([

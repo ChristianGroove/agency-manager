@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Role } from '../services/role-service';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Shield, Users, Lock, MoreVertical, Trash2, Copy } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RoleEditor } from './role-editor';

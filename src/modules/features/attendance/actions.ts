@@ -1,14 +1,14 @@
 "use server"
 
 import { headers } from "next/headers"
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { trackStorageUpload, validateStorageLimit } from "@/modules/infrastructure/storage/storage-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
-import { calculateDistanceInMeters } from "@/lib/utils"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { calculateDistanceInMeters } from "@/modules/infrastructure/utils/utils"
 
 // Helper global para restar 5 minutos a un formato HH:mm
 const subtractGraceMins = (timeStr: string) => {

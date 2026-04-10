@@ -74,24 +74,45 @@ CREATE POLICY "Isolated billing cycles access" ON public.billing_cycles
 --------------------------------------------------------------------------------
 -- 5. SERVICE CATALOG (Platform Hardening)
 --------------------------------------------------------------------------------
--- Insecure policies allowed FULL ACCESS (Insert/Update/Delete) to any authenticated user.
+-- CRITICAL FIX: Insecure policies allowed FULL ACCESS (Insert/Update/Delete) to any authenticated user.
 DROP POLICY IF EXISTS "Allow full access for authenticated users" ON public.service_catalog;
 DROP POLICY IF EXISTS "Allow read access for authenticated users" ON public.service_catalog;
 
--- Standard users should ONLY be able to see their own organization's catalog
--- Management is already covered by "Users insert catalog for their org" etc.
+-- Read access is global for all authenticated users
+CREATE POLICY "Read access for all" ON public.service_catalog
+    FOR SELECT TO authenticated
+    USING (true);
+
+-- Manipulation is ONLY for platform admins (Superadmins)
+-- We check platform_role in public.profiles
+CREATE POLICY "Admin full access" ON public.service_catalog
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE profiles.id = auth.uid() 
+        AND platform_role IN ('admin', 'superadmin')
+    ));
 
 --------------------------------------------------------------------------------
--- 6. DASHBOARD BANNERS
+-- 6. DASHBOARD BANNERS (Space Hardening)
 --------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Allow read access to authenticated users" ON public.global_dashboard_banners;
 DROP POLICY IF EXISTS "Allow all access to admin users" ON public.global_dashboard_banners;
+DROP POLICY IF EXISTS "Read active global banners" ON public.global_dashboard_banners;
 
--- Global banners should be readable by all members of an organization, 
--- but only if they are active and designated for them.
-CREATE POLICY "Read active global banners" ON public.global_dashboard_banners
+-- Banners are read by everyone, but strictly filtered by space_type in the app
+CREATE POLICY "Isolated space banners access" ON public.global_dashboard_banners
     FOR SELECT TO authenticated
-    USING (true); -- Keep as true for reading if it's truly platform-wide content
+    USING (is_active = true);
+
+-- Management ONLY for platform admins
+CREATE POLICY "Admin manage banners" ON public.global_dashboard_banners
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE profiles.id = auth.uid() 
+        AND platform_role IN ('admin', 'superadmin')
+    ));
 
 --------------------------------------------------------------------------------
 -- 7. USAGE EVENTS

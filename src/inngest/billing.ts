@@ -1,5 +1,5 @@
-import { inngest } from "@/lib/inngest/client";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { inngest } from "@/modules/infrastructure/automation/inngest/client";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { WompiSaasAdapter } from "@/modules/billing/saas/adapters/wompi";
 
 /**

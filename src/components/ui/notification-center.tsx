@@ -13,7 +13,7 @@ import {
     Bell, Check, CheckCheck, MessageSquare, UserPlus, TrendingUp,
     AlertCircle, Clock, Trash2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 

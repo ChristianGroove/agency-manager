@@ -1,6 +1,6 @@
 
 import { AssistantContext } from "../../types";
-import { createClient } from "@/lib/supabase-server";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * LIST ACTIVE FLOWS ACTION

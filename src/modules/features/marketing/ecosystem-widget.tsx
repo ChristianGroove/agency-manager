@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Globe, ArrowRight, CheckCircle2 } from "lucide-react"
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { getMetaConfig } from "@/modules/core/admin/actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface EcosystemWidgetProps {
     client: any

@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         if (!clientId) return createClientRedirect(appUrl, '/platform/integrations', { error: 'missing_client_id' });
 
         try {
-            const { MetaGraphAPI } = await import('@/lib/meta/graph-api');
+            const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api');
             const { saveMetaConfig } = await import('@/modules/core/admin/actions');
             const metaApi = new MetaGraphAPI(appUrl);
 
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
 
     // 3. Exchange Code for Token & Get Assets
     try {
-        const { MetaGraphAPI } = await import('@/lib/meta/graph-api');
+        const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api');
         const metaApi = new MetaGraphAPI(appUrl);
 
         const longLivedToken = await metaApi.exchangeCodeForToken(code);
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
                 console.log(`[MetaCallback] Starting Bulk Sync for ${wabas.length} WABAs...`);
 
                 try {
-                    const { wabaSubscriptionManager } = await import('@/lib/meta/waba-subscription-manager');
+                    const { wabaSubscriptionManager } = await import('@/modules/infrastructure/meta/services/waba-subscription-manager');
 
                     const subscriptionPayload = wabas.map((w: any) => ({
                         wabaId: w.id,
@@ -300,7 +300,7 @@ export async function GET(request: Request) {
 
         // 5. Handle based on source (Granular vs Full)
         if (isGranularConnection && filteredAssets.length > 0) {
-            const { activateMetaChannel } = await import('@\/modules\/infrastructure\/integrations/marketplace/meta-channel-actions');
+            const { activateMetaChannel } = await import('@/modules/infrastructure/integrations/marketplace/meta-channel-actions');
 
             let successCount = 0;
             let errorMessages: string[] = [];

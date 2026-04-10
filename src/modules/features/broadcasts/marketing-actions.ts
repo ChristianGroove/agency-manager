@@ -1,8 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { revalidatePath } from 'next/cache'
 
 export interface Campaign {

@@ -10,7 +10,7 @@ import { toast } from "sonner"
 import { ServiceCategory, getCategories, deleteCategory } from "@/modules/features/catalog/categories-actions"
 import { CategoryFormSheet } from "./category-form-sheet"
 import * as LucideIcons from "lucide-react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CategoryManager() {
     const { t } = useTranslation()

@@ -1,6 +1,6 @@
 'use server'
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"

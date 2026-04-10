@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { getActiveModules } from '@/modules/core/saas/saas-actions'
-import { getCurrentUserPermissions } from '@/modules/core/settings/settings-actions'
+import { getCurrentUserPermissions } from '@/modules/core/settings/actions/team'
 
 interface UseActiveModulesReturn {
     modules: string[]

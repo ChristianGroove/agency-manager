@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 // LAZY LOAD: The massive Assistant UI (animations, chat history) won't parse in JS 
 // until requested explicitly to save memory footprint.
 const LazyAssistantOverlay = dynamic(
-    () => import("@/components/assistant/AssistantOverlay").then(mod => mod.AssistantOverlay),
+    () => import("@/modules/infrastructure/ai/components/AssistantOverlay").then(mod => mod.AssistantOverlay),
     {
         ssr: false,
         loading: () => null
@@ -17,7 +17,7 @@ const LazyAssistantOverlay = dynamic(
 )
 
 const LazyAssistantModal = dynamic(
-    () => import("@\/modules\/features\/caa/components/assistant-modal").then(mod => mod.AssistantModal),
+    () => import("@/modules/features/caa/components/assistant-modal").then(mod => mod.AssistantModal),
     {
         ssr: false,
         loading: () => null

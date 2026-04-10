@@ -48,5 +48,16 @@ Servicios técnicos transversales que dan soporte tanto al Motor como a las Feat
    - `Core` **NUNCA** importa de `Features`.
 3. **Aggregators**: Usar archivos `*-actions.ts` atómicos para exponer funcionalidades al cliente, evitando carpetas `actions/index.ts` si causan circularidad.
 
+## 4. Patrones de Alto Desempeño y Seguridad (Enterprise Grade)
+
+### A. Capa de Infraestructura (Integraciones)
+- **Resiliencia**: Todas las llamadas externas deben estar envueltas en un `CircuitBreaker` (`globalCircuitBreaker`) para evitar fallos en cascada.
+- **Eficiencia (Token Caching)**: Para integraciones con APIs externas (ej: Meta Graph API), se debe implementar un mecanismo de caché en memoria (Singleton/Map) para evitar latencia duplicada en cada request.
+- **Seguridad**: Las credenciales sensibles deben ser decodificadas lo más tarde posible y nunca exponerse en logs.
+
+### B. Capa de Datos (Seguridad Certificada)
+- **RLS (Row Level Security)**: Toda tabla nueva debe nacer con RLS activado. Las políticas deben validar pertenencia a la organización vía `organization_members`.
+- **Global Catalogues**: Las tablas de catálogo global (ej: `service_catalog`) deben ser de solo lectura para usuarios y protegidas por rol `platform_admin`.
+
 ---
-**Estado**: Fase 1 Completada - 9 de Abril, 2026.
+**Estado**: Certificación Platinum (Enterprise Ready) - 10 de Abril, 2026.

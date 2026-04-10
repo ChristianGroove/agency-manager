@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useCallback } from "react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { Users, AlertTriangle, Tag } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"

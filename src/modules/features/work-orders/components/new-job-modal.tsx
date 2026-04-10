@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { JobForm } from "./job-form"
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export interface NewJobModalProps {
     open?: boolean

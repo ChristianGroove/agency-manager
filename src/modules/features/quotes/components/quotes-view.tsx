@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, Send, CheckCircle, RefreshCcw, FileCheck, MessageCircle } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     Table,
     TableBody,
@@ -38,7 +38,7 @@ import {
     convertQuoteAction as convertQuote 
 } from "../quotes-actions"
 import { QuoteShareSheet } from "./quote-share-sheet"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { QuoteDetailDialog } from "./quote-detail-dialog"
 import { SectionHeader } from "@/components/layout/section-header"
 import { FileText } from "lucide-react"

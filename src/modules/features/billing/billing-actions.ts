@@ -31,7 +31,7 @@ export async function getInvoices() {
 }
 
 export async function deleteInvoicesAction(ids: string[]) {
-    const { createClient } = await import("@/lib/supabase-server")
+    const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).in('id', ids)
     if (!error) revalidatePath('/billing')
@@ -65,7 +65,7 @@ export async function getEmittersAction() {
 }
 
 export async function getSettingsAction() {
-    const { getSettings } = await import("@/modules/core/settings/settings-actions")
+    const { getSettings } = await import("@/modules/core/settings/actions/crud")
     try {
         const data = await getSettings()
         return { success: true, data }
@@ -101,7 +101,7 @@ export async function toggleServiceStatusAction(id: string, status: 'active' | '
 
 export async function deleteServicesAction(ids: string[]) {
     // Basic common implementation if not specialized
-    const { createClient } = await import("@/lib/supabase-server")
+    const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('services').delete().in('id', ids)
     if (!error) revalidatePath('/billing')
@@ -136,7 +136,7 @@ export async function getPaymentTransactions() {
 
 export async function getOrganizationSubscription() {
     // This usually matches org logic but exposed here for dashboard
-    const { createClient } = await import("@/lib/supabase-server")
+    const { createClient } = await import("@/modules/core/database/supabase-server")
     const { getCurrentOrganizationId } = await import("@/modules/core/organizations/organization-actions")
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()

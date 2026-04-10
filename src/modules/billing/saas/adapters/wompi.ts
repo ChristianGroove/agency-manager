@@ -1,5 +1,5 @@
 import { BillingAdapter, SubscriptionStatus } from "../types";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Wompi Adapter for SaaS Subscriptions

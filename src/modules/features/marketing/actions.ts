@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
 const META_PROVIDER_KEY = 'meta_ads_monitor'

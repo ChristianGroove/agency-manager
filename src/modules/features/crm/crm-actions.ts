@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { ContactService } from "./services/contact-service"
@@ -10,7 +10,7 @@ import { PipelineService } from "./services/logic/services/pipeline.service"
 import { TagService } from "./services/tag-service"
 import { CrmTaskService } from "./services/crm-task-service"
 import { DealService } from "./services/deal-service"
-import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from "./types"
 import { Lead, Client } from "@/types"
 
@@ -374,7 +374,7 @@ export async function clearContactTagsAction(leadId: string) {
 }
 
 export async function getSettingsAction(): Promise<ActionResponse<any>> {
-    const { getSettings } = await import("@/modules/core/settings/settings-actions")
+    const { getSettings } = await import("@/modules/core/settings/actions/crud")
     try {
         const data = await getSettings()
         return { success: true, data }

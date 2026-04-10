@@ -1,12 +1,12 @@
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { MessageContentType } from "@/types/messaging"
 import { sendMessage, sendProductCardMessage } from "../actions/messages"
 import { MESSAGING_STORAGE_BUCKET } from "../constants"
 import { refineDraftContent } from "../ai/smart-replies"
 import { Message, Conversation } from "./use-chat-logic"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function useChatActions(params: {
     conversationId: string,
@@ -143,12 +143,12 @@ export function useChatActions(params: {
             let mime = 'audio/webm';
 
             if (isWhatsApp) {
-                const { convertWebmToOgg } = await import("@/lib/audio/webm-to-ogg")
+                const { convertWebmToOgg } = await import("@/modules/infrastructure/audio/services/webm-to-ogg")
                 finalBlob = await convertWebmToOgg(blob)
                 ext = 'ogg'; mime = 'audio/ogg';
             } else {
                 try {
-                    const { convertWebmToWav } = await import("@/lib/audio/webm-to-wav")
+                    const { convertWebmToWav } = await import("@/modules/infrastructure/audio/services/webm-to-wav")
                     finalBlob = await convertWebmToWav(blob)
                     ext = 'wav'; mime = 'audio/wav';
                 } catch (wavErr) {

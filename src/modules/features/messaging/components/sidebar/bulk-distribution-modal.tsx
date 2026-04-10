@@ -25,8 +25,8 @@ import {
 } from "lucide-react"
 import { getUnassignedDistributionStats, distributeUnassignedConversations } from "@/modules/features/messaging/assignment-actions"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
-import { cn } from "@/lib/utils"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface BulkDistributionModalProps {
     open: boolean

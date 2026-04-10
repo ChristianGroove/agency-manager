@@ -1,8 +1,8 @@
 
 import { Quote, Client } from "@/types"
 import { forwardRef } from "react"
-import { cn } from "@/lib/utils"
-import { getDocumentBranding } from '@/modules/core/settings/settings-actions'
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { getDocumentBranding } from '@/modules/core/settings/actions/branding'
 import { type DocumentBrandingSettings } from '@/modules/features/billing/types'
 
 interface QuoteTemplateProps {

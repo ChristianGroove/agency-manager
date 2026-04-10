@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useEffect, useState, useMemo, memo, isValidElement, cloneElement } from 'react';
 import { Check, ChevronsUpDown, MessageCircle, Instagram, Globe, Facebook, Loader2, Smartphone } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -19,8 +19,8 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { getChannels } from '@\/modules\/features\/channels/actions';
-import { Channel } from '@\/modules\/features\/channels/types';
+import { getChannels } from '@/modules/features/channels/actions';
+import { Channel } from '@/modules/features/channels/types';
 import { Badge } from '@/components/ui/badge';
 
 interface ChannelOption {

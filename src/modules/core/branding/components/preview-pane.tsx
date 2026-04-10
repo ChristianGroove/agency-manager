@@ -1,7 +1,7 @@
 "use client"
 
 import { BrandingConfig } from "@/types/branding"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { LayoutDashboard, Layers, CreditCard, Search, Bell, Menu, Server } from "lucide-react"
 
 interface PreviewPaneProps {

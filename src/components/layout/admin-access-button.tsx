@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { LayoutDashboard, Shield, Package } from 'lucide-react'
 import styles from './admin-access-button.module.css'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 
 interface AdminButtonProps {
     href: string

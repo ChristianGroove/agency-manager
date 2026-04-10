@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { updateConversationState } from "@/modules/features/messaging/conversation-management-actions"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 export async function GET() {
     // First get any conversation ID to test with

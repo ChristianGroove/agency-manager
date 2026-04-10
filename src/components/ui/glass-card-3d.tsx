@@ -1,6 +1,6 @@
 import React from 'react';
 import { Facebook, Instagram, MessageCircle } from 'lucide-react';
-import { useTranslation } from "@/lib/i18n/use-translation";
+import { useTranslation } from "@/modules/core/i18n/use-translation";
 
 interface GlassCard3DProps {
     title?: string;

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { ScoreFactors } from "@/types/crm-advanced";
 
 /**

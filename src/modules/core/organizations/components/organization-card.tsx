@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Building2, ChevronRight, Crown, Sparkles } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "next-themes"

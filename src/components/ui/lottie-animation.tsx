@@ -1,7 +1,7 @@
 "use client"
 
 import Lottie from "lottie-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface LottieAnimationProps {
     animationData: any

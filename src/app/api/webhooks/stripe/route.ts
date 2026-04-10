@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { inngest } from '@/lib/inngest/client'
+import { inngest } from '@/modules/infrastructure/automation/inngest/client'
 
 /**
  * Stripe Webhook Handler (Async Offloading)

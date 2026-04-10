@@ -1,8 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
-import { normalizePhone } from "@/lib/normalize-phone"
+import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 
 /**
  * Assign a conversation to a specific user/agent
@@ -43,7 +43,7 @@ export async function updateConversationState(
     conversationId: string,
     updates: { state?: string; status?: string }
 ) {
-    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+    const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
 
     const safeUpdates: any = { updated_at: new Date().toISOString() }
     if (updates.state) safeUpdates.state = updates.state

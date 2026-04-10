@@ -3,7 +3,7 @@
 import React, { ReactNode } from 'react'
 import Link from 'next/link'
 import styles from './admin-access-button.module.css'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 
 interface ActionButtonProps {
     href?: string

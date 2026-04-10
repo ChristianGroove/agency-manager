@@ -5,7 +5,7 @@ import { Plus, Minus, Type, Trash2, ShoppingCart, Loader2, Package, ArrowUpRight
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 import { getDealCart, addToCart, removeCartItem, updateCartItem, sendInteractiveQuote, DealCart } from "../services/logic/deal-actions"
 import { ProductSelector } from "./product-selector"

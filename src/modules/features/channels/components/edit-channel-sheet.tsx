@@ -19,9 +19,9 @@ import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getChannelAssignmentRule, upsertAssignmentRule, deleteAssignmentRule } from "@/modules/features/messaging/assignment-actions"
 import { Badge } from "@/components/ui/badge"
-import { useI18n } from "@/lib/i18n/context"
+import { useI18n } from "@/modules/core/i18n/context"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface EditChannelSheetProps {
     open: boolean

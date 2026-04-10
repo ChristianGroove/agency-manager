@@ -26,7 +26,7 @@ export class AIWorkflowAnalyzer {
     async getSuggestions(context: WorkflowContext): Promise<AISuggestion[]> {
         try {
             // Use Central AI Engine
-            const { AIEngine } = await import("@\/modules\/infrastructure\/ai-engine/service");
+            const { AIEngine } = await import("@/modules/infrastructure/ai-engine/service");
 
             const response = await AIEngine.executeTask({
                 organizationId: this.organizationId,

@@ -2,8 +2,8 @@
 
 import { OrganizationMember } from "@/types/organization"
 import { cookies } from "next/headers"
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 
@@ -130,7 +130,7 @@ export const getCurrentOrganizationId = cache(async () => {
             return orgCookie.value
         }
 
-        const { isSuperAdmin } = await import("@/lib/auth/platform-roles")
+        const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles")
         if (await isSuperAdmin(user.id)) {
             console.log(`[ORG_CONTEXT] 🛡️ SuperAdmin Overpass: ${orgCookie.value} for User ${user.id}`);
             return orgCookie.value

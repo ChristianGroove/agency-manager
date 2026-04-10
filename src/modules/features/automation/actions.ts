@@ -1,9 +1,9 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { inngest } from "@/lib/inngest/client"
+import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 import { WorkflowDefinition } from "./types"
 
 export async function saveWorkflow(id: string, name: string, description: string, definition: WorkflowDefinition, isActive: boolean = false) {
@@ -420,7 +420,7 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
 
 
 
-        const { assertUsageAllowed } = await import("@\/modules\/infrastructure\/usage/usage-limiter");
+        const { assertUsageAllowed } = await import("@/modules/infrastructure/usage/usage-limiter");
         await assertUsageAllowed({ organizationId: orgId, engine: 'automation' });
 
         // Create an execution record

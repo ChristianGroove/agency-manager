@@ -3,7 +3,7 @@ import { NormalizedAdsMetrics } from "@/modules/infrastructure/meta/services/typ
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { DollarSign, Eye, MousePointer2, TrendingUp, BarChart3, AlertCircle, ChevronDown, ChevronUp, Image as ImageIcon, Calendar } from "lucide-react"
-import { formatCurrency, cn } from "@/lib/utils"
+import { formatCurrency, cn } from "@/modules/infrastructure/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 

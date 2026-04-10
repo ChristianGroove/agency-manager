@@ -2,7 +2,7 @@
 // Generates WebAuthn authentication options
 
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {

@@ -5,7 +5,7 @@ import { Copy, Check, CreditCard, Banknote, X, ChevronRight } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface PaymentOptionsModalProps {
     isOpen: boolean

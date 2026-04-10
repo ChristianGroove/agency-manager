@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { Plus, GripVertical, Edit, Trash2, Zap, Info, ShieldAlert } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import {
     Dialog,
     DialogContent,
@@ -40,8 +40,8 @@ import {
     getAssignmentRules,
     getAgentsWorkload
 } from "../assignment-actions"
-import { getChannels } from "@\/modules\/features\/channels/actions"
-import { Channel } from "@\/modules\/features\/channels/types"
+import { getChannels } from "@/modules/features/channels/actions"
+import { Channel } from "@/modules/features/channels/types"
 
 interface AssignmentRule {
     id: string

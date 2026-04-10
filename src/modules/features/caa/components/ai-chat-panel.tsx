@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Sparkles, Send, User, Bot, Loader2, ArrowLeft, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { askHelpAssistant, HelpChatMessage } from "../actions/ask-help-assistant"
 
 interface AIChatPanelProps {

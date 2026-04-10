@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useClients } from "../../context/clients-context"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -29,7 +29,7 @@ import {
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { VERTICAL_REGISTRY, VerticalType } from "@/modules/core/organizations/vertical-registry"
 
 export function ClientsGrid({ 

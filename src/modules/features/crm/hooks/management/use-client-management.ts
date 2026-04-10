@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Client } from "@/types"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export interface EditFormState {
     name: string

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { integrationRegistry } from "./registry"
 
@@ -161,7 +161,7 @@ export async function deleteConnection(connectionId: string) {
     // Security Log
     const { data: { user } } = await supabase.auth.getUser()
     if (user && deletedConn) {
-        const { SecurityLogger, SecurityAction } = await import('@/lib/security-logger')
+        const { SecurityLogger, SecurityAction } = await import('@/modules/core/security/security-logger')
         await SecurityLogger.log({
             organizationId: deletedConn.organization_id,
             actorId: user.id,

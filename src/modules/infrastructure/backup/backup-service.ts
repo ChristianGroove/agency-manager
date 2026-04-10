@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { integrationRegistry } from "@\/modules\/infrastructure\/integrations/registry"
-import { StorageProvider } from "@\/modules\/infrastructure\/integrations/adapters/types"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
+import { StorageProvider } from "@/modules/infrastructure/integrations/adapters/types"
 
 export class BackupService {
 

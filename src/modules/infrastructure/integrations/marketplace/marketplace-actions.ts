@@ -1,8 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { IntegrationProvider, InstalledIntegration } from "./types"
 import { integrationRegistry } from "../registry"

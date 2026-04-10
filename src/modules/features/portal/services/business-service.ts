@@ -1,6 +1,6 @@
 'use server'
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Business Actions and Activity Logging for the Portal

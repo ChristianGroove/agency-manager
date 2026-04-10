@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { MetaConnector } from "@/modules/infrastructure/meta/services/connector"
 import { AdsService } from "@/modules/infrastructure/meta/services/ads-service"
 

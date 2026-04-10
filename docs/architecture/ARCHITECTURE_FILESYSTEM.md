@@ -21,44 +21,46 @@ Este documento es la **fuente de verdad definitiva** sobre la organización del 
 Pixy utiliza una arquitectura de 3 capas para separar responsabilidades:
 
 #### **A. Core (`/src/modules/core`)**
-Contiene los "motores" del SaaS que son compartidos por toda la plataforma.
-- **Admin**: Gestión global del sistema.
-- **Auth**: Autenticación y recuperación de credenciales.
-- **IAM**: Gestión de identidad, perfiles y usuarios.
-- **Organizations**: Gestión de tenants, branding y límites.
-- **UI**: Componentes de UI transversales (Search, Toggles, Layouts).
+Contiene los "motores" del SaaS que son esenciales para el funcionamiento multitenant.
+- **Database**: Clientes de Supabase (Server, Admin, Browser) y servicios base.
+- **IAM**: Identidad y Acceso (Roles de plataforma, Permisos cacheados, Auth).
+- **Organizations**: Gestión de Tenants (Configuración, Branding, Miembros, Billing interno).
+- **SaaS**: Registro de aplicaciones, verticales y capacidades (Capabilities Engine).
+- **Security**: Logger de auditoría, Cifrado (Vault) y Hardening.
+- **UI**: Componentes transversales y layouts base del dashboard.
 
 #### **B. Infrastructure (`/src/modules/infrastructure`)**
-Integraciones con el mundo exterior y servicios de bajo nivel.
-- **AI**: Motores de inteligencia artificial.
-- **Logging**: Auditoría y seguimiento.
-- **Meta**: Integración con APIs de WhatsApp/Facebook/Instagram.
-- **Integrations**: Marketplace y gestión de conectores.
-- **Resilience**: Capa de protección y Circuit Breakers para APIs externas.
+Capa de comunicación con el exterior y utilidades de bajo nivel.
+- **AI**: Diagnóstico, Sanetización de datos y validación de intención.
+- **Integrations**: Adaptadores para servicios externos (Meta, Evolution API).
+- **Notifications**: Motor de Email (Resend) y notificaciones de sistema.
+- **Resilience**: Circuit Breakers y reintentos exponenciales para APIs externas.
+- **Utils**: Utilidades puras, formateadores y validadores globales.
 
 #### **C. Features (`/src/modules/features`)**
-El valor de negocio específico. Cada feature es un dominio aislado.
-- **CRM**: Gestión de contactos y flujos de ventas.
-- **Billing**: Facturación, pagos y suscripciones.
-- **Quotes**: Sistema de cotizaciones.
-- **Messaging**: Inbox unificado y centro de mensajes.
+El valor de negocio modular cargado según el "Space" del tenant.
+- **CRM**: Gestión dinámica de Leads, Clientes y Pipeline Avanzado.
+- **Billing**: Facturación recurrente, Proyectos y Pasarelas de Pago.
+- **Attendance**: Control de atención y flujos de trabajo operativos.
+- **Quotes**: Sistema de cotizaciones interactivas con branding dinámico.
 
 ---
 
-## 📐 Reglas de Ubicación de Archivos
+## 📐 Reglas de Oro de Ubicación
 
-Dentro de cada módulo (`modules/*`), se debe seguir este patrón:
+Dentro de cada módulo (`modules/*`), se mantiene una sub-estructura estricta:
 
-- `components/`: UI específica del módulo. No debe haber lógica de negocio pesada, solo presets de visualización.
-- `services/`: Lógica de negocio, controladores y procesamiento de datos.
-- `actions/`: Server Actions de Next.js.
-- `hooks/`: Custom hooks reutilizables para ese dominio.
-- `types/`: Definiciones de interfaces exclusivas del módulo.
+- `actions/`: Server Actions de Next.js (Punto de entrada de lógica de servidor).
+- `services/`: Lógica de negocio pesada, servicios de dominio y ORM.
+- `components/`: UI encapsulada (Hooks de UI y componentes atómicos).
+- `types/`: Interfaces y enums exclusivos del dominio.
 
-### 🚫 Prohibiciones Estrictas
-1. **No Componentes Huérfanos**: No se permiten carpetas de funciones (ej. `marketing`, `meta`) dentro de `src/components`. Esa carpeta solo es para componentes UI transversales (Shadcn/UI, Layouts base).
-2. **No Lógica en /src/db**: Los scripts SQL solo viven en la raíz `/db`.
-3. **No Imports Relativos Profundos**: Prefiere siempre alias `@/modules/...` en lugar de `../../../../`.
+### 🚫 Prohibiciones Absolutas (Platinum Standard)
+1. **DEPRECADO: No /src/lib**: La carpeta `src/lib` ha sido ELIMINADA. No se permite crear archivos de lógica fuera de `src/modules`.
+2. **Aislamiento de Features**: Una feature no debe importar componentes de UI específicos de otra feature. Si se requiere compartir, debe promoverse a `core/ui`.
+3. **Registry Mandatory**: Toda integración debe estar registrada en `infrastructure/integrations/registry.ts`.
+4. **Resilience Mandatory**: Toda llamada a API externa debe estar envuelta en un `CircuitBreaker`.
+5. **No Imports Relativos**: Prohibido el uso de `../../..`. Usar siempre alias `@/modules/*`.
 
 ---
 

@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { AlertCircle, CheckCircle2, Globe, Mail, Lock, Server, Trash2, Plug, Play, Loader2 } from "lucide-react"
 // import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert" 
-import { saveSmtpConfig, deleteSmtpConfig, SmtpConfigFull } from "@\/modules\/features\/notifications/actions/smtp-actions"
+import { saveSmtpConfig, deleteSmtpConfig, SmtpConfigFull } from "@/modules/features/notifications/actions/smtp-actions"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface SmtpConnectionTabProps {
     organizationId: string

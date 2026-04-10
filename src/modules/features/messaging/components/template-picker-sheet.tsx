@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner"
 import { MessageTemplate, getTemplates, syncTemplatesFromMeta } from "../actions/templates"
 import { sendTemplateMessage } from "@/modules/features/messaging/send-template-action"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface TemplatePickerSheetProps {
     open: boolean

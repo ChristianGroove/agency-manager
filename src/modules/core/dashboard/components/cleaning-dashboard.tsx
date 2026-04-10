@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { Users, Calendar, Sparkles, PlayCircle, CheckCircle2, Clock, UserPlus } from "lucide-react"
 import CountUp from "react-countup"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 // Import Modals (these were in page.tsx)
 import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"

@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Database, UserPlus, Tag, ArrowRightCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default function CRMNode({ data, selected }: NodeProps) {
     const actionLabel: Record<string, string> = {

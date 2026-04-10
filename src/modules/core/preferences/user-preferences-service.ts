@@ -1,5 +1,5 @@
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/modules/core/database/supabase";
 
 export interface UserPreferences {
     user_id?: string;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateSmartReplies, logSuggestion } from '@/modules/features/messaging/messaging-actions'
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 
 export async function POST(req: NextRequest) {
     try {

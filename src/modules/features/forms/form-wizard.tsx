@@ -19,7 +19,7 @@ import { saveSubmissionResponse, submitForm } from "@/modules/features/forms/act
 import { Loader2, CheckCircle2, ChevronRight, ChevronLeft, Save, Sparkles, ArrowRight } from "lucide-react"
 import { useDebouncedCallback } from "use-debounce"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // Animations - Keep utilizing them for delightful UX
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import manWorkingAnimation from "../../../../public/animations/cartoon-man-working-at-desk-illustration-2025-10-20-04-30-47-utc.json"

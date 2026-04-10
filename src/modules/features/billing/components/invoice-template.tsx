@@ -1,7 +1,7 @@
 "use client"
 
 import { forwardRef } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { type DocumentBrandingSettings } from '../types'
 
 interface InvoiceTemplateProps {

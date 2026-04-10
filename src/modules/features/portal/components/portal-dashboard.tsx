@@ -9,7 +9,7 @@ import { PortalBriefingList } from "./portal-briefing-list"
 import { PortalInvoiceList } from "./portal-invoice-list"
 import { ArrowRight, DollarSign, FileText, MessageSquare, AlertCircle, CheckCircle2, Clock, CreditCard, Activity } from "lucide-react"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { useEffect, useState } from "react"
@@ -64,7 +64,7 @@ interface PortalDashboardProps {
     services: Service[]
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalDashboard({ token, client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings, services }: PortalDashboardProps) {
     const { t } = useTranslation()

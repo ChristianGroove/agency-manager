@@ -1,7 +1,7 @@
 import { Sidebar } from "./sidebar"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
-import { createClient } from "@/lib/supabase-server"
-import { isSuperAdmin } from "@/lib/auth/platform-roles"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export async function SidebarLoader({

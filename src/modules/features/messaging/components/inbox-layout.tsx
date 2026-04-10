@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // import { ConversationList } from "./conversation-list" // Deprecated
 import { SidebarTabs } from "./sidebar/sidebar-tabs"
 import { ChatArea } from "./chat-area/chat-area"
@@ -10,16 +10,16 @@ import { ContextDeck } from "./context-deck"
 import { ConversationDropZones } from "./conversation-drop-zones"
 import { updateConversationState } from "../conversation-management-actions"
 import { toast } from "sonner"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createConversation } from "../conversation-management-actions"
 import { InboxProvider, useInboxContext } from "../context/inbox-context"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getAgentsWorkload } from "../assignment-actions"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { GlobalMessageListener } from "./floating-inbox/global-message-listener"
-import { realtimeManager } from "@/lib/supabase-realtime-manager"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 
 interface InboxLayoutProps {
     initialConversationId?: string | null
@@ -103,7 +103,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         getActiveModules(orgId),
                         supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
                         getAgentsWorkload(),
-                        import('@/modules/core/settings/settings-actions').then(m => m.getCurrentUserPermissions())
+                        import('@/modules/core/settings/actions/team').then(m => m.getCurrentUserPermissions())
                     ])
                     
                     setActiveModules(modules)

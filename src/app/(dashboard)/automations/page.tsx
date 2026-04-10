@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { AutomationsView } from "@/modules/features/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/features/automation/actions"
 import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"

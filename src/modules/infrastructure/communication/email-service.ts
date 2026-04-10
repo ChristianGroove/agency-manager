@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { transporter, SENDER_EMAIL } from "@/lib/email/mailer";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { transporter, SENDER_EMAIL } from "@/modules/infrastructure/notifications/services/mailer";
 
 interface EmailContext {
     organizationId?: string;

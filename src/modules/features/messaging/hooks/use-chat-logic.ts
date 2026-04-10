@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { Database } from "@/types/supabase"
 import { Message as MessagingMessage } from "@/types/messaging"
 import { markConversationAsRead } from "../actions/messages"
-import { realtimeManager } from "@/lib/supabase-realtime-manager"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 

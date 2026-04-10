@@ -1,5 +1,5 @@
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Badge } from "@/components/ui/badge"
 import {
     resolveDocumentState,

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Plus, Trash, ArrowLeft, Check, ChevronsUpDown, UserPlus, FileText, RefreshCcw, Building2 } from "lucide-react"
 import { QuoteItem, ServiceCatalogItem, Client, Emitter } from "@/types"
 import { createQuoteAction as createQuote, updateQuoteAction as updateQuote, getContactOptionsAction } from "../quotes-actions"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { quickCreateProspect } from "@/modules/features/crm/services/logic/actions"
 import { toast } from "sonner"
 import {
@@ -31,7 +31,7 @@ import {
     DialogTitle,
     DialogFooter
 } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Switch } from "@/components/ui/switch"
 import {
     Select,
@@ -121,7 +121,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                 if (clientsData) setClients(clientsData as Client[])
 
                 // 2. Fetch Catalog (Keeping for now, but should move to service)
-                const { supabase } = await import('@/lib/supabase')
+                const { supabase } = await import('@/modules/core/database/supabase')
                 const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
                 const orgId = await getCurrentOrganizationId()
                 
@@ -165,7 +165,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         }
 
         // Search in DB if not found locally
-        const { supabase } = await import('@/lib/supabase')
+        const { supabase } = await import('@/modules/core/database/supabase')
         const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
         const orgId = await getCurrentOrganizationId()
 
@@ -204,7 +204,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         if ((duplicateWarning as any).isLead) {
             const toastId = toast.loading("Convirtiendo lead a cliente...")
             try {
-                const { supabase } = await import('@/lib/supabase')
+                const { supabase } = await import('@/modules/core/database/supabase')
                 const { data: { user } } = await supabase.auth.getUser()
 
                 // Convert Lead to Client (Create Client from Lead data)
@@ -254,7 +254,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
         setLoading(true)
         try {
-            const { supabase } = await import('@/lib/supabase')
+            const { supabase } = await import('@/modules/core/database/supabase')
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Usuario no autenticado")
 

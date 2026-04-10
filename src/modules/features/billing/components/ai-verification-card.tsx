@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react"
 import { AIValidationResult, DiagnosticFinding } from "@/modules/billing/core/types/AIValidationResult"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface AIVerificationCardProps {
     result: AIValidationResult | null

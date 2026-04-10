@@ -26,8 +26,8 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-import { cn } from "@/lib/utils"
-import { addAICredential, deleteAICredential, updateAICredentialPriority } from "@\/modules\/infrastructure\/ai-engine/actions"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { addAICredential, deleteAICredential, updateAICredentialPriority } from "@/modules/infrastructure/ai-engine/actions"
 
 interface AIEngineSheetProps {
     open: boolean

@@ -1,6 +1,6 @@
 
 import { LucideIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface EmptyStateProps {
     title: string

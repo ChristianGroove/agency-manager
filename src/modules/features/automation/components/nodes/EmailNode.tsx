@@ -1,6 +1,6 @@
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Mail, AtSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default function EmailNode({ data, selected }: NodeProps) {
     const to = (data.to as string) || '';

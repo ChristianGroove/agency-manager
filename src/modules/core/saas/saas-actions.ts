@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { SaasApp, AppModule } from "@/types/saas"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -301,7 +301,7 @@ export async function getActiveModulesDetailed(orgId?: string) {
  */
 import { User } from "@supabase/supabase-js"
 import { getCachedOrgDetails } from "@/modules/core/organizations/organization-actions"
-import { getCachedUserPermissions } from "@/modules/core/settings/settings-actions"
+import { getCachedUserPermissions } from "@/modules/core/settings/actions/team"
 
 export async function getSidebarContext(orgId?: string, user?: User | null, preloadedModules?: string[]) {
     try {
@@ -338,7 +338,7 @@ export async function getSidebarContext(orgId?: string, user?: User | null, prel
             permsPromise = getCachedUserPermissions(user.id, organizationId)
         } else {
             // Fallback to slow legacy fetch if no user passed (shouldn't happen in optimized flow)
-            const { getCurrentUserPermissions } = await import('@/modules/core/settings/settings-actions')
+            const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team')
             permsPromise = getCurrentUserPermissions()
         }
 

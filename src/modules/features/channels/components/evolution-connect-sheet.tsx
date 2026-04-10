@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { motion, AnimatePresence } from "framer-motion"
 import { Loader2, CheckCircle2, QrCode, Smartphone, Wifi } from "lucide-react"
-import { createWhatsAppChannel } from "@\/modules\/features\/channels/actions"
+import { createWhatsAppChannel } from "@/modules/features/channels/actions"
 import { toast } from "sonner"
 
 interface EvolutionConnectSheetProps {

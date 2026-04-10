@@ -16,9 +16,9 @@ import { Switch } from '@/components/ui/switch'
 import { Location, createLocation, updateLocation, BusinessHours, BusinessDay } from '../../actions'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import dynamic from 'next/dynamic'
-import { COLOMBIA_DEPARTMENTS } from '@/lib/data/colombia-locations'
+import { COLOMBIA_DEPARTMENTS } from '@/modules/infrastructure/data/colombia-locations'
 import {
     Select,
     SelectContent,

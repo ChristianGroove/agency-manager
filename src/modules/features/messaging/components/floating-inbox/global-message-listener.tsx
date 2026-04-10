@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/modules/core/database/supabase"
 import { usePathname } from "next/navigation"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { toast } from "sonner"
@@ -10,7 +10,7 @@ import { useSafeInboxContext } from "@/modules/features/messaging/context/inbox-
 import { useGlobalInbox } from "@/modules/features/messaging/context/global-inbox-context"
 import { MessageSquare, X, Reply, CheckCheck } from "lucide-react"
 import { markConversationAsRead } from "@/modules/features/messaging/messaging-actions"
-import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { getOrgConnectionIds } from "@/modules/features/messaging/conversation-actions"
 import { Button } from "@/components/ui/button"
 import { SoundPlayer } from "@/modules/core/preferences/sound-player"

@@ -1,11 +1,11 @@
 import { Suspense } from "react"
-import { getChannel } from "@\/modules\/features\/channels/actions"
+import { getChannel } from "@/modules/features/channels/actions"
 import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
-import { ChannelDetail } from "@\/modules\/features\/channels/components/channel-detail"
+import { ChannelDetail } from "@/modules/features/channels/components/channel-detail"
 import { notFound } from "next/navigation"
 
 import { getChannelAssignmentRule } from "@/modules/features/messaging/assignment-actions"
-import { getOrganizationMembers } from "@/modules/core/settings/settings-actions"
+import { getOrganizationMembers } from "@/modules/core/settings/actions/team"
 
 interface PageProps {
     params: Promise<{ id: string }>

@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { encrypt, decrypt } from "@/lib/encryption"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { encrypt, decrypt } from "@/modules/core/security/encryption"
 import nodemailer from "nodemailer"
 import { revalidatePath } from "next/cache"
 

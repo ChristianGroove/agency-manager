@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Service } from "@/types"
 import { ArrowRight, Box, Clock, Monitor } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface PortalServiceCardProps {
     service: Service
@@ -16,7 +16,7 @@ interface PortalServiceCardProps {
     onPay?: (serviceId: string) => void // New: for quick payment
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoicesCount, pendingBriefingsCount, onClick, onPay }: PortalServiceCardProps) {
     const { t } = useTranslation()

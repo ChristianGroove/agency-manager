@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server"
 import { MetaCacheManager } from "@/modules/infrastructure/meta/services/cache-manager"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 
 export async function POST(req: Request) {
     // 1. Verify Admin Auth

@@ -16,7 +16,7 @@ interface PortalBillingTabProps {
     token: string
 }
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, token }: PortalBillingTabProps) {
     const { t } = useTranslation()

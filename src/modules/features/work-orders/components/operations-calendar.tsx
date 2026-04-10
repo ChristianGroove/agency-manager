@@ -7,10 +7,10 @@ import { format, startOfWeek, addDays, eachDayOfInterval, isSameDay, getHours, g
 import { es, enUS } from "date-fns/locale"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 // Reuse the dialog we just built (note: this might still be disabled/placeholder, but we'll import it)
 import { JobDetailDialog } from "./job-detail-dialog"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function OperationsCalendar() {
     const { t, locale } = useTranslation()

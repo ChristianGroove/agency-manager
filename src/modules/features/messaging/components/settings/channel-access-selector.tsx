@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Check, ChevronsUpDown, MessageSquare, ShieldAlert } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Button } from "@/components/ui/button"
 import {
     Command,
@@ -18,8 +18,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { getChannels } from "@\/modules\/features\/channels/actions"
-import { Channel } from "@\/modules\/features\/channels/types"
+import { getChannels } from "@/modules/features/channels/actions"
+import { Channel } from "@/modules/features/channels/types"
 
 interface ChannelAccessSelectorProps {
     selectedIds: string[]
@@ -34,7 +34,7 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
 
     useEffect(() => {
         const fetchChannels = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/settings-actions")
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team")
             const [data, perms] = await Promise.all([
                 getChannels(),
                 getCurrentUserPermissions()

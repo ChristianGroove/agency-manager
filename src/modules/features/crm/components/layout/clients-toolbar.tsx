@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useClients } from "../../context/clients-context"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { Button } from "@/components/ui/button"

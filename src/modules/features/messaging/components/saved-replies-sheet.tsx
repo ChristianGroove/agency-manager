@@ -11,11 +11,11 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Plus, Star, Trash2, Edit2, Save, X, Smile, Reply, ArrowLeft, Zap, MessageSquare, FileText, Check } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Label } from "@/components/ui/label"
 import { refineDraftContent } from "../actions/ai"
 import dynamic from "next/dynamic"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 

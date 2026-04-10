@@ -1,6 +1,6 @@
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Globe, ArrowRightLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 
 export default function HTTPNode({ data, selected }: NodeProps) {
     const method = (data.method as string) || 'GET';

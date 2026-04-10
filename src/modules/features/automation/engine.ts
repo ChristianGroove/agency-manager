@@ -1,5 +1,5 @@
 import { ContextManager } from './context-manager'
-import { trackUsage } from '@\/modules\/infrastructure\/usage/usage-tracker'
+import { trackUsage } from '@/modules/infrastructure/usage/usage-tracker'
 import { CRMNode, CRMNodeData } from './nodes/crm-node'
 import { HTTPNode, HTTPNodeData } from './nodes/http-node'
 import { EmailNode, EmailNodeData } from './nodes/email-node'
@@ -48,7 +48,7 @@ export class WorkflowEngine {
      * Starts execution from the Trigger node.
      */
     async start(): Promise<void> {
-        const { fileLogger } = await import('@/lib/file-logger')
+        const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger')
         console.log(`[Engine] Starting workflow execution...`)
         fileLogger.log(`[Engine] Starting execution. Trigger: ${this.definition.nodes.find(n => n.type === 'trigger')?.id}`)
 
@@ -105,7 +105,7 @@ export class WorkflowEngine {
 
             if (!executionId || !orgId) return;
 
-            const { supabaseAdmin } = await import('@/lib/supabase-admin');
+            const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
 
             await supabaseAdmin.from('workflow_logs').insert({
                 organization_id: orgId,
@@ -123,7 +123,7 @@ export class WorkflowEngine {
     }
 
     private async runStep(node: WorkflowNode): Promise<void> {
-        const { fileLogger } = await import('@/lib/file-logger');
+        const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger');
         fileLogger.log(`[Engine] Running Step: ${node.type} (${node.id})`);
         console.log(`[Engine] Running Step: ${node.type} (${node.id})`)
         await this.logStep(node.id, 'info', `Running ${node.type}`, { type: node.type });
@@ -184,7 +184,7 @@ export class WorkflowEngine {
         else if (node.type === 'buttons') {
             // Check if we have a result from a button click (after suspension)
             const result = this.context._lastInputResult as any
-            const { fileLogger } = require('@/lib/file-logger')
+            const { fileLogger } = require('@/modules/infrastructure/logging/services/file-logger')
 
             if (result && result.buttonId) {
                 // If we have a button ID, follow the specific handle
@@ -352,7 +352,7 @@ export class WorkflowEngine {
                 // Check if Resuming
                 const pendingInputResponse = this.context._resumedInputResponse as any
 
-                const { fileLogger } = await import('@/lib/file-logger')
+                const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger')
 
                 if (pendingInputResponse) {
                     // RESUMED

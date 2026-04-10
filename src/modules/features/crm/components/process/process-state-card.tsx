@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowRight, CheckCircle2, Circle, AlertCircle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface ProcessStateCardProps {
     leadId: string

@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 import { cache } from "react"
 
@@ -10,7 +10,7 @@ function debugLog(step: string, data: any) {
 }
 import { revalidatePath } from "next/cache"
 // import { getActiveModules } from "@/modules/core/saas/saas-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 
 import { BrandingConfig } from "@/types/branding"
 

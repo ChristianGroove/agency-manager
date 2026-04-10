@@ -38,7 +38,7 @@ export class NotificationNode {
         }
 
         if (actionType === 'notify_user') {
-            const { supabaseAdmin } = await import('@/lib/supabase-admin');
+            const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
 
             await supabaseAdmin.from('notifications').insert({
                 organization_id: organizationId,

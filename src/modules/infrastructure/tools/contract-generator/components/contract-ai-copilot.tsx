@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { Send, User, Bot, Sparkles, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useContract } from "../context/contract-context"

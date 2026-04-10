@@ -1,9 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
+import { createClient } from '@/modules/core/database/supabase-server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import { invalidateDomainCache } from '@/lib/domain-resolver'
+import { invalidateDomainCache } from '@/modules/core/saas/services/domain-resolver'
 
 // ============================================
 // TYPES

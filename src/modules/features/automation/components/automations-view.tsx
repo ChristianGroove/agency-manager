@@ -42,7 +42,7 @@ import {
 import { TemplatesSheet } from './templates-sheet';
 import { SectionHeader } from "@/components/layout/section-header"
 import { ActivitySheet } from './activity-sheet';
-import { cn } from '@/lib/utils';
+import { cn } from '@/modules/infrastructure/utils/utils';
 import {
     DropdownMenu,
     DropdownMenuContent,

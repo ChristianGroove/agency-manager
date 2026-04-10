@@ -1,8 +1,8 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { integrationRegistry } from "@\/modules\/infrastructure\/integrations/registry"
-import { decryptObject } from "@\/modules\/infrastructure\/integrations/encryption"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
+import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
 
 /**
  * Check health of a single connection

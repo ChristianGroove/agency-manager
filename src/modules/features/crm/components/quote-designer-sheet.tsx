@@ -5,7 +5,7 @@ import { type CRMTemplate } from "../services/logic/templates-shared"
 import { getAvailableTemplatesAction, applyTemplateAction } from "../services/logic/templates"
 import { getQuoteSettings, updateQuoteSettings, QuoteSettings } from "../services/logic/quote-settings"
 import { INDUSTRY_TEMPLATES } from "../services/logic/templates-shared"
-import { generateQuoteCopy } from "@\/modules\/infrastructure\/ai-engine/actions/generate-quote-copy"
+import { generateQuoteCopy } from "@/modules/infrastructure/ai-engine/actions/generate-quote-copy"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,7 +16,7 @@ import { toast } from "sonner"
 import { Loader2, Palette, MessageSquare, Briefcase, Zap, PaintBucket, Save, Sparkles, RotateCcw, Home, Scale, Monitor, GraduationCap, Plane, PartyPopper, Truck, Lightbulb, Calendar } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface QuoteDesignerSheetProps {
     open: boolean

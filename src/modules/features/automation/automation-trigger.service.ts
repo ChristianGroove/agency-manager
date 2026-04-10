@@ -1,9 +1,9 @@
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { fileLogger } from "@/lib/file-logger"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { fileLogger } from "@/modules/infrastructure/logging/services/file-logger"
 import { WorkflowEngine } from "./engine"
 import { WorkflowDefinition } from "./engine"
-import { BusinessHoursEngine } from "@/lib/business-hours"
+import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
 
 /**
  * Service to evaluate incoming events and trigger workflows.

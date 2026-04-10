@@ -10,12 +10,12 @@ import { getTemplates, deleteTemplateFromMeta, syncTemplatesFromMeta, submitTemp
 import { TemplateBuilderSheet } from "@/modules/features/messaging/components/template-builder-sheet"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { SectionHeader } from "@/components/layout/section-header"
-import { useI18n } from "@/lib/i18n/context"
-import { getChannels } from "@\/modules\/features\/channels/actions"
+import { useI18n } from "@/modules/core/i18n/context"
+import { getChannels } from "@/modules/features/channels/actions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Channel } from "@\/modules\/features\/channels/types"
+import { Channel } from "@/modules/features/channels/types"
 
 export default function TemplatesPage() {
     const { dict } = useI18n()

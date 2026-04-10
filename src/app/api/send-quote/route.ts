@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getQuoteEmailHtml } from '@/lib/email-templates';
-import { EmailService } from '@\/modules\/features\/notifications/email.service';
+import { getQuoteEmailHtml } from '@/modules/infrastructure/notifications/services/email-templates';
+import { EmailService } from '@/modules/features/notifications/email.service';
 
 import { getEffectiveBranding } from '@/modules/core/branding/actions';
 

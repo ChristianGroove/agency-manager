@@ -1,5 +1,5 @@
 "use server"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "./actions/crud"
 import { revalidatePath } from "next/cache"
 export interface TenantConfigUpdate {
@@ -73,7 +73,7 @@ export async function updateOrganizationConfig(targetOrgId: string, config: Tena
     // 3. Security Log
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-        const { SecurityLogger, SecurityAction } = await import('@/lib/security-logger')
+        const { SecurityLogger, SecurityAction } = await import('@/modules/core/security/security-logger')
         await SecurityLogger.log({
             organizationId: currentOrgId, // Logged against the RESELLER (Actor)
             actorId: user.id,

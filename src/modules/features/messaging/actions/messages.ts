@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { MetaProvider } from "../providers/meta-provider"
 import { MessagingPersistence } from "../services/persistence"
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
 /**

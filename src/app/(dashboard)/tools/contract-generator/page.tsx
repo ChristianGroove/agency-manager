@@ -3,18 +3,18 @@
 import React, { useState } from "react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { FileText, Sparkles, Settings2, MessageSquare } from "lucide-react"
-import { useRegisterView } from "@\/modules\/features\/caa/context/view-context"
-import { ContractConfigPanel } from "@\/modules\/infrastructure\/tools/contract-generator/components/contract-config-panel"
-import { ContractLivePreview } from "@\/modules\/infrastructure\/tools/contract-generator/components/contract-live-preview"
-import { ContractAiCopilot } from "@\/modules\/infrastructure\/tools/contract-generator/components/contract-ai-copilot"
-import { MyContractsModal } from "@\/modules\/infrastructure\/tools/contract-generator/components/my-contracts-modal"
+import { useRegisterView } from "@/modules/features/caa/context/view-context"
+import { ContractConfigPanel } from "@/modules/infrastructure/tools/contract-generator/components/contract-config-panel"
+import { ContractLivePreview } from "@/modules/infrastructure/tools/contract-generator/components/contract-live-preview"
+import { ContractAiCopilot } from "@/modules/infrastructure/tools/contract-generator/components/contract-ai-copilot"
+import { MyContractsModal } from "@/modules/infrastructure/tools/contract-generator/components/my-contracts-modal"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-import { ContractProvider } from "@\/modules\/infrastructure\/tools/contract-generator/context/contract-context"
+import { ContractProvider } from "@/modules/infrastructure/tools/contract-generator/context/contract-context"
 import { Printer, Download, ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useContract } from "@\/modules\/infrastructure\/tools/contract-generator/context/contract-context"
+import { useContract } from "@/modules/infrastructure/tools/contract-generator/context/contract-context"
 
 export default function ContractGeneratorPage() {
     // Register View for Assistant

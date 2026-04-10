@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3, Server, X } from "lucide-react"
-import { isFeatureEnabled } from "@/lib/features"
-import { cn } from "@/lib/utils"
+import { isFeatureEnabled } from "@/modules/core/saas/features"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { PortalSummaryTab } from "./portal-summary-tab"
 import { PortalServicesTab } from "./portal-services-tab"
 import { PortalBillingTab } from "./portal-billing-tab"
@@ -63,7 +63,7 @@ function mapModuleToComponent(moduleSlug: string): string {
 
 type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hosting'
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
     const { t } = useTranslation()

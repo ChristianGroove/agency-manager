@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { getSettings } from "@/modules/core/settings/settings-actions";
+import { getSettings } from "@/modules/core/settings/actions/crud";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +47,8 @@ import { AuthRefresher } from "@/components/providers/auth-refresher";
 import StyledJsxRegistry from "@/components/providers/styled-jsx-registry";
 import { BrandingProvider } from "@/components/providers/branding-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { ViewContextProvider } from "@\/modules\/features\/caa/context/view-context";
-import { ClientInit } from "@\/modules\/features\/caa/client-init";
+import { ViewContextProvider } from "@/modules/features/caa/context/view-context";
+import { ClientInit } from "@/modules/features/caa/client-init";
 
 export default async function RootLayout({
   children,

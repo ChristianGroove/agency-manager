@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { TemplateComponent } from "../actions/templates"
 import { Image as ImageIcon, FileText, Video, ExternalLink, Phone } from "lucide-react"
 

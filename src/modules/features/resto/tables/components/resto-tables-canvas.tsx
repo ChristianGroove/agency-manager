@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { saveLayout } from '../actions'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/modules/core/database/supabase'
 
 export const RestoTablesCanvas = ({ 
     initialZones, 

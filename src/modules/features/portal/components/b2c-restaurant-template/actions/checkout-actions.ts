@@ -1,8 +1,8 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
-import { normalizePhone } from "@/lib/normalize-phone"
+import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { revalidatePath } from "next/cache"
 
 export interface CheckoutPayload {

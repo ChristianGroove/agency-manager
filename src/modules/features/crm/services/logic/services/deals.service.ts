@@ -134,7 +134,7 @@ export class DealsService {
 
         // 5. Build Meta Provider & dispatch HTTP
         const { MetaProvider } = await import("@/modules/features/messaging/providers/meta-provider")
-        const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
+        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
         const finalCreds = decryptObject(creds)
 
         const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token

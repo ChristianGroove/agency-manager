@@ -17,7 +17,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     getTagsAction as getTags,
     getLeadTagsAction as getLeadTags,

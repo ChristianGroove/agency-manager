@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { integrationRegistry } from "@\/modules\/infrastructure\/integrations/registry"
-import { normalizePhone } from "@/lib/normalize-phone"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
+import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
 
 export class OutboundService {

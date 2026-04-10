@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { revalidatePath } from "next/cache"
 import { MessagingPersistence } from "./services/persistence"
@@ -66,7 +66,7 @@ export async function sendTemplateMessage(input: {
     }
 
     // 4. Extract credentials
-    const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
+    const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
     let creds = connection.credentials as any
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch (e) { /* noop */ }
@@ -129,7 +129,7 @@ export async function sendTemplateMessage(input: {
     console.log('[sendTemplateMessage] Sending HSM:', JSON.stringify(metaPayload, null, 2))
 
     // 6. POST to Meta Graph API
-    const { assertUsageAllowed } = await import("@\/modules\/infrastructure\/usage/usage-limiter")
+    const { assertUsageAllowed } = await import("@/modules/infrastructure/usage/usage-limiter")
     await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`

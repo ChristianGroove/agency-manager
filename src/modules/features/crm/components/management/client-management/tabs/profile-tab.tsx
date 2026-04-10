@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Upload, UserCircle, Mail, Globe } from "lucide-react"
 import { CategorySelector } from "../../../category-selector"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { EditFormState } from "../../../../hooks/management/use-client-management"
 
 interface ProfileTabProps {

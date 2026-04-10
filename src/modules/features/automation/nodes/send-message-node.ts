@@ -15,7 +15,7 @@ export class SendMessageNode {
     constructor(private contextManager: ContextManager) { }
 
     async execute(data: SendMessageNodeData): Promise<NodeExecutionResult> {
-        const { fileLogger } = await import('@/lib/file-logger');
+        const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger');
         const { outboundService } = await import('@/modules/features/messaging/outbound-service');
 
         // 1. Resolve Variables in all Text Fields

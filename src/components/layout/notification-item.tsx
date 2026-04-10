@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import {

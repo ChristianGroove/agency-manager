@@ -1,7 +1,7 @@
 // AI Response Cache (Persistent & Organization-Aware)
 
 import crypto from 'crypto';
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes default
 const EXTENDED_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours for help/docs

@@ -4,7 +4,7 @@ import { Lead, Client } from '@/types'
 import { ProcessEngine } from '../../process-engine/engine'
 import { ProcessMapper } from '../../process-engine/map-service'
 import { calculateLeadScore as coreCalculateLeadScore } from '../scoring'
-import { SecurityLogger } from '@/lib/security/logger'
+import { SecurityLogger } from '@/modules/core/security/logger'
 
 export class LeadsService {
     private repo: LeadsRepository

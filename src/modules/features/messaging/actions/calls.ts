@@ -1,7 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
@@ -27,8 +27,8 @@ export async function getCallStatus(conversationId: string) {
         .eq('id', conv.connection_id)
         .single()
 
-    const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager')
-    const { CallHoursManager } = await import('@/lib/meta/calling/call-hours-manager')
+    const { CallPermissionManager } = await import('@/modules/infrastructure/meta/services/calling/call-permission-manager')
+    const { CallHoursManager } = await import('@/modules/infrastructure/meta/services/calling/call-hours-manager')
 
     const permissionManager = new CallPermissionManager()
     const hoursManager = new CallHoursManager(connection?.working_hours as any)

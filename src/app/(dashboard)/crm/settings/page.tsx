@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getDictionary } from "@/lib/i18n/get-dictionary"
+import { getDictionary } from "@/modules/core/i18n/get-dictionary"
 
 export async function generateMetadata() {
     const dict = await getDictionary()

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Search, UserPlus, Copy, Check, MoreVertical, Edit, Trash2, Shield, MapPin, ExternalLink } from 'lucide-react'
 import { Staff, createStaff, updateStaff, deleteStaff, uploadStaffPhoto } from '../../actions'
-import { optimizeImage } from '@/lib/utils/image-optimization'
+import { optimizeImage } from '@/modules/infrastructure/utils/image-optimization'
 import { toast } from 'sonner'
 import {
     Dialog,

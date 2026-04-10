@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Edit, GripVertical, Save, X, Lock, Unlock } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { SectionHeader } from "@/components/layout/section-header"
 
 const COLOR_OPTIONS = [

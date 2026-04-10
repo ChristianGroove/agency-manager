@@ -2,7 +2,7 @@
 
 import { Handle, Position } from '@xyflow/react'
 import { MessageSquare, ListOrdered, Link, Plus, Trash2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 
 interface ButtonConfig {
     id: string

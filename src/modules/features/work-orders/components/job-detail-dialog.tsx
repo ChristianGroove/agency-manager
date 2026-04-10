@@ -11,7 +11,7 @@ import { JobForm } from "./job-form"
 import { deleteWorkOrder } from "../actions/work-order-actions"
 import { toast } from "sonner"
 import { WorkOrder } from "@/types"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface JobDetailDialogProps {
     job: WorkOrder | null

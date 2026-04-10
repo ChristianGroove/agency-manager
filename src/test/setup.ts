@@ -2,11 +2,11 @@ import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
 // Mock Supabase modules globally if needed, or per test file
-vi.mock('@/lib/supabase-server', () => ({
+vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: vi.fn(),
 }))
 
-vi.mock('@/lib/supabase-admin', () => ({
+vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: {
         from: vi.fn(() => ({
             select: vi.fn().mockReturnThis(),

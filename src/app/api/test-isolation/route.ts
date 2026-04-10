@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getPortalCatalog } from '@/modules/features/portal/services/portal-service'
 
 export async function GET() {

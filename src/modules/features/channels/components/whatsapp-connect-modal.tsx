@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { MetaEmbeddedSignup } from "./meta-embedded-signup"
 import { MessageCircle, Building2, BadgeCheck, Smartphone } from "lucide-react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface WhatsAppConnectModalProps {
     open: boolean

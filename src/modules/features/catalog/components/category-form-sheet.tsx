@@ -38,7 +38,7 @@ const AVAILABLE_COLORS = [
     { name: 'gray', label: 'Gris' },
 ]
 
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: CategoryFormSheetProps) {
     const { t } = useTranslation()

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase-server';
+import { createClient } from '@/modules/core/database/supabase-server';
 // import { getAICredentials } from './actions';
 import { AIRegistry } from './registry';
 import { AIEngineResponse } from './types';

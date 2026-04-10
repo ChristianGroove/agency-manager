@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
 // ============================================
@@ -142,7 +142,7 @@ export async function registerBillableEvent(params: {
     invoice_id?: string
     stripe_payment_intent_id?: string
 }): Promise<{ success: boolean; error?: string; event_id?: string }> {
-    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+    const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
     const supabase = supabaseAdmin
 
     // 1. Obtener info del cliente para calcular cadena y antigüedad

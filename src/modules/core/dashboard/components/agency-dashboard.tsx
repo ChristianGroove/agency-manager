@@ -4,9 +4,9 @@ import React, { useState } from "react"
 import { Users, DollarSign, AlertCircle, TrendingUp, CreditCard, UserPlus, FilePlus, ClipboardCheck, Receipt } from "lucide-react"
 import CountUp from "react-countup"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
-import { useRegisterView } from "@\/modules\/features\/caa/context/view-context"
+import { useRegisterView } from "@/modules/features/caa/context/view-context"
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 
 // Import Modals (these were in page.tsx)

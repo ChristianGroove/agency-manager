@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { isSuperAdmin } from '@/lib/auth/platform-roles'
-import { createClient } from '@/lib/supabase-server'
+import { isSuperAdmin } from '@/modules/core/iam/services/platform-roles'
+import { createClient } from '@/modules/core/database/supabase-server'
 import { Shield } from 'lucide-react'
 
 export default async function AdminLayout({

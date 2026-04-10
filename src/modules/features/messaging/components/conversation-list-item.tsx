@@ -2,7 +2,7 @@
 
 import { useState, useEffect, memo, useMemo } from "react"
 import { useDraggable } from "@dnd-kit/core"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { es, enUS } from "date-fns/locale"
@@ -16,7 +16,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getTagColorClass } from "@/modules/features/crm/components/tags/tag-colors"
 

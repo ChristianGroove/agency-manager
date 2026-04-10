@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useTranslation } from "@/lib/i18n/use-translation"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { extractMetadata, COLORS, ICONS } from "../template-utils"
 import { MessageSquare, Star, Heart, ThumbsUp, Zap, AlertCircle, CheckCircle, Clock, Search, FileText, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SmartRepliesPanel } from "./smart-replies-panel"
 import { getTemplates, MessageTemplate } from "../actions/templates"
-import { cn } from "@/lib/utils"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { useInboxContext } from "../context/inbox-context"
 
 

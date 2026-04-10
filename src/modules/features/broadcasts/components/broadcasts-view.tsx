@@ -27,7 +27,7 @@ import { getBroadcasts, Broadcast, deleteBroadcast, sendBroadcast } from '../act
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
 
 const STATUS_CONFIG = {

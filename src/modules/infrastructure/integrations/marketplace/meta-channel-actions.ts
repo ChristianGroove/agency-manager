@@ -1,11 +1,11 @@
 "use server"
 
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/lib/auth/org-roles"
-import { supabaseAdmin } from "@/lib/supabase-admin"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { MetaGraphAPI } from "@/lib/meta/graph-api"
-import { wabaSubscriptionManager } from "@/lib/meta/waba-subscription-manager"
+import { MetaGraphAPI } from "@/modules/infrastructure/meta/services/graph-api"
+import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
 
 /**
  * Input from UI (IntegrationSetupSheet) - uses parentConnectionId

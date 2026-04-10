@@ -1,7 +1,7 @@
 
 const dotenv = require('dotenv');
 dotenv.config({ path: '.env.local' });
-import { supabaseAdmin } from '../lib/supabase-admin';
+import { supabaseAdmin } from '../modules/core/database/supabase-admin';
 
 async function checkTables() {
     console.log('Checking vertical_modules...');

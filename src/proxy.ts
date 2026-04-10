@@ -2,8 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-import { checkRateLimit, checkPortalRateLimit } from '@/lib/security/rate-limit'
-import { applySecurityHeaders } from '@/lib/security/headers'
+import { checkRateLimit, checkPortalRateLimit } from '@/modules/core/security/rate-limit'
+import { applySecurityHeaders } from '@/modules/core/security/headers'
 
 export async function proxy(request: NextRequest) {
     // Skip middleware for Webhooks (Stateless, handled by route signature checks)

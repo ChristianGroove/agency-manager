@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { cookies, headers } from "next/headers"
@@ -77,9 +77,9 @@ export async function signup(formData: FormData) {
     }
 
     // 1. Sign Up (Custom Flow using Admin to bypass Native SMTP limits & enforce branding)
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
 
-    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
     const redirectBase = getAuthRedirectBase()
     const redirectUrl = `${redirectBase}/auth/confirm?next=/onboarding`
 
@@ -116,12 +116,12 @@ export async function signup(formData: FormData) {
                         return { error: "No se pudo re-enviar el enlace. Contacte a soporte." }
                     }
                     // Continue flow with the new link
-                    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+                    const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
                     const reInviteLink = getSecureAuthLink((reLink as any).properties.action_link, 'signup', redirectBase, '/onboarding')
                     
                     // Recursive-like block or just handle here. Let's handle here to keep it flat.
-                    const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
-                    const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
+                    const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
+                    const { EmailService } = await import('@/modules/features/notifications/email.service')
                     const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
                     const confirmationHtml = getAuthConfirmationEmailHtml(reInviteLink, identity.branding, identity.style)
 
@@ -147,12 +147,12 @@ export async function signup(formData: FormData) {
         if (!actionLink) return { error: "Error generando enlace de confirmación" }
 
         // SANITIZATION & BRANDING: Replace Supabase URL with our Custom Confirm Route
-        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+        const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
         const inviteLink = getSecureAuthLink(actionLink, 'signup', redirectBase, '/onboarding')
 
         // 2. Resolve Template & Branding
-        const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
-        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
+        const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
+        const { EmailService } = await import('@/modules/features/notifications/email.service')
         
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
         const confirmationHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
@@ -184,9 +184,9 @@ export async function sendMagicLink(formData: FormData) {
 
     // 1. Generate Link using Admin API (to get the URL)
     // We reuse the logic from resetPasswordRequest/inviteMember to ensure custom branding
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
 
-    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
     const redirectBase = getAuthRedirectBase()
     const redirectUrl = `${redirectBase}/auth/confirm?next=/dashboard`
 
@@ -213,12 +213,12 @@ export async function sendMagicLink(formData: FormData) {
 
         // SANITIZATION & TOKEN EXTRACTION
         // We extract token_hash to point to /auth/confirm instead of /auth/callback (PKCE)
-        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+        const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
         const magicLink = getSecureAuthLink(actionLink, 'magiclink', redirectBase, '/dashboard')
 
         // 2. Send Custom Email
-        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
-        const { getAuthMagicLinkEmailHtml } = await import('@/lib/email-templates')
+        const { EmailService } = await import('@/modules/features/notifications/email.service')
+        const { getAuthMagicLinkEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
         
         // Resolve identity to build template with correct style
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
@@ -249,14 +249,14 @@ export async function resetPasswordRequest(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
 
-    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
     const redirectBase = getAuthRedirectBase()
     const redirectUrl = `${redirectBase}/auth/confirm?next=/update-password`
 
     // 1. Generate Link (Admin API) - We do NOT ask Supabase to send the email
     // We import admin client dynamically or use a service role helper if available here. 
     // Since this is a server action, let's use the admin client directly.
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
@@ -278,13 +278,13 @@ export async function resetPasswordRequest(formData: FormData) {
     }
 
     // SANITIZATION & TOKEN EXTRACTION
-    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+    const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
     const recoveryLink = getSecureAuthLink(actionLink, 'recovery', redirectBase, '/update-password')
 
     try {
         // 2. Send Email (Custom Service)
-        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
-        const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
+        const { EmailService } = await import('@/modules/features/notifications/email.service')
+        const { getAuthRecoveryEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
 
         // Resolve identity for template
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
@@ -356,8 +356,10 @@ export async function updateProfile(prevState: any, formData: FormData) {
         return { error: "El nombre debe tener al menos 2 caracteres" }
     }
 
-    // 3. Update Database
-    const { error } = await supabase
+    console.log(`[updateProfile] Updating user ${user.id}:`, { fullName, jobTitle, phone })
+
+    // 3. Update Profiles Table
+    const { error: profileError, data: updatedProfile } = await supabase
         .from("profiles")
         .update({
             full_name: fullName,
@@ -366,13 +368,27 @@ export async function updateProfile(prevState: any, formData: FormData) {
             updated_at: new Date().toISOString(),
         })
         .eq("id", user.id)
+        .select()
+        .single()
 
-    if (error) {
-        return { error: "Error al actualizar perfil: " + error.message }
+    if (profileError) {
+        console.error("[updateProfile] Profile update error:", profileError)
+        return { error: "Error al actualizar perfil: " + profileError.message }
     }
 
-    // 4. Sync Auth Metadata (for global session access)
-    await supabase.auth.updateUser({
+    // 4. Sync name with Organization Members (wherever they are)
+    const { error: memberError } = await supabase
+        .from("organization_members")
+        .update({ full_name: fullName })
+        .eq("user_id", user.id)
+
+    if (memberError) {
+        console.warn("[updateProfile] Member sync warning:", memberError)
+        // We don't fail the whole operation if this sync fails, but we log it.
+    }
+
+    // 5. Sync Auth Metadata (for global session access)
+    const { error: authUpdateError } = await supabase.auth.updateUser({
         data: {
             full_name: fullName,
             job_title: jobTitle,
@@ -380,10 +396,17 @@ export async function updateProfile(prevState: any, formData: FormData) {
         }
     })
 
-    // 5. Revalidate to update sidebar/header
+    if (authUpdateError) {
+        console.error("[updateProfile] Auth metadata update error:", authUpdateError)
+    }
+
+    // 6. Revalidate to update sidebar/header
     revalidatePath("/", "layout")
 
-    return { success: "Perfil actualizado correctamente" }
+    return { 
+        success: "Perfil actualizado correctamente",
+        profile: updatedProfile 
+    }
 }
 
 export async function uploadAvatar(formData: FormData) {

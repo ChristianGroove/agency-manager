@@ -1,4 +1,4 @@
-import { ViewContextProvider } from "@\/modules\/features\/caa/context/view-context"
+import { ViewContextProvider } from "@/modules/features/caa/context/view-context"
 
 export default function PublicLayout({
     children,

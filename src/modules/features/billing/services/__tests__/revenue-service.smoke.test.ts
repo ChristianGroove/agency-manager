@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { calculateSettlement } from '../revenue-service'
 
 // Mocking the Supabase Server Client
-vi.mock('@/lib/supabase-server', () => ({
+vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: vi.fn(() => ({
         from: vi.fn((table) => ({
             select: vi.fn().mockReturnThis(),

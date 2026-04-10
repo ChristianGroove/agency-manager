@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
 /**
@@ -38,7 +38,7 @@ export async function registerBillableEvent(params: {
     invoice_id?: string
     stripe_payment_intent_id?: string
 }) {
-    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+    const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
     const supabase = supabaseAdmin
 
     const { data: org, error: orgError } = await supabase.from('organizations').select('id, acquired_by_reseller_id, acquisition_date').eq('id', params.organization_id).single()
