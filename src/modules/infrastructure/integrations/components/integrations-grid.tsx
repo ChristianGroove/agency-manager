@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { IntegrationCard, IntegrationProvider } from "@/components/integrations/integration-card"
+import { IntegrationCard, IntegrationProvider } from "@/modules/infrastructure/integrations/components/integration-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

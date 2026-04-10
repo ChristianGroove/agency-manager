@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -25,7 +25,7 @@ interface LimitRow {
 
 const ENGINE_OPTIONS = [
     { value: 'automation', label: 'Automaciones' },
-    { value: 'messaging', label: 'MensajerÃ­a' },
+    { value: 'messaging', label: 'Mensajería' },
     { value: 'ai', label: 'Consultas AI' },
     { value: 'storage', label: 'Almacenamiento (GB)' }
 ]
@@ -56,7 +56,7 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
             }
         } catch (error) {
             console.error(error)
-            toast.error("Error cargando lÃ­mites")
+            toast.error("Error cargando límites")
         } finally {
             setLoading(false)
         }
@@ -83,7 +83,7 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
         try {
             const res = await updateOrganizationLimits(organizationId, limits)
             if (res.success) {
-                toast.success("LÃ­mites actualizados correctamente")
+                toast.success("Límites actualizados correctamente")
                 onOpenChange(false)
             } else {
                 toast.error(res.error || "Error al guardar")
@@ -99,9 +99,9 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                    <DialogTitle>Gestionar LÃ­mites: {organizationName}</DialogTitle>
+                    <DialogTitle>Gestionar Límites: {organizationName}</DialogTitle>
                     <DialogDescription>
-                        Define las cuotas mÃ¡ximas de consumo para esta organizaciÃ³n.
+                        Define las cuotas máximas de consumo para esta organización.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -112,9 +112,9 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
                         </div>
                     ) : limits.length === 0 ? (
                         <div className="text-center p-8 border border-dashed rounded-lg bg-muted/30">
-                            <p className="text-sm text-muted-foreground mb-4">No hay lÃ­mites configurados.</p>
+                            <p className="text-sm text-muted-foreground mb-4">No hay límites configurados.</p>
                             <Button variant="outline" onClick={handleAddRow} size="sm">
-                                <Plus className="mr-2 h-4 w-4" /> Agregar LÃ­mite
+                                <Plus className="mr-2 h-4 w-4" /> Agregar Límite
                             </Button>
                         </div>
                     ) : (
@@ -122,7 +122,7 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
                             <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-2">
                                 <div className="col-span-5">Recurso</div>
                                 <div className="col-span-3">Frecuencia</div>
-                                <div className="col-span-3">LÃ­mite</div>
+                                <div className="col-span-3">Límite</div>
                                 <div className="col-span-1"></div>
                             </div>
 
@@ -167,7 +167,7 @@ export function EditLimitsModal({ open, onOpenChange, organizationId, organizati
                             ))}
 
                             <Button variant="outline" onClick={handleAddRow} size="sm" className="w-full mt-2 border-dashed">
-                                <Plus className="mr-2 h-4 w-4" /> Agregar Otro LÃ­mite
+                                <Plus className="mr-2 h-4 w-4" /> Agregar Otro Límite
                             </Button>
                         </div>
                     )}

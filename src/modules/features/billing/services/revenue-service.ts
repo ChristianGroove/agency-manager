@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 
 /**
@@ -42,7 +42,7 @@ export async function registerBillableEvent(params: {
     const supabase = supabaseAdmin
 
     const { data: org, error: orgError } = await supabase.from('organizations').select('id, acquired_by_reseller_id, acquisition_date').eq('id', params.organization_id).single()
-    if (orgError || !org) return { success: false, error: 'OrganizaciÃ³n no encontrada' }
+    if (orgError || !org) return { success: false, error: 'Organización no encontrada' }
 
     let resellerChain: { org_id: string; level: number }[] = []
     if (org.acquired_by_reseller_id) {

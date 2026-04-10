@@ -1,4 +1,4 @@
-﻿import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { PipelineRepository } from '../repositories/pipeline.repository'
 import { unstable_cache } from 'next/cache'
 
@@ -68,7 +68,7 @@ export class PipelineService {
         const perms = await getCurrentUserPermissions()
         let allowedChannels: string[] | undefined = undefined
         const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador'
+        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
         const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
                              perms?.permissions?.['inbox.conversations.view_all'] === true
 

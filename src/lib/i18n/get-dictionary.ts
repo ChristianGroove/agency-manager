@@ -1,4 +1,4 @@
-﻿import { getSettings } from "@/modules/core/settings/settings-actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getDictionary as getBaseDictionary, Locale } from "./dictionaries"
 
 /**

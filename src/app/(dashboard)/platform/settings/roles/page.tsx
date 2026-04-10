@@ -1,4 +1,4 @@
-﻿import { Metadata } from "next"
+import { Metadata } from "next"
 import { RoleManager } from "@/modules/core/iam/components/role-manager"
 import { getOrganizationRoles } from "@/modules/core/iam/services/role-service"
 import { DashboardShell } from "@/components/layout/dashboard-shell"

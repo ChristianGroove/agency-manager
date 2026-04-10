@@ -1,4 +1,4 @@
-﻿import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getOrganizationModules } from "@/modules/core/organizations/organization-actions"
 import { redirect } from "next/navigation"
 

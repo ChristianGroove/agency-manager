@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -128,12 +128,12 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
             if (result.success) {
                 // Success feedback with invitation status
                 if (result.data?.invitation_sent) {
-                    toast.success(`OrganizaciÃ³n creada exitosamente. InvitaciÃ³n enviada a ${adminEmail}`)
+                    toast.success(`Organización creada exitosamente. Invitación enviada a ${adminEmail}`)
                 } else if (result.data?.invitation_error) {
-                    toast.success('OrganizaciÃ³n creada exitosamente')
-                    toast.warning(`No se pudo enviar la invitaciÃ³n: ${result.data.invitation_error}`)
+                    toast.success('Organización creada exitosamente')
+                    toast.warning(`No se pudo enviar la invitación: ${result.data.invitation_error}`)
                 } else {
-                    toast.success('OrganizaciÃ³n creada exitosamente')
+                    toast.success('Organización creada exitosamente')
                 }
 
                 onSuccess?.()
@@ -142,7 +142,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                 // Refresh the organizations list
                 window.location.reload()
             } else {
-                toast.error(result.error || "Error al crear la organizaciÃ³n")
+                toast.error(result.error || "Error al crear la organización")
                 setIsLoading(false)
             }
         } catch (error) {
@@ -164,7 +164,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                 "
             >
                 <SheetHeader className="hidden">
-                    <SheetTitle>Nueva OrganizaciÃ³n</SheetTitle>
+                    <SheetTitle>Nueva Organización</SheetTitle>
                     <SheetDescription>Crea un nuevo espacio de trabajo (Tenant).</SheetDescription>
                 </SheetHeader>
 
@@ -177,7 +177,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                 <Building2 className="h-5 w-5" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nueva OrganizaciÃ³n</h2>
+                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nueva Organización</h2>
                                 <p className="text-xs text-muted-foreground">Configura el tenant y su paquete de software.</p>
                             </div>
                         </div>
@@ -195,7 +195,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                             <Label>Nombre Comercial</Label>
                                             <Input
                                                 className="h-12 text-lg"
-                                                placeholder="Ej: BarberÃ­a El Bigote"
+                                                placeholder="Ej: Barbería El Bigote"
                                                 value={name}
                                                 onChange={handleNameChange}
                                             />
@@ -212,7 +212,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                         <div className="space-y-3 pt-2">
                                             <Label className="flex items-center justify-between">
                                                 <span>Email del Administrador</span>
-                                                <span className="text-xs font-normal text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full">AutomÃ¡tico</span>
+                                                <span className="text-xs font-normal text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full">Automático</span>
                                             </Label>
                                             <Input
                                                 className="h-11"
@@ -221,14 +221,14 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                 onChange={(e) => setAdminEmail(e.target.value)}
                                             />
                                             <p className="text-[11px] text-muted-foreground">
-                                                Si ingresas un correo, le enviaremos una invitaciÃ³n mÃ¡gica para acceder instantÃ¡neamente a esta organizaciÃ³n.
+                                                Si ingresas un correo, le enviaremos una invitación mágica para acceder instantáneamente a esta organización.
                                             </p>
                                         </div>
 
                                         {/* V2: Hierarchy Logic */}
                                         {currentParentOrg?.organization_type === 'platform' && (
                                             <div className="pt-4 border-t border-gray-100">
-                                                <Label className="text-gray-900 mb-4 block">Tipo de OrganizaciÃ³n</Label>
+                                                <Label className="text-gray-900 mb-4 block">Tipo de Organización</Label>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div
                                                         onClick={() => setOrgType('reseller')}
@@ -318,7 +318,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                         Selecciona App Base
                                     </h3>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Elige el paquete de software que usarÃ¡ esta organizaciÃ³n.
+                                        Elige el paquete de software que usará esta organización.
                                     </p>
                                 </div>
 
@@ -354,7 +354,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                         </div>
 
                                                         <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                                                            {product.description || "Sin descripciÃ³n"}
+                                                            {product.description || "Sin descripción"}
                                                         </p>
 
                                                         <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
@@ -362,7 +362,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                                 ${product.price_monthly}
                                                             </span>
                                                             <span className="text-xs uppercase font-medium text-gray-400">
-                                                                /{product.price_monthly > 0 ? 'Mes' : 'Ãšnico'}
+                                                                /{product.price_monthly > 0 ? 'Mes' : 'Único'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -394,7 +394,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                             ) : (
                                 <>
                                     <Rocket className="mr-2 h-4 w-4" />
-                                    Crear OrganizaciÃ³n
+                                    Crear Organización
                                 </>
                             )}
                         </Button>

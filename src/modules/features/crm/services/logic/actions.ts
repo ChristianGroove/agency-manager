@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
@@ -133,7 +133,7 @@ export async function getPaginatedClients(page: number = 1, pageSize: number = 5
     })
 
     if (error) {
-        console.error("âŒ RPC get_paginated_clients error:", error)
+        console.error("❌ RPC get_paginated_clients error:", error)
         return { clients: [], totalCount: 0, counts: { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 } }
     }
 

@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
@@ -132,7 +132,7 @@ export async function getStaffPortalLink(staffId: string) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        return { success: false, error: "OrganizaciÃ³n no encontrada" }
+        return { success: false, error: "Organización no encontrada" }
     }
 
     const { data: staff, error } = await supabase
@@ -188,7 +188,7 @@ export async function regenerateStaffPortalToken(staffId: string) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
-    if (!orgId) return { success: false, error: "OrganizaciÃ³n no encontrada" }
+    if (!orgId) return { success: false, error: "Organización no encontrada" }
 
     const newToken = crypto.randomUUID()
 

@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react"
+import { Suspense } from "react"
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
@@ -9,8 +9,8 @@ import { LocationsView } from "@/modules/features/locations/components/locations
 import { GlobalLoader } from "@/components/ui/global-loader"
 
 export const metadata: Metadata = {
-    title: "GestiÃ³n de Sedes | Pixy",
-    description: "Administra las sedes, sucursales y puntos de atenciÃ³n de tu negocio.",
+    title: "Gestión de Sedes | Pixy",
+    description: "Administra las sedes, sucursales y puntos de atención de tu negocio.",
 }
 
 export default async function LocationsAdminPage() {

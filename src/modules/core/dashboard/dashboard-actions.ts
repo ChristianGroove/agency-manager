@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -67,13 +67,13 @@ const fallbackData = {
  * OPTIMIZATION: Unified payload fetcher for DashboardPage.
  * 
  * Waterfall BEFORE:
- *   getCurrentOrganizationId() â†’ [getOrganizationModules, getCurrentOrgDetails, getOrgSpaceCategory*]
- *   â†’ getDashboardData() (sequential RPC then settings) â†’ Banner query
+ *   getCurrentOrganizationId() → [getOrganizationModules, getCurrentOrgDetails, getOrgSpaceCategory*]
+ *   → getDashboardData() (sequential RPC then settings) → Banner query
  *   * getOrgSpaceCategory internally called getCurrentOrgDetails AGAIN (duplicated)
  * 
  * Waterfall AFTER:
- *   getCurrentOrganizationId() â†’ [getOrganizationModules, getCurrentOrgDetails] (2 queries, not 3+)
- *   â†’ [verticalData + bannerQuery] in parallel
+ *   getCurrentOrganizationId() → [getOrganizationModules, getCurrentOrgDetails] (2 queries, not 3+)
+ *   → [verticalData + bannerQuery] in parallel
  *   Inside getDashboardData: RPC + settings in parallel
  */
 export async function getDashboardPayload() {
@@ -86,7 +86,7 @@ export async function getDashboardPayload() {
     const { getOrganizationModules, getCurrentOrgDetails } = await import("@/modules/core/organizations/organization-actions")
 
     // Step 1: Fetch identity in parallel (2 queries instead of 3+)
-    // getOrgSpaceCategory was calling getCurrentOrgDetails internally â€” now we derive inline
+    // getOrgSpaceCategory was calling getCurrentOrgDetails internally — now we derive inline
     const [modules, orgDetails] = await Promise.all([
         getOrganizationModules(orgId),
         getCurrentOrgDetails(orgId)
@@ -205,7 +205,7 @@ export async function getDashboardPayload() {
             const adminChannels = perms?.permissions?.inbox_access || []
             
             if (adminChannels.length > 0) {
-                // Obtener quÃ© canales tiene cada agente
+                // Obtener qué canales tiene cada agente
                 const { data: availability } = await supabase
                     .from('agent_availability')
                     .select('agent_id, agent_channels(channel_type)')
@@ -217,7 +217,7 @@ export async function getDashboardPayload() {
                     if (agentHasSharedChannel) agentsWithAccess.add(a.agent_id)
                 })
 
-                // Filtrar las estadÃ­sticas. El 'unassigned' (ceros) se mantiene si el admin tiene algÃºn canal.
+                // Filtrar las estadísticas. El 'unassigned' (ceros) se mantiene si el admin tiene algún canal.
                 const UNASSIGNED_ID = '00000000-0000-0000-0000-000000000000'
                 filteredStats = (agentStats || []).filter((s: any) => 
                     s.user_id === UNASSIGNED_ID || agentsWithAccess.has(s.user_id)

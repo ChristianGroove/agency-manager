@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -82,12 +82,12 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
         const orgId = await getCurrentOrganizationId()
 
-        if (!orgId) return toast.error('No se encontrÃ³ contexto de organizaciÃ³n')
+        if (!orgId) return toast.error('No se encontró contexto de organización')
 
         setSaving(true)
         try {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error("SesiÃ³n expirada")
+            if (!user) throw new Error("Sesión expirada")
 
             let finalLogoUrl = form.logo_url
 
@@ -174,7 +174,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent">
                     <SheetHeader className="sr-only">
                         <SheetTitle>Crear Contacto</SheetTitle>
-                        <SheetDescription>Completa la informaciÃ³n del nuevo contacto.</SheetDescription>
+                        <SheetDescription>Completa la información del nuevo contacto.</SheetDescription>
                     </SheetHeader>
 
                     {/* Header */}
@@ -206,7 +206,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">PersonalizaciÃ³n Visual</h4>
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Personalización Visual</h4>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sube el logo de la marca para que aparezca en el portal y documentos.</p>
                             </div>
                         </div>
@@ -237,7 +237,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">CategorÃ­a <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Categoría <span className="text-red-500">*</span></Label>
                                     <CategorySelector 
                                         value={form.category_id} 
                                         onChange={(val: string) => setForm({ ...form, category_id: val })} 
@@ -254,10 +254,10 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                 </div>
                             </div>
 
-                            {/* Right Column: ComunicaciÃ³n */}
+                            {/* Right Column: Comunicación */}
                             <div className="space-y-6">
                                 <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                                    <Mail className="h-4 w-4" /> ComunicaciÃ³n
+                                    <Mail className="h-4 w-4" /> Comunicación
                                 </h4>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Email Directo <span className="text-red-500">*</span></Label>
@@ -270,7 +270,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">TelÃ©fono / WhatsApp</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Teléfono / WhatsApp</Label>
                                     <Input
                                         className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder="+57 300..."
@@ -279,7 +279,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">DirecciÃ³n FÃ­sica</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Dirección Física</Label>
                                     <Input
                                         className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder="Calle 123..."

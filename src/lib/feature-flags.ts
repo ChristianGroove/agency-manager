@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 /**
  * FEATURE FLAGS
@@ -54,25 +54,25 @@ export const FEATURE_REGISTRY: Record<string, {
     defaultEnabled: boolean
 }[]> = {
     crm: [
-        { key: 'lead_scoring', name: 'Lead Scoring', description: 'PuntuaciÃ³n automÃ¡tica de leads segÃºn actividad', defaultEnabled: true },
-        { key: 'ai_suggestions', name: 'Sugerencias AI', description: 'Recomendaciones de prÃ³ximos pasos basadas en IA', defaultEnabled: true },
-        { key: 'auto_assignment', name: 'Auto-AsignaciÃ³n', description: 'Asignar leads automÃ¡ticamente a agentes', defaultEnabled: false },
-        { key: 'duplicate_detection', name: 'DetecciÃ³n Duplicados', description: 'Alertar sobre leads duplicados', defaultEnabled: true },
+        { key: 'lead_scoring', name: 'Lead Scoring', description: 'Puntuación automática de leads según actividad', defaultEnabled: true },
+        { key: 'ai_suggestions', name: 'Sugerencias AI', description: 'Recomendaciones de próximos pasos basadas en IA', defaultEnabled: true },
+        { key: 'auto_assignment', name: 'Auto-Asignación', description: 'Asignar leads automáticamente a agentes', defaultEnabled: false },
+        { key: 'duplicate_detection', name: 'Detección Duplicados', description: 'Alertar sobre leads duplicados', defaultEnabled: true },
     ],
     invoicing: [
-        { key: 'auto_reminders', name: 'Recordatorios AutomÃ¡ticos', description: 'Enviar recordatorios de pago automÃ¡ticamente', defaultEnabled: true },
+        { key: 'auto_reminders', name: 'Recordatorios Automáticos', description: 'Enviar recordatorios de pago automáticamente', defaultEnabled: true },
         { key: 'recurring', name: 'Facturas Recurrentes', description: 'Crear facturas de forma recurrente', defaultEnabled: false },
         { key: 'pdf_branding', name: 'PDF con Marca', description: 'Incluir logo y colores en PDFs', defaultEnabled: true },
     ],
     marketing: [
-        { key: 'ab_testing', name: 'Tests A/B', description: 'Pruebas A/B en campaÃ±as', defaultEnabled: false },
-        { key: 'smart_scheduling', name: 'ProgramaciÃ³n Inteligente', description: 'Enviar en horarios Ã³ptimos', defaultEnabled: true },
+        { key: 'ab_testing', name: 'Tests A/B', description: 'Pruebas A/B en campañas', defaultEnabled: false },
+        { key: 'smart_scheduling', name: 'Programación Inteligente', description: 'Enviar en horarios óptimos', defaultEnabled: true },
         { key: 'link_tracking', name: 'Tracking de Links', description: 'Rastrear clicks en enlaces', defaultEnabled: true },
     ],
     ai: [
-        { key: 'sentiment_analysis', name: 'AnÃ¡lisis de Sentimiento', description: 'Detectar tono de mensajes', defaultEnabled: true },
+        { key: 'sentiment_analysis', name: 'Análisis de Sentimiento', description: 'Detectar tono de mensajes', defaultEnabled: true },
         { key: 'agent_qa', name: 'QA de Agentes', description: 'Evaluar calidad de respuestas', defaultEnabled: false },
-        { key: 'auto_responses', name: 'Respuestas AutomÃ¡ticas', description: 'Generar borradores de respuesta', defaultEnabled: true },
+        { key: 'auto_responses', name: 'Respuestas Automáticas', description: 'Generar borradores de respuesta', defaultEnabled: true },
     ],
 }
 

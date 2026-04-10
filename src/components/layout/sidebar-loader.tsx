@@ -1,4 +1,4 @@
-﻿import { Sidebar } from "./sidebar"
+import { Sidebar } from "./sidebar"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
 import { createClient } from "@/lib/supabase-server"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"

@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -232,7 +232,7 @@ export async function liquidateStaffDebt(data: {
                 amount: data.amount,
                 payment_method: data.paymentMethod,
                 payment_date: data.paymentDate,
-                notes: data.notes || `LiquidaciÃ³n de ${debt.totalHours}h trabajadas`
+                notes: data.notes || `Liquidación de ${debt.totalHours}h trabajadas`
             })
             .select()
             .single()

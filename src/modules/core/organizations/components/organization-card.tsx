@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
@@ -105,7 +105,7 @@ export function OrganizationCard({ orgId, collapsed, className }: OrganizationCa
                         import("@/modules/core/auth/actions").then(mod => mod.logout())
                     }}
                     className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors z-10"
-                    title="Cerrar SesiÃ³n"
+                    title="Cerrar Sesión"
                 >
                     <LogOut className="w-4 h-4" />
                 </div>

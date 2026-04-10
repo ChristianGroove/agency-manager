@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -6,7 +6,7 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 // ============================================
 // STRIPE CONNECT EXPRESS - PLACEHOLDER
 // ============================================
-// Este mÃ³dulo serÃ¡ completado cuando se integre Stripe Connect
+// Este módulo será completado cuando se integre Stripe Connect
 // Por ahora, provee la estructura y stubs para desarrollo
 
 /**
@@ -22,7 +22,7 @@ export async function initiateConnectOnboarding(): Promise<{
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        return { success: false, error: 'OrganizaciÃ³n no encontrada' }
+        return { success: false, error: 'Organización no encontrada' }
     }
 
     // Verificar si ya existe cuenta
@@ -33,7 +33,7 @@ export async function initiateConnectOnboarding(): Promise<{
         .single()
 
     if (existingAccount?.onboarding_complete) {
-        return { success: false, error: 'El onboarding ya estÃ¡ completado' }
+        return { success: false, error: 'El onboarding ya está completado' }
     }
 
     // TODO: Integrar Stripe SDK
@@ -52,7 +52,7 @@ export async function initiateConnectOnboarding(): Promise<{
         .upsert({
             organization_id: orgId,
             provider: 'stripe_connect',
-            stripe_account_id: null, // Se llenarÃ¡ con Stripe real
+            stripe_account_id: null, // Se llenará con Stripe real
             onboarding_complete: false,
             charges_enabled: false,
             payouts_enabled: false,
@@ -63,11 +63,11 @@ export async function initiateConnectOnboarding(): Promise<{
         return { success: false, error: error.message }
     }
 
-    // En producciÃ³n, retornarÃ­amos el accountLink.url
+    // En producción, retornaríamos el accountLink.url
     return {
         success: true,
         onboarding_url: '/settings/payments/connect-placeholder',
-        error: 'PLACEHOLDER: Stripe Connect no integrado aÃºn. Esta URL es temporal.'
+        error: 'PLACEHOLDER: Stripe Connect no integrado aún. Esta URL es temporal.'
     }
 }
 
@@ -117,7 +117,7 @@ export async function getConnectAccountStatus(): Promise<{
 
 /**
  * Ejecutar payout a una cuenta Connect
- * Solo super admin - llamado despuÃ©s de aprobar settlement
+ * Solo super admin - llamado después de aprobar settlement
  */
 export async function executeConnectPayout(settlement_id: string): Promise<{
     success: boolean
@@ -134,11 +134,11 @@ export async function executeConnectPayout(settlement_id: string): Promise<{
         .single()
 
     if (settError || !settlement) {
-        return { success: false, error: 'LiquidaciÃ³n no encontrada' }
+        return { success: false, error: 'Liquidación no encontrada' }
     }
 
     if (settlement.status !== 'approved') {
-        return { success: false, error: 'LiquidaciÃ³n debe estar aprobada para ejecutar payout' }
+        return { success: false, error: 'Liquidación debe estar aprobada para ejecutar payout' }
     }
 
     // 2. Obtener cuenta Connect del reseller
@@ -170,7 +170,7 @@ export async function executeConnectPayout(settlement_id: string): Promise<{
     //     }
     // })
 
-    // Placeholder: simular Ã©xito
+    // Placeholder: simular éxito
     const mockPayoutId = `po_mock_${Date.now()}`
 
     // Actualizar settlement
@@ -195,7 +195,7 @@ export async function executeConnectPayout(settlement_id: string): Promise<{
     return {
         success: true,
         payout_id: mockPayoutId,
-        error: 'PLACEHOLDER: Payout simulado. Stripe Connect no integrado aÃºn.'
+        error: 'PLACEHOLDER: Payout simulado. Stripe Connect no integrado aún.'
     }
 }
 

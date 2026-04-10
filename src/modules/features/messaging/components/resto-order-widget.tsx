@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { ShoppingBag, MapPin, Receipt, Check, Loader2, Bike, CircleCheckBig } from "lucide-react"
-import { updateRestoOrderStatus } from "@/components/portals/b2c-restaurant-template/actions/checkout-actions"
+import { updateRestoOrderStatus } from "@/modules/features/portal/components/b2c-restaurant-template/actions/checkout-actions"
 import { toast } from "sonner"
 
 interface RestoOrderWidgetProps {

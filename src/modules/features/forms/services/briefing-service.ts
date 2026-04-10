@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { FullBriefingTemplate, Briefing } from "@/types/briefings"
 
@@ -73,7 +73,7 @@ export async function deleteBriefingTemplate(id: string) {
         .limit(1)
 
     if (submissions && submissions.length > 0) {
-        throw new Error('No se puede eliminar una plantilla que tiene envÃ­os asociados')
+        throw new Error('No se puede eliminar una plantilla que tiene envíos asociados')
     }
 
     const { error } = await supabase

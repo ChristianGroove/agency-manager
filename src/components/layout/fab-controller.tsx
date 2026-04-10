@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { UnifiedFloatingFab } from "./unified-floating-fab"
-import MetaControlSheet from "@/components/meta/MetaControlSheet"
+import MetaControlSheet from "@/modules/infrastructure/meta/components/MetaControlSheet"
 import { useAssistant } from "@/hooks/use-assistant"
 import dynamic from "next/dynamic"
 

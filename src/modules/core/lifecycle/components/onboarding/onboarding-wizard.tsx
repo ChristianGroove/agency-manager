@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -95,11 +95,11 @@ export function OnboardingWizard() {
                 app_id: formData.app_id
             })
             if (result.success) {
-                toast.success("OrganizaciÃ³n creada exitosamente")
+                toast.success("Organización creada exitosamente")
                 router.push('/')
                 router.refresh()
             } else {
-                toast.error(result.error || "Error al crear la organizaciÃ³n")
+                toast.error(result.error || "Error al crear la organización")
                 setIsLoading(false)
             }
         } catch (error) {
@@ -137,7 +137,7 @@ export function OnboardingWizard() {
             <div className="w-full bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/50 relative z-20">
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-gray-600 text-[10px] uppercase font-bold tracking-wider pl-1">OrganizaciÃ³n</Label>
+                        <Label htmlFor="name" className="text-gray-600 text-[10px] uppercase font-bold tracking-wider pl-1">Organización</Label>
                         <Input
                             id="name"
                             placeholder="Nombre de tu empresa"

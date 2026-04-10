@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -432,7 +432,7 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
 
         if (!targetOrgId) {
             console.error('[REPORTS] No organization ID provided or found')
-            return { success: false, error: 'No se pudo determinar la organizaciÃ³n activa' }
+            return { success: false, error: 'No se pudo determinar la organización activa' }
         }
 
         const { data, error } = await supabaseAdmin.rpc('get_advanced_crm_reports', {

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
@@ -191,7 +191,7 @@ export function AssignLeadSheet({ open, onClose, leadIds, currentAssigneeId, onS
                             disabled={assigning}
                             className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200 dark:shadow-none"
                         >
-                            {assigning ? 'Asignando...' : 'Confirmar AsignaciÃ³n'}
+                            {assigning ? 'Asignando...' : 'Confirmar Asignación'}
                         </Button>
                     </SheetFooter>
                 </div>

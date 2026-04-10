@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
@@ -19,7 +19,7 @@ import { supabase } from "@/lib/supabase"
 const leadSchema = z.object({
     name: z.string().min(2, "Nombre debe tener al menos 2 caracteres"),
     company_name: z.string().optional(),
-    email: z.string().email("Email invÃ¡lido").optional().or(z.literal("")),
+    email: z.string().email("Email inválido").optional().or(z.literal("")),
     phone: z.string().optional(),
     notes: z.string().optional(),
 })
@@ -115,7 +115,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                     {/* Form */}
                     <div className="flex-1 overflow-y-auto p-6">
                         <form id="create-lead-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                            {/* SecciÃ³n: InformaciÃ³n BÃ¡sica */}
+                            {/* Sección: Información Básica */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
@@ -132,7 +132,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                     </Label>
                                     <Input
                                         id="name"
-                                        placeholder="Juan PÃ©rez"
+                                        placeholder="Juan Pérez"
                                         {...register("name")}
                                         className={`h-11 bg-white dark:bg-zinc-900 ${errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                                     />
@@ -158,7 +158,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
 
                             <Separator className="dark:bg-zinc-700" />
 
-                            {/* SecciÃ³n: Contacto */}
+                            {/* Sección: Contacto */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
@@ -186,7 +186,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                     )}
                                 </div>
 
-                                {/* TelÃ©fono */}
+                                {/* Teléfono */}
                                 <div className="space-y-2">
                                     <Label htmlFor="phone" className="text-sm font-semibold flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-gray-400" />
@@ -201,8 +201,8 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                     />
                                     {duplicateWarning && (
                                         <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
-                                            <span className="font-bold block mb-1">âš ï¸ NÃºmero Duplicado</span>
-                                            Este telÃ©fono ya pertenece a: <b>{duplicateWarning.name}</b> ({duplicateWarning.type === 'lead' ? 'Lead' : 'Cliente'})
+                                            <span className="font-bold block mb-1">⚠️ Número Duplicado</span>
+                                            Este teléfono ya pertenece a: <b>{duplicateWarning.name}</b> ({duplicateWarning.type === 'lead' ? 'Lead' : 'Cliente'})
                                         </div>
                                     )}
                                 </div>
@@ -210,7 +210,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
 
                             <Separator className="dark:bg-zinc-700" />
 
-                            {/* SecciÃ³n: Notas */}
+                            {/* Sección: Notas */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
@@ -228,7 +228,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                     </Label>
                                     <Textarea
                                         id="notes"
-                                        placeholder="InformaciÃ³n relevante sobre este lead..."
+                                        placeholder="Información relevante sobre este lead..."
                                         rows={4}
                                         {...register("notes")}
                                         className="resize-none bg-white dark:bg-zinc-900"

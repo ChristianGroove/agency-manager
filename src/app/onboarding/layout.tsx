@@ -1,4 +1,4 @@
-import { BrandingHeader } from "@/components/onboarding/branding-header"
+import { BrandingHeader } from "@/modules/core/lifecycle/components/onboarding/branding-header"
 
 export default function OnboardingLayout({
     children,

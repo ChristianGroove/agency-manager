@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"

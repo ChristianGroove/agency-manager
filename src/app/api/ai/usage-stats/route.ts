@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { createClient } from '@/lib/supabase-server'
 

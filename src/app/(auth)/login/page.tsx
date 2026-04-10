@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, Wand2, KeyRound, CheckCircle2 } from "lucide-react"
 
 import { ParticlesBackground } from "@/components/ui/particles-background"
-import { BiometricButton } from "@/components/auth/biometric-button"
+import { BiometricButton } from "@/modules/core/auth/components/biometric-button"
 
 
 export default function LoginPage() {
@@ -67,7 +67,7 @@ export default function LoginPage() {
     const bgImage = branding?.portal_login_background_url ? `url('${branding.portal_login_background_url}')` : undefined
     const bgColor = branding?.portal_login_background_color || undefined
     const logoUrl = branding?.portal_logo_url || "/branding/logo light.svg"
-    const title = branding ? `Iniciar SesiÃ³n en ${branding.name}` : "Â¡Bienvenido de nuevo!"
+    const title = branding ? `Iniciar Sesión en ${branding.name}` : "¡Bienvenido de nuevo!"
 
     return (
         <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center">
@@ -127,13 +127,13 @@ export default function LoginPage() {
                             {loginMethod === 'password' && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="password" className="text-gray-200">ContraseÃ±a</Label>
+                                        <Label htmlFor="password" className="text-gray-200">Contraseña</Label>
                                         <Link
                                             href="/forgot-password"
                                             className="text-xs text-white/70 hover:text-white transition-colors"
                                             tabIndex={-1}
                                         >
-                                            Â¿Olvidaste tu contraseÃ±a?
+                                            ¿Olvidaste tu contraseña?
                                         </Link>
                                     </div>
                                     <Input
@@ -153,7 +153,7 @@ export default function LoginPage() {
                                     <div className="flex justify-center mb-2">
                                         <CheckCircle2 className="h-6 w-6 text-green-400" />
                                     </div>
-                                    <h3 className="font-semibold text-sm mb-1">Â¡Enlace Enviado!</h3>
+                                    <h3 className="font-semibold text-sm mb-1">¡Enlace Enviado!</h3>
                                     <p className="text-xs opacity-90">{successMessage}</p>
                                 </div>
                             )}
@@ -175,7 +175,7 @@ export default function LoginPage() {
                                         {loginMethod === 'magic_link' ? 'Enviando...' : 'Verificando...'}
                                     </>
                                 ) : (
-                                    loginMethod === 'magic_link' ? 'Enviar Enlace de Acceso' : "Iniciar SesiÃ³n"
+                                    loginMethod === 'magic_link' ? 'Enviar Enlace de Acceso' : "Iniciar Sesión"
                                 )}
                             </Button>
                         </form>
@@ -192,9 +192,9 @@ export default function LoginPage() {
                                 className="text-white/60 hover:text-white text-xs"
                             >
                                 {loginMethod === 'password' ? (
-                                    <><Wand2 className="mr-2 h-3 w-3" /> Usar Magic Link (Sin ContraseÃ±a)</>
+                                    <><Wand2 className="mr-2 h-3 w-3" /> Usar Magic Link (Sin Contraseña)</>
                                 ) : (
-                                    <><KeyRound className="mr-2 h-3 w-3" /> Usar ContraseÃ±a</>
+                                    <><KeyRound className="mr-2 h-3 w-3" /> Usar Contraseña</>
                                 )}
                             </Button>
                         </div>
@@ -204,9 +204,9 @@ export default function LoginPage() {
                         </div>
 
                         <div className="text-center text-sm pt-2">
-                            <span className="text-gray-400">Â¿No tienes cuenta? </span>
+                            <span className="text-gray-400">¿No tienes cuenta? </span>
                             <Link href="/register" className="text-white font-medium hover:underline">
-                                RegÃ­strate
+                                Regístrate
                             </Link>
                         </div>
 

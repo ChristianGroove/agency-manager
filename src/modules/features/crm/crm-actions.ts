@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -206,7 +206,7 @@ export async function getPipelineViewDataAction(connectionId?: string | null) {
         const perms = await getCurrentUserPermissions()
         
         const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador'
+        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
         
         // Convert UI 'all' to null for backend logic
         const cid = connectionId === 'all' ? null : connectionId

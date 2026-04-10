@@ -1,4 +1,4 @@
-import { getDashboardTemplate } from "@/components/portals/portal-registry"
+import { getDashboardTemplate } from "@/modules/features/portal/components/portal-registry"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"

@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react"
+import { Suspense } from "react"
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
@@ -10,7 +10,7 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 
 export const metadata: Metadata = {
     title: "Control de Asistencia | Pixy",
-    description: "GestiÃ³n y auditorÃ­a de asistencia de colaboradores.",
+    description: "Gestión y auditoría de asistencia de colaboradores.",
 }
 
 export default async function AttendanceAdminPage() {

@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
@@ -152,7 +152,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             if (existingChannel.status === 'active') {
                 return {
                     success: false,
-                    error: `Este canal ya estÃ¡ activado`
+                    error: `Este canal ya está activado`
                 };
             }
 

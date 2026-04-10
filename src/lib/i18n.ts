@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 // ==========================================
@@ -10,31 +10,31 @@ export type Language = 'es' | 'en'
 const dictionaries = {
     es: {
         admin: {
-            title: "Plantillas de SoluciÃ³n",
-            description: "Paquetes de mÃ³dulos pre-configurados para diferentes verticales",
+            title: "Plantillas de Solución",
+            description: "Paquetes de módulos pre-configurados para diferentes verticales",
             create_button: "Crear Plantilla",
-            create_dialog_title: "Crear Plantilla de SoluciÃ³n",
-            edit_dialog_title: "Editar Plantilla de SoluciÃ³n",
+            create_dialog_title: "Crear Plantilla de Solución",
+            edit_dialog_title: "Editar Plantilla de Solución",
             back_button: "Volver a Plantillas",
-            current_template: "Plantilla de SoluciÃ³n Actual",
+            current_template: "Plantilla de Solución Actual",
             using_template: "Usando esta plantilla",
             featured: "Destacado",
             inactive: "Inactivo",
             active_organizations: "Organizaciones Activas",
             per_month: "/mes",
-            trial_days_label: "dÃ­as de prueba",
+            trial_days_label: "días de prueba",
             form: {
                 name: "Nombre de Plantilla",
-                description: "DescripciÃ³n",
-                category: "CategorÃ­a",
+                description: "Descripción",
+                category: "Categoría",
                 price: "Precio Mensual",
                 search_placeholder: "Buscar Spaces...",
                 save: "Guardar Cambios",
                 create: "Crear"
             },
             toast: {
-                created: "Â¡Plantilla creada exitosamente!",
-                updated: "Â¡Plantilla actualizada exitosamente!",
+                created: "¡Plantilla creada exitosamente!",
+                updated: "¡Plantilla actualizada exitosamente!",
                 error: "Error al guardar"
             }
         }

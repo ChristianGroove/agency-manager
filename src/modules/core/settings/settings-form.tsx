@@ -22,7 +22,7 @@ import { VaultSettingsTab } from "@/modules/infrastructure/data-vault/components
 import { AuditLogsTable } from "@\/modules\/infrastructure\/audit/audit-logs-table"
 import { ResellerDashboard } from "@/modules/billing/platform/revenue/components/reseller-dashboard"
 import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
-import { BiometricButton } from "@/components/auth/biometric-button"
+import { BiometricButton } from "@/modules/core/auth/components/biometric-button"
 import { SectionHeader } from "@/components/layout/section-header"
 import { SplitText } from "@/components/ui/split-text"
 

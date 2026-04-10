@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -33,7 +33,7 @@ export async function getAICredentials(organizationId?: string) {
     // Return with masked keys
     return data.map((cred: any) => ({
         ...cred,
-        api_key_encrypted: 'â—â—â—â—â—â—â—â—', // Masked for UI
+        api_key_encrypted: '●●●●●●●●', // Masked for UI
         providerName: cred.provider?.name,
         providerLogo: cred.provider?.logo_url
     }))

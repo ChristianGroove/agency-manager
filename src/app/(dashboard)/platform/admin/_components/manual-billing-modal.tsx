@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
@@ -52,7 +52,7 @@ const formSchema = z.object({
     currency: z.string().default("USD"),
     billingPeriodStart: z.string().min(1, "Requerido"),
     billingPeriodEnd: z.string().min(1, "Requerido"),
-    recipientEmail: z.string().email("Email invÃ¡lido"),
+    recipientEmail: z.string().email("Email inválido"),
     notes: z.string().default(""),
     autoActivate: z.boolean().default(true),
     // Legal fields
@@ -199,7 +199,7 @@ export function ManualBillingModal({
             const url = URL.createObjectURL(pdfBlob)
             window.open(url, '_blank')
         } catch (error) {
-            toast.error("No se pudo generar la previsualizaciÃ³n")
+            toast.error("No se pudo generar la previsualización")
         } finally {
             setIsPreviewing(false)
         }
@@ -235,7 +235,7 @@ export function ManualBillingModal({
 
             if (!result?.success || !result?.invoice) {
                 // Now we get a descriptive error from the server instead of a generic render error
-                throw new Error(result?.error || "La creaciÃ³n del documento fallÃ³ en el servidor");
+                throw new Error(result?.error || "La creación del documento falló en el servidor");
             }
 
             createdInvoice = result.invoice;
@@ -247,16 +247,16 @@ export function ManualBillingModal({
                 toast.success("Correo enviado al cliente");
             } else {
                 // Here we show the REAL error (Resend config, domain unverified, etc.)
-                toast.warning(`Factura creada (#${createdInvoice.invoice_number}) pero el correo fallÃ³: ${emailResult.error}`);
+                toast.warning(`Factura creada (#${createdInvoice.invoice_number}) pero el correo falló: ${emailResult.error}`);
             }
 
             // STEP 3: Auto-Activation
             if (values.autoActivate) {
                 const activationResult = await manualActivateSubscription(organizationId, { expiryDate: values.billingPeriodEnd });
                 if (activationResult.success) {
-                    toast.success("Vigencia de suscripciÃ³n actualizada");
+                    toast.success("Vigencia de suscripción actualizada");
                 } else {
-                    toast.error(`Error al activar suscripciÃ³n: ${activationResult.error}`);
+                    toast.error(`Error al activar suscripción: ${activationResult.error}`);
                 }
             }
 
@@ -267,7 +267,7 @@ export function ManualBillingModal({
         } catch (error: any) {
             console.error("Submission error:", error);
             // This now catches only network errors or true unexpected crashes, NOT application errors
-            toast.error(error.message || "No se pudo procesar la solicitud. Verifica tu conexiÃ³n.");
+            toast.error(error.message || "No se pudo procesar la solicitud. Verifica tu conexión.");
         } finally {
             setIsSubmitting(false)
         }
@@ -327,7 +327,7 @@ export function ManualBillingModal({
                                             />
                                         </FormControl>
                                         <FormDescription className="text-[10px] leading-tight">
-                                            Escribe solo nÃºmeros. Evita usar puntos para decimales si es COP.
+                                            Escribe solo números. Evita usar puntos para decimales si es COP.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -346,7 +346,7 @@ export function ManualBillingModal({
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="USD">USD - DÃ³lares</SelectItem>
+                                                        <SelectItem value="USD">USD - Dólares</SelectItem>
                                                         <SelectItem value="COP">COP - Pesos Col.</SelectItem>
                                                     </SelectContent>
                                                 </Select>
@@ -429,7 +429,7 @@ export function ManualBillingModal({
                                 <div className="bg-brand-pink/5 p-5 rounded-2xl border border-brand-pink/10 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-xs font-bold text-brand-pink/80 flex items-center gap-2 uppercase tracking-tight">
-                                            <Building2 className="h-4 w-4" /> Datos de FacturaciÃ³n del Cliente
+                                            <Building2 className="h-4 w-4" /> Datos de Facturación del Cliente
                                         </h4>
                                         <Badge variant="outline" className="text-[10px] font-normal border-brand-pink/20 text-brand-pink/60 bg-white">PERSISTENTE</Badge>
                                     </div>
@@ -439,7 +439,7 @@ export function ManualBillingModal({
                                         name="clientLegalName"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[11px] font-medium text-gray-500">RazÃ³n Social / Nombre Legal</FormLabel>
+                                                <FormLabel className="text-[11px] font-medium text-gray-500">Razón Social / Nombre Legal</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Empresa S.A.S" className="h-9 bg-white text-sm" {...field} />
                                                 </FormControl>
@@ -466,7 +466,7 @@ export function ManualBillingModal({
                                             name="clientAddress"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-[11px] font-medium text-gray-500">DirecciÃ³n</FormLabel>
+                                                    <FormLabel className="text-[11px] font-medium text-gray-500">Dirección</FormLabel>
                                                     <FormControl>
                                                         <Input placeholder="Calle 10 #2-3" className="h-9 bg-white text-sm" {...field} />
                                                     </FormControl>
@@ -476,7 +476,7 @@ export function ManualBillingModal({
                                         />
                                     </div>
                                     <p className="text-[10px] text-brand-pink/60 italic leading-tight">
-                                        * Estos datos se actualizarÃ¡n en el perfil de la organizaciÃ³n automÃ¡ticamente.
+                                        * Estos datos se actualizarán en el perfil de la organización automáticamente.
                                     </p>
                                 </div>
 
@@ -489,7 +489,7 @@ export function ManualBillingModal({
                                         name="recipientEmail"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="font-semibold">Email de EnvÃ­o</FormLabel>
+                                                <FormLabel className="font-semibold">Email de Envío</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="admin@empresa.com" className="bg-gray-50/50" {...field} />
                                                 </FormControl>
@@ -535,7 +535,7 @@ export function ManualBillingModal({
                                                 <FormLabel className="font-semibold">Notas adicionales</FormLabel>
                                                 <FormControl>
                                                     <Textarea 
-                                                        placeholder="Opcional: Detalles adicionales que aparecerÃ¡n en la factura" 
+                                                        placeholder="Opcional: Detalles adicionales que aparecerán en la factura" 
                                                         className="resize-none min-h-[100px] bg-gray-50/50"
                                                         {...field} 
                                                     />
@@ -550,7 +550,7 @@ export function ManualBillingModal({
                                     <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 space-y-2">
                                         <h4 className="text-xs font-bold text-blue-700 flex items-center gap-1">
                                             <ShieldCheck className="h-3 w-3" />
-                                            SE INCLUIRÃN MÃ‰TODOS DE PAGO:
+                                            SE INCLUIRÁN MÉTODOS DE PAGO:
                                         </h4>
                                         <div className="grid grid-cols-1 gap-2">
                                             {paymentMethods.map((m) => (
@@ -578,7 +578,7 @@ export function ManualBillingModal({
                                             ))}
                                         </div>
                                         <p className="text-[9px] text-blue-500 italic mt-1">
-                                            * Estos mÃ©todos se configuran globalmente en Pixy Agency.
+                                            * Estos métodos se configuran globalmente en Pixy Agency.
                                         </p>
                                     </div>
                                 )}

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -56,7 +56,7 @@ export function ImportLeadsSheet({ open, onOpenChange, onSuccess }: ImportLeadsS
                     const leadData = {
                         name: row['Name'] || row['Nombre'] || 'Sin Nombre',
                         email: row['Email'] || row['Correo'] || undefined,
-                        phone: row['Phone'] || row['Telefono'] || row['TelÃ©fono'] || undefined,
+                        phone: row['Phone'] || row['Telefono'] || row['Teléfono'] || undefined,
                         company_name: row['Company'] || row['Empresa'] || undefined,
                         notes: row['Notes'] || row['Notas'] || undefined,
                         source: row['Source'] || row['Fuente'] || undefined,
@@ -87,7 +87,7 @@ export function ImportLeadsSheet({ open, onOpenChange, onSuccess }: ImportLeadsS
                     setProgress({ current: successCount + errorCount, total: rows.length, errors: errorCount })
                 }
 
-                toast.success(`ImportaciÃ³n completada: ${successCount} importados, ${errorCount} errores.`)
+                toast.success(`Importación completada: ${successCount} importados, ${errorCount} errores.`)
                 setImporting(false)
                 setFile(null)
                 onOpenChange(false)
@@ -130,7 +130,7 @@ export function ImportLeadsSheet({ open, onOpenChange, onSuccess }: ImportLeadsS
                             </div>
                             <div>
                                 <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white">Importar Leads</SheetTitle>
-                                <SheetDescription>Carga masiva de prospectos vÃ­a CSV</SheetDescription>
+                                <SheetDescription>Carga masiva de prospectos vía CSV</SheetDescription>
                             </div>
                         </div>
                     </SheetHeader>
@@ -164,7 +164,7 @@ export function ImportLeadsSheet({ open, onOpenChange, onSuccess }: ImportLeadsS
                             </h4>
                             <ul className="text-sm text-blue-800 dark:text-blue-400 list-disc ml-4 space-y-1">
                                 <li>Descarga la plantilla para ver el formato correcto.</li>
-                                <li>AsegÃºrate de que los encabezados coincidan.</li>
+                                <li>Asegúrate de que los encabezados coincidan.</li>
                                 <li>Las columnas requeridas son opcionales pero recomendadas.</li>
                             </ul>
                             <Button variant="outline" size="sm" onClick={downloadTemplate} className="w-full mt-4 bg-white dark:bg-zinc-800 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30">
@@ -218,7 +218,7 @@ export function ImportLeadsSheet({ open, onOpenChange, onSuccess }: ImportLeadsS
                             ) : (
                                 <>
                                     <Upload className="mr-2 h-4 w-4" />
-                                    Iniciar ImportaciÃ³n
+                                    Iniciar Importación
                                 </>
                             )}
                         </Button>

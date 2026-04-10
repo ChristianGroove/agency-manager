@@ -23,12 +23,14 @@ Este documento detalla la estrategia por fases para transformar a Pixy en un pro
 
 ---
 
-## Fase 2: Motor de Espacios y Configuración Dinámica (✅ COMPLETADO)
+## Fase 2: Motor de Espacios y Consolidación Estructural (✅ COMPLETADO)
 - [x] **Gestión Centralizada**: Unificación de configuración de Spaces en `AppDetailsSheet`.
 - [x] **Motor de Terminología**: Implementación de diccionario dinámico por Space.
 - [x] **Sistema de Capacidades**: Control granular de UI basado en `ui_config` (JSONB).
-- [x] **Auto-Sincronización**: Mapeo inteligente entre módulos técnicos y funciones de UI.
-- **Documentación**: [SAAS_SPACE_ENGINE_V2.md](file:///d:/Pixy/agency-manager/docs/architecture/SAAS_SPACE_ENGINE_V2.md)
+- [x] **Saneamiento Estructural**: Eliminación de fugas arquitectónicas en `src/components`.
+- [x] **Higiene de Raíz**: Scripts SQL extraídos a la raíz `/db`.
+- [x] **Gobernanza**: Guía definitiva [ARCHITECTURE_FILESYSTEM.md](file:///d:/Pixy/agency-manager/docs/architecture/ARCHITECTURE_FILESYSTEM.md).
+- **Documentación del Motor**: [SAAS_SPACE_ENGINE_V2.md](file:///d:/Pixy/agency-manager/docs/architecture/SAAS_SPACE_ENGINE_V2.md)
 
 ### 2.2 Papelera de Reciclaje B2B (Safety Net)
 - **Acción**: Reforzar el `soft-delete`. Todo elemento "borrado" va a una tabla de auditoría/papelera por 30 días.

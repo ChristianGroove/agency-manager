@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -92,7 +92,7 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
         return { success: true }
     } catch (e: any) {
         console.error("Send Quote Error", e)
-        return { success: false, error: e.message || 'Error al enviar cotizaciÃ³n' }
+        return { success: false, error: e.message || 'Error al enviar cotización' }
     }
 }
 

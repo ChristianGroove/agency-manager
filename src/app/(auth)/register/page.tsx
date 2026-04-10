@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle2 } from "lucide-react"
 
 import { ParticlesBackground } from "@/components/ui/particles-background"
-// import { BiometricButton } from "@/components/auth/biometric-button" // Removing per user request
+// import { BiometricButton } from "@/modules/core/auth/components/biometric-button" // Removing per user request
 import { useBranding } from "@/components/providers/branding-provider"
 
 import { Turnstile } from "@marsidev/react-turnstile"

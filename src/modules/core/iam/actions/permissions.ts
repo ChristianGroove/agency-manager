@@ -1,4 +1,4 @@
-﻿export const PERMISSIONS = {
+export const PERMISSIONS = {
     // 1. CRM & Sales
     CRM: {
         VIEW_LEADS: 'crm.leads.view',
@@ -61,50 +61,50 @@ export const PERMISSION_GROUPS = [
         id: 'crm',
         moduleKey: 'core_clients',
         label: 'CRM y Clientes',
-        description: 'GestiÃ³n de prospectos, clientes y exportaciÃ³n de datos.',
+        description: 'Gestión de prospectos, clientes y exportación de datos.',
         permissions: [
             { id: PERMISSIONS.CRM.VIEW_LEADS, label: 'Ver Leads', description: 'Puede ver listas y detalles de leads' },
-            { id: PERMISSIONS.CRM.EDIT_LEADS, label: 'Editar Leads', description: 'Puede modificar informaciÃ³n de leads' },
-            { id: PERMISSIONS.CRM.DELETE_LEADS, label: 'Eliminar Leads', description: 'EliminaciÃ³n permanente de registros' },
+            { id: PERMISSIONS.CRM.EDIT_LEADS, label: 'Editar Leads', description: 'Puede modificar información de leads' },
+            { id: PERMISSIONS.CRM.DELETE_LEADS, label: 'Eliminar Leads', description: 'Eliminación permanente de registros' },
             { id: PERMISSIONS.CRM.EXPORT_DATA, label: 'Exportar Datos', description: 'Descargar base de datos en CSV' },
         ]
     },
     {
         id: 'inbox',
         moduleKey: 'module_messaging',
-        label: 'Bandeja y MensajerÃ­a',
-        description: 'Control de acceso a chats y configuraciÃ³n de canales.',
+        label: 'Bandeja y Mensajería',
+        description: 'Control de acceso a chats y configuración de canales.',
         permissions: [
             { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ver todos los chats dentro de los canales autorizados (si no, solo los asignados)' },
             { id: PERMISSIONS.INBOX.ASSIGN_AGENTS, label: 'Asignar Agentes', description: 'Puede reasignar chats a otros miembros' },
-            { id: PERMISSIONS.INBOX.MANAGE_CHANNELS, label: 'Gestionar Canales', description: 'Conectar o desconectar nÃºmeros de WhatsApp' },
+            { id: PERMISSIONS.INBOX.MANAGE_CHANNELS, label: 'Gestionar Canales', description: 'Conectar o desconectar números de WhatsApp' },
         ]
     },
     {
         id: 'finance',
         moduleKey: 'module_invoicing',
-        label: 'FacturaciÃ³n y Finanzas',
-        description: 'GestiÃ³n de facturas, pagos y reportes financieros.',
+        label: 'Facturación y Finanzas',
+        description: 'Gestión de facturas, pagos y reportes financieros.',
         permissions: [
             { id: PERMISSIONS.INVOICING.VIEW, label: 'Ver Facturas', description: 'Acceso a la lista de comprobantes' },
             { id: PERMISSIONS.INVOICING.MANAGE, label: 'Gestionar Pagos', description: 'Registrar pagos y emitir facturas' },
-            { id: PERMISSIONS.INVOICING.EXPORT, label: 'Exportar Reportes', description: 'Descargar resÃºmenes financieros' },
+            { id: PERMISSIONS.INVOICING.EXPORT, label: 'Exportar Reportes', description: 'Descargar resúmenes financieros' },
         ]
     },
     {
         id: 'catalog',
         moduleKey: 'module_catalog',
-        label: 'CatÃ¡logo de Servicios',
-        description: 'AdministraciÃ³n de productos y servicios pÃºblicos.',
+        label: 'Catálogo de Servicios',
+        description: 'Administración de productos y servicios públicos.',
         permissions: [
-            { id: PERMISSIONS.OPERATIONS.CATALOG_MANAGE, label: 'Gestionar CatÃ¡logo', description: 'Crear y editar productos/servicios' },
+            { id: PERMISSIONS.OPERATIONS.CATALOG_MANAGE, label: 'Gestionar Catálogo', description: 'Crear y editar productos/servicios' },
         ]
     },
     {
         id: 'briefings',
         moduleKey: 'module_briefings',
         label: 'Formularios y Briefings',
-        description: 'GestiÃ³n de recolecciÃ³n de datos y flujos de bienvenida.',
+        description: 'Gestión de recolección de datos y flujos de bienvenida.',
         permissions: [
             { id: PERMISSIONS.OPERATIONS.BRIEFINGS_MANAGE, label: 'Gestionar Briefings', description: 'Crear y modificar formularios de datos' },
         ]
@@ -112,22 +112,22 @@ export const PERMISSION_GROUPS = [
     {
         id: 'automation',
         moduleKey: 'module_automation',
-        label: 'AutomatizaciÃ³n e IA',
-        description: 'GestiÃ³n de flujos automÃ¡ticos y chatbots.',
+        label: 'Automatización e IA',
+        description: 'Gestión de flujos automáticos y chatbots.',
         permissions: [
             { id: PERMISSIONS.AUTOMATION.VIEW, label: 'Ver Flujos', description: 'Puede visualizar automatizaciones existentes' },
-            { id: PERMISSIONS.AUTOMATION.EDIT, label: 'Editar Flujos', description: 'Crear y modificar nodos de automatizaciÃ³n' },
+            { id: PERMISSIONS.AUTOMATION.EDIT, label: 'Editar Flujos', description: 'Crear y modificar nodos de automatización' },
         ]
     },
     {
         id: 'org',
         moduleKey: 'core_settings',
-        label: 'ConfiguraciÃ³n de Empresa',
-        description: 'Controles administrativos de la organizaciÃ³n.',
+        label: 'Configuración de Empresa',
+        description: 'Controles administrativos de la organización.',
         permissions: [
             { id: PERMISSIONS.ORG.MANAGE_MEMBERS, label: 'Gestionar Miembros', description: 'Invitar y remover miembros del equipo' },
             { id: PERMISSIONS.ORG.MANAGE_ROLES, label: 'Gestionar Roles', description: 'Crear y editar roles personalizados' },
-            { id: PERMISSIONS.ORG.MANAGE_BILLING, label: 'Administrar SuscripciÃ³n', description: 'Gestionar planes y mÃ©todos de pago' },
+            { id: PERMISSIONS.ORG.MANAGE_BILLING, label: 'Administrar Suscripción', description: 'Gestionar planes y métodos de pago' },
             { id: PERMISSIONS.OPERATIONS.BRANDING_MANAGE, label: 'Gestionar Marca Blanca', description: 'Configurar logotipos y colores corporativos' },
         ]
     },
@@ -135,10 +135,10 @@ export const PERMISSION_GROUPS = [
         id: 'locations',
         moduleKey: 'core_locations',
         label: 'Sedes y Ubicaciones',
-        description: 'GestiÃ³n de sucursales y puntos fÃ­sicos.',
+        description: 'Gestión de sucursales y puntos físicos.',
         permissions: [
             { id: PERMISSIONS.OPERATIONS.LOCATIONS_VIEW, label: 'Ver Sedes', description: 'Puede visualizar la lista de sedes' },
-            { id: PERMISSIONS.OPERATIONS.LOCATIONS_MANAGE, label: 'Gestionar Sedes', description: 'CreaciÃ³n y ediciÃ³n de sucursales' },
+            { id: PERMISSIONS.OPERATIONS.LOCATIONS_MANAGE, label: 'Gestionar Sedes', description: 'Creación y edición de sucursales' },
         ]
     },
     {
@@ -147,14 +147,14 @@ export const PERMISSION_GROUPS = [
         label: 'Control de Asistencia',
         description: 'Monitoreo de entradas y salidas de personal.',
         permissions: [
-            { id: PERMISSIONS.OPERATIONS.ATTENDANCE_VIEW, label: 'Ver Asistencia', description: 'VisualizaciÃ³n de registros' },
+            { id: PERMISSIONS.OPERATIONS.ATTENDANCE_VIEW, label: 'Ver Asistencia', description: 'Visualización de registros' },
             { id: PERMISSIONS.OPERATIONS.ATTENDANCE_MANAGE, label: 'Gestionar Asistencia', description: 'Editar o corregir registros' },
         ]
     },
     {
         id: 'resto',
         moduleKey: 'module_resto_tables',
-        label: 'GestiÃ³n de Mesas y Salones',
+        label: 'Gestión de Mesas y Salones',
         description: 'Layout de restaurante y estado de mesas.',
         permissions: [
             { id: PERMISSIONS.OPERATIONS.RESTO_VIEW, label: 'Ver Mesas', description: 'Visualizar el canvas de mesas' },

@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -49,7 +49,7 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
 
     // 2. If it's 'member' (likely a dynamic role holder), check the role name
     const dynamicRoleName = (data.role_data as any)?.name?.toLowerCase() || '';
-    if (dynamicRoleName.includes('owner') || dynamicRoleName.includes('dueÃ±o')) return 'owner';
+    if (dynamicRoleName.includes('owner') || dynamicRoleName.includes('dueño')) return 'owner';
     if (dynamicRoleName.includes('admin') || dynamicRoleName.includes('administrador')) return 'admin';
 
     // 3. Fallback to legacy field

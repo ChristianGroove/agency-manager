@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -227,7 +227,7 @@ export async function getAgentsWorkload() {
     // Debug log
     console.log(`[Inbox] Agentes activos: ${activeAgents.length}, Perfiles encontrados: ${profiles?.length || 0}`)
     if (activeAgents.length > 0 && (!profiles || profiles.length === 0)) {
-        console.warn('[Inbox] Â¡AtenciÃ³n! Se encontraron agentes activos pero NINGÃšN perfil coincidente en la tabla profiles.')
+        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles.')
     }
 
     // Assemble agents with their loaded data
@@ -320,7 +320,7 @@ export async function upsertAssignmentRule(rule: {
         return { success: false, error: error.message }
     }
 
-    console.log(`[upsertAssignmentRule] âœ… Saved rule: ${data.id} (${data.strategy})`)
+    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
     revalidatePath('/inbox/settings')
     revalidatePath('/crm/settings/channels')
     return { success: true, data }

@@ -1,11 +1,11 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
- * Obtiene el estado de las llamadas para una conversaciÃ³n (Permisos, Horarios, Ventana).
+ * Obtiene el estado de las llamadas para una conversación (Permisos, Horarios, Ventana).
  */
 export async function getCallStatus(conversationId: string) {
     const supabase = await createClient()

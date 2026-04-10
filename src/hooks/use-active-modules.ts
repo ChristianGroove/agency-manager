@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { getActiveModules } from '@/modules/core/saas/saas-actions'

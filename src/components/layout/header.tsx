@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, LogOut, Settings } from "lucide-react"
-import { ProfileSheet } from "@/components/account/profile-sheet"
+import { ProfileSheet } from "@/modules/core/iam/components/account/profile-sheet"
 import { createBrowserClient } from "@supabase/ssr"
 import { logout } from "@/modules/core/auth/actions"
 import { SpaceStatusBadge } from "@/modules/core/organizations/components/dashboard/SpaceStatusBadge"

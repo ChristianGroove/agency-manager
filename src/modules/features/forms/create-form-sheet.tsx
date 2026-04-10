@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -160,7 +160,7 @@ export function CreateFormSheet({
             >
                 <SheetHeader className="hidden">
                     <SheetTitle>Nuevo Formulario</SheetTitle>
-                    <SheetDescription>Genera un enlace Ãºnico para recopilar informaciÃ³n.</SheetDescription>
+                    <SheetDescription>Genera un enlace único para recopilar información.</SheetDescription>
                 </SheetHeader>
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
 
@@ -172,7 +172,7 @@ export function CreateFormSheet({
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nuevo Formulario</h2>
-                                <p className="text-xs text-muted-foreground">Genera un enlace Ãºnico para recopilar informaciÃ³n.</p>
+                                <p className="text-xs text-muted-foreground">Genera un enlace único para recopilar información.</p>
                             </div>
                         </div>
                     </div>
@@ -218,7 +218,7 @@ export function CreateFormSheet({
                                             {activeTemplate && (
                                                 <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 mt-2">
                                                     <p className="text-xs text-indigo-700 leading-relaxed">
-                                                        {activeTemplate.description || "Sin descripciÃ³n"}
+                                                        {activeTemplate.description || "Sin descripción"}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-2">
                                                         <Badge variant="secondary" className="bg-white text-indigo-600 text-[10px] border-indigo-100">
@@ -252,7 +252,7 @@ export function CreateFormSheet({
                                                     >
                                                         {selectedClientId && selectedClientId !== "none"
                                                             ? clients.find((c) => c.id === selectedClientId)?.name
-                                                            : "-- Lead Nuevo (Enlace PÃºblico) --"}
+                                                            : "-- Lead Nuevo (Enlace Público) --"}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
@@ -260,7 +260,7 @@ export function CreateFormSheet({
                                                     <Command>
                                                         <CommandInput placeholder="Buscar cliente..." />
                                                         <CommandList className="max-h-[250px] overflow-y-auto">
-                                                            <CommandEmpty>No se encontrÃ³ ningÃºn cliente.</CommandEmpty>
+                                                            <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
                                                             <CommandGroup>
                                                                 <CommandItem
                                                                     value="none"
@@ -273,7 +273,7 @@ export function CreateFormSheet({
                                                                             selectedClientId === "none" ? "opacity-100" : "opacity-0"
                                                                         )}
                                                                     />
-                                                                    -- Lead Nuevo (Enlace PÃºblico) --
+                                                                    -- Lead Nuevo (Enlace Público) --
                                                                 </CommandItem>
                                                                 {clients.map((c) => (
                                                                     <CommandItem
@@ -302,7 +302,7 @@ export function CreateFormSheet({
                                                 </PopoverContent>
                                             </Popover>
                                             <p className="text-[11px] text-gray-400 leading-tight">
-                                                Si no seleccionas un cliente, podrÃ¡s compartir el enlace pÃºbicamente y asignar el cliente despuÃ©s.
+                                                Si no seleccionas un cliente, podrás compartir el enlace púbicamente y asignar el cliente después.
                                             </p>
                                         </div>
                                     </div>

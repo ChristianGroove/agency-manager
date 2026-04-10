@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { AnalysisService } from "./analysis-service"
 import { ProcessEngine } from "@/modules/features/crm/services/process-engine/engine"

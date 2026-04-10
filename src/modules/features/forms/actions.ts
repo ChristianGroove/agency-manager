@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { FullBriefingTemplate, Briefing, BriefingField } from "@/types/briefings"
@@ -73,7 +73,7 @@ export async function createFormSubmission(templateId: string, clientId: string 
             client_id: clientId,
             type: 'briefing', // Keep 'briefing' type for now for portal compatibility, or change to 'form'
             title: 'Nuevo Formulario Disponible',
-            description: `Se requiere informaciÃ³n para: ${template?.name || 'Formulario'}`,
+            description: `Se requiere información para: ${template?.name || 'Formulario'}`,
             metadata: {
                 briefing_id: data.id,
                 template_id: templateId,
@@ -114,7 +114,7 @@ export async function deleteFormSubmission(id: string) {
 
     if (error) {
         console.error("[deleteFormSubmission] Error:", error)
-        throw new Error("No se pudo eliminar el envÃ­o")
+        throw new Error("No se pudo eliminar el envío")
     }
 
     revalidatePath('/briefings')
@@ -234,8 +234,8 @@ export async function submitForm(submissionId: string) {
             await supabaseAdmin.from('notifications').insert({
                 user_id: submission.client.user_id,
                 type: 'briefing_submitted',
-                title: 'ðŸ“ Formulario Recibido',
-                message: `Cliente ${submission.client.name} enviÃ³: ${submission.template?.name}`,
+                title: '📝 Formulario Recibido',
+                message: `Cliente ${submission.client.name} envió: ${submission.template?.name}`,
                 client_id: submission.client_id,
                 action_url: `/dashboard/briefings/${submission.id}`,
                 read: false

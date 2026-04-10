@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react"
+import { Suspense } from "react"
 import { getOrganizationsPaginated } from "@/modules/core/organizations/organization-actions"
 import { OrganizationsClientView } from "./organizations-client-view"
 import { Skeleton } from "@/components/ui/skeleton"
