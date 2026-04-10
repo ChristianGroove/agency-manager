@@ -6,7 +6,7 @@ import { useSaaSData } from "@/components/providers/saas-provider"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
-import animationData from "../../../public/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json"
+import animationData from "../../../../../../public/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json"
 
 export function SuspendedDashboardView() {
     const { subscription } = useSaaSData()

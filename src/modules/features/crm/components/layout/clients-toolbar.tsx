@@ -3,8 +3,8 @@
 import React from "react"
 import { useClients } from "../../context/clients-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
-import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
-import { ViewToggle } from "@/components/shared/view-toggle"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
+import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { Button } from "@/components/ui/button"
 
 export function ClientsToolbar({ 

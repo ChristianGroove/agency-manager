@@ -36,7 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { format } from "date-fns"
-import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 import { CreateHostingSheet } from "@/modules/features/hosting/components/create-hosting-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
 import { getHostingAccounts, deleteHostingAccount } from "@/modules/features/hosting/actions"

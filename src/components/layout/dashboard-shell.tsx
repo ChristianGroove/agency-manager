@@ -6,7 +6,9 @@ import { MobileSidebar } from "@/components/layout/mobile-sidebar"
 import { Header } from "@/components/layout/header"
 import { cn } from "@/lib/utils"
 
-import { TenantContextIndicator } from "@/components/organizations/tenant-context-indicator"
+import { TenantContextIndicator } from "@/modules/core/organizations/components/tenant-context-indicator"
+import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"
+import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
 
 import { User } from "@supabase/supabase-js"
 

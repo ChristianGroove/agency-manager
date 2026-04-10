@@ -3,7 +3,8 @@
 import React, { useState } from 'react'
 import { LayoutDashboard, Shield, Package, Building2, Bell, User as UserIcon, Trash2 } from 'lucide-react'
 import { ActionButton } from './action-button'
-import { OrganizationSwitcher } from '@/components/organizations/organization-switcher'
+import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"
+import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
 import { NotificationBell } from './notification-bell'
 import { ProfileSheet } from '@/components/account/profile-sheet'
 

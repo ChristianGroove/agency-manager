@@ -9,13 +9,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Eye, Copy, ExternalLink, MoreVertical, Trash2, Search, ListFilter, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
-import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { useState } from "react"
 import {
     DropdownMenu,

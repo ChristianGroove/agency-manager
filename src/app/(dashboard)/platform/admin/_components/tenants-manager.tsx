@@ -17,7 +17,9 @@ import {
 import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
+import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
+import { TenantConfigurationSheet } from "@/modules/core/organizations/components/tenant-configuration-sheet"
+import { EditLimitsModal } from "@/modules/core/organizations/components/edit-limits-modal"
 import { OrgDetailsSheet } from "@/components/admin/org-details-sheet"
 import { EditOrganizationDialog } from "@/components/admin/edit-organization-dialog"
 import { updateOrganizationStatus, deleteOrganization, type AdminOrganization } from '@/modules/core/admin/actions'

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { toast } from "sonner"
 import {
     Table,
@@ -31,6 +31,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { supabase } from "@/lib/supabase"
 import { CreateServiceSheet } from "@/modules/features/billing/components/create-service-sheet"
 import { ServiceDetailModal } from "@/modules/features/billing/components/service-detail-modal"

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { CatalogItemFlipCard } from "@/modules/features/portal/components/catalog-item-flip-card"
 
-import { ViewMode } from "@/components/shared/view-toggle"
+import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
 
 interface CatalogListProps {
     items: ServiceCatalogItem[]

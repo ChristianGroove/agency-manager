@@ -13,7 +13,7 @@ import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { SaaSProvider } from "@/components/providers/saas-provider"
-import { SuspendedDashboardView } from "@/components/dashboard/SuspendedDashboardView"
+import { SuspendedDashboardView } from "@/modules/core/organizations/components/dashboard/SuspendedDashboardView"
 import { SidebarLoader } from "@/components/layout/sidebar-loader"
 import { Suspense } from "react"
 

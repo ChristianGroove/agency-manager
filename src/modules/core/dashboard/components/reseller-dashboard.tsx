@@ -12,7 +12,7 @@ import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/com
 import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
 import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"
-import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
+import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
 
 interface ResellerDashboardProps {
     dashboardData: any

@@ -3,11 +3,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CreateQuoteSheet } from "./create-quote-sheet"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
+import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, Send, CheckCircle, RefreshCcw, FileCheck, MessageCircle } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { cn } from "@/lib/utils"
 import {
     Table,

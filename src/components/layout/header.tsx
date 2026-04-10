@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 
 // import { MobileSidebar } from "./mobile-sidebar"
 import { NotificationBell } from "./notification-bell"
 import { ToolsMarquee } from "@/components/ui/tools-marquee"
 import { useEffect, useState } from "react"
-import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
+import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,7 +18,7 @@ import { User, LogOut, Settings } from "lucide-react"
 import { ProfileSheet } from "@/components/account/profile-sheet"
 import { createBrowserClient } from "@supabase/ssr"
 import { logout } from "@/modules/core/auth/actions"
-import { SpaceStatusBadge } from "@/components/dashboard/SpaceStatusBadge"
+import { SpaceStatusBadge } from "@/modules/core/organizations/components/dashboard/SpaceStatusBadge"
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"

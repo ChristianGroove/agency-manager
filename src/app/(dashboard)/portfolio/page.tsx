@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 /**
  * NOMENCLATURA: Este mÃ³dulo muestra "CatÃ¡logo" en la UI.
@@ -21,8 +21,8 @@ import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
-import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
-import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
+import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
 import { CategorySelector } from "@/modules/features/catalog/category-selector"
 import { TemplateImporter } from "@/modules/features/catalog/template-importer"
 import { useTranslation } from "@/lib/i18n/use-translation"

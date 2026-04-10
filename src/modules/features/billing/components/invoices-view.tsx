@@ -4,9 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Search, Eye, Trash2, Edit, ListFilter, MoreVertical, Loader2, Mail, FileText, Copy } from "lucide-react"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
+import { ViewToggle } from "@/modules/core/ui/components/view-toggle"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { toast } from "sonner"
 import {
     Table,
