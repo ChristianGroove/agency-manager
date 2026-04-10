@@ -61,8 +61,13 @@ src/
 
 ---
 
-## 🛡️ Seguridad y Roles
-
 El acceso está protegido mediante **RLS (Row Level Security)** en Supabase y un sistema de roles jerárquico (`Platform` > `Reseller` > `Operator` > `Owner` > `Agent`).
 
-Consulte la documentación de IAM en `src/modules/core/iam` para la gestión de permisos.
+---
+
+## 🛡️ Resiliencia y Estabilidad
+
+Pixy está blindado contra fallos en servicios externos:
+- **Circuit Breakers:** Implementación modular que protege contra latencias en APIs de Meta, OpenAI y Evolution API.
+- **Enterprise Grade RLS:** Aislamiento multi-tenant total verificado en 150+ tablas.
+- **Financial Integrity:** Suite de Smoke Tests automatizados que garantizan la precisión centesimal en el cálculo de comisiones y liquidaciones.

@@ -22,19 +22,22 @@ export class S3StorageAdapter implements IntegrationAdapter {
                 }
             })
 
-            const command = new PutObjectCommand({
-                Bucket: credentials.bucket,
-                Key: path,
-                Body: content,
-                ContentType: contentType
-            })
+            const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+            return await globalCircuitBreaker.execute('aws_s3_io', async () => {
+                const command = new PutObjectCommand({
+                    Bucket: credentials.bucket,
+                    Key: path,
+                    Body: content,
+                    ContentType: contentType
+                })
 
-            await client.send(command)
+                await client.send(command)
 
-            return {
-                url: `https://${credentials.bucket}.s3.${credentials.region}.amazonaws.com/${path}`,
-                fileId: path
-            }
+                return {
+                    url: `https://${credentials.bucket}.s3.${credentials.region}.amazonaws.com/${path}`,
+                    fileId: path
+                }
+            });
         }
     }
 
@@ -44,29 +47,32 @@ export class S3StorageAdapter implements IntegrationAdapter {
             return { isValid: false, error: "Missing required S3 fields: access_key, secret_key, bucket, region" }
         }
 
-        try {
-            const client = new S3Client({
-                region: credentials.region,
-                credentials: {
-                    accessKeyId: credentials.access_key,
-                    secretAccessKey: credentials.secret_key
-                }
-            })
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('aws_s3_status', async () => {
+            try {
+                const client = new S3Client({
+                    region: credentials.region,
+                    credentials: {
+                        accessKeyId: credentials.access_key,
+                        secretAccessKey: credentials.secret_key
+                    }
+                })
 
-            // Verify bucket access
-            await client.send(new HeadBucketCommand({ Bucket: credentials.bucket }))
+                // Verify bucket access
+                await client.send(new HeadBucketCommand({ Bucket: credentials.bucket }))
 
-            return {
-                isValid: true,
-                metadata: {
-                    provider: 'aws',
-                    bucket: credentials.bucket,
-                    region: credentials.region
+                return {
+                    isValid: true,
+                    metadata: {
+                        provider: 'aws',
+                        bucket: credentials.bucket,
+                        region: credentials.region
+                    }
                 }
+            } catch (error: any) {
+                console.error("S3 Verification Failed:", error)
+                return { isValid: false, error: `S3 Access Denied: ${error.message}` }
             }
-        } catch (error: any) {
-            console.error("S3 Verification Failed:", error)
-            return { isValid: false, error: `S3 Access Denied: ${error.message}` }
-        }
+        });
     }
 }

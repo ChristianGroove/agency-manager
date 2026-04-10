@@ -673,8 +673,8 @@ export async function syncClientAdsMetrics(clientId: string) {
         const { data: config } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
         if (!config || !config.access_token || !config.ad_account_id) return { success: false, error: "Faltan credenciales (Token o Ad Account)" }
 
-        const { MetaConnector } = await import('@/lib/integrations/meta/connector')
-        const { AdsService } = await import('@/lib/integrations/meta/ads-service')
+        const { MetaConnector } = await import('@/modules/infrastructure/meta/services/connector')
+        const { AdsService } = await import('@/modules/infrastructure/meta/services/ads-service')
 
         const connector = new MetaConnector(config.access_token)
         const service = new AdsService(connector)
@@ -719,8 +719,8 @@ export async function syncClientSocialMetrics(clientId: string) {
         }
 
         // 2. Dynamic Import services
-        const { MetaConnector } = await import('@/lib/integrations/meta/connector')
-        const { SocialService } = await import('@/lib/integrations/meta/social-service')
+        const { MetaConnector } = await import('@/modules/infrastructure/meta/services/connector')
+        const { SocialService } = await import('@/modules/infrastructure/meta/services/social-service')
 
         const connector = new MetaConnector(config.access_token)
         const service = new SocialService(connector)

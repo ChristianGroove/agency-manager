@@ -71,8 +71,10 @@ export class EvolutionAdapter implements IntegrationAdapter {
         const { baseUrl, apiKey, instanceName } = credentials
         if (!baseUrl || !apiKey || !instanceName) return { status: 'error', message: 'Missing credentials' }
 
-        try {
-            const url = `${baseUrl.replace(/\/$/, '')}/instance/connectionState/${instanceName}`
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('evolution_status', async () => {
+            try {
+                const url = `${baseUrl.replace(/\/$/, '')}/instance/connectionState/${instanceName}`
             const response = await fetch(url, {
                 headers: { "apikey": apiKey }
             })
@@ -91,6 +93,7 @@ export class EvolutionAdapter implements IntegrationAdapter {
         } catch (error: any) {
             return { status: 'error', message: error.message }
         }
+        });
     }
 
     async sendMessage(credentials: ConnectionCredentials, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
@@ -147,25 +150,28 @@ export class EvolutionAdapter implements IntegrationAdapter {
 
         const url = `${baseUrl.replace(/\/$/, '')}/${endpoint}/${instanceName}`
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                "apikey": apiKey,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body)
-        })
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('evolution_api', async () => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    "apikey": apiKey,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            })
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({ error: response.statusText }))
-            throw new Error(`Evolution Send Failed (${response.status}): ${JSON.stringify(errData)}`)
-        }
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ error: response.statusText }))
+                throw new Error(`Evolution Send Failed (${response.status}): ${JSON.stringify(errData)}`)
+            }
 
-        const data = await response.json()
-        return {
-            messageId: data.key?.id || data.messageId || Date.now().toString(),
-            metadata: data
-        }
+            const data = await response.json()
+            return {
+                messageId: data.key?.id || data.messageId || Date.now().toString(),
+                metadata: data
+            }
+        });
     }
 
     // Instance Management (Specific to Evolution)

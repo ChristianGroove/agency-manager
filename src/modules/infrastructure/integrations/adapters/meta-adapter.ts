@@ -22,8 +22,10 @@ export class MetaAdapter implements IntegrationAdapter {
      * Used by the ChannelCard UI to display the (Green/Red) status dot.
      */
     async checkConnectionStatus(credentials: ConnectionCredentials): Promise<{ status: 'active' | 'inactive' | 'error', message?: string }> {
-        const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption');
-        const creds = decryptObject(credentials);
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('meta_status', async () => {
+            const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
+            const creds = decryptObject(credentials);
         const accessToken = creds.accessToken || creds.access_token;
 
         if (!accessToken) return { status: 'inactive', message: 'No access token' };
@@ -40,6 +42,7 @@ export class MetaAdapter implements IntegrationAdapter {
         } catch (error: any) {
             return { status: 'error', message: error.message };
         }
+        });
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
@@ -243,7 +246,7 @@ export class MetaAdapter implements IntegrationAdapter {
             }
         }
 
-        const { globalCircuitBreaker } = await import('@/lib/integrations/circuit-breaker');
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
 
         return await globalCircuitBreaker.execute('meta_api', async () => {
             const makeRequest = async (p: any) => {

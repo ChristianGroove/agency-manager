@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { MetaConnector } from "@/lib/integrations/meta/connector"
-import { AdsService } from "@/lib/integrations/meta/ads-service"
+import { MetaConnector } from "@/modules/infrastructure/meta/services/connector"
+import { AdsService } from "@/modules/infrastructure/meta/services/ads-service"
 
 export const dynamic = 'force-dynamic'
 

@@ -41,7 +41,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-import { TrashBinModal } from "@\/modules\/infrastructure\/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
 import { AuthRefresher } from "@/components/providers/auth-refresher";
@@ -84,7 +83,6 @@ export default async function RootLayout({
                 <ClientInit />
                 {children}
               </ViewContextProvider>
-              <TrashBinModal shortcut={settings?.trash_shortcut} />
               <Toaster />
             </ThemeProvider>
           </BrandingProvider>

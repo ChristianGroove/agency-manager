@@ -1,3 +1,8 @@
+# [!CAUTION]
+# ESTE DOCUMENTO ESTÁ OBSOLETO
+# Se ha descartado la Papelera de Reciclaje en favor de una política de "Borrado Físico Estricto".
+# Ver ROADMAP_SCALABILITY.md para el estado actual.
+
 # Balance del Producto: Agency Manager (Abril 2026)
 
 Este documento realiza un balance estratégico tras la implementación de la **Capa de Seguridad de Identidad** y el **Sistema Unificado de Papelera**.

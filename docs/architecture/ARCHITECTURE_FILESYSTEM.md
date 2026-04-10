@@ -34,6 +34,7 @@ Integraciones con el mundo exterior y servicios de bajo nivel.
 - **Logging**: Auditoría y seguimiento.
 - **Meta**: Integración con APIs de WhatsApp/Facebook/Instagram.
 - **Integrations**: Marketplace y gestión de conectores.
+- **Resilience**: Capa de protección y Circuit Breakers para APIs externas.
 
 #### **C. Features (`/src/modules/features`)**
 El valor de negocio específico. Cada feature es un dominio aislado.

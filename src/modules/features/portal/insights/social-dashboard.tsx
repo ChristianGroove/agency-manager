@@ -1,5 +1,5 @@
 
-import { NormalizedSocialMetrics } from "@/lib/integrations/meta/types"
+import { NormalizedSocialMetrics } from "@/modules/infrastructure/meta/services/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, BarChart2, Heart, Share2, ImageIcon, ExternalLink } from "lucide-react"
 

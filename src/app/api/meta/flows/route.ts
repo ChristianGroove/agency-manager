@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MetaConnector } from '@/lib/integrations/meta/connector';
+import { MetaConnector } from '@/modules/infrastructure/meta/services/connector';
 
 const ACCESS_TOKEN = process.env.META_PERMANENT_ACCESS_TOKEN || '';
 const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';

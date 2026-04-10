@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server"
-import { MetaCacheManager } from "@/lib/integrations/meta/cache-manager"
+import { MetaCacheManager } from "@/modules/infrastructure/meta/services/cache-manager"
 import { createClient } from "@/lib/supabase-server"
 
 export async function POST(req: Request) {

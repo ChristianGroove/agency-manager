@@ -11,7 +11,7 @@ export class OpenAIAdapter implements IntegrationAdapter {
         }
 
         try {
-            const { globalCircuitBreaker } = await import('@/lib/integrations/circuit-breaker');
+            const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
 
             return await globalCircuitBreaker.execute('openai_api', async () => {
                 const response = await fetch("https://api.openai.com/v1/models", {

@@ -21,7 +21,7 @@ import {
     ImageIcon
 } from "lucide-react"
 import { isFeatureEnabled } from "@/lib/features"
-import { NormalizedAdsMetrics, NormalizedSocialMetrics } from "@/lib/integrations/meta/types"
+import { NormalizedAdsMetrics, NormalizedSocialMetrics } from "@/modules/infrastructure/meta/services/types"
 
 interface InsightsTabProps {
     client: any

@@ -41,16 +41,19 @@ export class GoogleDriveAdapter implements IntegrationAdapter {
                 body: mediaBody
             };
 
-            const file = await drive.files.create({
-                requestBody: fileMetadata,
-                media: media,
-                fields: 'id, webViewLink'
-            });
+            const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+            return await globalCircuitBreaker.execute('gdrive_io', async () => {
+                const file = await drive.files.create({
+                    requestBody: fileMetadata,
+                    media: media,
+                    fields: 'id, webViewLink'
+                });
 
-            return {
-                url: file.data.webViewLink || `https://drive.google.com/file/d/${file.data.id}`,
-                fileId: file.data.id || undefined
-            }
+                return {
+                    url: file.data.webViewLink || `https://drive.google.com/file/d/${file.data.id}`,
+                    fileId: file.data.id || undefined
+                }
+            });
         }
     }
 
@@ -59,30 +62,33 @@ export class GoogleDriveAdapter implements IntegrationAdapter {
             return { isValid: false, error: "Missing required fields: client_email, private_key, folder_id" }
         }
 
-        try {
-            const auth = new google.auth.GoogleAuth({
-                credentials: {
-                    client_email: credentials.client_email,
-                    private_key: credentials.private_key?.replace(/\\n/g, '\n'),
-                },
-                scopes: ['https://www.googleapis.com/auth/drive.metadata.readonly']
-            })
+        const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('gdrive_status', async () => {
+            try {
+                const auth = new google.auth.GoogleAuth({
+                    credentials: {
+                        client_email: credentials.client_email,
+                        private_key: credentials.private_key?.replace(/\\n/g, '\n'),
+                    },
+                    scopes: ['https://www.googleapis.com/auth/drive.metadata.readonly']
+                })
 
-            const drive = google.drive({ version: 'v3', auth })
+                const drive = google.drive({ version: 'v3', auth })
 
-            // Verify folder access
-            await drive.files.get({ fileId: credentials.folder_id })
+                // Verify folder access
+                await drive.files.get({ fileId: credentials.folder_id })
 
-            return {
-                isValid: true,
-                metadata: {
-                    provider: 'google',
-                    account: credentials.client_email
+                return {
+                    isValid: true,
+                    metadata: {
+                        provider: 'google',
+                        account: credentials.client_email
+                    }
                 }
+            } catch (error: any) {
+                console.error("GDrive Verification Failed:", error)
+                return { isValid: false, error: `Google Drive Access Denied: ${error.message}` }
             }
-        } catch (error: any) {
-            console.error("GDrive Verification Failed:", error)
-            return { isValid: false, error: `Google Drive Access Denied: ${error.message}` }
-        }
+        });
     }
 }
