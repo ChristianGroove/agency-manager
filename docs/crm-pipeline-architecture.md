@@ -24,8 +24,8 @@ Cada oportunidad en el embudo (`contact_type='lead'`) está vinculada a un regis
 
 ### B. Borrado Físico Definitivo
 Toda acción de eliminación en el pipeline es **Física e Irreversible**.
-- **Independencia de Borrado**: Eliminar un lead del embudo NO afecta al contacto maestro vinculado. El cliente permanece en la agenda con sus servicios activos.
-- **Eficiencia**: El borrado directo optimiza el rendimiento de la base de datos al no acumular registros residuales ("tombstones").
+- **Independencia de Borrado**: Eliminar un lead del embudo NO afecta al contacto maestro vinculado.
+- **Service-Level Enforcement**: La lógica de "soft-delete" vía `deleted_at` ha sido erradicada de la capa de servicios (`ContactService`). Las eliminaciones ahora invocan directamente el método `hardDelete` del repositorio para garantizar la higiene total del esquema.
 
 ## 3. Ciclo de Vida del Lead (Lifecycle)
 
@@ -65,5 +65,19 @@ Para manejar miles de leads sin degradar la UI, el sistema utiliza un modelo hí
 Para asegurar una experiencia fluida, el CRM redirige las acciones de "Enviar Mensaje" directamente al Inbox:
 - **Origen**: Dashboard (`LeadCard`), Inspector o Detail Modal.
 - **Parámetros**: Se utilizan `contact` (teléfono/email) o `leadId` como parámetros de consulta.
-- **Inbox Logic**: El `InboxLayout` detecta estos parámetros y utiliza la acción `createConversation` para abrir un chat existente o iniciar uno nuevo automáticamente.
-- **Ruta Única**: Todas las interacciones de chat ocurren en `/crm/inbox`.
+
+## 6. Integración de Gestión de Etapas (Inbox UI)
+
+Tras la estabilización de la Phase 4.1.2, la gestión del Pipeline se ha integrado profundamente en el Inbox mediante una interfaz táctica:
+
+### A. Lead Stage Stepper
+- **Componente**: `LeadStageStepper.tsx`
+- **Ubicación**: Se despliega en la parte superior central del `ChatArea`, posicionado de forma absoluta para no obstruir el flujo de mensajes.
+- **Diseño**: Adopta una estética de "Pill Badge" redondeada y minimalista, alineada verticalmente con el botón de **Nota** inferior para mantener el equilibrio visual de la interfaz.
+- **Lógica Status-Driven**: El Stepper opera basándose en el campo `status` (status_key) de la tabla `leads`. Esto elimina la dependencia de columnas de esquema inconsistentes y garantiza que el cambio de etapa sea atómico y seguro.
+
+### B. Sincronización de Procesos
+Al cambiar la etapa desde el Stepper:
+1. Se actualiza el campo `status` en la DB.
+2. Si el Pipeline tiene activado el "Process Engine", se dispara una validación de transición automática.
+3. El cambio se refleja instantáneamente en el **Command Center** (Analítica) gracias a la nueva arquitectura unificada de reportes.

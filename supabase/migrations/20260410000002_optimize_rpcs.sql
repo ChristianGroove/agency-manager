@@ -16,6 +16,7 @@ CREATE OR REPLACE FUNCTION public.get_paginated_leads(
     p_contact_type text DEFAULT NULL::text
 ) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path = public
     AS $$
 DECLARE
   v_offset INT;
@@ -91,6 +92,7 @@ $$;
 -- Leverages new composite indexes on conversations and agent status
 CREATE OR REPLACE FUNCTION public.get_advanced_crm_reports(p_org_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path = public
     AS $$
 DECLARE
     v_total_leads INT;
@@ -160,11 +162,22 @@ BEGIN
     SELECT jsonb_agg(perf)
     INTO v_agent_performance
     FROM (
-        WITH t_stats AS (
+        WITH l_stats AS (
+            -- 🏆 Primary source for Leads & Wins (Leads table)
             SELECT
                 assigned_to,
-                COUNT(*) as leads_count,
-                SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won_count,
+                COUNT(*) as leads_assigned,
+                SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won_count
+            FROM public.leads
+            WHERE organization_id = p_org_id
+              AND deleted_at IS NULL
+              AND (updated_at BETWEEN p_start_date AND p_end_date OR created_at BETWEEN p_start_date AND p_end_date)
+            GROUP BY assigned_to
+        ),
+        c_stats AS (
+            -- ⚡ Primary source for Engagement/Response (Conversations table)
+            SELECT
+                assigned_to,
                 AVG(CASE WHEN average_response_time_seconds > 0 THEN average_response_time_seconds ELSE NULL END)::INT as avg_resp,
                 SUM(CASE WHEN average_response_time_seconds > 0 AND average_response_time_seconds <= 300 THEN 1 ELSE 0 END) as fast_responses_count,
                 COUNT(CASE WHEN average_response_time_seconds > 0 THEN 1 ELSE NULL END) as total_responded
@@ -177,18 +190,19 @@ BEGIN
             m.user_id as agent_id,
             COALESCE(NULLIF(p.full_name, ''), 'Agente') as agent_name,
             p.avatar_url as avatar_url,
-            COALESCE(ts.leads_assigned, 0) as leads_assigned,
-            COALESCE(ts.won_count, 0) as deals_won,
-            COALESCE(ts.avg_resp, 0) as avg_response_time,
+            COALESCE(ls.leads_assigned, 0) as leads_assigned,
+            COALESCE(ls.won_count, 0) as deals_won,
+            COALESCE(cs.avg_resp, 0) as avg_response_time,
             COALESCE(aa.status, 'offline') as agent_status,
             CASE
-                WHEN COALESCE(ts.total_responded, 0) > 0
-                THEN ROUND((ts.fast_responses_count::numeric / ts.total_responded::numeric) * 100)
+                WHEN COALESCE(cs.total_responded, 0) > 0
+                THEN ROUND((cs.fast_responses_count::numeric / cs.total_responded::numeric) * 100)
                 ELSE 0
             END as sla_met_percentage
         FROM public.organization_members m
         LEFT JOIN public.profiles p ON m.user_id = p.id
-        LEFT JOIN t_stats ts ON m.user_id = ts.assigned_to
+        LEFT JOIN l_stats ls ON m.user_id = ls.assigned_to
+        LEFT JOIN c_stats cs ON m.user_id = cs.assigned_to
         LEFT JOIN public.agent_availability aa ON m.user_id = aa.agent_id AND m.organization_id = aa.organization_id
         WHERE m.organization_id = p_org_id
         ORDER BY leads_assigned DESC

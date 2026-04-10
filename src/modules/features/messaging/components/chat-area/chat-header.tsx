@@ -8,6 +8,8 @@ import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { completeConversation, snoozeConversation, archiveConversation, deleteConversation } from "@/modules/features/messaging/conversation-actions"
+import { LeadStageStepper } from "./lead-stage-stepper"
+
 
 interface ChatHeaderProps {
     conversation: Conversation | null
@@ -85,11 +87,6 @@ export function ChatHeader({
                             <>
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-semibold text-sm leading-none text-foreground">{leadName}</h3>
-                                    {conversation?.leads?.status && (
-                                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-normal text-muted-foreground border-zinc-200 dark:border-zinc-800">
-                                            {conversation.leads.status}
-                                        </Badge>
-                                    )}
                                 </div>
                                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                     <span className="capitalize">{conversation?.channel || 'Unknown'}</span>

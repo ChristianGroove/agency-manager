@@ -201,4 +201,15 @@ export class ContactRepository {
         if (error) throw error
         return count || 0
     }
+
+    async hardDelete(ids: string[], organizationId: string): Promise<number> {
+        const { count, error } = await this.supabase
+            .from('leads')
+            .delete({ count: 'exact' })
+            .eq('organization_id', organizationId)
+            .in('id', ids)
+
+        if (error) throw error
+        return count || 0
+    }
 }

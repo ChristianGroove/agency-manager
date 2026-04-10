@@ -6,6 +6,8 @@ import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { ChannelResolver, ConnectionMatch } from "@/modules/features/messaging/channel-resolver"
 import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
 import { MessagingPersistence } from "./services/persistence"
+import { LeadLifecycleManager } from "@/modules/features/crm/services/logic/lead-lifecycle-manager"
+
 
 export class InboxService {
 
@@ -106,6 +108,15 @@ export class InboxService {
             // Workflow Automation Triggers
             // Meta 2026: Triggers generally fire AFTER welcome/offline if applicable
             await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId)
+
+            // 5. REACTIVE LEAD LIFECYCLE (Innovative sync)
+            if (lead?.id) {
+                const lifecycleManager = new LeadLifecycleManager(supabase);
+                // Background execution to maintain high-frequency inbox performance
+                lifecycleManager.handleLeadIncomingActivity(lead.id, match.organizationId).catch(err => 
+                    console.error('[InboxService] Lifecycle Manager Error:', err)
+                );
+            }
         }
 
         return { success: true, conversationId: conversation.id }
@@ -263,9 +274,9 @@ export class InboxService {
         
         // 1. Pipeline Auto-Assignment (New Leads Only)
         if (!existingLead && connection.default_pipeline_stage_id) {
-            await supabase.from('leads').update({
-                current_pipeline_stage_id: connection.default_pipeline_stage_id
-            }).eq('id', lead.id)
+            // We only update status to the status_key of the stage if we could resolve it, 
+            // but for now, we leave this for the LeadLifecycleManager or simple status update.
+            // Removing direct reference to pipeline_stage_id as it is not in the schema.
         }
 
         // 2. Working Hours & Auto-Reply (Offline Message) with RATE LIMITING

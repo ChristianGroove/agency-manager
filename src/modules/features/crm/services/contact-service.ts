@@ -186,10 +186,20 @@ export class ContactService {
         return { score, factors, breakdown }
     }
 
-    async deleteContacts(ids: string[]): Promise<void> {
-        // Soft delete
-        for (const id of ids) {
-            await this.repo.update(id, { deleted_at: new Date().toISOString() }, this.organizationId)
+    async deleteContacts(ids: string[]): Promise<number> {
+        if (!this.organizationId) throw new Error("No organization context")
+        
+        const count = await this.repo.hardDelete(ids, this.organizationId)
+
+        if (this.userId) {
+            await SecurityLogger.log({
+                action: 'contact.delete_bulk',
+                resource_entity: 'leads',
+                organization_id: this.organizationId,
+                metadata: { count, ids }
+            })
         }
+
+        return count
     }
 }

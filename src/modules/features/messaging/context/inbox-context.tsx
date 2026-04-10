@@ -34,6 +34,8 @@ interface InboxContextType {
     isTagsLoading: boolean;
     updateAgent: (agentId: string, data: any) => void;
     refreshAgents: () => Promise<void>;
+    pipelineStages: any[];
+    refreshStages: () => Promise<void>;
 }
 
 const InboxContext = createContext<InboxContextType | undefined>(undefined)
@@ -51,6 +53,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     const [isCatalogLoading, setIsCatalogLoading] = useState(false)
     const [allTags, setAllTags] = React.useState<any[]>([])
     const [isTagsLoading, setIsTagsLoading] = useState(false)
+    const [pipelineStages, setPipelineStages] = useState<any[]>([])
     const [tick, setTick] = React.useState(0)
 
     // Master Ticker: Pulse every 60s to force re-calculation of relative times (like online status)
@@ -137,6 +140,16 @@ export function InboxProvider({ children }: { children: ReactNode }) {
             setIsCatalogLoading(false)
         }
     }, [isCatalogLoading])
+    
+    const refreshStages = useCallback(async () => {
+        const { getPipelineStagesAction } = await import("@/modules/features/crm/crm-actions")
+        const stages = await getPipelineStagesAction()
+        setPipelineStages(stages || [])
+    }, [])
+
+    React.useEffect(() => {
+        refreshStages()
+    }, [refreshStages])
 
     return (
         <InboxContext.Provider value={{
@@ -166,6 +179,8 @@ export function InboxProvider({ children }: { children: ReactNode }) {
             isTagsLoading,
             updateAgent,
             refreshAgents,
+            pipelineStages,
+            refreshStages,
             tick
         }}>
             {children}

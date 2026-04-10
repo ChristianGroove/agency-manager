@@ -11,6 +11,7 @@ import { toast } from "sonner"
 export type Message = Database['public']['Tables']['messages']['Row']
 export type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
+        id: string
         name: string | null
         phone: string | null
         status: string | null
@@ -57,6 +58,7 @@ export function useChatLogic(conversationId: string) {
             .select(`
                 *,
                 leads (
+                    id,
                     name,
                     phone,
                     status
@@ -174,6 +176,14 @@ export function useChatLogic(conversationId: string) {
                 (payload: any) => {
                     const updatedConv = payload.new as any
                     if (updatedConv.id === conversationId) {
+                        fetchConversation()
+                    }
+                }
+            )
+            .on('postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'leads' },
+                (payload: any) => {
+                    if (payload.new.id === conversation?.leads?.id) {
                         fetchConversation()
                     }
                 }

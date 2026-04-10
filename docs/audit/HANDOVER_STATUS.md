@@ -25,10 +25,15 @@ Antes de tomar cualquier decisión, lea:
 2. [database-map.md](file:///D:/Pixy/agency-manager/docs/architecture/database-map.md): Sección 6 sobre vulnerabilidades conocidas de seguridad que NO DEBEN tocarse todavía.
 3. [HANDOVER_STATUS.md](file:///D:/Pixy/agency-manager/docs/audit/HANDOVER_STATUS.md): Esta misma nota.
 
-## 5. Estabilización de UI (Completado 2026-04-10)
-Se han corregido fallos críticos de UX/UI en la Bandeja de Entrada (Inbox) para asegurar la fidelidad visual:
-- **Input de Chat**: Eliminación absoluta del "stroke" (borde de enfoque) mediante estilos en línea para neutralizar reglas globales persistentes.
-- **Modo Oscuro**: Corrección de contraste en el input; se eliminó el cambio de fondo que causaba invisibilidad de los caracteres.
-- **Simplificación**: Placeholder del chat simplificado a "Escribe un mensaje..." eliminando instrucciones de atajos para una UI más limpia.
+## 5. Estabilización de UI, Analítica y Seguridad (Completado 2026-04-10)
+Se han corregido fallos críticos y se ha blindado el sistema para el despliegue del Baseline:
 
-**EL OBJETIVO ACTUAL ES ESTABILIDAD Y PREPARACIÓN PARA DEPLOY, NO EXPANSIÓN DE FUNCIONALIDAD.**
+- **Pipeline Stepper Líquido**: Nueva interfaz táctica en el Inbox (`LeadStageStepper.tsx`) con diseño simétrico de badge/pill.
+- **Saneamiento de Analítica**: Reparación del RPC de reportes para unificar métricas de Leads (Ventas) y Conversaciones (SLA).
+- **Blindaje de Seguridad (DB Hardening)**:
+    - RPCs protegidos con `SET search_path = public`.
+    - Vista `v_clients` securizada con `SECURITY INVOKER` vía migración incremental.
+- **Higiene de Datos**: Eliminación total de la lógica de "soft-delete" en servicios TS, implementando borrado físico estricto.
+- **Build Status**: Verificado exitosamente (Exit Code 0).
+
+**EL SISTEMA ESTÁ EN ESTADO DE PERFECCIÓN TÉCNICA Y LISTO PARA EL DESPLIEGUE DEL BASELINE.**

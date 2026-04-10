@@ -9,6 +9,7 @@ import { MessageList } from "./message-list"
 import { ChatInput } from "./chat-input"
 import { SavedRepliesSheet } from "../saved-replies-sheet"
 import { TemplatePickerSheet } from "../template-picker-sheet"
+import { LeadStageStepper } from "./lead-stage-stepper"
 
 interface ChatAreaProps {
     conversationId: string
@@ -116,6 +117,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         backgroundPosition: "center"
                     }}
                 />
+
+                {/* Tactical Lead Stage Stepper - Top Center Positioning */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
+                    {logic.conversation?.leads && (
+                        <LeadStageStepper 
+                            leadId={logic.conversation.leads.id}
+                            leadStatus={logic.conversation.leads.status}
+                        />
+                    )}
+                </div>
                 
                 <MessageList
                     ref={virtuosoRef}

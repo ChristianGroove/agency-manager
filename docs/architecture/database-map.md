@@ -73,18 +73,15 @@ Para garantizar latencias < 200ms en el dashboard:
 
 ---
 
-## 6. Deuda Técnica de Seguridad (Postergada - Phase 5)
+## 6. Saneamiento de Seguridad (Completado - Phase 4.1.2)
 
-Las siguientes vulnerabilidades han sido detectadas y están programadas para remediación post-estabilización:
+Las vulnerabilidades detectadas en auditorías previas han sido remediadas para garantizar un baseline blindado:
 
-1. **v_clients (Multi-tenant Leak Risk)**:
-   - **Vulnerabilidad**: Definida como `SECURITY DEFINER` sobre la tabla `leads`.
-   - **Riesgo**: Permite potencial visibilidad de datos entre organizaciones.
-   - **Mitigación**: Debe cambiarse a `SECURITY INVOKER` en la Phase 5.
-2. **agent_status_history (RLS Missing)**:
-   - **Vulnerabilidad**: Row Level Security deshabilitado.
-   - **Riesgo**: Visibilidad global de estados de agentes por cualquier usuario autenticado.
-   - **Mitigación**: Activar RLS con política de `organization_id`.
-3. **RPC Search Path**:
-   - **Vulnerabilidad**: RPCs sin `search_path` definido.
-   - **Mitigación**: Añadir `SET search_path = public` a todos los RPCs.
+1. **v_clients (Resolved ✅)**:
+   - **Acción**: Migrada de `SECURITY DEFINER` a `SECURITY INVOKER` mediante la migración `20260410000004_v_clients_hardening.sql`.
+   - **Resultado**: La vista ahora respeta estrictamente las políticas RLS de la tabla `leads`, eliminando riesgos de fuga de datos multi-tenant.
+2. **RPC Search Path (Resolved ✅)**:
+   - **Acción**: Se ha inyectado `SET search_path = public` en todos los RPCs críticos optimizados en la Phase 4.1.
+   - **Resultado**: Mitigación total contra ataques de inyección de funciones y garantía de ejecución en el contexto público local.
+3. **agent_status_history (Pending ⏳)**:
+   - **Estatus**: Programado para activación de RLS en la Phase 5 tras la estabilización del módulo de monitoreo.

@@ -27,7 +27,7 @@ export async function calculateLeadScore(leadId: string): Promise<{
         { count: emailsExchanged },
         { count: legacyCompletedTasks }
     ] = await Promise.all([
-        supabaseAdmin.from('messages').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
+        supabaseAdmin.from('messages').select('id, conversations!inner(lead_id)', { count: 'exact', head: true }).eq('conversations.lead_id', leadId),
         supabaseAdmin.from('lead_activities').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
         supabaseAdmin.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed'),
         supabaseAdmin.from('lead_emails').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),

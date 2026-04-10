@@ -3,16 +3,16 @@
 Este documento detalla la arquitectura, lógica y configuración del sistema de reportes de rendimiento CRM implementado para **Pixy Spaces / Command Center**.
 
 ## 1. Núcleo de Datos (SQL RPC)
-
 Toda la agregación de métricas ocurre en el servidor de base de datos para garantizar la precisión y velocidad.
 
-- **RPC Principal**: `get_advanced_crm_reports(p_start_date, p_end_date, p_organization_id)`
-- **Ubicación del Código**: `supabase/migrations/20260327000002_reporting_rpc.sql`
-- **Lógica de SLA**: El umbral de "Respuesta Rápida" está fijado en **300 segundos (5 minutos)**. Cualquier primer contacto con un lead después de este tiempo se marca como fuera de SLA.
-- **Métricas**:
-    - **Conversión**: Ganados / Totales Asignados.
-    - **Pipeline**: Suma del valor monetario de las conversaciones asignadas por agente.
-    - **Abandono Crítico**: Leads en estado "pendientes" por más de **24 horas** (86,400 segundos) sin respuesta inicial.
+- **RPC Principal**: `get_advanced_crm_reports(p_org_id, p_start_date, p_end_date)`
+- **Ubicación del Código**: `supabase/migrations/20260410000002_optimize_rpcs.sql` (Optimización Phase 4.1.2)
+- **Lógica de Agregación Unificada (Splicing)**:
+    - **Leads & Wins**: Los conteos de "Deals Won" y leads asignados se extraen de la tabla `leads` (fuente de verdad del Pipeline).
+    - **Eficiencia & SLA**: El tiempo promedio de respuesta y el cumplimiento de SLA se extraen de la tabla `conversations`.
+    - **Unificación**: El sistema unifica ambas fuentes por `agent_id` garantizando que el reporte refleje tanto la efectividad en ventas como la eficiencia en atención.
+- **Lógica de SLA**: El umbral de "Respuesta Rápida" está fijado en **300 segundos (5 minutos)**.
+- **Abandono Crítico**: Leads en estado "pendientes" por más de **24 horas** sin respuesta inicial.
 
 ## 2. Generador de PDF (@/modules/features/crm/services/crm-report-generator.ts)
 
