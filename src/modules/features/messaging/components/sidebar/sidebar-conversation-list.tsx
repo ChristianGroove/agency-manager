@@ -388,7 +388,12 @@ export function SidebarConversationList({
                             // AGENT PRIVACY ENFORCEMENT:
                             // Regular agents (members) should ONLY see chats assigned to them, 
                             // even in the "All" tab, to prevent cross-agent data leakage.
-                            let isAuthorizedForView = hasGlobalView || isAdmin || assignedTo === currentUserId
+                            // CRITICAL: We only apply this filter IF the identity is fully loaded.
+                            // If still loading, we assume authorized to prevent false negatives (cards disappearing for owners).
+                            let isAuthorizedForView = true
+                            if (identityLoaded) {
+                                isAuthorizedForView = hasGlobalView || isAdmin || assignedTo === currentUserId
+                            }
 
                             if (!isAuthorizedForView) {
                                 matches = false
