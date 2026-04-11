@@ -141,7 +141,7 @@ export default function ReportsPage() {
                         </div>
                         {reportData && (
                             <div className="px-2 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 text-[10px] font-mono text-blue-600">
-                                L:{reportData.summary.total_leads} | A:{reportData.agent_performance.length}
+                                L:{reportData?.summary?.total_leads ?? 0} | A:{reportData?.agent_performance?.length ?? 0}
                             </div>
                         )}
                     </div>
@@ -193,7 +193,7 @@ export default function ReportsPage() {
                 <Card className="p-5 border-none bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Total Leads</p>
                     <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary.total_leads ?? 0)}</h3>
+                        <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary?.total_leads ?? 0)}</h3>
                     </div>
                     <Users className="absolute right-4 bottom-4 w-6 h-6 text-blue-500/20" />
                 </Card>
@@ -201,7 +201,7 @@ export default function ReportsPage() {
                 <Card className="p-5 border-none bg-gradient-to-br from-purple-500/10 to-purple-600/5 dark:from-purple-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Conversión</p>
                     <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-black">{loading ? '...' : `${reportData?.summary.conversion_rate ?? 0}%`}</h3>
+                        <h3 className="text-3xl font-black">{loading ? '...' : `${reportData?.summary?.conversion_rate ?? 0}%`}</h3>
                     </div>
                     <Target className="absolute right-4 bottom-4 w-6 h-6 text-purple-500/20" />
                 </Card>
@@ -209,7 +209,7 @@ export default function ReportsPage() {
                 <Card className="p-5 border-none bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">Valor Pipeline</p>
                     <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-black">{loading ? '...' : formatCurrency(reportData?.summary.pipeline_value || 0)}</h3>
+                        <h3 className="text-3xl font-black">{loading ? '...' : formatCurrency(reportData?.summary?.pipeline_value || 0)}</h3>
                     </div>
                     <DollarSign className="absolute right-4 bottom-4 w-6 h-6 text-emerald-500/20" />
                 </Card>
@@ -217,7 +217,7 @@ export default function ReportsPage() {
                 <Card className="p-5 border-none bg-gradient-to-br from-orange-500/10 to-orange-600/5 dark:from-orange-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-1">Tiempo Respuesta</p>
                     <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-black">{loading ? '...' : `${Math.round((reportData?.summary.avg_response_time || 0) / 60)}m`}</h3>
+                        <h3 className="text-3xl font-black">{loading ? '...' : `${Math.round((reportData?.summary?.avg_response_time || 0) / 60)}m`}</h3>
                         <Badge variant="outline" className="mb-1 text-[10px] border-orange-500/20 text-orange-600">SLA {'< 5m'}</Badge>
                     </div>
                     <Clock className="absolute right-4 bottom-4 w-6 h-6 text-orange-500/20" />
@@ -226,7 +226,7 @@ export default function ReportsPage() {
                 <Card className="p-5 border-none bg-gradient-to-br from-red-500/10 to-red-600/5 dark:from-red-500/20 dark:to-transparent relative overflow-hidden group border-l-4 border-red-500">
                     <p className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Abandono {'>24h'}</p>
                     <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-black text-red-600">{loading ? '...' : reportData?.summary.abandoned_leads}</h3>
+                        <h3 className="text-3xl font-black text-red-600">{loading ? '...' : (reportData?.summary?.abandoned_leads ?? 0)}</h3>
                     </div>
                     <AlertTriangle className="absolute right-4 bottom-4 w-6 h-6 text-red-500/20" />
                 </Card>
@@ -272,7 +272,7 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-white dark:bg-zinc-900/50 border-white/5">
                     <h3 className="font-bold text-lg mb-6">Fuentes de Leads</h3>
                     <div className="h-[250px] w-full relative text-center flex flex-col items-center justify-center">
-                        {(!reportData || reportData.lead_sources.length === 0) ? (
+                        {(!reportData || !reportData.lead_sources || reportData.lead_sources.length === 0) ? (
                             <div className="text-sm text-muted-foreground italic">No hay datos de fuentes</div>
                         ) : (
                             <>
@@ -296,7 +296,7 @@ export default function ReportsPage() {
                                     </RePieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-2xl font-black">{reportData.summary.total_leads}</span>
+                                    <span className="text-2xl font-black">{reportData.summary?.total_leads ?? 0}</span>
                                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Inbound Total</span>
                                 </div>
                             </>
@@ -328,7 +328,7 @@ export default function ReportsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {reportData?.agent_performance.map((agent) => (
+                            {reportData?.agent_performance?.map((agent) => (
                                 <tr key={agent.agent_id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -366,7 +366,7 @@ export default function ReportsPage() {
                                     </td>
                                 </tr>
                             ))}
-                            {(!loading && (!reportData || reportData.agent_performance.length === 0)) && (
+                            {(!loading && (!reportData || !reportData.agent_performance || reportData.agent_performance.length === 0)) && (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground italic">
                                         No se encontraron datos de rendimiento para el periodo seleccionado.
@@ -389,14 +389,14 @@ export default function ReportsPage() {
                             </h3>
                             <p className="text-sm text-muted-foreground">Conversiones en riesgo por falta de respuesta</p>
                         </div>
-                        {reportData && (
+                        {reportData?.summary && (
                             <Badge variant="destructive" className="animate-pulse">
                                 {reportData.summary.abandoned_leads} CRÍTICOS
                             </Badge>
                         )}
                     </div>
                     <div className="divide-y divide-white/5">
-                        {reportData?.abandoned_leads_list.map((lead) => (
+                        {reportData?.abandoned_leads_list?.map((lead) => (
                             <div key={lead.id} className="p-4 hover:bg-red-500/5 transition-colors flex items-center justify-between group">
                                 <div className="space-y-1">
                                     <p className="font-bold text-gray-900 dark:text-gray-100">{lead.name}</p>
@@ -416,7 +416,7 @@ export default function ReportsPage() {
                                 </Button>
                             </div>
                         ))}
-                        {(!loading && (!reportData || reportData.abandoned_leads_list.length === 0)) && (
+                        {(!loading && (!reportData || !reportData.abandoned_leads_list || reportData.abandoned_leads_list.length === 0)) && (
                             <div className="p-8 text-center text-muted-foreground italic">
                                 ¡Excelente! No hay leads abandonados en este momento.
                             </div>

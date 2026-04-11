@@ -57,7 +57,7 @@ export function SidebarContactList({
         const fetchUserDataAndChannels = async () => {
             try {
                 // If perms aren't provided, fetch them once here
-                if (!propPermissions) {
+                if (!propPermissions && !localPermissions) {
                     const perms = await getCurrentUserPermissions()
                     setLocalPermissions(perms)
                 }
@@ -84,7 +84,7 @@ export function SidebarContactList({
             }
         }
         fetchUserDataAndChannels()
-    }, [propPermissions, hasGlobalView, effectivePermissions])
+    }, [propPermissions, hasGlobalView]) // Broken circular dependency with effectivePermissions
 
     // Debounced search
     const performSearch = async (query: string) => {

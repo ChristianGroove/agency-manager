@@ -1006,6 +1006,7 @@ export const es = {
                 search_placeholder: "Buscar conversaciones...",
                 search_contacts_placeholder: "Buscar o ingresar teléfono...",
                 inbox_settings: "Ajustes del Inbox",
+                send_from: "Enviar desde:",
                 filters: {
                     all: "Todos",
                     unread: "No leídos",

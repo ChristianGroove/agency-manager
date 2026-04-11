@@ -33,7 +33,7 @@ export class MessagingPersistence {
         const supabase = supabaseAdmin
 
         const { error } = await supabase.from('messages').insert({
-            id: id,
+            id: id || messageId || undefined, // Use provided ID to match optimistic UI
             conversation_id: conversationId,
             direction: 'outbound',
             channel: channel,

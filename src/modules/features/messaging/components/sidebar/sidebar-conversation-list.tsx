@@ -355,22 +355,31 @@ export function SidebarConversationList({
                         if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
 
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
-                        
+                        const existingConv = existingIndex > -1 ? prev[existingIndex] : null
+
                         let matches = true
                         
                         // Security check: Must belong to authorized channels if NOT owner
+                        // Use existing connection_id if the Realtime update didn't include it (partial update)
+                        const effectiveConnectionId = updatedConv.connection_id || existingConv?.connection_id
+
                         if (!hasGlobalView) {
-                            if (!updatedConv.connection_id || !authorizedChannels.includes(updatedConv.connection_id)) {
+                            if (!effectiveConnectionId || !authorizedChannels.includes(effectiveConnectionId)) {
                                 matches = false
                             }
                         }
 
                         if (matches) {
-                            if (activeFilter === 'all') matches = updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
-                            else if (activeFilter === 'unread') matches = updatedConv.unread_count > 0 && updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
-                            else if (activeFilter === 'assigned') matches = updatedConv.assigned_to === currentUserId && updatedConv.state !== 'archived'
-                            else if (activeFilter === 'archived') matches = updatedConv.state === 'archived'
-                            else if (activeFilter === 'snoozed') matches = updatedConv.status === 'snoozed'
+                            // Status/State checks also fallback to existing data if needed
+                            const state = updatedConv.state || existingConv?.state || 'active'
+                            const status = updatedConv.status || existingConv?.status || 'open'
+                            const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
+
+                            if (activeFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
+                            else if (activeFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
+                            else if (activeFilter === 'assigned') matches = (updatedConv.assigned_to || existingConv?.assigned_to) === currentUserId && state !== 'archived'
+                            else if (activeFilter === 'archived') matches = state === 'archived'
+                            else if (activeFilter === 'snoozed') matches = status === 'snoozed'
                         }
 
                         if (!matches) return prev.filter(c => c.id !== updatedConv.id)
@@ -384,6 +393,9 @@ export function SidebarConversationList({
                                 integration_connections: prev[existingIndex].integration_connections
                             }
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
+                        } else if (eventType === 'INSERT') {
+                            // Handle new conversations coming via Realtime
+                            return [updatedConv, ...prev]
                         }
                         return prev 
                     })
@@ -420,7 +432,7 @@ export function SidebarConversationList({
             realtimeManager.releaseChannel(channelName)
             window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
         }
-    }, [effectiveOrgId, currentUserId, activeFilter, identityLoaded])
+    }, [effectiveOrgId, currentUserId, activeFilter, identityLoaded, hasGlobalView, authorizedChannels, effectivePermissions])
 
     const counts = useMemo(() => {
         return {
