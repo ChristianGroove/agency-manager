@@ -383,12 +383,22 @@ export function SidebarConversationList({
                             const state = updatedConv.state || existingConv?.state || 'active'
                             const status = updatedConv.status || existingConv?.status || 'open'
                             const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
+                            const assignedTo = updatedConv.assigned_to || existingConv?.assigned_to
 
-                            if (activeFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
-                            else if (activeFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
-                            else if (activeFilter === 'assigned') matches = (updatedConv.assigned_to || existingConv?.assigned_to) === currentUserId && state !== 'archived'
-                            else if (activeFilter === 'archived') matches = state === 'archived'
-                            else if (activeFilter === 'snoozed') matches = status === 'snoozed'
+                            // AGENT PRIVACY ENFORCEMENT:
+                            // Regular agents (members) should ONLY see chats assigned to them, 
+                            // even in the "All" tab, to prevent cross-agent data leakage.
+                            let isAuthorizedForView = hasGlobalView || isAdmin || assignedTo === currentUserId
+
+                            if (!isAuthorizedForView) {
+                                matches = false
+                            } else {
+                                if (activeFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
+                                else if (activeFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
+                                else if (activeFilter === 'assigned') matches = assignedTo === currentUserId && state !== 'archived'
+                                else if (activeFilter === 'archived') matches = state === 'archived'
+                                else if (activeFilter === 'snoozed') matches = status === 'snoozed'
+                            }
                         }
 
                         if (!matches) return prev.filter(c => c.id !== updatedConv.id)
@@ -404,6 +414,27 @@ export function SidebarConversationList({
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
                         } else if (eventType === 'INSERT') {
                             // Handle new conversations coming via Realtime
+                            // SURGICAL FETCH: New rows lack lead/connection metadata. 
+                            // We fetch them instantly to avoid "Unknown User" flashes.
+                            supabase
+                                .from('conversations')
+                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
+                                .eq('id', updatedConv.id)
+                                .single()
+                                .then(({ data }) => {
+                                    if (data) {
+                                        setConversations(current => {
+                                            const idx = current.findIndex(c => c.id === data.id)
+                                            if (idx > -1) {
+                                                const updated = [...current]
+                                                updated[idx] = data as Conversation
+                                                return updated
+                                            }
+                                            return [data as Conversation, ...current]
+                                        })
+                                    }
+                                })
+
                             return [updatedConv, ...prev]
                         }
                         return prev 
