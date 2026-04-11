@@ -43,6 +43,14 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
     const [userPermissions, setUserPermissions] = React.useState<any>(null)
     const [isContextOpen, setIsContextOpen] = React.useState(true)
     const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
+    const [mounted, setMounted] = React.useState(false)
+
+    // Memoize permissions to prevent unnecessary re-renders of the sidebar/realtime
+    const memoizedPermissions = React.useMemo(() => userPermissions, [userPermissions])
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -199,7 +207,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         selectedConversationId={selectedConversationId}
                         onSelectConversation={setSelectedConversationId}
                         organizationId={organizationId}
-                        userPermissions={userPermissions}
+                        userPermissions={memoizedPermissions}
                     />
                     <ConversationDropZones visible={!!activeDragId} />
                 </div>

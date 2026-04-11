@@ -89,6 +89,11 @@ export function SidebarConversationList({
     const [activeMenuConvId, setActiveMenuConvId] = useState<string | null>(null)
     const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
     const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
     
     // Internal fallbacks if props are missing
     const { organizationId: localOrgId, loading: orgLoading } = useCurrentOrganization()
@@ -349,7 +354,9 @@ export function SidebarConversationList({
                     
                     if (updatedConv && updatedConv.organization_id !== effectiveOrgId) return;
 
-                    const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
+                    // Note: We use the deep-mapped 'authorizedChannels' from the outer scope 
+                    // which is already in the useEffect dependency array. 
+                    // This ensures consistency between REST fetches and Realtime updates.
 
                     setConversations((prev) => {
                         if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
@@ -357,13 +364,15 @@ export function SidebarConversationList({
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
                         const existingConv = existingIndex > -1 ? prev[existingIndex] : null
 
-                        let matches = true
-                        
-                        // Security check: Must belong to authorized channels if NOT owner
-                        // Use existing connection_id if the Realtime update didn't include it (partial update)
+                        // Resolve the connection ID correctly for security checks
                         const effectiveConnectionId = updatedConv.connection_id || existingConv?.connection_id
 
-                        if (!hasGlobalView) {
+                        let matches = true
+                        
+                        // SECURITY & PERSISTENCE GUARD:
+                        // Only perform destructive filtering if identity is 100% loaded and stable.
+                        // If we are still loading, we keep the conversation to prevent "flashing" or accidental removal.
+                        if (!hasGlobalView && identityLoaded) {
                             if (!effectiveConnectionId || !authorizedChannels.includes(effectiveConnectionId)) {
                                 matches = false
                             }
@@ -640,7 +649,7 @@ export function SidebarConversationList({
             </TooltipProvider>
 
             <div className="flex-1 min-h-0">
-                {!identityLoaded ? (
+                {(!mounted || !identityLoaded) ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         {t('crm.inbox.sidebar.loading')}
                     </div>
