@@ -30,9 +30,10 @@ CREATE INDEX IF NOT EXISTS idx_reseller_activity_lookup ON public.reseller_activ
 (reseller_org_id, client_org_id, activity_date DESC);
 
 -- Optimizes revenue_share_rules lookup
+-- Note: CURRENT_DATE cannot be used in partial index predicates (not IMMUTABLE).
+-- The index covers the composite lookup path; date filtering happens at query time.
 CREATE INDEX IF NOT EXISTS idx_revenue_rules_lookup ON public.revenue_share_rules 
-(reseller_org_id, phase_start_month, effective_from)
-WHERE (effective_to IS NULL OR effective_to >= CURRENT_DATE);
+(reseller_org_id, phase_start_month, effective_from);
 
 -- 5. Lead Naming Normalization Index (Optional but recommended for identity safety)
 CREATE INDEX IF NOT EXISTS idx_leads_identity_lookup ON public.leads (organization_id, contact_type, email) 

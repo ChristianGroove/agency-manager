@@ -13,14 +13,14 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA "extensions";
-
-
-
-
-
-
 COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE EXTENSION IF NOT EXISTS "moddatetime" WITH SCHEMA "extensions";
+
+
+
 
 
 
@@ -53,6 +53,13 @@ CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
 
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA "extensions";
 
 
 
@@ -293,24 +300,24 @@ BEGIN
     SELECT * INTO v_app
     FROM public.saas_apps
     WHERE id = p_app_id AND is_active = true;
-
+    
     IF NOT FOUND THEN
         RETURN jsonb_build_object(
             'success', false,
             'error', 'App not found or inactive'
         );
     END IF;
-
+    
     -- Update organization app assignment
     UPDATE public.organizations
-    SET
+    SET 
         active_app_id = p_app_id,
         app_activated_at = NOW(),
         updated_at = NOW()
     WHERE id = p_organization_id;
-
+    
     -- Collect modules to enable
-    FOR v_module IN
+    FOR v_module IN 
         SELECT module_key, auto_enable, is_optional
         FROM public.saas_app_modules
         WHERE app_id = p_app_id
@@ -323,15 +330,15 @@ BEGIN
             v_modules_to_enable := array_append(v_modules_to_enable, v_module.module_key);
         END IF;
     END LOOP;
-
+    
     -- Update organization manual_module_overrides
     -- (This will be processed by the module system)
     UPDATE public.organizations
-    SET
+    SET 
         manual_module_overrides = v_modules_to_enable,
         updated_at = NOW()
     WHERE id = p_organization_id;
-
+    
     RETURN jsonb_build_object(
         'success', true,
         'app_id', p_app_id,
@@ -363,39 +370,39 @@ BEGIN
     SELECT * INTO v_module
     FROM public.system_modules
     WHERE key = p_module_key;
-
+    
     IF NOT FOUND THEN
         RETURN v_to_activate;
     END IF;
-
+    
     -- Check each dependency
     IF v_module.dependencies IS NOT NULL AND v_module.dependencies != '[]'::jsonb THEN
         FOR v_dep IN SELECT * FROM jsonb_array_elements(v_module.dependencies)
         LOOP
             -- If required and not active, add to list
-            IF (v_dep->>'type') = 'required' AND
+            IF (v_dep->>'type') = 'required' AND 
                NOT ((v_dep->>'module_key') = ANY(p_current_active_modules)) AND
                NOT ((v_dep->>'module_key') = ANY(v_to_activate)) THEN
-
+                
                 v_to_activate := array_append(v_to_activate, v_dep->>'module_key');
-
+                
                 -- Recursively check dependencies of dependencies
                 v_nested_deps := public.auto_resolve_dependencies(
                     v_dep->>'module_key',
                     p_current_active_modules || v_to_activate
                 );
-
+                
                 -- Add nested dependencies
                 v_to_activate := v_to_activate || v_nested_deps;
             END IF;
         END LOOP;
     END IF;
-
+    
     -- Remove duplicates
     SELECT ARRAY_AGG(DISTINCT module)
     INTO v_to_activate
     FROM unnest(v_to_activate) AS module;
-
+    
     RETURN COALESCE(v_to_activate, ARRAY[]::TEXT[]);
 END;
 $$;
@@ -438,7 +445,7 @@ CREATE OR REPLACE FUNCTION "public"."calculate_cart_total"() RETURNS "trigger"
 begin
     -- Update the parent cart's total_amount
     update public.deal_carts
-    set
+    set 
         total_amount = (
             select coalesce(sum(quantity * unit_price), 0)
             from public.cart_items
@@ -446,7 +453,7 @@ begin
         ),
         updated_at = now()
     where id = coalesce(new.cart_id, old.cart_id);
-
+    
     return null;
 end;
 $$;
@@ -472,34 +479,34 @@ BEGIN
         RETURN QUERY SELECT 0::DECIMAL(10,2), NULL::UUID, 'error'::TEXT, 0, 'Evento no encontrado';
         RETURN;
     END IF;
-
-    -- 2. Obtener cliente y su reseller de adquisici??n
-    SELECT
+    
+    -- 2. Obtener cliente y su reseller de adquisición
+    SELECT 
         o.id,
         o.acquired_by_reseller_id,
         o.acquisition_date
-    INTO v_client
-    FROM public.organizations o
+    INTO v_client 
+    FROM public.organizations o 
     WHERE o.id = v_event.organization_id;
-
-    -- Si no tiene reseller, comisi??n = 0 (cliente directo)
+    
+    -- Si no tiene reseller, comisión = 0 (cliente directo)
     IF v_client.acquired_by_reseller_id IS NULL THEN
-        RETURN QUERY SELECT 0::DECIMAL(10,2), NULL::UUID, 'direct_client'::TEXT, 0, 'Cliente directo - sin comisi??n';
+        RETURN QUERY SELECT 0::DECIMAL(10,2), NULL::UUID, 'direct_client'::TEXT, 0, 'Cliente directo - sin comisión';
         RETURN;
     END IF;
-
+    
     v_reseller_id := v_client.acquired_by_reseller_id;
-
-    -- 3. Calcular antig??edad del cliente en meses
+    
+    -- 3. Calcular antigüedad del cliente en meses
     IF v_client.acquisition_date IS NULL THEN
         v_age_months := 0;
     ELSE
-        v_age_months := GREATEST(0,
+        v_age_months := GREATEST(0, 
             EXTRACT(YEAR FROM age(v_event.event_date, v_client.acquisition_date)) * 12 +
             EXTRACT(MONTH FROM age(v_event.event_date, v_client.acquisition_date))
         )::INTEGER;
     END IF;
-
+    
     -- 4. Buscar regla aplicable
     SELECT * INTO v_rule
     FROM public.revenue_share_rules
@@ -509,17 +516,17 @@ BEGIN
       AND v_event.event_type = ANY(eligible_event_types)
       AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
       AND effective_from <= CURRENT_DATE
-    ORDER BY
-        reseller_org_id NULLS LAST, -- Prioriza regla espec??fica del reseller
-        phase_start_month DESC      -- Prioriza fase m??s espec??fica
+    ORDER BY 
+        reseller_org_id NULLS LAST, -- Prioriza regla específica del reseller
+        phase_start_month DESC      -- Prioriza fase más específica
     LIMIT 1;
-
+    
     IF NOT FOUND THEN
-        RETURN QUERY SELECT 0::DECIMAL(10,2), NULL::UUID, 'no_eligible_rule'::TEXT, v_age_months,
+        RETURN QUERY SELECT 0::DECIMAL(10,2), NULL::UUID, 'no_eligible_rule'::TEXT, v_age_months, 
             format('Evento tipo %s no elegible en mes %s', v_event.event_type, v_age_months);
         RETURN;
     END IF;
-
+    
     -- 5. Verificar actividad si es requerida (Fase 2)
     IF v_rule.requires_reseller_activity THEN
         SELECT EXISTS(
@@ -528,21 +535,21 @@ BEGIN
               AND client_org_id = v_client.id
               AND activity_date >= (v_event.event_date - (v_rule.activity_window_days || ' days')::INTERVAL)
         ) INTO v_has_activity;
-
+        
         IF NOT v_has_activity THEN
             RETURN QUERY SELECT 0::DECIMAL(10,2), v_rule.id, v_rule.phase_name || '_no_activity', v_age_months,
-                format('Sin actividad en ??ltimos %s d??as', v_rule.activity_window_days);
+                format('Sin actividad en últimos %s días', v_rule.activity_window_days);
             RETURN;
         END IF;
     END IF;
-
-    -- 6. Calcular y retornar comisi??n
-    RETURN QUERY SELECT
+    
+    -- 6. Calcular y retornar comisión
+    RETURN QUERY SELECT 
         ROUND(v_event.amount * (v_rule.commission_percent / 100), 2)::DECIMAL(10,2),
         v_rule.id,
         v_rule.phase_name,
         v_age_months,
-        format('Comisi??n %s%% aplicada (Fase: %s, Mes: %s)',
+        format('Comisión %s%% aplicada (Fase: %s, Mes: %s)', 
             v_rule.commission_percent, v_rule.phase_name, v_age_months);
 END;
 $$;
@@ -551,7 +558,7 @@ $$;
 ALTER FUNCTION "public"."calculate_event_commission"("p_event_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."calculate_event_commission"("p_event_id" "uuid") IS 'Calcula la comisi??n de un evento basado en reglas de fase. Retorna 0 para clientes directos o eventos no elegibles.';
+COMMENT ON FUNCTION "public"."calculate_event_commission"("p_event_id" "uuid") IS 'Calcula la comisión de un evento basado en reglas de fase. Retorna 0 para clientes directos o eventos no elegibles.';
 
 
 
@@ -565,29 +572,29 @@ DECLARE
 BEGIN
     -- Files are typically stored with org prefix: org_{uuid}/...
     v_bucket_prefix := 'org_' || p_organization_id::TEXT || '%';
-
+    
     -- Calculate from storage.objects
-    SELECT
+    SELECT 
         COALESCE(SUM((metadata->>'size')::BIGINT), 0),
         COUNT(*)
     INTO v_total_bytes, v_file_count
     FROM storage.objects
     WHERE name LIKE v_bucket_prefix
     OR bucket_id IN (
-        SELECT id FROM storage.buckets
+        SELECT id FROM storage.buckets 
         WHERE name LIKE v_bucket_prefix
     );
-
+    
     -- Update cache
     INSERT INTO public.storage_usage (organization_id, total_bytes, file_count, last_calculated_at)
     VALUES (p_organization_id, v_total_bytes, v_file_count, NOW())
     ON CONFLICT (organization_id) DO UPDATE
-    SET
+    SET 
         total_bytes = EXCLUDED.total_bytes,
         file_count = EXCLUDED.file_count,
         last_calculated_at = NOW(),
         updated_at = NOW();
-
+    
     RETURN QUERY SELECT v_total_bytes, v_file_count;
 END;
 $$;
@@ -601,7 +608,7 @@ CREATE OR REPLACE FUNCTION "public"."calculate_period_totals"("period_id" "uuid"
     AS $$
 BEGIN
     UPDATE staff_payroll_periods
-    SET
+    SET 
         total_hours = (
             SELECT COALESCE(SUM(total_hours), 0)
             FROM staff_payroll_settlements
@@ -657,20 +664,20 @@ BEGIN
     SELECT role, permissions INTO v_role, v_permissions
     FROM organization_members
     WHERE organization_id = p_org_id AND user_id = p_user_id;
-
+    
     -- Owners have all module access
     IF v_role = 'owner' THEN
         RETURN true;
     END IF;
-
+    
     -- Check explicit module setting
     v_module_value := (v_permissions->'modules'->>p_module)::boolean;
-
+    
     -- If not set, default to true for admins, false for members
     IF v_module_value IS NULL THEN
         RETURN v_role = 'admin';
     END IF;
-
+    
     RETURN v_module_value;
 END;
 $$;
@@ -691,7 +698,7 @@ BEGIN
     SELECT role, permissions INTO v_role, v_permissions
     FROM organization_members
     WHERE organization_id = p_org_id AND user_id = p_user_id;
-
+    
     -- Owners and Admins have all permissions by default
     IF v_role IN ('owner', 'admin') THEN
         -- Check if explicitly disabled
@@ -701,7 +708,7 @@ BEGIN
         END IF;
         RETURN true;
     END IF;
-
+    
     -- For members, check explicit permission
     v_permission_value := v_permissions->'features'->>p_permission;
     RETURN COALESCE(v_permission_value, false);
@@ -726,16 +733,16 @@ BEGIN
     SELECT su.total_bytes INTO v_current_usage
     FROM public.storage_usage su
     WHERE su.organization_id = p_organization_id;
-
+    
     -- If no cache, calculate
     IF v_current_usage IS NULL THEN
         SELECT calc.total_bytes INTO v_current_usage
         FROM public.calculate_org_storage(p_organization_id) calc;
     END IF;
-
+    
     -- Get limit
     v_limit := public.get_org_storage_limit(p_organization_id);
-
+    
     -- Unlimited?
     IF v_limit = -1 THEN
         v_allowed := TRUE;
@@ -746,8 +753,8 @@ BEGIN
         v_allowed := (v_current_usage + p_file_size_bytes) <= v_limit;
         v_percentage := LEAST(100, ((v_current_usage::FLOAT / v_limit::FLOAT) * 100)::INTEGER);
     END IF;
-
-    RETURN QUERY SELECT
+    
+    RETURN QUERY SELECT 
         v_allowed,
         v_current_usage,
         v_limit,
@@ -776,7 +783,7 @@ BEGIN
     FROM organization_members
     WHERE organization_id = (SELECT organization_id FROM workflows WHERE id = p_workflow_id)
     AND user_id = p_user_id;
-
+    
     IF v_org_role IN ('owner', 'admin') THEN
         RETURN TRUE;
     END IF;
@@ -831,9 +838,9 @@ DECLARE
     v_member_count INTEGER;
 BEGIN
     -- Find all organizations where the deleted user was a member
-    FOR v_org_id IN
-        SELECT organization_id
-        FROM public.organization_members
+    FOR v_org_id IN 
+        SELECT organization_id 
+        FROM public.organization_members 
         WHERE user_id = OLD.id
     LOOP
         -- Count remaining members after this user is deleted
@@ -841,25 +848,25 @@ BEGIN
         FROM public.organization_members
         WHERE organization_id = v_org_id
         AND user_id != OLD.id;
-
+        
         -- If no other members remain, delete the organization
         IF v_member_count = 0 THEN
             -- First delete the membership record
-            DELETE FROM public.organization_members
+            DELETE FROM public.organization_members 
             WHERE organization_id = v_org_id AND user_id = OLD.id;
-
+            
             -- Then delete the orphan organization
-            DELETE FROM public.organizations
+            DELETE FROM public.organizations 
             WHERE id = v_org_id;
-
+            
             RAISE NOTICE 'Deleted orphan organization: %', v_org_id;
         ELSE
             -- Just delete the membership, keep the org
-            DELETE FROM public.organization_members
+            DELETE FROM public.organization_members 
             WHERE organization_id = v_org_id AND user_id = OLD.id;
         END IF;
     END LOOP;
-
+    
     RETURN OLD;
 END;
 $$;
@@ -877,7 +884,7 @@ CREATE OR REPLACE FUNCTION "public"."cleanup_portal_access_logs"() RETURNS "void
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-    DELETE FROM portal_access_logs
+    DELETE FROM portal_access_logs 
     WHERE created_at < now() - interval '90 days';
 END;
 $$;
@@ -897,7 +904,7 @@ BEGIN
         (NEW.id, 'Contactado', 'contacted', 2, 'bg-indigo-500', 'mail', true, false),
         (NEW.id, 'Calificado', 'qualified', 3, 'bg-purple-500', 'check-circle', true, false),
         (NEW.id, 'Propuesta Enviada', 'proposal', 4, 'bg-violet-500', 'file-text', true, false),
-        (NEW.id, 'Negociaci??n', 'negotiation', 5, 'bg-orange-500', 'users', true, false),
+        (NEW.id, 'Negociación', 'negotiation', 5, 'bg-orange-500', 'users', true, false),
         (NEW.id, 'Ganado', 'won', 6, 'bg-green-500', 'trophy', true, true),
         (NEW.id, 'Perdido', 'lost', 7, 'bg-red-500', 'x-circle', true, true);
 
@@ -925,9 +932,9 @@ BEGIN
         _organization_id, _name, _description, 'dynamic', _filter_config, _cached_count, _created_by
     )
     RETURNING to_jsonb(marketing_audiences.*) INTO new_record;
-
+    
     NOTIFY pgrst, 'reload config';
-
+    
     RETURN new_record;
 END;
 $$;
@@ -948,9 +955,9 @@ BEGIN
         _organization_id, _name, _description, 'dynamic', _filter_config, _cached_count, _created_by
     )
     RETURNING to_jsonb(marketing_audiences.*) INTO new_record;
-
+    
     NOTIFY pgrst, 'reload config';
-
+    
     RETURN new_record;
 END;
 $$;
@@ -964,7 +971,7 @@ CREATE OR REPLACE FUNCTION "public"."decrement_storage_usage"("p_organization_id
     AS $$
 BEGIN
     UPDATE public.storage_usage
-    SET
+    SET 
         total_bytes = GREATEST(0, total_bytes - p_bytes),
         file_count = GREATEST(0, file_count - 1),
         updated_at = NOW()
@@ -982,7 +989,7 @@ CREATE OR REPLACE FUNCTION "public"."execute_scheduled_deletions"() RETURNS TABL
 DECLARE
     r RECORD;
 BEGIN
-    FOR r IN
+    FOR r IN 
         SELECT id, name
         FROM public.organizations
         WHERE deletion_scheduled_at < NOW()
@@ -993,10 +1000,10 @@ BEGIN
         INSERT INTO public.lifecycle_notifications (organization_id, notification_type)
         VALUES (r.id, 'account_deleted')
         ON CONFLICT DO NOTHING;
-
+        
         -- Delete the organization (cascades to related data)
         DELETE FROM public.organizations WHERE id = r.id;
-
+        
         org_id := r.id;
         org_name := r.name;
         action_taken := 'deleted';
@@ -1073,7 +1080,7 @@ BEGIN
       AND aa.last_seen_at > (NOW() - INTERVAL '3 minutes')
       AND (p_agent_pool IS NULL OR aa.agent_id = ANY(p_agent_pool))
       AND (
-          LOWER(om.role) IN ('admin', 'owner')
+          LOWER(om.role) IN ('admin', 'owner') 
           OR (p_channel_type IS NOT NULL AND (ac.channel_type = p_channel_type OR ac.channel_type = p_connection_id))
           OR (om.permissions->'inbox_access' @> jsonb_build_array(p_connection_id))
       );
@@ -1158,16 +1165,16 @@ BEGIN
         IF NEW.assigned_to IS NOT NULL THEN
             PERFORM public.fn_recalculate_agent_load(NEW.assigned_to);
         END IF;
-
+    
     -- CASE: New conversation with assignment
     ELSIF (TG_OP = 'INSERT' AND NEW.assigned_to IS NOT NULL) THEN
         PERFORM public.fn_recalculate_agent_load(NEW.assigned_to);
-
+    
     -- CASE: Status or State changed (Archive, Spam, Delete, Snooze, etc.)
-    ELSIF (TG_OP = 'UPDATE' AND NEW.assigned_to IS NOT NULL AND
+    ELSIF (TG_OP = 'UPDATE' AND NEW.assigned_to IS NOT NULL AND 
           (OLD.status IS DISTINCT FROM NEW.status OR OLD.state IS DISTINCT FROM NEW.state)) THEN
         PERFORM public.fn_recalculate_agent_load(NEW.assigned_to);
-
+    
     -- CASE: Conversation deleted
     ELSIF (TG_OP = 'DELETE' AND OLD.assigned_to IS NOT NULL) THEN
         PERFORM public.fn_recalculate_agent_load(OLD.assigned_to);
@@ -1219,7 +1226,7 @@ CREATE OR REPLACE FUNCTION "public"."get_active_payment_gateway"() RETURNS TABLE
     AS $$
 BEGIN
     RETURN QUERY
-    SELECT
+    SELECT 
         pgc.gateway_name,
         pgc.display_name,
         pgc.public_key,
@@ -1228,7 +1235,7 @@ BEGIN
     WHERE pgc.is_enabled = TRUE
     AND pgc.is_live_mode = (
         -- Check if we're in production
-        CASE WHEN current_setting('app.environment', true) = 'production'
+        CASE WHEN current_setting('app.environment', true) = 'production' 
         THEN TRUE ELSE FALSE END
     )
     LIMIT 1;
@@ -1255,7 +1262,7 @@ DECLARE
     v_abandoned_list JSONB;
 BEGIN
     -- 1. General Metrics (FILTERED BY PERIOD)
-
+    
     -- "Total Leads" is now "New Leads" in period for accuracy
     SELECT COUNT(*), COALESCE(SUM(value), 0)
     INTO v_new_leads, v_pipeline_value
@@ -1287,7 +1294,7 @@ BEGIN
     SELECT jsonb_agg(abandoned_data)
     INTO v_abandoned_list
     FROM (
-        SELECT
+        SELECT 
             l.id,
             l.name,
             c.waiting_since,
@@ -1305,7 +1312,7 @@ BEGIN
     ) abandoned_data;
 
     -- 2. Average Response Times (Filtered by period)
-    SELECT
+    SELECT 
         AVG(average_response_time_seconds)::INT
     INTO v_avg_response
     FROM public.conversations
@@ -1329,10 +1336,10 @@ BEGIN
     SELECT jsonb_agg(perf)
     INTO v_agent_performance
     FROM (
-        WITH
+        WITH 
         t_stats AS (
-            SELECT
-                assigned_to,
+            SELECT 
+                assigned_to, 
                 COUNT(*) as leads_count,
                 SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won_count,
                 AVG(CASE WHEN average_response_time_seconds > 0 THEN average_response_time_seconds ELSE NULL END)::INT as avg_resp,
@@ -1345,12 +1352,12 @@ BEGIN
             GROUP BY assigned_to
         ),
         t_connection AS (
-            SELECT
-                agent_id,
+            SELECT 
+                agent_id, 
                 SUM(
-                    CASE
-                        WHEN ended_at IS NOT NULL THEN duration_seconds
-                        ELSE EXTRACT(EPOCH FROM (now() - started_at))::INT
+                    CASE 
+                        WHEN ended_at IS NOT NULL THEN duration_seconds 
+                        ELSE EXTRACT(EPOCH FROM (now() - started_at))::INT 
                     END
                 )::INT as connected_seconds
             FROM public.agent_status_history
@@ -1359,7 +1366,7 @@ BEGIN
               AND started_at BETWEEN p_start_date AND p_end_date
             GROUP BY agent_id
         )
-        SELECT
+        SELECT 
             m.user_id as agent_id,
             COALESCE(NULLIF(p.full_name, ''), 'Agente') as agent_name,
             p.avatar_url as avatar_url,
@@ -1369,10 +1376,10 @@ BEGIN
             COALESCE(tc.connected_seconds, 0) as connection_time_seconds,
             COALESCE(aa.status, 'offline') as agent_status,
             -- Calculate SLA Ratio: (%) of conversations meeting < 5s
-            CASE
-                WHEN COALESCE(ts.total_responded, 0) > 0
-                THEN ROUND((ts.fast_responses_count::numeric / ts.total_responded::numeric) * 100)
-                ELSE 0
+            CASE 
+                WHEN COALESCE(ts.total_responded, 0) > 0 
+                THEN ROUND((ts.fast_responses_count::numeric / ts.total_responded::numeric) * 100) 
+                ELSE 0 
             END as sla_met_percentage
         FROM public.organization_members m
         LEFT JOIN public.profiles p ON m.user_id = p.id
@@ -1387,14 +1394,14 @@ BEGIN
     SELECT jsonb_agg(hist)
     INTO v_history
     FROM (
-        SELECT
+        SELECT 
             d::date as date,
             (SELECT COUNT(*) FROM public.leads WHERE organization_id = p_org_id AND created_at::date = d::date) as new_leads,
             -- REAL: Count outbound messages from messages table
-            (SELECT COUNT(*) FROM public.messages m
-             JOIN public.conversations c ON m.conversation_id = c.id
-             WHERE c.organization_id = p_org_id
-               AND m.direction = 'outbound'
+            (SELECT COUNT(*) FROM public.messages m 
+             JOIN public.conversations c ON m.conversation_id = c.id 
+             WHERE c.organization_id = p_org_id 
+               AND m.direction = 'outbound' 
                AND m.created_at::date = d::date) as messages_sent
         FROM generate_series(p_start_date::date, p_end_date::date, '1 day'::interval) d
     ) hist;
@@ -1437,50 +1444,50 @@ begin
   select coalesce(sum(total), 0) into total_revenue
   from invoices
   where organization_id = p_org_id and status = 'paid' and deleted_at is null;
-
+  
   -- Pending: (Pending OR Draft) AND (Future OR Null Date)
   select coalesce(sum(total), 0) into pending_payments
   from invoices
-  where organization_id = p_org_id
+  where organization_id = p_org_id 
   and status in ('pending', 'draft')
   and (due_date is null or due_date >= current_date)
   and deleted_at is null;
-
+  
   -- Overdue: Status overdue OR ((Pending OR Draft) AND Past Date)
   select coalesce(sum(total), 0) into total_overdue
   from invoices
-  where organization_id = p_org_id
+  where organization_id = p_org_id 
   and deleted_at is null
   and (
-    status = 'overdue'
+    status = 'overdue' 
     or (status in ('pending', 'draft') and due_date < current_date)
   );
-
+  
   -- 2. Clientes Activos
   select count(*) into active_clients_count
   from clients
   where organization_id = p_org_id and deleted_at is null;
-
+  
   -- 3. Lista de Deudores (Top 5)
   with debtor_stats as (
     select client_id, sum(total) as debt
     from invoices
-    where organization_id = p_org_id
+    where organization_id = p_org_id 
     and deleted_at is null
     and (
-      status = 'overdue'
+      status = 'overdue' 
       or (status in ('pending', 'draft') and due_date < current_date)
     )
     group by client_id
   )
   select json_agg(t) into debtors_list
   from (
-    select
-      c.id,
-      c.id,
-      c.name,
-      c.company_name,
-      c.company_name,
+    select 
+      c.id, 
+      c.id, 
+      c.name, 
+      c.company_name, 
+      c.company_name, 
       c.logo_url as image,
       ds.debt
     from debtor_stats ds
@@ -1488,7 +1495,7 @@ begin
     order by ds.debt desc
     limit 5
   ) t;
-
+  
   return json_build_object(
     'revenue', total_revenue,
     'pending', pending_payments,
@@ -1510,8 +1517,8 @@ DECLARE
     v_unassigned_count INT := 0;
     v_unassigned_last TIMESTAMPTZ;
 BEGIN
-    -- 1. Contamos chats sin asignar (??nico punto de verdad para chats pendientes)
-    SELECT
+    -- 1. Contamos chats sin asignar (Único punto de verdad para chats pendientes)
+    SELECT 
         COUNT(DISTINCT c.id)::INT,
         MAX(c.last_message_at)
     INTO v_unassigned_count, v_unassigned_last
@@ -1538,16 +1545,16 @@ BEGIN
 
     -- 3. Retornamos agentes reales
     RETURN QUERY
-    WITH
+    WITH 
     t_agents AS (
-        SELECT
+        SELECT 
             m.user_id as uid,
             COALESCE(NULLIF(p.full_name, ''), 'Agente ' || LEFT(m.user_id::text, 4)) as uname,
             p.avatar_url as uavatar,
-            -- GHOST DETECTION: Si no se ha visto en 10 min, est?? offline aunque diga online
-            CASE
-                WHEN aa.status = 'online' AND (aa.last_seen_at > NOW() - INTERVAL '10 minutes') THEN true
-                ELSE false
+            -- GHOST DETECTION: Si no se ha visto en 10 min, está offline aunque diga online
+            CASE 
+                WHEN aa.status = 'online' AND (aa.last_seen_at > NOW() - INTERVAL '10 minutes') THEN true 
+                ELSE false 
             END as uonline,
             COALESCE(aa.current_load, 0) as uload,
             COALESCE(aa.max_capacity, 10) as ucapacity,
@@ -1559,7 +1566,7 @@ BEGIN
         WHERE m.organization_id = p_org_id
     ),
     t_assigned_unreads AS (
-        SELECT
+        SELECT 
             c.assigned_to as u_assigned,
             COUNT(DISTINCT c.id)::INT as u_count,
             MAX(c.last_message_at) as u_last
@@ -1571,16 +1578,16 @@ BEGIN
           AND (COALESCE(c.metadata->>'last_message_direction', '') = 'inbound')
         GROUP BY c.assigned_to
     )
-    SELECT
-        ta.uid,
-        ta.uname,
-        ta.uavatar,
-        ta.uonline,
+    SELECT 
+        ta.uid, 
+        ta.uname, 
+        ta.uavatar, 
+        ta.uonline, 
         -- Solo sus propios chats asignados (QUITAMOS la suma de sin asignar para evitar desbordar al Admin)
-        COALESCE(tau.u_count, 0)::INT,
+        COALESCE(tau.u_count, 0)::INT, 
         tau.u_last,
-        ta.uload,
-        ta.ucapacity,
+        ta.uload, 
+        ta.ucapacity, 
         (CASE WHEN ta.uonline THEN 0.0 ELSE 24.0 END)::FLOAT
     FROM t_agents ta
     LEFT JOIN t_assigned_unreads tau ON ta.uid = tau.u_assigned
@@ -1597,9 +1604,9 @@ CREATE OR REPLACE FUNCTION "public"."get_auth_org_ids"() RETURNS TABLE("organiza
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-    RETURN QUERY
-    SELECT om.organization_id
-    FROM public.organization_members om
+    RETURN QUERY 
+    SELECT om.organization_id 
+    FROM public.organization_members om 
     WHERE om.user_id = auth.uid();
 END;
 $$;
@@ -1619,7 +1626,7 @@ BEGIN
   normalized_token := trim(p_token);
 
   RETURN QUERY
-  SELECT
+  SELECT 
     b.id,
     b.status::text,
     b.template_id,
@@ -1629,10 +1636,10 @@ BEGIN
     b.updated_at
   FROM briefings b
   JOIN clients c ON b.client_id = c.id
-  WHERE
+  WHERE 
     -- Case 1: Match UUID portal_token (cast to text)
     (c.portal_token::text = normalized_token)
-    OR
+    OR 
     -- Case 2: Match short token (exact match)
     (c.portal_short_token = normalized_token)
     OR
@@ -1712,17 +1719,17 @@ BEGIN
     IF jsonb_typeof(content) = 'string' THEN
         RETURN content#>>'{}';
     END IF;
-
+    
     -- Handle objects
     IF jsonb_typeof(content) = 'object' THEN
         RETURN COALESCE(
-            content->>'body',
-            content->>'text',
+            content->>'body', 
+            content->>'text', 
             content->>'content',
-            content::text
+            content::text 
         );
     END IF;
-
+    
     RETURN content::text;
 END;
 $$;
@@ -1737,7 +1744,7 @@ CREATE OR REPLACE FUNCTION "public"."get_expiring_trials"() RETURNS TABLE("org_i
 BEGIN
     -- 7 days warning
     RETURN QUERY
-    SELECT
+    SELECT 
         o.id,
         o.name,
         u.email,
@@ -1750,10 +1757,10 @@ BEGIN
     WHERE o.trial_ends_at BETWEEN NOW() + INTERVAL '6 days' AND NOW() + INTERVAL '8 days'
     AND o.subscription_status IS DISTINCT FROM 'active'
     AND ln.id IS NULL;
-
+    
     -- 1 day warning
     RETURN QUERY
-    SELECT
+    SELECT 
         o.id,
         o.name,
         u.email,
@@ -1783,11 +1790,11 @@ BEGIN
     INSERT INTO public.organization_sequences (organization_id, entity_type, last_number)
     VALUES (org_id, entity_key, 1)
     ON CONFLICT (organization_id, entity_type)
-    DO UPDATE SET
+    DO UPDATE SET 
         last_number = public.organization_sequences.last_number + 1,
         updated_at = now()
     RETURNING last_number INTO next_val;
-
+    
     RETURN next_val;
 END;
 $$;
@@ -1808,7 +1815,7 @@ BEGIN
     JOIN saas_product_modules spm ON sp.id = spm.product_id
     JOIN system_modules sm ON spm.module_id = sm.id
     WHERE o.id = org_id;
-
+    
     -- If no modules found (no subscription), return core modules
     IF NOT FOUND THEN
         RETURN QUERY
@@ -1816,7 +1823,7 @@ BEGIN
         FROM system_modules sm
         WHERE sm.key IN ('core_clients', 'core_settings');
     END IF;
-
+    
     RETURN;
 END;
 $$;
@@ -1835,17 +1842,17 @@ BEGIN
     FROM public.usage_limits
     WHERE organization_id = p_organization_id
     AND engine = 'storage_gb';
-
+    
     -- Default to 5GB if no limit set
     IF v_limit_gb IS NULL THEN
         v_limit_gb := 5;
     END IF;
-
+    
     -- -1 means unlimited
     IF v_limit_gb = -1 THEN
         RETURN -1;
     END IF;
-
+    
     -- Convert GB to bytes
     RETURN v_limit_gb::BIGINT * 1024 * 1024 * 1024;
 END;
@@ -1864,8 +1871,8 @@ DECLARE
     v_dep JSONB;
 BEGIN
     -- Loop through currently active modules
-    FOR v_module IN
-        SELECT * FROM public.system_modules
+    FOR v_module IN 
+        SELECT * FROM public.system_modules 
         WHERE key = ANY(p_current_active_modules)
         AND key != p_module_to_disable
     LOOP
@@ -1880,7 +1887,7 @@ BEGIN
             END LOOP;
         END IF;
     END LOOP;
-
+    
     RETURN v_orphans;
 END;
 $$;
@@ -1903,7 +1910,7 @@ BEGIN
     v_offset := (p_page - 1) * p_page_size;
 
     WITH client_metrics AS (
-        SELECT
+        SELECT 
             c.id AS client_id,
             c.name,
             c.company_name,
@@ -1922,14 +1929,14 @@ BEGIN
                 CASE WHEN i.status IN ('pending', 'overdue') AND (i.due_date IS NULL OR i.due_date >= CURRENT_DATE) THEN i.total ELSE 0 END
             ), 0) FROM invoices i WHERE i.client_id = c.id AND i.deleted_at IS NULL) AS future_debt
         FROM leads c
-        WHERE c.organization_id = p_org_id
-          AND c.deleted_at IS NULL
+        WHERE c.organization_id = p_org_id 
+          AND c.deleted_at IS NULL 
           AND c.contact_type = 'client'
     ),
     client_status AS (
-        SELECT
+        SELECT 
             *,
-            CASE
+            CASE 
                 WHEN debt > 0 THEN 'overdue'
                 WHEN future_debt > 0 THEN 'urgent'
                 WHEN active_services_count = 0 THEN 'inactive'
@@ -1939,7 +1946,7 @@ BEGIN
     ),
     filtered_clients AS (
         SELECT * FROM client_status
-        WHERE
+        WHERE 
             (p_search = '' OR name ILIKE '%' || p_search || '%' OR COALESCE(company_name, '') ILIKE '%' || p_search || '%')
             AND
             (p_status = 'all' OR computed_status = p_status)
@@ -1950,11 +1957,11 @@ BEGIN
         LIMIT p_page_size OFFSET v_offset
     ),
     enriched_clients AS (
-        SELECT
+        SELECT 
             pc.*,
             COALESCE((
                 SELECT json_agg(json_build_object(
-                    'id', i.id, 'total', i.total, 'status', i.status, 'due_date', i.due_date,
+                    'id', i.id, 'total', i.total, 'status', i.status, 'due_date', i.due_date, 
                     'number', i.number, 'pdf_url', i.pdf_url, 'deleted_at', i.deleted_at,
                     'billing_cycles', (SELECT json_build_object('start_date', bc.start_date, 'end_date', bc.end_date) FROM billing_cycles bc WHERE bc.id = i.billing_cycle_id)
                 )) FROM invoices i WHERE i.client_id = pc.client_id AND i.deleted_at IS NULL
@@ -1982,7 +1989,7 @@ BEGIN
         FROM paged_clients pc
     ),
     aggregated_data AS (
-        SELECT
+        SELECT 
             (SELECT COUNT(*) FROM client_status) AS count_all,
             (SELECT COUNT(*) FROM client_status WHERE computed_status = 'overdue') AS count_overdue,
             (SELECT COUNT(*) FROM client_status WHERE computed_status = 'urgent') AS count_urgent,
@@ -2070,8 +2077,8 @@ BEGIN
   WHERE organization_id = p_org_id
     AND deleted_at IS NULL
     AND (
-        p_contact_type IS NULL
-        OR contact_type = p_contact_type
+        p_contact_type IS NULL 
+        OR contact_type = p_contact_type 
         OR (p_contact_type = 'lead' AND (contact_type = 'prospect' OR contact_type IS NULL))
     )
     AND (p_search = '' OR (
@@ -2095,8 +2102,8 @@ BEGIN
       WHERE organization_id = p_org_id
         AND deleted_at IS NULL
         AND (
-            p_contact_type IS NULL
-            OR contact_type = p_contact_type
+            p_contact_type IS NULL 
+            OR contact_type = p_contact_type 
             OR (p_contact_type = 'lead' AND (contact_type = 'prospect' OR contact_type IS NULL))
         )
         AND (p_search = '' OR (
@@ -2124,8 +2131,8 @@ BEGIN
       WHERE organization_id = p_org_id
         AND deleted_at IS NULL
         AND (
-            p_contact_type IS NULL
-            OR contact_type = p_contact_type
+            p_contact_type IS NULL 
+            OR contact_type = p_contact_type 
             OR (p_contact_type = 'lead' AND (contact_type = 'prospect' OR contact_type IS NULL))
         )
         AND (p_connection_ids IS NULL OR source_connection_id = ANY(p_connection_ids) OR source_connection_id IS NULL)
@@ -2200,14 +2207,14 @@ CREATE OR REPLACE FUNCTION "public"."get_recommended_templates_for_vertical"("p_
     AS $$
 BEGIN
     RETURN QUERY
-    SELECT
+    SELECT 
         a.id,
         a.name,
         a.slug,
         a.category,
         a.price_monthly,
         (SELECT COUNT(*) FROM public.saas_app_modules WHERE app_id = a.id)::INTEGER as module_count,
-        CASE
+        CASE 
             WHEN a.recommended_for_verticals @> ARRAY[p_vertical] THEN 100
             WHEN a.recommended_for_verticals @> ARRAY['*'] THEN 50
             ELSE 0
@@ -2253,13 +2260,13 @@ BEGIN
     -- Only for inbound messages or if we want outbound to also reopen it (usually yes)
     -- Let's say ANY new message reopens the conversation
     UPDATE public.conversations
-    SET
+    SET 
         status = 'open',
         snoozed_until = NULL,
         updated_at = NOW()
     WHERE id = NEW.conversation_id
     AND status = 'snoozed';
-
+    
     RETURN NEW;
 END;
 $$;
@@ -2291,7 +2298,7 @@ BEGIN
         now()
     )
     ON CONFLICT (organization_id, agent_id) DO NOTHING;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -2335,7 +2342,7 @@ BEGIN
     INSERT INTO public.storage_usage (organization_id, total_bytes, file_count)
     VALUES (p_organization_id, p_bytes, 1)
     ON CONFLICT (organization_id) DO UPDATE
-    SET
+    SET 
         total_bytes = storage_usage.total_bytes + p_bytes,
         file_count = storage_usage.file_count + 1,
         updated_at = NOW();
@@ -2441,12 +2448,12 @@ BEGIN
     IF client_row.portal_token_never_expires = true THEN
         RETURN true;
     END IF;
-
+    
     -- If expires_at is null but never_expires is false, invalid config (treat as expired)
     IF client_row.portal_token_expires_at IS NULL THEN
         RETURN false;
     END IF;
-
+    
     -- Check expiration
     RETURN client_row.portal_token_expires_at > now();
 END;
@@ -2462,20 +2469,20 @@ CREATE OR REPLACE FUNCTION "public"."log_agent_status_change"() RETURNS "trigger
 BEGIN
     -- Only act if status actually changed
     IF (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status) OR (TG_OP = 'INSERT') THEN
-
+        
         -- Close previous open session for this agent/org
         UPDATE public.agent_status_history
-        SET
+        SET 
             ended_at = now(),
             duration_seconds = EXTRACT(EPOCH FROM (now() - started_at))::INTEGER
-        WHERE agent_id = NEW.agent_id
-          AND organization_id = NEW.organization_id
+        WHERE agent_id = NEW.agent_id 
+          AND organization_id = NEW.organization_id 
           AND ended_at IS NULL;
-
+          
         -- Create new session entry
         INSERT INTO public.agent_status_history (organization_id, agent_id, status, started_at)
         VALUES (NEW.organization_id, NEW.agent_id, NEW.status, now());
-
+        
     END IF;
     RETURN NEW;
 END;
@@ -2517,7 +2524,7 @@ BEGIN
   UPDATE notifications
   SET read = TRUE
   WHERE user_id = p_user_id AND read = FALSE;
-
+  
   GET DIAGNOSTICS affected_count = ROW_COUNT;
   RETURN affected_count;
 END;
@@ -2527,6 +2534,91 @@ $$;
 ALTER FUNCTION "public"."mark_all_notifications_read"("p_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."match_knowledge"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid") RETURNS TABLE("id" "uuid", "question" "text", "answer" "text", "similarity" double precision)
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  return query
+  select
+    kb.id,
+    kb.question,
+    kb.answer,
+    1 - (kb.embedding <=> query_embedding) as similarity
+  from knowledge_base kb
+  where 1 - (kb.embedding <=> query_embedding) > match_threshold
+  and kb.organization_id = msg_org_id
+  order by kb.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."match_knowledge"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."match_knowledge_v2"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid", "category_filter" "text" DEFAULT NULL::"text") RETURNS TABLE("id" "uuid", "question" "text", "answer" "text", "category" "text", "similarity" double precision)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    kb.id,
+    kb.question,
+    kb.answer,
+    kb.category,
+    1 - (kb.embedding <=> query_embedding) AS similarity
+  FROM public.knowledge_base kb
+  WHERE (1 - (kb.embedding <=> query_embedding) > match_threshold)
+    AND kb.organization_id = msg_org_id
+    AND (
+      category_filter IS NULL 
+      OR kb.category = category_filter 
+      OR kb.category = 'General'
+      OR kb.category = 'general'
+    )
+  ORDER BY similarity DESC
+  LIMIT match_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."match_knowledge_v2"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid", "category_filter" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."match_knowledge_v2"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid", "category_filter" "text" DEFAULT NULL::"text", "audience_filter" "public"."knowledge_audience" DEFAULT NULL::"public"."knowledge_audience") RETURNS TABLE("id" "uuid", "question" "text", "answer" "text", "category" "text", "audience" "public"."knowledge_audience", "similarity" double precision)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    kb.id,
+    kb.question,
+    kb.answer,
+    kb.category,
+    kb.audience,
+    1 - (kb.embedding <=> query_embedding) AS similarity
+  FROM public.knowledge_base kb
+  WHERE (1 - (kb.embedding <=> query_embedding) > match_threshold)
+    AND kb.organization_id = msg_org_id
+    AND (
+      category_filter IS NULL 
+      OR kb.category = category_filter 
+      OR kb.category ILIKE 'general'
+    )
+    AND (
+      audience_filter IS NULL
+      OR (audience_filter = 'staff') -- Staff sees everything
+      OR (audience_filter = 'customer' AND kb.audience IN ('customer', 'both')) -- Customers only see public
+    )
+  ORDER BY similarity DESC
+  LIMIT match_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."match_knowledge_v2"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer, "msg_org_id" "uuid", "category_filter" "text", "audience_filter" "public"."knowledge_audience") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."process_trial_expirations"() RETURNS TABLE("org_id" "uuid", "org_name" "text", "action_taken" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2534,7 +2626,7 @@ DECLARE
     r RECORD;
 BEGIN
     -- Suspend expired trials
-    FOR r IN
+    FOR r IN 
         SELECT id, name
         FROM public.organizations
         WHERE trial_ends_at < NOW()
@@ -2542,25 +2634,25 @@ BEGIN
         AND status = 'active'
     LOOP
         UPDATE public.organizations
-        SET
+        SET 
             status = 'suspended',
             suspended_at = NOW(),
             updated_at = NOW()
         WHERE id = r.id;
-
+        
         -- Log notification
         INSERT INTO public.lifecycle_notifications (organization_id, notification_type)
         VALUES (r.id, 'trial_expired')
         ON CONFLICT DO NOTHING;
-
+        
         org_id := r.id;
         org_name := r.name;
         action_taken := 'suspended';
         RETURN NEXT;
     END LOOP;
-
+    
     -- Mark dormant (30 days no activity)
-    FOR r IN
+    FOR r IN 
         SELECT id, name
         FROM public.organizations
         WHERE last_activity_at < NOW() - INTERVAL '30 days'
@@ -2568,23 +2660,23 @@ BEGIN
         AND dormant_at IS NULL
     LOOP
         UPDATE public.organizations
-        SET
+        SET 
             dormant_at = NOW(),
             updated_at = NOW()
         WHERE id = r.id;
-
+        
         INSERT INTO public.lifecycle_notifications (organization_id, notification_type)
         VALUES (r.id, 'account_dormant')
         ON CONFLICT DO NOTHING;
-
+        
         org_id := r.id;
         org_name := r.name;
         action_taken := 'marked_dormant';
         RETURN NEXT;
     END LOOP;
-
+    
     -- Suspend dormant after 60 days total inactivity
-    FOR r IN
+    FOR r IN 
         SELECT id, name
         FROM public.organizations
         WHERE last_activity_at < NOW() - INTERVAL '60 days'
@@ -2592,24 +2684,24 @@ BEGIN
         AND dormant_at IS NOT NULL
     LOOP
         UPDATE public.organizations
-        SET
+        SET 
             status = 'suspended',
             suspended_at = NOW(),
             updated_at = NOW()
         WHERE id = r.id;
-
+        
         INSERT INTO public.lifecycle_notifications (organization_id, notification_type)
         VALUES (r.id, 'account_suspended')
         ON CONFLICT DO NOTHING;
-
+        
         org_id := r.id;
         org_name := r.name;
         action_taken := 'suspended_dormant';
         RETURN NEXT;
     END LOOP;
-
+    
     -- Schedule deletion (90 days suspended)
-    FOR r IN
+    FOR r IN 
         SELECT id, name
         FROM public.organizations
         WHERE status = 'suspended'
@@ -2618,15 +2710,15 @@ BEGIN
         AND subscription_status IS DISTINCT FROM 'active'
     LOOP
         UPDATE public.organizations
-        SET
+        SET 
             deletion_scheduled_at = NOW() + INTERVAL '30 days',
             updated_at = NOW()
         WHERE id = r.id;
-
+        
         INSERT INTO public.lifecycle_notifications (organization_id, notification_type)
         VALUES (r.id, 'deletion_warning_30d')
         ON CONFLICT DO NOTHING;
-
+        
         org_id := r.id;
         org_name := r.name;
         action_taken := 'deletion_scheduled';
@@ -2647,16 +2739,16 @@ CREATE OR REPLACE FUNCTION "public"."protect_acquisition_date"() RETURNS "trigge
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-    -- Si acquisition_date ya ten??a valor y se intenta cambiar
+    -- Si acquisition_date ya tenía valor y se intenta cambiar
     IF OLD.acquisition_date IS NOT NULL AND NEW.acquisition_date IS DISTINCT FROM OLD.acquisition_date THEN
-        RAISE EXCEPTION 'acquisition_date es inmutable. No puede ser modificada despu??s de ser establecida.';
+        RAISE EXCEPTION 'acquisition_date es inmutable. No puede ser modificada después de ser establecida.';
     END IF;
-
-    -- Si acquired_by_reseller_id ya ten??a valor y se intenta cambiar
+    
+    -- Si acquired_by_reseller_id ya tenía valor y se intenta cambiar
     IF OLD.acquired_by_reseller_id IS NOT NULL AND NEW.acquired_by_reseller_id IS DISTINCT FROM OLD.acquired_by_reseller_id THEN
-        RAISE EXCEPTION 'acquired_by_reseller_id es inmutable. No puede ser modificado despu??s de ser establecido.';
+        RAISE EXCEPTION 'acquired_by_reseller_id es inmutable. No puede ser modificado después de ser establecido.';
     END IF;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -2683,7 +2775,7 @@ BEGIN
     IF OLD.track_id IS NOT NULL AND NEW.track_id IS DISTINCT FROM OLD.track_id THEN
         RAISE EXCEPTION 'IMMUTABILITY VIOLATION: Cannot modify TrackID once submitted to DIAN.';
     END IF;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -2698,7 +2790,7 @@ CREATE OR REPLACE FUNCTION "public"."provision_limits"("target_org_id" "uuid") R
 DECLARE
     rec RECORD;
 BEGIN
-    FOR rec IN
+    FOR rec IN 
         SELECT p.engine, p.period, SUM(p.limit_value) as total_limit
         FROM public.billing_subscriptions s
         JOIN public.billing_packages p ON s.package_id = p.id
@@ -2724,17 +2816,17 @@ DECLARE
     v_plan_id UUID;
 BEGIN
     -- Get plan ID
-    SELECT id INTO v_plan_id
-    FROM public.plan_templates
+    SELECT id INTO v_plan_id 
+    FROM public.plan_templates 
     WHERE plan_code = p_plan_code AND is_active = TRUE;
-
+    
     IF v_plan_id IS NULL THEN
         RAISE EXCEPTION 'Plan % not found', p_plan_code;
     END IF;
-
+    
     -- Insert limits from plan definitions
     INSERT INTO public.usage_limits (organization_id, engine, period, limit_value)
-    SELECT
+    SELECT 
         p_organization_id,
         pld.engine,
         pld.period,
@@ -2743,14 +2835,14 @@ BEGIN
     WHERE pld.plan_id = v_plan_id
     ON CONFLICT (organization_id, engine, period) DO UPDATE
     SET limit_value = EXCLUDED.limit_value, updated_at = NOW();
-
+    
     -- Update org with plan reference
     UPDATE public.organizations
-    SET
+    SET 
         subscription_status = 'active',
         updated_at = NOW()
     WHERE id = p_organization_id;
-
+    
 END;
 $$;
 
@@ -2768,18 +2860,18 @@ CREATE OR REPLACE FUNCTION "public"."reconcile_agent_loads"("p_org_id" "uuid" DE
 BEGIN
     RETURN QUERY
     WITH actual_counts AS (
-        SELECT
+        SELECT 
             c.assigned_to,
             COUNT(*)::BIGINT AS real_load
         FROM public.conversations c
-        WHERE c.state = 'active'
+        WHERE c.state = 'active' 
           AND c.status IN ('open', 'snoozed')
           AND c.assigned_to IS NOT NULL
           AND (p_org_id IS NULL OR c.organization_id = p_org_id)
         GROUP BY c.assigned_to
     ),
     agents AS (
-        SELECT
+        SELECT 
             aa.agent_id AS aid,
             aa.current_load AS old_load,
             COALESCE(ac.real_load, 0) AS new_load
@@ -2788,7 +2880,7 @@ BEGIN
         WHERE (p_org_id IS NULL OR aa.organization_id = p_org_id)
           AND aa.current_load IS DISTINCT FROM COALESCE(ac.real_load, 0)::INT
     )
-    SELECT
+    SELECT 
         a.aid,
         a.old_load,
         a.new_load,
@@ -2799,11 +2891,11 @@ BEGIN
     UPDATE public.agent_availability aa
     SET current_load = COALESCE(ac.real_load, 0)::INT
     FROM (
-        SELECT
+        SELECT 
             c.assigned_to,
             COUNT(*)::BIGINT AS real_load
         FROM public.conversations c
-        WHERE c.state = 'active'
+        WHERE c.state = 'active' 
           AND c.status IN ('open', 'snoozed')
           AND c.assigned_to IS NOT NULL
           AND (p_org_id IS NULL OR c.organization_id = p_org_id)
@@ -2812,7 +2904,7 @@ BEGIN
     WHERE aa.agent_id = ac.assigned_to
       AND (p_org_id IS NULL OR aa.organization_id = p_org_id)
       AND aa.current_load IS DISTINCT FROM ac.real_load::INT;
-
+    
     -- Also zero out agents with no active conversations
     UPDATE public.agent_availability aa
     SET current_load = 0
@@ -2836,7 +2928,7 @@ CREATE OR REPLACE FUNCTION "public"."record_org_activity"("p_organization_id" "u
     AS $$
 BEGIN
     UPDATE public.organizations
-    SET
+    SET 
         last_activity_at = NOW(),
         activity_score = activity_score + p_points,
         -- Reset dormant status if active
@@ -2858,13 +2950,13 @@ BEGIN
     INSERT INTO briefing_responses (briefing_id, field_id, value)
     VALUES (p_briefing_id, p_field_id, p_value)
     ON CONFLICT (briefing_id, field_id)
-    DO UPDATE SET
+    DO UPDATE SET 
         value = EXCLUDED.value,
         updated_at = NOW();
-
+        
     -- Update briefing status to in_progress
-    UPDATE briefings
-    SET status = 'in_progress'
+    UPDATE briefings 
+    SET status = 'in_progress' 
     WHERE id = p_briefing_id AND status IN ('draft', 'sent');
 END;
 $$;
@@ -2885,7 +2977,7 @@ BEGIN
     WHERE organization_id = NEW.organization_id
     ORDER BY timestamp DESC, id DESC
     LIMIT 1;
-
+    
     -- Calculate and set hash
     NEW.hash := calculate_audit_hash(
         NEW.id,
@@ -2895,9 +2987,9 @@ BEGIN
         NEW.organization_id,
         v_previous_hash
     );
-
+    
     NEW.previous_hash := v_previous_hash;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -2910,13 +3002,13 @@ CREATE OR REPLACE FUNCTION "public"."set_conversation_bot_status"("conv_id" "uui
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-    UPDATE public.conversations
-    SET
+    UPDATE public.conversations 
+    SET 
         is_bot_active = bot_active,
         -- If we are disabling the bot, and the last message was inbound, start waiting timer NOW
-        waiting_since = CASE
-            WHEN bot_active = false AND last_message_direction = 'inbound' THEN NOW()
-            ELSE waiting_since
+        waiting_since = CASE 
+            WHEN bot_active = false AND last_message_direction = 'inbound' THEN NOW() 
+            ELSE waiting_since 
         END
     WHERE id = conv_id;
 END;
@@ -2980,7 +3072,7 @@ CREATE OR REPLACE FUNCTION "public"."submit_briefing"("p_briefing_id" "uuid") RE
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
-    UPDATE briefings
+    UPDATE briefings 
     SET status = 'submitted', updated_at = NOW()
     WHERE id = p_briefing_id;
 END;
@@ -2998,14 +3090,14 @@ DECLARE
     inbox_access JSONB;
 BEGIN
     inbox_access := NEW.permissions->'inbox_access';
-
+    
     -- 1. Clear existing channel mappings for this agent
-    DELETE FROM public.agent_channels
+    DELETE FROM public.agent_channels 
     WHERE organization_id = NEW.organization_id AND agent_id = NEW.user_id;
-
+    
     -- 2. If inbox_access is a list of Strings, insert them
     IF inbox_access IS NOT NULL AND jsonb_array_length(inbox_access) > 0 THEN
-        FOR v_channel_type IN
+        FOR v_channel_type IN 
             SELECT jsonb_array_elements_text(inbox_access)
         LOOP
             INSERT INTO public.agent_channels (organization_id, agent_id, channel_type)
@@ -3013,7 +3105,7 @@ BEGIN
             ON CONFLICT DO NOTHING;
         END LOOP;
     END IF;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -3031,7 +3123,7 @@ DECLARE
 BEGIN
     inbox_access := p_permissions->'inbox_access';
     DELETE FROM public.agent_channels WHERE organization_id = p_org_id AND agent_id = p_user_id;
-
+    
     IF inbox_access IS NOT NULL AND jsonb_array_length(inbox_access) > 0 THEN
         FOR v_channel_type IN SELECT jsonb_array_elements_text(inbox_access) LOOP
             INSERT INTO public.agent_channels (organization_id, agent_id, channel_type)
@@ -3067,12 +3159,12 @@ begin
     -- Only update if total changed
     if (old.total_amount is distinct from new.total_amount) then
         update public.leads
-        set
+        set 
             value = new.total_amount,
             updated_at = now()
         where id = new.lead_id;
     end if;
-
+    
     return new;
 end;
 $$;
@@ -3088,9 +3180,9 @@ BEGIN
     -- Update the member record with data from auth.users
     -- We join on the NEW.user_id
     UPDATE public.organization_members
-    SET
+    SET 
         full_name = COALESCE(
-            (SELECT raw_user_meta_data->>'full_name' FROM auth.users WHERE id = NEW.user_id),
+            (SELECT raw_user_meta_data->>'full_name' FROM auth.users WHERE id = NEW.user_id), 
             'Unknown'
         ),
         email = (SELECT email FROM auth.users WHERE id = NEW.user_id),
@@ -3111,25 +3203,25 @@ CREATE OR REPLACE FUNCTION "public"."sync_quote_to_lead"() RETURNS "trigger"
 BEGIN
     -- When quote is accepted, move lead to 'won'
     IF NEW.status = 'accepted' AND OLD.status != 'accepted' THEN
-        UPDATE leads
+        UPDATE leads 
         SET status = 'won', quote_status = 'accepted'
         WHERE quote_id = NEW.id;
     END IF;
-
+    
     -- When quote is rejected, move lead to 'lost'
     IF NEW.status = 'rejected' AND OLD.status != 'rejected' THEN
-        UPDATE leads
+        UPDATE leads 
         SET status = 'lost', quote_status = 'rejected'
         WHERE quote_id = NEW.id;
     END IF;
-
+    
     -- When quote is sent, move lead to 'negotiation'
     IF NEW.status = 'sent' AND OLD.status = 'draft' THEN
-        UPDATE leads
+        UPDATE leads 
         SET status = 'negotiation', quote_status = 'sent'
         WHERE quote_id = NEW.id;
     END IF;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -3204,33 +3296,33 @@ DECLARE
     v_new_unread_count int;
 BEGIN
     clean_text := public.get_content_text(NEW.content);
-
+    
     -- Sender type detection
     sender_type_val := COALESCE(
-        NEW.metadata->>'sender_type',
-        CASE
-            WHEN NEW.sender = 'System' THEN 'neutral'
-            WHEN NEW.sender = 'Automation Bot' THEN 'bot'
-            ELSE 'human'
+        NEW.metadata->>'sender_type', 
+        CASE 
+            WHEN NEW.sender = 'System' THEN 'neutral' 
+            WHEN NEW.sender = 'Automation Bot' THEN 'bot' 
+            ELSE 'human' 
         END
     );
 
     -- Unread Count Logic (RESTORED)
     IF NEW.direction = 'inbound' THEN
-        SELECT COALESCE(unread_count, 0) + 1 INTO v_new_unread_count
-        FROM public.conversations
+        SELECT COALESCE(unread_count, 0) + 1 INTO v_new_unread_count 
+        FROM public.conversations 
         WHERE id = NEW.conversation_id;
     ELSE
         v_new_unread_count := 0; -- Reset on ANY outbound
     END IF;
 
     UPDATE public.conversations
-    SET
+    SET 
         last_message_at = NEW.created_at,
         last_message = LEFT(clean_text, 255), -- Restore as STRING preview for UI comp
         unread_count = v_new_unread_count,
         -- SURGICAL Bot State Logic
-        is_bot_active = CASE
+        is_bot_active = CASE 
             WHEN NEW.direction = 'outbound' AND sender_type_val = 'bot' THEN true
             WHEN NEW.direction = 'outbound' AND sender_type_val = 'human' THEN false
             ELSE is_bot_active
@@ -3261,7 +3353,7 @@ DECLARE
 BEGIN
     current_sender_type := NEW.metadata->>'sender_type';
     last_dir := NEW.metadata->>'last_message_direction';
-
+    
     -- INBOUND Logic
     IF last_dir = 'inbound' THEN
         IF NEW.is_bot_active = false AND NEW.waiting_since IS NULL THEN
@@ -3276,13 +3368,13 @@ BEGIN
             IF NEW.waiting_since IS NOT NULL THEN
                 last_wait_duration := NOW() - NEW.waiting_since;
                 NEW.last_responded_at := NOW();
-
+                
                 IF NEW.average_response_time_seconds = 0 THEN
                     NEW.average_response_time_seconds := EXTRACT(EPOCH FROM last_wait_duration)::INTEGER;
                 ELSE
                     NEW.average_response_time_seconds := (NEW.average_response_time_seconds + EXTRACT(EPOCH FROM last_wait_duration)::INTEGER) / 2;
                 END IF;
-
+                
                 NEW.waiting_since := NULL;
                 NEW.is_bot_active := FALSE;
             END IF;
@@ -3339,7 +3431,7 @@ CREATE OR REPLACE FUNCTION "public"."update_modified_column"() RETURNS "trigger"
     AS $$
 BEGIN
     NEW.updated_at = now();
-    RETURN NEW;
+    RETURN NEW; 
 END;
 $$;
 
@@ -3379,14 +3471,14 @@ CREATE OR REPLACE FUNCTION "public"."update_settlement_payment_status"() RETURNS
 BEGIN
     -- Update the settlement's amount_paid and status
     UPDATE staff_payroll_settlements
-    SET
+    SET 
         amount_paid = (
             SELECT COALESCE(SUM(amount), 0)
             FROM staff_payments
             WHERE settlement_id = NEW.settlement_id
         ),
         payment_status = CASE
-            WHEN (SELECT COALESCE(SUM(amount), 0) FROM staff_payments WHERE settlement_id = NEW.settlement_id) = 0
+            WHEN (SELECT COALESCE(SUM(amount), 0) FROM staff_payments WHERE settlement_id = NEW.settlement_id) = 0 
                 THEN 'pending'
             WHEN (SELECT COALESCE(SUM(amount), 0) FROM staff_payments WHERE settlement_id = NEW.settlement_id) >= (base_amount + bonuses - deductions)
                 THEN 'paid'
@@ -3394,7 +3486,7 @@ BEGIN
         END,
         updated_at = NOW()
     WHERE id = NEW.settlement_id;
-
+    
     RETURN NEW;
 END;
 $$;
@@ -3440,22 +3532,22 @@ BEGIN
     SELECT price_monthly INTO v_tier_price
     FROM public.branding_tiers
     WHERE id = p_new_tier_id AND is_active = true;
-
+    
     IF NOT FOUND THEN
         RETURN jsonb_build_object(
             'success', false,
             'error', 'Invalid tier ID'
         );
     END IF;
-
+    
     -- Update organization
     UPDATE public.organizations
-    SET
+    SET 
         branding_tier_id = p_new_tier_id,
         branding_tier_activated_at = NOW(),
         updated_at = NOW()
     WHERE id = p_organization_id;
-
+    
     -- Upsert add-on subscription
     INSERT INTO public.organization_add_ons (
         organization_id,
@@ -3472,7 +3564,7 @@ BEGIN
         'active',
         CURRENT_DATE + INTERVAL '1 month'
     )
-    ON CONFLICT (organization_id, add_on_type)
+    ON CONFLICT (organization_id, add_on_type) 
     DO UPDATE SET
         tier_id = EXCLUDED.tier_id,
         price_monthly = EXCLUDED.price_monthly,
@@ -3480,7 +3572,7 @@ BEGIN
         activated_at = NOW(),
         next_billing_date = CURRENT_DATE + INTERVAL '1 month',
         updated_at = NOW();
-
+    
     RETURN jsonb_build_object(
         'success', true,
         'tier', p_new_tier_id,
@@ -3531,7 +3623,7 @@ BEGIN
     SELECT * INTO v_module
     FROM public.system_modules
     WHERE key = p_module_key;
-
+    
     IF NOT FOUND THEN
         RETURN jsonb_build_object(
             'valid', false,
@@ -3539,7 +3631,7 @@ BEGIN
             'type', 'not_found'
         );
     END IF;
-
+    
     -- Get organization vertical (if column exists)
     BEGIN
         SELECT vertical INTO v_org
@@ -3549,11 +3641,11 @@ BEGIN
         -- Vertical column doesn't exist, skip this check
         v_org.vertical := NULL;
     END;
-
+    
     -- Check compatibility with vertical (if both exist)
-    IF v_org.vertical IS NOT NULL AND
+    IF v_org.vertical IS NOT NULL AND 
        v_module.compatible_verticals IS NOT NULL AND
-       v_module.compatible_verticals != ARRAY['*'] AND
+       v_module.compatible_verticals != ARRAY['*'] AND 
        NOT (v_org.vertical = ANY(v_module.compatible_verticals)) THEN
         RETURN jsonb_build_object(
             'valid', false,
@@ -3561,14 +3653,14 @@ BEGIN
             'type', 'incompatible_vertical'
         );
     END IF;
-
+    
     -- Check conflicts
     IF v_module.conflicts_with IS NOT NULL THEN
         SELECT ARRAY_AGG(conflict)
         INTO v_conflicts
         FROM unnest(v_module.conflicts_with) AS conflict
         WHERE conflict = ANY(p_current_active_modules);
-
+        
         IF array_length(v_conflicts, 1) > 0 THEN
             RETURN jsonb_build_object(
                 'valid', false,
@@ -3578,17 +3670,17 @@ BEGIN
             );
         END IF;
     END IF;
-
+    
     -- Check required dependencies
     IF v_module.dependencies IS NOT NULL AND v_module.dependencies != '[]'::jsonb THEN
         FOR v_dep IN SELECT * FROM jsonb_array_elements(v_module.dependencies)
         LOOP
-            IF (v_dep->>'type') = 'required' AND
+            IF (v_dep->>'type') = 'required' AND 
                NOT ((v_dep->>'module_key') = ANY(p_current_active_modules)) THEN
                 v_missing_deps := array_append(v_missing_deps, v_dep->>'module_key');
             END IF;
         END LOOP;
-
+        
         IF array_length(v_missing_deps, 1) > 0 THEN
             RETURN jsonb_build_object(
                 'valid', true,
@@ -3598,7 +3690,7 @@ BEGIN
             );
         END IF;
     END IF;
-
+    
     RETURN jsonb_build_object('valid', true);
 END;
 $$;
@@ -4367,7 +4459,7 @@ CREATE TABLE IF NOT EXISTS "public"."contracts" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "deleted_at" timestamp with time zone,
-    CONSTRAINT "contracts_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('draft'::character varying)::"text", ('sent'::character varying)::"text", ('signed'::character varying)::"text", ('void'::character varying)::"text", ('expired'::character varying)::"text"])))
+    CONSTRAINT "contracts_status_check" CHECK ((("status")::"text" = ANY ((ARRAY['draft'::character varying, 'sent'::character varying, 'signed'::character varying, 'void'::character varying, 'expired'::character varying])::"text"[])))
 );
 
 
@@ -4839,6 +4931,24 @@ CREATE TABLE IF NOT EXISTS "public"."invoices" (
 
 
 ALTER TABLE "public"."invoices" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."knowledge_base" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    "question" "text" NOT NULL,
+    "answer" "text" NOT NULL,
+    "category" "text" DEFAULT 'General'::"text",
+    "source" "text" DEFAULT 'manual'::"text",
+    "tags" "text"[] DEFAULT ARRAY[]::"text"[],
+    "embedding" "extensions"."vector"(1536),
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "audience" "public"."knowledge_audience" DEFAULT 'both'::"public"."knowledge_audience"
+);
+
+
+ALTER TABLE "public"."knowledge_base" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."leads" (
@@ -5396,11 +5506,11 @@ COMMENT ON COLUMN "public"."organizations"."rate_limit_config" IS 'Per-organizat
 
 
 
-COMMENT ON COLUMN "public"."organizations"."acquired_by_reseller_id" IS 'Reseller que adquiri?? este cliente. Solo para tracking, el cliente SIEMPRE pertenece a Pixy.';
+COMMENT ON COLUMN "public"."organizations"."acquired_by_reseller_id" IS 'Reseller que adquirió este cliente. Solo para tracking, el cliente SIEMPRE pertenece a Pixy.';
 
 
 
-COMMENT ON COLUMN "public"."organizations"."acquisition_date" IS 'Fecha de adquisici??n. INMUTABLE - determina la antig??edad para c??lculo de comisiones.';
+COMMENT ON COLUMN "public"."organizations"."acquisition_date" IS 'Fecha de adquisición. INMUTABLE - determina la antigüedad para cálculo de comisiones.';
 
 
 
@@ -5595,7 +5705,7 @@ CREATE TABLE IF NOT EXISTS "public"."organization_settings" (
     "comm_whatsapp_prefix" "text" DEFAULT '57'::"text",
     "comm_sender_name" "text",
     "comm_assisted_mode" boolean DEFAULT true,
-    "comm_templates" "jsonb" DEFAULT '{"invoice_sent": "Hola {{cliente}}, te enviamos tu factura #{{factura}} por valor de {{monto}}. Puedes verla y pagarla aqu??: {{link}}", "briefing_sent": "Hola {{cliente}}, necesitamos tu ayuda con este briefing para avanzar: {{link}}", "payment_reminder": "Hola {{cliente}}, recordatorio amable de tu factura #{{factura}} pendiente por {{monto}}. Link de pago: {{link}}", "briefing_completed": "??Gracias {{cliente}}! Hemos recibido tu briefing completado.", "payment_confirmation": "??Gracias {{cliente}}! Hemos recibido tu pago de {{monto}} por la factura #{{factura}}."}'::"jsonb",
+    "comm_templates" "jsonb" DEFAULT '{"invoice_sent": "Hola {{cliente}}, te enviamos tu factura #{{factura}} por valor de {{monto}}. Puedes verla y pagarla aquí: {{link}}", "briefing_sent": "Hola {{cliente}}, necesitamos tu ayuda con este briefing para avanzar: {{link}}", "payment_reminder": "Hola {{cliente}}, recordatorio amable de tu factura #{{factura}} pendiente por {{monto}}. Link de pago: {{link}}", "briefing_completed": "¡Gracias {{cliente}}! Hemos recibido tu briefing completado.", "payment_confirmation": "¡Gracias {{cliente}}! Hemos recibido tu pago de {{monto}} por la factura #{{factura}}."}'::"jsonb",
     "trash_shortcut" "text" DEFAULT 'ctrl+alt+p'::"text",
     "organization_id" "uuid" NOT NULL,
     "show_all_portal_modules" boolean DEFAULT false,
@@ -6174,10 +6284,10 @@ ALTER TABLE "public"."quick_replies" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."quote_settings" (
     "organization_id" "uuid" NOT NULL,
     "vertical" "text" DEFAULT 'custom'::"text",
-    "approve_label" "text" DEFAULT '??? Aprobar Presupuesto'::"text",
-    "reject_label" "text" DEFAULT '??? Rechazar / Cambios'::"text",
-    "actions_config" "jsonb" DEFAULT '{"reject": {"reasons": ["Precio Alto", "Alcance Incorrecto", "Eligi?? Competencia", "Otro"], "ask_reason": true}, "approve": {"notify_team": true, "send_message": true, "move_to_stage": "won"}}'::"jsonb",
-    "template_config" "jsonb" DEFAULT '{"footer": "Gracias por su confianza.", "header": "COTIZACI??N FORMAL"}'::"jsonb",
+    "approve_label" "text" DEFAULT '✅ Aprobar Presupuesto'::"text",
+    "reject_label" "text" DEFAULT '❌ Rechazar / Cambios'::"text",
+    "actions_config" "jsonb" DEFAULT '{"reject": {"reasons": ["Precio Alto", "Alcance Incorrecto", "Eligió Competencia", "Otro"], "ask_reason": true}, "approve": {"notify_team": true, "send_message": true, "move_to_stage": "won"}}'::"jsonb",
+    "template_config" "jsonb" DEFAULT '{"footer": "Gracias por su confianza.", "header": "COTIZACIÓN FORMAL"}'::"jsonb",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "mostrador_config" "jsonb",
@@ -6320,11 +6430,11 @@ CREATE TABLE IF NOT EXISTS "public"."revenue_share_rules" (
 ALTER TABLE "public"."revenue_share_rules" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."revenue_share_rules" IS 'Reglas de comisi??n por fase. NULL en reseller_org_id = regla global.';
+COMMENT ON TABLE "public"."revenue_share_rules" IS 'Reglas de comisión por fase. NULL en reseller_org_id = regla global.';
 
 
 
-COMMENT ON COLUMN "public"."revenue_share_rules"."activity_window_days" IS 'Ventana de d??as para verificar actividad del reseller (solo si requires_reseller_activity = true)';
+COMMENT ON COLUMN "public"."revenue_share_rules"."activity_window_days" IS 'Ventana de días para verificar actividad del reseller (solo si requires_reseller_activity = true)';
 
 
 
@@ -6707,7 +6817,7 @@ CREATE TABLE IF NOT EXISTS "public"."settlements" (
 ALTER TABLE "public"."settlements" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."settlements" IS 'Liquidaciones mensuales. Requieren aprobaci??n manual antes de payout.';
+COMMENT ON TABLE "public"."settlements" IS 'Liquidaciones mensuales. Requieren aprobación manual antes de payout.';
 
 
 
@@ -7685,6 +7795,11 @@ ALTER TABLE ONLY "public"."intent_routing_rules"
 
 ALTER TABLE ONLY "public"."invoices"
     ADD CONSTRAINT "invoices_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."knowledge_base"
+    ADD CONSTRAINT "knowledge_base_pkey" PRIMARY KEY ("id");
 
 
 
@@ -8953,6 +9068,18 @@ CREATE INDEX "idx_invoices_status" ON "public"."invoices" USING "btree" ("status
 
 
 
+CREATE INDEX "idx_knowledge_base_audience" ON "public"."knowledge_base" USING "btree" ("audience");
+
+
+
+CREATE INDEX "idx_knowledge_base_category" ON "public"."knowledge_base" USING "btree" ("organization_id", "category");
+
+
+
+CREATE INDEX "idx_knowledge_base_org" ON "public"."knowledge_base" USING "btree" ("organization_id");
+
+
+
 CREATE INDEX "idx_leads_contact_type" ON "public"."leads" USING "btree" ("contact_type");
 
 
@@ -9751,6 +9878,18 @@ CREATE OR REPLACE TRIGGER "enforce_dian_immutability" BEFORE UPDATE ON "public".
 
 
 
+CREATE OR REPLACE TRIGGER "handle_updated_at_resto_table_sessions" BEFORE UPDATE ON "public"."resto_table_sessions" FOR EACH ROW EXECUTE FUNCTION "extensions"."moddatetime"('updated_at');
+
+
+
+CREATE OR REPLACE TRIGGER "handle_updated_at_resto_tables" BEFORE UPDATE ON "public"."resto_tables" FOR EACH ROW EXECUTE FUNCTION "extensions"."moddatetime"('updated_at');
+
+
+
+CREATE OR REPLACE TRIGGER "handle_updated_at_resto_zones" BEFORE UPDATE ON "public"."resto_zones" FOR EACH ROW EXECUTE FUNCTION "extensions"."moddatetime"('updated_at');
+
+
+
 CREATE OR REPLACE TRIGGER "on_cart_create_sync" AFTER INSERT ON "public"."deal_carts" FOR EACH ROW EXECUTE FUNCTION "public"."sync_lead_value"();
 
 
@@ -10436,6 +10575,11 @@ ALTER TABLE ONLY "public"."invoices"
 
 ALTER TABLE ONLY "public"."invoices"
     ADD CONSTRAINT "invoices_service_id_fkey" FOREIGN KEY ("service_id") REFERENCES "public"."services"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."knowledge_base"
+    ADD CONSTRAINT "knowledge_base_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
 
 
 
@@ -12242,6 +12386,12 @@ CREATE POLICY "Users can add reactions" ON "public"."message_reactions" FOR INSE
 
 
 
+CREATE POLICY "Users can add to knowledge base" ON "public"."knowledge_base" FOR INSERT WITH CHECK (("organization_id" IN ( SELECT "organization_members"."organization_id"
+   FROM "public"."organization_members"
+  WHERE ("organization_members"."user_id" = "auth"."uid"()))));
+
+
+
 CREATE POLICY "Users can create AI suggestions for their org conversations" ON "public"."ai_suggestions" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."conversations" "c"
   WHERE (("c"."id" = "ai_suggestions"."conversation_id") AND ("c"."organization_id" IN ( SELECT "organization_members"."organization_id"
@@ -12305,6 +12455,12 @@ CREATE POLICY "Users can create versions for their organization's workflows" ON 
 
 
 CREATE POLICY "Users can delete clients in their org" ON "public"."clients" FOR DELETE USING (("organization_id" IN ( SELECT "organization_members"."organization_id"
+   FROM "public"."organization_members"
+  WHERE ("organization_members"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Users can delete from knowledge base" ON "public"."knowledge_base" FOR DELETE USING (("organization_id" IN ( SELECT "organization_members"."organization_id"
    FROM "public"."organization_members"
   WHERE ("organization_members"."user_id" = "auth"."uid"()))));
 
@@ -12596,6 +12752,12 @@ CREATE POLICY "Users can update invoices in their org" ON "public"."invoices" FO
 
 
 
+CREATE POLICY "Users can update knowledge base" ON "public"."knowledge_base" FOR UPDATE USING (("organization_id" IN ( SELECT "organization_members"."organization_id"
+   FROM "public"."organization_members"
+  WHERE ("organization_members"."user_id" = "auth"."uid"()))));
+
+
+
 CREATE POLICY "Users can update messages in their conversations" ON "public"."messages" FOR UPDATE USING (("conversation_id" IN ( SELECT "conversations"."id"
    FROM "public"."conversations"
   WHERE ("conversations"."organization_id" IN ( SELECT "organization_members"."organization_id"
@@ -12785,6 +12947,12 @@ CREATE POLICY "Users can view intents for their org conversations" ON "public"."
 CREATE POLICY "Users can view invoices in their org" ON "public"."invoices" FOR SELECT USING ((("organization_id" IN ( SELECT "organization_members"."organization_id"
    FROM "public"."organization_members"
   WHERE ("organization_members"."user_id" = "auth"."uid"()))) OR (("auth"."jwt"() ->> 'role'::"text") = 'service_role'::"text")));
+
+
+
+CREATE POLICY "Users can view knowledge base of their organization" ON "public"."knowledge_base" FOR SELECT USING (("organization_id" IN ( SELECT "organization_members"."organization_id"
+   FROM "public"."organization_members"
+  WHERE ("organization_members"."user_id" = "auth"."uid"()))));
 
 
 
@@ -13491,6 +13659,9 @@ CREATE POLICY "invoices_isolation_policy" ON "public"."invoices" USING (((("auth
 
 
 
+ALTER TABLE "public"."knowledge_base" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."leads" ENABLE ROW LEVEL SECURITY;
 
 
@@ -13500,21 +13671,21 @@ ALTER TABLE "public"."lifecycle_notifications" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "manage_org_roles_delete" ON "public"."organization_roles" FOR DELETE TO "authenticated" USING (("organization_id" IN ( SELECT "member"."organization_id"
    FROM ("public"."organization_members" "member"
      LEFT JOIN "public"."organization_roles" "role" ON (("member"."role_id" = "role"."id")))
-  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Due??o'::"text", 'Administrador'::"text"]))))))));
+  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Dueño'::"text", 'Administrador'::"text"]))))))));
 
 
 
 CREATE POLICY "manage_org_roles_update" ON "public"."organization_roles" FOR UPDATE TO "authenticated" USING (("organization_id" IN ( SELECT "member"."organization_id"
    FROM ("public"."organization_members" "member"
      LEFT JOIN "public"."organization_roles" "role" ON (("member"."role_id" = "role"."id")))
-  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Due??o'::"text", 'Administrador'::"text"]))))))));
+  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Dueño'::"text", 'Administrador'::"text"]))))))));
 
 
 
 CREATE POLICY "manage_org_roles_write" ON "public"."organization_roles" FOR INSERT TO "authenticated" WITH CHECK (("organization_id" IN ( SELECT "member"."organization_id"
    FROM ("public"."organization_members" "member"
      LEFT JOIN "public"."organization_roles" "role" ON (("member"."role_id" = "role"."id")))
-  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Due??o'::"text", 'Administrador'::"text"]))))))));
+  WHERE (("member"."user_id" = "auth"."uid"()) AND (("member"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])) OR (("role"."is_system_role" = true) AND ("role"."name" = ANY (ARRAY['Owner'::"text", 'Admin'::"text", 'Dueño'::"text", 'Administrador'::"text"]))))))));
 
 
 
@@ -13991,10 +14162,366 @@ ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
 
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."clients";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."conversations";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."leads";
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."messages";
+
+
+
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -14514,6 +15041,15 @@ GRANT ALL ON FUNCTION "public"."mark_all_notifications_read"("p_user_id" "uuid")
 
 
 
+
+
+
+
+
+
+
+
+
 GRANT ALL ON FUNCTION "public"."process_trial_expirations"() TO "anon";
 GRANT ALL ON FUNCTION "public"."process_trial_expirations"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_trial_expirations"() TO "service_role";
@@ -14733,6 +15269,18 @@ GRANT ALL ON FUNCTION "public"."upgrade_org_plan"("p_organization_id" "uuid", "p
 GRANT ALL ON FUNCTION "public"."validate_module_activation"("p_module_key" "text", "p_organization_id" "uuid", "p_current_active_modules" "text"[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."validate_module_activation"("p_module_key" "text", "p_organization_id" "uuid", "p_current_active_modules" "text"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."validate_module_activation"("p_module_key" "text", "p_organization_id" "uuid", "p_current_active_modules" "text"[]) TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -15120,6 +15668,12 @@ GRANT ALL ON TABLE "public"."intent_routing_rules" TO "service_role";
 GRANT ALL ON TABLE "public"."invoices" TO "anon";
 GRANT ALL ON TABLE "public"."invoices" TO "authenticated";
 GRANT ALL ON TABLE "public"."invoices" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."knowledge_base" TO "anon";
+GRANT ALL ON TABLE "public"."knowledge_base" TO "authenticated";
+GRANT ALL ON TABLE "public"."knowledge_base" TO "service_role";
 
 
 

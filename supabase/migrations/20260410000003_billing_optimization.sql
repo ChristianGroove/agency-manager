@@ -3,9 +3,9 @@
 
 -- 1. Index for Rule Resolution Speed
 -- Covers: (reseller_org_id, phase_start_month, effective_from)
+-- Note: CURRENT_DATE cannot be used in partial index predicates (not IMMUTABLE).
 CREATE INDEX IF NOT EXISTS idx_revenue_rules_fast_lookup 
-ON public.revenue_share_rules (reseller_org_id, phase_start_month, effective_from)
-WHERE (effective_to IS NULL OR effective_to >= CURRENT_DATE);
+ON public.revenue_share_rules (reseller_org_id, phase_start_month, effective_from);
 
 -- 2. Index for Activity Checking
 -- Covers: (reseller_org_id, client_org_id, activity_date)
