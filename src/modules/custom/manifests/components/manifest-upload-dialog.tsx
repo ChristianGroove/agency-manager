@@ -29,6 +29,15 @@ export function ManifestUploadDialog({ onUploadComplete }: { onUploadComplete: (
         let totalTime = 0
 
         try {
+            // Check for file size limit (10MB)
+            const MAX_SIZE = 10 * 1024 * 1024
+            const oversizedFiles = files.filter(f => f.size > MAX_SIZE)
+            if (oversizedFiles.length > 0) {
+                toast.error(`Los siguientes archivos exceden el límite de 10MB: ${oversizedFiles.map(f => f.name).join(', ')}`)
+                setIsUploading(false)
+                return
+            }
+
             // Upload sequentially
             for (const file of files) {
                 const start = Date.now()

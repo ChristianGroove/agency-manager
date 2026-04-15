@@ -20,6 +20,10 @@ export async function uploadManifest(formData: FormData) {
         return { success: false, error: 'File must be a PDF' }
     }
 
+    if (file.size > 10 * 1024 * 1024) {
+        return { success: false, error: 'El archivo excede el límite de 10MB' }
+    }
+
     try {
         const supabase = await createClient()
 
@@ -66,8 +70,8 @@ export async function uploadManifest(formData: FormData) {
             })
 
         if (uploadError) {
-            console.error('Upload Error:', uploadError)
-            return { success: false, error: 'Failed to upload file to storage' }
+            console.error('[Manifest] Upload Error Detail:', JSON.stringify(uploadError, null, 2))
+            return { success: false, error: `Error de almacenamiento: ${uploadError.message || 'Fallo desconocido'}` }
         }
 
         // 3. Extract Text (Try-Catch for robustness)
