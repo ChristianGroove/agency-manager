@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react"
 import { VirtuosoHandle } from "react-virtuoso"
 import { useChatLogic } from "@/modules/features/messaging/hooks/use-chat-logic"
 import { useChatActions } from "@/modules/features/messaging/hooks/use-chat-actions"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { ChatHeader } from "./chat-header"
 import { MessageList } from "./message-list"
 import { ChatInput } from "./chat-input"
@@ -20,6 +21,7 @@ interface ChatAreaProps {
 export function ChatArea({ conversationId, isContextOpen, onToggleContext }: ChatAreaProps) {
     const virtuosoRef = useRef<VirtuosoHandle>(null)
     const [inputValue, setInputValue] = useState("")
+    const { t, locale } = useTranslation()
     
     // UI Modal State
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
@@ -102,8 +104,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 onSendInteractiveCall={() => actions.handleSend({
                     inputValue: "",
                     setInputValue: () => {},
-                    contentOverride: "¿Podemos hablar por llamada?",
-                    type: "interactive_call_request" as any
+                    contentOverride: locale === 'en' ? "Can we talk on a call?" : "¿Podemos hablar por llamada?",
+                    type: "interactive_call_request" as any,
+                    extraContent: {
+                        buttonAcceptText: locale === 'en' ? "Accept Call" : "Aceptar Llamada",
+                        buttonRejectText: locale === 'en' ? "Reject" : "Rechazar"
+                    }
                 })}
             />
 

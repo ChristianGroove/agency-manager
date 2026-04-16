@@ -508,14 +508,14 @@ export class MetaProvider implements MessagingProvider {
                                 type: 'reply',
                                 reply: {
                                     id: 'accept_call',
-                                    title: 'Aceptar'
+                                    title: (callContent.buttonAcceptText || 'Aceptar').substring(0, 20)
                                 }
                             },
                             {
                                 type: 'reply',
                                 reply: {
                                     id: 'reject_call',
-                                    title: 'Rechazar'
+                                    title: (callContent.buttonRejectText || 'Rechazar').substring(0, 20)
                                 }
                             }
                         ]

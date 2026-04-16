@@ -31,9 +31,10 @@ export function useChatActions(params: {
         contentOverride?: string,
         type?: MessageContentType,
         mediaUrl?: string,
-        location?: { latitude: number, longitude: number, address?: string }
+        location?: { latitude: number, longitude: number, address?: string },
+        extraContent?: any
     }) => {
-        const { inputValue, setInputValue, contentOverride, type = 'text', mediaUrl, location } = params
+        const { inputValue, setInputValue, contentOverride, type = 'text', mediaUrl, location, extraContent } = params
         
         let finalType = type
         let finalMediaUrl = mediaUrl
@@ -91,9 +92,9 @@ export function useChatActions(params: {
             if (finalType === 'text') {
                 messageContent = { type: 'text', text: textContent }
             } else if (finalType === 'location' && location) {
-                messageContent = { type: 'location', latitude: location.latitude, longitude: location.longitude, address: location.address || 'UbicaciÃ³n' }
+                messageContent = { type: 'location', latitude: location.latitude, longitude: location.longitude, address: location.address || 'Ubicación' }
             } else {
-                messageContent = { type: finalType, mediaUrl: finalMediaUrl, url: finalMediaUrl, caption: textContent, filename: finalType === 'document' ? (pendingAttachment?.name || textContent) : undefined }
+                messageContent = { type: finalType, mediaUrl: finalMediaUrl, url: finalMediaUrl, caption: textContent, filename: finalType === 'document' ? (pendingAttachment?.name || textContent) : undefined, ...(extraContent || {}) }
             }
         }
 

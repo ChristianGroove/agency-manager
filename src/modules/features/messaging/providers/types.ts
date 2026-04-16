@@ -136,6 +136,8 @@ export interface InteractiveCallRequestContent {
     type: 'interactive_call_request'
     body?: string
     footer?: string
+    buttonAcceptText?: string
+    buttonRejectText?: string
 }
 
 
