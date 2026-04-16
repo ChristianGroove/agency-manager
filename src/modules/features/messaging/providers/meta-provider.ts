@@ -297,9 +297,12 @@ export class MetaProvider implements MessagingProvider {
                 payload.message.text = content.text || content.body || '';
             }
 
-            const response = await fetch(activeToken.startsWith('EA') ? url : `${url}?access_token=${activeToken}`, {
+            const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Authorization': `Bearer ${activeToken}`,
+                    'Content-Type': 'application/json' 
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -507,14 +510,14 @@ export class MetaProvider implements MessagingProvider {
                             {
                                 type: 'reply',
                                 reply: {
-                                    id: 'accept_call',
+                                    id: 'approve_call_perm',
                                     title: (callContent.buttonAcceptText || 'Aceptar').substring(0, 20)
                                 }
                             },
                             {
                                 type: 'reply',
                                 reply: {
-                                    id: 'reject_call',
+                                    id: 'deny_call_perm',
                                     title: (callContent.buttonRejectText || 'Rechazar').substring(0, 20)
                                 }
                             }
