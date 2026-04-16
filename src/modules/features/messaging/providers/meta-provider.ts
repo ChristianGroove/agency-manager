@@ -496,6 +496,37 @@ export class MetaProvider implements MessagingProvider {
                 break;
             }
 
+            case 'interactive_call_request': {
+                const callContent = content as InteractiveCallRequestContent;
+                payload.type = 'interactive';
+                payload.interactive = {
+                    type: 'button',
+                    body: { text: (callContent.body || ct.text || 'Llamada de voz entrante\n¿Aceptas la llamada?').substring(0, 1024) },
+                    action: {
+                        buttons: [
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: 'accept_call',
+                                    title: 'Aceptar'
+                                }
+                            },
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: 'reject_call',
+                                    title: 'Rechazar'
+                                }
+                            }
+                        ]
+                    }
+                };
+                if (callContent.footer) {
+                    payload.interactive.footer = { text: callContent.footer };
+                }
+                break;
+            }
+
             default:
                 // Fallback to text if unknown type
                 payload.type = 'text';

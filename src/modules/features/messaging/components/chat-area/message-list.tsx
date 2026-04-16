@@ -31,7 +31,9 @@ export const MessageList = forwardRef((
             style={{ height: '100%' }}
             totalCount={messages.length}
             data={messages}
-            initialTopMostItemIndex={messages.length - 1}
+            firstItemIndex={1000000 - messages.length}
+            initialTopMostItemIndex={1000000 - 1}
+            computeItemKey={(index, item) => item.id}
             alignToBottom
             followOutput="auto"
             atBottomThreshold={50}
@@ -50,9 +52,11 @@ export const MessageList = forwardRef((
                 ) : null
             }}
             itemContent={(index: number, msg: Message) => {
-                const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
-                const prevDate = index > 0 ? new Date(messages[index - 1].created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
-                const showDateSeparator = currentDate !== prevDate
+                const localIndex = messages.indexOf(msg)
+                const currentDate = msg?.created_at ? new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : ''
+                const prevMsg = localIndex > 0 ? messages[localIndex - 1] : null
+                const prevDate = prevMsg?.created_at ? new Date(prevMsg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
+                const showDateSeparator = currentDate !== prevDate && currentDate !== ''
 
                 let content: any = msg.content
                 if (typeof content !== 'object' || content === null) {
