@@ -87,7 +87,7 @@ async function internalSend({
         const assetId = connection.metadata?.asset_id || connection.external_id
 
         let provider: any
-        if (['whatsapp_cloud', 'meta_whatsapp', 'facebook_page', 'instagram_dm', 'meta_business'].includes(providerKey)) {
+        if (['whatsapp_cloud', 'meta_whatsapp', 'facebook_page', 'instagram_dm', 'instagram_dme', 'meta_business'].includes(providerKey)) {
             provider = new MetaProvider(
                 credentials.accessToken || credentials.apiToken,
                 assetId,
@@ -110,6 +110,7 @@ async function internalSend({
             'meta_business': 'whatsapp',
             'facebook_page': 'messenger',
             'instagram_dm': 'instagram',
+            'instagram_dme': 'instagram',
             'evolution_api': 'evolution'
         }
         const dbChannel = channelMap[providerKey] || 'whatsapp'

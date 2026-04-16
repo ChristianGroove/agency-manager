@@ -118,20 +118,59 @@ export class MetaGraphAPI {
      * Get valid Facebook Pages and linked Instagram Accounts
      */
     async getConnectedAssets(userAccessToken: string): Promise<MetaPage[]> {
-        // Fetch pages with their access tokens and connected instagram accounts
+        // Strategy 1: Standard Fetch
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/accounts`);
         url.searchParams.append('access_token', userAccessToken);
         url.searchParams.append('fields', 'id,name,access_token,instagram_business_account,tasks');
         url.searchParams.append('limit', '100');
 
-        const res = await fetch(url.toString());
-        const data = await res.json();
+        let res = await fetch(url.toString());
+        let data = await res.json();
 
         if (data.error) {
             throw new Error(`Meta Assets Fetch Failed: ${data.error.message}`);
         }
 
-        return data.data as MetaPage[];
+        let pages = data.data as MetaPage[];
+
+        // Strategy 2: Granular Scopes Fallback (Modern Meta APIs)
+        if (pages.length === 0) {
+            console.log("🔍 [MetaGraphAPI] No pages found in /me/accounts. Attempting Granular Scopes recovery...");
+            try {
+                const debugUrl = `${META_GRAPH_URL}/${META_API_VERSION}/debug_token?input_token=${userAccessToken}&access_token=${userAccessToken}`;
+                const debugRes = await fetch(debugUrl);
+                const debugBody = await debugRes.json();
+                
+                if (debugBody.data && debugBody.data.granular_scopes) {
+                    const scopes = debugBody.data.granular_scopes;
+                    const pageScope = scopes.find((s: any) => s.scope === 'pages_show_list' || s.scope === 'pages_manage_metadata');
+                    
+                    if (pageScope && pageScope.target_ids && pageScope.target_ids.length > 0) {
+                        console.log(`🎯 [MetaGraphAPI] Found ${pageScope.target_ids.length} granted Page IDs in Granular Scopes.`);
+                        
+                        const pagePromises = pageScope.target_ids.map(async (pageId: string) => {
+                            const pUrl = `${META_GRAPH_URL}/${META_API_VERSION}/${pageId}?access_token=${userAccessToken}&fields=id,name,access_token,instagram_business_account`;
+                            const pRes = await fetch(pUrl);
+                            return pRes.json();
+                        });
+                        
+                        const pageResults = await Promise.all(pagePromises);
+                        pageResults.forEach((p: any) => {
+                            if (!p.error) {
+                                p.tasks = ['MANAGE']; // mock tasks to satisfy MetaPage type
+                                pages.push(p as MetaPage);
+                            } else {
+                                console.error(`❌ [MetaGraphAPI] Failed to fetch granular page ${p.error.message}`);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("❌ [MetaGraphAPI] Granular Scopes Fallback Error:", error);
+            }
+        }
+
+        return pages;
     }
 
     /**

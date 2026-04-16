@@ -161,7 +161,7 @@ export class MetaProvider implements MessagingProvider {
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         console.log(`[MetaProvider] sendMessage called. Channel: ${options.metadata?.channel}, To: ${options.to}`);
         const channel = options.metadata?.channel as string;
-        const isMessengerOrIg = ['messenger', 'instagram', 'facebook_page', 'instagram_dm'].includes(channel);
+        const isMessengerOrIg = ['messenger', 'instagram', 'facebook_page', 'instagram_dm', 'instagram_dme'].includes(channel);
         
         if (isMessengerOrIg) {
             return this.sendFacebookMessage(options);
