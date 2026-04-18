@@ -21,13 +21,15 @@ class SupabaseRealtimeManager {
     private channels: Map<string, {
         channel: RealtimeChannel;
         refCount: number;
+        isSetup: boolean; // FIX BUG 3: Tracks if setup() has already been called
         cleanupTimeout?: NodeJS.Timeout;
     }> = new Map();
 
     /**
      * Get or create a persistent channel.
      * @param channelName Unique name for the channel
-     * @param setup Callback to configure the channel (runs every time to allow new listeners)
+     * @param setup Callback to configure the channel. Only runs ONCE per channel lifecycle
+     *              to prevent listener accumulation on re-renders.
      */
     public async getOrCreateChannel(
         channelName: string, 
@@ -36,15 +38,19 @@ class SupabaseRealtimeManager {
         let entry = this.channels.get(channelName);
 
         if (entry) {
-            console.log(`[RealtimeManager] Reusing channel: ${channelName}`);
+            console.log(`[RealtimeManager] Reusing channel: ${channelName} (refCount: ${entry.refCount + 1})`);
             if (entry.cleanupTimeout) {
                 clearTimeout(entry.cleanupTimeout);
                 entry.cleanupTimeout = undefined;
             }
             entry.refCount++;
             
-            // RUN SETUP RE-REGISTRATION (Allow adding more listeners/filters)
-            setup(entry.channel);
+            // FIX BUG 3: Only run setup if the channel has NOT been configured yet.
+            // Previously, setup() ran on every reuse, accumulating duplicate listeners.
+            if (!entry.isSetup) {
+                setup(entry.channel);
+                entry.isSetup = true;
+            }
             
             return entry.channel;
         }
@@ -52,19 +58,20 @@ class SupabaseRealtimeManager {
         console.log(`[RealtimeManager] Creating NEW channel: ${channelName}`);
         const channel = supabase.channel(channelName);
         
-        // Initial setup
+        // Initial setup — always runs for new channels
         setup(channel);
         
         channel.subscribe((status) => {
             console.log(`[RealtimeManager] Channel ${channelName} status: ${status}`);
         });
 
-        this.channels.set(channelName, { channel, refCount: 1 });
+        this.channels.set(channelName, { channel, refCount: 1, isSetup: true });
         return channel;
     }
 
     /**
      * Decrease refCount and cleanup after a delay if no one is using it.
+     * When the channel is fully released and recreated, isSetup resets automatically.
      */
     public releaseChannel(channelName: string) {
         const entry = this.channels.get(channelName);
@@ -84,3 +91,4 @@ class SupabaseRealtimeManager {
 }
 
 export const realtimeManager = new SupabaseRealtimeManager();
+

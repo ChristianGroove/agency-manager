@@ -85,11 +85,19 @@ export function SidebarConversationList({
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-    const [tick, setTick] = useState(0)
     const [activeMenuConvId, setActiveMenuConvId] = useState<string | null>(null)
     const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
     const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
+
+    // Refs para leer valores actuales en closures de Realtime sin re-registrar el canal (FIX BUG 2)
+    const selectedChannelIdRef = useRef<string | null>(null)
+    const selectedAgentIdRef = useRef<string | null>(null)
+    const activeFilterRef = useRef<FilterTab>('all')
+    const currentUserIdRef = useRef<string | null>(null)
+    const hasGlobalViewRef = useRef(false)
+    const isAdminRef = useRef(false)
+    const authorizedChannelsRef = useRef<string[]>([])
 
     useEffect(() => {
         setMounted(true)
@@ -105,17 +113,9 @@ export function SidebarConversationList({
     const effectivePermissions = propPermissions || localPermissions
     const identityLoaded = !!effectiveOrgId && (!!propPermissions || localPermissionsLoaded)
 
-    // Sync Ref to avoid stale closures in realtime callback
+    // Sync Refs to avoid stale closures in Realtime callbacks (FIX BUG 2)
     const selectedIdRef = useRef(selectedId)
     useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
-
-    // Maestro Ticker
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTick(prev => prev + 1)
-        }, 30000)
-        return () => clearInterval(interval)
-    }, [])
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
@@ -141,38 +141,48 @@ export function SidebarConversationList({
     const authorizedChannels = useMemo(() => {
         const p = effectivePermissions?.permissions;
         if (!p) return [];
-        // Buscamos en todas las rutas posibles del JSON de permisos
         const fromRoot = p.inbox_access;
         const fromModules = p.modules?.inbox?.inbox_access;
         const fromInbox = p.inbox?.inbox_access;
         return (fromRoot || fromModules || fromInbox || []) as string[];
     }, [effectivePermissions]);
 
+    // Sincronizar refs para uso en handler Realtime sin stale closures
+    useEffect(() => { selectedChannelIdRef.current = selectedChannelId }, [selectedChannelId])
+    useEffect(() => { selectedAgentIdRef.current = selectedAgentId }, [selectedAgentId])
+    useEffect(() => { activeFilterRef.current = activeFilter }, [activeFilter])
+    useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
+    useEffect(() => { hasGlobalViewRef.current = hasGlobalView }, [hasGlobalView])
+    useEffect(() => { isAdminRef.current = isAdmin }, [isAdmin])
+    useEffect(() => { authorizedChannelsRef.current = authorizedChannels }, [authorizedChannels])
+
     const filteredAgents = useMemo(() => {
         return agents.filter(a => {
             const role = a.role.toLowerCase();
             const targetIsOwner = role === 'owner' || role === 'dueño';
-            
-            // Si el usuario actual es owner, ve a todos
             if (hasGlobalView) return true;
-
-            // Si el usuario actual es admin restringido
             if (isAdmin) {
-                // Si se seleccionó un canal específico, solo ver agentes en ese canal
                 if (selectedChannelId) {
                     const hasAccess = a.channels.includes(selectedChannelId);
                     return targetIsOwner || hasAccess;
                 }
-                
-                // Si NO hay canal seleccionado (vista general)
-                // Solo ver agentes que compartan AL MENOS UNO de sus canales autorizados
                 const sharesChannel = a.channels.some(ch => authorizedChannels.includes(ch));
                 return targetIsOwner || sharesChannel;
             }
-
             return false;
         });
     }, [agents, selectedChannelId, isAdmin, hasGlobalView, authorizedChannels])
+
+    // Capa visual: aplica filtros de canal y agente encima del estado Realtime (FIX BUG 2)
+    const visibleConversations = useMemo(() => {
+        let list = conversations
+        if (selectedChannelId) list = list.filter(c => c.connection_id === selectedChannelId)
+        if (selectedAgentId) {
+            if (selectedAgentId === 'unassigned') list = list.filter(c => !c.assigned_to)
+            else list = list.filter(c => c.assigned_to === selectedAgentId)
+        }
+        return list
+    }, [conversations, selectedChannelId, selectedAgentId])
 
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences } = useInboxPreferences()
@@ -188,25 +198,33 @@ export function SidebarConversationList({
     });
 
     // Get current user and local permissions (fallback only)
+    // FIX DEBT 4: Espera 1500ms antes de hacer el fallback de permisos para darle
+    // tiempo al padre (InboxLayout) de inyectarlos via propPermissions y evitar doble fetch.
     useEffect(() => {
+        let cancelled = false
         const fetchUserData = async () => {
             try {
                 const { data } = await supabase.auth.getUser()
-                if (data.user) {
+                if (!cancelled && data.user) {
                     setCurrentUserId(data.user.id)
                     if (!propPermissions) {
-                        const perms = await getCurrentUserPermissions()
-                        setLocalPermissions(perms)
+                        await new Promise(resolve => setTimeout(resolve, 1500))
+                        if (!cancelled && !propPermissions) {
+                            const perms = await getCurrentUserPermissions()
+                            if (!cancelled) setLocalPermissions(perms)
+                        }
                     }
                 }
-                setLocalPermissionsLoaded(true)
+                if (!cancelled) setLocalPermissionsLoaded(true)
             } catch (err) {
                 console.warn('[SidebarConversationList] [AUTH] Fallback failed:', err)
-                setLocalPermissionsLoaded(true)
+                if (!cancelled) setLocalPermissionsLoaded(true)
             }
         }
         fetchUserData()
-    }, [propPermissions])
+        return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Solo al montar — propPermissions se refleja via effectivePermissions
 
     // Unified fetch controller for secondary data (channels, agents)
     useEffect(() => {
@@ -282,32 +300,28 @@ export function SidebarConversationList({
                 break
         }
 
+        // NOTE: Canal y agente se filtran visualmente via useMemo 'visibleConversations'.
+        // La query REST SÍ usa el filtro de canal para eficiencia en DB (no carga datos innecesarios).
         if (selectedChannelId) query = query.eq('connection_id', selectedChannelId)
         if (selectedAgentId) {
             if (selectedAgentId === 'unassigned') query = query.is('assigned_to', null)
             else query = query.eq('assigned_to', selectedAgentId)
         }
 
-        // LÓGICA DE SEGURIDAD REFORZADA:
-        // Si no es owner (jerarquía 100), DEBE estar restringido.
+        // SEGURIDAD: Restricción por rol
         if (hasGlobalView) {
-            // El Dueño ve todo. 
+            // Owner ve todo
         } else if (isAdmin) {
-            // ABSOLUTA PRIORIDAD: Filtro obligatorio para Admin
             if (authorizedChannels && authorizedChannels.length > 0) {
                 query = query.in('connection_id', authorizedChannels)
             } else {
-                // Si es admin pero no se encontraron canales mapeados, NO ve nada.
-                // Esto previene que una discrepancia en el JSON de producción otorgue visibilidad global.
                 setConversations([])
                 setLoading(false)
                 return
             }
         } else if (currentUserId) {
-            // Miembros regulares: solo sus propios chats asignados.
             query = query.eq('assigned_to', currentUserId)
         } else {
-            // Si la identidad no ha cargado o no se reconoce el rol, bloqueamos vista por defecto.
             setConversations([])
             setLoading(false)
             return
@@ -338,7 +352,11 @@ export function SidebarConversationList({
         fetchConversations(showLoading, isLoadMore)
     }, 1000)
 
-    // Real-time surgical updates
+    // FIX BUG 1 + 2 + 3: Realtime con refs en lugar de dependencias de closure
+    // - Las refs (selectedChannelIdRef, activeFilterRef, etc.) se leen en tiempo de ejecucion
+    //   evitando stale closures sin re-registrar el canal (no accumulation de listeners)
+    // - El canal Realtime solo se destruye/recrea en cambio de org o user (no por filtros)
+    // - Conversaciones archivadas con nuevo mensaje se reabren quirurgicamente via refetch
     useEffect(() => {
         if (!effectiveOrgId || !currentUserId) return;
         
@@ -354,57 +372,78 @@ export function SidebarConversationList({
                     
                     if (updatedConv && updatedConv.organization_id !== effectiveOrgId) return;
 
-                    // Note: We use the deep-mapped 'authorizedChannels' from the outer scope 
-                    // which is already in the useEffect dependency array. 
-                    // This ensures consistency between REST fetches and Realtime updates.
+                    // Leer valores actuales desde refs (no closures) — FIX BUG 2
+                    const curFilter = activeFilterRef.current
+                    const curUserId = currentUserIdRef.current
+                    const curHasGlobalView = hasGlobalViewRef.current
+                    const curIsAdmin = isAdminRef.current
+                    const curAuthorizedChannels = authorizedChannelsRef.current
 
                     setConversations((prev) => {
                         if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
 
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
                         const existingConv = existingIndex > -1 ? prev[existingIndex] : null
-
-                        // Resolve the connection ID correctly for security checks
                         const effectiveConnectionId = updatedConv.connection_id || existingConv?.connection_id
 
+                        // SEGURIDAD: verificar autorizacion del canal
+                        if (!curHasGlobalView && identityLoaded) {
+                            if (!effectiveConnectionId || !curAuthorizedChannels.includes(effectiveConnectionId)) {
+                                return prev.filter(c => c.id !== updatedConv.id)
+                            }
+                        }
+
+                        const state = updatedConv.state ?? existingConv?.state ?? 'active'
+                        const status = updatedConv.status ?? existingConv?.status ?? 'open'
+                        const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
+                        const assignedTo = updatedConv.assigned_to ?? existingConv?.assigned_to
+
+                        // AGENT PRIVACY
+                        if (identityLoaded) {
+                            const isAuthorizedForView = curHasGlobalView || curIsAdmin || assignedTo === curUserId
+                            if (!isAuthorizedForView) return prev.filter(c => c.id !== updatedConv.id)
+                        }
+
+                        // FIX BUG 1: Conversacion archivada que recibe mensaje nuevo
+                        // Si el state sigue siendo 'archived' pero hay unread_count > 0,
+                        // hacemos refetch quirurgico para que el backend determine el nuevo estado.
+                        // La conversacion NO se elimina del estado local — se actualiza o se re-inserta.
+                        if (state === 'archived' && unreadCount > 0 && curFilter === 'all') {
+                            // Refetch asíncrono fuera del setState para obtener datos actualizados
+                            supabase
+                                .from('conversations')
+                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
+                                .eq('id', updatedConv.id)
+                                .single()
+                                .then(({ data }) => {
+                                    if (data) {
+                                        setConversations(current => {
+                                            const idx = current.findIndex(c => c.id === data.id)
+                                            // Solo insertar si el estado actualizado ya no es archived
+                                            // (el webhook pudo haberlo reabierto automaticamente)
+                                            if (idx > -1) {
+                                                const arr = [...current]
+                                                arr[idx] = data as Conversation
+                                                // Re-ordenar al tope por last_message_at
+                                                return [arr[idx], ...arr.filter((_, i) => i !== idx)]
+                                            } else if (data.state !== 'archived') {
+                                                return [data as Conversation, ...current]
+                                            }
+                                            return current
+                                        })
+                                    }
+                                })
+                            // Mantener el estado actual mientras llega el refetch
+                            return prev
+                        }
+
+                        // Evaluar si la conversacion debe estar visible en el filtro activo
                         let matches = true
-                        
-                        // SECURITY & PERSISTENCE GUARD:
-                        // Only perform destructive filtering if identity is 100% loaded and stable.
-                        // If we are still loading, we keep the conversation to prevent "flashing" or accidental removal.
-                        if (!hasGlobalView && identityLoaded) {
-                            if (!effectiveConnectionId || !authorizedChannels.includes(effectiveConnectionId)) {
-                                matches = false
-                            }
-                        }
-
-                        if (matches) {
-                            // Status/State checks also fallback to existing data if needed
-                            const state = updatedConv.state || existingConv?.state || 'active'
-                            const status = updatedConv.status || existingConv?.status || 'open'
-                            const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
-                            const assignedTo = updatedConv.assigned_to || existingConv?.assigned_to
-
-                            // AGENT PRIVACY ENFORCEMENT:
-                            // Regular agents (members) should ONLY see chats assigned to them, 
-                            // even in the "All" tab, to prevent cross-agent data leakage.
-                            // CRITICAL: We only apply this filter IF the identity is fully loaded.
-                            // If still loading, we assume authorized to prevent false negatives (cards disappearing for owners).
-                            let isAuthorizedForView = true
-                            if (identityLoaded) {
-                                isAuthorizedForView = hasGlobalView || isAdmin || assignedTo === currentUserId
-                            }
-
-                            if (!isAuthorizedForView) {
-                                matches = false
-                            } else {
-                                if (activeFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
-                                else if (activeFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
-                                else if (activeFilter === 'assigned') matches = assignedTo === currentUserId && state !== 'archived'
-                                else if (activeFilter === 'archived') matches = state === 'archived'
-                                else if (activeFilter === 'snoozed') matches = status === 'snoozed'
-                            }
-                        }
+                        if (curFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
+                        else if (curFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
+                        else if (curFilter === 'assigned') matches = assignedTo === curUserId && state !== 'archived'
+                        else if (curFilter === 'archived') matches = state === 'archived'
+                        else if (curFilter === 'snoozed') matches = status === 'snoozed'
 
                         if (!matches) return prev.filter(c => c.id !== updatedConv.id)
 
@@ -412,15 +451,15 @@ export function SidebarConversationList({
                             const updated = {
                                 ...prev[existingIndex],
                                 ...updatedConv,
+                                // Preservar datos relacionales que el payload Realtime no incluye
                                 leads: prev[existingIndex].leads,
                                 clients: prev[existingIndex].clients,
                                 integration_connections: prev[existingIndex].integration_connections
                             }
+                            // Re-ordenar al tope si cambió last_message_at
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
                         } else if (eventType === 'INSERT') {
-                            // Handle new conversations coming via Realtime
-                            // SURGICAL FETCH: New rows lack lead/connection metadata. 
-                            // We fetch them instantly to avoid "Unknown User" flashes.
+                            // Fetch quirurgico para obtener metadatos relacionales
                             supabase
                                 .from('conversations')
                                 .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
@@ -431,31 +470,26 @@ export function SidebarConversationList({
                                         setConversations(current => {
                                             const idx = current.findIndex(c => c.id === data.id)
                                             if (idx > -1) {
-                                                const updated = [...current]
-                                                updated[idx] = data as Conversation
-                                                return updated
+                                                const arr = [...current]
+                                                arr[idx] = data as Conversation
+                                                return arr
                                             }
                                             return [data as Conversation, ...current]
                                         })
                                     }
                                 })
-
                             return [updatedConv, ...prev]
                         }
                         return prev 
                     })
 
-                        if (updatedConv.id === selectedIdRef.current) {
-                            window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
-                                detail: { conversationId: updatedConv.id } 
-                            }));
-                        }
-                        
-                        // DEBT: Avoid global refetch on every Realtime update.
-                        // Surgical state updates above are sufficient for most cases.
-                        // We only refetch strictly on INSERT (handled elsewhere if needed) or major sync triggers.
+                    if (updatedConv?.id === selectedIdRef.current) {
+                        window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
+                            detail: { conversationId: updatedConv.id } 
+                        }));
                     }
-                )
+                }
+            )
             .on('broadcast', { event: 'vanish' }, (payload: any) => {
                 const { conversationId } = payload.payload;
                 if (conversationId) {
@@ -477,7 +511,10 @@ export function SidebarConversationList({
             realtimeManager.releaseChannel(channelName)
             window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
         }
-    }, [effectiveOrgId, currentUserId, activeFilter, identityLoaded, hasGlobalView, authorizedChannels, effectivePermissions])
+    // CRITICO: NO agregar selectedChannelId, selectedAgentId, activeFilter aqui.
+    // Se leen via refs para evitar re-registro de listeners (BUG 3 fix).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [effectiveOrgId, currentUserId, identityLoaded])
 
     const counts = useMemo(() => {
         return {
@@ -700,8 +737,8 @@ export function SidebarConversationList({
                 ) : (
                     <Virtuoso
                         style={{ height: '100%' }}
-                        totalCount={conversations.length}
-                        data={conversations}
+                        totalCount={visibleConversations.length}
+                        data={visibleConversations}
                         endReached={loadMore}
                         itemContent={(index, conv) => (
                             <div className="border-b border-border/50">
@@ -728,7 +765,6 @@ export function SidebarConversationList({
                                         setActiveMenuIsArchived(isArchived)
                                     }}
                                     fetchConversations={() => fetchConversations(false)}
-                                    tick={tick}
                                 />
                             </div>
                         )}
