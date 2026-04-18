@@ -91,6 +91,9 @@ export function SidebarConversationList({
     const [mounted, setMounted] = useState(false)
 
     // Refs para leer valores actuales en closures de Realtime sin re-registrar el canal (FIX BUG 2)
+    // SEGURIDAD: identityLoadedRef es crítico — sin él, si el canal se registra antes de que
+    // los permisos carguen (identityLoaded=false en closure), los security checks quedan
+    // permanentemente deshabilitados para ese handler, filtrando convs de otros agentes.
     const selectedChannelIdRef = useRef<string | null>(null)
     const selectedAgentIdRef = useRef<string | null>(null)
     const activeFilterRef = useRef<FilterTab>('all')
@@ -98,6 +101,7 @@ export function SidebarConversationList({
     const hasGlobalViewRef = useRef(false)
     const isAdminRef = useRef(false)
     const authorizedChannelsRef = useRef<string[]>([])
+    const identityLoadedRef = useRef(false)
 
     useEffect(() => {
         setMounted(true)
@@ -155,6 +159,7 @@ export function SidebarConversationList({
     useEffect(() => { hasGlobalViewRef.current = hasGlobalView }, [hasGlobalView])
     useEffect(() => { isAdminRef.current = isAdmin }, [isAdmin])
     useEffect(() => { authorizedChannelsRef.current = authorizedChannels }, [authorizedChannels])
+    useEffect(() => { identityLoadedRef.current = identityLoaded }, [identityLoaded])
 
     const filteredAgents = useMemo(() => {
         return agents.filter(a => {
@@ -387,7 +392,10 @@ export function SidebarConversationList({
                         const effectiveConnectionId = updatedConv.connection_id || existingConv?.connection_id
 
                         // SEGURIDAD: verificar autorizacion del canal
-                        if (!curHasGlobalView && identityLoaded) {
+                        // USA identityLoadedRef.current — NO identityLoaded del closure.
+                        // Si se usara el closure, quedaría false si el canal se registró
+                        // antes de que cargaran los permisos, deshabilitando este check.
+                        if (!curHasGlobalView && identityLoadedRef.current) {
                             if (!effectiveConnectionId || !curAuthorizedChannels.includes(effectiveConnectionId)) {
                                 return prev.filter(c => c.id !== updatedConv.id)
                             }
@@ -398,8 +406,8 @@ export function SidebarConversationList({
                         const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
                         const assignedTo = updatedConv.assigned_to ?? existingConv?.assigned_to
 
-                        // AGENT PRIVACY
-                        if (identityLoaded) {
+                        // AGENT PRIVACY — misma razón: usar ref no closure
+                        if (identityLoadedRef.current) {
                             const isAuthorizedForView = curHasGlobalView || curIsAdmin || assignedTo === curUserId
                             if (!isAuthorizedForView) return prev.filter(c => c.id !== updatedConv.id)
                         }
