@@ -447,6 +447,7 @@ export function SidebarConversationList({
                         if (!matches) return prev.filter(c => c.id !== updatedConv.id)
 
                         if (existingIndex > -1) {
+                            // La conversación ya está en lista — actualizar in-place y re-ordenar al tope
                             const updated = {
                                 ...prev[existingIndex],
                                 ...updatedConv,
@@ -455,10 +456,9 @@ export function SidebarConversationList({
                                 clients: prev[existingIndex].clients,
                                 integration_connections: prev[existingIndex].integration_connections
                             }
-                            // Re-ordenar al tope si cambió last_message_at
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
                         } else if (eventType === 'INSERT') {
-                            // Fetch quirurgico para obtener metadatos relacionales
+                            // Nueva fila — fetch quirúrgico para obtener metadatos relacionales
                             supabase
                                 .from('conversations')
                                 .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
@@ -477,6 +477,33 @@ export function SidebarConversationList({
                                         })
                                     }
                                 })
+                            return [updatedConv, ...prev]
+                        } else if (eventType === 'UPDATE') {
+                            // FIX BUG 1 DEFINITIVO:
+                            // La conversación NO está en la lista (existingIndex = -1)
+                            // pero el servidor la reactivó (state: archived → active).
+                            // Supabase dispara UPDATE (no INSERT) porque el row ya existía.
+                            // Sin este bloque, caía en 'return prev' sin hacer nada visible.
+                            supabase
+                                .from('conversations')
+                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
+                                .eq('id', updatedConv.id)
+                                .single()
+                                .then(({ data }) => {
+                                    if (data) {
+                                        setConversations(current => {
+                                            const idx = current.findIndex(c => c.id === data.id)
+                                            if (idx > -1) {
+                                                // Otra actualización llegó antes — actualizar y re-ordenar
+                                                const arr = [...current]
+                                                arr[idx] = data as Conversation
+                                                return [arr[idx], ...arr.filter((_, i) => i !== idx)]
+                                            }
+                                            return [data as Conversation, ...current]
+                                        })
+                                    }
+                                })
+                            // Placeholder optimista mientras llega el fetch con todos los metadatos
                             return [updatedConv, ...prev]
                         }
                         return prev 
