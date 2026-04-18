@@ -52,6 +52,22 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
         setMounted(true)
     }, [])
 
+    // Limpiar el panel de chat cuando se elimina o resuelve la conversación activa.
+    // El flag clearChat=true en el evento indica que el panel central debe vaciarse.
+    const selectedConversationIdRef = React.useRef(selectedConversationId)
+    React.useEffect(() => { selectedConversationIdRef.current = selectedConversationId }, [selectedConversationId])
+
+    React.useEffect(() => {
+        const handleConvDeleted = (e: Event) => {
+            const { conversationId, clearChat } = (e as CustomEvent).detail
+            if (clearChat && conversationId === selectedConversationIdRef.current) {
+                setSelectedConversationId(null)
+            }
+        }
+        window.addEventListener('pixy:conversation-deleted', handleConvDeleted)
+        return () => window.removeEventListener('pixy:conversation-deleted', handleConvDeleted)
+    }, [])
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {

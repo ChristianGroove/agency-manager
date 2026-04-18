@@ -40,26 +40,40 @@ export function ChatHeader({
     const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || t('crm.inbox.chat.unknown_user')
 
     const handleAction = async (action: 'resolve' | 'snooze' | 'archive' | 'delete') => {
-        window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
-        router.push('/inbox')
-
-        if (action === 'resolve') {
-            toast.success(t('crm.inbox.context.actions.resolved'))
-            await completeConversation(conversationId)
-        } else if (action === 'snooze') {
-            const tomorrow = new Date()
-            tomorrow.setDate(tomorrow.getDate() + 1)
-            toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
-            await snoozeConversation(conversationId, tomorrow)
-        } else if (action === 'archive') {
-            toast.success(t('crm.inbox.context.actions.archived'))
-            await archiveConversation(conversationId)
-        } else if (action === 'delete') {
-            if (window.confirm("¿Estás seguro de que deseas eliminar esta conversación permanentemente?")) {
-                // SILENT OPTIMISTIC DELETE: No wait, no extra toasts, matching sidebar cards
-                deleteConversation(conversationId)
-            }
+        // Para delete: confirmar primero antes de hacer cualquier cosa
+        if (action === 'delete') {
+            if (!window.confirm("¿Estás seguro de que deseas eliminar esta conversación permanentemente?")) return
         }
+
+        // ESPERAR la server action antes de despachar el evento optimista.
+        // Esto previene el race condition donde fetchConversations se ejecuta antes
+        // de que la BD confirme el cambio de estado (reaparición al cambiar vista).
+        try {
+            if (action === 'resolve') {
+                await completeConversation(conversationId)
+                toast.success(t('crm.inbox.context.actions.resolved'))
+            } else if (action === 'snooze') {
+                const tomorrow = new Date()
+                tomorrow.setDate(tomorrow.getDate() + 1)
+                await snoozeConversation(conversationId, tomorrow)
+                toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
+            } else if (action === 'archive') {
+                await archiveConversation(conversationId)
+                toast.success(t('crm.inbox.context.actions.archived'))
+            } else if (action === 'delete') {
+                await deleteConversation(conversationId)
+            }
+        } catch (err) {
+            toast.error(t('crm.inbox.layout.connection_error'))
+            return
+        }
+
+        // DB confirmado — ahora sí remover del sidebar y limpiar el chat.
+        // clearChat=true le indica a InboxLayout que limpie el panel central.
+        window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { 
+            detail: { conversationId, clearChat: true } 
+        }));
+        router.push('/inbox')
     }
 
     return (
