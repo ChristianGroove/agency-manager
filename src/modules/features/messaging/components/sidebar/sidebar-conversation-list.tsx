@@ -404,37 +404,36 @@ export function SidebarConversationList({
                             if (!isAuthorizedForView) return prev.filter(c => c.id !== updatedConv.id)
                         }
 
-                        // FIX BUG 1: Conversacion archivada que recibe mensaje nuevo
-                        // Si el state sigue siendo 'archived' pero hay unread_count > 0,
-                        // hacemos refetch quirurgico para que el backend determine el nuevo estado.
-                        // La conversacion NO se elimina del estado local — se actualiza o se re-inserta.
-                        if (state === 'archived' && unreadCount > 0 && curFilter === 'all') {
-                            // Refetch asíncrono fuera del setState para obtener datos actualizados
+                        // FIX BUG 1: Conversacion archivada que recibe NUEVO mensaje externo
+                        // Solo aplica si el unread_count AUMENTÓ respecto al estado anterior en memoria,
+                        // lo que indica un mensaje nuevo entrante — no una resolución local.
+                        // Esto evita que al resolver localmente (state → archived) el refetch
+                        // reinsertre la conversación en el sidebar.
+                        const prevUnreadCount = existingConv?.unread_count ?? 0
+                        const unreadIncreased = unreadCount > prevUnreadCount
+                        if (state === 'archived' && unreadIncreased && curFilter === 'all') {
+                            // Refetch asíncrono: si el webhook reabrió la conversación en BD, aparecerá
                             supabase
                                 .from('conversations')
                                 .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
                                 .eq('id', updatedConv.id)
                                 .single()
                                 .then(({ data }) => {
-                                    if (data) {
+                                    if (data && data.state !== 'archived') {
+                                        // Solo reinsertar si la BD ya lo marcó como activo
                                         setConversations(current => {
                                             const idx = current.findIndex(c => c.id === data.id)
-                                            // Solo insertar si el estado actualizado ya no es archived
-                                            // (el webhook pudo haberlo reabierto automaticamente)
                                             if (idx > -1) {
                                                 const arr = [...current]
                                                 arr[idx] = data as Conversation
-                                                // Re-ordenar al tope por last_message_at
                                                 return [arr[idx], ...arr.filter((_, i) => i !== idx)]
-                                            } else if (data.state !== 'archived') {
-                                                return [data as Conversation, ...current]
                                             }
-                                            return current
+                                            return [data as Conversation, ...current]
                                         })
                                     }
                                 })
-                            // Mantener el estado actual mientras llega el refetch
-                            return prev
+                            // Mientras llega el refetch, mantener fuera del sidebar (state=archived)
+                            return prev.filter(c => c.id !== updatedConv.id)
                         }
 
                         // Evaluar si la conversacion debe estar visible en el filtro activo
