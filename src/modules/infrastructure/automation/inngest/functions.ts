@@ -200,7 +200,7 @@ export const contractOrchestrator = inngest.createFunction(
             // Fetch Client & Org details for branding
             const { data: contract } = await supabase
                 .from('contracts')
-                .select('*, client:clients(name, email), organization:organizations(name)')
+                .select('*, client:leads!client_id(name, email), organization:organizations(name)')
                 .eq('id', contractId)
                 .single();
 

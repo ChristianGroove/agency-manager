@@ -43,7 +43,7 @@ export async function generateInvoiceFromJob(jobId: string) {
             .from('appointments')
             .select(`
                 *,
-                client:clients(id, first_name, last_name, email, address),
+                client:leads!client_id(id, name, email, address),
                 service:cleaning_services(name, base_price, price_unit)
             `)
             .eq('id', jobId)

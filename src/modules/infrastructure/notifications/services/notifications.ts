@@ -48,7 +48,7 @@ export async function checkUpcomingPayments() {
             .from('subscriptions')
             .select(`
                 *,
-                clients (
+                clients:leads!client_id (
                     id,
                     name
                 )
@@ -241,7 +241,7 @@ async function checkOverdueInvoices(userId: string) {
             .from('invoices')
             .select(`
                 *,
-                client:clients(id, name)
+                client:leads!client_id(id, name)
             `)
             .eq('status', 'pending')
             .lt('due_date', new Date().toISOString())

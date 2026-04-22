@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         // Fetch all invoices using Admin client
         const { data: invoices, error } = await supabaseAdmin
             .from('invoices')
-            .select('*, client:clients(organization_id)')
+            .select('*, client:leads!client_id(organization_id)')
             .in('id', invoiceIds)
 
         if (error || !invoices || invoices.length !== invoiceIds.length) {

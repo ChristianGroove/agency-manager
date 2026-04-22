@@ -45,7 +45,7 @@ export async function GET(request: Request) {
             .from('subscriptions')
             .select(`
                 *,
-                clients ( id, name ),
+                clients:leads!client_id ( id, name ),
                 organizations ( id, name )
             `)
             .eq('status', 'active')
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
             .from('invoices')
             .select(`
                 *,
-                client:clients(id, name)
+                client:leads!client_id(id, name)
             `)
             .eq('status', 'pending')
             .lt('due_date', new Date().toISOString());

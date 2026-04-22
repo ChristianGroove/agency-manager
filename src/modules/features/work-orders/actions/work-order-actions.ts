@@ -97,7 +97,7 @@ export async function getWorkOrders(params?: {
             .from('work_orders')
             .select(`
                 *,
-                client:clients(id, name, address),
+                client:leads!client_id(id, name, address),
                 service:service_catalog(id, name, category, metadata),
                 assignee:organization_members!assigned_staff_id(user_id, first_name, last_name, email)
             `)

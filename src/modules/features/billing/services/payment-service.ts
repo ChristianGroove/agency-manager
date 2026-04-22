@@ -106,7 +106,7 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
 async function handleProcessEngineTransition(invoiceId: string, orgId: string) {
     try {
         const supabase = await createClient()
-        const { data: invoice } = await supabase.from('invoices').select('*, client:clients(id)').eq('id', invoiceId).single()
+        const { data: invoice } = await supabase.from('invoices').select('*, client:leads!client_id(id)').eq('id', invoiceId).single()
         if (!invoice) return
 
         let leadId = (invoice as any).lead_id || (invoice as any).metadata?.lead_id
