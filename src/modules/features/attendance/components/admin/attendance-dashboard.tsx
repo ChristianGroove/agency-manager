@@ -164,41 +164,6 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Operómetro Retail - Magic Card Style */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <MagicStatCard
-                        title="Operómetro Retail"
-                        value={
-                            <div className="flex items-baseline gap-2">
-                                <span>{new Set(logs.filter(l => l.type === 'check_in').map(l => l.location_id)).size}</span>
-                                <span className="text-sm font-normal text-muted-foreground">/ {locations.length} Sedes Activas</span>
-                            </div>
-                        }
-                        icon={Store}
-                        gradientColor="var(--primary)"
-                        subtext={
-                            <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-none font-bold">
-                                    {new Set(logs.filter(l => l.type === 'check_in').map(l => l.staff_id)).size} Staff en sitio
-                                </Badge>
-                                {new Set(logs.filter(l => l.type === 'check_in').map(l => l.location_id)).size < locations.length && (
-                                    <Badge variant="outline" className="bg-red-500/10 text-red-600 border-none font-bold">
-                                        Faltan sedes
-                                    </Badge>
-                                )}
-                            </div>
-                        }
-                        className="md:col-span-2"
-                    />
-
-                    <MagicStatCard
-                        title="Alertas de Seguridad"
-                        value={logs.filter(l => !l.is_valid).length}
-                        icon={AlertTriangle}
-                        gradientColor="#ef4444"
-                        subtext="Anomalías GPS o biometría hoy"
-                    />
-                </div>
 
                 <TabsContent value="lifecycles" className="space-y-6 mt-0">
                     <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">

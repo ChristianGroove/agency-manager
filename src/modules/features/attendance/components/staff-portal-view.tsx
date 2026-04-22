@@ -397,21 +397,13 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                             shiftData?.state === 2 && shiftData?.shiftType === 'split' ? 'Descanso Iniciado' :
                             shiftData?.state === 3 ? '¡Bienvenido de vuelta!' : 'Jornada Finalizada'}
                         </h2>
-                        <p className="text-slate-500 mb-6">Tu registro ha sido guardado oficialmente en el servidor.</p>
+                        <p className="text-slate-500">Tu registro ha sido guardado oficialmente en el servidor.</p>
                         
-                        {cooldownRemainingMs && (
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 w-full">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Bloqueo de seguridad activo</p>
-                                <div className="flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                    <Clock className="w-4 h-4" />
-                                    <span className="font-mono font-bold text-lg">
-                                        {Math.floor(cooldownRemainingMs / 60000)}:
-                                        {String(Math.floor((cooldownRemainingMs % 60000) / 1000)).padStart(2, '0')}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-2">Esta pantalla se cerrará automáticamente al finalizar el tiempo.</p>
+                        <div className="w-full mt-6 flex justify-center">
+                            <div className="w-12 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 animate-[loading_15s_linear_infinite]" style={{ width: '100%' }} />
                             </div>
-                        )}
+                        </div>
                         
                         {!cooldownRemainingMs && (
                              <Button 
@@ -537,9 +529,9 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
 
                             {/* Overlay de Guía Facial */}
                             {view === 'camera' && (
-                                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center opacity-40">
-                                    <div className="w-48 h-64 border-2 border-dashed border-white rounded-[50px]" />
-                                    <p className="text-white text-xs mt-4 font-bold tracking-widest uppercase drop-shadow-md">Centra tu rostro</p>
+                                <div className="absolute inset-0 pointer-events-none flex flex-col items-center pt-12 opacity-30">
+                                    <p className="text-white text-[10px] mb-8 font-bold tracking-[0.2em] uppercase drop-shadow-md opacity-40">Centra tu rostro</p>
+                                    <div className="w-48 h-64 border-2 border-dashed border-white/40 rounded-[50px] mt-4" />
                                 </div>
                             )}
 
