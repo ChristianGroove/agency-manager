@@ -10,14 +10,30 @@ Toda la lógica de marcas se ha movido al servidor (`actions.ts`). El cliente no
 - **Flexibilidad Horaria**: Se eliminó la restricción de 2 horas de break. Los empleados sin horario personalizado ahora operan en "Modo Flexible", permitiendo marcas libres basadas solo en la geocerca.
 - **Soporte Global**: El sistema ahora reconoce y valida los 7 días de la semana, incluyendo configuraciones específicas para sábados y domingos.
 
-### Motor de Nómina Asíncrono
+### Motor de Nómina e Infraestructura Asíncrona
 Para reducir la latencia del portal y el tiempo de cómputo en Vercel:
 - El registro (`registerAttendanceMark`) devuelve éxito inmediatamente después de guardar el log.
-- El cálculo de horas (`processDailyShift`) se dispara en segundo plano, desacoplado de la respuesta al usuario.
+- El cálculo de horas (`processDailyShift`) se dispara en segundo plano.
+- **Optimización de Dashboard**: Se eliminaron los insights de agregación en tiempo real ("Operómetro" y "Alertas") para reducir la carga en la base de datos y mejorar la velocidad de respuesta del panel administrativo.
 
 ---
 
-## 2. Optimización de Infraestructura
+## 2. Gestión de Sedes (Locations)
+
+### Rediseño de Tarjetas (Compact View)
+Se implementó un diseño denso y eficiente basado en Glassmorphism:
+- **Identificación Geográfica**: Inclusión de Ciudad y Departamento en la vista principal.
+- **Interactividad**: Tooltips en avatares de staff para visualizar nombres y estados en tiempo real sin recargar la página.
+- **Estética**: Reducción de pesos tipográficos y márgenes para maximizar la densidad de información.
+
+### Unificación de Horarios
+El sistema de horarios comerciales de las sedes se unificó con el patrón de colaboradores:
+- **Replicación Masiva**: Botón "Aplicar a todos" para clonar configuraciones horarias.
+- **Soporte 24/7**: Configuración independiente para los 7 días de la semana.
+
+---
+
+## 3. Optimización de Infraestructura
 
 ### Gestión de Almacenamiento (Supabase Storage)
 Para mitigar el crecimiento exponencial de costos por almacenamiento de fotos probatorias:

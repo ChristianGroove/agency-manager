@@ -64,7 +64,7 @@ export function LocationCard({ location, staffMembers = [], onEdit, onDelete, on
                     {/* Header: Name & Status */}
                     <div className="flex justify-between items-start gap-4 mb-4">
                         <div className="space-y-0.5 min-w-0">
-                            <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand-pink transition-colors">
+                            <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand-pink transition-all duration-300">
                                 {location.name}
                             </h3>
                             <div className="flex flex-col gap-0.5">
@@ -120,18 +120,41 @@ export function LocationCard({ location, staffMembers = [], onEdit, onDelete, on
                             {staffMembers.length > 0 ? (
                                 <div className="flex -space-x-2 flex-1">
                                     {staffMembers.slice(0, 4).map((staff, i) => (
-                                        <Avatar
-                                            key={staff.id}
-                                            className={cn(
-                                                "w-8 h-8 border-2 border-white dark:border-slate-900 rounded-full shadow-sm transition-all duration-300 hover:scale-110 hover:z-20",
-                                                i === 0 ? "z-10" : "z-0"
-                                            )}
-                                        >
-                                            <AvatarImage src={staff.photo_url} className="object-cover" />
-                                            <AvatarFallback className="bg-slate-200 text-slate-600 text-[8px] font-black">
-                                                {staff.name.substring(0, 2).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
+                                        <Tooltip key={staff.id} delayDuration={100}>
+                                            <TooltipTrigger asChild>
+                                                <Avatar
+                                                    className={cn(
+                                                        "w-8 h-8 border-2 border-white dark:border-slate-900 rounded-full shadow-sm transition-all duration-300 hover:scale-110 hover:z-20 cursor-pointer",
+                                                        i === 0 ? "z-10" : "z-0"
+                                                    )}
+                                                >
+                                                    <AvatarImage src={staff.photo_url} className="object-cover" />
+                                                    <AvatarFallback className="bg-slate-200 text-slate-600 text-[8px] font-black">
+                                                        {staff.name.substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </TooltipTrigger>
+                                            <TooltipContent 
+                                                side="top" 
+                                                className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-slate-200 dark:border-white/10 p-2 shadow-xl rounded-xl animate-in fade-in zoom-in duration-200"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight">{staff.name}</span>
+                                                        <span className="text-[9px] text-slate-500 font-medium uppercase tracking-wider">{staff.role || 'Staff'}</span>
+                                                    </div>
+                                                    <Badge 
+                                                        variant="outline" 
+                                                        className={cn(
+                                                            "text-[8px] h-4 px-1 border-none",
+                                                            staff.status === 'inside_geofence' ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 text-slate-500"
+                                                        )}
+                                                    >
+                                                        {staff.status === 'inside_geofence' ? 'En Sede' : 'Offline'}
+                                                    </Badge>
+                                                </div>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     ))}
                                     {staffMembers.length > 4 && (
                                         <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-[8px] font-black text-slate-500 border-2 border-white dark:border-slate-900 z-10">

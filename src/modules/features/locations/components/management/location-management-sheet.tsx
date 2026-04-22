@@ -124,6 +124,18 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
         }))
     }
 
+    const handleReplicateSchedule = (sourceDay: keyof BusinessHours) => {
+        const sourceData = businessHours[sourceDay]
+        const newHours = { ...businessHours }
+        
+        Object.keys(newHours).forEach(day => {
+            newHours[day as keyof BusinessHours] = { ...sourceData }
+        })
+        
+        setBusinessHours(newHours)
+        toast.success(`Horario de ${DAYS_MAP.find(d => d.key === sourceDay)?.label} replicado a toda la semana`)
+    }
+
     const handleSearchAddress = async () => {
         if (!address.trim()) return
         setIsSearching(true)
@@ -381,48 +393,68 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                     <Clock className="w-4 h-4" /> Horario Comercial
                                 </h3>
 
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                     {DAYS_MAP.map(day => {
-                                        const schedule = businessHours[day.key as keyof BusinessHours]
+                                        const dayKey = day.key as keyof BusinessHours
+                                        const schedule = businessHours[dayKey]
                                         return (
                                             <div key={day.key} className={cn(
-                                                "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                                                "p-4 rounded-xl border transition-all duration-300",
                                                 schedule.is_closed
-                                                    ? "bg-slate-50 border-slate-100 dark:bg-slate-900/30 dark:border-slate-800/50 opacity-60"
-                                                    : "bg-white border-emerald-100 dark:bg-slate-900/80 dark:border-emerald-900/30"
+                                                    ? "bg-slate-50/50 border-slate-100 dark:bg-slate-900/30 dark:border-slate-800/50 opacity-60"
+                                                    : "bg-white border-slate-200 dark:bg-slate-900/80 dark:border-white/5 shadow-sm"
                                             )}>
-                                                <div className="flex items-center gap-3 w-1/3">
-                                                    <Switch
-                                                        checked={!schedule.is_closed}
-                                                        onCheckedChange={() => handleDayToggle(day.key as keyof BusinessHours)}
-                                                    />
-                                                    <span className={cn(
-                                                        "text-sm font-medium",
-                                                        schedule.is_closed && "line-through text-slate-400"
-                                                    )}>
-                                                        {day.label}
-                                                    </span>
-                                                </div>
-
-                                                {!schedule.is_closed ? (
-                                                    <div className="flex items-center gap-2 w-2/3 justify-end">
-                                                        <Input
-                                                            type="time"
-                                                            value={schedule.open}
-                                                            onChange={e => handleTimeChange(day.key as keyof BusinessHours, 'open', e.target.value)}
-                                                            className="w-[110px] h-8 text-xs font-mono"
-                                                        />
-                                                        <span className="text-slate-400 text-xs">-</span>
-                                                        <Input
-                                                            type="time"
-                                                            value={schedule.close}
-                                                            onChange={e => handleTimeChange(day.key as keyof BusinessHours, 'close', e.target.value)}
-                                                            className="w-[110px] h-8 text-xs font-mono"
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Label className={cn(
+                                                            "text-sm font-bold tracking-tight",
+                                                            schedule.is_closed ? "text-slate-400" : "text-slate-700 dark:text-slate-200"
+                                                        )}>
+                                                            {day.label}
+                                                        </Label>
+                                                        {!schedule.is_closed && (
+                                                            <Button 
+                                                                type="button"
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="h-6 px-2 text-[10px] text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 gap-1 rounded-full font-bold"
+                                                                onClick={() => handleReplicateSchedule(dayKey)}
+                                                            >
+                                                                <Clock className="w-3 h-3" /> Aplicar a todos
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                            {schedule.is_closed ? 'Cerrado' : 'Abierto'}
+                                                        </span>
+                                                        <Switch
+                                                            checked={!schedule.is_closed}
+                                                            onCheckedChange={() => handleDayToggle(dayKey)}
                                                         />
                                                     </div>
-                                                ) : (
-                                                    <div className="w-2/3 text-right text-xs text-slate-400 font-medium">
-                                                        Cerrado
+                                                </div>
+
+                                                {!schedule.is_closed && (
+                                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Apertura</Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={schedule.open}
+                                                                onChange={e => handleTimeChange(dayKey, 'open', e.target.value)}
+                                                                className="h-9 bg-white dark:bg-slate-950 text-sm font-medium border-slate-200"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Cierre</Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={schedule.close}
+                                                                onChange={e => handleTimeChange(dayKey, 'close', e.target.value)}
+                                                                className="h-9 bg-white dark:bg-slate-950 text-sm font-medium border-slate-200"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
