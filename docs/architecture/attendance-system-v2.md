@@ -20,16 +20,15 @@ Para reducir la latencia del portal y el tiempo de cómputo en Vercel:
 
 ## 2. Gestión de Sedes (Locations)
 
-### Rediseño de Tarjetas (Compact View)
-Se implementó un diseño denso y eficiente basado en Glassmorphism:
-- **Identificación Geográfica**: Inclusión de Ciudad y Departamento en la vista principal.
-- **Interactividad**: Tooltips en avatares de staff para visualizar nombres y estados en tiempo real sin recargar la página.
-- **Estética**: Reducción de pesos tipográficos y márgenes para maximizar la densidad de información.
+### Rediseño Premium Floating Sheet
+Se transformó el formulario de gestión de sedes para alinearlo con el estándar de alta gama de la plataforma:
+- **Diseño Suspendido**: Uso de márgenes (`my-4`), esquinas ultra-redondeadas (`rounded-3xl`) y `backdrop-blur-xl`.
+- **Navegación Eficiente**: Header fijo con íconos de navegación y footer de acciones pegajoso para evitar scroll excesivo.
+- **Identificación Geográfica**: Inclusión de Ciudad y Departamento en la vista principal y soporte para radios de geocerca de hasta **100km**.
 
-### Unificación de Horarios
-El sistema de horarios comerciales de las sedes se unificó con el patrón de colaboradores:
-- **Replicación Masiva**: Botón "Aplicar a todos" para clonar configuraciones horarias.
-- **Soporte 24/7**: Configuración independiente para los 7 días de la semana.
+### Interactividad y UX
+- **Tooltips dinámicos**: Visualización de nombres, roles y estados en tiempo real al pasar el cursor sobre los avatares de staff.
+- **Unificación de Horarios**: Implementación de lógica de replicación masiva ("Aplicar a todos") para la configuración comercial de los 7 días de la semana.
 
 ---
 
