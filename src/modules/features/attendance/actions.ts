@@ -136,9 +136,21 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         }
 
         // D. Verificación Estricta (Zero-Trust Server Time)
-        if (validated.type === 'check_in' || validated.type === 'break_end') {
-            const currentState = await getDailyAttendanceState(validated.staffToken)
+        const currentState = await getDailyAttendanceState(validated.staffToken)
 
+        // 0. Bloqueo de Cooldown (15 minutos)
+        if (currentState.lastActionTimestamp) {
+            const lastLogTime = new Date(currentState.lastActionTimestamp).getTime()
+            const now = new Date().getTime()
+            const fifteenMinutesInMs = 15 * 60000
+
+            if (now - lastLogTime < fifteenMinutesInMs) {
+                const remainingMins = Math.ceil((fifteenMinutesInMs - (now - lastLogTime)) / 60000)
+                return { success: false, error: `Debes esperar ${remainingMins} minutos antes de realizar otra marcación por seguridad.` }
+            }
+        }
+
+        if (validated.type === 'check_in' || validated.type === 'break_end') {
             // 1. Validar Gracia de Entrada (Check-In)
             if (currentState.success && currentState.state === -1) {
                 return { success: false, error: currentState.nextBlockStartTime ? `Tu turno inicia a las ${currentState.nextBlockStartTime}.` : `Estás fuera de horario.` }
@@ -147,15 +159,16 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             // 2. Validar Gracia de Break (Regreso)
             if (validated.type === 'break_end') {
                 if (currentState.success && currentState.state === 2 && currentState.lastActionTimestamp) {
-                    if (currentState.expectedBreakReturnTime && currentState.timezone) {
+                    // Solo validar si tiene horario personalizado (custom schedule)
+                    if (currentState.isCustomSchedule && currentState.expectedBreakReturnTime && currentState.timezone) {
                         const graceReturn = subtractGraceMins(currentState.expectedBreakReturnTime)
                         const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: currentState.timezone as string, hour12: false, hour: '2-digit', minute: '2-digit' })
 
                         if (nowInTz < graceReturn) {
                             return { success: false, error: `Aún estás en horario de descanso. Debes regresar a partir de las ${graceReturn}.` }
                         }
-                    } else {
-                        // Fallback a hora configurada global
+                    } else if (currentState.isCustomSchedule) {
+                        // Fallback a hora configurada global (solo para horarios personalizados)
                         const breakDurationMinutes = currentState.breakDurationMinutes || 120
                         const breakStartTime = new Date(currentState.lastActionTimestamp).getTime()
                         const now = new Date().getTime()
@@ -165,6 +178,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                             return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
                         }
                     }
+                    // Si NO es custom schedule, el cooldown de 15 min ya se validó arriba, no hay restricción extra de 2h/block.
                 } else if (currentState.success && currentState.state !== 2) {
                     return { success: false, error: "No puedes registrar un regreso de descanso en este momento." }
                 }
@@ -197,9 +211,9 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         }
 
         // 3. MASTER SHIFT CONTROLLER (Payroll Engine Hub)
-        // Whenever a log is created successfully, we trigger a stateless recalculation of exactly the whole day
-        // This ensures zero-technical-debt and mathematical perfection regardless of device crashes.
-        await processDailyShift(staff.id, staff.organization_id, staff.location_id, staff.expected_hours_per_day || 8.0)
+        // Ejecutamos en segundo plano para no bloquear la respuesta al usuario
+        processDailyShift(staff.id, staff.organization_id, staff.location_id, staff.expected_hours_per_day || 8.0)
+            .catch(err => console.error("Async Shift Calc Error:", err))
 
         // Todo ha ido bien (incluso si is_valid false, guardamos el log para registro/castigo)
         return {
@@ -237,6 +251,7 @@ export async function uploadAttendancePhoto(base64Image: string, staffId: string
             .from('public_assets')
             .upload(fileName, buffer, {
                 contentType: mimeType,
+                cacheControl: '31536000', // 1 Year Cache (Attendance photos are immutable)
                 upsert: true
             })
 
@@ -565,7 +580,9 @@ export async function getDailyAttendanceState(staffToken: string) {
 
         const locationInfo = staff.location as any
         const tz = typeof locationInfo?.timezone === 'string' ? locationInfo.timezone : 'America/Bogota'
-        const schedule = staff.work_schedule || locationInfo?.business_hours
+        const customSchedule = staff.work_schedule
+        const hasCustomSchedule = customSchedule && Object.keys(customSchedule).length > 0
+        const schedule = hasCustomSchedule ? customSchedule : locationInfo?.business_hours
 
         if (schedule) {
             const todayIndex = new Date().getDay() // 0 = Sun, 1 = Mon...
@@ -574,7 +591,11 @@ export async function getDailyAttendanceState(staffToken: string) {
 
             const hours = schedule[todayKey]
 
-            if (hours) {
+            // REGLA: Si es Modo Flexible (no tiene horario personalizado), ignoramos las restricciones de la sede
+            if (!hasCustomSchedule) {
+                isOutofHours = false
+                expectedBreakReturnTime = null
+            } else if (hours) {
                 // If the day is explicitly marked as inactive or closed
                 if (hours.is_active === false || hours.is_closed === true) {
                     isOutofHours = true
@@ -601,7 +622,7 @@ export async function getDailyAttendanceState(staffToken: string) {
                     }
                 }
             } else {
-                // Si el día no existe en el JSON
+                // Si el día no existe en el JSON y es horario personalizado
                 isOutofHours = true
             }
         }
@@ -643,6 +664,7 @@ export async function getDailyAttendanceState(staffToken: string) {
             lastActionTimestamp: validLogsCount > 0 ? logs[validLogsCount - 1].timestamp : null,
             breakDurationMinutes: staff.break_duration_minutes || 120, // DB Config fallback
             expectedBreakReturnTime, // Formato "HH:mm" si usa block_2
+            isCustomSchedule: hasCustomSchedule,
             timezone: tz,
             geofence_lat: locationInfo?.latitude,
             geofence_lng: locationInfo?.longitude,
@@ -775,6 +797,69 @@ export async function getAttendanceShifts(organizationId: string) {
     } catch (err: any) {
         console.error("Error fetching attendance shifts:", err)
         return { success: false, error: err.message, data: [] }
+    }
+}
+
+/**
+ * CLEANUP JOB: Elimina fotos de asistencia antiguas (32 días)
+ * Ayuda a mantener los costos de storage bajo control.
+ */
+export async function cleanupAttendancePhotos(days: number = 32) {
+    try {
+        const supabase = supabaseAdmin
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - days)
+        
+        console.log(`[Cleanup] Buscando fotos de asistencia anteriores a ${cutoffDate.toISOString()}`)
+
+        // 1. Encontrar logs antiguos que tengan foto
+        const { data: oldLogs, error: logsError } = await supabase
+            .from('attendance_logs')
+            .select('id, photo_url')
+            .lt('timestamp', cutoffDate.toISOString())
+            .not('photo_url', 'is', null)
+            .limit(500) // Procesamos por lotes
+
+        if (logsError || !oldLogs || oldLogs.length === 0) {
+            return { success: true, count: 0 }
+        }
+
+        const filesToDelete: string[] = []
+        const logIds: string[] = []
+
+        for (const log of oldLogs) {
+            // Extraer path del URL (attendance/staffId/timestamp.webp)
+            const urlParts = log.photo_url.split('/')
+            const path = urlParts.slice(urlParts.indexOf('attendance')).join('/')
+            if (path) {
+                filesToDelete.push(path)
+                logIds.push(log.id)
+            }
+        }
+
+        if (filesToDelete.length > 0) {
+            // 2. Eliminar de Storage
+            const { error: storageError } = await supabase.storage
+                .from('public_assets')
+                .remove(filesToDelete)
+
+            if (storageError) throw storageError
+
+            // 3. Limpiar el campo photo_url en la DB para liberar espacio y marcar como archivado
+            // (No borramos el log para mantener la validez legal de la marca de tiempo)
+            const { error: updateError } = await supabase
+                .from('attendance_logs')
+                .update({ photo_url: null })
+                .in('id', logIds)
+
+            if (updateError) throw updateError
+        }
+
+        return { success: true, count: filesToDelete.length }
+
+    } catch (err) {
+        console.error("[Cleanup] Error fallido:", err)
+        return { success: false, error: err }
     }
 }
 

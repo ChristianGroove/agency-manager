@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { processLifecycleTransitions, getExpiringTrials } from '@/modules/core/lifecycle/lifecycle-actions'
+import { cleanupAttendancePhotos } from '@/modules/features/attendance/actions'
 
 /**
  * Lifecycle Cleanup Cron Job
@@ -47,13 +48,17 @@ export async function GET(request: Request) {
             )
         }
 
-        console.log(`[Lifecycle Cron] Completed. Processed ${results.length} organizations.`)
+        // 3. Cleanup Attendance Photos (Keep 32 days)
+        console.log('[Lifecycle Cron] Running attendance photo cleanup (32 days)...')
+        const cleanupResult = await cleanupAttendancePhotos(32)
+        console.log(`[Lifecycle Cron] Cleanup finished. Deleted ${cleanupResult.count || 0} photos.`)
 
         return NextResponse.json({
             success: true,
             timestamp: new Date().toISOString(),
             notificationsQueued: expiringTrials.length,
             transitionsProcessed: results.length,
+            attendancePhotosCleaned: cleanupResult.count || 0,
             results
         })
 

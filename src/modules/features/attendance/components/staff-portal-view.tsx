@@ -36,6 +36,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         breakDurationMinutes?: number,
         nextBlockStartTime?: string,
         expectedBreakReturnTime?: string,
+        isCustomSchedule?: boolean,
         timezone?: string,
         geofence_lat?: number,
         geofence_lng?: number,
@@ -44,6 +45,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [isLoadingState, setIsLoadingState] = useState(true)
     const [isBreakScreenActive, setIsBreakScreenActive] = useState(false)
     const [breakTimeRemainingMs, setBreakTimeRemainingMs] = useState<number | null>(null)
+    const [cooldownRemainingMs, setCooldownRemainingMs] = useState<number | null>(null)
     const [canReturnFromBreak, setCanReturnFromBreak] = useState(false)
 
     // GPS State
@@ -81,6 +83,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                     breakDurationMinutes: res.breakDurationMinutes,
                     nextBlockStartTime: res.nextBlockStartTime,
                     expectedBreakReturnTime: res.expectedBreakReturnTime,
+                    isCustomSchedule: res.isCustomSchedule,
                     timezone: res.timezone,
                     geofence_lat: res.geofence_lat,
                     geofence_lng: res.geofence_lng,
@@ -99,43 +102,58 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         return () => clearInterval(timer)
     }, [token])
 
-    // Break Timer Calculation
+    // Cooldown & Break Timer Calculation
     useEffect(() => {
-        if (shiftData?.state === 2 && isBreakScreenActive && shiftData.lastActionTimestamp) {
-            const checkTimer = () => {
-                let targetMs = 0
+        if (!shiftData?.lastActionTimestamp) return
 
-                if (shiftData.expectedBreakReturnTime && shiftData.timezone) {
+        const checkTimers = () => {
+            const startMs = new Date(shiftData.lastActionTimestamp!).getTime()
+            const nowMs = new Date().getTime()
+            
+            // 1. Cooldown de 15 minutos (Aplica a CUALQUIER marcación)
+            const fifteenMinMs = 15 * 60000
+            const cooldownDiff = (startMs + fifteenMinMs) - nowMs
+            
+            if (cooldownDiff <= 0) {
+                setCooldownRemainingMs(null)
+                if (view === 'success') {
+                    setView('camera')
+                    setCapturedImage(null)
+                }
+            } else {
+                setCooldownRemainingMs(cooldownDiff)
+            }
+
+            // 2. Temporizador de Break (Regreso)
+            if (shiftData.state === 2) {
+                let targetMs = 0
+                if (shiftData.isCustomSchedule && shiftData.expectedBreakReturnTime && shiftData.timezone) {
                     const [h, m] = shiftData.expectedBreakReturnTime.split(':').map(Number)
                     const d = new Date()
-                    // Usamos la fecha actual (navegador) pero inyectamos la hora absoluta de retorno. 
-                    // No es perfecto para husos horarios cruzados agresivos en cliente, pero suficiente para la UI.
                     d.setHours(h, m - 5, 0, 0)
                     targetMs = d.getTime()
-                } else {
-                    const startMs = new Date(shiftData.lastActionTimestamp!).getTime()
+                } else if (shiftData.isCustomSchedule) {
                     const breakDuration = shiftData.breakDurationMinutes || 120
-                    // Habilitamos el retorno 5 minutos ANTES de la duración total para gracia
                     targetMs = startMs + ((breakDuration - 5) * 60000)
+                } else {
+                    targetMs = startMs + fifteenMinMs // MODO FLEXIBLE
                 }
 
-                const nowMs = new Date().getTime()
-                const diff = targetMs - nowMs
-
-                if (diff <= 0) {
+                const breakDiff = targetMs - nowMs
+                if (breakDiff <= 0) {
                     setCanReturnFromBreak(true)
                     setBreakTimeRemainingMs(0)
                 } else {
                     setCanReturnFromBreak(false)
-                    setBreakTimeRemainingMs(diff)
+                    setBreakTimeRemainingMs(breakDiff)
                 }
             }
-
-            checkTimer() // initial check
-            const interval = setInterval(checkTimer, 1000)
-            return () => clearInterval(interval)
         }
-    }, [shiftData, isBreakScreenActive])
+
+        checkTimers()
+        const interval = setInterval(checkTimers, 1000)
+        return () => clearInterval(interval)
+    }, [shiftData, view])
 
     // Fetch GPS continuously while in camera mode
     useEffect(() => {
@@ -285,22 +303,22 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                 } else {
                     toast.success("Asistencia registrada exitosamente", { id: "attendance_action" })
                 }
+                
                 setView('success')
 
                 // Actualizar estado localmente para no tener que recargar
                 if (shiftData) {
                     const newState = shiftData.state + 1
-                    setShiftData({ ...shiftData, state: newState, lastActionTimestamp: new Date().toISOString() })
+                    setShiftData({ 
+                        ...shiftData, 
+                        state: newState, 
+                        lastActionTimestamp: new Date().toISOString() 
+                    })
                     // Si el nuevo estado es 2 (Reacien comenzó el break), activar la pantalla
                     if (newState === 2) {
                         setIsBreakScreenActive(true)
                     }
                 }
-
-                setTimeout(() => {
-                    setView('camera')
-                    setCapturedImage(null)
-                }, 5000)
             } else {
                 toast.error("Error", { description: res.error, id: "attendance_action" })
             }
@@ -318,31 +336,31 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const primaryColor = settings?.portal_primary_color || '#10b981' // emerald-500 default
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center p-0 px-5 font-sans">
 
-            {/* Header Info - Compacted */}
-            <div className="w-full max-w-md text-center mb-4 space-y-1">
-                {settings?.portal_logo_url ? (
-                    <div className="mb-4 flex justify-center">
-                        <img
-                            src={settings.portal_logo_url}
-                            alt="Logo"
-                            className="h-16 w-auto max-w-[200px] object-contain"
-                        />
-                    </div>
-                ) : (
-                    <div className="w-12 h-12 rounded-lg mx-auto bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center mb-2">
-                        <div className="text-xl font-black text-slate-800 dark:text-white">P</div>
-                    </div>
-                )}
-
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Hola, {staff.first_name}</h1>
-                <p className="text-xs font-medium text-slate-500">
-                    Sede: <span className="text-slate-700 dark:text-slate-300 font-bold">{staff.organization_locations?.name || 'Central'}</span>
+        {/* 1. Header Area - Precise Spacing */}
+        <div className="w-full max-w-md flex flex-col items-center px-4 pt-[24px] mb-4">
+            {settings?.portal_logo_url ? (
+                <img
+                    src={settings.portal_logo_url}
+                    alt="Logo"
+                    className="h-9 w-auto object-contain"
+                />
+            ) : (
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center">
+                    <div className="text-xl font-black text-slate-800 dark:text-white">P</div>
+                </div>
+            )}
+            
+            <div className="text-center mt-[32px]">
+                <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Hola, {staff.first_name} {staff.last_name}</h1>
+                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
+                    Sede: <span className="text-slate-700 dark:text-slate-300 font-bold">{staff.organization_locations?.name || 'Administración'}</span>
                 </p>
             </div>
+        </div>
 
-            <Card className="w-full max-w-md overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
+        <Card className="w-full max-w-md overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl relative">
 
                 {isLoadingState ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center animate-pulse">
@@ -374,8 +392,35 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
                             <CheckCircle2 className="w-10 h-10" />
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">¡Marca Exitosa!</h2>
-                        <p className="text-slate-500">Tu registro ha sido guardado oficialmente en el servidor.</p>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                           {shiftData?.state === 1 ? '¡Bienvenido a tu turno!' : 
+                            shiftData?.state === 2 && shiftData?.shiftType === 'split' ? 'Descanso Iniciado' :
+                            shiftData?.state === 3 ? '¡Bienvenido de vuelta!' : 'Jornada Finalizada'}
+                        </h2>
+                        <p className="text-slate-500 mb-6">Tu registro ha sido guardado oficialmente en el servidor.</p>
+                        
+                        {cooldownRemainingMs && (
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 w-full">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Bloqueo de seguridad activo</p>
+                                <div className="flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400">
+                                    <Clock className="w-4 h-4" />
+                                    <span className="font-mono font-bold text-lg">
+                                        {Math.floor(cooldownRemainingMs / 60000)}:
+                                        {String(Math.floor((cooldownRemainingMs % 60000) / 1000)).padStart(2, '0')}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2">Esta pantalla se cerrará automáticamente al finalizar el tiempo.</p>
+                            </div>
+                        )}
+                        
+                        {!cooldownRemainingMs && (
+                             <Button 
+                                onClick={() => { setView('camera'); setCapturedImage(null); }}
+                                className="w-full mt-4"
+                             >
+                                Volver al Portal
+                             </Button>
+                        )}
                     </div>
                 ) : shiftData?.state === 2 && isBreakScreenActive ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center animate-in zoom-in spin-in-2 duration-500 min-h-[400px]">
@@ -417,59 +462,43 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                     </div>
                 ) : (
                     <>
-                        {/* Selector de Acción Determinado Matemáticamente */}
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col justify-center items-center gap-2 bg-slate-50 dark:bg-slate-900/50">
-                            <Badge
-                                variant="outline"
-                                className="px-5 py-2.5 border-2 text-sm font-bold shadow-sm uppercase tracking-wider"
-                                style={
-                                    nextAction === 'check_in' || nextAction === 'break_end' ? { backgroundColor: `${primaryColor}15`, color: primaryColor, borderColor: primaryColor } :
-                                        nextAction === 'check_out' ? { backgroundColor: '#fef2f2', color: '#ef4444', borderColor: '#ef4444' } :
-                                            { backgroundColor: '#eff6ff', color: '#3b82f6', borderColor: '#3b82f6' }
-                                }
-                            >
-                                <span className="flex items-center gap-2">
-                                    {nextAction === 'check_in' || nextAction === 'break_end' ? <LogIn className="w-4 h-4" /> :
-                                        nextAction === 'break_start' ? <Coffee className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
-                                    {getActionLabel(nextAction)}
-                                </span>
-                            </Badge>
-                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-1 text-center">
-                                Marcación {shiftData ? shiftData.state + 1 : 1} de {shiftData?.shiftType === 'continuous' ? 2 : 4}
-                            </span>
-                        </div>
+                        {/* Combined Action & Status Bar - Ultra Compact */}
+                        <div className="px-3 py-2 text-xs font-bold flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                            <div className={cn(
+                                "flex items-center gap-2",
+                                nextAction === 'check_out' ? "text-red-600" : "text-slate-700 dark:text-slate-300"
+                            )}>
+                                {nextAction === 'check_in' || nextAction === 'break_end' ? <LogIn className="w-3.5 h-3.5" /> :
+                                    nextAction === 'break_start' ? <Coffee className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
+                                <span className="uppercase tracking-tight">{getActionLabel(nextAction)}</span>
+                                <span className="text-[9px] opacity-50 font-normal">({shiftData ? shiftData.state + 1 : 1}/{shiftData?.shiftType === 'continuous' ? 2 : 4})</span>
+                            </div>
 
-                        {/* Status Bar (GPS + Distance) */}
-                        <div className="px-4 py-3 text-xs font-semibold flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-1.5 flex-1 w-full truncate">
+                            <div className="flex items-center gap-1.5 max-w-[50%] overflow-hidden">
                                 <MapPin className={cn(
-                                    "w-3.5 h-3.5 shrink-0",
+                                    "w-3 h-3 shrink-0",
                                     gpsStatus === 'success' && (!distanceToLocation || !shiftData?.geofence_radius || distanceToLocation <= (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15)))
                                         ? "text-emerald-500" :
                                         gpsStatus === 'locating' ? "text-amber-500 animate-pulse" : "text-red-500"
                                 )} />
                                 <span className={cn(
-                                    "truncate",
+                                    "truncate text-[10px]",
                                     gpsStatus === 'success' && (!distanceToLocation || !shiftData?.geofence_radius || distanceToLocation <= (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15)))
                                         ? "text-emerald-700 dark:text-emerald-400" :
                                         gpsStatus === 'locating' ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400"
                                 )}>
-                                    {gpsStatus === 'locating' ? "Calculando ubicación precisa..." :
-                                        gpsStatus === 'error' ? gpsErrorMsg :
+                                    {gpsStatus === 'locating' ? "Buscando..." :
+                                        gpsStatus === 'error' ? "Error GPS" :
                                             distanceToLocation && shiftData?.geofence_radius && distanceToLocation > (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15))
-                                                ? `Fuera de Sede (${distanceToLocation}m)`
-                                                : `GPS Listo (${Math.round(coordinates?.accuracy || 0)}m)`}
+                                                ? `Fuera (${distanceToLocation}m)`
+                                                : `GPS OK (${Math.round(coordinates?.accuracy || 0)}m)`}
                                 </span>
                             </div>
-
-                            {/* Live Badge */}
-                            <Badge variant="outline" className="text-[10px] uppercase bg-red-50 text-red-600 border-red-200 dark:bg-red-950 dark:border-red-900/50 flex items-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> LIVE
-                            </Badge>
                         </div>
 
                         {/* Viewport de Cámara */}
-                        <div className="relative aspect-[3/4] w-full bg-black overflow-hidden group">
+                        <div className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden group">
+
                             {view === 'camera' ? (
                                 <Webcam
                                     audio={false}
@@ -576,17 +605,17 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                 }
             </Card>
 
-            {/* Zero-Trust Time Display (Repositioned to Footer) */}
-            <div className="mt-6 flex flex-col items-center gap-3">
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 rounded-2xl text-slate-700 dark:text-slate-300 font-mono text-xl font-bold shadow-lg border border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-bottom-2">
-                    <Clock className="w-5 h-5 text-slate-400" />
-                    {currentTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </div>
-
-                {/* Helper footer */}
-                <p className="text-[10px] text-slate-400 text-center max-w-xs leading-relaxed uppercase tracking-widest font-medium">
-                    Coordenadas GPS y servidor registrados por seguridad
+            {/* Helper footer & Final Clock */}
+            <div className="mt-4 flex flex-col items-center gap-2 group">
+                <p className="text-[9px] text-slate-400 text-center max-w-xs leading-relaxed uppercase tracking-tighter font-bold opacity-40">
+                    Seguridad Biométrica y Geolocalización Protegida
                 </p>
+                
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-slate-900/50 rounded-xl text-slate-600 dark:text-slate-400 font-mono text-lg font-bold border border-slate-100 dark:border-slate-800 shadow-sm">
+                    <Clock className="w-4 h-4 opacity-50" />
+                    {currentTime.getHours().toString().padStart(2, '0')}:{currentTime.getMinutes().toString().padStart(2, '0')}
+                    <span className="text-[10px] uppercase opacity-40">{currentTime.getHours() >= 12 ? 'pm' : 'am'}</span>
+                </div>
             </div>
         </div>
     )
