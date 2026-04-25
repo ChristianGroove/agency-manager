@@ -4,6 +4,7 @@ import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { PERMISSIONS, PermissionString } from '../actions/permissions';
 import { cache } from 'react';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 
 export interface Role {
     id: string;
@@ -50,43 +51,62 @@ export async function getOrganizationRoles(): Promise<Role[]> {
  * Verify if the current user has a specific permission
  * optimized with React Cache for minimal DB hits
  */
-export const hasPermission = cache(async (permission: PermissionString): Promise<boolean> => {
+// Request-level cache to deduplicate DB queries when checking multiple permissions
+const getUserPermissionsPayload = cache(async () => {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return null;
 
     const orgId = await getCurrentOrganizationId();
-    if (!orgId) return false;
+    if (!orgId) return null;
 
-    // Fetch member and their associated role permissions
-    const { data, error } = await supabase
+    // Query 1: Get the member row
+    const { data: member, error } = await supabase
         .from('organization_members')
-        .select(`
-            permissions,
-            role:organization_roles (
-                permissions
-            )
-        `)
+        .select('role, role_id, permissions')
         .eq('organization_id', orgId)
         .eq('user_id', user.id)
         .single();
 
-    if (error || !data) return false;
+    if (error || !member) return null;
 
-    // Merge logic: 
-    // 1. Role permissions (Source of truth)
-    // 2. Member overrides (Legacy/Specific)
-    const rolePermissions = (data.role as any)?.permissions || {};
-    const memberOverrides = (data.permissions as any) || {};
-    
-    // Check for Wildcard (Owner) in either role or overrides
+    const memberOverrides = (member.permissions as any) || {};
+
+    // Query 2: Get the role's permissions
+    let rolePermissions: Record<string, any> = {};
+    let isOwner = member.role === 'owner'; // Legacy Owner Fallback
+
+    if (member.role_id) {
+        const { data: roleData } = await supabase
+            .from('organization_roles')
+            .select('permissions, hierarchy_level')
+            .eq('id', member.role_id)
+            .single();
+
+        if (roleData) {
+            if (roleData.hierarchy_level === 100) isOwner = true;
+            rolePermissions = (roleData.permissions as any) || {};
+        }
+    }
+
+    return { isOwner, rolePermissions, memberOverrides };
+});
+
+export const hasPermission = async (permission: PermissionString): Promise<boolean> => {
+    const payload = await getUserPermissionsPayload();
+    if (!payload) return false;
+
+    const { isOwner, rolePermissions, memberOverrides } = payload;
+
+    // Wildcard Owner Access
+    if (isOwner) return true;
     if (rolePermissions['all'] === true || memberOverrides['all'] === true) return true;
 
-    // Check specific permission
+    // Specific Permission Check
     if (rolePermissions[permission] === true || memberOverrides[permission] === true) return true;
 
     return false;
-});
+};
 
 /**
  * Create or Update a Custom Role
@@ -118,7 +138,9 @@ export async function upsertRole(role: Partial<Role>) {
 
     if (role.id) {
         // Update
-        const { data: updatedRole, error } = await supabase
+        // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
+        // Security is maintained because we explicitly checked hasPermission above.
+        const { data: updatedRole, error } = await supabaseAdmin
             .from('organization_roles')
             .update(payload)
             .eq('id', role.id)
@@ -133,7 +155,8 @@ export async function upsertRole(role: Partial<Role>) {
         return updatedRole;
     } else {
         // Create
-        const { data: newRole, error } = await supabase
+        // Use supabaseAdmin to bypass RLS recursion limits.
+        const { data: newRole, error } = await supabaseAdmin
             .from('organization_roles')
             .insert(payload)
             .select()
@@ -158,7 +181,9 @@ export async function deleteRole(roleId: string) {
     const { data: role } = await supabase.from('organization_roles').select('is_system_role').eq('id', roleId).single();
     if (role?.is_system_role) throw new Error('Cannot delete a System Role');
 
-    const { error } = await supabase
+    // Delete
+    // Use supabaseAdmin to bypass RLS recursion limits.
+    const { error } = await supabaseAdmin
         .from('organization_roles')
         .delete()
         .eq('id', roleId)
@@ -200,18 +225,24 @@ export async function seedDefaultRoles(orgId: string) {
                 [PERMISSIONS.CRM.VIEW_LEADS]: true,
                 [PERMISSIONS.CRM.EDIT_LEADS]: true,
                 [PERMISSIONS.INBOX.VIEW_ALL]: true,
+                [PERMISSIONS.INBOX.TEAM_VIEW]: true,
+                [PERMISSIONS.INBOX.GLOBAL_VIEW]: false,
+                [PERMISSIONS.INBOX.ASSIGN_AGENTS]: true,
                 [PERMISSIONS.AUTOMATION.VIEW]: true
             }
         },
         {
             organization_id: orgId,
             name: 'Miembro',
-            description: 'Acceso estÃ¡ndar a funciones de operaciÃ³n',
+            description: 'Acceso estándar a funciones de operación',
             is_system_role: true,
             hierarchy_level: 10,
             permissions: {
                 [PERMISSIONS.CRM.VIEW_LEADS]: true,
-                [PERMISSIONS.INBOX.VIEW_ALL]: false // Solo ven lo asignado por defecto
+                [PERMISSIONS.INBOX.VIEW_ALL]: false,
+                [PERMISSIONS.INBOX.TEAM_VIEW]: false,
+                [PERMISSIONS.INBOX.GLOBAL_VIEW]: false,
+                [PERMISSIONS.INBOX.ASSIGN_AGENTS]: false
             }
         }
     ];

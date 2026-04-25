@@ -64,16 +64,14 @@ export class PipelineService {
         const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
         const { getLeadsCount } = await import('../lead-management-actions')
         const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team')
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
 
         const perms = await getCurrentUserPermissions()
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
         let allowedChannels: string[] | undefined = undefined
-        const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
-        const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
-                             perms?.permissions?.['inbox.conversations.view_all'] === true
 
         if (!hasGlobalView) {
-            allowedChannels = perms?.permissions?.inbox_access || []
+            allowedChannels = authorizedChannels
         }
 
         const [stages, leadsResponse, emitters] = await Promise.all([

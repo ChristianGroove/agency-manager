@@ -15,6 +15,7 @@ import { getOrgConnectionIds } from "@/modules/features/messaging/conversation-a
 import { Button } from "@/components/ui/button"
 import { SoundPlayer } from "@/modules/core/preferences/sound-player"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
+import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
 
 export function GlobalMessageListener() {
     const pathname = usePathname()
@@ -96,10 +97,8 @@ export function GlobalMessageListener() {
                     if (conv.connection_id && !orgConnectionIdsRef.current.has(conv.connection_id)) return
                     
                     const perms = userPermissionsRef.current
-                    const role = perms?.role?.toLowerCase();
-                    const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
-                    const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || perms?.permissions?.['inbox.conversations.view_all'] === true
-                    if (!hasGlobalView && !(perms?.permissions?.inbox_access || []).includes(conv.connection_id)) return
+                    const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+                    if (!hasGlobalView && !authorizedChannels.includes(conv.connection_id)) return
 
                     let senderName = "Nuevo Mensaje"
                     try {

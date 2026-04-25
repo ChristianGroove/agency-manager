@@ -7,6 +7,7 @@ import { PipelineStage } from "../types"
 import { getEmitters } from "@/modules/core/settings/emitters-actions"
 import { getChannels } from "@/modules/features/channels/actions"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
+import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
 import { Channel } from "@/modules/features/channels/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
@@ -120,16 +121,11 @@ export function CRMDashboard({
         const fetchChannelsData = async () => {
             const data = await getChannels()
             const perms = await getCurrentUserPermissions()
-
-            const role = perms?.role?.toLowerCase();
-            const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador';
-            const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
-                                 perms?.permissions?.['inbox.conversations.view_all'] === true
+            const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
             const isRestricted = !hasGlobalView
 
             if (isRestricted) {
-                const allowed = perms?.permissions?.inbox_access || []
-                setAvailableChannels(data.filter(c => allowed.includes(c.id)))
+                setAvailableChannels(data.filter(c => authorizedChannels.includes(c.id)))
             } else {
                 setAvailableChannels(data)
             }

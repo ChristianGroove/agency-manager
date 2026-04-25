@@ -265,11 +265,25 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
     }
 
     try {
+        // Fetch the target role's hierarchy to sync the legacy 'role' column.
+        // This is critical: the assignment-engine and DB-level checks read
+        // the legacy column, so it must reflect the actual access level.
+        const { data: roleData } = await supabaseAdmin
+            .from('organization_roles')
+            .select('hierarchy_level')
+            .eq('id', newRoleId)
+            .single()
+
+        const hierarchyLevel = roleData?.hierarchy_level ?? 1
+        const legacyRole = hierarchyLevel >= 100 ? 'owner'
+                         : hierarchyLevel >= 50 ? 'admin'
+                         : 'member'
+
         const { error } = await supabaseAdmin
             .from('organization_members')
             .update({
                 role_id: newRoleId,
-                role: 'member'
+                role: legacyRole
             })
             .match({ organization_id: orgId, user_id: userId })
 

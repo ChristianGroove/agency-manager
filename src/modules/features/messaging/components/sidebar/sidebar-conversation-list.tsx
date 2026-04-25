@@ -32,6 +32,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check as CheckIcon } from "lucide-react"
 import { getSidebarAgents } from "@/modules/features/messaging/assignment-actions"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
+import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -123,32 +124,8 @@ export function SidebarConversationList({
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-    const hasGlobalView = useMemo(() => {
-        const role = effectivePermissions?.role?.toLowerCase();
-        const hierarchy = effectivePermissions?.hierarchy;
-        // La jerarquía 100 es el estándar de verdad para Dueño el cual ve todo.
-        // Reforzamos con roles explícitos para mayor compatibilidad.
-        return hierarchy === 100 || role === 'owner' || role === 'dueño' || role === 'propietario';
-    }, [effectivePermissions])
-
-    const isAdmin = useMemo(() => {
-        const role = effectivePermissions?.role?.toLowerCase();
-        const hierarchy = effectivePermissions?.hierarchy;
-        // Los admins suelen ser jerarquía 50. Cualquier cosa >= 50 pero < 100 es admin.
-        // Anteriormente estaba en 80, lo que dejaba fuera a los admins estándar de nivel 50.
-        const isLevelAdmin = hierarchy !== undefined && hierarchy >= 50 && hierarchy < 100;
-        const isStringAdmin = role === 'admin' || role === 'administrador' || role === 'manager';
-        return isLevelAdmin || isStringAdmin;
-    }, [effectivePermissions])
-
-    // Lógica de Canales Autorizados con Mapeo Profundo (Raíz, Módulos, Inbox)
-    const authorizedChannels = useMemo(() => {
-        const p = effectivePermissions?.permissions;
-        if (!p) return [];
-        const fromRoot = p.inbox_access;
-        const fromModules = p.modules?.inbox?.inbox_access;
-        const fromInbox = p.inbox?.inbox_access;
-        return (fromRoot || fromModules || fromInbox || []) as string[];
+    const { hasGlobalView, hasViewAll: isAdmin, hasTeamView, authorizedChannels } = useMemo(() => {
+        return evaluateInboxPermissions(effectivePermissions);
     }, [effectivePermissions]);
 
     // Sincronizar refs para uso en handler Realtime sin stale closures
@@ -629,7 +606,7 @@ export function SidebarConversationList({
                             </PopoverContent>
                         </Popover>
 
-                        {(hasGlobalView || isAdmin) && (
+                        {hasTeamView && (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button

@@ -9,7 +9,9 @@ export const PERMISSIONS = {
 
     // 2. Messaging (Inbox)
     INBOX: {
+        GLOBAL_VIEW: 'inbox.conversations.global_view',
         VIEW_ALL: 'inbox.conversations.view_all',
+        TEAM_VIEW: 'inbox.team.view',
         ASSIGN_AGENTS: 'inbox.conversations.assign',
         MANAGE_CHANNELS: 'inbox.channels.manage',
     },
@@ -46,6 +48,7 @@ export const PERMISSIONS = {
         MANAGE_MEMBERS: 'org.members.manage',
         MANAGE_BILLING: 'org.billing.manage',
         MANAGE_ROLES: 'org.roles.manage',
+        MANAGE_SETTINGS: 'org.settings.manage',
         VIEW_AUDIT_LOGS: 'org.audit.view',
     }
 } as const;
@@ -73,9 +76,11 @@ export const PERMISSION_GROUPS = [
         id: 'inbox',
         moduleKey: 'module_messaging',
         label: 'Bandeja y Mensajería',
-        description: 'Control de acceso a chats y configuración de canales.',
+        description: 'Control de acceso al inbox, canales y supervisión de equipo.',
         permissions: [
-            { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ver todos los chats dentro de los canales autorizados (si no, solo los asignados)' },
+            { id: PERMISSIONS.INBOX.GLOBAL_VIEW, label: 'Vista Global de Canales', description: 'Acceso total: ve todos los canales sin necesidad de autorizarlos individualmente' },
+            { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ve chats no asignados o de otros agentes dentro de los canales autorizados (modo supervisor)' },
+            { id: PERMISSIONS.INBOX.TEAM_VIEW, label: 'Supervisión de Equipo', description: 'Puede ver el filtro de agentes y monitorear la actividad del equipo en el inbox' },
             { id: PERMISSIONS.INBOX.ASSIGN_AGENTS, label: 'Asignar Agentes', description: 'Puede reasignar chats a otros miembros' },
             { id: PERMISSIONS.INBOX.MANAGE_CHANNELS, label: 'Gestionar Canales', description: 'Conectar o desconectar números de WhatsApp' },
         ]
@@ -128,6 +133,7 @@ export const PERMISSION_GROUPS = [
             { id: PERMISSIONS.ORG.MANAGE_MEMBERS, label: 'Gestionar Miembros', description: 'Invitar y remover miembros del equipo' },
             { id: PERMISSIONS.ORG.MANAGE_ROLES, label: 'Gestionar Roles', description: 'Crear y editar roles personalizados' },
             { id: PERMISSIONS.ORG.MANAGE_BILLING, label: 'Administrar Suscripción', description: 'Gestionar planes y métodos de pago' },
+            { id: PERMISSIONS.ORG.MANAGE_SETTINGS, label: 'Gestionar Configuración', description: 'Acceso general al portal de configuración de la organización' },
             { id: PERMISSIONS.OPERATIONS.BRANDING_MANAGE, label: 'Gestionar Marca Blanca', description: 'Configurar logotipos y colores corporativos' },
         ]
     },

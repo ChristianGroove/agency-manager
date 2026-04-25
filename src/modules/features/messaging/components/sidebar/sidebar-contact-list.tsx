@@ -17,6 +17,7 @@ import { getChannels } from "@/modules/features/channels/actions"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { Channel as ChannelType } from "@/modules/features/channels/types"
 import { supabase } from "@/modules/core/database/supabase"
+import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
 
 interface SidebarContactListProps {
     onSelectConversation: (id: string | null) => void
@@ -44,13 +45,8 @@ export function SidebarContactList({
     const [localPermissions, setLocalPermissions] = useState<any>(null)
     const effectivePermissions = propPermissions || localPermissions
 
-    const hasGlobalView = useMemo(() => {
-        const role = effectivePermissions?.role?.toLowerCase();
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
-        
-        return isGlobalRole || 
-               effectivePermissions?.permissions?.all === true || 
-               effectivePermissions?.permissions?.['inbox.conversations.view_all'] === true
+    const { hasGlobalView } = useMemo(() => {
+        return evaluateInboxPermissions(effectivePermissions);
     }, [effectivePermissions])
 
     useEffect(() => {
