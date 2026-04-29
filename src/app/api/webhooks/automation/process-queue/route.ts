@@ -1,13 +1,39 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { NextResponse } from "next/server"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
-import { requireCronSecret } from "@/modules/core/security/api-route-guards"
+import { requireAuthenticatedUserOrCronSecret } from "@/modules/core/security/api-route-guards"
 
 // Force dynamic to ensure we always check the DB for latest items
 export const dynamic = 'force-dynamic'
 
+type QueueWorkflow = {
+    definition: WorkflowDefinition
+}
+
+type QueueExecution = {
+    id: string
+    context?: Record<string, unknown> | null
+    workflows?: QueueWorkflow | null
+}
+
+type QueueItem = {
+    id: string
+    step_id: string
+    workflow_executions?: QueueExecution | null
+}
+
+type QueueResult = {
+    id: string
+    status: string
+    reason?: string
+}
+
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error)
+}
+
 export async function POST(req: Request) {
-    const guard = requireCronSecret(req)
+    const guard = await requireAuthenticatedUserOrCronSecret(req)
     if (guard) return guard
 
     const supabase = await createClient()
@@ -47,12 +73,12 @@ export async function POST(req: Request) {
 
         console.log(`[Queue Processor] Found ${items.length} items to process`)
 
-        const results = []
+        const results: QueueResult[] = []
 
         // 2. Process each item
-        for (const item of items) {
-            const execution = item.workflow_executions as any
-            const workflow = execution?.workflows as any
+        for (const item of items as unknown as QueueItem[]) {
+            const execution = item.workflow_executions
+            const workflow = execution?.workflows
 
             if (!execution || !workflow) {
                 console.error(`[Queue] Invalid data for item ${item.id}`, item)
@@ -67,8 +93,8 @@ export async function POST(req: Request) {
                 await supabase.from('workflow_executions').update({ status: 'running' }).eq('id', execution.id)
 
                 // Initialize Engine
-                const definition = workflow.definition as WorkflowDefinition
-                const context = execution.context || {}
+                const definition = workflow.definition
+                const context: Record<string, unknown> = execution.context || {}
 
                 // Add executionId to context just in case
                 context.executionId = execution.id
@@ -98,25 +124,27 @@ export async function POST(req: Request) {
 
                 results.push({ id: item.id, status: 'success' })
 
-            } catch (err: any) {
-                if (err.message === 'WORKFLOW_SUSPENDED') {
+            } catch (err: unknown) {
+                const errorMessage = getErrorMessage(err)
+
+                if (errorMessage === 'WORKFLOW_SUSPENDED') {
                     console.log(`[Queue] Execution ${execution.id} suspended again (chained delay)`)
                     await supabase.from('automation_queue').update({ status: 'completed' }).eq('id', item.id)
                     // Execution status remains 'waiting' (set by engine/action)
                     results.push({ id: item.id, status: 'suspended_again' })
                 } else {
                     console.error(`[Queue] Error processing item ${item.id}:`, err)
-                    await supabase.from('automation_queue').update({ status: 'failed', error_message: err.message }).eq('id', item.id)
-                    await supabase.from('workflow_executions').update({ status: 'failed', error_message: err.message }).eq('id', execution.id)
-                    results.push({ id: item.id, status: 'failed', reason: err.message })
+                    await supabase.from('automation_queue').update({ status: 'failed', error_message: errorMessage }).eq('id', item.id)
+                    await supabase.from('workflow_executions').update({ status: 'failed', error_message: errorMessage }).eq('id', execution.id)
+                    results.push({ id: item.id, status: 'failed', reason: errorMessage })
                 }
             }
         }
 
         return NextResponse.json({ processed: items.length, results })
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Critical Queue Error:", e)
-        return NextResponse.json({ error: e.message }, { status: 500 })
+        return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 })
     }
 }

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { createClient } from "@/modules/core/database/supabase-server"
 import {
+    requireAuthenticatedUser,
+    requireAuthenticatedUserOrCronSecret,
     requireBearerSecret,
     requireCronSecret,
     requireNonProductionRoute,
@@ -22,9 +25,21 @@ function restoreEnv() {
     }
 }
 
+function mockAuthenticatedUser(user: unknown) {
+    vi.mocked(createClient).mockResolvedValue({
+        auth: {
+            getUser: vi.fn().mockResolvedValue({
+                data: { user },
+                error: null,
+            }),
+        },
+    } as never)
+}
+
 describe("api route guards", () => {
     afterEach(() => {
         vi.restoreAllMocks()
+        vi.mocked(createClient).mockReset()
         restoreEnv()
     })
 
@@ -86,5 +101,52 @@ describe("api route guards", () => {
         )
 
         expect(response).toBeNull()
+    })
+
+    it("rejects unauthenticated users for internal authenticated routes", async () => {
+        vi.mocked(createClient).mockResolvedValue({
+            auth: {
+                getUser: vi.fn().mockResolvedValue({
+                    data: { user: null },
+                    error: null,
+                }),
+            },
+        } as never)
+
+        const response = await requireAuthenticatedUser()
+
+        expect(response?.status).toBe(401)
+        await expect(response?.json()).resolves.toEqual({ error: "Unauthorized" })
+    })
+
+    it("allows authenticated users for internal authenticated routes", async () => {
+        mockAuthenticatedUser({ id: "user-1" })
+
+        const response = await requireAuthenticatedUser()
+
+        expect(response).toBeNull()
+    })
+
+    it("allows internal tools with either cron secret or authenticated user", async () => {
+        process.env.VERCEL_ENV = "production"
+        process.env.CRON_SECRET = "secret-value"
+
+        const secretResponse = await requireAuthenticatedUserOrCronSecret(
+            new Request("https://pixy.test/api/marketing/run", {
+                headers: { authorization: "Bearer secret-value" },
+            })
+        )
+
+        expect(secretResponse).toBeNull()
+        expect(createClient).not.toHaveBeenCalled()
+
+        delete process.env.CRON_SECRET
+        mockAuthenticatedUser({ id: "user-1" })
+
+        const userResponse = await requireAuthenticatedUserOrCronSecret(
+            new Request("https://pixy.test/api/marketing/run")
+        )
+
+        expect(userResponse).toBeNull()
     })
 })

@@ -42,3 +42,42 @@ export function requireBearerSecret(
 export function requireCronSecret(request: HeaderReadableRequest) {
     return requireBearerSecret(request, "CRON_SECRET")
 }
+
+export async function requireAuthenticatedUser() {
+    try {
+        const { createClient } = await import("@/modules/core/database/supabase-server")
+        const supabase = await createClient()
+        const { data: { user }, error } = await supabase.auth.getUser()
+
+        if (error || !user) {
+            return unauthorizedResponse()
+        }
+
+        return null
+    } catch (error) {
+        console.error("[API Guard] Authentication check failed.", error)
+        return unauthorizedResponse()
+    }
+}
+
+export async function requireAuthenticatedUserOrBearerSecret(
+    request: HeaderReadableRequest,
+    envName: string
+) {
+    const expectedSecret = process.env[envName]
+    const authHeader = request.headers.get("authorization")
+
+    if (expectedSecret && authHeader === `Bearer ${expectedSecret}`) {
+        return null
+    }
+
+    if (!expectedSecret && !isProductionLike()) {
+        return null
+    }
+
+    return requireAuthenticatedUser()
+}
+
+export function requireAuthenticatedUserOrCronSecret(request: HeaderReadableRequest) {
+    return requireAuthenticatedUserOrBearerSecret(request, "CRON_SECRET")
+}

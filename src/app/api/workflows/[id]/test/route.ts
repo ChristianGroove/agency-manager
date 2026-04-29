@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
 import { WorkflowDefinition } from '@/modules/features/automation/engine';
-import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
+import { requireAuthenticatedUser } from '@/modules/core/security/api-route-guards';
 
 export async function POST(
     request: NextRequest,
     props: { params: Promise<{ id: string }> }
 ) {
-    const guard = requireNonProductionRoute();
+    const guard = await requireAuthenticatedUser();
     if (guard) return guard;
 
     await props.params;
