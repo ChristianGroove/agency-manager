@@ -153,7 +153,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         if (validated.type === 'check_in' || validated.type === 'break_end') {
             // 1. Validar Gracia de Entrada (Check-In)
             if (currentState.success && currentState.state === -1) {
-                return { success: false, error: currentState.nextBlockStartTime ? `Tu turno inicia a las ${currentState.nextBlockStartTime}.` : `Estás fuera de horario.` }
+                return { success: false, error: currentState.nextBlockStartTime ? `Podrás realizar tu marcación a partir de las ${currentState.nextBlockStartTime}.` : `El portal de marcación no está activo en este momento.` }
             }
 
             // 2. Validar Gracia de Break (Regreso)
@@ -165,7 +165,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                         const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: currentState.timezone as string, hour12: false, hour: '2-digit', minute: '2-digit' })
 
                         if (nowInTz < graceReturn) {
-                            return { success: false, error: `Aún estás en horario de descanso. Debes regresar a partir de las ${graceReturn}.` }
+                            return { success: false, error: `Aún estás en pausa. Podrás realizar tu marcación a partir de las ${graceReturn}.` }
                         }
                     } else if (currentState.isCustomSchedule) {
                         // Fallback a hora configurada global (solo para horarios personalizados)
@@ -175,12 +175,12 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                         const minimumReturnTime = breakStartTime + ((breakDurationMinutes - 5) * 60000)
 
                         if (now < minimumReturnTime) {
-                            return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
+                            return { success: false, error: "Aún te encuentras en tu pausa obligatoria. No puedes regresar antes." }
                         }
                     }
                     // Si NO es custom schedule, el cooldown de 15 min ya se validó arriba, no hay restricción extra de 2h/block.
                 } else if (currentState.success && currentState.state !== 2) {
-                    return { success: false, error: "No puedes registrar un regreso de descanso en este momento." }
+                    return { success: false, error: "No puedes registrar una marcación de retorno en este momento." }
                 }
             }
         }
@@ -673,7 +673,7 @@ export async function getDailyAttendanceState(staffToken: string) {
         }
     } catch (err: any) {
         console.error("Error getting attendance state:", err)
-        return { success: false, error: "Error interno determinando estado de turno." }
+        return { success: false, error: "Error interno verificando el estado de marcación." }
     }
 }
 
