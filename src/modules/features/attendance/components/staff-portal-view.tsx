@@ -367,16 +367,16 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
                             <Clock className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                         </div>
-                        <h2 className="text-xl font-bold text-slate-400 dark:text-slate-500 mb-2">Sincronizando Turno...</h2>
+                        <h2 className="text-xl font-bold text-slate-400 dark:text-slate-500 mb-2">Sincronizando...</h2>
                     </div>
                 ) : shiftData?.state === -1 ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">
                         <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mb-6">
                             <Clock className="w-10 h-10" />
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Fuera de Horario</h2>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Portal Inactivo</h2>
                         <p className="text-slate-500 text-sm">
-                            {shiftData?.nextBlockStartTime ? `Tu turno inicia a las ${shiftData.nextBlockStartTime}.` : "El portal de asistencia solo funciona durante tu turno programado."}
+                            {shiftData?.nextBlockStartTime ? `Podrás realizar tu marcación a partir de las ${shiftData.nextBlockStartTime}.` : "No hay marcaciones programadas en este momento."}
                         </p>
                     </div>
                 ) : isShiftComplete ? (
@@ -384,8 +384,8 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
                             <CheckCircle2 className="w-10 h-10" />
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Jornada Completada</h2>
-                        <p className="text-slate-500 text-sm">Has realizado todas tus marcaciones requeridas del día. ¡Nos vemos mañana!</p>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Marcaciones Completadas</h2>
+                        <p className="text-slate-500 text-sm">Has completado todas las marcaciones por hoy.</p>
                     </div>
                 ) : view === 'success' ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">
@@ -393,9 +393,9 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                             <CheckCircle2 className="w-10 h-10" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                           {shiftData?.state === 1 ? '¡Bienvenido a tu turno!' : 
-                            shiftData?.state === 2 && shiftData?.shiftType === 'split' ? 'Descanso Iniciado' :
-                            shiftData?.state === 3 ? '¡Bienvenido de vuelta!' : 'Jornada Finalizada'}
+                           {shiftData?.state === 1 ? '¡Marcación exitosa!' : 
+                            shiftData?.state === 2 && shiftData?.shiftType === 'split' ? 'Marcación de pausa exitosa' :
+                            shiftData?.state === 3 ? 'Marcación de retorno exitosa' : 'Marcación final exitosa'}
                         </h2>
                         <p className="text-slate-500">Tu registro ha sido guardado oficialmente en el servidor.</p>
                         
@@ -447,7 +447,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                             ) : (
                                 <span className="flex items-center animate-in fade-in zoom-in duration-300">
                                     <Camera className="w-4 h-4 mr-2" />
-                                    Reanudar Jornada
+                                    Reanudar
                                 </span>
                             )}
                         </Button>
