@@ -1,8 +1,12 @@
 
 import { NextResponse } from 'next/server';
 import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
 
 export async function POST(req: Request) {
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { workflowDefinition, testData } = body;

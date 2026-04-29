@@ -1,11 +1,15 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { NextResponse } from "next/server"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
+import { requireCronSecret } from "@/modules/core/security/api-route-guards"
 
 // Force dynamic to ensure we always check the DB for latest items
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
+    const guard = requireCronSecret(req)
+    if (guard) return guard
+
     const supabase = await createClient()
 
     try {

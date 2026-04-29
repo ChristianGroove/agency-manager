@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireCronSecret } from '@/modules/core/security/api-route-guards';
 
 /**
  * Cron Endpoint for Processing Scheduled Workflow Jobs
@@ -29,13 +30,8 @@ function getServiceClient() {
 }
 
 export async function GET(request: NextRequest) {
-    // Verify cron secret (optional but recommended)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const guard = requireCronSecret(request);
+    if (guard) return guard;
 
     const startTime = Date.now();
     const results = {

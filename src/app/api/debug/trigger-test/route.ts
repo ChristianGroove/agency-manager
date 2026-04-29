@@ -1,9 +1,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { automationTrigger } from "@/modules/features/automation/automation-trigger.service";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { requireNonProductionRoute } from "@/modules/core/security/api-route-guards";
 
 export async function POST(req: NextRequest) {
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { message, conversationId, sender, channel, leadId } = body;

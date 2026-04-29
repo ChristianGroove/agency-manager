@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getPortalCatalog } from '@/modules/features/portal/services/portal-service'
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards'
 
 export async function GET() {
+    const guard = requireNonProductionRoute()
+    if (guard) return guard
+
     const results: string[] = []
     const log = (msg: string) => results.push(`[${new Date().toISOString().split('T')[1].split('.')[0]}] ${msg}`)
     const error = (msg: string) => results.push(`❌ COMPROBACIÓN FAIL: ${msg}`)

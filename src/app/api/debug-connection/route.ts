@@ -1,8 +1,12 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
 
 export async function GET(req: Request) {
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
     const { searchParams } = new URL(req.url);
     const shouldDelete = searchParams.get('delete') === 'true';
 

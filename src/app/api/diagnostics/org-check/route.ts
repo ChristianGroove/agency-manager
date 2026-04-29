@@ -1,8 +1,12 @@
 
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { NextResponse } from 'next/server';
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
 
 export async function GET() {
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
     try {
         // Get all conversations with their org IDs
         const { data: convs } = await supabaseAdmin

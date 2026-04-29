@@ -1,8 +1,12 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
 
 export async function GET() {
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
     try {
         const providers = [
             {

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { MetaConnector } from '@/modules/infrastructure/meta/services/connector';
+import { requireCronSecret } from '@/modules/core/security/api-route-guards';
 
 const ACCESS_TOKEN = process.env.META_PERMANENT_ACCESS_TOKEN || '';
 const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';
 
-export async function POST() {
+export async function POST(request: Request) {
+    const guard = requireCronSecret(request);
+    if (guard) return guard;
+
     if (!ACCESS_TOKEN || !WABA_ID) {
         return NextResponse.json(
             { error: 'Missing Meta Config for Webhooks' },

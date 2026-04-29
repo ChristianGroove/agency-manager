@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { processLifecycleTransitions, getExpiringTrials } from '@/modules/core/lifecycle/lifecycle-actions'
 import { cleanupAttendancePhotos } from '@/modules/features/attendance/actions'
+import { requireCronSecret } from '@/modules/core/security/api-route-guards'
 
 /**
  * Lifecycle Cleanup Cron Job
@@ -13,16 +14,8 @@ import { cleanupAttendancePhotos } from '@/modules/features/attendance/actions'
  * Security: Verify CRON_SECRET header
  */
 export async function GET(request: Request) {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json(
-            { error: 'Unauthorized' },
-            { status: 401 }
-        )
-    }
+    const guard = requireCronSecret(request)
+    if (guard) return guard
 
     try {
         console.log('[Lifecycle Cron] Starting lifecycle processing...')

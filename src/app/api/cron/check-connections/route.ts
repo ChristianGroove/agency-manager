@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { checkConnectionHealth } from "@/modules/features/channels/connection-health"
+import { requireCronSecret } from "@/modules/core/security/api-route-guards"
 
 /**
  * Cron endpoint to check health of all active WhatsApp connections.
  * Recommended: Run every 5-15 minutes via Vercel Cron or external scheduler.
  */
 export async function GET(request: Request) {
-    // Verify cron secret (optional security)
-    const authHeader = request.headers.get('authorization')
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const guard = requireCronSecret(request)
+    if (guard) return guard
 
     console.log('[Cron:CheckConnections] Starting health check cycle...')
 

@@ -1,15 +1,13 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import { requireCronSecret } from '@/modules/core/security/api-route-guards';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    // 1. Security Check
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return new NextResponse('Unauthorized', { status: 401 });
-    }
+    const guard = requireCronSecret(request);
+    if (guard) return guard;
 
     try {
         const results = {

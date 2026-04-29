@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { BackupService } from "@/modules/infrastructure/backup/backup-service"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
+import { requireCronSecret } from "@/modules/core/security/api-route-guards"
 
 /**
  * CRON ENDPOINT: /api/cron/backup
@@ -10,12 +11,8 @@ import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
  * Iterates over organization with BYOS Backup configured and triggers export.
  */
 export async function GET(req: NextRequest) {
-    // 1. Security Check (Verify CRON_SECRET or Service Header)
-    const authHeader = req.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // Return 401 but careful not to leak info if possible
-        // return new NextResponse('Unauthorized', { status: 401 }) 
-    }
+    const guard = requireCronSecret(req)
+    if (guard) return guard
 
     try {
         // 2. Find Organizations with Active Backup Integrations

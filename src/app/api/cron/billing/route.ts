@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import * as BillingUtils from '@/modules/features/billing/services/billing-utils';
+import { requireCronSecret } from '@/modules/core/security/api-route-guards';
 
 // SCR (Server-Side Cron) Implementation
 // This route is designed to be called by a trusted external scheduler (like Vercel Cron, GitHub Actions, or a simple curl loop)
@@ -11,11 +12,8 @@ import * as BillingUtils from '@/modules/features/billing/services/billing-utils
 // 3. Overdue Invoice Alerts
 
 export async function GET(request: Request) {
-    // 1. security check
-    const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    //     return new NextResponse('Unauthorized', { status: 401 });
-    // }
+    const guard = requireCronSecret(request);
+    if (guard) return guard;
 
     try {
         const results = {

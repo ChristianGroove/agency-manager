@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { updateConversationState } from "@/modules/features/messaging/conversation-management-actions"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { requireNonProductionRoute } from "@/modules/core/security/api-route-guards"
 
 export async function GET() {
+    const guard = requireNonProductionRoute()
+    if (guard) return guard
+
     // First get any conversation ID to test with
     const { data: conversations, error: fetchError } = await supabaseAdmin
         .from('conversations')

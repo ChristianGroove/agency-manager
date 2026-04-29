@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
 import { WorkflowDefinition } from '@/modules/features/automation/engine';
+import { requireNonProductionRoute } from '@/modules/core/security/api-route-guards';
 
 export async function POST(
     request: NextRequest,
     props: { params: Promise<{ id: string }> }
 ) {
-    const params = await props.params;
+    const guard = requireNonProductionRoute();
+    if (guard) return guard;
+
+    await props.params;
     try {
         const body = await request.json();
         const { workflowDefinition, testData } = body as {
