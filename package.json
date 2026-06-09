@@ -63,7 +63,7 @@
     "framer-motion": "^12.23.26",
     "googleapis": "^129.0.0",
     "html-to-image": "^1.11.13",
-    "inngest": "^3.48.1",
+    "inngest": "^3.54.0",
     "ioredis": "^5.4.2",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^3.0.4",
