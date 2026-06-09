@@ -3,6 +3,7 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { assignConversation as autoAssignConversation, logAssignment } from "./assignment-engine"
+import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "./assignment-constants"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
@@ -62,7 +63,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
                 organization_id: memberData.organization_id,
                 agent_id: user.id,
                 status,
-                max_capacity: 50,
+                max_capacity: DEFAULT_AGENT_CAPACITY,
                 current_load: 0,
                 auto_assign_enabled: true, // Enable by default (matches DB schema default)
                 last_seen_at: new Date().toISOString()
@@ -128,6 +129,18 @@ export async function updateAgentCapacity(maxCapacity: number) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    const normalizedCapacity = Math.trunc(Number(maxCapacity))
+    if (
+        !Number.isFinite(normalizedCapacity) ||
+        normalizedCapacity < AGENT_MIN_CAPACITY ||
+        normalizedCapacity > AGENT_MAX_CAPACITY
+    ) {
+        return {
+            success: false,
+            error: `Capacidad invalida. Debe estar entre ${AGENT_MIN_CAPACITY} y ${AGENT_MAX_CAPACITY}.`
+        }
+    }
+
     if (!user) {
         return { success: false, error: 'Unauthorized' }
     }
@@ -149,7 +162,7 @@ export async function updateAgentCapacity(maxCapacity: number) {
         .upsert({
             organization_id: memberData.organization_id,
             agent_id: user.id,
-            max_capacity: maxCapacity,
+            max_capacity: normalizedCapacity,
             updated_at: new Date().toISOString()
         }, {
             onConflict: 'organization_id,agent_id',

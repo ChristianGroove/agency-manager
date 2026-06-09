@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload } from "../assignment-actions"
+import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY } from "../assignment-constants"
 import { simulateInboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { Circle, User, Zap, Info, Loader2, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
@@ -276,8 +277,8 @@ export function AgentWorkloadDashboard({ isAdmin }: { isAdmin?: boolean }) {
                             value={[currentAgent.max_capacity]}
                             onValueChange={handleSliderChange} // Smooth Drag
                             onValueCommit={handleCapacityChange} // Commit to server
-                            min={1}
-                            max={50}
+                            min={AGENT_MIN_CAPACITY}
+                            max={AGENT_MAX_CAPACITY}
                             step={1}
                             className="w-full"
                         />
