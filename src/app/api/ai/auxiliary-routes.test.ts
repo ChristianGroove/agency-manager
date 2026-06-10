@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     extractFAQ: vi.fn(),
     saveFAQ: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
+    createClient: vi.fn(),
 }))
 
 vi.mock('@/modules/features/messaging/messaging-actions', () => ({
@@ -17,6 +18,10 @@ vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: mocks.createClient,
+}))
+
 function makeRequest(path: string, body: Record<string, unknown>) {
     return new Request(`https://pixy.test${path}`, {
         method: 'POST',
@@ -24,9 +29,47 @@ function makeRequest(path: string, body: Record<string, unknown>) {
     })
 }
 
+function setupProductionRuntime() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
+function mockUsageStatsQuery(result: { data?: any, error?: any }) {
+    mocks.createClient.mockResolvedValue({
+        from: vi.fn(() => {
+            const builder: any = {
+                select: vi.fn(() => builder),
+                eq: vi.fn(() => builder),
+                gte: vi.fn(async () => result),
+            }
+
+            return builder
+        }),
+    })
+}
+
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
+    mocks.analyzeAgentPerformance.mockReset()
+    mocks.extractFAQ.mockReset()
+    mocks.saveFAQ.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.createClient.mockReset()
 })
 
 describe('auxiliary AI API routes', () => {
@@ -115,5 +158,102 @@ describe('auxiliary AI API routes', () => {
             answer: 'Respuesta',
             category: 'general',
         })
+    })
+
+    it('does not expose agent QA failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.analyzeAgentPerformance.mockRejectedValue(
+            new Error('openai api key secret-value failed during agent qa')
+        )
+
+        const { POST } = await import('./agent-qa/route')
+        const response = await POST(makeRequest('/api/ai/agent-qa', {
+            agentId: 'agent-1',
+            messageLimit: 25,
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Agent QA failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
+    })
+
+    it('does not expose FAQ extraction failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.extractFAQ.mockRejectedValue(
+            new Error('llm provider token secret-value failed extracting faq')
+        )
+
+        const { POST } = await import('./extract-faq/route')
+        const response = await POST(makeRequest('/api/ai/extract-faq', {
+            conversationText: 'pregunta frecuente',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('FAQ extraction failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('provider token')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('provider token')
+    })
+
+    it('does not expose FAQ save failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.saveFAQ.mockRejectedValue(
+            new Error('database password secret-value failed saving faq')
+        )
+
+        const { POST } = await import('./save-faq/route')
+        const response = await POST(makeRequest('/api/ai/save-faq', {
+            question: 'Pregunta',
+            answer: 'Respuesta',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('FAQ save failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('database password')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('database password')
+    })
+
+    it('does not expose usage stats fetch failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mockUsageStatsQuery({
+            data: null,
+            error: { message: 'supabase service role secret-value failed reading usage logs' },
+        })
+
+        const { GET } = await import('./usage-stats/route')
+        const response = await GET()
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Usage stats unavailable')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('service role')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('service role')
     })
 })

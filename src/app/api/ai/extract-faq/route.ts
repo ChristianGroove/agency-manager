@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractFAQ } from '@/modules/features/messaging/messaging-actions'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const MAX_CONVERSATION_TEXT_LENGTH = 20_000
+const PUBLIC_EXTRACT_FAQ_ERROR = 'FAQ extraction failed'
 
 export async function POST(req: NextRequest) {
     try {
@@ -32,9 +34,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result)
 
     } catch (error: any) {
-        console.error('[Extract FAQ API] Error:', error)
+        logAiRouteError('[Extract FAQ API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_EXTRACT_FAQ_ERROR) },
             { status: 500 }
         )
     }

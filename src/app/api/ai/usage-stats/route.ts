@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { createClient } from '@/modules/core/database/supabase-server'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
+
+const PUBLIC_USAGE_STATS_ERROR = 'Usage stats unavailable'
 
 export async function GET() {
     try {
@@ -74,9 +77,9 @@ export async function GET() {
         })
 
     } catch (error: any) {
-        console.error('[Usage Stats API] Error:', error)
+        logAiRouteError('[Usage Stats API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_USAGE_STATS_ERROR) },
             { status: 500 }
         )
     }

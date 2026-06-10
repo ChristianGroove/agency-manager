@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeAgentPerformance } from '@/modules/features/messaging/messaging-actions'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const DEFAULT_MESSAGE_LIMIT = 50
 const MAX_MESSAGE_LIMIT = 100
+const PUBLIC_AGENT_QA_ERROR = 'Agent QA failed'
 
 export async function POST(req: NextRequest) {
     try {
@@ -33,9 +35,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result)
 
     } catch (error: any) {
-        console.error('[Agent QA API] Error:', error)
+        logAiRouteError('[Agent QA API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_AGENT_QA_ERROR) },
             { status: 500 }
         )
     }

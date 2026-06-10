@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveFAQ } from '@/modules/features/messaging/messaging-actions'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const MAX_QUESTION_LENGTH = 1_000
 const MAX_ANSWER_LENGTH = 10_000
 const MAX_CATEGORY_LENGTH = 100
+const PUBLIC_SAVE_FAQ_ERROR = 'FAQ save failed'
 
 export async function POST(req: NextRequest) {
     try {
@@ -45,9 +47,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result)
 
     } catch (error: any) {
-        console.error('[Save FAQ API] Error:', error)
+        logAiRouteError('[Save FAQ API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_SAVE_FAQ_ERROR) },
             { status: 500 }
         )
     }
