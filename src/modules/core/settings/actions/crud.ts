@@ -8,6 +8,45 @@ import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { cache } from "react"
 
+const PUBLIC_SETTINGS_UPDATE_ERROR = "No se pudo actualizar la configuracion"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeSettingsActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logSettingsActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeSettingsActionError(error))
+}
+
+function settingsActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 export const getSettings = cache(async () => {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -21,7 +60,7 @@ export const getSettings = cache(async () => {
         .maybeSingle()
 
     if (error) {
-        console.error("[getSettings] Error:", error.message)
+        logSettingsActionError("[getSettings] Error:", error)
         return null
     }
 
@@ -61,6 +100,7 @@ export const getSettings = cache(async () => {
                     .single()
                 return existingData
             }
+            logSettingsActionError("[getSettings] Default settings create error:", createError)
             return null
         }
         return newData
@@ -91,7 +131,10 @@ export async function updateSettings(data: any) {
         })
         .eq("id", id)
 
-    if (error) return { error: error.message }
+    if (error) {
+        logSettingsActionError("[updateSettings] Error:", error)
+        return { error: settingsActionErrorMessage(error, PUBLIC_SETTINGS_UPDATE_ERROR) }
+    }
 
     revalidatePath("/settings")
     revalidatePath("/", "layout")
