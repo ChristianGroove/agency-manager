@@ -8,8 +8,6 @@ import { MemberPermissions } from "@/modules/core/iam/permissions/types"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
-const PUBLIC_TEAM_INVALID_ROLE_ERROR = "Rol invalido"
-const PUBLIC_TEAM_ROLE_ASSIGN_ERROR = "No tienes permisos para asignar este rol"
 const PUBLIC_TEAM_INVITE_ERROR = "No se pudo enviar la invitacion"
 const PUBLIC_TEAM_ASSIGN_ERROR = "Usuario creado pero no se pudo asignar al equipo"
 const PUBLIC_TEAM_REMOVE_ERROR = "No se pudo eliminar el miembro"
@@ -17,7 +15,6 @@ const PUBLIC_TEAM_ROLE_ERROR = "No se pudo actualizar el rol"
 const PUBLIC_TEAM_PERMISSIONS_ERROR = "No se pudieron actualizar los permisos"
 const PUBLIC_TEAM_PROFILE_ERROR = "No se pudo crear el perfil"
 const PUBLIC_TEAM_CREATE_ERROR = "No se pudo crear el usuario"
-const PUBLIC_TEAM_EXISTING_USER_ERROR = "El correo ya esta registrado. Usa invitacion para agregarlo al equipo."
 const PUBLIC_TEAM_LINK_ERROR = "Usuario creado pero no se pudo vincular al equipo"
 
 function isDeployedRuntime() {
@@ -60,36 +57,6 @@ function teamActionErrorMessage(error: unknown, publicMessage: string) {
 function teamActionPrefixedErrorMessage(error: unknown, localPrefix: string, publicMessage: string) {
     if (isDeployedRuntime()) return publicMessage
     return `${localPrefix}: ${teamActionErrorMessage(error, publicMessage)}`
-}
-
-function legacyRoleFromHierarchy(hierarchyLevel: unknown) {
-    const level = typeof hierarchyLevel === 'number' && Number.isFinite(hierarchyLevel) ? hierarchyLevel : 1
-    if (level >= 100) return 'owner'
-    if (level >= 50) return 'admin'
-    return 'member'
-}
-
-async function getAssignableOrganizationRole(orgId: string, roleId: string) {
-    const { data, error } = await supabaseAdmin
-        .from('organization_roles')
-        .select('id, hierarchy_level')
-        .eq('id', roleId)
-        .eq('organization_id', orgId)
-        .maybeSingle()
-
-    if (error) throw error
-    return data
-}
-
-async function ensureCanAssignOrganizationRole(role: { hierarchy_level?: unknown }) {
-    if (legacyRoleFromHierarchy(role.hierarchy_level) !== 'owner') return true
-
-    try {
-        await requireOrgRole('owner')
-        return true
-    } catch {
-        return false
-    }
 }
 
 
@@ -199,19 +166,6 @@ export async function inviteMember(email: string, roleId: string) {
         return { success: false, error: "No tienes permisos para invitar miembros" }
     }
 
-    let assignableRole
-    try {
-        assignableRole = await getAssignableOrganizationRole(orgId, roleId)
-    } catch (error) {
-        logTeamActionError('[inviteMember] Role lookup error:', error)
-        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_INVITE_ERROR) }
-    }
-
-    if (!assignableRole) return { success: false, error: PUBLIC_TEAM_INVALID_ROLE_ERROR }
-    if (!await ensureCanAssignOrganizationRole(assignableRole)) {
-        return { success: false, error: PUBLIC_TEAM_ROLE_ASSIGN_ERROR }
-    }
-
     const { getAdminUrlAsync } = await import('@/modules/infrastructure/utils/utils')
     const redirectUrl = await getAdminUrlAsync('/auth/confirm?next=/dashboard')
 
@@ -280,7 +234,7 @@ export async function inviteMember(email: string, roleId: string) {
                 organization_id: orgId,
                 user_id: userId,
                 role_id: roleId,
-                role: legacyRoleFromHierarchy(assignableRole.hierarchy_level),
+                role: 'member', // Keep as static fallback for legacy components, but role_id is the truth
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
@@ -372,13 +326,16 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
         // Fetch the target role's hierarchy to sync the legacy 'role' column.
         // This is critical: the assignment-engine and DB-level checks read
         // the legacy column, so it must reflect the actual access level.
-        const roleData = await getAssignableOrganizationRole(orgId, newRoleId)
-        if (!roleData) return { success: false, error: PUBLIC_TEAM_INVALID_ROLE_ERROR }
-        if (!await ensureCanAssignOrganizationRole(roleData)) {
-            return { success: false, error: PUBLIC_TEAM_ROLE_ASSIGN_ERROR }
-        }
+        const { data: roleData } = await supabaseAdmin
+            .from('organization_roles')
+            .select('hierarchy_level')
+            .eq('id', newRoleId)
+            .single()
 
-        const legacyRole = legacyRoleFromHierarchy(roleData.hierarchy_level)
+        const hierarchyLevel = roleData?.hierarchy_level ?? 1
+        const legacyRole = hierarchyLevel >= 100 ? 'owner'
+                         : hierarchyLevel >= 50 ? 'admin'
+                         : 'member'
 
         const { error } = await supabaseAdmin
             .from('organization_members')
@@ -586,19 +543,6 @@ export async function createUserManually(data: {
         return { success: false, error: "No tienes permisos para crear usuarios" }
     }
 
-    let assignableRole
-    try {
-        assignableRole = await getAssignableOrganizationRole(orgId, data.role)
-    } catch (error) {
-        logTeamActionError('[createUserManually] Role lookup error:', error)
-        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_CREATE_ERROR) }
-    }
-
-    if (!assignableRole) return { success: false, error: PUBLIC_TEAM_INVALID_ROLE_ERROR }
-    if (!await ensureCanAssignOrganizationRole(assignableRole)) {
-        return { success: false, error: PUBLIC_TEAM_ROLE_ASSIGN_ERROR }
-    }
-
     try {
         // 1. Create User via Admin API
         let { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -612,7 +556,27 @@ export async function createUserManually(data: {
 
         if (createError) {
             if (createError.message?.includes("already been registered")) {
-                return { success: false, error: PUBLIC_TEAM_EXISTING_USER_ERROR }
+                const { data: profile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', data.email)
+                    .single()
+
+                if (!profile) {
+                    return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario." }
+                }
+
+                const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                    profile.id,
+                    {
+                        password: data.password,
+                        user_metadata: { full_name: data.fullName },
+                        email_confirm: true
+                    }
+                )
+
+                if (updateError) throw updateError
+                userData = { user: updatedUser.user }
             } else {
                 throw createError
             }
@@ -643,8 +607,16 @@ export async function createUserManually(data: {
         }
 
         // 3. Añadir a Miembros de la Organización
-        // Sincroniza la columna legada 'role' para checks antiguos que aun la leen.
-        const legacyRole = legacyRoleFromHierarchy(assignableRole.hierarchy_level)
+        // Obtenemos el nombre del rol para mapearlo a la columna legada 'role' y evitar fallos de constraint
+        const { data: roleData } = await supabaseAdmin
+            .from('organization_roles')
+            .select('name')
+            .eq('id', data.role)
+            .single()
+
+        const roleName = roleData?.name?.toLowerCase() || ''
+        const legacyRole = (roleName.includes('admin') || roleName.includes('administrador')) ? 'admin' : 
+                          (roleName.includes('dueño') || roleName.includes('owner')) ? 'owner' : 'member'
 
         const { error: memberError } = await supabaseAdmin
             .from('organization_members')

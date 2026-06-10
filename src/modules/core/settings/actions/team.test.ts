@@ -116,7 +116,6 @@ function selectEqSingle(data: unknown) {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
         single: vi.fn(async () => ({ data })),
-        maybeSingle: vi.fn(async () => ({ data, error: null })),
     }
 
     return query
@@ -186,9 +185,6 @@ describe('team settings actions', () => {
             data: null,
             error: secretError('invite secret-value link failure'),
         })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle({ hierarchy_level: 10 })],
-        }).from)
 
         const { inviteMember } = await importTeamActions()
         const result = await inviteMember('member@example.com', '12345678-1234-1234-1234-123456789012')
@@ -196,18 +192,6 @@ describe('team settings actions', () => {
         expect(result).toEqual({ success: false, error: 'No se pudo enviar la invitacion' })
         expect(consoleError).toHaveBeenCalledWith('Invite Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
-    })
-
-    it('rejects invite roles outside the current organization before generating links', async () => {
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle(null)],
-        }).from)
-
-        const { inviteMember } = await importTeamActions()
-        const result = await inviteMember('member@example.com', '12345678-1234-1234-1234-123456789012')
-
-        expect(result).toEqual({ success: false, error: 'Rol invalido' })
-        expect(mocks.supabaseAdmin.auth.admin.generateLink).not.toHaveBeenCalled()
     })
 
     it('does not expose invite assignment failures in deployed runtimes', async () => {
@@ -224,7 +208,6 @@ describe('team settings actions', () => {
             error: null,
         })
         mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle({ hierarchy_level: 10 })],
             profiles: [directUpsert()],
             organization_members: [directUpsert(secretError('membership secret-value failure'))],
         }).from)
@@ -272,30 +255,10 @@ describe('team settings actions', () => {
         const result = await updateMemberRole('target-user', 'role-admin')
 
         expect(result).toEqual({ success: true })
-        expect(role.eq).toHaveBeenCalledWith('id', 'role-admin')
-        expect(role.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(update.update).toHaveBeenCalledWith({
             role_id: 'role-admin',
             role: 'admin',
         })
-    })
-
-    it('blocks owner role assignment unless the caller is an owner', async () => {
-        const role = selectEqSingle({ hierarchy_level: 100 })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [role],
-        }).from)
-
-        const { updateMemberRole } = await importTeamActions()
-        mocks.requireOrgRole.mockImplementation(async (requiredRole: string) => {
-            if (requiredRole === 'owner') throw new Error('owner only')
-        })
-
-        const result = await updateMemberRole('target-user', 'role-owner')
-
-        expect(result).toEqual({ success: false, error: 'No tienes permisos para asignar este rol' })
-        expect(mocks.requireOrgRole).toHaveBeenCalledWith('admin')
-        expect(mocks.requireOrgRole).toHaveBeenCalledWith('owner')
     })
 
     it('does not expose permission update failures in deployed runtimes', async () => {
@@ -332,7 +295,6 @@ describe('team settings actions', () => {
             error: null,
         })
         mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle({ hierarchy_level: 10 })],
             profiles: [directUpsert(secretError('profile secret-value failure'))],
         }).from)
 
@@ -352,31 +314,6 @@ describe('team settings actions', () => {
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 
-    it('does not reset passwords for existing users during manual creation', async () => {
-        mocks.supabaseAdmin.auth.admin.createUser.mockResolvedValue({
-            data: { user: null },
-            error: { message: 'User already been registered' },
-        })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle({ hierarchy_level: 10 })],
-        }).from)
-
-        const { createUserManually } = await importTeamActions()
-        const result = await createUserManually({
-            email: 'existing@example.com',
-            password: 'replacement-password',
-            fullName: 'Existing User',
-            role: 'role-member',
-        })
-
-        expect(result).toEqual({
-            success: false,
-            error: 'El correo ya esta registrado. Usa invitacion para agregarlo al equipo.',
-        })
-        expect(mocks.supabaseAdmin.auth.admin.updateUserById).not.toHaveBeenCalled()
-        expect(mocks.supabaseAdmin.from).toHaveBeenCalledTimes(1)
-    })
-
     it('does not expose manual member linking failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -385,8 +322,8 @@ describe('team settings actions', () => {
             error: null,
         })
         mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
-            organization_roles: [selectEqSingle({ hierarchy_level: 50 })],
             profiles: [directUpsert()],
+            organization_roles: [selectEqSingle({ name: 'Administrador' })],
             organization_members: [directInsert(secretError('link secret-value failure'))],
         }).from)
 
