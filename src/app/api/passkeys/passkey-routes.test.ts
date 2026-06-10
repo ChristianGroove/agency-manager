@@ -74,6 +74,20 @@ afterEach(() => {
 })
 
 describe('passkey API routes', () => {
+    it('rate limits repeated public passkey attempts by client IP', async () => {
+        const { requirePasskeyPublicRateLimit } = await import('./_utils')
+        const request = new Request('https://pixy.test/api/passkeys/login-options', {
+            method: 'POST',
+            headers: { 'x-forwarded-for': '203.0.113.77' },
+        })
+
+        for (let i = 0; i < 30; i++) {
+            expect(requirePasskeyPublicRateLimit(request)).toBeNull()
+        }
+
+        expect(requirePasskeyPublicRateLimit(request)?.status).toBe(429)
+    })
+
     it('stores registration challenges with the admin client', async () => {
         const authClient = createSupabaseMock({
             user_passkeys: createQuery({ data: [{ credential_id: 'existing-credential' }], error: null }),

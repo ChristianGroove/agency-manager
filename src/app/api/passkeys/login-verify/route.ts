@@ -5,9 +5,12 @@ import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import { normalizePasskeyEmail } from '../_utils'
+import { normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
 
 export async function POST(request: NextRequest) {
+    const rateLimited = requirePasskeyPublicRateLimit(request)
+    if (rateLimited) return rateLimited
+
     try {
         const supabase = await createClient()
         const body = await request.json()

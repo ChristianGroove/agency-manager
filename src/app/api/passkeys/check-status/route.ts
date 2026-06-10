@@ -1,9 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
-import { normalizePasskeyEmail } from '../_utils'
+import { normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
 
 export async function POST(request: NextRequest) {
+    const rateLimited = requirePasskeyPublicRateLimit(request)
+    if (rateLimited) return rateLimited
+
     try {
         const body = await request.json()
         const email = normalizePasskeyEmail(body.email)

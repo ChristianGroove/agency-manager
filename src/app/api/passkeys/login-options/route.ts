@@ -4,9 +4,12 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import { normalizePasskeyEmail, passkeyLoginUnavailableResponse } from '../_utils'
+import { normalizePasskeyEmail, passkeyLoginUnavailableResponse, requirePasskeyPublicRateLimit } from '../_utils'
 
 export async function POST(request: NextRequest) {
+    const rateLimited = requirePasskeyPublicRateLimit(request)
+    if (rateLimited) return rateLimited
+
     try {
         const supabase = await createClient()
         const body = await request.json()
