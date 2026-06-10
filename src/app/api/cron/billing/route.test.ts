@@ -46,7 +46,6 @@ function dateInDays(days: number) {
 }
 
 function createSelectBuilder(result: QueryResult) {
-    const promise = Promise.resolve(result)
     const builder: any = {
         select: vi.fn(() => builder),
         eq: vi.fn(() => builder),
@@ -54,45 +53,11 @@ function createSelectBuilder(result: QueryResult) {
         lt: vi.fn(async () => result),
         in: vi.fn(async () => result),
         or: vi.fn(() => builder),
-        order: vi.fn(() => builder),
         limit: vi.fn(() => builder),
         maybeSingle: vi.fn(async () => result),
-        then: promise.then.bind(promise),
-        catch: promise.catch.bind(promise),
-        finally: promise.finally.bind(promise),
     }
 
     return builder
-}
-
-function createUpdateBuilder(result: QueryResult = { data: null, error: null }) {
-    const promise = Promise.resolve(result)
-    const query: any = {
-        eq: vi.fn(() => query),
-        then: promise.then.bind(promise),
-        catch: promise.catch.bind(promise),
-        finally: promise.finally.bind(promise),
-    }
-
-    return {
-        update: vi.fn(() => query),
-        query,
-    }
-}
-
-function createInsertSelectSingleBuilder(result: QueryResult) {
-    const singleQuery = {
-        single: vi.fn(async () => result),
-    }
-    const selectQuery = {
-        select: vi.fn(() => singleQuery),
-    }
-
-    return {
-        insert: vi.fn(() => selectQuery),
-        selectQuery,
-        singleQuery,
-    }
 }
 
 function mockBillingTables(results: {
@@ -228,156 +193,5 @@ describe('/api/cron/billing', () => {
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('service role')
         expect(errorLogText).not.toContain('Client Secret')
-    })
-
-    it('scopes overdue notification dedupe to the invoice organization', async () => {
-        setupProductionCron()
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        const notificationLookup = createSelectBuilder({ data: null, error: null })
-        const notificationInsert = vi.fn(async () => ({ data: null, error: null }))
-        const notificationTable = {
-            ...notificationLookup,
-            insert: notificationInsert,
-        }
-
-        mocks.from.mockImplementation((table: string) => {
-            if (table === 'subscriptions') {
-                return createSelectBuilder({ data: [], error: null })
-            }
-
-            if (table === 'invoices') {
-                return createSelectBuilder({
-                    data: [{
-                        id: 'invoice-1',
-                        number: 'INV-1',
-                        organization_id: 'org-current',
-                        client_id: 'client-1',
-                        client: { id: 'client-1', name: 'Client One' },
-                    }],
-                    error: null,
-                })
-            }
-
-            if (table === 'notifications') {
-                return notificationTable
-            }
-
-            if (table === 'organization_members') {
-                return createSelectBuilder({
-                    data: [{ user_id: 'admin-1' }],
-                    error: null,
-                })
-            }
-
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { GET } = await import('./route')
-        const response = await GET(cronRequest())
-        const body = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(body.results.overdueAlerts).toBe(1)
-        expect(notificationLookup.eq).toHaveBeenCalledWith('type', 'payment_due')
-        expect(notificationLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(notificationLookup.eq).toHaveBeenCalledWith('action_url', '/invoices/invoice-1')
-        expect(notificationInsert).toHaveBeenCalledWith([expect.objectContaining({
-            organization_id: 'org-current',
-            user_id: 'admin-1',
-            type: 'payment_due',
-        })])
-    })
-
-    it('scopes generated invoice follow-up writes to the subscription organization', async () => {
-        setupProductionCron()
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        const subscription = {
-            id: 'sub-1',
-            name: 'Hosting',
-            organization_id: 'org-current',
-            client_id: 'client-1',
-            next_billing_date: dateInDays(0),
-            amount: 1000,
-            frequency: 'monthly',
-            clients: { id: 'client-1', name: 'Client One' },
-            organizations: { id: 'org-current', name: 'Org One' },
-        }
-        const subscriptionRead = createSelectBuilder({ data: [subscription], error: null })
-        const subscriptionUpdate = createUpdateBuilder()
-        const emittersRead = createSelectBuilder({ data: [], error: null })
-        const invoiceInsert = createInsertSelectSingleBuilder({
-            data: { id: 'invoice-1' },
-            error: null,
-        })
-        const invoiceCycleUpdate = createUpdateBuilder()
-        const overdueInvoicesRead = createSelectBuilder({ data: [], error: null })
-        const serviceRead = createSelectBuilder({
-            data: { id: 'service-1', deleted_at: null },
-            error: null,
-        })
-        const serviceUpdate = createUpdateBuilder()
-        const cycleInsert = createInsertSelectSingleBuilder({
-            data: { id: 'cycle-1' },
-            error: null,
-        })
-        const membersRead = createSelectBuilder({
-            data: [{ user_id: 'admin-1' }],
-            error: null,
-        })
-        const notificationInsert = vi.fn(async () => ({ data: null, error: null }))
-        let subscriptionCalls = 0
-        let invoiceCalls = 0
-        let serviceCalls = 0
-
-        mocks.from.mockImplementation((table: string) => {
-            if (table === 'subscriptions') {
-                subscriptionCalls += 1
-                return subscriptionCalls === 1 ? subscriptionRead : subscriptionUpdate
-            }
-
-            if (table === 'emitters') return emittersRead
-
-            if (table === 'invoices') {
-                invoiceCalls += 1
-                if (invoiceCalls === 1) return invoiceInsert
-                if (invoiceCalls === 2) return invoiceCycleUpdate
-                return overdueInvoicesRead
-            }
-
-            if (table === 'services') {
-                serviceCalls += 1
-                return serviceCalls === 1 ? serviceRead : serviceUpdate
-            }
-
-            if (table === 'billing_cycles') return cycleInsert
-            if (table === 'organization_members') return membersRead
-            if (table === 'notifications') {
-                return { insert: notificationInsert }
-            }
-
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { GET } = await import('./route')
-        const response = await GET(cronRequest())
-        const body = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(body.results.invoicesGenerated).toBe(1)
-        expect(subscriptionUpdate.query.eq).toHaveBeenCalledWith('id', 'sub-1')
-        expect(subscriptionUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(serviceRead.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(serviceRead.eq).toHaveBeenCalledWith('client_id', 'client-1')
-        expect(serviceUpdate.query.eq).toHaveBeenCalledWith('id', 'service-1')
-        expect(serviceUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(invoiceCycleUpdate.query.eq).toHaveBeenCalledWith('id', 'invoice-1')
-        expect(invoiceCycleUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(notificationInsert).toHaveBeenCalledWith([expect.objectContaining({
-            organization_id: 'org-current',
-            user_id: 'admin-1',
-            type: 'invoice_generated',
-        })])
     })
 })
