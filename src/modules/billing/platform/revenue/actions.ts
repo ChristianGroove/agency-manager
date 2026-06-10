@@ -3,6 +3,47 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
+const PUBLIC_REVENUE_RULE_ERROR = 'Revenue share rule could not be saved'
+const PUBLIC_BILLABLE_EVENT_ERROR = 'Billable event could not be registered'
+const PUBLIC_SETTLEMENT_CALCULATION_ERROR = 'Settlement could not be calculated'
+const PUBLIC_SETTLEMENT_APPROVAL_ERROR = 'Settlement could not be approved'
+const PUBLIC_RESELLER_ACTIVITY_ERROR = 'Reseller activity could not be registered'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeRevenueActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logRevenueActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeRevenueActionError(error))
+}
+
+function publicRevenueActionError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
 // ============================================
 // TYPES
 // ============================================
@@ -87,7 +128,7 @@ export async function getRevenueShareRules(): Promise<RevenueShareRule[]> {
         .order('phase_start_month', { ascending: true })
 
     if (error) {
-        console.error('Error fetching revenue share rules:', error)
+        logRevenueActionError('Error fetching revenue share rules:', error)
         return []
     }
 
@@ -116,8 +157,8 @@ export async function upsertRevenueShareRule(rule: Partial<RevenueShareRule> & {
         .single()
 
     if (error) {
-        console.error('Error upserting revenue share rule:', error)
-        return { success: false, error: error.message }
+        logRevenueActionError('Error upserting revenue share rule:', error)
+        return { success: false, error: publicRevenueActionError(PUBLIC_REVENUE_RULE_ERROR, error) }
     }
 
     revalidatePath('/platform/admin')
@@ -192,8 +233,8 @@ export async function registerBillableEvent(params: {
         .single()
 
     if (error) {
-        console.error('Error registering billable event:', error)
-        return { success: false, error: error.message }
+        logRevenueActionError('Error registering billable event:', error)
+        return { success: false, error: publicRevenueActionError(PUBLIC_BILLABLE_EVENT_ERROR, error) }
     }
 
     return { success: true, event_id: data.id }
@@ -224,7 +265,7 @@ export async function getResellerBillableEvents(reseller_org_id: string): Promis
         .order('event_date', { ascending: false })
 
     if (error) {
-        console.error('Error fetching billable events:', error)
+        logRevenueActionError('Error fetching billable events:', error)
         return []
     }
 
@@ -256,7 +297,8 @@ export async function calculateSettlement(params: {
         .contains('reseller_chain', [{ org_id: params.reseller_org_id }])
 
     if (eventsError) {
-        return { success: false, error: eventsError.message }
+        logRevenueActionError('Error fetching settlement billable events:', eventsError)
+        return { success: false, error: publicRevenueActionError(PUBLIC_SETTLEMENT_CALCULATION_ERROR, eventsError) }
     }
 
     if (!events?.length) {
@@ -275,7 +317,7 @@ export async function calculateSettlement(params: {
             .rpc('calculate_event_commission', { p_event_id: event.id })
 
         if (calcError) {
-            console.error('Error calculating commission:', calcError)
+            logRevenueActionError('Error calculating commission:', calcError)
             continue
         }
 
@@ -324,7 +366,8 @@ export async function calculateSettlement(params: {
         .single()
 
     if (settlementError) {
-        return { success: false, error: settlementError.message }
+        logRevenueActionError('Error creating settlement:', settlementError)
+        return { success: false, error: publicRevenueActionError(PUBLIC_SETTLEMENT_CALCULATION_ERROR, settlementError) }
     }
 
     // 4. Marcar eventos como liquidados y guardar cálculos
@@ -367,7 +410,8 @@ export async function approveSettlement(settlement_id: string): Promise<{ succes
         .eq('status', 'pending')
 
     if (error) {
-        return { success: false, error: error.message }
+        logRevenueActionError('Error approving settlement:', error)
+        return { success: false, error: publicRevenueActionError(PUBLIC_SETTLEMENT_APPROVAL_ERROR, error) }
     }
 
     revalidatePath('/platform/admin')
@@ -387,7 +431,7 @@ export async function getResellerSettlements(reseller_org_id: string): Promise<S
         .order('period_start', { ascending: false })
 
     if (error) {
-        console.error('Error fetching settlements:', error)
+        logRevenueActionError('Error fetching settlements:', error)
         return []
     }
 
@@ -409,7 +453,7 @@ export async function getAllSettlements(): Promise<Settlement[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('Error fetching all settlements:', error)
+        logRevenueActionError('Error fetching all settlements:', error)
         return []
     }
 
@@ -448,8 +492,8 @@ export async function registerResellerActivity(params: {
         })
 
     if (error) {
-        console.error('Error registering reseller activity:', error)
-        return { success: false, error: error.message }
+        logRevenueActionError('Error registering reseller activity:', error)
+        return { success: false, error: publicRevenueActionError(PUBLIC_RESELLER_ACTIVITY_ERROR, error) }
     }
 
     return { success: true }
