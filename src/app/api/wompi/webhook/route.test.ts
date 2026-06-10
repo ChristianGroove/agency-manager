@@ -61,6 +61,24 @@ function paymentTransactionBuilder(paymentTx: Record<string, unknown>) {
     }
 }
 
+function directInvoiceUpdateBuilder(invoice: Record<string, unknown>) {
+    return {
+        update: vi.fn(() => ({
+            eq: vi.fn(() => ({
+                select: vi.fn(() => ({
+                    single: vi.fn().mockResolvedValue({ data: invoice, error: null }),
+                })),
+            })),
+        })),
+    }
+}
+
+function insertResult(result: { error?: unknown } = { error: null }) {
+    return {
+        insert: vi.fn().mockResolvedValue(result),
+    }
+}
+
 function signedWompiRequest(transaction: Record<string, unknown>, secret = 'events-secret') {
     const timestamp = '1710000000000'
     const signatureString = `${transaction.id}${transaction.status}${transaction.amount_in_cents}${timestamp}${secret}`
@@ -92,7 +110,7 @@ describe('/api/wompi/webhook', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         vi.stubEnv('WOMPI_EVENTS_SECRET', 'events-secret')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
 
         const transaction = {
             id: 'tx-1',
@@ -113,7 +131,7 @@ describe('/api/wompi/webhook', () => {
                     amount_in_cents: transaction.amount_in_cents,
                     currency: 'COP',
                     invoice_ids: [],
-                    organization_id: 'org-1',
+                    organization_id: 'org-secret-1',
                     metadata: {
                         type: 'branding_upgrade',
                         target_tier: 'whitelabel',
@@ -139,5 +157,65 @@ describe('/api/wompi/webhook', () => {
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('integrity')
+
+        const infoLogText = collectConsoleCalls(logSpy)
+        expect(infoLogText).not.toContain(transaction.reference)
+        expect(infoLogText).not.toContain('org-secret-1')
+        expect(infoLogText).toContain('referencePresent')
+        expect(infoLogText).toContain('organizationIdPresent')
+    })
+
+    it('does not expose direct invoice references in production logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        vi.stubEnv('WOMPI_EVENTS_SECRET', 'events-secret')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+        const transaction = {
+            id: 'tx-legacy-1',
+            status: 'APPROVED',
+            amount_in_cents: 450000,
+            reference: 'INV-SECRET-001-1710000000000',
+            redirect_url: 'https://checkout.wompi.co/sandbox',
+        }
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'invoices') {
+                return directInvoiceUpdateBuilder({
+                    id: 'invoice-secret-id',
+                    client_id: 'client-secret-id',
+                    total: 4500,
+                })
+            }
+
+            if (table === 'client_events') {
+                return insertResult()
+            }
+
+            return updateEqResult()
+        })
+
+        const { POST } = await import('./route')
+        const response = await POST(signedWompiRequest(transaction))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('"success":true')
+        expect(mocks.logDomainEvent).toHaveBeenCalledWith(expect.objectContaining({
+            entity_id: 'invoice-secret-id',
+            event_type: 'invoice.paid',
+        }))
+
+        const combinedLogs = [
+            collectConsoleCalls(logSpy),
+            collectConsoleCalls(errorSpy),
+        ].join('\n')
+
+        expect(combinedLogs).not.toContain('INV-SECRET-001-1710000000000')
+        expect(combinedLogs).not.toContain('SECRET-001')
+        expect(combinedLogs).not.toContain('invoice-secret-id')
+        expect(combinedLogs).not.toContain('client-secret-id')
+        expect(combinedLogs).toContain('referencePresent')
+        expect(combinedLogs).toContain('invoiceNumberPresent')
     })
 })
