@@ -3,6 +3,45 @@
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_GENERATION_ERROR = 'Smart replies could not be generated'
+const PUBLIC_REFINE_ERROR = 'Draft could not be refined'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logSmartRepliesError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiError(error))
+}
+
 export interface SmartReply {
     type: 'short' | 'medium' | 'detailed'
     text: string
@@ -105,8 +144,8 @@ export async function generateSmartReplies(
         }
 
     } catch (error: any) {
-        console.error('[SmartReplies] Generation failed:', error)
-        return { success: false, error: error.message }
+        logSmartRepliesError('[SmartReplies] Generation failed:', error)
+        return { success: false, error: publicAiError(PUBLIC_GENERATION_ERROR, error) }
     }
 }
 
@@ -148,7 +187,7 @@ export async function logSuggestion(data: {
         })
 
     if (error) {
-        console.error('[SmartReplies] Failed to log suggestion:', error)
+        logSmartRepliesError('[SmartReplies] Failed to log suggestion:', error)
     }
 }
 
@@ -217,7 +256,7 @@ export async function refineDraftContent(content: string): Promise<{ success: bo
         return { success: true, refined: refined || content }
 
     } catch (error: any) {
-        console.error('[SmartReplies] Refine failed:', error)
-        return { success: false, error: error.message }
+        logSmartRepliesError('[SmartReplies] Refine failed:', error)
+        return { success: false, error: publicAiError(PUBLIC_REFINE_ERROR, error) }
     }
 }

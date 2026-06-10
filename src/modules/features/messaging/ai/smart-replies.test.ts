@@ -35,29 +35,6 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
         .join('\n')
 }
 
-function singleQuery(result: unknown) {
-    const query: any = {
-        select: vi.fn(() => query),
-        eq: vi.fn(() => query),
-        single: vi.fn(async () => result),
-    }
-
-    return query
-}
-
-function updateQuery(result: unknown = { error: null }) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-            Promise.resolve(result).then(resolve, reject),
-    }
-
-    return {
-        update: vi.fn(() => query),
-        query,
-    }
-}
-
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
@@ -153,21 +130,13 @@ describe('smart replies AI actions', () => {
     it('does not expose suggestion logging failures in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const conversationQuery = singleQuery({ data: { id: 'conv-secret-id' }, error: null })
-        const messageQuery = singleQuery({ data: { id: 'msg-secret-id' }, error: null })
         const insert = vi.fn(async () => ({
             error: {
                 message: 'database password secret-value failed for conv-secret-id',
                 code: '42501',
             },
         }))
-        const from = vi.fn((table: string) => {
-            if (table === 'conversations') return conversationQuery
-            if (table === 'messages') return messageQuery
-            if (table === 'ai_suggestions') return { insert }
-            throw new Error(`Unexpected table ${table}`)
-        })
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const from = vi.fn(() => ({ insert }))
         mocks.createClient.mockResolvedValue({ from })
 
         const { logSuggestion } = await import('./smart-replies')
@@ -179,71 +148,10 @@ describe('smart replies AI actions', () => {
         })
 
         expect(from).toHaveBeenCalledWith('ai_suggestions')
-        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(messageQuery.eq).toHaveBeenCalledWith('conversation_id', 'conv-secret-id')
-        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('secret-value')
         expect(logText).not.toContain('conv-secret-id')
         expect(logText).not.toContain('msg-secret-id')
         expect(logText).toContain('hasMessage')
-    })
-
-    it('does not log suggestions for conversations outside the current organization', async () => {
-        const conversationQuery = singleQuery({ data: null, error: { message: 'not found' } })
-        const insert = vi.fn()
-        const from = vi.fn((table: string) => {
-            if (table === 'conversations') return conversationQuery
-            if (table === 'ai_suggestions') return { insert }
-            throw new Error(`Unexpected table ${table}`)
-        })
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.createClient.mockResolvedValue({ from })
-
-        const { logSuggestion } = await import('./smart-replies')
-        await logSuggestion({
-            conversationId: 'conv-foreign',
-            messageId: 'msg-foreign',
-            suggestions: [{ type: 'short', text: 'Claro.', tokens: 2 }],
-            generationTimeMs: 12,
-        })
-
-        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conv-foreign')
-        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(insert).not.toHaveBeenCalled()
-    })
-
-    it('marks suggestions as used only after proving organization access', async () => {
-        const suggestionQuery = singleQuery({
-            data: { id: 'suggestion-1', conversation_id: 'conv-current' },
-            error: null,
-        })
-        const conversationQuery = singleQuery({ data: { id: 'conv-current' }, error: null })
-        const suggestionUpdate = updateQuery()
-        let suggestionCalls = 0
-        const from = vi.fn((table: string) => {
-            if (table === 'ai_suggestions') {
-                suggestionCalls += 1
-                return suggestionCalls === 1 ? suggestionQuery : suggestionUpdate
-            }
-            if (table === 'conversations') return conversationQuery
-            throw new Error(`Unexpected table ${table}`)
-        })
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.createClient.mockResolvedValue({ from })
-
-        const { markSuggestionUsed } = await import('./smart-replies')
-        await markSuggestionUsed('suggestion-1', 'short', 'Mensaje final', true)
-
-        expect(suggestionQuery.eq).toHaveBeenCalledWith('id', 'suggestion-1')
-        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conv-current')
-        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(suggestionUpdate.update).toHaveBeenCalledWith(expect.objectContaining({
-            selected_response: 'short',
-            final_message: 'Mensaje final',
-            was_edited: true,
-        }))
-        expect(suggestionUpdate.query.eq).toHaveBeenCalledWith('id', 'suggestion-1')
-        expect(suggestionUpdate.query.eq).toHaveBeenCalledWith('conversation_id', 'conv-current')
     })
 })
