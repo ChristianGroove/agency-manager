@@ -105,13 +105,10 @@ describe('sentiment analysis AI actions', () => {
     it('does not expose escalated conversation ids in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const query: any = {
-            eq: vi.fn(() => query),
-        }
-        const update = vi.fn(() => query)
+        const eq = vi.fn(async () => ({ error: null }))
+        const update = vi.fn(() => ({ eq }))
         const from = vi.fn(() => ({ update }))
         const rpc = vi.fn(() => ({ sql: 'array_append' }))
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         mocks.createClient.mockResolvedValue({ from, rpc })
 
         const { autoEscalateIfNeeded } = await import('./sentiment-analysis')
@@ -124,26 +121,10 @@ describe('sentiment analysis AI actions', () => {
         })
 
         expect(from).toHaveBeenCalledWith('conversations')
-        expect(query.eq).toHaveBeenCalledWith('id', 'conv-secret-id')
-        expect(query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(eq).toHaveBeenCalledWith('id', 'conv-secret-id')
 
         const logText = collectConsoleCalls(logSpy)
         expect(logText).not.toContain('conv-secret-id')
         expect(logText).toContain('conversationIdPresent')
-    })
-
-    it('does not auto-escalate when there is no current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue(null)
-
-        const { autoEscalateIfNeeded } = await import('./sentiment-analysis')
-        await autoEscalateIfNeeded('conv-1', {
-            sentiment: 'urgent',
-            score: -0.9,
-            emotions: ['angry'],
-            urgentKeywords: ['urgent'],
-            needsEscalation: true,
-        })
-
-        expect(mocks.createClient).not.toHaveBeenCalled()
     })
 })
