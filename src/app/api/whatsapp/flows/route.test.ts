@@ -105,5 +105,62 @@ describe('/api/whatsapp/flows', () => {
         expect(response.status).toBe(200)
         expect(body.encrypted_data).toBe('encrypted-payload')
         expect(logText).not.toContain('client@example.com')
+        expect(logText).not.toContain('marketing')
+        expect(logText).toContain('userEmailPresent')
+        expect(logText).toContain('consentTypePresent')
+    })
+
+    it('does not write support ticket payload values or generated ticket ids to logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        vi.stubEnv('META_APP_SECRET', 'meta-secret')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        vi.doMock('@/modules/infrastructure/meta/services/flows/flows-crypto', () => ({
+            flowsCrypto: {
+                extractAESKey: vi.fn(() => Buffer.alloc(32)),
+                decryptRequest: vi.fn(() => ({
+                    version: '3.0',
+                    screen: 'SUPPORT',
+                    action_payload: {
+                        action: 'create_ticket',
+                        category: 'billing-secret-category',
+                        urgency: 'urgent-secret-level',
+                        description: 'private support issue details',
+                    },
+                })),
+                encryptResponse: vi.fn(() => 'encrypted-payload'),
+            },
+        }))
+
+        const rawBody = JSON.stringify({
+            encrypted_aes_key: 'encrypted-key',
+            encrypted_flow_data: 'encrypted-data',
+            initial_vector: Buffer.alloc(16).toString('base64'),
+        })
+
+        const { POST } = await import('./route')
+        const response = await POST(signedRequest(rawBody))
+        const body = await response.json()
+        const logText = logSpy.mock.calls
+            .map(call => call.map(value => {
+                if (typeof value === 'string') return value
+                try {
+                    return JSON.stringify(value)
+                } catch {
+                    return String(value)
+                }
+            }).join(' '))
+            .join('\n')
+
+        expect(response.status).toBe(200)
+        expect(body.data.ticket_id).toMatch(/^TICKET-/)
+        expect(logText).not.toContain('billing-secret-category')
+        expect(logText).not.toContain('urgent-secret-level')
+        expect(logText).not.toContain('private support issue details')
+        expect(logText).not.toContain('TICKET-')
+        expect(logText).toContain('categoryPresent')
+        expect(logText).toContain('urgencyPresent')
+        expect(logText).toContain('descriptionPresent')
+        expect(logText).toContain('ticketIdPresent')
     })
 })

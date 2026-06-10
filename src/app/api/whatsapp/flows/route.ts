@@ -43,15 +43,71 @@ const DEMO_TIME_SLOTS: Record<string, Array<{ id: string; title: string }>> = {
     ]
 };
 
-function logFlowError(error: unknown) {
+function sanitizeFlowLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'category',
+        'consentType',
+        'date',
+        'description',
+        'selectedDate',
+        'ticketId',
+        'urgency',
+        'userEmail',
+    ]);
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function summarizeFlowError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name };
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function logFlowInfo(label: string, details: Record<string, unknown> = {}) {
     if (!isProductionRuntime()) {
-        console.error('[Flows Endpoint] Error:', error);
+        if (Object.keys(details).length > 0) console.log(label, details);
+        else console.log(label);
         return;
     }
 
-    console.error('[Flows Endpoint] Error:', error instanceof Error
-        ? { name: error.name }
-        : { type: typeof error });
+    if (Object.keys(details).length > 0) {
+        console.log(label, sanitizeFlowLogDetails(details));
+        return;
+    }
+
+    console.log(label);
+}
+
+function logFlowError(error: unknown, details: Record<string, unknown> = {}) {
+    if (!isProductionRuntime()) {
+        if (Object.keys(details).length > 0) console.error('[Flows Endpoint] Error:', error, details);
+        else console.error('[Flows Endpoint] Error:', error);
+        return;
+    }
+
+    console.error('[Flows Endpoint] Error:', {
+        ...sanitizeFlowLogDetails(details),
+        detail: summarizeFlowError(error),
+    });
 }
 
 export async function POST(req: NextRequest) {
@@ -67,9 +123,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
         }
 
-        console.log('[Flows Endpoint] Received request');
+        logFlowInfo('[Flows Endpoint] Received request');
 
-        console.log('[Flows Endpoint] ✅ Signature validated');
+        logFlowInfo('[Flows Endpoint] Signature validated');
 
         // Step 2: Decrypt request
         const aesKey = flowsCrypto.extractAESKey(body.encrypted_aes_key);
@@ -81,7 +137,7 @@ export async function POST(req: NextRequest) {
             initial_vector: body.initial_vector
         });
 
-        console.log('[Flows Endpoint] Decrypted data:', {
+        logFlowInfo('[Flows Endpoint] Decrypted data:', {
             version: decrypted.version,
             screen: decrypted.screen,
             action: decrypted.action_payload?.action
@@ -118,7 +174,7 @@ export async function POST(req: NextRequest) {
             iv
         );
 
-        console.log('[Flows Endpoint] ✅ Sending encrypted response');
+        logFlowInfo('[Flows Endpoint] Sending encrypted response');
 
         return NextResponse.json({
             version: '3.0',
@@ -145,12 +201,12 @@ export async function POST(req: NextRequest) {
 async function getTimeSlots(date: string): Promise<{
     time_slots: Array<{ id: string; title: string }>;
 }> {
-    console.log(`[Flows] Getting time slots for ${date}`);
+    logFlowInfo('[Flows] Getting time slots', { date });
 
     // Validate YYYY-MM-DD format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-        console.error(`[Flows] Invalid date format: ${date}`);
+        logFlowError(new Error('invalid_date_format'), { date });
         return { time_slots: [] };
     }
 
@@ -196,9 +252,9 @@ async function getTimeSlots(date: string): Promise<{
  * Log user consent (GDPR/Meta 2026 compliance)
  */
 async function logConsent(payload: any): Promise<void> {
-    console.log('[Flows] Logging consent request:', {
-        consent_type: payload?.consent_type,
-        has_user_email: !!payload?.user_email
+    logFlowInfo('[Flows] Logging consent request:', {
+        consentType: payload?.consent_type,
+        userEmail: payload?.user_email
     });
 
     // TODO: Store consent in database
@@ -210,17 +266,17 @@ async function logConsent(payload: any): Promise<void> {
     // });
 
     // For now, just log
-    console.log('[Flows] ✅ Consent logged (placeholder)');
+    logFlowInfo('[Flows] Consent logged (placeholder)');
 }
 
 /**
  * Create support ticket
  */
 async function createSupportTicket(payload: any): Promise<string> {
-    console.log('[Flows] Creating support ticket:', {
+    logFlowInfo('[Flows] Creating support ticket:', {
         category: payload?.category,
         urgency: payload?.urgency,
-        has_description: !!payload?.description
+        description: payload?.description
     });
 
     // Generate ticket ID
@@ -235,7 +291,7 @@ async function createSupportTicket(payload: any): Promise<string> {
     //   created_at: new Date()
     // });
 
-    console.log(`[Flows] ✅ Ticket created: ${ticketId}`);
+    logFlowInfo('[Flows] Ticket created', { ticketId });
 
     return ticketId;
 }
