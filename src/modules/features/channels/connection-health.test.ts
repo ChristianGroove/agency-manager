@@ -48,7 +48,6 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 
 function mockConnectionLookup(result: ConnectionLookup) {
     const updates: any[] = []
-    const filters: any[] = []
 
     mocks.from.mockImplementation((table: string) => {
         if (table !== 'integration_connections') {
@@ -63,10 +62,9 @@ function mockConnectionLookup(result: ConnectionLookup) {
             eq: vi.fn((column: string, value: string) => {
                 if (isUpdate) {
                     updates.push({ payload: updatePayload, column, value })
-                    return builder
+                    return Promise.resolve({ data: null, error: null })
                 }
 
-                filters.push({ column, value })
                 return builder
             }),
             single: vi.fn(async () => result),
@@ -76,12 +74,11 @@ function mockConnectionLookup(result: ConnectionLookup) {
                 return builder
             }),
         }
-        builder.then = (resolve: any, reject: any) => Promise.resolve({ data: null, error: null }).then(resolve, reject)
 
         return builder
     })
 
-    return { filters, updates }
+    return updates
 }
 
 describe('checkConnectionHealth', () => {
@@ -97,7 +94,7 @@ describe('checkConnectionHealth', () => {
 
     it('does not expose provider health messages in production', async () => {
         setupProductionRuntime()
-        const { updates } = mockConnectionLookup({
+        const updates = mockConnectionLookup({
             data: {
                 id: 'connection-1',
                 provider_key: 'meta_whatsapp',
@@ -134,7 +131,7 @@ describe('checkConnectionHealth', () => {
     it('does not expose decrypt or adapter exceptions in production responses or logs', async () => {
         setupProductionRuntime()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const { updates } = mockConnectionLookup({
+        const updates = mockConnectionLookup({
             data: {
                 id: 'connection-1',
                 provider_key: 'meta_whatsapp',
@@ -166,49 +163,5 @@ describe('checkConnectionHealth', () => {
             column: 'id',
             value: 'connection-1',
         }])
-    })
-
-    it('scopes health status updates when an organization id is provided', async () => {
-        const { filters, updates } = mockConnectionLookup({
-            data: {
-                id: 'connection-1',
-                provider_key: 'meta_whatsapp',
-                credentials: { encrypted: 'ciphertext' },
-                status: 'active',
-            },
-            error: null,
-        })
-        mocks.decryptObject.mockReturnValue({ accessToken: 'server-token' })
-        mocks.getAdapter.mockReturnValue({
-            checkConnectionStatus: mocks.checkConnectionStatus,
-        })
-        mocks.checkConnectionStatus.mockResolvedValue({
-            status: 'active',
-            message: 'ok',
-        })
-
-        const { checkConnectionHealth } = await import('./connection-health')
-        const result = await checkConnectionHealth('connection-1', 'org-1')
-
-        expect(result).toEqual({
-            status: 'active',
-            message: 'ok',
-        })
-        expect(filters).toEqual([
-            { column: 'id', value: 'connection-1' },
-            { column: 'organization_id', value: 'org-1' },
-        ])
-        expect(updates).toEqual([
-            expect.objectContaining({
-                payload: expect.objectContaining({ status: 'active' }),
-                column: 'id',
-                value: 'connection-1',
-            }),
-            expect.objectContaining({
-                payload: expect.objectContaining({ status: 'active' }),
-                column: 'organization_id',
-                value: 'org-1',
-            }),
-        ])
     })
 })

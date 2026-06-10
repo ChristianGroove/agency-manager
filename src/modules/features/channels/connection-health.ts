@@ -46,20 +46,15 @@ function connectionHealthMessage(
 /**
  * Check health of a single connection
  */
-export async function checkConnectionHealth(connectionId: string, organizationId?: string): Promise<{
+export async function checkConnectionHealth(connectionId: string): Promise<{
     status: 'active' | 'disconnected' | 'error' | 'unknown'
     message?: string
 }> {
-    let connectionQuery = supabaseAdmin
+    const { data: connection, error } = await supabaseAdmin
         .from('integration_connections')
         .select('id, provider_key, credentials, status')
         .eq('id', connectionId)
-
-    if (organizationId) {
-        connectionQuery = connectionQuery.eq('organization_id', organizationId)
-    }
-
-    const { data: connection, error } = await connectionQuery.single()
+        .single()
 
     if (error || !connection) {
         return { status: 'error', message: 'Connection not found' }
@@ -77,19 +72,13 @@ export async function checkConnectionHealth(connectionId: string, organizationId
         const newStatus = result.status === 'active' ? 'active' : 'disconnected'
 
         // Update status in DB
-        let updateQuery = supabaseAdmin
+        await supabaseAdmin
             .from('integration_connections')
             .update({
                 status: newStatus,
                 last_synced_at: new Date().toISOString()
             })
             .eq('id', connectionId)
-
-        if (organizationId) {
-            updateQuery = updateQuery.eq('organization_id', organizationId)
-        }
-
-        await updateQuery
 
         return {
             status: newStatus as any,
@@ -99,16 +88,10 @@ export async function checkConnectionHealth(connectionId: string, organizationId
         logConnectionHealthError(`[HealthCheck] Error checking connection ${connectionId}:`, error)
 
         // Mark as error
-        let updateQuery = supabaseAdmin
+        await supabaseAdmin
             .from('integration_connections')
             .update({ status: 'error' })
             .eq('id', connectionId)
-
-        if (organizationId) {
-            updateQuery = updateQuery.eq('organization_id', organizationId)
-        }
-
-        await updateQuery
 
         return { status: 'error', message: connectionHealthMessage('error', error.message) }
     }
@@ -138,7 +121,7 @@ export async function checkAllConnectionsHealth(organizationId: string): Promise
     let issues = 0
 
     for (const conn of connections) {
-        const health = await checkConnectionHealth(conn.id, organizationId)
+        const health = await checkConnectionHealth(conn.id)
         results.push({
             id: conn.id,
             name: conn.connection_name,

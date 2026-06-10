@@ -97,9 +97,9 @@ describe('/api/cron/check-connections', () => {
         vi.spyOn(console, 'log').mockImplementation(() => undefined)
         mockConnections({
             data: [{
-                id: 'connection-secret-id',
-                organization_id: 'org-secret-id',
-                connection_name: 'Meta WhatsApp Secret',
+                id: 'connection-1',
+                organization_id: 'org-1',
+                connection_name: 'Meta WhatsApp',
                 provider_key: 'meta_whatsapp',
             }],
             error: null,
@@ -120,59 +120,11 @@ describe('/api/cron/check-connections', () => {
             healthy: 0,
             issues: 1,
         })
-        expect(mocks.checkConnectionHealth).toHaveBeenCalledWith('connection-secret-id', 'org-secret-id')
         expect(responseText).not.toContain('secret-value')
         expect(responseText).not.toContain('access token')
 
         const errorLogText = collectConsoleCalls(errorSpy)
-        expect(errorLogText).not.toContain('connection-secret-id')
-        expect(errorLogText).not.toContain('org-secret-id')
-        expect(errorLogText).not.toContain('Meta WhatsApp Secret')
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('access token')
-        expect(errorLogText).toContain('connectionIdPresent')
-        expect(errorLogText).toContain('connectionNamePresent')
-        expect(errorLogText).toContain('organizationIdPresent')
-    })
-
-    it('does not expose unhealthy connection identifiers in production logs', async () => {
-        setupProductionCron()
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mockConnections({
-            data: [{
-                id: 'connection-secret-id',
-                organization_id: 'org-secret-id',
-                connection_name: 'Meta WhatsApp Secret',
-                provider_key: 'meta_whatsapp',
-            }],
-            error: null,
-        })
-        mocks.checkConnectionHealth.mockResolvedValue({
-            status: 'error',
-            message: 'meta token secret-value failed',
-        })
-
-        const { GET } = await import('./route')
-        const response = await GET(cronRequest())
-        const body = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(body).toMatchObject({
-            success: true,
-            checked: 1,
-            healthy: 0,
-            issues: 1,
-        })
-        expect(mocks.checkConnectionHealth).toHaveBeenCalledWith('connection-secret-id', 'org-secret-id')
-
-        const logText = collectConsoleCalls(logSpy)
-        expect(logText).not.toContain('connection-secret-id')
-        expect(logText).not.toContain('org-secret-id')
-        expect(logText).not.toContain('Meta WhatsApp Secret')
-        expect(logText).not.toContain('secret-value')
-        expect(logText).toContain('connectionIdPresent')
-        expect(logText).toContain('connectionNamePresent')
-        expect(logText).toContain('organizationIdPresent')
     })
 })

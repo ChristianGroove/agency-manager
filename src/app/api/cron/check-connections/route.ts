@@ -1,17 +1,44 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { checkConnectionHealth } from "@/modules/features/channels/connection-health"
+import { isProductionRuntime, requireCronSecret } from "@/app/api/_guards/request-guards"
+
+const PUBLIC_CHECK_CONNECTIONS_ERROR = 'Connection health cron failed'
+
+function logCheckConnectionsError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function checkConnectionsErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_CHECK_CONNECTIONS_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return PUBLIC_CHECK_CONNECTIONS_ERROR
+}
 
 /**
  * Cron endpoint to check health of all active WhatsApp connections.
  * Recommended: Run every 5-15 minutes via Vercel Cron or external scheduler.
  */
 export async function GET(request: Request) {
-    // Verify cron secret (optional security)
-    const authHeader = request.headers.get('authorization')
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = requireCronSecret(request)
+    if (unauthorized) return unauthorized
 
     console.log('[Cron:CheckConnections] Starting health check cycle...')
 
@@ -24,7 +51,7 @@ export async function GET(request: Request) {
             .order('last_synced_at', { ascending: true, nullsFirst: true }) // Oldest first
 
         if (error) {
-            console.error('[Cron:CheckConnections] Error fetching connections:', error)
+            logCheckConnectionsError('[Cron:CheckConnections] Error fetching connections:', error)
             return NextResponse.json({ error: 'Failed to fetch connections' }, { status: 500 })
         }
 
@@ -42,7 +69,7 @@ export async function GET(request: Request) {
 
         for (const conn of connections) {
             try {
-                const health = await checkConnectionHealth(conn.id, conn.organization_id)
+                const health = await checkConnectionHealth(conn.id)
                 results.push({
                     id: conn.id,
                     status: health.status,
@@ -56,11 +83,11 @@ export async function GET(request: Request) {
                     console.log(`[Cron:CheckConnections] Issue detected: ${conn.connection_name} (${conn.id}) - ${health.status}`)
                 }
             } catch (err: any) {
-                console.error(`[Cron:CheckConnections] Error checking ${conn.id}:`, err)
+                logCheckConnectionsError(`[Cron:CheckConnections] Error checking ${conn.id}:`, err)
                 results.push({
                     id: conn.id,
                     status: 'error',
-                    message: err.message
+                    message: checkConnectionsErrorMessage(err)
                 })
                 issues++
             }
@@ -77,7 +104,7 @@ export async function GET(request: Request) {
         })
 
     } catch (error: any) {
-        console.error('[Cron:CheckConnections] Unexpected error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        logCheckConnectionsError('[Cron:CheckConnections] Unexpected error:', error)
+        return NextResponse.json({ error: checkConnectionsErrorMessage(error) }, { status: 500 })
     }
 }
