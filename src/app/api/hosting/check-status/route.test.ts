@@ -11,9 +11,12 @@ vi.mock('dns/promises', () => ({
 }))
 
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
     vi.unstubAllGlobals()
+    mocks.lookup.mockReset()
+    mocks.fetch.mockReset()
 })
 
 describe('/api/hosting/check-status', () => {
@@ -92,5 +95,24 @@ describe('/api/hosting/check-status', () => {
                 redirect: 'manual',
             })
         )
+    })
+
+    it('does not expose fetch failure details in production offline responses', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+        mocks.fetch.mockRejectedValue(
+            new Error('hosting provider token secret-value failed probing origin')
+        )
+        vi.stubGlobal('fetch', mocks.fetch)
+
+        const { GET } = await import('./route')
+        const response = await GET(new Request('https://pixy.test/api/hosting/check-status?url=example.com'))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('offline')
+        expect(responseText).toContain('Unable to reach host')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('provider token')
     })
 })

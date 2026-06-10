@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
 
 export const dynamic = 'force-dynamic'
 
 const ALLOWED_PORTS = new Set(['', '80', '443'])
 const PRIVATE_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0'])
+const PUBLIC_HOSTING_CHECK_ERROR = 'Unable to reach host'
 
 function parseIPv4(ip: string) {
     const parts = ip.split('.').map(part => Number(part))
@@ -102,6 +104,22 @@ async function validatePublicHostingUrl(url: URL) {
     }
 }
 
+function hostingCheckErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_HOSTING_CHECK_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return PUBLIC_HOSTING_CHECK_ERROR
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const rawUrl = searchParams.get('url')
@@ -152,10 +170,10 @@ export async function GET(request: Request) {
                 warning: `Status code ${response.status}`
             })
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({
             status: 'offline',
-            error: error.message
+            error: hostingCheckErrorMessage(error)
         }, { status: 200 }) // Return 200 to frontend so it can process the JSON offline status
     }
 }
