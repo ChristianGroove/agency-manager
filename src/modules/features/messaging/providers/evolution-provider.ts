@@ -21,7 +21,7 @@ export class EvolutionProvider implements MessagingProvider {
     }
 
     private isDeployedRuntime(): boolean {
-        return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+        return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
     }
 
     private safeEqual(a: string, b: string) {
@@ -42,15 +42,75 @@ export class EvolutionProvider implements MessagingProvider {
         })
     }
 
-    private logProviderError(label: string, error: unknown) {
+    private sanitizeProviderLogDetails(details: Record<string, unknown> = {}) {
+        const sensitiveKeys = new Set([
+            'apiKey',
+            'baseUrl',
+            'fileName',
+            'instanceName',
+            'mediaUrl',
+            'messageId',
+            'publicUrl',
+        ])
+
+        return Object.fromEntries(
+            Object.entries(details).map(([key, value]) => {
+                if (sensitiveKeys.has(key)) {
+                    return [`${key}Present`, Boolean(value)]
+                }
+
+                return [key, value]
+            })
+        )
+    }
+
+    private summarizeProviderError(error: unknown) {
+        if (error instanceof Error) {
+            return { name: error.name }
+        }
+
+        if (error && typeof error === 'object') {
+            return {
+                type: 'object',
+                code: (error as { code?: unknown }).code,
+                status: (error as { status?: unknown }).status,
+                statusCode: (error as { statusCode?: unknown }).statusCode,
+                hasMessage: typeof (error as { message?: unknown }).message === 'string',
+            }
+        }
+
+        return { type: typeof error }
+    }
+
+    private logProviderError(label: string, error: unknown, details: Record<string, unknown> = {}) {
         if (!this.isDeployedRuntime()) {
-            console.error(label, error)
+            if (Object.keys(details).length > 0) console.error(label, error, details)
+            else console.error(label, error)
             return
         }
 
-        console.error(label, error instanceof Error
-            ? { name: error.name }
-            : { type: typeof error })
+        console.error(label, {
+            ...this.sanitizeProviderLogDetails(details),
+            detail: this.summarizeProviderError(error),
+        })
+    }
+
+    private logProviderWarning(label: string, details: Record<string, unknown> = {}) {
+        if (!this.isDeployedRuntime()) {
+            console.warn(label, details)
+            return
+        }
+
+        console.warn(label, this.sanitizeProviderLogDetails(details))
+    }
+
+    private logProviderInfo(label: string, details: Record<string, unknown> = {}) {
+        if (!this.isDeployedRuntime()) {
+            console.log(label, details)
+            return
+        }
+
+        console.log(label, this.sanitizeProviderLogDetails(details))
     }
 
     private publicError(error: unknown) {
@@ -253,7 +313,10 @@ export class EvolutionProvider implements MessagingProvider {
             });
 
             if (!response.ok) {
-                console.error(`[EvolutionProvider] Failed to get media: ${response.statusText}`);
+                this.logProviderError('[EvolutionProvider] Failed to get media:', { status: response.status }, {
+                    messageId,
+                    messageType,
+                });
                 return '';
             }
 
@@ -261,7 +324,10 @@ export class EvolutionProvider implements MessagingProvider {
             const base64Data = data.base64;
 
             if (!base64Data) {
-                console.warn('[EvolutionProvider] No base64 data returned from Evolution');
+                this.logProviderWarning('[EvolutionProvider] No base64 data returned from Evolution', {
+                    messageId,
+                    messageType,
+                });
                 return '';
             }
 
@@ -288,7 +354,10 @@ export class EvolutionProvider implements MessagingProvider {
                 });
 
             if (error) {
-                console.error('[EvolutionProvider] Storage upload failed:', error);
+                this.logProviderError('[EvolutionProvider] Storage upload failed:', error, {
+                    messageId,
+                    messageType,
+                });
                 return '';
             }
 
@@ -297,11 +366,18 @@ export class EvolutionProvider implements MessagingProvider {
                 .from('chat-attachments')
                 .getPublicUrl(fileName);
 
-            console.log(`[EvolutionProvider] Media uploaded: ${publicUrl}`);
+            this.logProviderInfo('[EvolutionProvider] Media uploaded', {
+                messageId,
+                messageType,
+                publicUrl,
+            });
             return publicUrl;
 
         } catch (error) {
-            console.error('[EvolutionProvider] processMedia error:', error);
+            this.logProviderError('[EvolutionProvider] processMedia error:', error, {
+                messageId,
+                messageType,
+            });
             return '';
         }
     }
