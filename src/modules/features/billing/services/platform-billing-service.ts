@@ -7,6 +7,48 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import crypto from "crypto"
 
+const PUBLIC_PLATFORM_INVOICE_CREATE_ERROR = "No se pudo crear la factura de plataforma"
+const PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR = "No se pudo enviar la factura de plataforma"
+const PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR = "No se pudo activar la suscripcion"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePlatformBillingError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPlatformBillingError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizePlatformBillingError(error))
+}
+
+function platformBillingErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    if (typeof error === 'string' && error) return error
+    return publicMessage
+}
+
 /**
  * PlatformBillingService handles management-level billing operations
  * for the SaaS platform itself (e.g. charging tenants).
@@ -54,7 +96,7 @@ export class PlatformBillingService {
                         updated_at: new Date().toISOString()
                     });
             } catch (e) {
-                console.error("Warning: Profile upsert failed (continuing invoice creation):", e);
+                logPlatformBillingError("Warning: Profile upsert failed (continuing invoice creation):", e);
             }
         }
 
@@ -85,8 +127,8 @@ export class PlatformBillingService {
             .single()
 
         if (error) {
-            console.error("Full error creating platform invoice:", error)
-            return { success: false, error: `Error DB: ${error.message}` }
+            logPlatformBillingError("Full error creating platform invoice:", error)
+            return { success: false, error: platformBillingErrorMessage(error, PUBLIC_PLATFORM_INVOICE_CREATE_ERROR) }
         }
 
         return { 
@@ -281,7 +323,8 @@ export class PlatformBillingService {
         })
 
         if (!result.success) {
-            return { success: false, error: `Fallo de envío: ${result.error}` }
+            logPlatformBillingError("[PlatformBilling] Email send failed:", result.error)
+            return { success: false, error: platformBillingErrorMessage(result.error, PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR) }
         }
 
         return { success: true }
@@ -441,7 +484,8 @@ export class PlatformBillingService {
 
             return { success: true };
         } catch (dbError: any) {
-            return { success: false, error: dbError.message };
+            logPlatformBillingError("[PlatformBilling.manualActivateSubscription] Error:", dbError)
+            return { success: false, error: platformBillingErrorMessage(dbError, PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR) };
         }
     }
 
