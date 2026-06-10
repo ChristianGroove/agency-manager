@@ -66,6 +66,23 @@ function logWABAResponse(label: string, data: unknown) {
     });
 }
 
+function logWABAInfo(label: string, details: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'wabaId') {
+                return ['wabaIdPresent', Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    ));
+}
+
 function publicSubscriptionError(error: unknown, fallback: string = PUBLIC_WABA_SUBSCRIPTION_ERROR) {
     if (isDeployedRuntime()) {
         return fallback;
@@ -93,7 +110,7 @@ export class WABASubscriptionManager {
         const timestamp = new Date();
 
         try {
-            console.log(`[WABASubscription] Subscribing WABA ${wabaId} to app webhooks...`);
+            logWABAInfo('[WABASubscription] Subscribing WABA to app webhooks...', { wabaId });
 
             const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/subscribed_apps`;
 
@@ -135,7 +152,7 @@ export class WABASubscriptionManager {
                 };
             }
 
-            console.log(`[WABASubscription] ✅ Successfully subscribed WABA ${wabaId}`);
+            logWABAInfo('[WABASubscription] Successfully subscribed WABA', { wabaId });
             logWABAResponse('[WABASubscription] Response:', data);
 
             return {
@@ -186,7 +203,7 @@ export class WABASubscriptionManager {
             // Check if our app is in the subscribed list
             const isSubscribed = data.data && data.data.length > 0;
 
-            console.log(`[WABASubscription] WABA ${wabaId} subscription status: ${isSubscribed}`);
+            logWABAInfo('[WABASubscription] WABA subscription status', { wabaId, isSubscribed });
 
             return isSubscribed;
 
@@ -227,7 +244,7 @@ export class WABASubscriptionManager {
                 };
             }
 
-            console.log(`[WABASubscription] ✅ Successfully unsubscribed WABA ${wabaId}`);
+            logWABAInfo('[WABASubscription] Successfully unsubscribed WABA', { wabaId });
 
             return {
                 success: true,

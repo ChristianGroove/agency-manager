@@ -98,6 +98,32 @@ describe('WABASubscriptionManager', () => {
         expect(errorLogText).not.toContain('meta token')
     })
 
+    it('does not expose WABA identifiers in production success logs', async () => {
+        setupProductionEnv()
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        mocks.fetch
+            .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ id: 'app_123' }] }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }))
+
+        const { WABASubscriptionManager } = await import('./waba-subscription-manager')
+        const manager = new WABASubscriptionManager()
+        const wabaId = 'waba_sensitive_123'
+
+        const subscribeResult = await manager.subscribeWABA(wabaId, 'access-token-secret-value')
+        const subscribed = await manager.verifySubscription(wabaId, 'access-token-secret-value')
+        const unsubscribeResult = await manager.unsubscribeWABA(wabaId, 'access-token-secret-value')
+
+        expect(subscribeResult.success).toBe(true)
+        expect(subscribed).toBe(true)
+        expect(unsubscribeResult.success).toBe(true)
+
+        const logText = collectConsoleCalls(logSpy)
+        expect(logText).toContain('wabaIdPresent')
+        expect(logText).not.toContain(wabaId)
+        expect(logText).not.toContain('access-token-secret-value')
+    })
+
     it('keeps subscribing WABA successfully with the expected Meta payload', async () => {
         setupProductionEnv()
         vi.spyOn(console, 'log').mockImplementation(() => undefined)
