@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callingSignalingHandler } from '@/modules/infrastructure/meta/services/calling/calling-signaling-handler';
 import { callPermissionManager } from '@/modules/infrastructure/meta/services/calling/call-permission-manager';
 import { callHoursManager } from '@/modules/infrastructure/meta/services/calling/call-hours-manager';
-import crypto from 'crypto';
+import { isProductionRuntime, requireMetaWebhookSignature, requireProductionInternalAccess } from '@/app/api/_guards/request-guards';
 
 /**
  * Call event types from Meta
@@ -40,30 +40,34 @@ interface CallState {
 
 const activeCallStates = new Map<string, CallState>();
 
+function logCallingWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
 /**
  * Webhook endpoint for calling events
  */
 export async function POST(req: NextRequest) {
     try {
         const rawBody = await req.text();
-        const body = JSON.parse(rawBody);
+        const signatureError = requireMetaWebhookSignature(req, rawBody);
+        if (signatureError) return signatureError;
+
+        let body: any;
+        try {
+            body = JSON.parse(rawBody);
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+        }
 
         console.log('[Calling Webhook] Received event');
-
-        // Step 1: Validate signature (CRITICAL for security)
-        const signature = req.headers.get('x-hub-signature-256');
-
-        if (!signature) {
-            console.error('[Calling Webhook] Missing signature');
-            return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
-        }
-
-        const isValid = validateSignature(rawBody, signature);
-
-        if (!isValid) {
-            console.error('[Calling Webhook] Invalid signature');
-            return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
-        }
 
         // Step 2: Process webhook events
         for (const entry of body.entry || []) {
@@ -83,9 +87,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
-        console.error('[Calling Webhook] Error:', error);
+        logCallingWebhookError('[Calling Webhook] Error:', error);
         return NextResponse.json(
-            { error: 'Webhook processing failed', message: error.message },
+            { error: 'Webhook processing failed' },
             { status: 500 }
         );
     }
@@ -371,32 +375,6 @@ function cleanupCall(callId: string) {
 }
 
 /**
- * Validate webhook signature
- */
-function validateSignature(rawBody: string, signature: string): boolean {
-    const APP_SECRET = process.env.META_APP_SECRET;
-
-    if (!APP_SECRET) {
-        console.warn('[Calling] META_APP_SECRET not set - signature validation disabled');
-        return true; // Allow in development
-    }
-
-    if (!signature.startsWith('sha256=')) {
-        return false;
-    }
-
-    const expectedSignature = 'sha256=' + crypto
-        .createHmac('sha256', APP_SECRET)
-        .update(rawBody)
-        .digest('hex');
-
-    return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-    );
-}
-
-/**
  * Helper: Get user ID from phone number
  */
 function getUserIdFromPhone(phoneNumber: string): string | null {
@@ -408,6 +386,9 @@ function getUserIdFromPhone(phoneNumber: string): string | null {
  * Get active calls statistics
  */
 export async function GET(req: NextRequest) {
+    const blocked = requireProductionInternalAccess(req);
+    if (blocked) return blocked;
+
     const capacity = callingSignalingHandler.getAvailableCapacity();
     const activeCalls = Array.from(activeCallStates.values());
 
