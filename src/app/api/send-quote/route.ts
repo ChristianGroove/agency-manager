@@ -3,9 +3,20 @@ import { getQuoteEmailHtml } from '@/modules/infrastructure/notifications/servic
 import { EmailService } from '@/modules/features/notifications/email.service';
 
 import { getEffectiveBranding } from '@/modules/core/branding/actions';
+import { createClient } from '@/modules/core/database/supabase-server';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
+
+const MAX_QUOTE_PDF_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
     try {
+        const supabase = await createClient();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { email, quoteNumber, clientName, total, date, pdfBase64, organizationId } = await request.json();
 
         if (!email || !quoteNumber || !pdfBase64 || !organizationId) {
@@ -13,6 +24,11 @@ export async function POST(request: Request) {
                 { error: 'Missing required fields (email, quoteNumber, pdfBase64, organizationId)' },
                 { status: 400 }
             );
+        }
+
+        const currentOrgId = await getCurrentOrganizationId();
+        if (!currentOrgId || currentOrgId !== organizationId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // Get effective branding
@@ -30,6 +46,10 @@ export async function POST(request: Request) {
 
         // Convert base64 to buffer
         const pdfBuffer = Buffer.from(pdfBase64.split(',')[1], 'base64');
+        if (pdfBuffer.byteLength > MAX_QUOTE_PDF_BYTES) {
+            return NextResponse.json({ error: 'PDF attachment is too large' }, { status: 413 });
+        }
+
         const linkUrl = brandingData.website || 'https://pixy.com.co'; // Fallback link
         const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total || '$0', date || 'N/A', linkUrl, emailBranding);
 
@@ -38,6 +58,7 @@ export async function POST(request: Request) {
             subject: `Cotización N° ${quoteNumber} - ${clientName}`,
             html: emailHtml,
             organizationId,
+            userId: user.id,
             attachments: [
                 {
                     filename: `Cotizacion_${quoteNumber}.pdf`,
