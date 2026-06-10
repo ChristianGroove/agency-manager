@@ -67,15 +67,6 @@ function logAssignmentActionError(label: string, error: unknown, details: Record
     })
 }
 
-function logAssignmentActionInfo(label: string, details: Record<string, unknown> = {}) {
-    if (!isDeployedRuntime()) {
-        console.log(label, details)
-        return
-    }
-
-    console.log(label, sanitizeAssignmentActionLogDetails(details))
-}
-
 function publicAssignmentActionError(error: unknown, fallback = PUBLIC_ASSIGNMENT_ACTION_ERROR) {
     if (isDeployedRuntime()) {
         return fallback
@@ -375,21 +366,6 @@ export async function getAgentsWorkload() {
  * Manually trigger auto-assignment for a conversation
  */
 export async function triggerAutoAssignment(conversationId: string) {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: 'No organization found' }
-
-    const supabase = await createClient()
-    const { data: conversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('id', conversationId)
-        .eq('organization_id', orgId)
-        .single()
-
-    if (!conversation) {
-        return { success: false, error: 'Conversation not found' }
-    }
-
     const agentId = await autoAssignConversation(conversationId)
 
     if (!agentId) {
@@ -437,27 +413,8 @@ export async function upsertAssignmentRule(rule: {
         updated_at: new Date().toISOString()
     }
 
+    // If updating existing rule, include ID
     if (rule.id) {
-        const { data: existingRule, error: existingRuleError } = await supabaseAdmin
-            .from('assignment_rules')
-            .select('id')
-            .eq('id', rule.id)
-            .eq('organization_id', orgId)
-            .maybeSingle()
-
-        if (existingRuleError) {
-            logAssignmentActionError('[upsertAssignmentRule] Existing rule lookup failed:', existingRuleError, {
-                organizationId: orgId,
-                ruleId: rule.id,
-                userId: user.id,
-            })
-            return { success: false, error: publicAssignmentActionError(existingRuleError) }
-        }
-
-        if (!existingRule) {
-            return { success: false, error: 'Assignment rule not found' }
-        }
-
         ruleData.id = rule.id
     }
 
@@ -468,19 +425,11 @@ export async function upsertAssignmentRule(rule: {
         .single()
 
     if (error) {
-        logAssignmentActionError('[upsertAssignmentRule] Failed:', error, {
-            organizationId: orgId,
-            ruleId: rule.id,
-            userId: user.id,
-            strategy: rule.strategy,
-        })
-        return { success: false, error: publicAssignmentActionError(error) }
+        console.error('[upsertAssignmentRule] Failed:', error)
+        return { success: false, error: error.message }
     }
 
-    logAssignmentActionInfo('[upsertAssignmentRule] Saved rule', {
-        ruleId: data.id,
-        strategy: data.strategy,
-    })
+    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
     revalidatePath('/inbox/settings')
     revalidatePath('/crm/settings/channels')
     return { success: true, data }
@@ -490,18 +439,14 @@ export async function upsertAssignmentRule(rule: {
  * Delete an assignment rule
  */
 export async function deleteAssignmentRule(ruleId: string) {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: 'No organization found' }
-
     const { error } = await supabaseAdmin
         .from('assignment_rules')
         .delete()
         .eq('id', ruleId)
-        .eq('organization_id', orgId)
 
     if (error) {
-        logAssignmentActionError('[deleteAssignmentRule] Failed:', error, { ruleId, organizationId: orgId })
-        return { success: false, error: publicAssignmentActionError(error) }
+        console.error('[deleteAssignmentRule] Failed:', error)
+        return { success: false, error: error.message }
     }
 
     revalidatePath('/inbox/settings')
@@ -513,20 +458,15 @@ export async function deleteAssignmentRule(ruleId: string) {
  * Toggle assignment rule active status
  */
 export async function toggleAssignmentRule(ruleId: string, isActive: boolean) {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: 'No organization found' }
-
     const supabase = await createClient()
 
     const { error } = await supabase
         .from('assignment_rules')
         .update({ is_active: isActive, updated_at: new Date().toISOString() })
         .eq('id', ruleId)
-        .eq('organization_id', orgId)
 
     if (error) {
-        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId, organizationId: orgId })
-        return { success: false, error: publicAssignmentActionError(error) }
+        return { success: false, error: error.message }
     }
 
     revalidatePath('/inbox/settings')
@@ -544,21 +484,14 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         return { success: false, error: 'Unauthorized' }
     }
 
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) {
-        return { success: false, error: 'No organization found' }
-    }
-
     // Delete existing skills
     await supabase
         .from('agent_skills')
         .delete()
         .eq('agent_id', user.id)
-        .eq('organization_id', orgId)
 
     // Insert new skills
     const skillsData = skills.map(s => ({
-        organization_id: orgId,
         agent_id: user.id,
         skill: s.skill,
         proficiency: s.proficiency
@@ -569,11 +502,8 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         .insert(skillsData)
 
     if (error) {
-        logAssignmentActionError('Failed to update agent skills:', error, {
-            userId: user.id,
-            skillsCount: skills.length,
-        })
-        return { success: false, error: publicAssignmentActionError(error) }
+        console.error('Failed to update agent skills:', error)
+        return { success: false, error: error.message }
     }
 
     return { success: true }
@@ -599,7 +529,7 @@ export async function getChannelAssignmentRule(connectionId: string) {
 
     if (error) {
         if (error.code !== 'PGRST116') { // Not found code
-            logAssignmentActionError('Error fetching channel rule:', error, { connectionId, organizationId: orgId })
+            console.error('Error fetching channel rule:', error)
         }
         return null
     }
@@ -622,8 +552,7 @@ export async function getAssignmentRules() {
         .order('priority', { ascending: true })
 
     if (error) {
-        logAssignmentActionError('[getAssignmentRules] Failed:', error, { organizationId: orgId })
-        return { success: false, error: publicAssignmentActionError(error), data: [] }
+        return { success: false, error: error.message, data: [] }
     }
 
     return { success: true, data }
@@ -659,12 +588,7 @@ export async function getSidebarAgents() {
         .eq('organization_id', memberData.organization_id)
 
     if (membersError || !members) {
-        if (membersError) {
-            logAssignmentActionError('[getSidebarAgents] Failed to fetch members:', membersError, {
-                organizationId: memberData.organization_id,
-            })
-        }
-        return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
+        return { success: false, error: membersError?.message || 'Error fetching members', data: [] }
     }
 
     const userIds = members.map(m => m.user_id)
@@ -727,7 +651,7 @@ export async function reconcileAllAgentLoads() {
     if (!agents || agents.length === 0) return { success: true, data: [] }
 
     const results = await Promise.all(
-        agents.map(a => reconcileAgentLoad(a.agent_id, orgId))
+        agents.map(a => reconcileAgentLoad(a.agent_id))
     )
 
     const fixed = results.filter(r => r.previous !== r.actual)
@@ -765,13 +689,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     const { data: unassigned, error: convError } = await convQuery
 
-    if (convError) {
-        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch conversations:', convError, {
-            organizationId: orgId,
-            targetConnectionIds,
-        })
-        return { success: false, error: publicAssignmentActionError(convError) }
-    }
+    if (convError) return { success: false, error: convError.message }
     if (!unassigned || unassigned.length === 0) return { success: true, count: 0, message: 'No unassigned conversations' }
 
     // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
@@ -784,13 +702,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
         .eq('auto_assign_enabled', true)
         .gt('last_seen_at', heartbeatThreshold)
 
-    if (agentError) {
-        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch agents:', agentError, {
-            organizationId: orgId,
-            targetConnectionIds,
-        })
-        return { success: false, error: publicAssignmentActionError(agentError) }
-    }
+    if (agentError) return { success: false, error: agentError.message }
     if (!agents || agents.length === 0) return { success: false, error: 'No online agents available' }
 
     const agentIds = agents.map(a => a.agent_id)
@@ -798,7 +710,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
     // 3. Get roles and channel access for these agents
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
-        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('organization_id', orgId).eq('is_active', true).in('agent_id', agentIds)
+        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
     ])
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]))
@@ -842,16 +754,9 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
                     .from('conversations')
                     .update({ assigned_to: agent.agent_id, updated_at: new Date().toISOString() })
                     .eq('id', chat.id)
-                    .eq('organization_id', orgId)
                 
                 if (!updateError) {
                     await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)
-                } else {
-                    logAssignmentActionError('[distributeUnassignedConversations] Failed to assign conversation:', updateError, {
-                        agentId: agent.agent_id,
-                        conversationId: chat.id,
-                        organizationId: orgId,
-                    })
                 }
             })())
             totalDistributed++
@@ -887,12 +792,7 @@ export async function getUnassignedDistributionStats() {
         .eq('status', 'open')
 
     if (convError || !convs) {
-        if (convError) {
-            logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch conversations:', convError, {
-                organizationId: orgId,
-            })
-        }
-        return { success: false, error: publicAssignmentActionError(convError), data: [] }
+        return { success: false, error: convError?.message, data: [] }
     }
 
     const { data: connections, error: connError } = await supabaseAdmin
@@ -901,10 +801,7 @@ export async function getUnassignedDistributionStats() {
         .eq('organization_id', orgId)
 
     if (connError) {
-        logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch connections:', connError, {
-            organizationId: orgId,
-        })
-        return { success: false, error: publicAssignmentActionError(connError), data: [] }
+        return { success: false, error: connError.message, data: [] }
     }
 
     const connMap = new Map(connections?.map(c => [c.id, c]) || [])
