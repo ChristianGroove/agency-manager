@@ -29,9 +29,31 @@ function makeRequest(path: string, body: Record<string, unknown>) {
     })
 }
 
+function setupProductionRuntime() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.getSuggestions.mockReset()
+    mocks.AIWorkflowAnalyzer.mockReset()
 })
 
 describe('/api/workflows routes', () => {
@@ -147,5 +169,86 @@ describe('/api/workflows routes', () => {
             suggestions: [{ nodeType: 'email', confidence: 0.8 }],
             context: { nodeCount: 1, variables: ['lead.name'] },
         })
+    })
+
+    it('does not expose workflow test exceptions in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockRejectedValue(
+            new Error('workflow database password secret-value failed before dry run')
+        )
+
+        const { POST } = await import('./test/route')
+        const response = await POST(makeRequest('/api/workflows/test', {
+            workflowDefinition: validWorkflow,
+            testData: {},
+        }))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Workflow test failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('database password')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('database password')
+    })
+
+    it('does not expose by-id workflow test exceptions in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockRejectedValue(
+            new Error('workflow service role secret-value failed for by-id dry run')
+        )
+
+        const { POST } = await import('./[id]/test/route')
+        const response = await POST(
+            makeRequest('/api/workflows/workflow_123/test', {
+                workflowDefinition: validWorkflow,
+                testData: {},
+            }) as any,
+            { params: Promise.resolve({ id: 'workflow_123' }) }
+        )
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Workflow test failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('service role')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('service role')
+    })
+
+    it('does not expose workflow suggestion exceptions in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.getSuggestions.mockRejectedValue(
+            new Error('openai api key secret-value failed suggesting workflow')
+        )
+        mocks.AIWorkflowAnalyzer.mockImplementation(function (this: any) {
+            this.getSuggestions = mocks.getSuggestions
+        })
+
+        const { POST } = await import('./suggest/route')
+        const response = await POST(makeRequest('/api/workflows/suggest', {
+            nodes: [
+                { id: 'trigger-1', type: 'trigger', data: { label: 'Start' } },
+            ],
+            edges: [],
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Workflow suggestions failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
     })
 })

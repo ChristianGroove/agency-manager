@@ -3,6 +3,9 @@ import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation
 import { WorkflowDefinition } from '@/modules/features/automation/engine';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { validateWorkflowDefinition, validateWorkflowTestData } from '../../_workflow-validation';
+import { logWorkflowRouteError, workflowRouteErrorBody } from '../../_error-utils';
+
+const PUBLIC_WORKFLOW_TEST_ERROR = 'Workflow test failed';
 
 export async function POST(
     request: NextRequest,
@@ -62,10 +65,10 @@ export async function POST(
             logs: executor.getLogs()
         });
 
-    } catch (error) {
-        console.error('[Test API] Error:', error);
+    } catch (error: unknown) {
+        logWorkflowRouteError('[Test API] Error:', error);
         return NextResponse.json(
-            { error: (error as Error).message },
+            workflowRouteErrorBody(error, PUBLIC_WORKFLOW_TEST_ERROR),
             { status: 500 }
         );
     }

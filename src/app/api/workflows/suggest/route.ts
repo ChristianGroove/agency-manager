@@ -3,6 +3,9 @@ import { AIWorkflowAnalyzer, WorkflowContext } from '@/modules/features/automati
 import { WorkflowNode, WorkflowEdge } from '@/modules/features/automation/engine';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { validateWorkflowGraph } from '../_workflow-validation';
+import { logWorkflowRouteError, workflowRouteErrorBody } from '../_error-utils';
+
+const PUBLIC_WORKFLOW_SUGGESTIONS_ERROR = 'Workflow suggestions failed';
 
 export async function POST(request: NextRequest) {
     try {
@@ -61,10 +64,10 @@ export async function POST(request: NextRequest) {
             }
         });
 
-    } catch (error) {
-        console.error('[Suggest API] Error:', error);
+    } catch (error: unknown) {
+        logWorkflowRouteError('[Suggest API] Error:', error);
         return NextResponse.json(
-            { error: (error as Error).message },
+            workflowRouteErrorBody(error, PUBLIC_WORKFLOW_SUGGESTIONS_ERROR),
             { status: 500 }
         );
     }

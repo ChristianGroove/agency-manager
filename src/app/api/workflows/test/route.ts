@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { validateWorkflowDefinition, validateWorkflowTestData } from '../_workflow-validation';
+import { logWorkflowRouteError, workflowRouteErrorBody } from '../_error-utils';
+
+const PUBLIC_WORKFLOW_TEST_ERROR = 'Workflow test failed';
 
 export async function POST(req: Request) {
     try {
@@ -44,10 +47,10 @@ export async function POST(req: Request) {
             logs
         });
 
-    } catch (error) {
-        console.error('[API] Test execution failed:', error);
+    } catch (error: unknown) {
+        logWorkflowRouteError('[API] Test execution failed:', error);
         return NextResponse.json(
-            { error: 'Internal Server Error', details: (error as Error).message },
+            workflowRouteErrorBody(error, PUBLIC_WORKFLOW_TEST_ERROR, 'Internal Server Error'),
             { status: 500 }
         );
     }
