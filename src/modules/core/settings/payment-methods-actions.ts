@@ -5,6 +5,47 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 
+const PUBLIC_PAYMENT_METHOD_CREATE_ERROR = "No se pudo crear el metodo de pago"
+const PUBLIC_PAYMENT_METHOD_UPDATE_ERROR = "No se pudo actualizar el metodo de pago"
+const PUBLIC_PAYMENT_METHOD_DELETE_ERROR = "No se pudo eliminar el metodo de pago"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePaymentMethodError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPaymentMethodError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizePaymentMethodError(error))
+}
+
+function paymentMethodErrorMessage(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) return fallback
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return fallback
+}
+
 export interface PaymentMethod {
     id: string
     organization_id: string
@@ -71,8 +112,8 @@ export async function createPaymentMethod(formData: {
         })
 
     if (error) {
-        console.error("Error creating payment method:", error)
-        return { success: false, error: error.message }
+        logPaymentMethodError("Error creating payment method:", error)
+        return { success: false, error: paymentMethodErrorMessage(error, PUBLIC_PAYMENT_METHOD_CREATE_ERROR) }
     }
 
     revalidatePath('/settings')
@@ -92,8 +133,8 @@ export async function updatePaymentMethod(id: string, updates: Partial<PaymentMe
         .eq('organization_id', orgId) // Security check
 
     if (error) {
-        console.error("Error updating payment method:", error)
-        return { success: false, error: error.message }
+        logPaymentMethodError("Error updating payment method:", error)
+        return { success: false, error: paymentMethodErrorMessage(error, PUBLIC_PAYMENT_METHOD_UPDATE_ERROR) }
     }
 
     revalidatePath('/settings')
@@ -113,8 +154,8 @@ export async function deletePaymentMethod(id: string) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Error deleting payment method:", error)
-        return { success: false, error: error.message }
+        logPaymentMethodError("Error deleting payment method:", error)
+        return { success: false, error: paymentMethodErrorMessage(error, PUBLIC_PAYMENT_METHOD_DELETE_ERROR) }
     }
 
     revalidatePath('/settings')
