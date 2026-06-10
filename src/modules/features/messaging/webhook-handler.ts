@@ -21,6 +21,35 @@ function summarizeWebhookManagerError(error: unknown) {
     return { type: typeof error }
 }
 
+function sanitizeWebhookManagerLogDetails(details: Record<string, unknown>) {
+    const sensitiveKeys = new Set([
+        'buttonId',
+        'callId',
+        'conversationId',
+        'from',
+        'leadId',
+        'messageId',
+        'organizationId',
+        'pendingId',
+        'permissionId',
+        'to',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'error') {
+                return [key, summarizeWebhookManagerError(value)]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
 function logWebhookManagerError(label: string, error: unknown) {
     if (!isDeployedRuntime()) {
         console.error(label, error)
@@ -28,6 +57,34 @@ function logWebhookManagerError(label: string, error: unknown) {
     }
 
     console.error(label, summarizeWebhookManagerError(error))
+}
+
+function logWebhookManagerInfo(label: string, details?: Record<string, unknown>) {
+    if (!details) {
+        console.log(label)
+        return
+    }
+
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeWebhookManagerLogDetails(details))
+}
+
+function logWebhookManagerWarn(label: string, details?: Record<string, unknown>) {
+    if (!details) {
+        console.warn(label)
+        return
+    }
+
+    if (!isDeployedRuntime()) {
+        console.warn(label, details)
+        return
+    }
+
+    console.warn(label, sanitizeWebhookManagerLogDetails(details))
 }
 
 function webhookManagerErrorMessage(error: unknown) {
@@ -163,7 +220,12 @@ export class WebhookManager {
         // 0. HANDLE CALL SIGNALING (WebRTC)
         if ('type' in inputMsg && inputMsg.type === 'call_signaling') {
             const msg = inputMsg as IncomingCall;
-            console.log(`[WebhookManager] 📞 Processing Call Signaling: ${msg.id} (${msg.event})`);
+            logWebhookManagerInfo('[WebhookManager] Processing Call Signaling', {
+                messageId: msg.id,
+                event: msg.event,
+                callId: msg.call_id,
+                from: msg.from,
+            });
 
             if (msg.event === 'offer') {
                 try {
@@ -179,7 +241,7 @@ export class WebhookManager {
                     if (provider && 'sendSignalingMessage' in provider) {
                         // Cast to MetaProvider-like interface or check method existence
                         await (provider as any).sendSignalingMessage(msg.from, sdpAnswer, msg.call_id);
-                        console.log(`[WebhookManager] ✅ SDP Answer sent for call ${msg.call_id}`);
+                        logWebhookManagerInfo('[WebhookManager] SDP Answer sent', { callId: msg.call_id });
 
                         // 3. Notify Frontend about Inbound Call
                         const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
@@ -204,7 +266,7 @@ export class WebhookManager {
                     }
 
                 } catch (error: any) {
-                    console.error('[WebhookManager] ❌ Call Signaling Error:', error.message);
+                    logWebhookManagerError('[WebhookManager] Call Signaling Error:', error);
                 }
             }
             return; // Stop processing (do not save to inbox generic messages for now)
@@ -232,7 +294,7 @@ export class WebhookManager {
             ''
         ).trim();
         
-        console.log(`[WebhookManager] [DEBUG] Processing message with buttonId: "${buttonId}"`);
+        logWebhookManagerInfo('[WebhookManager] Processing interactive message', { buttonId });
 
         if (buttonId) {
 
@@ -258,7 +320,7 @@ export class WebhookManager {
                         recipientPhone: msg.from
                     })
                 } catch (e: any) {
-                    console.error('[WebhookManager] Quote approval error:', e.message)
+                    logWebhookManagerError('[WebhookManager] Quote approval error:', e)
                 }
                 return // Stop further processing
             }
@@ -284,7 +346,7 @@ export class WebhookManager {
                         recipientPhone: msg.from
                     })
                 } catch (e: any) {
-                    console.error('[WebhookManager] Quote rejection error:', e.message)
+                    logWebhookManagerError('[WebhookManager] Quote rejection error:', e)
                 }
                 return // Stop further processing
             }
@@ -301,7 +363,7 @@ export class WebhookManager {
                     const { handleRejectionReasonSelected } = await import('@/modules/features/crm/services/logic/quote-response-handler')
                     await handleRejectionReasonSelected(cartId, reason, conversationId)
                 } catch (e: any) {
-                    console.error('[WebhookManager] Rejection reason error:', e.message)
+                    logWebhookManagerError('[WebhookManager] Rejection reason error:', e)
                 }
                 return // Stop further processing
             }
@@ -312,7 +374,10 @@ export class WebhookManager {
             const isDenial = cleanButtonId === 'deny_call_perm' || cleanButtonId.startsWith('deny_call_perm_');
 
             if (isApproval || isDenial) {
-                console.log(`[WebhookManager] 🛡️ Recognized Call Permission: ${cleanButtonId} for conversation ${conversationId}`);
+                logWebhookManagerInfo('[WebhookManager] Recognized Call Permission', {
+                    buttonId: cleanButtonId,
+                    conversationId,
+                });
                 try {
                     const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
                     const { CallPermissionManager } = await import('@/modules/infrastructure/meta/services/calling/call-permission-manager');
@@ -326,44 +391,56 @@ export class WebhookManager {
                         .single();
 
                     if (convErr || !conv?.lead_id) {
-                        console.warn(`[WebhookManager] ❌ Lead ID missing (Err: ${convErr?.message}) for conversation ${conversationId}`);
+                        logWebhookManagerWarn('[WebhookManager] Lead ID missing for call permission', {
+                            conversationId,
+                            error: convErr,
+                        });
                         throw new Error("No lead linked to conversation");
                     }
 
-                    console.log(`[WebhookManager] 🔍 Found Lead ID: ${conv.lead_id} (Org: ${conv.organization_id})`);
+                    logWebhookManagerInfo('[WebhookManager] Found lead for call permission', {
+                        leadId: conv.lead_id,
+                        organizationId: conv.organization_id,
+                    });
 
                     if (cleanButtonId.startsWith('approve_call_perm')) {
-                        console.log(`[WebhookManager] [DEBUG] Attempting to approve call permission for conversation ${conversationId}`);
+                        logWebhookManagerInfo('[WebhookManager] Attempting to approve call permission', { conversationId });
                         // Find latest pending permission via conversation metadata
                         const history = await (pm as any).getHistoryFromDb(conversationId);
-                        console.log(`[WebhookManager] [DEBUG] Found ${history.length} permission items in history`);
+                        logWebhookManagerInfo('[WebhookManager] Found permission history', { count: history.length });
                         const latestPending = [...history].reverse().find((p: any) => p.status === 'pending');
                         
                         if (latestPending) {
-                            console.log(`[WebhookManager] [DEBUG] Approving pending perm ID: ${latestPending.id}`);
+                            logWebhookManagerInfo('[WebhookManager] Approving pending permission', {
+                                permissionId: latestPending.id,
+                            });
                             await pm.approvePermission(conversationId, latestPending.id);
-                            console.log(`[WebhookManager] ✅ Call permission APPROVED for conversation ${conversationId}`);
+                            logWebhookManagerInfo('[WebhookManager] Call permission approved', { conversationId });
                         } else {
-                            console.log(`[WebhookManager] [DEBUG] ⚠️ No pending perm found in history. Available statuses: ${history.map((h: any) => h.status).join(', ')}`);
+                            logWebhookManagerInfo('[WebhookManager] No pending permission found in history', {
+                                statuses: history.map((h: any) => h.status).join(', '),
+                            });
                             // Fallback: Just approve a new one if somehow none is found
                             await pm.requestPermission({ conversationId, phoneNumber: msg.from, reason: 'Consentimiento implícito vía botón' });
                             const newHistory = await (pm as any).getHistoryFromDb(conversationId);
                             const newPending = [...newHistory].reverse().find((p: any) => p.status === 'pending');
                             if (newPending) {
-                                console.log(`[WebhookManager] [DEBUG] Created and approving fallback perm: ${newPending.id}`);
+                                logWebhookManagerInfo('[WebhookManager] Created and approving fallback permission', {
+                                    permissionId: newPending.id,
+                                });
                                 await pm.approvePermission(conversationId, newPending.id);
                             }
                         }
                     } else {
                          // Find and Deny latest pending
-                         console.log(`[WebhookManager] Denying call perm for conversation ${conversationId}`);
+                         logWebhookManagerInfo('[WebhookManager] Denying call permission', { conversationId });
                          const history = await (pm as any).getHistoryFromDb(conversationId);
                          const latestPending = [...history].reverse().find((p: any) => p.status === 'pending');
                          if (latestPending) await pm.denyPermission(conversationId, latestPending.id);
-                         console.log(`[WebhookManager] ❌ Call permission DENIED for conversation ${conversationId}`);
+                         logWebhookManagerInfo('[WebhookManager] Call permission denied', { conversationId });
                     }
                 } catch (e: any) {
-                    console.error('[WebhookManager] ❌ Call permission error:', e.message);
+                    logWebhookManagerError('[WebhookManager] Call permission error:', e);
                 }
                 return;
             }
@@ -385,14 +462,15 @@ export class WebhookManager {
             .single()
 
         // Log what we found
-        fileLogger.log(`[WebhookManager] Checking pending inputs for conversation ${conversationId}`, {
+        fileLogger.log('[WebhookManager] Checking pending inputs', sanitizeWebhookManagerLogDetails({
+            conversationId,
             hasPending: !!pendingInput,
             pendingId: pendingInput?.id,
             buttonId: buttonId
-        })
+        }))
 
         if (pendingInput) {
-            console.log(`[WebhookManager] Found pending input for conversation ${conversationId}`)
+            logWebhookManagerInfo('[WebhookManager] Found pending input', { conversationId })
             const { resumeSuspendedWorkflow } = await import('@/modules/features/automation/runner')
 
             // Resume
@@ -413,7 +491,7 @@ export class WebhookManager {
             const { assignConversation } = await import('./assignment-engine')
             await assignConversation(conversationId)
         } catch (assignError) {
-            console.error('[WebhookManager] Failed to run auto-assignment:', assignError)
+            logWebhookManagerError('[WebhookManager] Failed to run auto-assignment:', assignError)
         }
 
         // 4. Find or Create Lead associated with this phone number (now handled by inboxService, but we check for workflows)
