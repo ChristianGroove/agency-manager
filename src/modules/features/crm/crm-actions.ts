@@ -17,6 +17,7 @@ import { Lead, Client } from "@/types"
 const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
 const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
 const PUBLIC_CRM_TAG_ACTION_ERROR = "No se pudo completar la accion de etiquetas"
+const PUBLIC_CRM_SETTINGS_ACTION_ERROR = "No se pudo completar la accion de configuracion CRM"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -68,6 +69,11 @@ function crmPipelineActionFailure(label: string, error: unknown): ActionResponse
 function crmTagActionFailure(label: string, error: unknown): ActionResponse<any> {
     logCrmActionError(label, error)
     return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TAG_ACTION_ERROR) }
+}
+
+function crmSettingsActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_SETTINGS_ACTION_ERROR) }
 }
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
@@ -435,7 +441,7 @@ export async function getSettingsAction(): Promise<ActionResponse<any>> {
         const data = await getSettings()
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmSettingsActionFailure("[getSettingsAction] Error:", e)
     }
 }
 
@@ -450,7 +456,7 @@ export async function getCategoriesAction(): Promise<ActionResponse<any[]>> {
         if (error) throw error
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmSettingsActionFailure("[getCategoriesAction] Error:", e)
     }
 }
 

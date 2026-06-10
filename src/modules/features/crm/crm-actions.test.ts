@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     supabaseAdmin: { from: vi.fn() },
     getCurrentOrganizationId: vi.fn(),
+    getSettings: vi.fn(),
     revalidatePath: vi.fn(),
     getCurrentUserPermissions: vi.fn(),
     contactService: {
@@ -64,6 +65,10 @@ vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
+vi.mock('@/modules/core/settings/actions/crud', () => ({
+    getSettings: mocks.getSettings,
+}))
+
 vi.mock('@/modules/core/settings/actions/team', () => ({
     getCurrentUserPermissions: mocks.getCurrentUserPermissions,
 }))
@@ -92,11 +97,12 @@ vi.mock('./services/deal-service', () => ({
     DealService: mocks.DealService,
 }))
 
-function supabaseSessionClient(userId = 'user-current') {
+function supabaseSessionClient(userId = 'user-current', overrides: Record<string, unknown> = {}) {
     return {
         auth: {
             getUser: vi.fn(async () => ({ data: { user: { id: userId } } })),
         },
+        ...overrides,
     }
 }
 
@@ -107,6 +113,7 @@ afterEach(() => {
     mocks.createClient.mockReset()
     mocks.supabaseAdmin.from.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
+    mocks.getSettings.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.getCurrentUserPermissions.mockReset()
     mocks.ContactService.mockReset()
@@ -121,8 +128,8 @@ afterEach(() => {
     Object.values(mocks.tagService).forEach((fn) => fn.mockReset())
 })
 
-async function importCrmActions() {
-    mocks.createClient.mockResolvedValue(supabaseSessionClient())
+async function importCrmActions(options: { supabase?: any } = {}) {
+    mocks.createClient.mockResolvedValue(options.supabase ?? supabaseSessionClient())
     mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
     mocks.ContactService.mockImplementation(function () {
         return mocks.contactService
@@ -272,6 +279,51 @@ describe('CRM tag server actions', () => {
         expect(mocks.TagService).toHaveBeenCalledWith(mocks.supabaseAdmin, 'org-current')
         expect(mocks.tagService.addTagByName).toHaveBeenCalledWith('lead-secret-id', 'VIP')
         expect(consoleError).toHaveBeenCalledWith('[addContactTagSystemAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+})
+
+describe('CRM settings server actions', () => {
+    it('reads CRM settings without changing the success contract', async () => {
+        const settings = { currency: 'COP', locale: 'es-CO' }
+        mocks.getSettings.mockResolvedValue(settings)
+
+        const { getSettingsAction } = await importCrmActions()
+        const result = await getSettingsAction()
+
+        expect(result).toEqual({ success: true, data: settings })
+        expect(mocks.getSettings).toHaveBeenCalled()
+    })
+
+    it('does not expose settings failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getSettings.mockRejectedValue(new Error('settings secret-value read failed'))
+
+        const { getSettingsAction } = await importCrmActions()
+        const result = await getSettingsAction()
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de configuracion CRM' })
+        expect(consoleError).toHaveBeenCalledWith('[getSettingsAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+
+    it('does not expose category query failures and keeps the organization filter', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const eq = vi.fn(async () => ({ data: null, error: new Error('category secret-value query failed') }))
+        const select = vi.fn(() => ({ eq }))
+        const from = vi.fn(() => ({ select }))
+        const supabase = supabaseSessionClient('user-current', { from })
+
+        const { getCategoriesAction } = await importCrmActions({ supabase })
+        const result = await getCategoriesAction()
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de configuracion CRM' })
+        expect(from).toHaveBeenCalledWith('client_categories')
+        expect(select).toHaveBeenCalledWith('*')
+        expect(eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(consoleError).toHaveBeenCalledWith('[getCategoriesAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 })
