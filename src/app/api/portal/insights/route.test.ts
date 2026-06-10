@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
@@ -50,24 +50,30 @@ const orgData = {
 
 function mockPortalInsightsTables({
     client = activeClient,
+    clientError = null,
     organization = orgData,
     settings = { portal_modules: { insights: true } },
     ads = { spend: '1200', snapshot_date: '2026-06-01T00:00:00.000Z' },
+    adsError = null,
     social = {
         facebook_data: { followers: 100 },
         instagram_data: { followers: 50 },
         snapshot_date: '2026-06-01T00:00:00.000Z',
     },
+    socialError = null,
 }: {
     client?: any
+    clientError?: any
     organization?: any
     settings?: any
     ads?: any
+    adsError?: any
     social?: any
+    socialError?: any
 } = {}) {
     mocks.from.mockImplementation((table: string) => {
         if (table === 'leads') {
-            return createBuilder({ maybeSingle: { data: client, error: null } })
+            return createBuilder({ maybeSingle: { data: client, error: clientError } })
         }
         if (table === 'organizations') {
             return createBuilder({ maybeSingle: { data: organization, error: null } })
@@ -76,10 +82,10 @@ function mockPortalInsightsTables({
             return createBuilder({ maybeSingle: { data: settings, error: null } })
         }
         if (table === 'meta_ads_metrics') {
-            return createBuilder({ maybeSingle: { data: ads, error: null } })
+            return createBuilder({ maybeSingle: { data: ads, error: adsError } })
         }
         if (table === 'meta_social_metrics') {
-            return createBuilder({ maybeSingle: { data: social, error: null } })
+            return createBuilder({ maybeSingle: { data: social, error: socialError } })
         }
         if (table === 'integration_configs') {
             throw new Error('portal insights must not read live Meta credentials')
@@ -98,6 +104,30 @@ describe('/api/portal/insights', () => {
         vi.clearAllMocks()
     })
 
+    afterEach(() => {
+        vi.unstubAllEnvs()
+        vi.restoreAllMocks()
+        vi.resetModules()
+    })
+
+    function setupProductionRuntime() {
+        vi.stubEnv('VERCEL_ENV', 'production')
+    }
+
+    function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+        return (spy.mock.calls as unknown[][])
+            .map(call => call.map(value => {
+                if (typeof value === 'string') return value
+                if (value instanceof Error) return `${value.name}: ${value.message}`
+                try {
+                    return JSON.stringify(value)
+                } catch {
+                    return String(value)
+                }
+            }).join(' '))
+            .join('\n')
+    }
+
     it('requires a token before querying portal data', async () => {
         const { GET } = await import('./route')
 
@@ -115,6 +145,28 @@ describe('/api/portal/insights', () => {
 
         expect(response.status).toBe(401)
         expect(queriedTables()).toEqual(['leads'])
+    })
+
+    it('does not expose client lookup failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mockPortalInsightsTables({
+            client: null,
+            clientError: { message: 'database password secret-value failed reading portal token' },
+        })
+        const { GET } = await import('./route')
+
+        const response = await GET(createRequest('/api/portal/insights?token=bad-token'))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(401)
+        expect(responseText).toContain('Invalid token')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('database password')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('database password')
     })
 
     it('rejects expired portal tokens before reading insights metrics', async () => {
@@ -188,5 +240,56 @@ describe('/api/portal/insights', () => {
             last_updated: '2026-06-01T00:00:00.000Z',
         })
         expect(queriedTables()).not.toContain('integration_configs')
+    })
+
+    it('does not expose Meta metric fetch details in production warnings', async () => {
+        setupProductionRuntime()
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+        mockPortalInsightsTables({
+            ads: null,
+            adsError: { message: 'meta access token secret-value failed reading ads metrics' },
+            social: null,
+            socialError: { message: 'meta page token secret-value failed reading social metrics' },
+        })
+        const { GET } = await import('./route')
+
+        const response = await GET(createRequest('/api/portal/insights?token=portal-token'))
+        const body = await response.json()
+        const responseText = JSON.stringify(body)
+
+        expect(response.status).toBe(200)
+        expect(body).toEqual({ ads: null, social: null })
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('access token')
+
+        const warnText = collectConsoleCalls(warnSpy)
+        expect(warnText).not.toContain('secret-value')
+        expect(warnText).not.toContain('access token')
+        expect(warnText).not.toContain('page token')
+    })
+
+    it('does not expose unexpected portal insights exceptions in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.from.mockImplementation((table: string) => {
+            if (table === 'leads') {
+                return createBuilder({ maybeSingle: { data: activeClient, error: null } })
+            }
+
+            throw new Error(`portal token secret-value failed querying ${table}`)
+        })
+        const { GET } = await import('./route')
+
+        const response = await GET(createRequest('/api/portal/insights?token=portal-token'))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Internal Server Error')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('portal token')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('portal token')
     })
 })

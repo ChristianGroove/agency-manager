@@ -1,8 +1,49 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
+import { isProductionRuntime } from "@/app/api/_guards/request-guards"
 
 export const dynamic = 'force-dynamic'
+
+const PUBLIC_PORTAL_INSIGHTS_ERROR = "Internal Server Error"
+
+function logPortalInsightsError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function logPortalInsightsWarning(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.warn(label, error instanceof Error ? error.message : error)
+        return
+    }
+
+    console.warn(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function portalInsightsErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_PORTAL_INSIGHTS_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return PUBLIC_PORTAL_INSIGHTS_ERROR
+}
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
@@ -27,7 +68,7 @@ export async function GET(req: Request) {
         const { data: client, error: clientError } = await clientQuery.maybeSingle()
 
         if (clientError || !client) {
-            console.error("[PortalAPI] Invalid token or client not found:", clientError)
+            logPortalInsightsError("[PortalAPI] Invalid token or client not found:", clientError)
             return NextResponse.json({ error: "Invalid token" }, { status: 401 })
         }
 
@@ -74,7 +115,7 @@ export async function GET(req: Request) {
                 .limit(1)
                 .maybeSingle()
 
-            if (adsError) console.warn("[PortalAPI] Ads Fetch Error (or empty):", adsError.message)
+            if (adsError) logPortalInsightsWarning("[PortalAPI] Ads Fetch Error (or empty):", adsError)
             adsMetrics = cachedAds
         }
 
@@ -88,7 +129,7 @@ export async function GET(req: Request) {
                 .limit(1)
                 .maybeSingle()
 
-            if (socialError) console.warn("[PortalAPI] Social Fetch Error (or empty):", socialError.message)
+            if (socialError) logPortalInsightsWarning("[PortalAPI] Social Fetch Error (or empty):", socialError)
             socialMetrics = cachedSocial
         }
 
@@ -101,8 +142,8 @@ export async function GET(req: Request) {
             } : null
         })
     } catch (e: any) {
-        console.error("[PortalAPI] Critical Error:", e)
-        return NextResponse.json({ error: e.message || "Internal Server Error" }, { status: 500 })
+        logPortalInsightsError("[PortalAPI] Critical Error:", e)
+        return NextResponse.json({ error: portalInsightsErrorMessage(e) }, { status: 500 })
     }
 }
 
