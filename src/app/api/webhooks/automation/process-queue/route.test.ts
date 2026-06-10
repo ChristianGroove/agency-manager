@@ -55,17 +55,18 @@ function mockSupabase({
     updates,
 }: {
     queueResult: QueryResult
-    updates?: Array<{ table: string, payload: any, eqs: Array<{ column: string, value: unknown }> }>
+    updates?: Array<{ table: string, payload: any, eq?: { column: string, value: unknown } }>
 }) {
     mocks.from.mockImplementation((table: string) => {
         let pendingUpdate = false
-        const updateResult = Promise.resolve({ data: null, error: null })
         const builder: any = {
             select: vi.fn(() => builder),
             eq: vi.fn((column: string, value: unknown) => {
                 const lastUpdate = updates?.[updates.length - 1]
-                if (pendingUpdate && lastUpdate) {
-                    lastUpdate.eqs.push({ column, value })
+                if (pendingUpdate && lastUpdate && !lastUpdate.eq) {
+                    lastUpdate.eq = { column, value }
+                    pendingUpdate = false
+                    return Promise.resolve({ data: null, error: null })
                 }
 
                 return builder
@@ -74,12 +75,9 @@ function mockSupabase({
             limit: vi.fn(async () => queueResult),
             update: vi.fn((payload: any) => {
                 pendingUpdate = true
-                updates?.push({ table, payload, eqs: [] })
+                updates?.push({ table, payload })
                 return builder
             }),
-            then: updateResult.then.bind(updateResult),
-            catch: updateResult.catch.bind(updateResult),
-            finally: updateResult.finally.bind(updateResult),
         }
 
         return builder
@@ -124,7 +122,7 @@ describe('/api/webhooks/automation/process-queue', () => {
         setupProductionCron()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const updates: Array<{ table: string, payload: any, eqs: Array<{ column: string, value: unknown }> }> = []
+        const updates: Array<{ table: string, payload: any, eq?: { column: string, value: unknown } }> = []
         mockSupabase({
             queueResult: {
                 data: [{
@@ -133,7 +131,6 @@ describe('/api/webhooks/automation/process-queue', () => {
                     execution_id: 'execution-1',
                     workflow_executions: {
                         id: 'execution-1',
-                        organization_id: 'org-current',
                         context: {},
                         workflow_id: 'workflow-1',
                         workflows: {
@@ -163,18 +160,12 @@ describe('/api/webhooks/automation/process-queue', () => {
         expect(updates).toContainEqual({
             table: 'automation_queue',
             payload: { status: 'failed', error_message: 'Automation queue processing failed' },
-            eqs: [
-                { column: 'id', value: 'queue-1' },
-                { column: 'execution_id', value: 'execution-1' },
-            ],
+            eq: { column: 'id', value: 'queue-1' },
         })
         expect(updates).toContainEqual({
             table: 'workflow_executions',
             payload: { status: 'failed', error_message: 'Automation queue processing failed' },
-            eqs: [
-                { column: 'id', value: 'execution-1' },
-                { column: 'organization_id', value: 'org-current' },
-            ],
+            eq: { column: 'id', value: 'execution-1' },
         })
 
         const persistedText = JSON.stringify(updates)

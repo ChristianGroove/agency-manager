@@ -53,7 +53,6 @@ export async function POST(req: Request) {
                 execution_id,
                 workflow_executions:execution_id (
                     id,
-                    organization_id,
                     context,
                     workflow_id,
                     workflows (
@@ -77,15 +76,6 @@ export async function POST(req: Request) {
         console.log(`[Queue Processor] Found ${items.length} items to process`)
 
         const results = []
-        const scopeQueueItem = (query: any, item: any) =>
-            query.eq('id', item.id).eq('execution_id', item.execution_id)
-        const scopeExecution = (query: any, execution: any) => {
-            let scoped = query.eq('id', execution.id)
-            if (execution.organization_id) {
-                scoped = scoped.eq('organization_id', execution.organization_id)
-            }
-            return scoped
-        }
 
         // 2. Process each item
         for (const item of items) {
@@ -94,18 +84,15 @@ export async function POST(req: Request) {
 
             if (!execution || !workflow) {
                 console.error(`[Queue] Invalid data for item ${item.id}`, item)
-                await scopeQueueItem(
-                    supabase.from('automation_queue').update({ status: 'failed', error_message: 'Missing execution or workflow data' }),
-                    item
-                )
+                await supabase.from('automation_queue').update({ status: 'failed', error_message: 'Missing execution or workflow data' }).eq('id', item.id)
                 results.push({ id: item.id, status: 'failed', reason: 'Missing data' })
                 continue
             }
 
             try {
                 // Mark as processing
-                await scopeQueueItem(supabase.from('automation_queue').update({ status: 'processing' }), item)
-                await scopeExecution(supabase.from('workflow_executions').update({ status: 'running' }), execution)
+                await supabase.from('automation_queue').update({ status: 'processing' }).eq('id', item.id)
+                await supabase.from('workflow_executions').update({ status: 'running' }).eq('id', execution.id)
 
                 // Initialize Engine
                 const definition = workflow.definition as WorkflowDefinition
@@ -127,7 +114,7 @@ export async function POST(req: Request) {
                 // Actually engine.ts currently throws "WORKFLOW_SUSPENDED" error. 
                 // We need to catch that here to distinguish between "Finished" and "Paused Again".
 
-                await scopeQueueItem(supabase.from('automation_queue').update({ status: 'completed' }), item)
+                await supabase.from('automation_queue').update({ status: 'completed' }).eq('id', item.id)
 
                 // Check if we should mark execution as completed?
                 // The engine doesn't explicitly return "Completed". 
@@ -135,24 +122,21 @@ export async function POST(req: Request) {
                 // Ideally engine should return status. 
                 // For now, we leave execution as 'running' or update to 'completed' if we want.
                 // Let's mark as completed for now, unless engine threw suspended.
-                await scopeExecution(
-                    supabase.from('workflow_executions').update({ status: 'completed', completed_at: new Date().toISOString() }),
-                    execution
-                )
+                await supabase.from('workflow_executions').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', execution.id)
 
                 results.push({ id: item.id, status: 'success' })
 
             } catch (err: any) {
                 if (err.message === 'WORKFLOW_SUSPENDED') {
                     console.log(`[Queue] Execution ${execution.id} suspended again (chained delay)`)
-                    await scopeQueueItem(supabase.from('automation_queue').update({ status: 'completed' }), item)
+                    await supabase.from('automation_queue').update({ status: 'completed' }).eq('id', item.id)
                     // Execution status remains 'waiting' (set by engine/action)
                     results.push({ id: item.id, status: 'suspended_again' })
                 } else {
                     logQueueError(`[Queue] Error processing item ${item.id}:`, err)
                     const safeError = queueErrorMessage(err)
-                    await scopeQueueItem(supabase.from('automation_queue').update({ status: 'failed', error_message: safeError }), item)
-                    await scopeExecution(supabase.from('workflow_executions').update({ status: 'failed', error_message: safeError }), execution)
+                    await supabase.from('automation_queue').update({ status: 'failed', error_message: safeError }).eq('id', item.id)
+                    await supabase.from('workflow_executions').update({ status: 'failed', error_message: safeError }).eq('id', execution.id)
                     results.push({ id: item.id, status: 'failed', reason: safeError })
                 }
             }
