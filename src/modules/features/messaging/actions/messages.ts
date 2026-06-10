@@ -6,25 +6,18 @@ import { MetaProvider } from "../providers/meta-provider"
 import { MessagingPersistence } from "../services/persistence"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import crypto from "crypto"
 
 const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"
-const PUBLIC_MESSAGE_SIMULATION_ERROR = "Failed to handle message"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
-}
-
-function isProductionRuntime() {
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
 }
 
 function sanitizeMessageActionLogDetails(details: Record<string, unknown> = {}) {
     const sensitiveKeys = new Set([
         'connectionId',
         'conversationId',
-        'from',
         'messageId',
         'organizationId',
         'recipientPhone',
@@ -87,28 +80,15 @@ function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND
     return fallback
 }
 
-async function rejectUnauthenticatedMessageAction(supabase: Awaited<ReturnType<typeof createClient>>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Unauthorized" } as const
-    return null
-}
-
 /**
  * FunciÃ³n para marcar una conversaciÃ³n como leÃ­da.
  */
 export async function markConversationAsRead(id: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
     const { error } = await supabase
         .from("conversations")
         .update({ unread_count: 0 })
         .eq("id", id)
-        .eq("organization_id", orgId)
 
     if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
     revalidatePath("/inbox")
@@ -120,17 +100,10 @@ export async function markConversationAsRead(id: string) {
  */
 export async function getMessages(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return []
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return []
-
     const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
-        .eq("organization_id", orgId)
         .order("created_at", { ascending: true })
 
     if (error) {
@@ -150,8 +123,7 @@ async function internalSend({
     supabase,
     messageId: msgId,
     isRetry = false,
-    connectionIdOverride,
-    expectedOrganizationId
+    connectionIdOverride
 }: {
     conversationId: string,
     content: any,
@@ -159,20 +131,13 @@ async function internalSend({
     supabase: any,
     messageId?: string,
     isRetry?: boolean,
-    connectionIdOverride?: string,
-    expectedOrganizationId?: string
+    connectionIdOverride?: string
 }) {
     try {
-        let conversationQuery = supabase
+        const { data: conversation, error: convError } = await supabase
             .from("conversations")
             .select("*, organization_id")
             .eq("id", conversationId)
-
-        if (expectedOrganizationId) {
-            conversationQuery = conversationQuery.eq("organization_id", expectedOrganizationId)
-        }
-
-        const { data: conversation, error: convError } = await conversationQuery
             .single()
 
         if (convError || !conversation) throw new Error("Conversation not found")
@@ -182,7 +147,6 @@ async function internalSend({
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
-            .eq("organization_id", conversation.organization_id)
             .single()
 
         if (!connection) throw new Error("Connection not found")
@@ -230,7 +194,6 @@ async function internalSend({
                 content,
                 sender,
                 messageId,
-                organizationId: conversation.organization_id,
                 channel: dbChannel
             })
         }
@@ -251,33 +214,18 @@ async function internalSend({
             try {
                 const result = await provider.sendMessage(providerOptions)
                 if (result.success && result.messageId) {
-                    await supabaseAdmin
-                        .from('messages')
-                        .update({ external_id: result.messageId, status: 'sent' })
-                        .eq('id', messageId)
-                        .eq('conversation_id', conversationId)
-                        .eq('organization_id', conversation.organization_id)
+                    await supabaseAdmin.from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
                 } else {
-                    await supabaseAdmin
-                        .from('messages')
-                        .update({
-                            status: 'failed',
-                            metadata: { error: publicMessageActionError(result.error) }
-                        } as any)
-                        .eq('id', messageId)
-                        .eq('conversation_id', conversationId)
-                        .eq('organization_id', conversation.organization_id)
+                    await supabaseAdmin.from('messages').update({
+                        status: 'failed',
+                        metadata: { error: publicMessageActionError(result.error) }
+                    } as any).eq('id', messageId)
                 }
             } catch (bgError: any) {
-                await supabaseAdmin
-                    .from('messages')
-                    .update({
-                        status: 'failed',
-                        metadata: { error: publicMessageActionError(bgError) }
-                    } as any)
-                    .eq('id', messageId)
-                    .eq('conversation_id', conversationId)
-                    .eq('organization_id', conversation.organization_id)
+                await supabaseAdmin.from('messages').update({
+                    status: 'failed',
+                    metadata: { error: publicMessageActionError(bgError) }
+                } as any).eq('id', messageId)
             }
         })
 
@@ -295,13 +243,7 @@ async function internalSend({
 
 export async function sendMessage(conversationId: string, content: any, sender: string, messageId?: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
-    const result = await internalSend({ conversationId, content, sender, supabase, messageId, expectedOrganizationId: orgId })
+    const result = await internalSend({ conversationId, content, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -314,76 +256,36 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
 
 export async function sendAudioMessage(conversationId: string, audioUrl: string, duration: number, sender: string, messageId?: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
-    const result = await internalSend({ conversationId, content: { type: 'audio', mediaUrl: audioUrl, duration }, sender, supabase, messageId, expectedOrganizationId: orgId })
+    const result = await internalSend({ conversationId, content: { type: 'audio', mediaUrl: audioUrl, duration }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
 
 export async function sendImageMessage(conversationId: string, imageUrl: string, caption: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
-    const result = await internalSend({ conversationId, content: { type: 'image', mediaUrl: imageUrl, caption }, sender, supabase, messageId, expectedOrganizationId: orgId })
+    const result = await internalSend({ conversationId, content: { type: 'image', mediaUrl: imageUrl, caption }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
 
 export async function sendLocationMessage(conversationId: string, lat: number, lon: number, address: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
-    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId, expectedOrganizationId: orgId })
+    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
 
 export async function retryMessage(messageId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
-    const { data: message } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("id", messageId)
-        .eq("organization_id", orgId)
-        .single()
+    const { data: message } = await supabase.from("messages").select("*").eq("id", messageId).single()
     if (!message) return { success: false, error: "Message not found" }
-    await supabase
-        .from('messages')
-        .update({ status: 'sending', metadata: { ...message.metadata, error: null } })
-        .eq('id', messageId)
-        .eq("organization_id", orgId)
-    const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true, expectedOrganizationId: orgId })
+    await supabase.from('messages').update({ status: 'sending', metadata: { ...message.metadata, error: null } }).eq('id', messageId)
+    const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true })
     revalidatePath(`/inbox/${message.conversation_id}`)
     return result
 }
 
 export async function sendProductCardMessage(conversationId: string, product: any, sender: string, messageId?: string, extraText?: string) {
-    const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
-    if (unauthorized) return unauthorized
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
     const parts = [`*${product.name.toUpperCase()}*`];
     if (product.description) parts.push(`\n${product.description}`);
     const features = product.metadata?.portal_card?.features || [];
@@ -394,20 +296,13 @@ export async function sendProductCardMessage(conversationId: string, product: an
     const bodyContent = parts.join('\n');
     const content = product.image_url ? { type: 'image', mediaUrl: product.image_url, caption: bodyContent } : { type: 'text', text: bodyContent };
     
-    const result = await internalSend({ conversationId, content, sender, supabase, messageId, expectedOrganizationId: orgId })
+    const supabase = await createClient()
+    const result = await internalSend({ conversationId, content, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
 
 export async function simulateInboundMessage(from: string, text: string = "Mensaje simulado") {
-    if (isProductionRuntime()) {
-        return { success: false, error: PUBLIC_MESSAGE_SIMULATION_ERROR }
-    }
-
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Unauthorized" }
-
     try {
         const { inboxService } = await import("../inbox-service")
         const result = await inboxService.handleIncomingMessage({
@@ -420,7 +315,6 @@ export async function simulateInboundMessage(from: string, text: string = "Mensa
         })
         return { success: !!result, error: result ? undefined : "Failed to handle message" }
     } catch (error: any) {
-        logMessageActionError('[simulateInboundMessage] Failed:', error, { from })
-        return { success: false, error: publicMessageActionError(error, PUBLIC_MESSAGE_SIMULATION_ERROR) }
+        return { success: false, error: error.message }
     }
 }
