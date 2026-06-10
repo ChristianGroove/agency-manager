@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 
+function logEvolutionWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
 
 /**
  * Evolution API Webhook Handler (Catch-all)
@@ -200,8 +210,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
         return NextResponse.json({ status: 'ok', event: 'unknown_ack' })
 
     } catch (error: any) {
-        console.error('[Webhook:Evolution] Error:', error)
-        return NextResponse.json({ status: 'error', message: error.message }, { status: 500 })
+        logEvolutionWebhookError('[Webhook:Evolution] Error:', error)
+        return NextResponse.json({ status: 'error', message: 'Internal Server Error' }, { status: 500 })
     }
 }
 
