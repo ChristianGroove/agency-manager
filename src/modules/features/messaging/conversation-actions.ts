@@ -77,12 +77,6 @@ function publicConversationActionError(error: unknown, fallback = PUBLIC_CONVERS
     return fallback
 }
 
-async function rejectUnauthenticatedConversationAction(supabase: Awaited<ReturnType<typeof createClient>>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Unauthorized" } as const
-    return null
-}
-
 /**
  * Returns the active integration_connection IDs for the current org.
  * Used by GlobalMessageListener to filter cross-tenant message popups.
@@ -107,17 +101,12 @@ export async function getOrgConnectionIds(): Promise<string[]> {
  */
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const currentOrgId = await getCurrentOrganizationId()
-    if (!currentOrgId) return { success: false, error: "Unauthorized" }
 
     // Fetch orgId for broadcast
     const { data: conv } = await supabase
         .from('conversations')
         .select('organization_id')
         .eq('id', conversationId)
-        .eq('organization_id', currentOrgId)
         .single()
 
     const orgId = conv?.organization_id
@@ -130,7 +119,6 @@ export async function archiveConversation(conversationId: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
-        .eq('organization_id', currentOrgId)
 
     if (updateError) {
         logConversationActionError('[ConversationActions] Failed to archive:', updateError, { conversationId })
@@ -174,17 +162,12 @@ async function broadcastVanish(organizationId: string, conversationId: string) {
  */
 export async function deleteConversation(conversationId: string, deleteLeadIfOrphaned: boolean = false) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const currentOrgId = await getCurrentOrganizationId()
-    if (!currentOrgId) return { success: false, error: "Unauthorized" }
 
     // 1. Fetch conversation info (Fast)
     const { data: conv } = await supabase
         .from('conversations')
         .select('lead_id, organization_id')
         .eq('id', conversationId)
-        .eq('organization_id', currentOrgId)
         .single()
 
     if (!conv) return { success: false, error: "Conversation not found" }
@@ -193,7 +176,7 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
 
     // 2. PARALLEL CLEANUP: Media + Tags + Delete Transaction (Conceptually)
     // We start media cleanup as early as possible
-    const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId, currentOrgId)
+    const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId)
         .catch(e => logConversationActionError("[ConversationActions] Media cleanup error:", e, { conversationId }));
 
     // Clear tags using the IDs we ALREADY have (No new fetch needed)
@@ -211,7 +194,6 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         .from('conversations')
         .delete({ count: 'exact' })
         .eq('id', conversationId)
-        .eq('organization_id', currentOrgId)
 
     if (error) {
         logConversationActionError('[ConversationActions] Failed to delete:', error, {
@@ -237,7 +219,6 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
             .from('conversations')
             .select('id')
             .eq('lead_id', conv.lead_id)
-            .eq('organization_id', currentOrgId)
             .limit(1)
 
         if (!otherConvs || otherConvs.length === 0) {
@@ -260,10 +241,6 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
  */
 export async function markAsRead(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -272,7 +249,6 @@ export async function markAsRead(conversationId: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
-        .eq('organization_id', orgId)
 
     if (error) {
         logConversationActionError('[ConversationActions] Failed to mark as read:', error, { conversationId })
@@ -288,10 +264,6 @@ export async function markAsRead(conversationId: string) {
  */
 export async function unarchiveConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -300,7 +272,6 @@ export async function unarchiveConversation(conversationId: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
-        .eq('organization_id', orgId)
 
     if (error) {
         logConversationActionError('[ConversationActions] Failed to unarchive:', error, { conversationId })
@@ -316,10 +287,6 @@ export async function unarchiveConversation(conversationId: string) {
  */
 export async function snoozeConversation(conversationId: string, until: Date) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -329,7 +296,6 @@ export async function snoozeConversation(conversationId: string, until: Date) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
-        .eq('organization_id', orgId)
 
     if (error) {
         logConversationActionError('[ConversationActions] Failed to snooze:', error, { conversationId })
@@ -337,7 +303,7 @@ export async function snoozeConversation(conversationId: string, until: Date) {
     }
 
     // BROADCAST: Notify other agents
-    const { data: convInfo } = await supabase.from('conversations').select('organization_id').eq('id', conversationId).eq('organization_id', orgId).single()
+    const { data: convInfo } = await supabase.from('conversations').select('organization_id').eq('id', conversationId).single()
     if (convInfo?.organization_id) {
         broadcastVanish(convInfo.organization_id, conversationId).catch(e => {})
     }
@@ -351,15 +317,12 @@ export async function snoozeConversation(conversationId: string, until: Date) {
  */
 export async function getLeadConversationPreview(leadId: string, limit: number = 3) {
     const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
 
     // 1. Get most recent conversation for this lead
     const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .select('id')
         .eq('lead_id', leadId)
-        .eq('organization_id', orgId)
         .order('updated_at', { ascending: false })
         .limit(1)
         .single()
@@ -373,7 +336,6 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
         .from('messages')
         .select('*')
         .eq('conversation_id', conversation.id)
-        .eq('organization_id', orgId)
         .order('created_at', { ascending: false })
         .limit(limit)
 
@@ -394,17 +356,12 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
  */
 export async function completeConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" }
 
     // 1. Initial Fetch (Fast)
     const { data: conv } = await supabase
         .from('conversations')
         .select('metadata, lead_id, organization_id')
         .eq('id', conversationId)
-        .eq('organization_id', orgId)
         .single()
 
     if (!conv) return { success: false, error: "Conversation not found" }
@@ -420,7 +377,7 @@ export async function completeConversation(conversationId: string) {
         state: 'archived',
         metadata: newMetadata,
         updated_at: new Date().toISOString()
-    }).eq('id', conversationId).eq('organization_id', orgId);
+    }).eq('id', conversationId);
 
     const tagCleanupPromise = (conv.lead_id && conv.organization_id)
         ? (async () => {
