@@ -4,15 +4,46 @@ import { createClient } from "@/modules/core/database/supabase-server";
 import { getCurrentOrgRole } from "@/modules/core/iam/services/org-roles";
 import { isProductionRuntime } from "@/app/api/_guards/request-guards";
 
-function logEmbeddedSignupError(label: string, error: unknown) {
+function sanitizeEmbeddedSignupLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set(['connectionId', 'orgId', 'wabaId']);
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function summarizeEmbeddedSignupError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error };
+}
+
+function logEmbeddedSignupInfo(label: string, details: Record<string, unknown> = {}) {
     if (!isProductionRuntime()) {
-        console.error(label, error);
+        console.log(label, details);
         return;
     }
 
-    console.error(label, error instanceof Error
-        ? { name: error.name }
-        : { type: typeof error });
+    console.log(label, sanitizeEmbeddedSignupLogDetails(details));
+}
+
+function logEmbeddedSignupError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        if (details) console.error(label, error, details);
+        else console.error(label, error);
+        return;
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeEmbeddedSignupLogDetails(details) : {}),
+        detail: summarizeEmbeddedSignupError(error),
+    });
 }
 
 async function requireMetaOnboardingAccess(orgId: string) {
@@ -53,7 +84,7 @@ export async function POST(request: NextRequest) {
         const unauthorized = await requireMetaOnboardingAccess(orgId);
         if (unauthorized) return unauthorized;
 
-        console.log(`[EmbeddedSignup API] Processing for org: ${orgId}`);
+        logEmbeddedSignupInfo("[EmbeddedSignup API] Processing request", { orgId });
 
         const result = await embeddedSignupHandler.completeOnboarding(orgId, code);
 
@@ -65,7 +96,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`[EmbeddedSignup API] ✅ Success! Connection: ${result.connectionId}, WABA: ${result.wabaId}`);
+        logEmbeddedSignupInfo("[EmbeddedSignup API] Onboarding completed", {
+            connectionId: result.connectionId,
+            wabaId: result.wabaId,
+        });
 
         return NextResponse.json({
             success: true,

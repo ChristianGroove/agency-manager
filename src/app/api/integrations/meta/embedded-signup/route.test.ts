@@ -47,6 +47,7 @@ describe('/api/integrations/meta/embedded-signup', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockAuthorizedUser()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         vi.doMock('@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler', () => ({
             embeddedSignupHandler: {
                 completeOnboarding: vi.fn(async () => ({
@@ -68,12 +69,17 @@ describe('/api/integrations/meta/embedded-signup', () => {
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('oauth code')
+
+        const infoLogText = collectConsoleCalls(logSpy)
+        expect(infoLogText).not.toContain('org_123')
+        expect(infoLogText).toContain('orgIdPresent')
     })
 
     it('does not expose unexpected onboarding exceptions to callers', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockAuthorizedUser()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         vi.doMock('@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler', () => ({
             embeddedSignupHandler: {
                 completeOnboarding: vi.fn(async () => {
@@ -94,6 +100,10 @@ describe('/api/integrations/meta/embedded-signup', () => {
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('meta app secret')
+
+        const infoLogText = collectConsoleCalls(logSpy)
+        expect(infoLogText).not.toContain('org_123')
+        expect(infoLogText).toContain('orgIdPresent')
     })
 
     it('keeps completing valid onboarding requests', async () => {
@@ -104,7 +114,7 @@ describe('/api/integrations/meta/embedded-signup', () => {
             connectionId: 'connection_123',
             wabaId: 'waba_123',
         }))
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         vi.doMock('@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler', () => ({
             embeddedSignupHandler: { completeOnboarding },
         }))
@@ -120,5 +130,13 @@ describe('/api/integrations/meta/embedded-signup', () => {
             wabaId: 'waba_123',
         })
         expect(completeOnboarding).toHaveBeenCalledWith('org_123', 'code_123')
+
+        const infoLogText = collectConsoleCalls(logSpy)
+        expect(infoLogText).not.toContain('org_123')
+        expect(infoLogText).not.toContain('connection_123')
+        expect(infoLogText).not.toContain('waba_123')
+        expect(infoLogText).toContain('orgIdPresent')
+        expect(infoLogText).toContain('connectionIdPresent')
+        expect(infoLogText).toContain('wabaIdPresent')
     })
 })
