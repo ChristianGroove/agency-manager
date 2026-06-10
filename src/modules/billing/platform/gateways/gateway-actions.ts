@@ -87,6 +87,44 @@ function safeGatewayUpdates(updates: Partial<PaymentGatewayConfig>) {
     return safeUpdates
 }
 
+const PUBLIC_GATEWAY_UPDATE_ERROR = 'No se pudo actualizar la pasarela de pago'
+const PUBLIC_STRIPE_TEST_ERROR = 'No se pudo probar la conexión de Stripe'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeGatewayActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logGatewayActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeGatewayActionError(error))
+}
+
+function publicGatewayActionError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
 // ============================================
 // TYPES
 // ============================================
