@@ -14,6 +14,50 @@ import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from "./types"
 import { Lead, Client } from "@/types"
 
+const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCrmActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logCrmActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeCrmActionError(error))
+}
+
+function crmActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
+function crmContactActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_CONTACT_ACTION_ERROR) }
+}
+
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
     const { supabase, orgId } = await getCrmServices()
     try {
@@ -32,7 +76,7 @@ export async function getLeadsCountAction(userId?: string): Promise<ActionRespon
         if (error) throw error
         return { success: true, data: count || 0 }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getLeadsCountAction] Error:", e)
     }
 }
 
@@ -70,7 +114,7 @@ export async function createContactAction(input: any): Promise<ActionResponse<Le
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[createContactAction] Error:", e)
     }
 }
 
@@ -83,7 +127,7 @@ export async function createContactSystemAction(input: any, orgId: string): Prom
         const data = await contacts.createContact(input)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[createContactSystemAction] Error:", e)
     }
 }
 
@@ -101,7 +145,7 @@ export async function getLeadsAction(params: any = {}): Promise<ActionResponse<a
         const data = await contacts.getPaginated({ ...params, contactType: 'lead' })
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getLeadsAction] Error:", e)
     }
 }
 
@@ -112,7 +156,7 @@ export async function getClientsAction(params: any = {}): Promise<ActionResponse
         const data = await clientService.getPaginated(params)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getClientsAction] Error:", e)
     }
 }
 
@@ -123,7 +167,7 @@ export async function updateContactStatusAction(id: string, newStatus: string): 
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactStatusAction] Error:", e)
     }
 }
 
@@ -133,7 +177,7 @@ export async function updateContactStatusSystemAction(id: string, newStatus: str
         const data = await contacts.updateContactStatus(id, newStatus)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactStatusSystemAction] Error:", e)
     }
 }
 
@@ -145,7 +189,7 @@ export async function convertLeadToClientAction(id: string): Promise<ActionRespo
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[convertLeadToClientAction] Error:", e)
     }
 }
 
@@ -157,7 +201,7 @@ export async function updateContactProfileAction(id: string, updates: any): Prom
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactProfileAction] Error:", e)
     }
 }
 
@@ -169,7 +213,7 @@ export async function deleteContactsAction(ids: string[]): Promise<ActionRespons
         revalidatePath('/clients')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[deleteContactsAction] Error:", e)
     }
 }
 
@@ -182,7 +226,7 @@ export async function deleteClientsAction(ids: string[]): Promise<ActionResponse
         revalidatePath('/clients')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[deleteClientsAction] Error:", e)
     }
 }
 
