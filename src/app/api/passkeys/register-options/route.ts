@@ -4,6 +4,7 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextResponse } from 'next/server'
+import { logPasskeyRouteError } from '../_utils'
 
 export async function POST() {
     try {
@@ -56,7 +57,7 @@ export async function POST() {
             })
 
         if (challengeError) {
-            console.error('Failed to store challenge:', challengeError)
+            logPasskeyRouteError('Failed to store challenge:', challengeError)
             return NextResponse.json(
                 { error: 'Failed to generate registration options' },
                 { status: 500 }
@@ -65,7 +66,7 @@ export async function POST() {
 
         return NextResponse.json(options)
     } catch (error) {
-        console.error('Registration options error:', error)
+        logPasskeyRouteError('Registration options error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

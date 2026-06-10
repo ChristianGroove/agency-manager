@@ -5,7 +5,7 @@ import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import { normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
+import { logPasskeyRouteError, normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
 
 export async function POST(request: NextRequest) {
     const rateLimited = requirePasskeyPublicRateLimit(request)
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
             },
         })
     } catch (error) {
-        console.error('Authentication verification error:', error)
+        logPasskeyRouteError('Authentication verification error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

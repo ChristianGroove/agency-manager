@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkRateLimit } from '@/modules/core/security/rate-limit'
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
 
 export const PASSKEY_LOGIN_UNAVAILABLE = 'Passkey login unavailable'
 
@@ -28,4 +29,15 @@ export function passkeyLoginUnavailableResponse() {
         { error: PASSKEY_LOGIN_UNAVAILABLE },
         { status: 404 }
     )
+}
+
+export function logPasskeyRouteError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
 }

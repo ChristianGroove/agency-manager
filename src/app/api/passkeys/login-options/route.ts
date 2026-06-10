@@ -2,16 +2,15 @@
 // Generates WebAuthn authentication options
 
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
-import { createClient } from '@/modules/core/database/supabase-server'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { NextRequest, NextResponse } from 'next/server'
-import { normalizePasskeyEmail, passkeyLoginUnavailableResponse, requirePasskeyPublicRateLimit } from '../_utils'
+import { logPasskeyRouteError, normalizePasskeyEmail, passkeyLoginUnavailableResponse, requirePasskeyPublicRateLimit } from '../_utils'
 
 export async function POST(request: NextRequest) {
     const rateLimited = requirePasskeyPublicRateLimit(request)
     if (rateLimited) return rateLimited
 
     try {
-        const supabase = await createClient()
         const body = await request.json()
         const email = normalizePasskeyEmail(body.email)
 
@@ -23,7 +22,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Find user by email
-        const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
+        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers()
+
+        if (userError) {
+            logPasskeyRouteError('Failed to list users for passkey login:', userError)
+            return NextResponse.json(
+                { error: 'Failed to generate authentication options' },
+                { status: 500 }
+            )
+        }
 
         const user = userData?.users?.find((u: any) => u.email?.toLowerCase() === email)
 
@@ -32,7 +39,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get user's passkeys
-        const { data: passkeys, error: passkeysError } = await supabase
+        const { data: passkeys, error: passkeysError } = await supabaseAdmin
             .from('user_passkeys')
             .select('credential_id, transports')
             .eq('user_id', user.id)
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Store challenge
-        const { error: challengeError } = await supabase
+        const { error: challengeError } = await supabaseAdmin
             .from('passkey_challenges')
             .insert({
                 challenge: options.challenge,
@@ -66,7 +73,7 @@ export async function POST(request: NextRequest) {
             })
 
         if (challengeError) {
-            console.error('Failed to store challenge:', challengeError)
+            logPasskeyRouteError('Failed to store challenge:', challengeError)
             return NextResponse.json(
                 { error: 'Failed to generate authentication options' },
                 { status: 500 }
@@ -75,7 +82,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(options)
     } catch (error) {
-        console.error('Authentication options error:', error)
+        logPasskeyRouteError('Authentication options error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
