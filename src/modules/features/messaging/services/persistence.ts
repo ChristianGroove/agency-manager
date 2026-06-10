@@ -1,5 +1,65 @@
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizePersistenceLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'conversationId',
+        'externalId',
+        'id',
+        'messageId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizePersistenceError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPersistenceInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizePersistenceLogDetails(details))
+}
+
+function logPersistenceError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizePersistenceLogDetails(details),
+        detail: summarizePersistenceError(error),
+    })
+}
+
 /**
  * Atomic Persistence Layer for Messaging
  * Breaking circular dependencies by isolating DB operations.
@@ -52,11 +112,16 @@ export class MessagingPersistence {
         const { error } = await supabase.from('messages').insert(payload)
 
         if (error) {
-            console.error('[MessagingPersistence] Failed to save outbound message:', error)
+            logPersistenceError('[MessagingPersistence] Failed to save outbound message:', error, {
+                conversationId,
+                externalId: finalExternalId,
+                id,
+                messageId,
+            })
             throw error
         }
 
-        console.log(`[MessagingPersistence] Outbound message saved for convo ${conversationId}`)
+        logPersistenceInfo('[MessagingPersistence] Outbound message saved', { conversationId })
         return { success: true }
     }
 

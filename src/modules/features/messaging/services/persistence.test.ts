@@ -58,14 +58,12 @@ describe('MessagingPersistence', () => {
             messageId: 'message-secret-id',
             sender: 'System',
             id: 'optimistic-secret-id',
-            organizationId: 'org-secret-id',
         })
 
         expect(result).toEqual({ success: true })
         expect(query.insert).toHaveBeenCalledWith(expect.objectContaining({
             id: 'optimistic-secret-id',
             conversation_id: 'conversation-secret-id',
-            organization_id: 'org-secret-id',
             external_id: 'wamid.secret.external',
             sender: 'System',
         }))
