@@ -9,6 +9,30 @@
 
 import crypto from 'crypto';
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function logFlowsCryptoError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error instanceof Error ? error.message : error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function logKeyLoadWarning(path: string) {
+    if (!isProductionRuntime()) {
+        console.warn(`[FlowsCrypto] Could not load key from ${path}`);
+        return;
+    }
+
+    console.warn('[FlowsCrypto] Could not load configured key file');
+}
+
 /**
  * Encrypted request from WhatsApp
  */
@@ -119,7 +143,7 @@ export class FlowsCrypto {
             return payload;
 
         } catch (error: any) {
-            console.error('[FlowsCrypto] Decryption failed:', error.message);
+            logFlowsCryptoError('[FlowsCrypto] Decryption failed:', error);
             throw new Error('Failed to decrypt Flow request');
         }
     }
@@ -149,7 +173,7 @@ export class FlowsCrypto {
             return result.toString('base64');
 
         } catch (error: any) {
-            console.error('[FlowsCrypto] Encryption failed:', error.message);
+            logFlowsCryptoError('[FlowsCrypto] Encryption failed:', error);
             throw new Error('Failed to encrypt Flow response');
         }
     }
@@ -184,8 +208,8 @@ export class FlowsCrypto {
         try {
             const fs = require('fs');
             return fs.readFileSync(path, 'utf8');
-        } catch (error) {
-            console.warn(`[FlowsCrypto] Could not load key from ${path}`);
+        } catch {
+            logKeyLoadWarning(path);
             return '';
         }
     }
@@ -223,8 +247,12 @@ export function generateKeypair() {
     console.log('=== RSA Keypair Generated ===\n');
     console.log('Public Key (upload to Meta):\n');
     console.log(publicKey);
-    console.log('\nPrivate Key (store securely):\n');
-    console.log(privateKey);
+    if (isProductionRuntime()) {
+        console.log('\nPrivate Key generated: output suppressed in production.');
+    } else {
+        console.log('\nPrivate Key (store securely):\n');
+        console.log(privateKey);
+    }
     console.log('\n=== Save to .env ===');
     console.log('FLOWS_PRIVATE_KEY=');
     console.log('FLOWS_PUBLIC_KEY=');
