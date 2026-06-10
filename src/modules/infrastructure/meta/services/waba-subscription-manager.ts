@@ -11,12 +11,69 @@ import { metaErrorHandler, MetaError } from './meta-error-handler';
 
 const META_API_VERSION = 'v24.0';
 const META_GRAPH_URL = 'https://graph.facebook.com';
+const PUBLIC_WABA_SUBSCRIPTION_ERROR = 'WABA subscription failed';
 
 export interface SubscriptionResult {
     success: boolean;
     wabaId: string;
     error?: string;
     timestamp: Date;
+}
+
+function isDeployedRuntime(): boolean {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function summarizeWABAError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name };
+    }
+
+    if (error && typeof error === 'object') {
+        const payload = error as Record<string, any>;
+        const graphError = payload.error || payload;
+        return {
+            type: typeof error,
+            code: graphError.code,
+            subcode: graphError.error_subcode || graphError.subcode,
+            metaType: graphError.type,
+            traceId: graphError.fbtrace_id,
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function logWABAError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, summarizeWABAError(error));
+}
+
+function logWABAResponse(label: string, data: unknown) {
+    if (!isDeployedRuntime()) {
+        console.log(label, data);
+        return;
+    }
+
+    const payload = data && typeof data === 'object' ? data as Record<string, any> : {};
+    console.log(label, {
+        success: typeof payload.success === 'boolean' ? payload.success : undefined,
+        hasData: Array.isArray(payload.data) ? payload.data.length > 0 : undefined,
+    });
+}
+
+function publicSubscriptionError(error: unknown, fallback: string = PUBLIC_WABA_SUBSCRIPTION_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback;
+    }
+
+    return error instanceof Error && error.message
+        ? error.message
+        : fallback;
 }
 
 export class WABASubscriptionManager {
@@ -55,7 +112,7 @@ export class WABASubscriptionManager {
 
             if (!response.ok) {
                 const error = data as MetaError;
-                console.error('[WABASubscription] Subscription failed:', error);
+                logWABAError('[WABASubscription] Subscription failed:', error);
 
                 // Use error handler for retry logic
                 const handling = await metaErrorHandler.handleError(
@@ -79,7 +136,7 @@ export class WABASubscriptionManager {
             }
 
             console.log(`[WABASubscription] ✅ Successfully subscribed WABA ${wabaId}`);
-            console.log('[WABASubscription] Response:', data);
+            logWABAResponse('[WABASubscription] Response:', data);
 
             return {
                 success: true,
@@ -88,12 +145,12 @@ export class WABASubscriptionManager {
             };
 
         } catch (error: any) {
-            console.error('[WABASubscription] Exception during subscription:', error);
+            logWABAError('[WABASubscription] Exception during subscription:', error);
 
             return {
                 success: false,
                 wabaId,
-                error: error.message || 'Unknown error during WABA subscription',
+                error: publicSubscriptionError(error),
                 timestamp,
             };
         }
@@ -116,7 +173,11 @@ export class WABASubscriptionManager {
             });
 
             if (!response.ok) {
-                console.error('[WABASubscription] Verification failed:', await response.text());
+                if (!isDeployedRuntime()) {
+                    console.error('[WABASubscription] Verification failed:', await response.text());
+                } else {
+                    console.error('[WABASubscription] Verification failed:', { status: response.status });
+                }
                 return false;
             }
 
@@ -130,7 +191,7 @@ export class WABASubscriptionManager {
             return isSubscribed;
 
         } catch (error) {
-            console.error('[WABASubscription] Exception during verification:', error);
+            logWABAError('[WABASubscription] Exception during verification:', error);
             return false;
         }
     }
@@ -157,6 +218,7 @@ export class WABASubscriptionManager {
 
             if (!response.ok) {
                 const error = await response.json() as MetaError;
+                logWABAError('[WABASubscription] Unsubscribe failed:', error);
                 return {
                     success: false,
                     wabaId,
@@ -174,10 +236,11 @@ export class WABASubscriptionManager {
             };
 
         } catch (error: any) {
+            logWABAError('[WABASubscription] Exception during unsubscribe:', error);
             return {
                 success: false,
                 wabaId,
-                error: error.message,
+                error: publicSubscriptionError(error, 'WABA unsubscribe failed'),
                 timestamp,
             };
         }
@@ -204,7 +267,7 @@ export class WABASubscriptionManager {
                 return {
                     success: false,
                     wabaId: wabas[index].wabaId,
-                    error: result.reason?.message || 'Unknown error',
+                    error: publicSubscriptionError(result.reason),
                     timestamp: new Date(),
                 };
             }

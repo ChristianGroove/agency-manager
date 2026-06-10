@@ -86,6 +86,19 @@ const ERROR_STRATEGIES: Record<number, ErrorHandlingStrategy> = {
     },
 };
 
+function isDeployedRuntime(): boolean {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function summarizeMetaError(error: MetaError) {
+    return {
+        errorCode: error.error.code,
+        errorSubcode: error.error.error_subcode,
+        type: error.error.type,
+        traceId: error.error.fbtrace_id,
+    };
+}
+
 export class MetaErrorHandler {
     private retryCount: Map<string, number> = new Map();
 
@@ -182,6 +195,15 @@ export class MetaErrorHandler {
      * Log error with structured format
      */
     private logError(error: MetaError, context: string): void {
+        if (isDeployedRuntime()) {
+            console.error('[MetaErrorHandler]', {
+                context,
+                ...summarizeMetaError(error),
+                timestamp: new Date().toISOString(),
+            });
+            return;
+        }
+
         console.error('[MetaErrorHandler]', {
             context,
             errorCode: error.error.code,
@@ -198,6 +220,14 @@ export class MetaErrorHandler {
      * TODO: Integrate with alerting system (email, Slack, PagerDuty, etc.)
      */
     private async sendAlert(error: MetaError, context: string): Promise<void> {
+        if (isDeployedRuntime()) {
+            console.warn('[ALERT] Critical Meta API Error:', {
+                context,
+                ...summarizeMetaError(error),
+            });
+            return;
+        }
+
         // Placeholder for alerting integration
         console.warn('[ALERT] Critical Meta API Error:', {
             context,
@@ -222,6 +252,10 @@ export class MetaErrorHandler {
      * Extract user-friendly error message
      */
     getUserMessage(error: MetaError): string {
+        if (isDeployedRuntime()) {
+            return 'Ha ocurrido un error al comunicarse con WhatsApp';
+        }
+
         return (
             error.error.error_user_msg ||
             error.error.message ||
