@@ -4,6 +4,32 @@ import jwt from 'jsonwebtoken';
 // Configuration (Moved from hardcoded to environment variables)
 const VOICE_RUNTIME_URL = process.env.VOICE_RUNTIME_URL;
 const APP_SECRET = process.env.PIXY_VOICE_SECRET;
+const PUBLIC_VOICE_RUNTIME_ERROR = 'Voice runtime request failed';
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function logVoiceRuntimeError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function voiceRuntimeErrorMessage(error: unknown) {
+    if (isDeployedRuntime()) {
+        return PUBLIC_VOICE_RUNTIME_ERROR;
+    }
+
+    return error instanceof Error && error.message
+        ? error.message
+        : PUBLIC_VOICE_RUNTIME_ERROR;
+}
 
 export interface VoiceCommand {
     tenant_id: string;
@@ -38,7 +64,7 @@ export class VoiceClient {
                 subject: 'pixy-core',
                 expiresIn: '60s' // Short life
             });
-            console.log(`[DEBUG] Generated Token: ${token}`);
+            console.log('[VoiceClient] Runtime token generated', { expiresInSeconds: 60 });
 
             // 2. Prepare Payload
             const body = {
@@ -59,7 +85,11 @@ export class VoiceClient {
 
             if (!response.ok) {
                 const errText = await response.text();
-                console.error(`[VoiceClient] Runtime Error (${response.status}): ${errText}`);
+                if (isDeployedRuntime()) {
+                    console.error('[VoiceClient] Runtime Error:', { status: response.status });
+                } else {
+                    console.error(`[VoiceClient] Runtime Error (${response.status}): ${errText}`);
+                }
                 return { status: 'error', error: `Runtime responded with ${response.status}` };
             }
 
@@ -67,9 +97,9 @@ export class VoiceClient {
             console.log(`[VoiceClient] Command Sent. Trace: ${data.trace_id}`);
             return { status: 'accepted', trace_id: data.trace_id };
 
-        } catch (error: any) {
-            console.error('[VoiceClient] Network Error:', error.message);
-            return { status: 'error', error: error.message };
+        } catch (error: unknown) {
+            logVoiceRuntimeError('[VoiceClient] Network Error:', error);
+            return { status: 'error', error: voiceRuntimeErrorMessage(error) };
         }
     }
 }
