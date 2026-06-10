@@ -28,7 +28,16 @@ const mocks = vi.hoisted(() => ({
         getDefaultPipeline: vi.fn(),
         toggleStrictMode: vi.fn(),
     },
-    tagService: {},
+    tagService: {
+        getTags: vi.fn(),
+        createTag: vi.fn(),
+        updateTag: vi.fn(),
+        deleteTag: vi.fn(),
+        addTagByName: vi.fn(),
+        toggleLeadTag: vi.fn(),
+        getLeadTags: vi.fn(),
+        clearLeadTags: vi.fn(),
+    },
     taskService: {},
     dealService: {},
     ContactService: vi.fn(),
@@ -109,6 +118,7 @@ afterEach(() => {
     Object.values(mocks.contactService).forEach((fn) => fn.mockReset())
     Object.values(mocks.clientService).forEach((fn) => fn.mockReset())
     Object.values(mocks.pipelineService).forEach((fn) => fn.mockReset())
+    Object.values(mocks.tagService).forEach((fn) => fn.mockReset())
 })
 
 async function importCrmActions() {
@@ -221,5 +231,47 @@ describe('CRM pipeline server actions', () => {
         expect(consoleError).toHaveBeenCalledWith('[deletePipelineStageAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+})
+
+describe('CRM tag server actions', () => {
+    it('creates tags without changing the success contract', async () => {
+        const tag = { id: 'tag-1', name: 'VIP', color: '#111111' }
+        mocks.tagService.createTag.mockResolvedValue(tag)
+
+        const { createTagAction } = await importCrmActions()
+        const result = await createTagAction('VIP', '#111111')
+
+        expect(result).toEqual({ success: true, data: tag })
+        expect(mocks.TagService).toHaveBeenCalledWith(expect.anything(), 'org-current')
+        expect(mocks.tagService.createTag).toHaveBeenCalledWith('VIP', '#111111')
+    })
+
+    it('does not expose tag list failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.tagService.getTags.mockRejectedValue(new Error('tag secret-value read failed'))
+
+        const { getTagsAction } = await importCrmActions()
+        const result = await getTagsAction()
+
+        expect(result).toEqual([])
+        expect(consoleError).toHaveBeenCalledWith('[getTagsAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+
+    it('does not expose system tag assignment failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.tagService.addTagByName.mockRejectedValue(new Error('tag secret-value system failed'))
+
+        const { addContactTagSystemAction } = await importCrmActions()
+        const result = await addContactTagSystemAction('lead-secret-id', 'VIP', 'org-current')
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de etiquetas' })
+        expect(mocks.TagService).toHaveBeenCalledWith(mocks.supabaseAdmin, 'org-current')
+        expect(mocks.tagService.addTagByName).toHaveBeenCalledWith('lead-secret-id', 'VIP')
+        expect(consoleError).toHaveBeenCalledWith('[addContactTagSystemAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 })

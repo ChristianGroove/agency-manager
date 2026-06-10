@@ -16,6 +16,7 @@ import { Lead, Client } from "@/types"
 
 const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
 const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
+const PUBLIC_CRM_TAG_ACTION_ERROR = "No se pudo completar la accion de etiquetas"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -62,6 +63,11 @@ function crmContactActionFailure(label: string, error: unknown): ActionResponse<
 function crmPipelineActionFailure(label: string, error: unknown): ActionResponse<any> {
     logCrmActionError(label, error)
     return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_PIPELINE_ACTION_ERROR) }
+}
+
+function crmTagActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TAG_ACTION_ERROR) }
 }
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
@@ -345,7 +351,7 @@ export async function getTagsAction() {
         const { tags } = await getCrmServices()
         return await tags.getTags()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getTagsAction] Error:", e)
         return []
     }
 }
@@ -356,7 +362,7 @@ export async function createTagAction(name: string, color?: string) {
         const data = await tags.createTag(name, color)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[createTagAction] Error:", e)
     }
 }
 
@@ -366,7 +372,7 @@ export async function updateTagAction(tagId: string, updates: { name?: string; c
         const data = await tags.updateTag(tagId, updates)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[updateTagAction] Error:", e)
     }
 }
 
@@ -376,7 +382,7 @@ export async function deleteTagAction(tagId: string) {
         await tags.deleteTag(tagId)
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[deleteTagAction] Error:", e)
     }
 }
 
@@ -389,7 +395,7 @@ export async function addContactTagSystemAction(leadId: string, tagName: string,
         const data = await tags.addTagByName(leadId, tagName)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[addContactTagSystemAction] Error:", e)
     }
 }
 
@@ -399,7 +405,7 @@ export async function toggleLeadTagAction(leadId: string, tagId: string) {
         const data = await tags.toggleLeadTag(leadId, tagId)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[toggleLeadTagAction] Error:", e)
     }
 }
 
@@ -408,7 +414,7 @@ export async function getLeadTagsAction(leadId: string) {
         const { tags } = await getCrmServices()
         return await tags.getLeadTags(leadId)
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getLeadTagsAction] Error:", e)
         return []
     }
 }
@@ -419,7 +425,7 @@ export async function clearContactTagsAction(leadId: string) {
         await tags.clearLeadTags(leadId)
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[clearContactTagsAction] Error:", e)
     }
 }
 
