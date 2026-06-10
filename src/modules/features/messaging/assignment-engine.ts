@@ -81,12 +81,6 @@ function logAssignmentError(label: string, error: unknown, details?: Record<stri
     })
 }
 
-function channelBindingValues(channelType?: string, connectionId?: string): string[] {
-    return Array.from(new Set(
-        [channelType, connectionId].filter((value): value is string => typeof value === 'string' && value.length > 0)
-    ))
-}
-
 /**
  * ASSIGNMENT ENGINE - High Level Architecture
  * 
@@ -161,7 +155,6 @@ export async function assignConversation(conversationId: string): Promise<string
             .from('conversations')
             .update({ assigned_to: agentId, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
-            .eq('organization_id', orgId)
 
         await logAssignment(conversationId, agentId, ruleId, strategy, orgId)
         logAssignmentInfo('[AssignmentEngine] Assigned conversation', {
@@ -357,10 +350,9 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     if (activeAgents.length === 0) return null;
 
     // Filter by Channel Access AND Admin Role
-    const channelBindings = channelBindingValues(channelType, connectionId)
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelBindings.length > 0 ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).in('channel_type', channelBindings).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -439,10 +431,9 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
     if (activeAgents.length === 0) return null;
 
     // 2. Filter by Channel Access AND Admin Role
-    const channelBindings = channelBindingValues(channelType, connectionId)
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelBindings.length > 0 ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).in('channel_type', channelBindings).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -485,7 +476,6 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     let query = supabaseAdmin
         .from('agent_skills')
         .select('agent_id, skill, proficiency')
-        .eq('organization_id', orgId)
         .in('skill', requiredSkills)
 
     if (agentPool && agentPool.length > 0) {
@@ -516,29 +506,26 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     const { data: members } = await supabaseAdmin
         .from('organization_members')
         .select('user_id, role, permissions')
-        .eq('organization_id', orgId)
         .in('user_id', sortedAgents)
 
     const memberMap = new Map((members || []).map(m => [m.user_id, m]));
 
     const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-    const channelBindings = channelBindingValues(channelType, connectionId)
 
     for (const agentId of sortedAgents) {
         const member = memberMap.get(agentId);
         const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
 
         // Validation: Channel Access (Skip if Admin)
-        if (channelBindings.length > 0 && !isAdmin) {
+        if (channelType && !isAdmin) {
             const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
             
             if (!hasExplicitAccess) {
                 const { data: hasAccess } = await supabaseAdmin
                     .from('agent_channels')
                     .select('agent_id')
-                    .eq('organization_id', orgId)
                     .eq('agent_id', agentId)
-                    .in('channel_type', channelBindings)
+                    .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
                     .eq('is_active', true)
                     .limit(1)
 
@@ -549,7 +536,6 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
         const { data: availability } = await supabaseAdmin
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity, last_seen_at')
-            .eq('organization_id', orgId)
             .eq('agent_id', agentId)
             .eq('status', 'online')
             .eq('auto_assign_enabled', true)
@@ -594,12 +580,11 @@ export async function logAssignment(convId: string, agentId: string, ruleId: str
  * Reconcile an agent's current_load with actual active assigned conversations.
  * Call this if load counts drift out of sync.
  */
-export async function reconcileAgentLoad(agentId: string, organizationId: string): Promise<{ previous: number; actual: number }> {
+export async function reconcileAgentLoad(agentId: string): Promise<{ previous: number; actual: number }> {
     const { count } = await supabaseAdmin
         .from('conversations')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_to', agentId)
-        .eq('organization_id', organizationId)
         .in('state', ['active'])
         .in('status', ['open', 'snoozed'])
 
@@ -609,7 +594,6 @@ export async function reconcileAgentLoad(agentId: string, organizationId: string
         .from('agent_availability')
         .select('current_load')
         .eq('agent_id', agentId)
-        .eq('organization_id', organizationId)
         .single()
 
     const previousLoad = agent?.current_load || 0
@@ -619,10 +603,8 @@ export async function reconcileAgentLoad(agentId: string, organizationId: string
             .from('agent_availability')
             .update({ current_load: actualLoad })
             .eq('agent_id', agentId)
-            .eq('organization_id', organizationId)
         logAssignmentInfo('[AssignmentEngine] Reconciled agent load', {
             agentId,
-            organizationId,
             actualLoad,
             previousLoad,
         })
