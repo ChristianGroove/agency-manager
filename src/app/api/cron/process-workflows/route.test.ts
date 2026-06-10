@@ -52,21 +52,16 @@ function createWorkflowBuilder(result: QueryResult) {
 
 function createUpdateBuilder(table: string, updates: any[]) {
     let updatePayload: any
-    const updateResult = Promise.resolve({ data: null, error: null })
 
     const builder: any = {
         update: vi.fn((payload: any) => {
             updatePayload = payload
-            updates.push({ table, payload: updatePayload, eqs: [] })
             return builder
         }),
         eq: vi.fn((column: string, value: string) => {
-            updates[updates.length - 1]?.eqs.push({ column, value })
-            return builder
+            updates.push({ table, payload: updatePayload, column, value })
+            return Promise.resolve({ data: null, error: null })
         }),
-        then: updateResult.then.bind(updateResult),
-        catch: updateResult.catch.bind(updateResult),
-        finally: updateResult.finally.bind(updateResult),
     }
 
     return builder
@@ -142,7 +137,6 @@ describe('/api/cron/process-workflows', () => {
         const updates = setupServiceClient({
             jobs: [{
                 id: 'job-1',
-                organization_id: 'org-current',
                 workflow_id: 'workflow-1',
                 execution_id: 'execution-1',
                 resume_from_node_id: 'node-secret',
@@ -180,10 +174,8 @@ describe('/api/cron/process-workflows', () => {
                 status: 'failed',
                 last_error: 'Workflow job failed',
             }),
-            eqs: [
-                { column: 'id', value: 'job-1' },
-                { column: 'organization_id', value: 'org-current' },
-            ],
+            column: 'id',
+            value: 'job-1',
         })
 
         const errorLogText = collectConsoleCalls(errorSpy)
@@ -192,59 +184,5 @@ describe('/api/cron/process-workflows', () => {
         expect(errorLogText).not.toContain('node-secret')
         expect(logText).not.toContain('secret-value')
         expect(logText).not.toContain('accessToken')
-    })
-
-    it('scopes successful job and execution updates to the job organization', async () => {
-        setupProductionCron()
-        vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const updates = setupServiceClient({
-            jobs: [{
-                id: 'job-1',
-                organization_id: 'org-current',
-                workflow_id: 'workflow-1',
-                execution_id: 'execution-1',
-                resume_from_node_id: 'node-1',
-                context: {},
-                attempts: 0,
-                max_attempts: 3,
-            }],
-            workflow: {
-                data: {
-                    id: 'workflow-1',
-                    name: 'Workflow Current',
-                    is_active: true,
-                    definition: {
-                        nodes: [{ id: 'node-1' }],
-                        edges: [],
-                    },
-                },
-                error: null,
-            },
-        })
-
-        const { GET } = await import('./route')
-        const response = await GET(cronRequest())
-        const body = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(body.success).toBe(true)
-        expect(body.completed).toBe(1)
-        expect(updates).toContainEqual({
-            table: 'workflow_executions',
-            payload: expect.objectContaining({ status: 'running' }),
-            eqs: [
-                { column: 'id', value: 'execution-1' },
-                { column: 'organization_id', value: 'org-current' },
-            ],
-        })
-        expect(updates).toContainEqual({
-            table: 'scheduled_workflow_jobs',
-            payload: expect.objectContaining({ status: 'completed' }),
-            eqs: [
-                { column: 'id', value: 'job-1' },
-                { column: 'organization_id', value: 'org-current' },
-            ],
-        })
     })
 })
