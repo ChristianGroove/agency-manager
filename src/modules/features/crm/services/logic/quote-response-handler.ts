@@ -16,6 +16,43 @@ interface QuoteResponseContext {
     recipientPhone: string
 }
 
+const PUBLIC_QUOTE_APPROVAL_ERROR = "No se pudo aprobar la cotizacion"
+const PUBLIC_QUOTE_REJECTION_ERROR = "No se pudo procesar el rechazo de la cotizacion"
+const PUBLIC_REJECTION_REASON_ERROR = "No se pudo guardar la razon de rechazo"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeQuoteHandlerError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logQuoteHandlerError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeQuoteHandlerError(error) : error)
+}
+
+function quoteHandlerFailure(label: string, error: unknown, fallback: string) {
+    logQuoteHandlerError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: fallback }
+}
+
 /**
  * Handle Quote Approval
  * - Update deal/cart status to "won"
@@ -70,8 +107,7 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Approval error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Approval error:", error, PUBLIC_QUOTE_APPROVAL_ERROR)
     }
 }
 
@@ -109,7 +145,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         settings = orgSettings
 
         if (settingsError && !settings) {
-            console.error(`[QuoteHandler] Settings fetch error:`, settingsError.message)
+            logQuoteHandlerError(`[QuoteHandler] Settings fetch error:`, settingsError)
         }
 
 
@@ -192,7 +228,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
                 .limit(1)
 
             if (fallbackError) {
-                console.error(`[QuoteHandler] Fallback query error:`, fallbackError.message)
+                logQuoteHandlerError(`[QuoteHandler] Fallback query error:`, fallbackError)
             }
 
 
@@ -260,8 +296,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Rejection error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Rejection error:", error, PUBLIC_QUOTE_REJECTION_ERROR)
     }
 }
 
@@ -361,7 +396,6 @@ export async function handleRejectionReasonSelected(
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Rejection reason error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Rejection reason error:", error, PUBLIC_REJECTION_REASON_ERROR)
     }
 }

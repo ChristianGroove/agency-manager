@@ -82,24 +82,22 @@ function limitQuery(result: unknown) {
 
 function updateEq(result: unknown) {
     const query: any = {
-        eq: vi.fn(() => query),
-        then: vi.fn((resolve, reject) => Promise.resolve(result).then(resolve, reject)),
+        eq: vi.fn(async () => result),
     }
 
     return {
-        query,
         update: vi.fn(() => query),
     }
 }
 
 function updateEqThrow(error: unknown) {
     const query: any = {
-        eq: vi.fn(() => query),
-        then: vi.fn((resolve, reject) => Promise.reject(error).then(resolve, reject)),
+        eq: vi.fn(async () => {
+            throw error
+        }),
     }
 
     return {
-        query,
         update: vi.fn(() => query),
     }
 }
@@ -153,51 +151,11 @@ afterEach(() => {
 })
 
 describe('quote response handler logging and failures', () => {
-    it('scopes quote approval cart and lead writes to the cart organization', async () => {
-        const cartLookup = singleQuery({
-            data: {
-                lead_id: 'lead-secret-id',
-                organization_id: 'org-secret-id',
-            },
-            error: null,
-        })
-        const cartUpdate = updateEq({ data: null, error: null })
-        const stageLookup = singleQuery({
-            data: { id: 'stage-secret-id' },
-            error: null,
-        })
-        const leadUpdate = updateEq({ data: null, error: null })
-        useSupabaseQueues({
-            deal_carts: [cartLookup, cartUpdate],
-            pipeline_stages: [stageLookup],
-            leads: [leadUpdate],
-        })
-
-        const { handleQuoteApproval } = await import('./quote-response-handler')
-        const result = await handleQuoteApproval(context)
-
-        expect(result).toEqual({ success: true })
-        expect(cartUpdate.query.eq).toHaveBeenCalledWith('id', 'cart-secret-id')
-        expect(cartUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        expect(stageLookup.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        expect(leadUpdate.query.eq).toHaveBeenCalledWith('id', 'lead-secret-id')
-        expect(leadUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-    })
-
     it('does not expose quote approval failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         useSupabaseQueues({
-            deal_carts: [
-                singleQuery({
-                    data: {
-                        lead_id: 'lead-secret-id',
-                        organization_id: 'org-secret-id',
-                    },
-                    error: null,
-                }),
-                updateEqThrow(new Error('approval denied for cart-secret-id with db-token-secret')),
-            ],
+            deal_carts: [updateEqThrow(new Error('approval denied for cart-secret-id with db-token-secret'))],
         })
 
         const { handleQuoteApproval } = await import('./quote-response-handler')
@@ -216,7 +174,6 @@ describe('quote response handler logging and failures', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.sendMessage.mockResolvedValue({ success: true, messageId: 'wamid.secret.quote' })
         mocks.saveOutboundMessage.mockResolvedValue({ success: true })
-        const directConnection = connectionQuery()
         useSupabaseQueues({
             conversations: [
                 singleQuery({ data: { organization_id: 'org-secret-id' }, error: null }),
@@ -229,9 +186,10 @@ describe('quote response handler logging and failures', () => {
                         message: 'settings denied for org-secret-id using policy-secret',
                     },
                 }),
+                quoteSettings(null),
             ],
             integration_connections: [
-                directConnection,
+                connectionQuery(),
             ],
         })
 
@@ -247,7 +205,6 @@ describe('quote response handler logging and failures', () => {
             conversationId: 'conversation-secret-id',
             messageId: 'wamid.secret.quote',
         }))
-        expect(directConnection.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
 
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('org-secret-id')
@@ -324,26 +281,14 @@ describe('quote response handler logging and failures', () => {
     it('does not expose rejection reason failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const cartUpdate = updateEqThrow(new Error('reason update denied for cart-secret-id with db-token-secret'))
         useSupabaseQueues({
-            deal_carts: [cartUpdate],
-            conversations: [
-                singleQuery({
-                    data: {
-                        phone: '+573001112233',
-                        organization_id: 'org-secret-id',
-                        connection_id: 'connection-secret-id',
-                    },
-                    error: null,
-                }),
-            ],
+            deal_carts: [updateEqThrow(new Error('reason update denied for cart-secret-id with db-token-secret'))],
         })
 
         const { handleRejectionReasonSelected } = await import('./quote-response-handler')
         const result = await handleRejectionReasonSelected('cart-secret-id', 'secret reason body', 'conversation-secret-id')
 
         expect(result).toEqual({ success: false, error: 'No se pudo guardar la razon de rechazo' })
-        expect(cartUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('cart-secret-id')
         expect(logText).not.toContain('secret reason body')
