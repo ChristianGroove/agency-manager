@@ -39,7 +39,14 @@ const mocks = vi.hoisted(() => ({
         getLeadTags: vi.fn(),
         clearLeadTags: vi.fn(),
     },
-    taskService: {},
+    taskService: {
+        createTask: vi.fn(),
+        updateTask: vi.fn(),
+        deleteTask: vi.fn(),
+        getTasksForLead: vi.fn(),
+        getMyTasks: vi.fn(),
+        getTaskStats: vi.fn(),
+    },
     dealService: {},
     ContactService: vi.fn(),
     ClientService: vi.fn(),
@@ -126,6 +133,7 @@ afterEach(() => {
     Object.values(mocks.clientService).forEach((fn) => fn.mockReset())
     Object.values(mocks.pipelineService).forEach((fn) => fn.mockReset())
     Object.values(mocks.tagService).forEach((fn) => fn.mockReset())
+    Object.values(mocks.taskService).forEach((fn) => fn.mockReset())
 })
 
 async function importCrmActions(options: { supabase?: any } = {}) {
@@ -325,5 +333,48 @@ describe('CRM settings server actions', () => {
         expect(eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(consoleError).toHaveBeenCalledWith('[getCategoriesAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+})
+
+describe('CRM task server actions', () => {
+    it('creates contact tasks without changing the success contract', async () => {
+        const task = { id: 'task-1', lead_id: 'lead-1', title: 'Call' }
+        mocks.taskService.createTask.mockResolvedValue(task)
+
+        const { createContactTaskAction } = await importCrmActions()
+        const result = await createContactTaskAction({ lead_id: 'lead-1', title: 'Call' })
+
+        expect(result).toEqual({ success: true, data: task })
+        expect(mocks.CrmTaskService).toHaveBeenCalledWith(expect.anything(), 'org-current', 'user-current')
+        expect(mocks.taskService.createTask).toHaveBeenCalledWith({ lead_id: 'lead-1', title: 'Call' })
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')
+    })
+
+    it('does not expose task stats failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.taskService.getTaskStats.mockRejectedValue(new Error('task secret-value stats failed'))
+
+        const { getTaskStatsAction } = await importCrmActions()
+        const result = await getTaskStatsAction()
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de tareas CRM' })
+        expect(consoleError).toHaveBeenCalledWith('[getTaskStatsAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+
+    it('does not expose task deletion failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.taskService.deleteTask.mockRejectedValue(new Error('task secret-value delete failed'))
+
+        const { deleteContactTaskAction } = await importCrmActions()
+        const result = await deleteContactTaskAction('task-secret-id')
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de tareas CRM' })
+        expect(mocks.taskService.deleteTask).toHaveBeenCalledWith('task-secret-id')
+        expect(consoleError).toHaveBeenCalledWith('[deleteContactTaskAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 })

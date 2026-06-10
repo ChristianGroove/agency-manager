@@ -18,6 +18,7 @@ const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de conta
 const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
 const PUBLIC_CRM_TAG_ACTION_ERROR = "No se pudo completar la accion de etiquetas"
 const PUBLIC_CRM_SETTINGS_ACTION_ERROR = "No se pudo completar la accion de configuracion CRM"
+const PUBLIC_CRM_TASK_ACTION_ERROR = "No se pudo completar la accion de tareas CRM"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -74,6 +75,11 @@ function crmTagActionFailure(label: string, error: unknown): ActionResponse<any>
 function crmSettingsActionFailure(label: string, error: unknown): ActionResponse<any> {
     logCrmActionError(label, error)
     return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_SETTINGS_ACTION_ERROR) }
+}
+
+function crmTaskActionFailure(label: string, error: unknown): { success: false; error: string } {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TASK_ACTION_ERROR) }
 }
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
@@ -469,9 +475,9 @@ export async function createContactTaskAction(data: any) {
         const { tasks } = await getCrmServices()
         const result = await tasks.createTask(data)
         revalidatePath('/crm')
-        return { success: true, data: result }
+        return { success: true as const, data: result }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[createContactTaskAction] Error:", e)
     }
 }
 
@@ -480,9 +486,9 @@ export async function updateContactTaskAction(id: string, data: any) {
         const { tasks } = await getCrmServices()
         await tasks.updateTask(id, data)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[updateContactTaskAction] Error:", e)
     }
 }
 
@@ -495,9 +501,9 @@ export async function deleteContactTaskAction(id: string) {
         const { tasks } = await getCrmServices()
         await tasks.deleteTask(id)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[deleteContactTaskAction] Error:", e)
     }
 }
 
@@ -505,9 +511,9 @@ export async function getContactTasksAction(leadId: string) {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getTasksForLead(leadId)
-        return { success: true, tasks: data }
+        return { success: true as const, tasks: data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getContactTasksAction] Error:", e)
     }
 }
 
@@ -515,9 +521,9 @@ export async function getMyTasksAction(filters: any = {}) {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getMyTasks(filters)
-        return { success: true, data }
+        return { success: true as const, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getMyTasksAction] Error:", e)
     }
 }
 
@@ -525,9 +531,9 @@ export async function getTaskStatsAction() {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getTaskStats()
-        return { success: true, data }
+        return { success: true as const, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getTaskStatsAction] Error:", e)
     }
 }
 
