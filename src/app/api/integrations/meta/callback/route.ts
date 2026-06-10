@@ -6,6 +6,29 @@ function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
 }
 
+function sanitizeMetaCallbackContext(context: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set(['connectionId', 'userName', 'wabaId']);
+
+    return Object.fromEntries(
+        Object.entries(context).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function logMetaCallbackInfo(label: string, context: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, context);
+        return;
+    }
+
+    console.log(label, sanitizeMetaCallbackContext(context));
+}
+
 function logMetaCallbackError(label: string, error: unknown, context?: Record<string, unknown>) {
     if (!isDeployedRuntime()) {
         console.error(label, error, context || '');
@@ -13,7 +36,7 @@ function logMetaCallbackError(label: string, error: unknown, context?: Record<st
     }
 
     console.error(label, {
-        ...(context || {}),
+        ...sanitizeMetaCallbackContext(context),
         detail: error instanceof Error ? { name: error.name } : { type: typeof error }
     });
 }
@@ -211,7 +234,7 @@ export async function GET(request: Request) {
             // 3.1 Bulk Portfolio Sync (Meta 2026 Compliance)
             // Automatically subscribe ALL WABAs to webhooks to prevent "Shadow Delivery"
             if (wabas.length > 0) {
-                console.log(`[MetaCallback] Starting Bulk Sync for ${wabas.length} WABAs...`);
+                logMetaCallbackInfo('[MetaCallback] Starting Bulk Sync', { wabasCount: wabas.length });
 
                 try {
                     const { wabaSubscriptionManager } = await import('@/modules/infrastructure/meta/services/waba-subscription-manager');
@@ -224,11 +247,14 @@ export async function GET(request: Request) {
                     const results = await wabaSubscriptionManager.batchSubscribe(subscriptionPayload);
 
                     const successCount = results.filter(r => r.success).length;
-                    console.log(`[MetaCallback] Bulk Sync Complete. Success: ${successCount}/${wabas.length}`);
+                    logMetaCallbackInfo('[MetaCallback] Bulk Sync Complete', {
+                        successCount,
+                        wabasCount: wabas.length,
+                    });
 
                     // Log failures if any
                     results.filter(r => !r.success).forEach(r => {
-                        logMetaCallbackError(`[MetaCallback] Failed to subscribe WABA ${r.wabaId}:`, r.error);
+                        logMetaCallbackError('[MetaCallback] Failed to subscribe WABA:', r.error, { wabaId: r.wabaId });
                     });
 
                 } catch (syncError) {
@@ -238,8 +264,8 @@ export async function GET(request: Request) {
             }
         }
 
-        console.log("🚀 Meta Connected!", {
-            user: userProfile.name,
+        logMetaCallbackInfo('[MetaCallback] Meta Connected', {
+            userName: userProfile.name,
             channelType: channelType || 'all',
             pagesFound: pages.length,
             wabasFound: wabas.length
@@ -411,14 +437,14 @@ export async function GET(request: Request) {
 
         let dbError: any = null;
         if (existingConnection?.id) {
-            console.log("Updating existing connection:", existingConnection.id);
+            logMetaCallbackInfo('[MetaCallback] Updating existing connection', { connectionId: existingConnection.id });
             const { error } = await supabase
                 .from('integration_connections')
                 .update(connectionPayload)
                 .eq('id', existingConnection.id);
             dbError = error;
         } else {
-            console.log("Inserting new connection");
+            logMetaCallbackInfo('[MetaCallback] Inserting new connection');
             const { error } = await supabase
                 .from('integration_connections')
                 .insert(connectionPayload);

@@ -41,6 +41,7 @@ describe('/api/integrations/meta/callback', () => {
         vi.resetModules()
         vi.doUnmock('@supabase/supabase-js')
         vi.doUnmock('@/modules/infrastructure/meta/services/graph-api')
+        vi.doUnmock('@/modules/infrastructure/meta/services/waba-subscription-manager')
     })
 
     it('does not expose provider OAuth error details in production redirects', async () => {
@@ -144,5 +145,71 @@ describe('/api/integrations/meta/callback', () => {
                 }),
             }),
         ])
+    })
+
+    it('does not expose Meta profile or WABA identifiers in production logs', async () => {
+        setupMetaCallbackEnv()
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+        vi.doMock('@supabase/supabase-js', () => ({
+            createClient: vi.fn(() => ({
+                from: vi.fn(() => {
+                    const builder: any = {
+                        select: vi.fn(() => builder),
+                        eq: vi.fn(() => builder),
+                        order: vi.fn(() => builder),
+                        limit: vi.fn(async () => ({ data: [], error: null })),
+                        insert: vi.fn(async () => ({ error: null })),
+                    }
+                    return builder
+                }),
+            })),
+        }))
+        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
+            MetaGraphAPI: class {
+                exchangeCodeForToken = vi.fn(async () => 'long-lived-token-secret-value')
+                getUserProfile = vi.fn(async () => ({ id: 'meta_user_secret', name: 'Meta User Secret' }))
+                getConnectedAssets = vi.fn(async () => [])
+                getWhatsAppAccounts = vi.fn(async () => ({
+                    data: [{
+                        id: 'waba_sensitive_123',
+                        name: 'Sensitive WABA',
+                        phone_numbers: { data: [] },
+                    }],
+                }))
+            },
+        }))
+        vi.doMock('@/modules/infrastructure/meta/services/waba-subscription-manager', () => ({
+            wabaSubscriptionManager: {
+                batchSubscribe: vi.fn(async () => [{
+                    success: false,
+                    wabaId: 'waba_sensitive_123',
+                    error: 'batch secret-value',
+                }]),
+            },
+        }))
+
+        const { GET } = await import('./route')
+        const response = await GET(new Request(callbackUrl({
+            code: 'code_123',
+            state: createOrgState(),
+        })))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('success=meta_connected')
+
+        const logText = [
+            collectConsoleCalls(logSpy),
+            collectConsoleCalls(errorSpy),
+        ].join('\n')
+
+        expect(logText).toContain('userNamePresent')
+        expect(logText).toContain('wabaIdPresent')
+        expect(logText).not.toContain('Meta User Secret')
+        expect(logText).not.toContain('waba_sensitive_123')
+        expect(logText).not.toContain('long-lived-token-secret-value')
+        expect(logText).not.toContain('batch secret-value')
     })
 })
