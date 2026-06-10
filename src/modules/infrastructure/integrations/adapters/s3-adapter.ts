@@ -1,6 +1,55 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult, StorageProvider } from "./types"
 import { S3Client, PutObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3"
 
+const PUBLIC_S3_VERIFICATION_ERROR = "S3 credentials could not be verified"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeS3Error(error: unknown) {
+    if (error instanceof Error) {
+        const detail = error as Error & { code?: unknown; $metadata?: { httpStatusCode?: unknown } }
+        return {
+            name: error.name,
+            code: detail.code,
+            statusCode: detail.$metadata?.httpStatusCode,
+        }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            statusCode: (error as any).$metadata?.httpStatusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logS3Error(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeS3Error(error) : error)
+}
+
+function s3VerificationError(error: unknown) {
+    if (isDeployedRuntime()) return PUBLIC_S3_VERIFICATION_ERROR
+    if (error instanceof Error && error.message) return `S3 Access Denied: ${error.message}`
+    return PUBLIC_S3_VERIFICATION_ERROR
+}
+
+function logS3Upload(credentials: ConnectionCredentials, path: string) {
+    if (!isDeployedRuntime()) {
+        console.log(`[S3] Uploading to bucket ${credentials.bucket}: ${path}`)
+        return
+    }
+
+    console.log('[S3] Uploading file', {
+        bucketPresent: !!credentials.bucket,
+        pathPresent: !!path,
+    })
+}
+
 /**
  * AWS S3 Adapter for "Bring Your Own Storage" Backups
  * 
@@ -12,7 +61,7 @@ export class S3StorageAdapter implements IntegrationAdapter {
     // Storage Capability Implementation
     storage: StorageProvider = {
         uploadFile: async (credentials, path, content, contentType = 'application/octet-stream') => {
-            console.log(`[S3] Uploading to bucket ${credentials.bucket}: ${path}`)
+            logS3Upload(credentials, path)
 
             const client = new S3Client({
                 region: credentials.region,
@@ -69,9 +118,9 @@ export class S3StorageAdapter implements IntegrationAdapter {
                         region: credentials.region
                     }
                 }
-            } catch (error: any) {
-                console.error("S3 Verification Failed:", error)
-                return { isValid: false, error: `S3 Access Denied: ${error.message}` }
+            } catch (error: unknown) {
+                logS3Error("S3 Verification Failed:", error)
+                return { isValid: false, error: s3VerificationError(error) }
             }
         });
     }
