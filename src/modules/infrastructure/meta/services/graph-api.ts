@@ -82,16 +82,6 @@ function publicGraphError(error: unknown, fallback: string = PUBLIC_META_GRAPH_E
         : graphErrorMessage(error, fallback);
 }
 
-function metaAuthInit(accessToken: string, init: RequestInit = {}): RequestInit {
-    return {
-        ...init,
-        headers: {
-            ...(init.headers as Record<string, string> | undefined),
-            'Authorization': `Bearer ${accessToken}`,
-        },
-    };
-}
-
 function metaGraphFailure(prefix: string, error: unknown) {
     if (isDeployedRuntime()) {
         return new Error(prefix);
@@ -190,9 +180,10 @@ export class MetaGraphAPI {
     async subscribePageWebhooks(pageId: string, pageAccessToken: string, fields: string[] = ['messages', 'messaging_postbacks', 'message_deliveries', 'message_reads']): Promise<{ success: boolean; error?: string }> {
         try {
             const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${pageId}/subscribed_apps`);
+            url.searchParams.append('access_token', pageAccessToken);
             url.searchParams.append('subscribed_fields', fields.join(','));
 
-            const res = await fetch(url.toString(), metaAuthInit(pageAccessToken, { method: 'POST' }));
+            const res = await fetch(url.toString(), { method: 'POST' });
             const data = await res.json();
 
             if (data.error) {
@@ -214,10 +205,11 @@ export class MetaGraphAPI {
     async getConnectedAssets(userAccessToken: string): Promise<MetaPage[]> {
         // Strategy 1: Standard Fetch
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/accounts`);
+        url.searchParams.append('access_token', userAccessToken);
         url.searchParams.append('fields', 'id,name,access_token,instagram_business_account,tasks');
         url.searchParams.append('limit', '100');
 
-        let res = await fetch(url.toString(), metaAuthInit(userAccessToken));
+        let res = await fetch(url.toString());
         let data = await res.json();
 
         if (data.error) {
@@ -242,9 +234,8 @@ export class MetaGraphAPI {
                         console.log(`🎯 [MetaGraphAPI] Found ${pageScope.target_ids.length} granted Page IDs in Granular Scopes.`);
                         
                         const pagePromises = pageScope.target_ids.map(async (pageId: string) => {
-                            const pUrl = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${pageId}`);
-                            pUrl.searchParams.append('fields', 'id,name,access_token,instagram_business_account');
-                            const pRes = await fetch(pUrl.toString(), metaAuthInit(userAccessToken));
+                            const pUrl = `${META_GRAPH_URL}/${META_API_VERSION}/${pageId}?access_token=${userAccessToken}&fields=id,name,access_token,instagram_business_account`;
+                            const pRes = await fetch(pUrl);
                             return pRes.json();
                         });
                         
@@ -280,9 +271,8 @@ export class MetaGraphAPI {
             // --- STRATEGY 1: Direct Fetch (Standard) ---
             // Works if 'whatsapp_business_management' is granted and user has direct access
             try {
-                const url1 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/whatsapp_business_accounts`);
-                url1.searchParams.append('fields', 'id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}');
-                const res1 = await fetch(url1.toString(), metaAuthInit(accessToken));
+                const url1 = `${META_GRAPH_URL}/${META_API_VERSION}/me/whatsapp_business_accounts?access_token=${accessToken}&fields=id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}`;
+                const res1 = await fetch(url1);
                 const body1 = await res1.json();
                 if (!body1.error && body1.data) {
                     console.log(`✅ Strategy 1 (Direct) found ${body1.data.length} WABAs`);
@@ -296,9 +286,8 @@ export class MetaGraphAPI {
             // Works if 'business_management' is granted. Good for Agencies.
             if (allWabas.length === 0) {
                 try {
-                    const url2 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/businesses`);
-                    url2.searchParams.append('fields', 'id,name,whatsapp_business_accounts{id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}}');
-                    const res2 = await fetch(url2.toString(), metaAuthInit(accessToken));
+                    const url2 = `${META_GRAPH_URL}/${META_API_VERSION}/me/businesses?access_token=${accessToken}&fields=id,name,whatsapp_business_accounts{id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}}`;
+                    const res2 = await fetch(url2);
                     const body2 = await res2.json();
 
                     if (!body2.error && body2.data) {
@@ -320,9 +309,8 @@ export class MetaGraphAPI {
             if (allWabas.length === 0) {
                 try {
                     console.log("🔍 [Strategy 3] Attempting Page-Linked WABA discovery...");
-                    const url3 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/accounts`);
-                    url3.searchParams.append('fields', 'id,name,connected_whatsapp_business_account{id,name,currency,timezone_id}');
-                    const res3 = await fetch(url3.toString(), metaAuthInit(accessToken));
+                    const url3 = `${META_GRAPH_URL}/${META_API_VERSION}/me/accounts?access_token=${accessToken}&fields=id,name,connected_whatsapp_business_account{id,name,currency,timezone_id}`;
+                    const res3 = await fetch(url3);
                     const body3 = await res3.json();
 
                     if (!body3.error && body3.data) {
@@ -373,9 +361,8 @@ export class MetaGraphAPI {
 
                             // Now fetch details for each ID
                             const wabaPromises = wabaScope.target_ids.map(async (id: string) => {
-                                const wUrl = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${id}`);
-                                wUrl.searchParams.append('fields', 'id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}');
-                                const wRes = await fetch(wUrl.toString(), metaAuthInit(accessToken));
+                                const wUrl = `${META_GRAPH_URL}/${META_API_VERSION}/${id}?access_token=${accessToken}&fields=id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}`;
+                                const wRes = await fetch(wUrl);
                                 return wRes.json();
                             });
 
@@ -432,9 +419,10 @@ export class MetaGraphAPI {
     async getInstagramUsername(instagramBusinessId: string, accessToken: string): Promise<string | null> {
         try {
             const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${instagramBusinessId}`);
+            url.searchParams.append('access_token', accessToken);
             url.searchParams.append('fields', 'username');
 
-            const res = await fetch(url.toString(), metaAuthInit(accessToken));
+            const res = await fetch(url.toString());
             const data = await res.json();
 
             if (data.error) {
@@ -454,9 +442,10 @@ export class MetaGraphAPI {
      */
     async getUserProfile(userAccessToken: string) {
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me`);
+        url.searchParams.append('access_token', userAccessToken);
         url.searchParams.append('fields', 'id,name,email');
 
-        const res = await fetch(url.toString(), metaAuthInit(userAccessToken));
+        const res = await fetch(url.toString());
         return await res.json();
     }
 
@@ -465,10 +454,11 @@ export class MetaGraphAPI {
      */
     async getAdAccounts(accessToken: string): Promise<any[]> {
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/adaccounts`);
+        url.searchParams.append('access_token', accessToken);
         url.searchParams.append('fields', 'id,name,account_id,currency');
         url.searchParams.append('limit', '100');
 
-        const res = await fetch(url.toString(), metaAuthInit(accessToken));
+        const res = await fetch(url.toString());
         const data = await res.json();
 
         if (data.error) {
