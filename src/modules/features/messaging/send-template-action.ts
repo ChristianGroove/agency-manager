@@ -5,6 +5,70 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/c
 import { revalidatePath } from "next/cache"
 import { MessagingPersistence } from "./services/persistence"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeTemplateLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'bodyParameters',
+        'headerParameters',
+        'messageId',
+        'phoneNumberId',
+        'recipientPhone',
+        'to',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeTemplateError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as any).error : error
+        return {
+            type: graphError?.type || 'object',
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            hasMessage: typeof graphError?.message === 'string' && graphError.message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logTemplateInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeTemplateLogDetails(details))
+}
+
+function logTemplateError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeTemplateLogDetails(details),
+        detail: summarizeTemplateError(error),
+    })
+}
+
 /**
  * Send a WhatsApp HSM Template Message via Meta Graph API v24.0
  * 
@@ -131,7 +195,14 @@ export async function sendTemplateMessage(input: {
         }
     }
 
-    console.log('[sendTemplateMessage] Sending HSM:', JSON.stringify(metaPayload, null, 2))
+    logTemplateInfo('[sendTemplateMessage] Sending HSM:', {
+        bodyParameterCount: input.bodyParameters?.length || 0,
+        headerParameterCount: input.headerParameters?.length || 0,
+        phoneNumberId: finalPhoneId,
+        recipientPhone,
+        templateLanguage: input.templateLanguage,
+        templateName: input.templateName,
+    })
 
     // 6. POST to Meta Graph API
     const { assertUsageAllowed } = await import("@/modules/infrastructure/usage/usage-limiter")
@@ -150,13 +221,22 @@ export async function sendTemplateMessage(input: {
     const result = await response.json()
 
     if (!response.ok) {
-        console.error('[sendTemplateMessage] Meta API Error:', result)
+        logTemplateError('[sendTemplateMessage] Meta API Error:', result, {
+            phoneNumberId: finalPhoneId,
+            recipientPhone,
+            templateLanguage: input.templateLanguage,
+            templateName: input.templateName,
+        })
         const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
         throw new Error(errorMsg)
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`
-    console.log('[sendTemplateMessage] Success:', messageId)
+    logTemplateInfo('[sendTemplateMessage] Success:', {
+        messageId,
+        templateLanguage: input.templateLanguage,
+        templateName: input.templateName,
+    })
 
     // 7. Build preview text for DB storage
     let previewText = `ðŸ“‹ Plantilla: ${input.templateName}`
