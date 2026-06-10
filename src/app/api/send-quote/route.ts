@@ -11,20 +11,6 @@ const MAX_QUOTE_PDF_BYTES = 10 * 1024 * 1024;
 const PUBLIC_SEND_QUOTE_ERROR = 'Error sending email';
 const PUBLIC_SEND_QUOTE_INTERNAL_ERROR = 'Internal Server Error';
 
-type QuoteEmailContact = {
-    email?: string | null;
-    name?: string | null;
-};
-
-type QuoteEmailRecord = {
-    id: string;
-    number: string;
-    total: number | string | null;
-    date: string | null;
-    client?: QuoteEmailContact | null;
-    lead?: QuoteEmailContact | null;
-};
-
 function logSendQuoteError(label: string, error: unknown) {
     if (!isProductionRuntime()) {
         console.error(label, error);
@@ -52,28 +38,6 @@ function sendQuoteErrorMessage(error: unknown, fallback: string) {
     return fallback;
 }
 
-function normalizeEmail(email: unknown) {
-    return typeof email === 'string' ? email.trim().toLowerCase() : '';
-}
-
-function formatQuoteTotal(total: QuoteEmailRecord['total']) {
-    const amount = Number(total ?? 0);
-    if (!Number.isFinite(amount)) return '$0';
-
-    return `$${amount.toLocaleString('es-CO')}`;
-}
-
-function parsePdfBase64(pdfBase64: unknown) {
-    if (typeof pdfBase64 !== 'string' || !pdfBase64.startsWith('data:application/pdf;base64,')) {
-        return null;
-    }
-
-    const encodedPdf = pdfBase64.split(',')[1];
-    if (!encodedPdf) return null;
-
-    return Buffer.from(encodedPdf, 'base64');
-}
-
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();
@@ -83,41 +47,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { quoteId, email, pdfBase64, organizationId } = await request.json();
+        const { email, quoteNumber, clientName, total, date, pdfBase64, organizationId } = await request.json();
 
-        if (!quoteId || !email || !pdfBase64 || !organizationId) {
+        if (!email || !quoteNumber || !pdfBase64 || !organizationId) {
             return NextResponse.json(
-                { error: 'Missing required fields (quoteId, email, pdfBase64, organizationId)' },
+                { error: 'Missing required fields (email, quoteNumber, pdfBase64, organizationId)' },
                 { status: 400 }
             );
         }
 
         const currentOrgId = await getCurrentOrganizationId();
         if (!currentOrgId || currentOrgId !== organizationId) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
-
-        const { data: quoteData, error: quoteError } = await supabase
-            .from('quotes')
-            .select('id, number, total, date, client:leads!client_id(name, email), lead:leads!lead_id(name, email)')
-            .eq('id', quoteId)
-            .eq('organization_id', organizationId)
-            .is('deleted_at', null)
-            .single();
-
-        if (quoteError || !quoteData) {
-            return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
-        }
-
-        const quote = quoteData as QuoteEmailRecord;
-        const quoteContact = quote.client || quote.lead;
-        const recipientEmail = normalizeEmail(quoteContact?.email);
-
-        if (!recipientEmail) {
-            return NextResponse.json({ error: 'Quote recipient email unavailable' }, { status: 400 });
-        }
-
-        if (normalizeEmail(email) !== recipientEmail) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -135,24 +75,16 @@ export async function POST(request: Request) {
         };
 
         // Convert base64 to buffer
-        const pdfBuffer = parsePdfBase64(pdfBase64);
-        if (!pdfBuffer) {
-            return NextResponse.json({ error: 'Invalid PDF attachment' }, { status: 400 });
-        }
-
+        const pdfBuffer = Buffer.from(pdfBase64.split(',')[1], 'base64');
         if (pdfBuffer.byteLength > MAX_QUOTE_PDF_BYTES) {
             return NextResponse.json({ error: 'PDF attachment is too large' }, { status: 413 });
         }
 
         const linkUrl = brandingData.website || 'https://pixy.com.co'; // Fallback link
-        const quoteNumber = quote.number;
-        const clientName = quoteContact?.name || 'Cliente';
-        const total = formatQuoteTotal(quote.total);
-        const date = quote.date || 'N/A';
-        const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total, date, linkUrl, emailBranding);
+        const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total || '$0', date || 'N/A', linkUrl, emailBranding);
 
         const result = await EmailService.send({
-            to: recipientEmail,
+            to: email,
             subject: `Cotización N° ${quoteNumber} - ${clientName}`,
             html: emailHtml,
             organizationId,
