@@ -58,6 +58,18 @@ function logCallingResponse(label: string, data: unknown) {
     })
 }
 
+function logResolvedCallingCredentials(phoneNumberId: unknown, accessToken: unknown) {
+    if (!isDeployedRuntime()) {
+        console.log('[resolveCallingCredentials] Resolved:', { phoneNumberId, hasToken: !!accessToken })
+        return
+    }
+
+    console.log('[resolveCallingCredentials] Resolved:', {
+        phoneNumberId: phoneNumberId ? 'present' : 'missing',
+        hasToken: !!accessToken,
+    })
+}
+
 function publicCallingError(error: unknown, fallback: string) {
     if (error instanceof CallingRouteError && (!isDeployedRuntime() || error.status < 500)) {
         return error.message
@@ -174,6 +186,11 @@ async function resolveCallingCredentials() {
     if (!phoneNumberId) {
         console.error('[resolveCallingCredentials] âŒ Missing Phone Number ID');
         throw new CallingRouteError('Missing Phone Number ID', 500);
+    }
+
+    if (isDeployedRuntime()) {
+        logResolvedCallingCredentials(phoneNumberId, accessToken);
+        return { accessToken, phoneNumberId }
     }
 
     console.log('[resolveCallingCredentials] âœ… Resolved:', { phoneNumberId, hasToken: !!accessToken });

@@ -170,7 +170,7 @@ describe('/api/meta/calling', () => {
 
     it('keeps sending the expected Meta payload when toggling calling successfully', async () => {
         setupProductionMetaCallingRoute()
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ success: true }), { status: 200 }))
 
         const { POST } = await import('./route')
@@ -202,5 +202,9 @@ describe('/api/meta/calling', () => {
                 }),
             })
         )
+
+        const logText = collectConsoleCalls(logSpy)
+        expect(logText).not.toContain('phone_123')
+        expect(logText).not.toContain('meta-access-token')
     })
 })
