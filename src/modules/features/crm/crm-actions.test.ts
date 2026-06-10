@@ -18,7 +18,16 @@ const mocks = vi.hoisted(() => ({
         getPaginated: vi.fn(),
         deleteClients: vi.fn(),
     },
-    pipelineService: {},
+    pipelineService: {
+        getStages: vi.fn(),
+        getPipelineViewData: vi.fn(),
+        createStage: vi.fn(),
+        updateStage: vi.fn(),
+        reorderStages: vi.fn(),
+        deleteStage: vi.fn(),
+        getDefaultPipeline: vi.fn(),
+        toggleStrictMode: vi.fn(),
+    },
     tagService: {},
     taskService: {},
     dealService: {},
@@ -99,6 +108,7 @@ afterEach(() => {
     mocks.DealService.mockReset()
     Object.values(mocks.contactService).forEach((fn) => fn.mockReset())
     Object.values(mocks.clientService).forEach((fn) => fn.mockReset())
+    Object.values(mocks.pipelineService).forEach((fn) => fn.mockReset())
 })
 
 async function importCrmActions() {
@@ -166,6 +176,49 @@ describe('CRM contact server actions', () => {
         expect(mocks.ClientService).toHaveBeenCalledWith(expect.anything(), 'org-current')
         expect(mocks.clientService.deleteClients).toHaveBeenCalledWith(['client-secret-id'])
         expect(consoleError).toHaveBeenCalledWith('[deleteClientsAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+})
+
+describe('CRM pipeline server actions', () => {
+    it('creates pipeline stages without changing the success contract', async () => {
+        const stage = { id: 'stage-1', name: 'Qualified', organization_id: 'org-current' }
+        mocks.pipelineService.createStage.mockResolvedValue(stage)
+
+        const { createPipelineStageAction } = await importCrmActions()
+        const result = await createPipelineStageAction({ name: 'Qualified' })
+
+        expect(result).toEqual({ success: true, data: stage })
+        expect(mocks.PipelineService).toHaveBeenCalledWith(expect.anything(), 'org-current')
+        expect(mocks.pipelineService.createStage).toHaveBeenCalledWith({ name: 'Qualified' })
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')
+    })
+
+    it('does not expose pipeline list failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.pipelineService.getStages.mockRejectedValue(new Error('pipeline secret-value read failed'))
+
+        const { getPipelineStagesAction } = await importCrmActions()
+        const result = await getPipelineStagesAction()
+
+        expect(result).toEqual([])
+        expect(consoleError).toHaveBeenCalledWith('[getPipelineStagesAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+
+    it('does not expose pipeline mutation failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.pipelineService.deleteStage.mockRejectedValue(new Error('pipeline secret-value delete failed'))
+
+        const { deletePipelineStageAction } = await importCrmActions()
+        const result = await deletePipelineStageAction('stage-secret-id')
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de pipeline' })
+        expect(mocks.pipelineService.deleteStage).toHaveBeenCalledWith('stage-secret-id')
+        expect(consoleError).toHaveBeenCalledWith('[deletePipelineStageAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })

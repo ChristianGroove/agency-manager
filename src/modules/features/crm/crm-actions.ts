@@ -15,6 +15,7 @@ import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from 
 import { Lead, Client } from "@/types"
 
 const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
+const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -56,6 +57,11 @@ function crmActionErrorMessage(error: unknown, publicMessage: string) {
 function crmContactActionFailure(label: string, error: unknown): ActionResponse<any> {
     logCrmActionError(label, error)
     return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_CONTACT_ACTION_ERROR) }
+}
+
+function crmPipelineActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_PIPELINE_ACTION_ERROR) }
 }
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
@@ -239,7 +245,7 @@ export async function getPipelineStagesAction(): Promise<PipelineStage[]> {
         const { pipelines } = await getCrmServices()
         return await pipelines.getStages()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getPipelineStagesAction] Error:", e)
         return []
     }
 }
@@ -260,7 +266,7 @@ export async function getPipelineViewDataAction(connectionId?: string | null) {
         
         return await pipelines.getPipelineViewData(cid, userId)
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getPipelineViewDataAction] Error:", e)
         return null
     }
 }
@@ -272,7 +278,7 @@ export async function createPipelineStageAction(input: any): Promise<ActionRespo
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[createPipelineStageAction] Error:", e)
     }
 }
 
@@ -283,7 +289,7 @@ export async function updatePipelineStageAction(id: string, updates: any): Promi
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[updatePipelineStageAction] Error:", e)
     }
 }
 
@@ -294,7 +300,7 @@ export async function reorderPipelineStagesAction(ids: string[]): Promise<Action
         revalidatePath('/crm')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[reorderPipelineStagesAction] Error:", e)
     }
 }
 
@@ -305,7 +311,7 @@ export async function deletePipelineStageAction(id: string): Promise<ActionRespo
         revalidatePath('/crm')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[deletePipelineStageAction] Error:", e)
     }
 }
 
@@ -314,7 +320,7 @@ export async function getDefaultPipelineAction(): Promise<Pipeline | null> {
         const { pipelines } = await getCrmServices()
         return await pipelines.getDefaultPipeline()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getDefaultPipelineAction] Error:", e)
         return null
     }
 }
@@ -326,7 +332,7 @@ export async function togglePipelineStrictModeAction(id: string, enabled: boolea
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[togglePipelineStrictModeAction] Error:", e)
     }
 }
 
