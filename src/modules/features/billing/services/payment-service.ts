@@ -3,6 +3,47 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import crypto from "crypto"
 
+const PUBLIC_REGISTER_PAYMENT_ERROR = "No se pudo registrar el pago"
+const PUBLIC_GATEWAY_UPDATE_ERROR = "No se pudo actualizar la pasarela de pago"
+const PUBLIC_SUBSCRIPTION_PAYMENT_ERROR = "No se pudo iniciar el pago"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePaymentServiceError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPaymentServiceError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizePaymentServiceError(error))
+}
+
+function paymentServiceErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 /**
  * Service Layer for Billing Module - Payments & Gateways
  * Contains pure business logic and DB interactions.
@@ -103,8 +144,8 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
 
         return { success: true }
     } catch (error: any) {
-        console.error("[PaymentService.registerPayment] Error:", error)
-        return { success: false, error: error.message }
+        logPaymentServiceError("[PaymentService.registerPayment] Error:", error)
+        return { success: false, error: paymentServiceErrorMessage(error, PUBLIC_REGISTER_PAYMENT_ERROR) }
     }
 }
 
@@ -174,7 +215,10 @@ export async function getPaymentGateways(): Promise<PaymentGatewayConfig[]> {
 
 export async function updatePaymentGateway(gatewayName: string, updates: Partial<PaymentGatewayConfig>) {
     const { error } = await supabaseAdmin.from('payment_gateway_config').update({ ...updates, updated_at: new Date().toISOString() }).eq('gateway_name', gatewayName)
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logPaymentServiceError("[PaymentService.updatePaymentGateway] Error:", error)
+        return { success: false, error: paymentServiceErrorMessage(error, PUBLIC_GATEWAY_UPDATE_ERROR) }
+    }
     return { success: true }
 }
 
@@ -238,7 +282,10 @@ export async function createSubscriptionPaymentTransaction() {
         .select()
         .single()
 
-    if (error) throw new Error("No se pudo iniciar el pago: " + (error.message || "Unknown error"))
+    if (error) {
+        logPaymentServiceError("[PaymentService.createSubscriptionPaymentTransaction] Error:", error)
+        throw new Error(paymentServiceErrorMessage(error, PUBLIC_SUBSCRIPTION_PAYMENT_ERROR))
+    }
 
     return {
         success: true,

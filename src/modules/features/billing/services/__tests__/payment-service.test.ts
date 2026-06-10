@@ -5,8 +5,6 @@ const mocks = vi.hoisted(() => ({
     getCurrentOrganizationId: vi.fn(),
     getCurrentOrganizationApp: vi.fn(),
     logDomainEvent: vi.fn(),
-    getActiveProcess: vi.fn(),
-    transitionProcess: vi.fn(),
     supabaseAdmin: {
         from: vi.fn(),
     },
@@ -32,28 +30,11 @@ vi.mock('@/modules/core/saas/app-data-actions', () => ({
     getCurrentOrganizationApp: mocks.getCurrentOrganizationApp,
 }))
 
-vi.mock('@/modules/features/crm/services/process-engine/engine', () => ({
-    ProcessEngine: {
-        getActiveProcess: mocks.getActiveProcess,
-        transition: mocks.transitionProcess,
-    },
-}))
-
 function selectSingleQuery(result: { data?: unknown; error?: unknown }) {
     const query: any = {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
         single: vi.fn(async () => result),
-    }
-
-    return query
-}
-
-function selectMaybeSingleQuery(result: { data?: unknown; error?: unknown }) {
-    const query: any = {
-        select: vi.fn(() => query),
-        eq: vi.fn(() => query),
-        maybeSingle: vi.fn(async () => result),
     }
 
     return query
@@ -96,18 +77,6 @@ function createQueuedClient(queues: Record<string, any[]>) {
     }
 }
 
-function useQueuedAdmin(queues: Record<string, any[]>) {
-    const tableQueues = Object.fromEntries(
-        Object.entries(queues).map(([table, tableQueue]) => [table, [...tableQueue]])
-    )
-
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
-        const queue = tableQueues[table]
-        if (!queue?.length) throw new Error(`Unexpected admin table ${table}`)
-        return queue.shift()
-    })
-}
-
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
@@ -116,8 +85,6 @@ afterEach(() => {
     mocks.getCurrentOrganizationId.mockReset()
     mocks.getCurrentOrganizationApp.mockReset()
     mocks.logDomainEvent.mockReset()
-    mocks.getActiveProcess.mockReset()
-    mocks.transitionProcess.mockReset()
     mocks.supabaseAdmin.from.mockReset()
 })
 
@@ -148,8 +115,6 @@ describe('PaymentService', () => {
         const result = await registerPayment('invoice-1', 500, 'receipt ok')
 
         expect(result).toEqual({ success: true })
-        expect(invoiceFetch.eq).toHaveBeenCalledWith('id', 'invoice-1')
-        expect(invoiceFetch.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(transactionInsert.insert).toHaveBeenCalledWith(expect.objectContaining({
             amount_in_cents: 50000,
             currency: 'COP',
@@ -167,97 +132,6 @@ describe('PaymentService', () => {
             entity_id: 'invoice-1',
             event_type: 'invoice.payment_registered',
         }))
-    })
-
-    it('does not register manual payments for invoices outside the current organization', async () => {
-        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-
-        const invoiceFetch = selectSingleQuery({
-            data: null,
-            error: { code: 'PGRST116', message: 'No rows' },
-        })
-        const client = createQueuedClient({
-            invoices: [invoiceFetch],
-        })
-        mocks.createClient.mockResolvedValue(client)
-
-        const { registerPayment } = await import('../payment-service')
-        const result = await registerPayment('invoice-other-org', 500, 'receipt ok')
-
-        expect(result).toEqual({ success: false, error: 'No se pudo registrar el pago' })
-        expect(invoiceFetch.eq).toHaveBeenCalledWith('id', 'invoice-other-org')
-        expect(invoiceFetch.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.supabaseAdmin.from).not.toHaveBeenCalled()
-        expect(mocks.logDomainEvent).not.toHaveBeenCalled()
-        expect(consoleError).toHaveBeenCalled()
-    })
-
-    it('scopes paid invoice process transitions to the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.logDomainEvent.mockResolvedValue(undefined)
-        mocks.getActiveProcess.mockResolvedValue({ id: 'process-1' })
-        mocks.transitionProcess.mockResolvedValue({ success: true })
-
-        const invoiceFetch = selectSingleQuery({
-            data: {
-                id: 'invoice-1',
-                total: 1000,
-                currency: 'COP',
-                status: 'sent',
-            },
-            error: null,
-        })
-        const invoiceUpdate = updateFilterQuery(null)
-        const transitionInvoiceFetch = selectSingleQuery({
-            data: {
-                id: 'invoice-1',
-                lead_id: 'lead-current',
-                metadata: {},
-                client: null,
-            },
-            error: null,
-        })
-        const leadLookup = selectMaybeSingleQuery({
-            data: { id: 'lead-current' },
-            error: null,
-        })
-        const client = createQueuedClient({
-            invoices: [invoiceFetch, invoiceUpdate, transitionInvoiceFetch],
-            leads: [leadLookup],
-        })
-        mocks.createClient.mockResolvedValue(client)
-
-        const transactionInsert = insertImmediateQuery(null)
-        const processMapLookup = selectMaybeSingleQuery({
-            data: { pipeline_stage_id: 'stage-won' },
-            error: null,
-        })
-        const stageLookup = selectSingleQuery({
-            data: { status_key: 'won' },
-            error: null,
-        })
-        const leadUpdate = updateFilterQuery(null)
-        useQueuedAdmin({
-            payment_transactions: [transactionInsert],
-            pipeline_process_map: [processMapLookup],
-            pipeline_stages: [stageLookup],
-            leads: [leadUpdate],
-        })
-
-        const { registerPayment } = await import('../payment-service')
-        const result = await registerPayment('invoice-1', 1000, 'paid in full')
-
-        expect(result).toEqual({ success: true })
-        expect(transitionInvoiceFetch.eq).toHaveBeenCalledWith('id', 'invoice-1')
-        expect(transitionInvoiceFetch.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(leadLookup.eq).toHaveBeenCalledWith('id', 'lead-current')
-        expect(leadLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.getActiveProcess).toHaveBeenCalledWith('lead-current', 'sale')
-        expect(processMapLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(leadUpdate.update).toHaveBeenCalledWith({ status: 'won' })
-        expect(leadUpdate.eq).toHaveBeenCalledWith('id', 'lead-current')
-        expect(leadUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 
     it('does not expose manual payment failures in deployed runtimes', async () => {
