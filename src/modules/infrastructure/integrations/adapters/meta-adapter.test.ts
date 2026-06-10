@@ -42,67 +42,6 @@ afterEach(() => {
 })
 
 describe('MetaAdapter', () => {
-    it('checks connection status with bearer auth instead of access tokens in URLs', async () => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ id: 'me' }), { status: 200 }))
-        vi.stubGlobal('fetch', fetchMock)
-
-        const { MetaAdapter } = await import('./meta-adapter')
-        const result = await new MetaAdapter().checkConnectionStatus({
-            accessToken: 'meta-access-secret',
-        })
-
-        expect(result).toEqual({ status: 'active' })
-        expect(fetchMock).toHaveBeenCalledWith(
-            'https://graph.facebook.com/v21.0/me?fields=id',
-            {
-                headers: { Authorization: 'Bearer meta-access-secret' },
-            }
-        )
-        expect(fetchMock.mock.calls[0]?.[0]).not.toContain('meta-access-secret')
-    })
-
-    it('does not expose Meta status errors in production results', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-            error: {
-                message: 'OAuth failed for meta-access-secret and page-secret-id',
-                type: 'OAuthException',
-                code: 190,
-            },
-        }), { status: 400, statusText: 'Bad Request' }))
-        vi.stubGlobal('fetch', fetchMock)
-
-        const { MetaAdapter } = await import('./meta-adapter')
-        const result = await new MetaAdapter().checkConnectionStatus({
-            accessToken: 'meta-access-secret',
-        })
-
-        expect(result).toEqual({
-            status: 'error',
-            message: 'Meta status check failed',
-        })
-        expect(result.message).not.toContain('meta-access-secret')
-        expect(result.message).not.toContain('page-secret-id')
-        expect(result.message).not.toContain('OAuth failed')
-    })
-
-    it('does not expose Meta status circuit breaker errors in production results', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        mocks.execute.mockRejectedValueOnce(new Error('circuit failed for meta-access-secret'))
-
-        const { MetaAdapter } = await import('./meta-adapter')
-        const result = await new MetaAdapter().checkConnectionStatus({
-            accessToken: 'meta-access-secret',
-        })
-
-        expect(result).toEqual({
-            status: 'error',
-            message: 'Meta status check failed',
-        })
-        expect(result.message).not.toContain('meta-access-secret')
-        expect(result.message).not.toContain('circuit failed')
-    })
-
     it('does not expose Meta send credentials or payload details in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)

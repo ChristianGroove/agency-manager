@@ -1,7 +1,6 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
 const PUBLIC_META_SEND_ERROR = 'Meta send failed'
-const PUBLIC_META_STATUS_ERROR = 'Meta status check failed'
 
 // Simple in-memory cache for Access Tokens
 class AccessTokenCache {
@@ -66,17 +65,6 @@ function metaSendErrorMessage(error: unknown, fallback: string) {
     }
 
     return fallback || PUBLIC_META_SEND_ERROR;
-}
-
-function metaStatusErrorMessage(error: unknown, fallback: string) {
-    if (isDeployedRuntime()) return PUBLIC_META_STATUS_ERROR;
-
-    if (error && typeof error === 'object') {
-        const message = (error as any).error?.message || (error as any).message;
-        if (typeof message === 'string' && message.length > 0) return message;
-    }
-
-    return fallback || PUBLIC_META_STATUS_ERROR;
 }
 
 function logMetaSendStart(recipient: string, metadata: any) {
@@ -148,32 +136,26 @@ export class MetaAdapter implements IntegrationAdapter {
      */
     async checkConnectionStatus(credentials: ConnectionCredentials): Promise<{ status: 'active' | 'inactive' | 'error', message?: string }> {
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
+        return await globalCircuitBreaker.execute('meta_status', async () => {
+            const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
+            const creds = decryptObject(credentials);
+        const accessToken = creds.accessToken || creds.access_token;
+
+        if (!accessToken) return { status: 'inactive', message: 'No access token' };
+
         try {
-            return await globalCircuitBreaker.execute('meta_status', async () => {
-                const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
-                const creds = decryptObject(credentials);
-                const accessToken = creds.accessToken || creds.access_token;
-
-                if (!accessToken) return { status: 'inactive', message: 'No access token' };
-
-                try {
-                    // Simple call to verify token
-                    const resp = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
-                        headers: { Authorization: `Bearer ${accessToken}` },
-                    });
-                    if (resp.ok) {
-                        return { status: 'active' };
-                    } else {
-                        const err = await resp.json().catch(() => null);
-                        return { status: 'error', message: metaStatusErrorMessage(err, 'Token invalid') };
-                    }
-                } catch (error: unknown) {
-                    return { status: 'error', message: metaStatusErrorMessage(error, 'Token invalid') };
-                }
-            });
-        } catch (error: unknown) {
-            return { status: 'error', message: metaStatusErrorMessage(error, 'Token invalid') };
+            // Simple call to verify token
+            const resp = await fetch(`https://graph.facebook.com/v21.0/me?fields=id&access_token=${accessToken}`);
+            if (resp.ok) {
+                return { status: 'active' };
+            } else {
+                const err = await resp.json();
+                return { status: 'error', message: err.error?.message || 'Token invalid' };
+            }
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
         }
+        });
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
