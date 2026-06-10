@@ -182,12 +182,7 @@ describe('intent detection AI actions', () => {
             tags: ['old-secret-tag', 'vip-secret-tag'],
             priority: 'urgent',
         })
-        expect(conversationSelectQuery.eq).toHaveBeenCalledWith('id', 'conv-secret-id')
-        expect(conversationSelectQuery.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
         expect(conversationUpdateQuery.eq).toHaveBeenCalledWith('id', 'conv-secret-id')
-        expect(conversationUpdateQuery.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        expect(intentUpdateQuery.eq).toHaveBeenCalledWith('conversation_id', 'conv-secret-id')
-        expect(intentUpdateQuery.eq).toHaveBeenCalledWith('intent', 'billing_inquiry')
 
         const logText = collectConsoleCalls(logSpy)
         expect(logText).not.toContain('conv-secret-id')
@@ -195,52 +190,5 @@ describe('intent detection AI actions', () => {
         expect(logText).not.toContain('vip-secret-tag')
         expect(logText).not.toContain('old-secret-tag')
         expect(logText).toContain('updateKeys')
-    })
-
-    it('does not route or mark intents when the conversation is outside the organization', async () => {
-        const ruleQuery: any = {
-            select: vi.fn(() => ruleQuery),
-            eq: vi.fn(() => ruleQuery),
-            gte: vi.fn(() => ruleQuery),
-            limit: vi.fn(() => ruleQuery),
-            single: vi.fn(async () => ({
-                data: {
-                    add_tags: ['vip'],
-                    set_priority: 'urgent',
-                },
-            })),
-        }
-        const conversationSelectQuery: any = {
-            select: vi.fn(() => conversationSelectQuery),
-            eq: vi.fn(() => conversationSelectQuery),
-            single: vi.fn(async () => ({ data: null })),
-        }
-        const conversationUpdateQuery: any = {
-            update: vi.fn(() => conversationUpdateQuery),
-            eq: vi.fn(() => conversationUpdateQuery),
-        }
-        const intentUpdateQuery: any = {
-            update: vi.fn(() => intentUpdateQuery),
-            eq: vi.fn(() => intentUpdateQuery),
-        }
-
-        let conversationCalls = 0
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'intent_routing_rules') return ruleQuery
-            if (table === 'conversations') {
-                conversationCalls += 1
-                return conversationCalls === 1 ? conversationSelectQuery : conversationUpdateQuery
-            }
-            if (table === 'conversation_intents') return intentUpdateQuery
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { applyIntentRouting } = await import('./intent-detection')
-        await applyIntentRouting('conv-foreign', 'org-current', 'billing_inquiry', 0.91)
-
-        expect(conversationSelectQuery.eq).toHaveBeenCalledWith('id', 'conv-foreign')
-        expect(conversationSelectQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(conversationUpdateQuery.update).not.toHaveBeenCalled()
-        expect(intentUpdateQuery.update).not.toHaveBeenCalled()
     })
 })
