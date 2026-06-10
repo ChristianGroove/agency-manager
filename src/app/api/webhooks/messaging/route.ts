@@ -4,6 +4,17 @@ import { ChannelType } from '@/types/messaging'
 import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
 import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
 
+function logMessagingWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
 // --- Loopback Strategy (Keep for loopback tests) ---
 class LoopbackStrategy implements MessagingProvider {
     name = 'loopback'
@@ -21,7 +32,7 @@ async function getConfiguredManager() {
         webhookManagerModule = await import('@/modules/features/messaging/webhook-handler')
         console.log('[getConfiguredManager] Import successful')
     } catch (err: any) {
-        console.error('[getConfiguredManager] Import FAILED:', err)
+        logMessagingWebhookError('[getConfiguredManager] Import FAILED:', err)
         throw new Error(`Failed to import webhook-handler: ${err.message}`)
     }
 
@@ -53,7 +64,7 @@ async function getConfiguredManager() {
         })
         webhookManager.registerProvider('evolution', evolutionProvider)
     } catch (err: any) {
-        console.error('[getConfiguredManager] Registration FAILED:', err)
+        logMessagingWebhookError('[getConfiguredManager] Registration FAILED:', err)
         throw new Error(`Failed to register providers: ${err.message}`)
     }
 
@@ -81,8 +92,8 @@ export async function GET(req: NextRequest) {
 
         return new NextResponse('Validation failed', { status: 403 })
     } catch (error: any) {
-        console.error('[Webhook GET] Error:', error)
-        return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 })
+        logMessagingWebhookError('[Webhook GET] Error:', error)
+        return new NextResponse('Internal Server Error', { status: 500 })
     }
 }
 
@@ -119,8 +130,7 @@ export async function POST(req: NextRequest) {
         console.log('==========================================\n')
         return NextResponse.json({ status: 'ok' })
     } catch (error: any) {
-        console.error('[Webhook POST] ❌ ERROR:', error)
-        console.error('[Webhook POST] Stack:', error.stack)
-        return NextResponse.json({ error: `Internal Server Error: ${error.message}` }, { status: 500 })
+        logMessagingWebhookError('[Webhook POST] Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }
