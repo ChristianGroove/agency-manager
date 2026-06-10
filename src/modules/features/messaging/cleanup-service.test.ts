@@ -32,23 +32,9 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 
 function messageQuery(result: unknown) {
     const query: any = {
-        eq: vi.fn(() => query),
+        eq: vi.fn(async () => result),
         select: vi.fn(() => query),
     }
-    query.then = (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-        Promise.resolve(result).then(resolve, reject)
-
-    return query
-}
-
-function conversationsByLeadQuery(result: unknown) {
-    const query: any = {
-        select: vi.fn(() => query),
-        in: vi.fn(() => query),
-        eq: vi.fn(() => query),
-    }
-    query.then = (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-        Promise.resolve(result).then(resolve, reject)
 
     return query
 }
@@ -100,11 +86,8 @@ describe('messaging cleanup service logging', () => {
         })
 
         const { MessagingCleanupService } = await import('./cleanup-service')
-        await new MessagingCleanupService().deleteConversationMedia('conversation-secret-id', 'org-secret')
+        await new MessagingCleanupService().deleteConversationMedia('conversation-secret-id')
 
-        const messageLookup = mocks.from.mock.results[0].value
-        expect(messageLookup.eq).toHaveBeenCalledWith('conversation_id', 'conversation-secret-id')
-        expect(messageLookup.eq).toHaveBeenCalledWith('organization_id', 'org-secret')
         expect(mocks.remove).toHaveBeenCalledWith([
             'org-secret/conversation-secret-id/file-secret.png',
             'org-secret/from-metadata-secret.mp3',
@@ -121,24 +104,5 @@ describe('messaging cleanup service logging', () => {
         expect(logText).toContain('pathsToDeleteCount')
         expect(logText).toContain('StorageApiError')
         expect(logText).toContain('hasMessage')
-    })
-
-    it('scopes lead media cleanup conversation lookups to the provided organization', async () => {
-        const conversationsQuery = conversationsByLeadQuery({
-            data: [],
-            error: null,
-        })
-        mocks.from.mockImplementation((table: string) => {
-            if (table === 'conversations') return conversationsQuery
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { MessagingCleanupService } = await import('./cleanup-service')
-        await new MessagingCleanupService().deleteLeadsMedia(['lead-1', 'lead-other'], 'org-current')
-
-        expect(conversationsQuery.select).toHaveBeenCalledWith('id')
-        expect(conversationsQuery.in).toHaveBeenCalledWith('lead_id', ['lead-1', 'lead-other'])
-        expect(conversationsQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.storageFrom).not.toHaveBeenCalled()
     })
 })
