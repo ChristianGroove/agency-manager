@@ -4,6 +4,8 @@ import { ChannelType } from '@/types/messaging'
 import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
 import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
 
+const PUBLIC_MESSAGING_WEBHOOK_FAILURE = 'Webhook processing failed'
+
 function logMessagingWebhookError(label: string, error: unknown) {
     if (!isProductionRuntime()) {
         console.error(label, error)
@@ -13,6 +15,37 @@ function logMessagingWebhookError(label: string, error: unknown) {
     console.error(label, error instanceof Error
         ? { name: error.name }
         : { type: typeof error })
+}
+
+function logMessagingWebhookFailure(label: string, message: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, message)
+        return
+    }
+
+    console.error(label, { hasMessage: typeof message === 'string' && message.length > 0 })
+}
+
+function logMessagingWebhookResult(result: { success?: boolean; message?: unknown }) {
+    if (!isProductionRuntime()) {
+        console.log('[Webhook POST] Result:', result)
+        return
+    }
+
+    console.log('[Webhook POST] Result:', {
+        success: result.success === true,
+        hasMessage: typeof result.message === 'string' && result.message.length > 0,
+    })
+}
+
+function messagingWebhookFailureMessage(message: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_MESSAGING_WEBHOOK_FAILURE
+    }
+
+    return typeof message === 'string' && message.length > 0
+        ? message
+        : PUBLIC_MESSAGING_WEBHOOK_FAILURE
 }
 
 // --- Loopback Strategy (Keep for loopback tests) ---
@@ -119,11 +152,11 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook POST] Manager loaded, processing...')
 
         const result = await manager.handleParsed(channel, body)
-        console.log('[Webhook POST] Result:', result)
+        logMessagingWebhookResult(result)
 
         if (!result.success) {
-            console.error('[Webhook POST] Failed:', result.message)
-            return NextResponse.json({ error: result.message }, { status: 401 })
+            logMessagingWebhookFailure('[Webhook POST] Failed:', result.message)
+            return NextResponse.json({ error: messagingWebhookFailureMessage(result.message) }, { status: 401 })
         }
 
         console.log('[Webhook POST] ✅ Success')

@@ -7,6 +7,49 @@ import { MessagingProvider, IncomingMessage, IncomingCall } from "./providers/ty
 import { inboxService } from "./inbox-service"
 import { callingSignalingHandler } from "@/modules/infrastructure/meta/services/calling/calling-signaling-handler"
 
+const PUBLIC_WEBHOOK_MANAGER_ERROR = 'Internal processing error'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeWebhookManagerError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    return { type: typeof error }
+}
+
+function logWebhookManagerError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeWebhookManagerError(error))
+}
+
+function webhookManagerErrorMessage(error: unknown) {
+    if (isDeployedRuntime()) {
+        return PUBLIC_WEBHOOK_MANAGER_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    if (typeof error === 'string' && error) {
+        return error
+    }
+
+    return PUBLIC_WEBHOOK_MANAGER_ERROR
+}
+
 export class WebhookManager {
     private providers: Record<string, MessagingProvider> = {}
     private static instance: WebhookManager;
@@ -71,7 +114,7 @@ export class WebhookManager {
 
             return { success: true }
         } catch (error) {
-            console.error(`[WebhookManager] Error handling ${channel} webhook:`, error)
+            logWebhookManagerError(`[WebhookManager] Error handling ${channel} webhook:`, error)
             return { success: false, message: "Internal processing error" }
         }
     }
@@ -103,10 +146,15 @@ export class WebhookManager {
             }
 
             return { success: true }
-        } catch (error: any) {
-            const errorMsg = error?.message || String(error)
-            console.error(`[WebhookManager] Error in handleParsed:`, errorMsg, error?.stack)
-            return { success: false, message: `Internal processing error: ${errorMsg}` }
+        } catch (error: unknown) {
+            const errorMsg = webhookManagerErrorMessage(error)
+            logWebhookManagerError(`[WebhookManager] Error in handleParsed:`, error)
+            return {
+                success: false,
+                message: isDeployedRuntime()
+                    ? PUBLIC_WEBHOOK_MANAGER_ERROR
+                    : `Internal processing error: ${errorMsg}`
+            }
         }
     }
 
