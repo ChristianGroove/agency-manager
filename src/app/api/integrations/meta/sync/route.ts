@@ -1,25 +1,31 @@
 
 import { NextResponse } from "next/server"
-import { MetaCacheManager } from "@/modules/infrastructure/meta/services/cache-manager"
-import { createClient } from "@/modules/core/database/supabase-server"
+import { isProductionRuntime, requirePlatformAdminOrInternalSecret } from "@/app/api/_guards/request-guards"
 
-export async function POST(req: Request) {
-    // 1. Verify Admin Auth
-    const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
+function summarizeSyncRouteError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error }
+}
 
-    if (error || !user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+function logSyncRouteError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
     }
 
-    // In a real app, we would verify the user is an admin.
-    // For now, any authenticated user can trigger a sync (if they have the URL).
-    // The MetaCacheManager itself only processes active configs.
+    console.error(label, summarizeSyncRouteError(error))
+}
+
+export async function POST(req: Request) {
+    const unauthorized = await requirePlatformAdminOrInternalSecret(req)
+    if (unauthorized) return unauthorized
 
     try {
         const body = await req.json().catch(() => ({}))
         const { clientId } = body
 
+        const { MetaCacheManager } = await import("@/modules/infrastructure/meta/services/cache-manager")
         const manager = new MetaCacheManager()
 
         // If clientId is provided, sync specific client (Manual Test)
@@ -35,7 +41,7 @@ export async function POST(req: Request) {
         // Even if some syncs failed, we return 200 but include errors in body
         return NextResponse.json(result)
     } catch (error) {
-        console.error("Sync error:", error)
+        logSyncRouteError("Sync error:", error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
