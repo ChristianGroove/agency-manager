@@ -5,8 +5,21 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/c
 import { revalidatePath } from "next/cache"
 import { MessagingPersistence } from "./services/persistence"
 
+const PUBLIC_SEND_TEMPLATE_ERROR = 'Template message send failed'
+const PUBLIC_CONVERSATION_NOT_FOUND_ERROR = 'Conversation not found'
+
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function publicTemplateMessageError(error: unknown, fallback = PUBLIC_SEND_TEMPLATE_ERROR) {
+    if (isDeployedRuntime()) return fallback
+    if (typeof error === 'string' && error) return error
+    if (error instanceof Error && error.message) return error.message
+    if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+        return (error as { message: string }).message
+    }
+    return fallback
 }
 
 function sanitizeTemplateLogDetails(details: Record<string, unknown> = {}) {
@@ -100,7 +113,10 @@ export async function sendTemplateMessage(input: {
         .single()
 
     if (convError || !conversation) {
-        throw new Error(`Conversation not found: ${input.conversationId}`)
+        throw new Error(publicTemplateMessageError(
+            convError || `Conversation not found: ${input.conversationId}`,
+            PUBLIC_CONVERSATION_NOT_FOUND_ERROR
+        ))
     }
 
     const recipientPhone = conversation.leads?.phone || (conversation as any).phone
@@ -228,7 +244,7 @@ export async function sendTemplateMessage(input: {
             templateName: input.templateName,
         })
         const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
-        throw new Error(errorMsg)
+        throw new Error(publicTemplateMessageError(errorMsg))
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`

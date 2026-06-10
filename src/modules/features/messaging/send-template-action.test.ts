@@ -62,7 +62,20 @@ function singleQuery(result: unknown) {
     return query
 }
 
-function createSupabaseMock() {
+function createSupabaseMock(options: { conversationResult?: unknown } = {}) {
+    const conversationResult = options.conversationResult || {
+        data: {
+            id: 'conversation-secret-id',
+            organization_id: 'org-secret-id',
+            connection_id: 'connection-secret-id',
+            leads: {
+                phone: '+571234567890',
+                name: 'Client Secret',
+            },
+        },
+        error: null,
+    }
+
     return {
         auth: {
             getUser: vi.fn(async () => ({
@@ -72,18 +85,7 @@ function createSupabaseMock() {
         },
         from: vi.fn((table: string) => {
             if (table === 'conversations') {
-                return singleQuery({
-                    data: {
-                        id: 'conversation-secret-id',
-                        organization_id: 'org-secret-id',
-                        connection_id: 'connection-secret-id',
-                        leads: {
-                            phone: '+571234567890',
-                            name: 'Client Secret',
-                        },
-                    },
-                    error: null,
-                })
+                return singleQuery(conversationResult)
             }
 
             if (table === 'integration_connections') {
@@ -121,6 +123,33 @@ afterEach(() => {
 })
 
 describe('sendTemplateMessage', () => {
+    it('does not expose conversation lookup failures in production errors', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+        mocks.createClient.mockResolvedValue(createSupabaseMock({
+            conversationResult: {
+                data: null,
+                error: {
+                    message: 'conversation-secret-id denied for org-secret-id',
+                    code: '42501',
+                },
+            },
+        }))
+
+        const { sendTemplateMessage } = await import('./send-template-action')
+        await expect(sendTemplateMessage({
+            conversationId: 'conversation-secret-id',
+            templateName: 'payment_reminder',
+            templateLanguage: 'es',
+            bodyParameters: ['client-secret-name'],
+        })).rejects.toThrow(/^Conversation not found$/)
+
+        expect(fetchMock).not.toHaveBeenCalled()
+        expect(mocks.assertUsageAllowed).not.toHaveBeenCalled()
+        expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
+    })
+
     it('does not expose HSM recipients, parameters, or message ids in production success logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
@@ -198,7 +227,7 @@ describe('sendTemplateMessage', () => {
             templateName: 'payment_reminder',
             templateLanguage: 'es',
             bodyParameters: ['client-secret-name'],
-        })).rejects.toThrow('recipient +571234567890 template parameter client-secret-name rejected')
+        })).rejects.toThrow(/^Template message send failed$/)
 
         const logText = collectConsoleCalls(logSpy, errorSpy)
         expect(logText).not.toContain('+571234567890')
