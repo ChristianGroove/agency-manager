@@ -185,7 +185,7 @@ export class InboxService {
             
             // Workflow Automation Triggers
             // Meta 2026: Triggers generally fire AFTER welcome/offline if applicable
-            await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId, match.organizationId)
+            await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId)
 
             // 5. REACTIVE LEAD LIFECYCLE (Innovative sync)
             if (lead?.id) {
@@ -203,7 +203,7 @@ export class InboxService {
         return { success: true, conversationId: conversation.id }
     }
 
-    private async triggerAutomation(msg: IncomingMessage, conversationId: string, leadId: string, connectionId?: string, organizationId?: string) {
+    private async triggerAutomation(msg: IncomingMessage, conversationId: string, leadId: string, connectionId?: string) {
         logInboxInfo('[InboxService] triggerAutomation called', { conversationId, leadId, connectionId })
         try {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
@@ -215,8 +215,7 @@ export class InboxService {
                 msg.from,
                 leadId,
                 connectionId,
-                msg.id || msg.externalId || undefined,
-                organizationId
+                msg.id || msg.externalId || undefined
             ).catch(err => logInboxError('[InboxService] Automation Trigger Error:', err, { conversationId, leadId, connectionId }))
             logInboxInfo('[InboxService] evaluateInput completed')
         } catch (e) {
@@ -313,11 +312,7 @@ export class InboxService {
             updates.metadata = metadataChange
 
             if (Object.keys(updates).length > 0) {
-                await supabase
-                    .from('conversations')
-                    .update(updates)
-                    .eq('id', conversation.id)
-                    .eq('organization_id', organizationId)
+                await supabase.from('conversations').update(updates).eq('id', conversation.id)
             }
         } else {
             // Create New Conversation
@@ -386,7 +381,6 @@ export class InboxService {
                     .from('conversations')
                     .select('last_auto_reply_at')
                     .eq('id', conversationId)
-                    .eq('organization_id', orgId)
                     .single()
 
                 if (conv?.last_auto_reply_at) {
@@ -413,7 +407,6 @@ export class InboxService {
                             .from('conversations')
                             .update({ last_auto_reply_at: new Date().toISOString() })
                             .eq('id', conversationId)
-                            .eq('organization_id', orgId)
                     }
                     logInboxInfo('[InboxService] Auto-reply sent successfully', {
                         conversationId,
