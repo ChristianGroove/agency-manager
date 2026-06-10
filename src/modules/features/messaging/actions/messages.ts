@@ -9,6 +9,7 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
 const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"
+const PUBLIC_MESSAGE_SIMULATION_ERROR = "Failed to handle message"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -18,6 +19,7 @@ function sanitizeMessageActionLogDetails(details: Record<string, unknown> = {}) 
     const sensitiveKeys = new Set([
         'connectionId',
         'conversationId',
+        'from',
         'messageId',
         'organizationId',
         'recipientPhone',
@@ -315,6 +317,7 @@ export async function simulateInboundMessage(from: string, text: string = "Mensa
         })
         return { success: !!result, error: result ? undefined : "Failed to handle message" }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMessageActionError('[simulateInboundMessage] Failed:', error, { from })
+        return { success: false, error: publicMessageActionError(error, PUBLIC_MESSAGE_SIMULATION_ERROR) }
     }
 }

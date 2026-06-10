@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     MetaProvider: vi.fn(function () {
         return { sendMessage: vi.fn() }
     }),
+    handleIncomingMessage: vi.fn(),
     revalidatePath: vi.fn(),
     saveOutboundMessage: vi.fn(),
     supabaseFrom: vi.fn(),
@@ -31,6 +32,12 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 
 vi.mock('../providers/meta-provider', () => ({
     MetaProvider: mocks.MetaProvider,
+}))
+
+vi.mock('../inbox-service', () => ({
+    inboxService: {
+        handleIncomingMessage: mocks.handleIncomingMessage,
+    },
 }))
 
 vi.mock('../services/persistence', () => ({
@@ -90,6 +97,7 @@ afterEach(() => {
     vi.resetModules()
     mocks.after.mockReset()
     mocks.createClient.mockReset()
+    mocks.handleIncomingMessage.mockReset()
     mocks.MetaProvider.mockReset()
     mocks.MetaProvider.mockImplementation(function () {
         return { sendMessage: vi.fn() }
@@ -226,5 +234,22 @@ describe('message actions logging', () => {
         expect(logText).toContain('conversationIdPresent')
         expect(logText).toContain('messageIdPresent')
         expect(logText).toContain('senderPresent')
+    })
+
+    it('does not expose simulated inbound failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.handleIncomingMessage.mockRejectedValue(new Error('phone-secret-value text-secret-value provider denied'))
+
+        const { simulateInboundMessage } = await import('./messages')
+        const result = await simulateInboundMessage('phone-secret-value', 'text-secret-value')
+
+        expect(result).toEqual({ success: false, error: 'Failed to handle message' })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('phone-secret-value')
+        expect(logText).not.toContain('text-secret-value')
+        expect(logText).not.toContain('provider denied')
+        expect(logText).toContain('fromPresent')
+        expect(logText).toContain('Error')
     })
 })
