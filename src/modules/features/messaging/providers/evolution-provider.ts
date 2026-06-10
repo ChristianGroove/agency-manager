@@ -1,4 +1,10 @@
+import { appendFileSync } from "fs"
+import { join } from "path"
+import { timingSafeEqual } from "crypto"
 import { MessagingProvider, SendMessageOptions, WebhookValidationResult, IncomingMessage } from "./types"
+
+const PUBLIC_EVOLUTION_ERROR = 'Evolution API request failed'
+const EVOLUTION_SECRET_HEADERS = ['x-evolution-webhook-secret', 'x-pixy-webhook-secret', 'x-webhook-secret']
 
 interface EvolutionConfig {
     baseUrl: string;
@@ -12,6 +18,51 @@ export class EvolutionProvider implements MessagingProvider {
 
     constructor(config: EvolutionConfig) {
         this.config = config
+    }
+
+    private isDeployedRuntime(): boolean {
+        return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+    }
+
+    private safeEqual(a: string, b: string) {
+        const aBuffer = Buffer.from(a)
+        const bBuffer = Buffer.from(b)
+
+        if (aBuffer.length !== bBuffer.length) {
+            return false
+        }
+
+        return timingSafeEqual(aBuffer, bBuffer)
+    }
+
+    private hasHeaderSecret(request: Request, secret: string, headerNames: string[]) {
+        return headerNames.some(header => {
+            const value = request.headers.get(header)
+            return !!value && this.safeEqual(value, secret)
+        })
+    }
+
+    private logProviderError(label: string, error: unknown) {
+        if (!this.isDeployedRuntime()) {
+            console.error(label, error)
+            return
+        }
+
+        console.error(label, error instanceof Error
+            ? { name: error.name }
+            : { type: typeof error })
+    }
+
+    private publicError(error: unknown) {
+        if (this.isDeployedRuntime()) {
+            return PUBLIC_EVOLUTION_ERROR
+        }
+
+        return error instanceof Error ? error.message : String(error)
+    }
+
+    private shouldWriteDebugLog() {
+        return !this.isDeployedRuntime() && process.env.EVOLUTION_DEBUG_LOGS === 'true'
     }
 
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
@@ -108,11 +159,11 @@ export class EvolutionProvider implements MessagingProvider {
         const url = `${baseUrl.replace(/\/$/, '')}/${endpoint}/${instanceName}`
 
         try {
-            // Log to file for debugging
-            const fs = require('fs')
-            const logPath = require('path').join(process.cwd(), 'evolution_api_debug.log')
-            const debugLog = `\n[${new Date().toISOString()}] EVOLUTION SEND REQUEST\nURL: ${url}\nEndpoint: ${endpoint}\nBody: ${JSON.stringify(body, null, 2)}\n`
-            fs.appendFileSync(logPath, debugLog)
+            if (this.shouldWriteDebugLog()) {
+                const logPath = join(process.cwd(), 'evolution_api_debug.log')
+                const debugLog = `\n[${new Date().toISOString()}] EVOLUTION SEND REQUEST\nURL: ${url}\nEndpoint: ${endpoint}\nBody: ${JSON.stringify(body, null, 2)}\n`
+                appendFileSync(logPath, debugLog)
+            }
 
             const response = await fetch(url, {
                 method: "POST",
@@ -136,22 +187,40 @@ export class EvolutionProvider implements MessagingProvider {
                 const messageId = data.key?.id || data.messageId || `evo_${Date.now()}`
                 return { success: true, messageId }
             } else {
-                console.error(`[EvolutionProvider] API ERROR (${response.status}):`, data)
-                return { success: false, error: JSON.stringify(data) }
+                this.logProviderError(`[EvolutionProvider] API ERROR (${response.status}):`, data)
+                return {
+                    success: false,
+                    error: this.isDeployedRuntime() ? PUBLIC_EVOLUTION_ERROR : JSON.stringify(data)
+                }
             }
         } catch (error: any) {
-            console.error(`[EvolutionProvider] Connection Error:`, error)
-            return { success: false, error: error.message }
+            this.logProviderError(`[EvolutionProvider] Connection Error:`, error)
+            return { success: false, error: this.publicError(error) }
         }
     }
 
     async validateWebhook(request: Request): Promise<WebhookValidationResult> {
-        // Evolution API usually allows disabling global webhook signature or uses a simple token.
-        // For minimal setup, we often rely on the URL token (e.g. ?token=XYZ).
-        // Here we assume if it hit our private endpoint, it's valid, or we can check header "apikey".
+        const sharedSecret = process.env.EVOLUTION_WEBHOOK_SECRET || ''
+        if (sharedSecret) {
+            return this.hasHeaderSecret(request, sharedSecret, EVOLUTION_SECRET_HEADERS)
+                ? { isValid: true }
+                : { isValid: false, reason: 'Unauthorized' }
+        }
 
-        // const authHeader = request.headers.get("apikey")
-        // if (authHeader === this.config.apiKey) return { isValid: true }
+        if (this.config.apiKey && this.config.apiKey !== 'placeholder') {
+            const apiKeyHeader = request.headers.get('apikey') || request.headers.get('x-api-key')
+            if (apiKeyHeader && this.safeEqual(apiKeyHeader, this.config.apiKey)) {
+                return { isValid: true }
+            }
+
+            if (this.isDeployedRuntime()) {
+                return { isValid: false, reason: 'Unauthorized' }
+            }
+        }
+
+        if (this.isDeployedRuntime()) {
+            return { isValid: false, reason: 'Evolution webhook secret is not configured' }
+        }
 
         return { isValid: true }
     }
