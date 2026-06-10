@@ -1,15 +1,42 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import { isProductionRuntime, requireCronSecret } from '@/app/api/_guards/request-guards';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-    // 1. Security Check
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return new NextResponse('Unauthorized', { status: 401 });
+const PUBLIC_HOSTING_CRON_ERROR = 'Hosting renewal cron failed';
+
+function logHostingCronError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
     }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function hostingCronErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_HOSTING_CRON_ERROR;
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message;
+    }
+
+    return PUBLIC_HOSTING_CRON_ERROR;
+}
+
+export async function GET(request: Request) {
+    const unauthorized = requireCronSecret(request);
+    if (unauthorized) return unauthorized;
 
     try {
         const results = {
@@ -82,8 +109,8 @@ export async function GET(request: Request) {
                     }
 
                 } catch (err: any) {
-                    console.error(`Error processing hosting account ${account.id}:`, err);
-                    results.errors.push(`Account ${account.id}: ${err.message}`);
+                    logHostingCronError(`Error processing hosting account ${account.id}:`, err);
+                    results.errors.push(`Account ${account.id}: ${hostingCronErrorMessage(err)}`);
                 }
             }
         }
@@ -91,8 +118,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: true, results });
 
     } catch (error: any) {
-        console.error('Hosting Cron Job Failed:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        logHostingCronError('Hosting Cron Job Failed:', error);
+        return NextResponse.json({ success: false, error: hostingCronErrorMessage(error) }, { status: 500 });
     }
 }
 
