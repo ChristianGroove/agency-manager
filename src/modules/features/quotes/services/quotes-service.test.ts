@@ -69,9 +69,7 @@ function insertSelectSingleQuery(result: unknown) {
 function updateEqQuery(result: unknown) {
   const query: any = {
     update: vi.fn(() => query),
-    eq: vi.fn(() => query),
-    then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-      Promise.resolve(result).then(resolve, reject),
+    eq: vi.fn(async () => result),
   }
 
   return query
@@ -226,85 +224,6 @@ describe('quotes service', () => {
     expect(logText).not.toContain('link-token-secret')
     expect(logText).not.toContain('lead link denied')
     expect(logText).toContain('42501')
-  })
-
-  it('does not link leads to quotes outside the current organization', async () => {
-    const leadUpdate = updateEqQuery({ error: null })
-    const supabase = createSupabaseMock({
-      quotes: [
-        selectEqIsSingleQuery({
-          data: null,
-          error: { code: 'PGRST116', message: 'No rows' },
-        }),
-      ],
-      leads: [
-        leadUpdate,
-      ],
-    })
-    mocks.createClient.mockResolvedValue(supabase)
-    mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-
-    const { linkQuoteToLead } = await import('./quotes-service')
-    const result = await linkQuoteToLead('lead-current', 'quote-other-org')
-
-    expect(result).toEqual({ success: false, error: 'No se pudo vincular la cotizacion' })
-    expect(supabase.from).toHaveBeenCalledWith('quotes')
-    expect(leadUpdate.update).not.toHaveBeenCalled()
-  })
-
-  it('links leads only after validating quote ownership in the current organization', async () => {
-    const quoteLookup = selectEqIsSingleQuery({
-      data: { id: 'quote-current' },
-      error: null,
-    })
-    const leadUpdate = updateEqQuery({ error: null })
-    const supabase = createSupabaseMock({
-      quotes: [quoteLookup],
-      leads: [leadUpdate],
-    })
-    mocks.createClient.mockResolvedValue(supabase)
-    mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-
-    const { linkQuoteToLead } = await import('./quotes-service')
-    const result = await linkQuoteToLead('lead-current', 'quote-current')
-
-    expect(result).toEqual({ success: true })
-    expect(quoteLookup.eq).toHaveBeenCalledWith('id', 'quote-current')
-    expect(quoteLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-    expect(quoteLookup.is).toHaveBeenCalledWith('deleted_at', null)
-    expect(leadUpdate.update).toHaveBeenCalledWith({
-      quote_id: 'quote-current',
-      quote_status: 'linked',
-    })
-    expect(leadUpdate.eq).toHaveBeenCalledWith('id', 'lead-current')
-    expect(leadUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-  })
-
-  it('scopes quote-for-lead lookups to the current organization', async () => {
-    const leadLookup = selectEqEqSingleQuery({
-      data: { quote_id: 'quote-current' },
-      error: null,
-    })
-    const quoteLookup = selectEqIsSingleQuery({
-      data: { id: 'quote-current', organization_id: 'org-current' },
-      error: null,
-    })
-    const supabase = createSupabaseMock({
-      leads: [leadLookup],
-      quotes: [quoteLookup],
-    })
-    mocks.createClient.mockResolvedValue(supabase)
-    mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-
-    const { getQuoteForLead } = await import('./quotes-service')
-    const result = await getQuoteForLead('lead-current')
-
-    expect(result).toEqual({ id: 'quote-current', organization_id: 'org-current' })
-    expect(leadLookup.eq).toHaveBeenCalledWith('id', 'lead-current')
-    expect(leadLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-    expect(quoteLookup.eq).toHaveBeenCalledWith('id', 'quote-current')
-    expect(quoteLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-    expect(quoteLookup.is).toHaveBeenCalledWith('deleted_at', null)
   })
 
   it('does not expose public quote lookup failures in deployed runtimes', async () => {

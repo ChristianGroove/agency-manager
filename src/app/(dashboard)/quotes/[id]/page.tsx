@@ -46,7 +46,7 @@ export default function QuoteDetailPage() {
             const { getQuote } = await import("@/modules/features/quotes/quotes-actions")
             const res = await getQuote(id)
 
-            if (res.error || !res.data) {
+            if (!res.success) {
                 console.error("Error fetching quote:", res.error)
                 return
             }
