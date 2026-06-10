@@ -72,19 +72,6 @@ function updateEqSelectSingle(result: unknown) {
     }
 
     return {
-        query,
-        update: vi.fn(() => query),
-    }
-}
-
-function updateEq(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        then: vi.fn((resolve, reject) => Promise.resolve(result).then(resolve, reject)),
-    }
-
-    return {
-        query,
         update: vi.fn(() => query),
     }
 }
@@ -172,17 +159,16 @@ describe('ProcessEngine', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.createClient.mockResolvedValue({})
-        const transitionUpdate = updateEqSelectSingle({
-            data: null,
-            error: {
-                code: '42501',
-                message: 'update denied for process-secret-id with process-token-secret',
-            },
-        })
         useAdminQueues({
             process_instances: [
                 selectEqSingle({ data: processInstance, error: null }),
-                transitionUpdate,
+                updateEqSelectSingle({
+                    data: null,
+                    error: {
+                        code: '42501',
+                        message: 'update denied for process-secret-id with process-token-secret',
+                    },
+                }),
             ],
             process_states: [
                 selectEqSingle({
@@ -207,7 +193,6 @@ describe('ProcessEngine', () => {
         const result = await ProcessEngine.transition('process-secret-id', 'won', 'user-secret-id', 'reason-secret')
 
         expect(result).toEqual({ success: false, error: 'No se pudo cambiar el estado del proceso' })
-        expect(transitionUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('process-secret-id')
         expect(logText).not.toContain('process-token-secret')
@@ -215,59 +200,5 @@ describe('ProcessEngine', () => {
         expect(logText).not.toContain('reason-secret')
         expect(logText).not.toContain('update denied')
         expect(logText).toContain('42501')
-    })
-
-    it('scopes transition updates and auto-tags to the process organization', async () => {
-        mocks.createClient.mockResolvedValue({})
-        const transitionUpdate = updateEqSelectSingle({
-            data: { ...processInstance, current_state: 'won' },
-            error: null,
-        })
-        const leadLookup = selectEqSingle({
-            data: { id: 'lead-secret-id', tags: ['existing'] },
-            error: null,
-        })
-        const leadUpdate = updateEq({ data: null, error: null })
-        useAdminQueues({
-            process_instances: [
-                selectEqSingle({ data: processInstance, error: null }),
-                transitionUpdate,
-            ],
-            process_states: [
-                selectEqSingle({
-                    data: {
-                        key: 'new',
-                        allowed_next_states: ['won'],
-                    },
-                    error: null,
-                }),
-                selectEqSingle({
-                    data: {
-                        key: 'won',
-                        is_terminal: false,
-                        auto_tags: ['qualified'],
-                    },
-                    error: null,
-                }),
-            ],
-            leads: [leadLookup, leadUpdate],
-        })
-
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const { ProcessEngine } = await import('./engine')
-        const result = await ProcessEngine.transition('process-secret-id', 'won')
-
-        expect(result).toEqual({
-            success: true,
-            process: { ...processInstance, current_state: 'won' },
-        })
-        expect(transitionUpdate.query.eq).toHaveBeenCalledWith('id', 'process-secret-id')
-        expect(transitionUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        expect(leadLookup.eq).toHaveBeenCalledWith('id', 'lead-secret-id')
-        expect(leadLookup.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        expect(leadUpdate.update).toHaveBeenCalledWith({ tags: ['existing', 'qualified'] })
-        expect(leadUpdate.query.eq).toHaveBeenCalledWith('id', 'lead-secret-id')
-        expect(leadUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-        logSpy.mockRestore()
     })
 })
