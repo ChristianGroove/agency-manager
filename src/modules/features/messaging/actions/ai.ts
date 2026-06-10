@@ -47,35 +47,6 @@ function logAiActionError(label: string, error: unknown) {
     console.error(label, summarizeAiActionError(error))
 }
 
-async function requireAiConversationAccess(conversationId: string, messageId?: string) {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { success: false, error: "Unauthorized" } as const
-
-    const supabase = await createClient()
-    const { data: conversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('id', conversationId)
-        .eq('organization_id', orgId)
-        .single()
-
-    if (!conversation) return { success: false, error: "Conversation not found" } as const
-
-    if (messageId) {
-        const { data: message } = await supabase
-            .from('messages')
-            .select('id')
-            .eq('id', messageId)
-            .eq('conversation_id', conversationId)
-            .eq('organization_id', orgId)
-            .single()
-
-        if (!message) return { success: false, error: "Message not found" } as const
-    }
-
-    return { success: true, supabase, orgId } as const
-}
-
 /**
  * TEXT REFINEMENT
  */
@@ -164,18 +135,12 @@ export async function analyzeSentiment(messageContent: string) {
 }
 
 export async function saveSentimentAnalysis(messageId: string, conversationId: string, result: any) {
-    const access = await requireAiConversationAccess(conversationId, messageId)
-    if (!access.success) return access
-
-    const { supabase, orgId } = access
+    const supabase = await createClient()
     await supabase.from('messages').update({
         sentiment: result.sentiment,
         sentiment_score: result.score,
         detected_emotions: result.emotions
-    })
-        .eq('id', messageId)
-        .eq('conversation_id', conversationId)
-        .eq('organization_id', orgId)
+    }).eq('id', messageId)
 
     if (result.needsEscalation) {
         await supabaseAdmin.from('sentiment_alerts').insert({
@@ -185,8 +150,6 @@ export async function saveSentimentAnalysis(messageId: string, conversationId: s
             severity: result.sentiment === 'urgent' ? 'critical' : 'high'
         })
     }
-
-    return { success: true }
 }
 
 /**
@@ -205,9 +168,6 @@ export async function detectIntent(messageContent: string) {
 }
 
 export async function saveIntent(conversationId: string, messageId: string, result: any) {
-    const access = await requireAiConversationAccess(conversationId, messageId)
-    if (!access.success) return access
-
     await supabaseAdmin.from('conversation_intents').insert({
         conversation_id: conversationId,
         message_id: messageId,
@@ -215,8 +175,6 @@ export async function saveIntent(conversationId: string, messageId: string, resu
         confidence: result.confidence,
         extracted_entities: result.extractedEntities
     })
-
-    return { success: true }
 }
 
 export async function applyIntentRouting(conversationId: string, organizationId: string, intent: string, confidence: number) {
@@ -225,11 +183,7 @@ export async function applyIntentRouting(conversationId: string, organizationId:
     const updates: any = {}
     if (rule.set_priority) updates.priority = rule.set_priority
     if (Object.keys(updates).length > 0) {
-        await supabaseAdmin
-            .from('conversations')
-            .update(updates)
-            .eq('id', conversationId)
-            .eq('organization_id', organizationId)
+        await supabaseAdmin.from('conversations').update(updates).eq('id', conversationId)
     }
 }
 
