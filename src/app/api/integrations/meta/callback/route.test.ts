@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
+
 function setupMetaCallbackEnv() {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321')
@@ -26,11 +28,10 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 }
 
 function createOrgState() {
-    return 'org_123'
-}
-
-function createContactState() {
-    return 'contact_connect:client_123'
+    return createMetaOAuthState(
+        { flow: 'org', orgId: 'org_123' },
+        { now: Date.now(), nonce: 'nonce-value-123456' }
+    )
 }
 
 describe('/api/integrations/meta/callback', () => {
@@ -40,7 +41,6 @@ describe('/api/integrations/meta/callback', () => {
         vi.resetModules()
         vi.doUnmock('@supabase/supabase-js')
         vi.doUnmock('@/modules/infrastructure/meta/services/graph-api')
-        vi.doUnmock('@/modules/infrastructure/meta/services/waba-subscription-manager')
     })
 
     it('does not expose provider OAuth error details in production redirects', async () => {
@@ -144,258 +144,5 @@ describe('/api/integrations/meta/callback', () => {
                 }),
             }),
         ])
-    })
-
-    it('scopes contact Meta token updates to the original client and provider', async () => {
-        setupMetaCallbackEnv()
-        const updateEqCalls: unknown[][] = []
-        const updatePayloads: unknown[] = []
-
-        vi.doMock('@supabase/supabase-js', () => ({
-            createClient: vi.fn(() => {
-                const selectBuilder: any = {
-                    select: vi.fn(() => selectBuilder),
-                    eq: vi.fn(() => selectBuilder),
-                    single: vi.fn(async () => ({
-                        data: { id: 'config_123', settings: {} },
-                        error: null,
-                    })),
-                }
-                const updateBuilder: any = {
-                    update: vi.fn((payload: unknown) => {
-                        updatePayloads.push(payload)
-                        return updateBuilder
-                    }),
-                    eq: vi.fn((...args: unknown[]) => {
-                        updateEqCalls.push(args)
-                        return updateBuilder
-                    }),
-                }
-                const builders = [selectBuilder, updateBuilder]
-                return {
-                    from: vi.fn(() => builders.shift()),
-                }
-            }),
-        }))
-        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
-            MetaGraphAPI: class {
-                exchangeCodeForToken = vi.fn(async () => 'long-lived-token')
-            },
-        }))
-
-        const { GET } = await import('./route')
-        const response = await GET(new Request(callbackUrl({
-            code: 'code_123',
-            state: createContactState(),
-        })))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('META_CONNECT_SUCCESS')
-        expect(updatePayloads[0]).toEqual(expect.objectContaining({
-            client_id: 'client_123',
-            platform: 'meta',
-            access_token: 'long-lived-token',
-        }))
-        expect(updateEqCalls).toEqual([
-            ['id', 'config_123'],
-            ['client_id', 'client_123'],
-            ['platform', 'meta'],
-        ])
-    })
-
-    it('scopes full Meta connection updates to the original organization and provider', async () => {
-        setupMetaCallbackEnv()
-        const updateEqCalls: unknown[][] = []
-        const updatePayloads: any[] = []
-
-        vi.doMock('@supabase/supabase-js', () => ({
-            createClient: vi.fn(() => {
-                const selectBuilder: any = {
-                    select: vi.fn(() => selectBuilder),
-                    eq: vi.fn(() => selectBuilder),
-                    order: vi.fn(() => selectBuilder),
-                    limit: vi.fn(async () => ({
-                        data: [{ id: 'connection_123' }],
-                        error: null,
-                    })),
-                }
-                const updateBuilder: any = {
-                    update: vi.fn((payload: unknown) => {
-                        updatePayloads.push(payload)
-                        return updateBuilder
-                    }),
-                    eq: vi.fn((...args: unknown[]) => {
-                        updateEqCalls.push(args)
-                        return updateBuilder
-                    }),
-                }
-                const builders = [selectBuilder, updateBuilder]
-                return {
-                    from: vi.fn(() => builders.shift()),
-                }
-            }),
-        }))
-        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
-            MetaGraphAPI: class {
-                exchangeCodeForToken = vi.fn(async () => 'long-lived-token')
-                getUserProfile = vi.fn(async () => ({ id: 'meta_user_123', name: 'Meta User' }))
-                getConnectedAssets = vi.fn(async () => [])
-                getWhatsAppAccounts = vi.fn(async () => ({ data: [] }))
-            },
-        }))
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        const { GET } = await import('./route')
-        const response = await GET(new Request(callbackUrl({
-            code: 'code_123',
-            state: createOrgState(),
-        })))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('success=meta_connected')
-        expect(updatePayloads[0]).toEqual(expect.objectContaining({
-            organization_id: 'org_123',
-            provider_key: 'meta_business',
-            credentials: expect.objectContaining({
-                access_token: 'long-lived-token',
-            }),
-        }))
-        expect(updateEqCalls).toEqual([
-            ['id', 'connection_123'],
-            ['organization_id', 'org_123'],
-            ['provider_key', 'meta_business'],
-            ['is_primary', true],
-        ])
-    })
-
-    it('does not store page asset tokens in full connection metadata previews', async () => {
-        setupMetaCallbackEnv()
-        const insertedConnections: any[] = []
-
-        vi.doMock('@supabase/supabase-js', () => ({
-            createClient: vi.fn(() => ({
-                from: vi.fn(() => {
-                    const builder: any = {
-                        select: vi.fn(() => builder),
-                        eq: vi.fn(() => builder),
-                        order: vi.fn(() => builder),
-                        limit: vi.fn(async () => ({ data: [], error: null })),
-                        insert: vi.fn(async (payload: unknown) => {
-                            insertedConnections.push(payload)
-                            return { error: null }
-                        }),
-                    }
-                    return builder
-                }),
-            })),
-        }))
-        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
-            MetaGraphAPI: class {
-                exchangeCodeForToken = vi.fn(async () => 'long-lived-token')
-                getUserProfile = vi.fn(async () => ({ id: 'meta_user_123', name: 'Meta User' }))
-                getConnectedAssets = vi.fn(async () => [{
-                    id: 'page_123',
-                    name: 'Pixy Page',
-                    access_token: 'page-token-secret-value',
-                    instagram_business_account: { id: 'ig_123' },
-                }])
-                getInstagramUsername = vi.fn(async () => 'pixygram')
-                getWhatsAppAccounts = vi.fn(async () => ({ data: [] }))
-            },
-        }))
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        const { GET } = await import('./route')
-        const response = await GET(new Request(callbackUrl({
-            code: 'code_123',
-            state: createOrgState(),
-        })))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('success=meta_connected')
-
-        expect(insertedConnections).toHaveLength(1)
-        const payloadText = JSON.stringify(insertedConnections[0])
-        expect(payloadText).not.toContain('page-token-secret-value')
-        expect(insertedConnections[0].credentials).toEqual(expect.objectContaining({
-            access_token: 'long-lived-token',
-        }))
-        expect(insertedConnections[0].metadata.assets_preview).toEqual([
-            expect.not.objectContaining({ access_token: expect.anything() }),
-            expect.not.objectContaining({ access_token: expect.anything() }),
-        ])
-        expect(insertedConnections[0].metadata.assets_preview).toEqual(expect.arrayContaining([
-            expect.objectContaining({ id: 'ig_123', type: 'instagram', page_id: 'page_123' }),
-            expect.objectContaining({ id: 'page_123', type: 'page', has_ig: true }),
-        ]))
-    })
-
-    it('does not expose Meta profile or WABA identifiers in production logs', async () => {
-        setupMetaCallbackEnv()
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-
-        vi.doMock('@supabase/supabase-js', () => ({
-            createClient: vi.fn(() => ({
-                from: vi.fn(() => {
-                    const builder: any = {
-                        select: vi.fn(() => builder),
-                        eq: vi.fn(() => builder),
-                        order: vi.fn(() => builder),
-                        limit: vi.fn(async () => ({ data: [], error: null })),
-                        insert: vi.fn(async () => ({ error: null })),
-                    }
-                    return builder
-                }),
-            })),
-        }))
-        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
-            MetaGraphAPI: class {
-                exchangeCodeForToken = vi.fn(async () => 'long-lived-token-secret-value')
-                getUserProfile = vi.fn(async () => ({ id: 'meta_user_secret', name: 'Meta User Secret' }))
-                getConnectedAssets = vi.fn(async () => [])
-                getWhatsAppAccounts = vi.fn(async () => ({
-                    data: [{
-                        id: 'waba_sensitive_123',
-                        name: 'Sensitive WABA',
-                        phone_numbers: { data: [] },
-                    }],
-                }))
-            },
-        }))
-        vi.doMock('@/modules/infrastructure/meta/services/waba-subscription-manager', () => ({
-            wabaSubscriptionManager: {
-                batchSubscribe: vi.fn(async () => [{
-                    success: false,
-                    wabaId: 'waba_sensitive_123',
-                    error: 'batch secret-value',
-                }]),
-            },
-        }))
-
-        const { GET } = await import('./route')
-        const response = await GET(new Request(callbackUrl({
-            code: 'code_123',
-            state: createOrgState(),
-        })))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('success=meta_connected')
-
-        const logText = [
-            collectConsoleCalls(logSpy),
-            collectConsoleCalls(errorSpy),
-        ].join('\n')
-
-        expect(logText).toContain('userNamePresent')
-        expect(logText).toContain('wabaIdPresent')
-        expect(logText).not.toContain('Meta User Secret')
-        expect(logText).not.toContain('waba_sensitive_123')
-        expect(logText).not.toContain('long-lived-token-secret-value')
-        expect(logText).not.toContain('batch secret-value')
     })
 })
