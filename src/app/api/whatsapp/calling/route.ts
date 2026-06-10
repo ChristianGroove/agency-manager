@@ -51,6 +51,45 @@ function logCallingWebhookError(label: string, error: unknown) {
         : { type: typeof error });
 }
 
+function logCallingInfo(label: string, details?: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        if (details) console.log(label, details);
+        else console.log(label);
+        return;
+    }
+
+    if (details) console.log(label, sanitizeCallingLogDetails(details));
+    else console.log(label);
+}
+
+function logCallingWarning(label: string, details?: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        if (details) console.warn(label, details);
+        else console.warn(label);
+        return;
+    }
+
+    if (details) console.warn(label, sanitizeCallingLogDetails(details));
+    else console.warn(label);
+}
+
+function sanitizeCallingLogDetails(details: Record<string, unknown>) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'callId' || key === 'call_id') {
+                return ['callIdPresent', Boolean(value)];
+            }
+            if (key === 'from' || key === 'to' || key === 'fromPhoneNumber') {
+                return [`${key}Present`, Boolean(value)];
+            }
+            if (key === 'sdpOffer' || key === 'sdpAnswer') {
+                return [`${key}Length`, typeof value === 'string' ? value.length : 0];
+            }
+            return [key, value];
+        })
+    );
+}
+
 /**
  * Webhook endpoint for calling events
  */
@@ -101,7 +140,7 @@ export async function POST(req: NextRequest) {
 async function handleCallEvent(callData: any) {
     const { call_id, event_type, from, to, sdp_offer } = callData;
 
-    console.log(`[Calling] Event: ${event_type} for call ${call_id}`);
+    logCallingInfo('[Calling] Event received', { eventType: event_type, call_id });
 
     switch (event_type) {
         case CallEventType.RINGING:
@@ -125,7 +164,7 @@ async function handleCallEvent(callData: any) {
             break;
 
         default:
-            console.warn('[Calling] Unknown event type:', event_type);
+            logCallingWarning('[Calling] Unknown event type', { eventType: event_type, call_id });
     }
 }
 
@@ -140,7 +179,7 @@ async function handleRinging(params: {
 }) {
     const { call_id, from, to, sdp_offer } = params;
 
-    console.log('[Calling] Call ringing:', call_id);
+    logCallingInfo('[Calling] Call ringing', { call_id, from, to, sdpOffer: sdp_offer });
 
     // Check call hours
     const hoursCheck = callHoursManager.isWithinCallHours();
@@ -183,10 +222,10 @@ async function handleRinging(params: {
 
         activeCallStates.set(call_id, callState);
 
-        console.log('[Calling] ✅ SDP Answer sent, waiting for acceptance');
+        logCallingInfo('[Calling] SDP Answer sent, waiting for acceptance', { call_id });
 
     } catch (error: any) {
-        console.error('[Calling] Failed to process SDP:', error);
+        logCallingWebhookError('[Calling] Failed to process SDP:', error);
         await rejectCall(call_id, 'sdp_processing_failed');
     }
 }
@@ -199,14 +238,14 @@ async function handleAccepted(params: { call_id: string }) {
 
     const callState = activeCallStates.get(call_id);
     if (!callState) {
-        console.warn('[Calling] Call state not found:', call_id);
+        logCallingWarning('[Calling] Call state not found', { call_id });
         return;
     }
 
     callState.status = CallEventType.ACCEPTED;
     callState.answeredAt = new Date();
 
-    console.log('[Calling] ✅ Call accepted:', call_id);
+    logCallingInfo('[Calling] Call accepted', { call_id });
 
     // TODO: Update UI in real-time (via WebSocket/SSE)
     // await notifyAgentUI({ callId: call_id, status: 'connected' });
@@ -231,7 +270,7 @@ async function handleRejected(params: { call_id: string }) {
         callState.endedAt = new Date();
     }
 
-    console.log('[Calling] Call rejected:', call_id);
+    logCallingInfo('[Calling] Call rejected', { call_id });
 
     // Cleanup
     cleanupCall(call_id);
@@ -254,7 +293,7 @@ async function handleTerminated(params: { call_id: string }) {
             );
         }
 
-        console.log('[Calling] Call terminated:', {
+        logCallingInfo('[Calling] Call terminated', {
             callId: call_id,
             duration: callState.duration ? `${callState.duration}s` : 'N/A'
         });
@@ -272,7 +311,7 @@ async function handleTerminated(params: { call_id: string }) {
 async function handleMissed(params: { call_id: string }) {
     const { call_id } = params;
 
-    console.log('[Calling] Call missed:', call_id);
+    logCallingInfo('[Calling] Call missed', { call_id });
 
     // TODO: Send missed call notification
     // TODO: Offer callback option
@@ -284,7 +323,9 @@ async function handleMissed(params: { call_id: string }) {
  * Handle account settings update (Meta 2026 requirement)
  */
 async function handleAccountSettingsUpdate(data: any) {
-    console.log('[Calling] Account settings updated:', data);
+    logCallingInfo('[Calling] Account settings updated', {
+        keys: data && typeof data === 'object' ? Object.keys(data) : []
+    });
 
     // Track changes in call icon visibility, calling status, etc.
     if (data.call_icon_visibility !== undefined) {
@@ -371,7 +412,7 @@ function cleanupCall(callId: string) {
     }
 
     activeCallStates.delete(callId);
-    console.log('[Calling] Call cleaned up:', callId);
+    logCallingInfo('[Calling] Call cleaned up', { callId });
 }
 
 /**
