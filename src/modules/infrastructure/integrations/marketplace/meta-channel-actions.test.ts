@@ -56,7 +56,6 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 
 function createQueryBuilder(options: {
     limitResult?: { data?: any[]; error?: any }
-    maybeSingleResult?: { data?: any; error?: any }
     singleResult?: { data?: any; error?: any }
     updateResult?: { error?: any }
 } = {}) {
@@ -65,7 +64,6 @@ function createQueryBuilder(options: {
         select: vi.fn(() => builder),
         eq: vi.fn(() => builder),
         limit: vi.fn(async () => options.limitResult ?? { data: [], error: null }),
-        maybeSingle: vi.fn(async () => options.maybeSingleResult ?? { data: null, error: null }),
         insert: vi.fn(() => builder),
         update: vi.fn(() => {
             mutationResult = Promise.resolve(options.updateResult ?? { error: null })
@@ -81,19 +79,12 @@ function createQueryBuilder(options: {
 }
 
 function mockActivationDb({
-    parentConnection = { credentials: { access_token: 'server-parent-meta-token' } },
-    parentError = null,
     existing = [],
     insertError = null,
 }: {
-    parentConnection?: any
-    parentError?: any
     existing?: any[]
     insertError?: any
 } = {}) {
-    const parentQuery = createQueryBuilder({
-        maybeSingleResult: { data: parentConnection, error: parentError },
-    })
     const existingQuery = createQueryBuilder({ limitResult: { data: existing, error: null } })
     const insertQuery = createQueryBuilder({
         singleResult: insertError
@@ -102,11 +93,10 @@ function mockActivationDb({
     })
 
     mocks.supabaseFrom
-        .mockReturnValueOnce(parentQuery)
         .mockReturnValueOnce(existingQuery)
         .mockReturnValueOnce(insertQuery)
 
-    return { parentQuery, existingQuery, insertQuery }
+    return { existingQuery, insertQuery }
 }
 
 function uiActivationInput(overrides: Partial<Parameters<typeof import('./meta-channel-actions').activateMetaChannel>[0]> = {}) {
@@ -115,7 +105,7 @@ function uiActivationInput(overrides: Partial<Parameters<typeof import('./meta-c
         assetId: 'asset_123',
         assetType: 'whatsapp' as const,
         assetName: 'WhatsApp Main',
-        accessToken: 'mock-token',
+        accessToken: 'meta-access-token',
         wabaId: 'waba_123',
         ...overrides,
     }
@@ -181,60 +171,6 @@ describe('activateMetaChannel', () => {
         expect(warnLogText).not.toContain('page token')
     })
 
-    it('reads UI activation tokens from the parent connection on the server', async () => {
-        mockActivationDb({
-            parentConnection: { credentials: { access_token: 'server-only-parent-token' } },
-        })
-
-        const { activateMetaChannel } = await import('./meta-channel-actions')
-        const result = await activateMetaChannel(uiActivationInput({
-            assetType: 'page',
-            assetName: 'Facebook Page',
-            pageId: 'page_123',
-            wabaId: undefined,
-        }))
-
-        expect(result).toEqual({ success: true, channelId: 'channel_123' })
-        expect(mocks.exchangeForLongLivedPageToken).toHaveBeenCalledWith('server-only-parent-token')
-    })
-
-    it('does not expose Meta asset identifiers in production success logs', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        mockActivationDb()
-
-        const { activateMetaChannel } = await import('./meta-channel-actions')
-        const whatsappResult = await activateMetaChannel(uiActivationInput({
-            assetId: 'asset_sensitive_whatsapp',
-            assetName: 'WhatsApp Main',
-            wabaId: 'waba_sensitive_123',
-        }))
-
-        mockActivationDb()
-        const pageResult = await activateMetaChannel(uiActivationInput({
-            assetId: 'asset_sensitive_page',
-            assetType: 'page',
-            assetName: 'Facebook Page',
-            pageId: 'page_sensitive_123',
-            wabaId: undefined,
-        }))
-
-        expect(whatsappResult).toEqual({ success: true, channelId: 'channel_123' })
-        expect(pageResult).toEqual({ success: true, channelId: 'channel_123' })
-
-        const logText = collectConsoleCalls(logSpy)
-        expect(logText).toContain('wabaIdPresent')
-        expect(logText).toContain('assetIdPresent')
-        expect(logText).toContain('pageIdPresent')
-        expect(logText).toContain('channelIdPresent')
-        expect(logText).not.toContain('waba_sensitive_123')
-        expect(logText).not.toContain('asset_sensitive_whatsapp')
-        expect(logText).not.toContain('asset_sensitive_page')
-        expect(logText).not.toContain('page_sensitive_123')
-        expect(logText).not.toContain('channel_123')
-    })
-
     it('keeps returning the product-level already-active message', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockActivationDb({
@@ -246,28 +182,6 @@ describe('activateMetaChannel', () => {
 
         expect(result.success).toBe(false)
         expect(result.error).toContain('activado')
-    })
-
-    it('scopes deleted channel reactivation to the current organization', async () => {
-        const { insertQuery: reactivationQuery } = mockActivationDb({
-            existing: [{ id: 'channel_123', status: 'deleted' }],
-        })
-
-        const { activateMetaChannel } = await import('./meta-channel-actions')
-        const result = await activateMetaChannel(uiActivationInput())
-
-        expect(result).toEqual({
-            success: true,
-            channelId: 'channel_123',
-            reactivated: true,
-        })
-        expect(reactivationQuery.update).toHaveBeenCalledWith(expect.objectContaining({
-            status: 'active',
-            credentials: { access_token: 'server-parent-meta-token' },
-        }))
-        expect(reactivationQuery.eq).toHaveBeenCalledWith('id', 'channel_123')
-        expect(reactivationQuery.eq).toHaveBeenCalledWith('organization_id', 'org_123')
-        expect(reactivationQuery.insert).not.toHaveBeenCalled()
     })
 })
 

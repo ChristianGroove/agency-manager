@@ -7,6 +7,37 @@ import { revalidatePath } from "next/cache"
 import { MetaGraphAPI } from "@/modules/infrastructure/meta/services/graph-api"
 import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeMetaChannelError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error }
+}
+
+function logMetaChannelError(label: string, error: unknown, level: 'error' | 'warn' = 'error') {
+    const logger = level === 'warn' ? console.warn : console.error
+
+    if (!isDeployedRuntime()) {
+        logger(label, error)
+        return
+    }
+
+    logger(label, summarizeMetaChannelError(error))
+}
+
+function publicMetaChannelError(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    return error instanceof Error
+        ? error.message
+        : fallback
+}
+
 /**
  * Input from UI (IntegrationSetupSheet) - uses parentConnectionId
  */
@@ -113,7 +144,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 webhookStatus = webhookResult.success ? "active" : "failed";
                 console.log(`[activateMetaChannel] Webhook ${webhookStatus} for ${assetType} (${assetId}) via Page ${pageIdToSubscribe}`);
             } catch (e: any) {
-                console.warn(`[activateMetaChannel] Token/webhook setup warning: ${e.message}`);
+                logMetaChannelError('[activateMetaChannel] Token/webhook setup warning:', e, 'warn');
             }
         }
 
@@ -125,14 +156,14 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                     const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, finalAccessToken);
                     webhookStatus = subResult.success ? "app_level" : "failed";
                     if (!subResult.success) {
-                        console.error('[activateMetaChannel] WABA Subscription Failed:', subResult.error);
+                        logMetaChannelError('[activateMetaChannel] WABA Subscription Failed:', subResult.error);
                     }
                 } else {
                     console.warn('[activateMetaChannel] No WABA ID available for subscription');
                     webhookStatus = "app_level_pending";
                 }
             } catch (e: any) {
-                console.error(`[activateMetaChannel] WABA subscription error: ${e.message}`);
+                logMetaChannelError('[activateMetaChannel] WABA subscription error:', e);
                 webhookStatus = "failed";
             }
         }
@@ -168,7 +199,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 .eq('organization_id', orgId);
 
             if (error) {
-                return { success: false, error: error.message };
+                logMetaChannelError("[activateMetaChannel] Reactivation DB error:", error);
+                return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
             }
 
             revalidatePath("/platform/integrations");
@@ -212,8 +244,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             .single();
 
         if (error) {
-            console.error("[activateMetaChannel] DB error:", error);
-            return { success: false, error: error.message };
+            logMetaChannelError("[activateMetaChannel] DB error:", error);
+            return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
         }
 
         console.log(`[activateMetaChannel] Channel created: ${channel.id}`);
@@ -227,8 +259,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         };
 
     } catch (error: any) {
-        console.error("[activateMetaChannel] Error:", error);
-        return { success: false, error: error.message };
+        logMetaChannelError("[activateMetaChannel] Error:", error);
+        return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
     }
 }
 
@@ -257,7 +289,8 @@ export async function deactivateMetaChannel(channelId: string): Promise<{ succes
 
         return { success: true }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMetaChannelError("[deactivateMetaChannel] Error:", error)
+        return { success: false, error: publicMetaChannelError(error, 'Meta channel deactivation failed') }
     }
 }
 
