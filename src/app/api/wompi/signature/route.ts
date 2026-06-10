@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createHash, randomUUID } from 'crypto'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+
+function logWompiSignatureError(label: string, error?: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
 
 function toPositiveAmount(value: unknown) {
     const amount = typeof value === 'number' ? value : Number(value)
@@ -72,7 +84,7 @@ export async function POST(request: Request) {
             .neq('status', 'cancelled')
 
         if (error || !invoices || invoices.length !== uniqueInvoiceIds.length) {
-            console.error('Error fetching invoices:', error)
+            logWompiSignatureError('Error fetching invoices:', error)
             return NextResponse.json({ error: 'One or more invoices not found' }, { status: 404 })
         }
 
@@ -108,7 +120,7 @@ export async function POST(request: Request) {
             .single()
 
         if (settingsError || !orgSettings) {
-            console.error('Error fetching org settings:', settingsError)
+            logWompiSignatureError('Error fetching org settings:', settingsError)
             return NextResponse.json({
                 error: 'Payment gateway configuration not found for this organization'
             }, { status: 500 })
@@ -116,7 +128,7 @@ export async function POST(request: Request) {
 
         // Validate Wompi configuration exists
         if (!orgSettings.wompi_public_key || !orgSettings.wompi_integrity_secret) {
-            console.error('Wompi not configured for organization:', organizationId)
+            logWompiSignatureError('Wompi not configured for organization:', organizationId)
             return NextResponse.json({
                 error: 'Payment gateway not configured. Please contact your administrator.'
             }, { status: 400 })
@@ -153,7 +165,7 @@ export async function POST(request: Request) {
             })
 
         if (transactionError) {
-            console.error('Error creating transaction:', transactionError)
+            logWompiSignatureError('Error creating transaction:', transactionError)
             return NextResponse.json({
                 error: 'Failed to create transaction record'
             }, { status: 500 })
@@ -172,8 +184,8 @@ export async function POST(request: Request) {
             publicKey: orgSettings.wompi_public_key
         })
 
-    } catch (error: any) {
-        console.error('Error generating Wompi signature:', error)
+    } catch (error: unknown) {
+        logWompiSignatureError('Error generating Wompi signature:', error)
         return NextResponse.json({
             error: 'Internal server error'
         }, { status: 500 })

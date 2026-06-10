@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
@@ -44,6 +44,20 @@ function createRequest(body: any) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
     })
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
 }
 
 const validClient = {
@@ -91,6 +105,12 @@ function mockSignatureTables({
 describe('/api/wompi/signature', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+    })
+
+    afterEach(() => {
+        vi.unstubAllEnvs()
+        vi.restoreAllMocks()
+        vi.resetModules()
     })
 
     it('requires a portal token before resolving portal data', async () => {
@@ -156,6 +176,44 @@ describe('/api/wompi/signature', () => {
         expect(response.status).toBe(409)
         expect(body.error).toBe('Partially paid invoices require manual balance reconciliation')
         expect(capture.insert).toBeUndefined()
+    })
+
+    it('does not expose invoice lookup failures in production logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.from.mockImplementation((table: string) => {
+            if (table === 'leads') {
+                return createBuilder({ maybeSingle: { data: validClient, error: null } })
+            }
+
+            if (table === 'invoices') {
+                return createBuilder({
+                    list: {
+                        data: null,
+                        error: { message: 'wompi integrity secret-value failed fetching invoices' },
+                    },
+                })
+            }
+
+            return createBuilder()
+        })
+
+        const { POST } = await import('./route')
+
+        const response = await POST(createRequest({
+            invoiceIds: ['invoice-1'],
+            portalToken: 'portal-short-token',
+        }))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(404)
+        expect(responseText).toContain('One or more invoices not found')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('integrity')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('integrity')
     })
 
     it('creates a scoped transaction and signature for payable portal invoices', async () => {
