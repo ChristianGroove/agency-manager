@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { BackupService } from "@/modules/infrastructure/backup/backup-service"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
+import { isProductionRuntime, requireCronSecret } from "@/app/api/_guards/request-guards"
 
 /**
  * CRON ENDPOINT: /api/cron/backup
@@ -9,13 +10,48 @@ import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
  * Scheduled to run nightly.
  * Iterates over organization with BYOS Backup configured and triggers export.
  */
-export async function GET(req: NextRequest) {
-    // 1. Security Check (Verify CRON_SECRET or Service Header)
-    const authHeader = req.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // Return 401 but careful not to leak info if possible
-        // return new NextResponse('Unauthorized', { status: 401 }) 
+
+const PUBLIC_BACKUP_CRON_ERROR = 'Backup cron failed'
+const PUBLIC_BACKUP_JOB_ERROR = 'Backup failed'
+
+function logBackupCronError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
     }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function backupCronErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_BACKUP_CRON_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return PUBLIC_BACKUP_CRON_ERROR
+}
+
+function sanitizeBackupResult(result: any) {
+    if (!isProductionRuntime() || !result || result.success !== false || typeof result.error !== 'string') {
+        return result
+    }
+
+    return { ...result, error: PUBLIC_BACKUP_JOB_ERROR }
+}
+
+export async function GET(req: NextRequest) {
+    const unauthorized = requireCronSecret(req)
+    if (unauthorized) return unauthorized
 
     try {
         // 2. Find Organizations with Active Backup Integrations
@@ -69,13 +105,13 @@ export async function GET(req: NextRequest) {
         const results = []
         for (const orgId of uniqueOrgIds) {
             const result = await BackupService.performBackup(orgId)
-            results.push({ orgId, ...result })
+            results.push({ orgId, ...sanitizeBackupResult(result) })
         }
 
         return NextResponse.json({ success: true, results })
 
     } catch (error: any) {
-        console.error("[Cron:Backup] Job Failed:", error)
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+        logBackupCronError("[Cron:Backup] Job Failed:", error)
+        return NextResponse.json({ success: false, error: backupCronErrorMessage(error) }, { status: 500 })
     }
 }
