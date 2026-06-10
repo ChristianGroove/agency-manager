@@ -162,6 +162,13 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await transcribeAudio(audioValidation.url.toString(), normalizedMessageId)
+        if (!result.success) {
+            logAiRouteError('[Transcribe API] Transcription failed:', result.error)
+            return NextResponse.json({
+                ...result,
+                error: aiRouteErrorMessage(result.error, PUBLIC_TRANSCRIBE_ERROR),
+            })
+        }
 
         return NextResponse.json(result)
 

@@ -158,6 +158,33 @@ describe('/api/ai/transcribe', () => {
         expect(mocks.transcribeAudio).toHaveBeenCalledWith('https://cdn.example.com/audio.ogg', 'msg-1')
     })
 
+    it('does not expose resolved transcription failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+        mocks.transcribeAudio.mockResolvedValue({
+            success: false,
+            error: 'openai api key secret-value failed transcribing audio',
+        })
+
+        const { POST } = await import('./route')
+        const response = await POST(makeRequest({
+            audioUrl: 'https://cdn.example.com/audio.ogg',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('Audio transcription failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
+    })
+
     it('does not expose transcription failures in production responses or logs', async () => {
         setupProductionRuntime()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)

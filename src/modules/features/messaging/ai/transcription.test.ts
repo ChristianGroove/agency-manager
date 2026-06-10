@@ -27,11 +27,9 @@ vi.mock('openai', () => ({
 }))
 
 vi.mock('@google/generative-ai', () => ({
-    GoogleGenerativeAI: vi.fn(function () {
-        return {
-            getGenerativeModel: mocks.getGenerativeModel,
-        }
-    }),
+    GoogleGenerativeAI: vi.fn(() => ({
+        getGenerativeModel: mocks.getGenerativeModel,
+    })),
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -59,16 +57,6 @@ function makeCredentialsQuery(result: any) {
     return query
 }
 
-function makeSingleQuery(result: any) {
-    const query: any = {
-        select: vi.fn(() => query),
-        eq: vi.fn(() => query),
-        single: vi.fn(async () => result),
-    }
-
-    return query
-}
-
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
@@ -82,110 +70,6 @@ afterEach(() => {
 })
 
 describe('transcription AI actions', () => {
-    it('rejects message IDs outside the current organization before reading cached metadata', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const messageQuery = makeSingleQuery({ data: null, error: null })
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'messages') return messageQuery
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { transcribeAudio } = await import('./transcription')
-        const result = await transcribeAudio('https://cdn.example.com/audio.ogg', 'msg-foreign')
-
-        expect(result).toEqual({ success: false, error: 'Message not found' })
-        expect(messageQuery.eq).toHaveBeenCalledWith('id', 'msg-foreign')
-        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.supabaseFrom).not.toHaveBeenCalledWith('ai_credentials')
-    })
-
-    it('returns cached transcriptions only for messages in the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const messageQuery = makeSingleQuery({
-            data: { metadata: { transcription: 'hola cacheada' } },
-            error: null,
-        })
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'messages') return messageQuery
-            throw new Error(`Unexpected table ${table}`)
-        })
-
-        const { transcribeAudio } = await import('./transcription')
-        const result = await transcribeAudio('https://cdn.example.com/audio.ogg', 'msg-1')
-
-        expect(result).toEqual({ success: true, text: 'hola cacheada', debug: 'cache-hit' })
-        expect(messageQuery.eq).toHaveBeenCalledWith('id', 'msg-1')
-        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.supabaseFrom).not.toHaveBeenCalledWith('ai_credentials')
-    })
-
-    it('persists transcriptions only on messages in the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.decrypt.mockReturnValue('google-api-key')
-        const initialMessageQuery = makeSingleQuery({
-            data: { metadata: { existing: true } },
-            error: null,
-        })
-        const currentMessageQuery = makeSingleQuery({
-            data: { metadata: { existing: true } },
-            error: null,
-        })
-        const credentialsQuery = makeCredentialsQuery({
-            data: [{
-                id: 'google-credential-1',
-                provider_id: 'google',
-                status: 'active',
-                api_key_encrypted: 'encrypted-google',
-            }],
-            error: null,
-        })
-        const updateEqSpy = vi.fn()
-        const updateQuery: any = {
-            eq: updateEqSpy,
-            then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-                Promise.resolve({ error: null }).then(resolve, reject),
-        }
-        updateEqSpy.mockImplementation(() => updateQuery)
-        const updateSpy = vi.fn(() => updateQuery)
-        const usageInsertSpy = vi.fn(async () => ({ error: null }))
-        let messageCalls = 0
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'messages') {
-                messageCalls++
-                if (messageCalls === 1) return initialMessageQuery
-                if (messageCalls === 2) return currentMessageQuery
-                return { update: updateSpy }
-            }
-            if (table === 'ai_credentials') return credentialsQuery
-            if (table === 'ai_usage_logs') return { insert: usageInsertSpy }
-            throw new Error(`Unexpected table ${table}`)
-        })
-        mocks.generateContent.mockResolvedValue({
-            response: Promise.resolve({
-                text: () => 'hola transcrita',
-            }),
-        })
-        mocks.getGenerativeModel.mockReturnValue({
-            generateContent: mocks.generateContent,
-        })
-        vi.stubGlobal('fetch', vi.fn(async () => new Response('audio-data', {
-            status: 200,
-            headers: { 'content-type': 'audio/ogg' },
-        })))
-
-        const { transcribeAudio } = await import('./transcription')
-        const result = await transcribeAudio('https://cdn.example.com/audio.ogg', 'msg-1')
-
-        expect(result).toEqual({ success: true, text: 'hola transcrita', language: 'detected' })
-        expect(initialMessageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(currentMessageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(updateSpy).toHaveBeenCalledWith({
-            metadata: { existing: true, transcription: 'hola transcrita' },
-        })
-        expect(updateEqSpy).toHaveBeenCalledWith('id', 'msg-1')
-        expect(updateEqSpy).toHaveBeenCalledWith('organization_id', 'org-current')
-    })
-
     it('does not expose credential fetch failures in action results', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')

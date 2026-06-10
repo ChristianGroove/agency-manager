@@ -6,6 +6,59 @@ import { decrypt } from "@/modules/infrastructure/ai-engine/encryption"
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
+const PUBLIC_TRANSCRIPTION_ERROR = 'Audio transcription failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeTranscriptionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (typeof error === 'string') {
+        return { type: 'string', hasMessage: error.length > 0 }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicTranscriptionError(rawError?: unknown) {
+    if (isDeployedRuntime()) return PUBLIC_TRANSCRIPTION_ERROR
+    if (typeof rawError === 'string' && rawError) return rawError
+    if (rawError instanceof Error && rawError.message) return rawError.message
+    return PUBLIC_TRANSCRIPTION_ERROR
+}
+
+function logTranscriptionWarning(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, error)
+        return
+    }
+
+    console.warn(label, summarizeTranscriptionError(error))
+}
+
+function logTranscriptionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeTranscriptionError(error))
+}
+
 export interface TranscriptionResult {
     success: boolean
     text?: string
@@ -43,7 +96,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
             .order('priority', { ascending: true });
 
         if (dbError || !credentials) {
-            return { success: false, error: `DB Error: ${dbError?.message}` }
+            return { success: false, error: publicTranscriptionError(`DB Error: ${dbError?.message}`) }
         }
 
         let lastProviderError: string | undefined;
@@ -57,7 +110,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
                 finalResult = result;
             } else {
                 lastProviderError = `GeminiError: ${result.error}`;
-                console.warn('[Transcription] Gemini failed:', result.error);
+                logTranscriptionWarning('[Transcription] Gemini failed:', result.error);
             }
         }
 
@@ -105,18 +158,18 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
         if (finalResult) return finalResult;
 
         if (lastProviderError) {
-            return { success: false, error: `${lastProviderError}` }
+            return { success: false, error: publicTranscriptionError(lastProviderError) }
         }
 
         const activeParams = credentials.map(c => `${c.provider_id}(${c.status})`);
         return {
             success: false,
-            error: `No active AI credential found. Found: ${credentials.length} [${activeParams.join(', ')}]`
+            error: publicTranscriptionError(`No active AI credential found. Found: ${credentials.length} [${activeParams.join(', ')}]`)
         }
 
     } catch (error: any) {
-        console.error('[Transcription] Error:', error)
-        return { success: false, error: `SysError: ${error.message}` }
+        logTranscriptionError('[Transcription] Error:', error)
+        return { success: false, error: publicTranscriptionError(`SysError: ${error.message}`) }
     }
 }
 
@@ -169,7 +222,7 @@ async function transcribeWithGemini(audioUrl: string, credential: any, orgId: st
                 return { success: true, text: text, language: 'detected' };
 
             } catch (e: any) {
-                console.warn(`[Gemini] Model ${modelName} failed: ${e.message}`);
+                logTranscriptionWarning(`[Gemini] Model ${modelName} failed:`, e);
                 lastModelError = e.message;
 
                 // CRITICAL: Stop fallback if Quota/Billing issue (429)
@@ -239,5 +292,7 @@ async function logUsage(orgId: string, credentialId: string, providerId: string,
             organization_id: orgId, credential_id: credentialId, provider_id: providerId, model: model,
             task_type: 'media.transcribe_v1', input_tokens: 0, output_tokens: 0, status: 'success'
         })
-    } catch (e) { console.error(e) }
+    } catch (e) {
+        logTranscriptionError('[Transcription] Usage log failed:', e)
+    }
 }
