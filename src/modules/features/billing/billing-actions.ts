@@ -11,9 +11,11 @@ import { getAuditLogs as getAuditLogsService } from "./services/get-audit-logs"
 import { getFiscalDocuments } from "./services/get-fiscal-documents"
 import { Invoice, InvoiceItem } from "@/types"
 
+const PUBLIC_DELETE_INVOICES_ERROR = "No se pudieron eliminar las facturas"
 const PUBLIC_EMITTERS_ACTION_ERROR = "No se pudieron cargar los emisores"
 const PUBLIC_SETTINGS_ACTION_ERROR = "No se pudo cargar la configuracion"
 const PUBLIC_CONTACT_OPTIONS_ERROR = "No se pudieron cargar las opciones de contacto"
+const PUBLIC_DELETE_SERVICES_ERROR = "No se pudieron eliminar los servicios"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -48,8 +50,10 @@ export async function getInvoices() {
 }
 
 export async function deleteInvoicesAction(ids: string[]) {
-    const result = await BillingService.deleteInvoices(ids)
-    if (!result.success) return result
+    const { createClient } = await import("@/modules/core/database/supabase-server")
+    const supabase = await createClient()
+    const { error } = await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).in('id', ids)
+    if (error) return { success: false, error: billingActionErrorMessage(error, PUBLIC_DELETE_INVOICES_ERROR) }
     revalidatePath('/billing')
     return { success: true, error: undefined }
 }
@@ -116,8 +120,11 @@ export async function toggleServiceStatusAction(id: string, status: 'active' | '
 }
 
 export async function deleteServicesAction(ids: string[]) {
-    const result = await BillingService.deleteServices(ids)
-    if (!result.success) return result
+    // Basic common implementation if not specialized
+    const { createClient } = await import("@/modules/core/database/supabase-server")
+    const supabase = await createClient()
+    const { error } = await supabase.from('services').delete().in('id', ids)
+    if (error) return { success: false, error: billingActionErrorMessage(error, PUBLIC_DELETE_SERVICES_ERROR) }
     revalidatePath('/billing')
     return { success: true, error: undefined }
 }
