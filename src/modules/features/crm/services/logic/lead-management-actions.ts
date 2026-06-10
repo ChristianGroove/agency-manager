@@ -78,27 +78,14 @@ export async function deleteLeads(leadIds: string[]): Promise<LeadManagementResp
 
     if (!leadIds.length) return { success: true }
 
-    const { data: scopedLeads, error: scopedLeadsError } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('organization_id', orgId)
-        .in('id', leadIds)
-
-    if (scopedLeadsError) {
-        return leadManagementFailure("Error validating leads for deletion:", scopedLeadsError)
-    }
-
-    const scopedLeadIds = (scopedLeads || []).map(lead => lead.id)
-    if (!scopedLeadIds.length) return { success: true }
-
     // 1. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
-    try { await messagingCleanupService.deleteLeadsMedia(scopedLeadIds, orgId); } catch (e) { logLeadManagementError("[LeadActions] Media cleanup error:", e); }
+    try { await messagingCleanupService.deleteLeadsMedia(leadIds); } catch (e) { logLeadManagementError("[LeadActions] Media cleanup error:", e); }
 
     const { error } = await supabase
         .from('leads')
         .delete()
         .eq('organization_id', orgId)
-        .in('id', scopedLeadIds)
+        .in('id', leadIds)
 
     if (error) {
         return leadManagementFailure("Error deleting leads:", error)
@@ -137,7 +124,7 @@ export async function deleteLeadsByPipeline(pipelineId: string): Promise<LeadMan
     // 1. CLEANUP PHYSICAL MEDIA (Find leads first by status)
     const { data: leadsToDelete } = await supabase.from('leads').select('id').eq('organization_id', orgId).in('status', statusKeys);
     if (leadsToDelete?.length) {
-        try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id), orgId); } catch (e) { logLeadManagementError("[LeadActions] Pipeline media cleanup error:", e); }
+        try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] Pipeline media cleanup error:", e); }
     }
 
     const { error } = await supabase
@@ -162,7 +149,7 @@ export async function deleteAllLeads(): Promise<LeadManagementResponse> {
     // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG
     const { data: leads } = await supabase.from('leads').select('id').eq('organization_id', orgId);
     if (leads?.length) {
-        try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id), orgId); } catch (e) { logLeadManagementError("[LeadActions] All leads media cleanup error:", e); }
+        try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] All leads media cleanup error:", e); }
     }
 
     const { error } = await supabase

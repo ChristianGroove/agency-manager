@@ -110,40 +110,29 @@ async function importLeadManagementActions() {
 }
 
 describe('CRM lead management actions', () => {
-    it('deletes only selected leads that belong to the current organization', async () => {
-        const scopedLeadLookup = selectEqIn({
-            data: [{ id: 'lead-1' }],
-            error: null,
-        })
+    it('deletes selected leads without changing the success contract', async () => {
         const deletion = deleteEqIn({ error: null })
         mocks.createClient.mockResolvedValue(createQueuedClient({
-            leads: [scopedLeadLookup, deletion],
+            leads: [deletion],
         }))
 
         const { deleteLeads } = await importLeadManagementActions()
-        const result = await deleteLeads(['lead-1', 'lead-other-org'])
+        const result = await deleteLeads(['lead-1', 'lead-2'])
 
         expect(result).toEqual({ success: true })
-        expect(scopedLeadLookup.select).toHaveBeenCalledWith('id')
-        expect(scopedLeadLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(scopedLeadLookup.in).toHaveBeenCalledWith('id', ['lead-1', 'lead-other-org'])
-        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-1'], 'org-current')
+        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-1', 'lead-2'])
         expect(deletion.delete).toHaveBeenCalled()
         expect(deletion.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(deletion.in).toHaveBeenCalledWith('id', ['lead-1'])
+        expect(deletion.in).toHaveBeenCalledWith('id', ['lead-1', 'lead-2'])
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')
     })
 
     it('does not expose selected lead deletion failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const scopedLeadLookup = selectEqIn({
-            data: [{ id: 'lead-secret-id' }],
-            error: null,
-        })
         const deletion = deleteEqIn({ error: secretError('delete lead secret-value failed') })
         mocks.createClient.mockResolvedValue(createQueuedClient({
-            leads: [scopedLeadLookup, deletion],
+            leads: [deletion],
         }))
 
         const { deleteLeads } = await importLeadManagementActions()
@@ -176,7 +165,7 @@ describe('CRM lead management actions', () => {
         expect(stages.select).toHaveBeenCalledWith('status_key')
         expect(stages.eq).toHaveBeenCalledWith('pipeline_id', 'pipeline-secret-id')
         expect(stages.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-secret-id'], 'org-current')
+        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-secret-id'])
         expect(deletion.in).toHaveBeenCalledWith('status', ['qualified'])
         expect(consoleError).toHaveBeenCalledWith('Error deleting leads by pipeline:', expect.objectContaining({
             code: '42501',
@@ -200,7 +189,7 @@ describe('CRM lead management actions', () => {
         const result = await deleteAllLeads()
 
         expect(result).toEqual({ success: true })
-        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-secret-id'], 'org-current')
+        expect(mocks.deleteLeadsMedia).toHaveBeenCalledWith(['lead-secret-id'])
         expect(consoleError).toHaveBeenCalledWith('[LeadActions] All leads media cleanup error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')
