@@ -12,6 +12,46 @@ import {
     WebhookValidationResult
 } from "./types";
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function summarizeMetaProviderError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name };
+    }
+
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as any).error : error;
+        return {
+            type: graphError?.type,
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            hasMessage: typeof graphError?.message === 'string' && graphError.message.length > 0,
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function logMetaProviderError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, summarizeMetaProviderError(error));
+}
+
+function logMetaProviderWarning(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, error);
+        return;
+    }
+
+    console.warn(label, summarizeMetaProviderError(error));
+}
+
 export class MetaProvider implements MessagingProvider {
     name = 'meta';
     private profileCache: Record<string, { name: string, expires: number }> = {};
@@ -27,7 +67,15 @@ export class MetaProvider implements MessagingProvider {
      */
     private async processMedia(mediaId: string, mimeType: string, assetId?: string): Promise<string> {
         try {
-            console.log(`[MetaProvider] Processing Media ID: ${mediaId} (${mimeType}) AssetId: ${assetId}`);
+            if (!isDeployedRuntime()) {
+                console.log(`[MetaProvider] Processing Media ID: ${mediaId} (${mimeType}) AssetId: ${assetId}`);
+            } else {
+                console.log('[MetaProvider] Processing media', {
+                    hasMediaId: !!mediaId,
+                    mimeType,
+                    assetId: assetId ? 'present' : 'missing',
+                });
+            }
             
             // 1. Resolve Token for this AssetId if possible
             let token = this.apiToken;
@@ -35,7 +83,11 @@ export class MetaProvider implements MessagingProvider {
                 const dbToken = await this.getTokenByAssetId(assetId);
                 if (dbToken) {
                     token = dbToken;
-                    console.log(`[MetaProvider] Using DB token for ${assetId}`);
+                    if (!isDeployedRuntime()) {
+                        console.log(`[MetaProvider] Using DB token for ${assetId}`);
+                    } else {
+                        console.log('[MetaProvider] Using DB token', { assetId: 'present' });
+                    }
                 }
             }
 
@@ -53,7 +105,7 @@ export class MetaProvider implements MessagingProvider {
 
             if (!urlRes.ok) {
                 const err = await urlRes.json().catch(() => ({}));
-                console.error(`[MetaProvider] Media ID resolution FAILED with token:`, err);
+                logMetaProviderError(`[MetaProvider] Media ID resolution failed:`, err);
                 
                 // Fallback to constructor token if DB token failed
                 if (token !== this.apiToken && this.apiToken) {
@@ -74,7 +126,7 @@ export class MetaProvider implements MessagingProvider {
 
             return await this.downloadAndUpload(downloadUrl, mediaId, mimeType, token);
         } catch (error) {
-            console.error(`[MetaProvider] Media Processing Exception:`, error);
+            logMetaProviderError(`[MetaProvider] Media Processing Exception:`, error);
             return "";
         }
     }
@@ -100,7 +152,7 @@ export class MetaProvider implements MessagingProvider {
                 .upload(fileName, buffer, { contentType: mimeType, upsert: true });
 
             if (uploadError) {
-                console.error(`[MetaProvider] Supabase Media Upload Error:`, uploadError);
+                logMetaProviderError(`[MetaProvider] Supabase Media Upload Error:`, uploadError);
                 return "";
             }
 
@@ -111,7 +163,7 @@ export class MetaProvider implements MessagingProvider {
 
             return publicUrl;
         } catch (error) {
-            console.error(`[MetaProvider] downloadAndUpload Exception:`, error);
+            logMetaProviderError(`[MetaProvider] downloadAndUpload Exception:`, error);
             return "";
         }
     }
@@ -150,7 +202,7 @@ export class MetaProvider implements MessagingProvider {
             }
             return null;
         } catch (error) {
-            console.error(`[MetaProvider] getTokenByAssetId Error:`, error);
+            logMetaProviderError(`[MetaProvider] getTokenByAssetId Error:`, error);
             return null;
         }
     }
@@ -159,7 +211,14 @@ export class MetaProvider implements MessagingProvider {
      * Send a message via Meta APIs (WhatsApp, Messenger, Instagram)
      */
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-        console.log(`[MetaProvider] sendMessage called. Channel: ${options.metadata?.channel}, To: ${options.to}`);
+        if (!isDeployedRuntime()) {
+            console.log(`[MetaProvider] sendMessage called. Channel: ${options.metadata?.channel}, To: ${options.to}`);
+        } else {
+            console.log('[MetaProvider] sendMessage called', {
+                channel: options.metadata?.channel,
+                hasRecipient: !!options.to,
+            });
+        }
         const channel = options.metadata?.channel as string;
         const isMessengerOrIg = ['messenger', 'instagram', 'facebook_page', 'instagram_dm', 'instagram_dme'].includes(channel);
         
@@ -225,13 +284,13 @@ export class MetaProvider implements MessagingProvider {
 
             const data = await response.json();
             if (!response.ok) {
-                console.error('[MetaProvider] WA API Error:', data);
+                logMetaProviderError('[MetaProvider] WA API Error:', data);
                 return { success: false, error: data.error?.message || 'WhatsApp API Error' };
             }
 
             return { success: true, messageId: data.messages?.[0]?.id };
         } catch (error) {
-            console.error('[MetaProvider] WA Send Exception:', error);
+            logMetaProviderError('[MetaProvider] WA Send Exception:', error);
             return { success: false, error: error instanceof Error ? error.message : 'WhatsApp Send Exception' };
         }
     }
@@ -308,13 +367,13 @@ export class MetaProvider implements MessagingProvider {
 
             const data = await response.json();
             if (!response.ok) {
-                console.error('[MetaProvider] Social API Error:', data);
+                logMetaProviderError('[MetaProvider] Social API Error:', data);
                 return { success: false, error: data.error?.message || 'Social API Error' };
             }
 
             return { success: true, messageId: data.message_id || data.id };
         } catch (error) {
-            console.error('[MetaProvider] Social Send Exception:', error);
+            logMetaProviderError('[MetaProvider] Social Send Exception:', error);
             return { success: false, error: error instanceof Error ? error.message : 'Social Send Exception' };
         }
     }
@@ -544,7 +603,15 @@ export class MetaProvider implements MessagingProvider {
      */
     private async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
         try {
-            console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
+            if (!isDeployedRuntime()) {
+                console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
+            } else {
+                console.log('[MetaProvider] Uploading media', {
+                    hasUrl: !!url,
+                    type,
+                    assetId: assetId ? 'present' : 'missing',
+                });
+            }
             const uploadUrl = `https://graph.facebook.com/v21.0/${assetId}/media`;
             
             // 1. Fetch file
@@ -571,7 +638,7 @@ export class MetaProvider implements MessagingProvider {
                     mimeType = 'image/jpeg';
                     console.log('[MetaProvider] Auto-converted WebP to JPEG for strict WA API compatibility.');
                 } catch (e: any) {
-                    console.error('[MetaProvider] Failed to transcode WebP:', e.message);
+                    logMetaProviderError('[MetaProvider] Failed to transcode WebP:', e);
                 }
             }
             
@@ -594,13 +661,13 @@ export class MetaProvider implements MessagingProvider {
 
             const data = await response.json();
             if (!response.ok) {
-                console.error('[MetaProvider] Media Upload Error:', data);
+                logMetaProviderError('[MetaProvider] Media Upload Error:', data);
                 return null;
             }
 
             return data.id;
         } catch (error) {
-            console.error('[MetaProvider] Media Upload Exception:', error);
+            logMetaProviderError('[MetaProvider] Media Upload Exception:', error);
             return null;
         }
     }
@@ -636,7 +703,7 @@ export class MetaProvider implements MessagingProvider {
             const data = await res.json();
 
             if (data.error) {
-                console.warn(`[MetaProvider] Profile fetch error for ${psid}:`, data.error.message);
+                logMetaProviderWarning(`[MetaProvider] Profile fetch error:`, data.error);
                 return { name: 'Social User' };
             }
 
@@ -649,7 +716,7 @@ export class MetaProvider implements MessagingProvider {
             this.profileCache[cacheKey] = { name: resolvedName, expires: Date.now() + 3600000 };
             return { name: resolvedName };
         } catch (e) {
-            console.error(`[MetaProvider] Profile Fetch Exception for ${psid}:`, e);
+            logMetaProviderError(`[MetaProvider] Profile Fetch Exception:`, e);
             return { name: 'Social User' };
         }
     }
