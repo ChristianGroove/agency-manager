@@ -19,6 +19,7 @@ const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipe
 const PUBLIC_CRM_TAG_ACTION_ERROR = "No se pudo completar la accion de etiquetas"
 const PUBLIC_CRM_SETTINGS_ACTION_ERROR = "No se pudo completar la accion de configuracion CRM"
 const PUBLIC_CRM_TASK_ACTION_ERROR = "No se pudo completar la accion de tareas CRM"
+const PUBLIC_CRM_DEAL_ACTION_ERROR = "No se pudo completar la accion de deals CRM"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -80,6 +81,11 @@ function crmSettingsActionFailure(label: string, error: unknown): ActionResponse
 function crmTaskActionFailure(label: string, error: unknown): { success: false; error: string } {
     logCrmActionError(label, error)
     return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TASK_ACTION_ERROR) }
+}
+
+function crmDealActionFailure(label: string, error: unknown): { success: false; error: string } {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_DEAL_ACTION_ERROR) }
 }
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
@@ -545,9 +551,9 @@ export async function getDealCartAction(leadId: string) {
     try {
         const { deals } = await getCrmServices()
         const cart = await deals.getOrCreateDealCart(leadId)
-        return { success: true, data: cart }
+        return { success: true as const, data: cart }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[getDealCartAction] Error:", e)
     }
 }
 
@@ -556,9 +562,9 @@ export async function addToCartAction(cartId: string, product: any, quantity: nu
         const { deals } = await getCrmServices()
         await deals.addToCart(cartId, product, quantity)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[addToCartAction] Error:", e)
     }
 }
 
@@ -567,9 +573,9 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
         const { deals } = await getCrmServices()
         await deals.updateCartItem(itemId, quantity)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[updateCartItemAction] Error:", e)
     }
 }
 
@@ -578,9 +584,9 @@ export async function removeCartItemAction(itemId: string) {
         const { deals } = await getCrmServices()
         await deals.removeCartItem(itemId)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[removeCartItemAction] Error:", e)
     }
 }
 
@@ -588,9 +594,9 @@ export async function searchCatalogAction(query: string = '', category?: string,
     try {
         const { deals, orgId } = await getCrmServices()
         const result = await deals.searchCatalog(orgId, query, category, page, pageSize)
-        return { success: true, ...result }
+        return { success: true as const, ...result }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[searchCatalogAction] Error:", e)
     }
 }
 
@@ -599,9 +605,9 @@ export async function sendInteractiveQuoteAction(cartId: string, conversationId:
         const { deals } = await getCrmServices()
         await deals.sendInteractiveQuote(cartId, conversationId)
         revalidatePath('/inbox')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[sendInteractiveQuoteAction] Error:", e)
     }
 }
 

@@ -47,7 +47,14 @@ const mocks = vi.hoisted(() => ({
         getMyTasks: vi.fn(),
         getTaskStats: vi.fn(),
     },
-    dealService: {},
+    dealService: {
+        getOrCreateDealCart: vi.fn(),
+        addToCart: vi.fn(),
+        updateCartItem: vi.fn(),
+        removeCartItem: vi.fn(),
+        searchCatalog: vi.fn(),
+        sendInteractiveQuote: vi.fn(),
+    },
     ContactService: vi.fn(),
     ClientService: vi.fn(),
     PipelineService: vi.fn(),
@@ -134,6 +141,7 @@ afterEach(() => {
     Object.values(mocks.pipelineService).forEach((fn) => fn.mockReset())
     Object.values(mocks.tagService).forEach((fn) => fn.mockReset())
     Object.values(mocks.taskService).forEach((fn) => fn.mockReset())
+    Object.values(mocks.dealService).forEach((fn) => fn.mockReset())
 })
 
 async function importCrmActions(options: { supabase?: any } = {}) {
@@ -374,6 +382,49 @@ describe('CRM task server actions', () => {
         expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de tareas CRM' })
         expect(mocks.taskService.deleteTask).toHaveBeenCalledWith('task-secret-id')
         expect(consoleError).toHaveBeenCalledWith('[deleteContactTaskAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+})
+
+describe('CRM deal server actions', () => {
+    it('gets deal carts without changing the success contract', async () => {
+        const cart = { id: 'cart-1', lead_id: 'lead-1' }
+        mocks.dealService.getOrCreateDealCart.mockResolvedValue(cart)
+
+        const { getDealCartAction } = await importCrmActions()
+        const result = await getDealCartAction('lead-1')
+
+        expect(result).toEqual({ success: true, data: cart })
+        expect(mocks.DealService).toHaveBeenCalledWith(expect.anything())
+        expect(mocks.dealService.getOrCreateDealCart).toHaveBeenCalledWith('lead-1')
+    })
+
+    it('does not expose catalog search failures and keeps organization scope', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.dealService.searchCatalog.mockRejectedValue(new Error('deal secret-value catalog failed'))
+
+        const { searchCatalogAction } = await importCrmActions()
+        const result = await searchCatalogAction('chairs', 'furniture', 2, 25)
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de deals CRM' })
+        expect(mocks.dealService.searchCatalog).toHaveBeenCalledWith('org-current', 'chairs', 'furniture', 2, 25)
+        expect(consoleError).toHaveBeenCalledWith('[searchCatalogAction] Error:', { name: 'Error' })
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
+    })
+
+    it('does not expose interactive quote failures in deployed runtimes', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.dealService.sendInteractiveQuote.mockRejectedValue(new Error('deal secret-value quote failed'))
+
+        const { sendInteractiveQuoteAction } = await importCrmActions()
+        const result = await sendInteractiveQuoteAction('cart-secret-id', 'conversation-secret-id')
+
+        expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de deals CRM' })
+        expect(mocks.dealService.sendInteractiveQuote).toHaveBeenCalledWith('cart-secret-id', 'conversation-secret-id')
+        expect(consoleError).toHaveBeenCalledWith('[sendInteractiveQuoteAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
