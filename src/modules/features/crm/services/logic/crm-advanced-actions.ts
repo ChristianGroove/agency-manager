@@ -16,11 +16,67 @@ import type {
     SendEmailInput
 } from "@/types/crm-advanced"
 
+const PUBLIC_CRM_ADVANCED_ERROR = "No se pudo completar la accion de CRM"
+const PUBLIC_CRM_FILE_UPLOAD_ERROR = "No se pudo subir el archivo"
+const PUBLIC_CRM_LEAD_SCORE_ERROR = "No se pudo calcular el puntaje del lead"
+const PUBLIC_CRM_EMAIL_ERROR = "No se pudo enviar el email del lead"
+
+const SAFE_PUBLIC_ERROR_MESSAGES = new Set([
+    "No file selected",
+    "File too large (max 10MB)",
+])
+
+type CrmActionFailure = { success: false; error: string }
+type CrmDataActionResult<T = any> = { success: true; data: T; error?: never } | CrmActionFailure
+type CrmVoidActionResult = { success: true; error?: never } | CrmActionFailure
+type CrmLeadScoreResult = ({ success: true; error?: never } & Record<string, any>) | CrmActionFailure
+type UploadLeadFileResult = { success: true; url: string; size: number; type: string; error?: never } | CrmActionFailure
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCrmAdvancedError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function getErrorMessage(error: unknown) {
+    if (error instanceof Error) return error.message
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return null
+}
+
+function logCrmAdvancedError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeCrmAdvancedError(error) : error)
+}
+
+function crmAdvancedFailure(label: string, error: unknown, fallback = PUBLIC_CRM_ADVANCED_ERROR): CrmActionFailure {
+    logCrmAdvancedError(label, error)
+    const message = getErrorMessage(error)
+    if (isDeployedRuntime()) {
+        return { success: false, error: message && SAFE_PUBLIC_ERROR_MESSAGES.has(message) ? message : fallback }
+    }
+    return { success: false, error: message || fallback }
+}
+
 // ============================================
 // LEAD CORE (Now delegated to LeadsService)
 // ============================================
 
-export async function updateLead(leadId: string, input: UpdateLeadInput) {
+export async function updateLead(leadId: string, input: UpdateLeadInput): Promise<CrmDataActionResult> {
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -33,8 +89,7 @@ export async function updateLead(leadId: string, input: UpdateLeadInput) {
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('updateLead error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('updateLead error:', error)
     }
 }
 
@@ -47,7 +102,7 @@ export async function getLeadWithRelations(leadId: string) {
         const service = new LeadsService(supabase, orgId)
         return await service.getWithRelations(leadId)
     } catch (error) {
-        console.error('getLeadWithRelations error:', error)
+        logCrmAdvancedError('getLeadWithRelations error:', error)
         return null
     }
 }
@@ -69,20 +124,19 @@ export async function getLeadActivities(leadId: string) {
         const service = await getAdvancedService()
         return await service.getActivities(leadId)
     } catch (error) {
-        console.error('getLeadActivities error:', error)
+        logCrmAdvancedError('getLeadActivities error:', error)
         return []
     }
 }
 
-export async function createActivity(leadId: string, activityType: string, description: string, metadata?: Record<string, any>) {
+export async function createActivity(leadId: string, activityType: string, description: string, metadata?: Record<string, any>): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.createActivity(leadId, activityType, description, metadata)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('createActivity error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('createActivity error:', error)
     }
 }
 
@@ -91,44 +145,41 @@ export async function getLeadTasks(leadId?: string) {
         const service = await getAdvancedService()
         return await service.getTasks(leadId)
     } catch (error) {
-        console.error('getLeadTasks error:', error)
+        logCrmAdvancedError('getLeadTasks error:', error)
         return []
     }
 }
 
-export async function createLeadTask(input: CreateLeadTaskInput) {
+export async function createLeadTask(input: CreateLeadTaskInput): Promise<CrmDataActionResult> {
     try {
         const service = await getAdvancedService()
         const data = await service.createTask(input)
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('createLeadTask error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('createLeadTask error:', error)
     }
 }
 
-export async function updateLeadTask(taskId: string, input: UpdateLeadTaskInput) {
+export async function updateLeadTask(taskId: string, input: UpdateLeadTaskInput): Promise<CrmDataActionResult> {
     try {
         const service = await getAdvancedService()
         const data = await service.updateTask(taskId, input)
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('updateLeadTask error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('updateLeadTask error:', error)
     }
 }
 
-export async function deleteLeadTask(taskId: string) {
+export async function deleteLeadTask(taskId: string): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.deleteTask(taskId)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('deleteLeadTask error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('deleteLeadTask error:', error)
     }
 }
 
@@ -137,48 +188,45 @@ export async function getLeadNotes(leadId: string) {
         const service = await getAdvancedService()
         return await service.getNotes(leadId)
     } catch (error) {
-        console.error('getLeadNotes error:', error)
+        logCrmAdvancedError('getLeadNotes error:', error)
         return []
     }
 }
 
-export async function createLeadNote(input: CreateLeadNoteInput) {
+export async function createLeadNote(input: CreateLeadNoteInput): Promise<CrmDataActionResult> {
     try {
         const service = await getAdvancedService()
         const data = await service.createNote(input)
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('createLeadNote error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('createLeadNote error:', error)
     }
 }
 
-export async function updateLeadNote(noteId: string, content: string, isPinned?: boolean) {
+export async function updateLeadNote(noteId: string, content: string, isPinned?: boolean): Promise<CrmDataActionResult> {
     try {
         const service = await getAdvancedService()
         const data = await service.updateNote(noteId, content, isPinned)
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('updateLeadNote error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('updateLeadNote error:', error)
     }
 }
 
-export async function deleteLeadNote(noteId: string) {
+export async function deleteLeadNote(noteId: string): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.deleteNote(noteId)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('deleteLeadNote error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('deleteLeadNote error:', error)
     }
 }
 
-export async function uploadLeadFile(formData: FormData) {
+export async function uploadLeadFile(formData: FormData): Promise<UploadLeadFileResult> {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -198,48 +246,44 @@ export async function uploadLeadFile(formData: FormData) {
         const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName)
         return { success: true, url: publicUrl, size: file.size, type: file.type }
     } catch (error: any) {
-        console.error('uploadLeadFile error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('uploadLeadFile error:', error, PUBLIC_CRM_FILE_UPLOAD_ERROR)
     }
 }
 
-export async function createLeadDocument(leadId: string, name: string, url: string, size: number, type: string) {
+export async function createLeadDocument(leadId: string, name: string, url: string, size: number, type: string): Promise<CrmDataActionResult> {
     try {
         const service = await getAdvancedService()
         const data = await service.createDocument(leadId, name, url, size, type)
         revalidatePath('/crm')
         return { success: true, data }
     } catch (error: any) {
-        console.error('createLeadDocument error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('createLeadDocument error:', error)
     }
 }
 
-export async function deleteLeadDocument(documentId: string) {
+export async function deleteLeadDocument(documentId: string): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.deleteDocument(documentId)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('deleteLeadDocument error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('deleteLeadDocument error:', error)
     }
 }
 
-export async function assignLeads(input: AssignLeadInput) {
+export async function assignLeads(input: AssignLeadInput): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.assignLeads(input.lead_ids, input.assigned_to)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('assignLeads error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('assignLeads error:', error)
     }
 }
 
-export async function calculateLeadScore(leadId: string) {
+export async function calculateLeadScore(leadId: string): Promise<CrmLeadScoreResult> {
     try {
         // We use admin service for scoring if needed, but here we can stick to user service
         const supabase = await createClient()
@@ -252,20 +296,18 @@ export async function calculateLeadScore(leadId: string) {
         revalidatePath('/crm')
         return { success: true, ...result }
     } catch (error: any) {
-        console.error('[CRM_ADV_SCORING] Error calculating score:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('[CRM_ADV_SCORING] Error calculating score:', error, PUBLIC_CRM_LEAD_SCORE_ERROR)
     }
 }
 
-export async function sendLeadEmail(input: SendEmailInput) {
+export async function sendLeadEmail(input: SendEmailInput): Promise<CrmVoidActionResult> {
     try {
         const service = await getAdvancedService()
         await service.sendEmail(input)
         revalidatePath('/crm')
         return { success: true }
     } catch (error: any) {
-        console.error('sendLeadEmail error:', error)
-        return { success: false, error: error.message }
+        return crmAdvancedFailure('sendLeadEmail error:', error, PUBLIC_CRM_EMAIL_ERROR)
     }
 }
 
