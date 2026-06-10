@@ -6,6 +6,21 @@ import { getTaskDefinition } from './tasks/registry';
 import { decrypt } from './encryption';
 import { getCachedResponse, setCachedResponse } from './cache';
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function logAIEngineError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
 interface TaskExecutionOptions {
     organizationId: string;
     taskType: string; // "inbox.smart_replies_v1"
@@ -233,7 +248,7 @@ async function fetchInternalCredentials(organizationId: string) {
         .order('priority', { ascending: true });
 
     if (error) {
-        console.error('[AIEngine] Error fetching internal credentials:', error);
+        logAIEngineError('[AIEngine] Error fetching internal credentials:', error);
         return [];
     }
     return data || [];
