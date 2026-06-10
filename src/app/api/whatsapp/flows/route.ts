@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { flowsCrypto } from '@/modules/infrastructure/meta/services/flows/flows-crypto';
+import { isProductionRuntime, requireMetaWebhookSignature } from '@/app/api/_guards/request-guards';
 
 /**
  * Demo mode flag for screencasts (Fase 6)
@@ -42,33 +43,31 @@ const DEMO_TIME_SLOTS: Record<string, Array<{ id: string; title: string }>> = {
     ]
 };
 
+function logFlowError(error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error('[Flows Endpoint] Error:', error);
+        return;
+    }
+
+    console.error('[Flows Endpoint] Error:', error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
 export async function POST(req: NextRequest) {
     try {
         const rawBody = await req.text();
-        const body = JSON.parse(rawBody);
+        const signatureError = requireMetaWebhookSignature(req, rawBody);
+        if (signatureError) return signatureError;
+
+        let body: any;
+        try {
+            body = JSON.parse(rawBody);
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+        }
 
         console.log('[Flows Endpoint] Received request');
-
-        // Step 1: Validate signature (CRITICAL for App Review)
-        const signature = req.headers.get('x-hub-signature-256');
-
-        if (!signature) {
-            console.error('[Flows Endpoint] Missing signature header');
-            return NextResponse.json(
-                { error: 'Missing signature' },
-                { status: 401 }
-            );
-        }
-
-        const isValid = flowsCrypto.validateSignature(rawBody, signature);
-
-        if (!isValid) {
-            console.error('[Flows Endpoint] Invalid signature');
-            return NextResponse.json(
-                { error: 'Invalid signature' },
-                { status: 403 }
-            );
-        }
 
         console.log('[Flows Endpoint] ✅ Signature validated');
 
@@ -128,12 +127,11 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('[Flows Endpoint] Error:', error);
+        logFlowError(error);
 
         return NextResponse.json(
             {
-                error: 'Data exchange failed',
-                message: error.message
+                error: 'Data exchange failed'
             },
             { status: 500 }
         );
@@ -198,7 +196,10 @@ async function getTimeSlots(date: string): Promise<{
  * Log user consent (GDPR/Meta 2026 compliance)
  */
 async function logConsent(payload: any): Promise<void> {
-    console.log('[Flows] Logging consent:', payload);
+    console.log('[Flows] Logging consent request:', {
+        consent_type: payload?.consent_type,
+        has_user_email: !!payload?.user_email
+    });
 
     // TODO: Store consent in database
     // await db.consents.create({
@@ -216,7 +217,11 @@ async function logConsent(payload: any): Promise<void> {
  * Create support ticket
  */
 async function createSupportTicket(payload: any): Promise<string> {
-    console.log('[Flows] Creating support ticket:', payload);
+    console.log('[Flows] Creating support ticket:', {
+        category: payload?.category,
+        urgency: payload?.urgency,
+        has_description: !!payload?.description
+    });
 
     // Generate ticket ID
     const ticketId = `TICKET-${new Date().getFullYear()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
