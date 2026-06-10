@@ -43,9 +43,36 @@ function makeRequest(body: Record<string, unknown>) {
     })
 }
 
+function setupProductionRuntime() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
+    mocks.analyzeSentiment.mockReset()
+    mocks.saveSentimentAnalysis.mockReset()
+    mocks.autoEscalateIfNeeded.mockReset()
+    mocks.detectIntent.mockReset()
+    mocks.saveIntent.mockReset()
+    mocks.applyIntentRouting.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.createClient.mockReset()
 })
 
 describe('/api/ai/analyze', () => {
@@ -153,5 +180,45 @@ describe('/api/ai/analyze', () => {
             'billing_inquiry',
             0.91
         )
+    })
+
+    it('does not expose AI analysis failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const conversationQuery = makeQuery({ data: { id: 'conv-1' }, error: null })
+        const messageQuery = makeQuery({ data: { id: 'msg-1' }, error: null })
+        const supabase = {
+            from: vi.fn((table: string) => table === 'conversations' ? conversationQuery : messageQuery),
+        }
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue(supabase)
+        mocks.analyzeSentiment.mockRejectedValue(
+            new Error('openai api key secret-value failed analyzing sentiment')
+        )
+        mocks.detectIntent.mockResolvedValue({
+            success: true,
+            result: {
+                intent: 'support_request',
+                confidence: 0.7,
+            },
+        })
+
+        const { POST } = await import('./route')
+        const response = await POST(makeRequest({
+            messageContent: 'Necesito ayuda',
+            conversationId: 'conv-1',
+            messageId: 'msg-1',
+        }))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('AI analysis failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
     })
 })

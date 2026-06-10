@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { AIEngine } from '@/modules/infrastructure/ai-engine/service'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const MAX_VOICE_TEXT_LENGTH = 20_000
+const PUBLIC_VOICE_ANALYSIS_ERROR = 'Voice analysis failed'
 
 export async function POST(req: NextRequest) {
     try {
@@ -112,10 +114,10 @@ export async function POST(req: NextRequest) {
             analysis
         })
 
-    } catch (error: any) {
-        console.error('[VoiceAnalysis API] Error:', error)
+    } catch (error: unknown) {
+        logAiRouteError('[VoiceAnalysis API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_VOICE_ANALYSIS_ERROR) },
             { status: 500 }
         )
     }

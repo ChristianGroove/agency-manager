@@ -11,9 +11,24 @@ export function logAiRouteError(label: string, error: unknown) {
         : { type: typeof error })
 }
 
+export function logAiRouteWarning(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.warn(label, error)
+        return
+    }
+
+    console.warn(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
 export function aiRouteErrorMessage(error: unknown, fallback: string) {
     if (isProductionRuntime()) {
         return fallback
+    }
+
+    if (typeof error === 'string' && error) {
+        return error
     }
 
     if (error instanceof Error && error.message) {

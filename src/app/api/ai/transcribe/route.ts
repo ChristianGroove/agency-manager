@@ -4,8 +4,10 @@ import { getCurrentOrganizationId } from '@/modules/core/organizations/organizat
 import { createClient } from '@/modules/core/database/supabase-server'
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const MAX_AUDIO_URL_LENGTH = 2_048
+const PUBLIC_TRANSCRIBE_ERROR = 'Audio transcription failed'
 const ALLOWED_AUDIO_PORTS = new Set(['', '80', '443'])
 const PRIVATE_AUDIO_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0', 'metadata.google.internal'])
 
@@ -163,10 +165,10 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(result)
 
-    } catch (error: any) {
-        console.error('[Transcribe API] Error:', error)
+    } catch (error: unknown) {
+        logAiRouteError('[Transcribe API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_TRANSCRIBE_ERROR) },
             { status: 500 }
         )
     }

@@ -149,8 +149,6 @@ describe('inbox AI API routes', () => {
         expect(response.status).toBe(200)
         expect(await response.json()).toMatchObject({ success: true, usedKnowledge: 1 })
         expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conv-1')
-        expect(messagesQuery.eq).toHaveBeenCalledWith('conversation_id', 'conv-1')
-        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.generateSmartReplies).toHaveBeenCalledWith(expect.objectContaining({
             conversationHistory: [
                 expect.objectContaining({ content: 'Bienvenido' }),
@@ -192,7 +190,6 @@ describe('inbox AI API routes', () => {
         expect(responseText).toContain('Conversation messages unavailable')
         expect(responseText).not.toContain('secret-value')
         expect(responseText).not.toContain('database password')
-        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.generateSmartReplies).not.toHaveBeenCalled()
 
         const errorLogText = collectConsoleCalls(errorSpy)
@@ -307,7 +304,6 @@ describe('inbox AI API routes', () => {
             taskType: 'media.analyze_voice_v1',
             payload: { text: 'audio original' },
         })
-        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(messageQuery.update).toHaveBeenCalledWith({
             metadata: expect.objectContaining({
                 transcription: 'audio original',

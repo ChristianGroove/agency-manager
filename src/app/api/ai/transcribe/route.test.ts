@@ -39,9 +39,32 @@ function makeRequest(body: Record<string, unknown>) {
     })
 }
 
+function setupProductionRuntime() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
+    mocks.lookup.mockReset()
+    mocks.transcribeAudio.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.createClient.mockReset()
 })
 
 describe('/api/ai/transcribe', () => {
@@ -133,5 +156,31 @@ describe('/api/ai/transcribe', () => {
         expect(await response.json()).toEqual({ success: true, text: 'hola' })
         expect(messageQuery.eq).toHaveBeenCalledWith('id', 'msg-1')
         expect(mocks.transcribeAudio).toHaveBeenCalledWith('https://cdn.example.com/audio.ogg', 'msg-1')
+    })
+
+    it('does not expose transcription failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+        mocks.transcribeAudio.mockRejectedValue(
+            new Error('openai api key secret-value failed transcribing audio')
+        )
+
+        const { POST } = await import('./route')
+        const response = await POST(makeRequest({
+            audioUrl: 'https://cdn.example.com/audio.ogg',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Audio transcription failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
     })
 })

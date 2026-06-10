@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateSmartReplies, logSuggestion } from '@/modules/features/messaging/messaging-actions'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { aiRouteErrorMessage, logAiRouteError, logAiRouteWarning } from '../_error-utils'
+
+const PUBLIC_SMART_REPLIES_ERROR = 'Smart replies failed'
+const PUBLIC_SMART_REPLIES_MESSAGES_ERROR = 'Conversation messages unavailable'
 
 export async function POST(req: NextRequest) {
     try {
@@ -47,8 +51,9 @@ export async function POST(req: NextRequest) {
             .limit(10)
 
         if (messagesError) {
+            logAiRouteError('[SmartReplies API] Messages fetch error:', messagesError)
             return NextResponse.json(
-                { success: false, error: messagesError.message },
+                { success: false, error: aiRouteErrorMessage(messagesError, PUBLIC_SMART_REPLIES_MESSAGES_ERROR) },
                 { status: 500 }
             )
         }
@@ -78,8 +83,8 @@ export async function POST(req: NextRequest) {
                         nextActions: context.state.allowed_next_states
                     }
                 }
-            } catch (e) {
-                console.warn("Failed to fetch process context for AI:", e)
+            } catch (error) {
+                logAiRouteWarning("Failed to fetch process context for AI:", error)
             }
         }
 
@@ -96,8 +101,9 @@ export async function POST(req: NextRequest) {
         })
 
         if (!result.success) {
+            logAiRouteError('[SmartReplies API] Generation failed:', result.error)
             return NextResponse.json(
-                { success: false, error: result.error },
+                { success: false, error: aiRouteErrorMessage(result.error, PUBLIC_SMART_REPLIES_ERROR) },
                 { status: 500 }
             )
         }
@@ -118,10 +124,10 @@ export async function POST(req: NextRequest) {
             generationTimeMs: result.generationTimeMs,
             usedKnowledge: result.usedKnowledge
         })
-    } catch (error: any) {
-        console.error('[SmartReplies API] Error:', error)
+    } catch (error: unknown) {
+        logAiRouteError('[SmartReplies API] Error:', error)
         return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: aiRouteErrorMessage(error, PUBLIC_SMART_REPLIES_ERROR) },
             { status: 500 }
         )
     }

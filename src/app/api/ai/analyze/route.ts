@@ -3,8 +3,10 @@ import { analyzeSentiment, saveSentimentAnalysis, autoEscalateIfNeeded } from '@
 import { detectIntent, saveIntent, applyIntentRouting } from '@/modules/features/messaging/messaging-actions'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { createClient } from '@/modules/core/database/supabase-server'
+import { aiRouteErrorMessage, logAiRouteError } from '../_error-utils'
 
 const MAX_MESSAGE_CONTENT_LENGTH = 12_000
+const PUBLIC_AI_ANALYZE_ERROR = 'AI analysis failed'
 
 export async function POST(request: Request) {
     try {
@@ -88,11 +90,11 @@ export async function POST(request: Request) {
             }
         })
 
-    } catch (error: any) {
-        console.error("[AI Analyze API] Error:", error)
+    } catch (error: unknown) {
+        logAiRouteError("[AI Analyze API] Error:", error)
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: aiRouteErrorMessage(error, PUBLIC_AI_ANALYZE_ERROR)
         }, { status: 500 })
     }
 }
