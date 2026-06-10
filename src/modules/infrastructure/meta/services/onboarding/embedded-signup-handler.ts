@@ -7,66 +7,15 @@ function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
 }
 
-function sanitizeEmbeddedSignupHandlerLogDetails(details: Record<string, unknown> = {}) {
-    const sensitiveKeys = new Set([
-        'channelId',
-        'connectionId',
-        'orgId',
-        'phoneNumber',
-        'phoneNumberId',
-        'wabaId',
-    ]);
+function logEmbeddedSignupHandlerError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
 
-    return Object.fromEntries(
-        Object.entries(details).map(([key, value]) => {
-            if (sensitiveKeys.has(key)) {
-                return [`${key}Present`, Boolean(value)];
-            }
-
-            return [key, value];
-        })
-    );
-}
-
-function summarizeEmbeddedSignupHandlerError(error: unknown) {
-    return error instanceof Error
+    console.error(label, error instanceof Error
         ? { name: error.name }
-        : { type: typeof error };
-}
-
-function logEmbeddedSignupHandlerInfo(label: string, details: Record<string, unknown> = {}) {
-    if (!isDeployedRuntime()) {
-        console.log(label, details);
-        return;
-    }
-
-    console.log(label, sanitizeEmbeddedSignupHandlerLogDetails(details));
-}
-
-function logEmbeddedSignupHandlerWarning(label: string, error: unknown, details?: Record<string, unknown>) {
-    if (!isDeployedRuntime()) {
-        if (details) console.warn(label, error, details);
-        else console.warn(label, error);
-        return;
-    }
-
-    console.warn(label, {
-        ...(details ? sanitizeEmbeddedSignupHandlerLogDetails(details) : {}),
-        detail: summarizeEmbeddedSignupHandlerError(error),
-    });
-}
-
-function logEmbeddedSignupHandlerError(label: string, error: unknown, details?: Record<string, unknown>) {
-    if (!isDeployedRuntime()) {
-        if (details) console.error(label, error, details);
-        else console.error(label, error);
-        return;
-    }
-
-    console.error(label, {
-        ...(details ? sanitizeEmbeddedSignupHandlerLogDetails(details) : {}),
-        detail: summarizeEmbeddedSignupHandlerError(error),
-    });
+        : { type: typeof error });
 }
 
 function publicOnboardingError(error: unknown) {
@@ -77,10 +26,6 @@ function publicOnboardingError(error: unknown) {
     return error instanceof Error
         ? error.message
         : 'Unknown error during onboarding';
-}
-
-function metaBearerHeaders(accessToken: string): HeadersInit {
-    return { 'Authorization': `Bearer ${accessToken}` };
 }
 
 export interface OnboardingResult {
@@ -104,14 +49,14 @@ export class EmbeddedSignupHandler {
      */
     async completeOnboarding(orgId: string, code: string): Promise<OnboardingResult> {
         try {
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Starting onboarding', { orgId });
+            console.log(`[EmbeddedSignup] Starting onboarding for Org: ${orgId}`);
 
             // 1. Exchange Code for Access Token
             const tokenData = await this.exchangeCodeForToken(code);
             if (!tokenData.access_token) {
                 throw new Error('Failed to obtain access token');
             }
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Access token obtained');
+            console.log('[EmbeddedSignup] Access Token obtained');
 
             // 2. Resolve WABA ID
             const wabaId = await this.resolveWabaId(tokenData.access_token, tokenData.waba_id);
@@ -126,11 +71,7 @@ export class EmbeddedSignupHandler {
             }
             const primaryPhone = phoneNumbers[0];
 
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Found WABA phone number', {
-                wabaId,
-                phoneNumber: primaryPhone.display_phone_number,
-                phoneNumberId: primaryPhone.id,
-            });
+            console.log(`[EmbeddedSignup] Found WABA: ${wabaId}, Phone: ${primaryPhone.display_phone_number}`);
 
             // 4. Register in Database with deduplication
             const connectionId = await this.registerConnection(orgId, {
@@ -144,7 +85,7 @@ export class EmbeddedSignupHandler {
             // 5. Subscribe to Webhooks (Critical for Shadow Delivery prevention)
             const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, tokenData.access_token);
             if (!subResult.success) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Webhook subscription warning:', subResult.error, { wabaId });
+                console.warn('[EmbeddedSignup] Webhook subscription warning:', subResult.error);
             }
 
             // 6. Subscribe smb_message_echoes for Coexistence mode
@@ -193,8 +134,8 @@ export class EmbeddedSignupHandler {
         if (hintWabaId) return hintWabaId;
 
         // For System User token from Embedded Signup, fetch shared WABAs
-        const url = `${GRAPH_URL}/me/client_whatsapp_business_accounts`;
-        const res = await fetch(url, { headers: metaBearerHeaders(accessToken) });
+        const url = `${GRAPH_URL}/me/client_whatsapp_business_accounts?access_token=${accessToken}`;
+        const res = await fetch(url);
         const data = await res.json();
 
         if (data.data && data.data.length > 0) {
@@ -202,8 +143,8 @@ export class EmbeddedSignupHandler {
         }
 
         // Fallback: try owned WABAs
-        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts`;
-        const ownedRes = await fetch(ownedUrl, { headers: metaBearerHeaders(accessToken) });
+        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts&access_token=${accessToken}`;
+        const ownedRes = await fetch(ownedUrl);
         const ownedData = await ownedRes.json();
 
         if (ownedData.data?.[0]?.owned_whatsapp_business_accounts?.data?.[0]?.id) {
@@ -217,8 +158,8 @@ export class EmbeddedSignupHandler {
      * Get Phone Numbers for WABA
      */
     private async getPhoneNumbers(wabaId: string, accessToken: string) {
-        const url = `${GRAPH_URL}/${wabaId}/phone_numbers`;
-        const res = await fetch(url, { headers: metaBearerHeaders(accessToken) });
+        const url = `${GRAPH_URL}/${wabaId}/phone_numbers?access_token=${accessToken}`;
+        const res = await fetch(url);
         const data = await res.json();
         return data.data || [];
     }
@@ -247,9 +188,9 @@ export class EmbeddedSignupHandler {
             const data = await res.json();
 
             if (!res.ok) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Coexistence fields subscription warning:', data, { wabaId });
+                console.warn('[EmbeddedSignup] Coexistence fields subscription warning:', data);
             } else {
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Coexistence fields subscribed');
+                console.log('[EmbeddedSignup] ✅ Coexistence fields subscribed (messages, smb_message_echoes, history)');
             }
 
             // Configure rate limiter for coexistence mode (20 mps limit)
@@ -259,16 +200,13 @@ export class EmbeddedSignupHandler {
                     maxTokens: 20,
                     refillRate: 20,
                 });
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Rate limiter configured for coexistence', {
-                    wabaId,
-                    maxTokens: 20,
-                });
+                console.log(`[EmbeddedSignup] ✅ Rate limiter set to 20 mps for WABA ${wabaId} (Coexistence)`);
             } catch (rlError) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Rate limiter config warning:', rlError, { wabaId });
+                console.warn('[EmbeddedSignup] Rate limiter config warning:', rlError);
             }
         } catch (error) {
             // Non-fatal: log but don't break onboarding
-            logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Coexistence subscription error:', error, { wabaId });
+            console.warn('[EmbeddedSignup] Coexistence subscription error:', error);
         }
     }
 
@@ -299,7 +237,7 @@ export class EmbeddedSignupHandler {
             const existingChannel = existing[0];
 
             if (existingChannel.status === 'active') {
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Channel already active', { channelId: existingChannel.id });
+                console.log(`[EmbeddedSignup] Channel already active: ${existingChannel.id}`);
                 // Update credentials with fresh token
                 await supabaseAdmin
                     .from('integration_connections')
@@ -312,7 +250,7 @@ export class EmbeddedSignupHandler {
             }
 
             // Reactivate deleted/disconnected channel
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Reactivating channel', { channelId: existingChannel.id });
+            console.log(`[EmbeddedSignup] Reactivating channel: ${existingChannel.id}`);
             await supabaseAdmin
                 .from('integration_connections')
                 .update({
@@ -366,7 +304,7 @@ export class EmbeddedSignupHandler {
 
         if (error) throw error;
 
-        logEmbeddedSignupHandlerInfo('[EmbeddedSignup] New channel created', { channelId: conn.id });
+        console.log(`[EmbeddedSignup] New channel created: ${conn.id}`);
         return conn.id;
     }
 }
