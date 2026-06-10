@@ -17,6 +17,34 @@ function summarizeMetaChannelError(error: unknown) {
         : { type: typeof error }
 }
 
+function sanitizeMetaChannelLogDetails(details: Record<string, unknown>) {
+    const sensitiveKeys = new Set([
+        'assetId',
+        'channelId',
+        'pageId',
+        'wabaId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function logMetaChannelInfo(label: string, details: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeMetaChannelLogDetails(details))
+}
+
 function logMetaChannelError(label: string, error: unknown, level: 'error' | 'warn' = 'error') {
     const logger = level === 'warn' ? console.warn : console.error
 
@@ -142,7 +170,12 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
                 const webhookResult = await metaApi.subscribePageWebhooks(pageIdToSubscribe, finalAccessToken);
                 webhookStatus = webhookResult.success ? "active" : "failed";
-                console.log(`[activateMetaChannel] Webhook ${webhookStatus} for ${assetType} (${assetId}) via Page ${pageIdToSubscribe}`);
+                logMetaChannelInfo('[activateMetaChannel] Webhook setup finished', {
+                    webhookStatus,
+                    assetType,
+                    assetId,
+                    pageId: pageIdToSubscribe,
+                });
             } catch (e: any) {
                 logMetaChannelError('[activateMetaChannel] Token/webhook setup warning:', e, 'warn');
             }
@@ -152,7 +185,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             try {
                 // Subscribe WABA to app webhooks (Critical for inbound messages)
                 if (wabaId) {
-                    console.log(`[activateMetaChannel] Subscribing WABA ${wabaId}...`);
+                    logMetaChannelInfo('[activateMetaChannel] Subscribing WABA', { wabaId });
                     const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, finalAccessToken);
                     webhookStatus = subResult.success ? "app_level" : "failed";
                     if (!subResult.success) {
@@ -248,7 +281,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
         }
 
-        console.log(`[activateMetaChannel] Channel created: ${channel.id}`);
+        logMetaChannelInfo('[activateMetaChannel] Channel created', { channelId: channel.id });
 
         revalidatePath("/platform/integrations");
         revalidatePath("/crm/settings/channels");

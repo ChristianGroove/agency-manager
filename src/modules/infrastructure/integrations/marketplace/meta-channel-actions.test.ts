@@ -171,6 +171,43 @@ describe('activateMetaChannel', () => {
         expect(warnLogText).not.toContain('page token')
     })
 
+    it('does not expose Meta asset identifiers in production success logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+        mockActivationDb()
+
+        const { activateMetaChannel } = await import('./meta-channel-actions')
+        const whatsappResult = await activateMetaChannel(uiActivationInput({
+            assetId: 'asset_sensitive_whatsapp',
+            assetName: 'WhatsApp Main',
+            wabaId: 'waba_sensitive_123',
+        }))
+
+        mockActivationDb()
+        const pageResult = await activateMetaChannel(uiActivationInput({
+            assetId: 'asset_sensitive_page',
+            assetType: 'page',
+            assetName: 'Facebook Page',
+            pageId: 'page_sensitive_123',
+            wabaId: undefined,
+        }))
+
+        expect(whatsappResult).toEqual({ success: true, channelId: 'channel_123' })
+        expect(pageResult).toEqual({ success: true, channelId: 'channel_123' })
+
+        const logText = collectConsoleCalls(logSpy)
+        expect(logText).toContain('wabaIdPresent')
+        expect(logText).toContain('assetIdPresent')
+        expect(logText).toContain('pageIdPresent')
+        expect(logText).toContain('channelIdPresent')
+        expect(logText).not.toContain('waba_sensitive_123')
+        expect(logText).not.toContain('asset_sensitive_whatsapp')
+        expect(logText).not.toContain('asset_sensitive_page')
+        expect(logText).not.toContain('page_sensitive_123')
+        expect(logText).not.toContain('channel_123')
+    })
+
     it('keeps returning the product-level already-active message', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockActivationDb({
