@@ -126,6 +126,29 @@ describe('/api/internal/assistant/intent', () => {
         expect(errorLogText).not.toContain('provider token')
     })
 
+    it('does not expose confirmation authorization details in production responses or logs', async () => {
+        setupProductionRuntime()
+        setupAssistantContext()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.confirmIntent.mockRejectedValue(
+            new Error('Unauthorized provider token secret-value mismatch while confirming intent')
+        )
+
+        const { POST } = await import('./[log_id]/confirm/route')
+        const response = await POST(intentRequest(), intentParams())
+        const responseText = await response.text()
+
+        expect(response.status).toBe(403)
+        expect(responseText).toContain('Unauthorized')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('provider token')
+        expect(responseText).not.toContain('mismatch')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('provider token')
+    })
+
     it('does not expose cancellation exceptions in production responses or logs', async () => {
         setupProductionRuntime()
         setupAssistantContext()
@@ -143,6 +166,29 @@ describe('/api/internal/assistant/intent', () => {
         expect(responseText).not.toContain('details')
         expect(responseText).not.toContain('secret-value')
         expect(responseText).not.toContain('audit token')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('audit token')
+    })
+
+    it('does not expose cancellation conflict details in production responses or logs', async () => {
+        setupProductionRuntime()
+        setupAssistantContext()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.cancelIntent.mockRejectedValue(
+            new Error('Cannot cancel audit token secret-value because state changed')
+        )
+
+        const { POST } = await import('./[log_id]/cancel/route')
+        const response = await POST(intentRequest(), intentParams())
+        const responseText = await response.text()
+
+        expect(response.status).toBe(409)
+        expect(responseText).toContain('Intent cannot be cancelled')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('audit token')
+        expect(responseText).not.toContain('state changed')
 
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')

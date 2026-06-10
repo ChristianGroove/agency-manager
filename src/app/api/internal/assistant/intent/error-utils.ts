@@ -33,3 +33,9 @@ export function assistantIntentFailureBody(fallback: string, error: unknown) {
         details: assistantIntentErrorMessage(error, fallback),
     }
 }
+
+export function assistantIntentClientError(error: unknown, fallback: string) {
+    return isProductionRuntime()
+        ? fallback
+        : assistantIntentErrorMessage(error, fallback)
+}

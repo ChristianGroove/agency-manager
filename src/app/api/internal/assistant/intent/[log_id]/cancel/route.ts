@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAssistantContext } from '@/modules/assistant/context-resolver';
 import { IntentExecutor } from '@/modules/assistant/intent-executor';
-import { assistantIntentFailureBody, logAssistantIntentError } from '../../error-utils';
+import { assistantIntentClientError, assistantIntentFailureBody, logAssistantIntentError } from '../../error-utils';
 
 /**
  * 🔒 CANCEL INTENT API
@@ -42,14 +42,15 @@ export async function POST(
             intent_log_id: logId
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         logAssistantIntentError("[Assistant API] Cancellation Error:", error);
+        const errorMessage = error instanceof Error ? error.message : '';
 
-        if (error.message.includes("Unauthorized")) {
-            return NextResponse.json({ error: error.message }, { status: 403 });
+        if (errorMessage.includes("Unauthorized")) {
+            return NextResponse.json({ error: assistantIntentClientError(error, 'Unauthorized') }, { status: 403 });
         }
-        if (error.message.includes("Cannot cancel")) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+        if (errorMessage.includes("Cannot cancel")) {
+            return NextResponse.json({ error: assistantIntentClientError(error, 'Intent cannot be cancelled') }, { status: 409 });
         }
 
         return NextResponse.json(
