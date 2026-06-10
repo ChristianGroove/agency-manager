@@ -58,7 +58,7 @@ export async function getTemplates(channelId?: string): Promise<MessageTemplate[
     }
 
     const { data, error } = await query.order('created_at', { ascending: false })
-    if (error) throwTemplateActionError(error)
+    if (error) throw new Error(error.message)
     return (data || []) as MessageTemplate[]
 }
 
@@ -73,10 +73,6 @@ export async function createTemplate(input: {
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
-    if (input.channel_id) {
-        await assertTemplateChannelBelongsToOrganization(supabase, orgId, input.channel_id)
-    }
-
     const { data, error } = await supabase
         .from("messaging_templates")
         .insert({
@@ -92,7 +88,7 @@ export async function createTemplate(input: {
         .select()
         .single()
 
-    if (error) throwTemplateActionError(error)
+    if (error) throw new Error(error.message)
     revalidatePath("/crm/settings/templates")
     return data
 }
@@ -102,9 +98,6 @@ export async function updateTemplate(id: string, input: Partial<MessageTemplate>
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
-    if ('channel_id' in input && input.channel_id) {
-        await assertTemplateChannelBelongsToOrganization(supabase, orgId, input.channel_id)
-    }
 
     // If components update, update legacy content preview too
     const updates: any = { ...input }
@@ -118,7 +111,7 @@ export async function updateTemplate(id: string, input: Partial<MessageTemplate>
         .eq("id", id)
         .eq("organization_id", orgId)
 
-    if (error) throwTemplateActionError(error)
+    if (error) throw new Error(error.message)
     revalidatePath("/crm/settings/templates")
 }
 
@@ -133,7 +126,7 @@ export async function deleteTemplate(id: string) {
         .eq("id", id)
         .eq("organization_id", orgId)
 
-    if (error) throwTemplateActionError(error)
+    if (error) throw new Error(error.message)
     revalidatePath("/crm/settings/templates")
 }
 
@@ -143,46 +136,13 @@ function extractBodyText(components: TemplateComponent[]): string {
     return body?.text || "Sin contenido de texto"
 }
 
-async function assertTemplateChannelBelongsToOrganization(
-    supabase: Awaited<ReturnType<typeof createClient>>,
-    orgId: string,
-    channelId: string
-) {
-    const { data: connection, error } = await supabase
-        .from('integration_connections')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('id', channelId)
-        .maybeSingle()
-
-    if (error) throwTemplateActionError(error)
-    if (!connection) throw new Error("Template channel not found")
-}
-
 // â”€â”€â”€ META GRAPH API INTEGRATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const META_API_VERSION = 'v24.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
-const PUBLIC_TEMPLATE_ACTION_ERROR = 'Messaging template action failed'
-const PUBLIC_META_TEMPLATE_FETCH_ERROR = 'Failed to fetch templates from Meta'
-const PUBLIC_META_TEMPLATE_SUBMIT_ERROR = 'Failed to submit template to Meta'
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
-}
-
-function publicTemplateActionError(error: unknown, fallback = PUBLIC_TEMPLATE_ACTION_ERROR) {
-    if (isDeployedRuntime()) return fallback
-    if (typeof error === 'string' && error) return error
-    if (error instanceof Error && error.message) return error.message
-    if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
-        return (error as { message: string }).message
-    }
-    return fallback
-}
-
-function throwTemplateActionError(error: unknown, fallback = PUBLIC_TEMPLATE_ACTION_ERROR): never {
-    throw new Error(publicTemplateActionError(error, fallback))
 }
 
 function sanitizeTemplateActionLogDetails(details: Record<string, unknown> = {}) {
@@ -361,7 +321,7 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
     if (!response.ok) {
         const err = await response.json()
         logTemplateActionError('[syncTemplatesFromMeta] Meta API Error:', err, { wabaId })
-        throwTemplateActionError(err?.error?.message || err, PUBLIC_META_TEMPLATE_FETCH_ERROR)
+        throw new Error(err?.error?.message || 'Failed to fetch templates from Meta')
     }
 
     const result = await response.json()
@@ -395,12 +355,11 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
                 })
 
             if (upsertError) {
-                throw new Error(publicTemplateActionError(upsertError))
+                throw new Error(upsertError.message)
             }
             synced++
         } catch (e: any) {
-            const publicError = publicTemplateActionError(e)
-            errors.push(isDeployedRuntime() ? publicError : `${mt.name}: ${publicError}`)
+            errors.push(`${mt.name}: ${e.message}`)
         }
     }
 
@@ -459,21 +418,12 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
     const result = await response.json()
 
     if (!response.ok) {
-        const errorMsg = publicTemplateActionError(
-            result?.error?.message || result,
-            PUBLIC_META_TEMPLATE_SUBMIT_ERROR
-        )
-        logTemplateActionError('[submitTemplateToMeta] Meta API Error:', result, {
-            templateId,
-            templateName: template.name,
-            wabaId,
-        })
+        const errorMsg = result?.error?.message || 'Failed to submit template to Meta'
         // Update local status
         await supabase
             .from('messaging_templates')
             .update({ status: 'REJECTED' })
             .eq('id', templateId)
-            .eq('organization_id', orgId)
 
         revalidatePath("/crm/settings/templates")
         return { success: false, error: errorMsg }
@@ -487,7 +437,6 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
             status: result.status || 'PENDING'
         })
         .eq('id', templateId)
-        .eq('organization_id', orgId)
 
     revalidatePath("/crm/settings/templates")
     return { success: true, metaId: result.id }
@@ -515,6 +464,7 @@ export async function deleteTemplateFromMeta(templateId: string, channelId?: str
     // Only attempt Meta deletion if we have a meta_id (was submitted to Meta)
     if (template.meta_id) {
         try {
+            const { wabaId, accessToken } = await resolveMetaCredentials(orgId)
             const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/message_templates?name=${template.name}`
             const response = await fetch(url, {
                 method: 'DELETE',
@@ -545,7 +495,7 @@ export async function deleteTemplateFromMeta(templateId: string, channelId?: str
         .eq('id', templateId)
         .eq('organization_id', orgId)
 
-    if (error) throwTemplateActionError(error)
+    if (error) throw new Error(error.message)
 
     revalidatePath("/crm/settings/templates")
     return { success: true }

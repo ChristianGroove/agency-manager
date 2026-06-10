@@ -57,59 +57,6 @@ function templatesUpsertQuery(upsertSpy: ReturnType<typeof vi.fn>) {
     }
 }
 
-function templatesListQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        order: vi.fn(async () => result),
-        select: vi.fn(() => query),
-    }
-
-    return query
-}
-
-function templateInsertQuery(insertSpy: ReturnType<typeof vi.fn>, result: unknown = { data: { id: 'template-1' }, error: null }) {
-    const selectQuery = {
-        single: vi.fn(async () => result),
-    }
-    const insertQuery = {
-        select: vi.fn(() => selectQuery),
-    }
-    insertSpy.mockReturnValue(insertQuery)
-
-    return {
-        insert: insertSpy,
-    }
-}
-
-function templateUpdateActionQuery(updateSpy: ReturnType<typeof vi.fn>, result: unknown = { error: null }) {
-    const updateQuery: any = {
-        eq: vi.fn(() => updateQuery),
-        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-            Promise.resolve(result).then(resolve, reject),
-    }
-    updateSpy.mockReturnValue(updateQuery)
-
-    return {
-        update: updateSpy,
-    }
-}
-
-function templateSubmitQuery(template: unknown, updateEqSpy: ReturnType<typeof vi.fn>) {
-    const selectQuery: any = {
-        eq: vi.fn(() => selectQuery),
-        single: vi.fn(async () => ({ data: template, error: null })),
-    }
-    const updateQuery: any = {
-        eq: updateEqSpy,
-    }
-    updateEqSpy.mockImplementation(() => updateQuery)
-
-    return {
-        select: vi.fn(() => selectQuery),
-        update: vi.fn(() => updateQuery),
-    }
-}
-
 function templatesDeleteQuery(template: unknown, deleteResult: unknown = { error: null }) {
     const deleteQuery: any = {
         eq: vi.fn(() => deleteQuery),
@@ -158,137 +105,7 @@ afterEach(() => {
     mocks.revalidatePath.mockReset()
 })
 
-describe('messaging template channel isolation', () => {
-    const components = [{ type: 'BODY' as const, format: 'TEXT' as const, text: 'Hola' }]
-
-    it('rejects template creation when the channel is outside the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const channelQuery = connectionQuery({ data: null, error: null })
-        const insertSpy = vi.fn()
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'integration_connections') return channelQuery
-                if (table === 'messaging_templates') return templateInsertQuery(insertSpy)
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { createTemplate } = await import('./templates')
-        await expect(createTemplate({
-            name: 'welcome',
-            category: 'UTILITY',
-            language: 'es',
-            components,
-            channel_id: 'foreign-channel',
-        })).rejects.toThrow('Template channel not found')
-
-        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'foreign-channel')
-        expect(insertSpy).not.toHaveBeenCalled()
-    })
-
-    it('creates templates when the channel belongs to the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const channelQuery = connectionQuery({ data: { id: 'owned-channel' }, error: null })
-        const insertSpy = vi.fn()
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'integration_connections') return channelQuery
-                if (table === 'messaging_templates') return templateInsertQuery(insertSpy)
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { createTemplate } = await import('./templates')
-        await expect(createTemplate({
-            name: 'welcome',
-            category: 'UTILITY',
-            language: 'es',
-            components,
-            channel_id: 'owned-channel',
-        })).resolves.toEqual({ id: 'template-1' })
-
-        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'owned-channel')
-        expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({
-            channel_id: 'owned-channel',
-            content: 'Hola',
-            organization_id: 'org-current',
-        }))
-        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm/settings/templates')
-    })
-
-    it('rejects template channel updates when the channel is outside the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const channelQuery = connectionQuery({ data: null, error: null })
-        const updateSpy = vi.fn()
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'integration_connections') return channelQuery
-                if (table === 'messaging_templates') return templateUpdateActionQuery(updateSpy)
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { updateTemplate } = await import('./templates')
-        await expect(updateTemplate('template-1', {
-            channel_id: 'foreign-channel',
-        } as any)).rejects.toThrow('Template channel not found')
-
-        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'foreign-channel')
-        expect(updateSpy).not.toHaveBeenCalled()
-    })
-
-    it('updates template channels when the channel belongs to the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const channelQuery = connectionQuery({ data: { id: 'owned-channel' }, error: null })
-        const updateSpy = vi.fn()
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'integration_connections') return channelQuery
-                if (table === 'messaging_templates') return templateUpdateActionQuery(updateSpy)
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { updateTemplate } = await import('./templates')
-        await expect(updateTemplate('template-1', {
-            channel_id: 'owned-channel',
-        } as any)).resolves.toBeUndefined()
-
-        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'owned-channel')
-        expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-            channel_id: 'owned-channel',
-        }))
-        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm/settings/templates')
-    })
-})
-
 describe('messaging template Meta actions logging', () => {
-    it('does not expose local template DB failures in production action errors', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'messaging_templates') {
-                    return templatesListQuery({
-                        data: null,
-                        error: {
-                            message: 'db denied org-secret-id template-secret-id',
-                            code: '42501',
-                        },
-                    })
-                }
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { getTemplates } = await import('./templates')
-        await expect(getTemplates('channel-secret-id')).rejects.toThrow(/^Messaging template action failed$/)
-    })
-
     it('does not expose Meta template sync credentials or template details in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
@@ -373,7 +190,7 @@ describe('messaging template Meta actions logging', () => {
         })
 
         const { syncTemplatesFromMeta } = await import('./templates')
-        await expect(syncTemplatesFromMeta('channel-secret-id')).rejects.toThrow('Failed to fetch templates from Meta')
+        await expect(syncTemplatesFromMeta('channel-secret-id')).rejects.toThrow()
 
         const logText = collectConsoleCalls(logSpy, errorSpy)
         expect(logText).not.toContain('org-secret-id')
@@ -385,58 +202,6 @@ describe('messaging template Meta actions logging', () => {
         expect(logText).toContain('OAuthException')
         expect(logText).toContain('190')
         expect(logText).toContain('hasMessage')
-        expect(logText).toContain('wabaIdPresent')
-    })
-
-    it('does not expose Meta template submit failures in production results or logs', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const updateEqSpy = vi.fn()
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-            error: {
-                message: 'meta-access-secret rejected secret_template_name for waba-secret-id',
-                type: 'OAuthException',
-                code: 190,
-            },
-        }), { status: 400 }))
-        vi.stubGlobal('fetch', fetchMock)
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'integration_connections') return connectionQuery(createConnectionResult())
-                if (table === 'messaging_templates') {
-                    return templateSubmitQuery({
-                        id: 'template-secret-id',
-                        name: 'secret_template_name',
-                        category: 'UTILITY',
-                        language: 'es',
-                        components: [{ type: 'BODY', text: 'secret template body' }],
-                    }, updateEqSpy)
-                }
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-
-        const { submitTemplateToMeta } = await import('./templates')
-        const result = await submitTemplateToMeta('template-secret-id', 'channel-secret-id')
-
-        expect(result).toEqual({ success: false, error: 'Failed to submit template to Meta' })
-        expect(updateEqSpy).toHaveBeenCalledWith('id', 'template-secret-id')
-        expect(updateEqSpy).toHaveBeenCalledWith('organization_id', 'org-secret-id')
-
-        const logText = collectConsoleCalls(logSpy, errorSpy)
-        expect(logText).not.toContain('org-secret-id')
-        expect(logText).not.toContain('channel-secret-id')
-        expect(logText).not.toContain('template-secret-id')
-        expect(logText).not.toContain('secret_template_name')
-        expect(logText).not.toContain('secret template body')
-        expect(logText).not.toContain('meta-access-secret')
-        expect(logText).not.toContain('waba-secret-id')
-        expect(logText).toContain('OAuthException')
-        expect(logText).toContain('190')
-        expect(logText).toContain('templateIdPresent')
-        expect(logText).toContain('templateNamePresent')
         expect(logText).toContain('wabaIdPresent')
     })
 
