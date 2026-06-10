@@ -1,7 +1,30 @@
 import { NextResponse } from 'next/server'
-import { createHash } from 'crypto'
+import { createHash, timingSafeEqual } from 'crypto'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-logger"
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+
+function logWompiWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function safeEqual(a: string, b: string) {
+    const aBuffer = Buffer.from(a)
+    const bBuffer = Buffer.from(b)
+
+    if (aBuffer.length !== bBuffer.length) {
+        return false
+    }
+
+    return timingSafeEqual(aBuffer, bBuffer)
+}
 
 export async function GET() {
     return NextResponse.json({
@@ -11,26 +34,47 @@ export async function GET() {
     }, { status: 200 })
 }
 
+async function updateWompiSyncStatus(organizationId: string, environment: string) {
+    const { error } = await supabaseAdmin
+        .from('organization_settings')
+        .update({
+            wompi_last_sync: new Date().toISOString(),
+            wompi_environment: environment
+        })
+        .eq('organization_id', organizationId)
+
+    if (error) {
+        logWompiWebhookError('Error updating Wompi settings:', error)
+    }
+}
+
 export async function POST(request: Request) {
     console.log('----- WOMPI WEBHOOK HIT -----')
     console.log('Time:', new Date().toISOString())
 
     try {
-        const body = await request.json()
-        console.log('Webhook Body:', JSON.stringify(body, null, 2))
+        let body: any
+        try {
+            body = await request.json()
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+        }
 
         const { data, signature, timestamp, environment } = body
 
         // Wompi sends the transaction data inside 'data.transaction'
-        const transaction = data.transaction
+        const transaction = data?.transaction
 
         if (!transaction) {
             console.log('No transaction data found in body')
-            return NextResponse.json({ message: 'Event received' }, { status: 200 })
+            return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 })
+        }
+
+        if (!signature?.checksum || !timestamp) {
+            return NextResponse.json({ error: 'Invalid webhook signature payload' }, { status: 400 })
         }
 
         const eventsSecret = process.env.WOMPI_EVENTS_SECRET
-        console.log('Events Secret Configured:', !!eventsSecret)
 
         if (!eventsSecret) {
             console.error('WOMPI_EVENTS_SECRET not configured')
@@ -42,31 +86,12 @@ export async function POST(request: Request) {
         const signatureString = `${transaction.id}${transaction.status}${transaction.amount_in_cents}${timestamp}${eventsSecret}`
         const calculatedSignature = createHash('sha256').update(signatureString).digest('hex')
 
-        console.log('Signature Check:')
-        console.log('Received:', signature.checksum)
-        console.log('Calculated:', calculatedSignature)
-
-        if (calculatedSignature !== signature.checksum) {
+        if (!safeEqual(calculatedSignature, signature.checksum)) {
             console.error('Invalid Wompi webhook signature')
             return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
         }
 
-        console.log('Signature Valid. Updating Settings...')
-
-        // Update Wompi Status in Settings
-        const settingsUpdate = await supabaseAdmin
-            .from('organization_settings')
-            .update({
-                wompi_last_sync: new Date().toISOString(),
-                wompi_environment: environment || (transaction.redirect_url?.includes('sandbox') ? 'sandbox' : 'production')
-            })
-            .eq('id', 1)
-
-        if (settingsUpdate.error) {
-            console.error('Error updating settings:', settingsUpdate.error)
-        } else {
-            console.log('Settings updated successfully')
-        }
+        console.log('Signature valid.')
 
         // Process Payment
         if (transaction.status === 'APPROVED') {
@@ -87,18 +112,18 @@ export async function POST(request: Request) {
                     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
                 }
 
+                if (paymentTx.organization_id) {
+                    await updateWompiSyncStatus(
+                        paymentTx.organization_id,
+                        environment || (transaction.redirect_url?.includes('sandbox') ? 'sandbox' : 'production')
+                    )
+                }
+
                 // 2. Update Transaction Status
-                let paymentTxUpdate = supabaseAdmin
+                await supabaseAdmin
                     .from('payment_transactions')
                     .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
                     .eq('id', paymentTx.id)
-                    .eq('reference', reference)
-
-                if (paymentTx.organization_id) {
-                    paymentTxUpdate = paymentTxUpdate.eq('organization_id', paymentTx.organization_id)
-                }
-
-                await paymentTxUpdate
 
                 // 3. Update All Linked Invoices
                 const invoiceIds = paymentTx.invoice_ids
@@ -126,7 +151,7 @@ export async function POST(request: Request) {
                             currency: paymentTx.currency
                         })
                     } else {
-                        console.error(`[Webhook] ❌ Failed to upgrade branding:`, upgradeResult.error)
+                        logWompiWebhookError(`[Webhook] ❌ Failed to upgrade branding:`, upgradeResult.error)
                     }
 
                     // After processing upgrade, we don't need to check for invoices
@@ -153,7 +178,6 @@ export async function POST(request: Request) {
                                 .from('saas_platform_invoices')
                                 .select('billing_period_end')
                                 .eq('id', paymentTx.metadata.invoice_id)
-                                .eq('organization_id', paymentTx.organization_id)
                                 .single()
                             
                             if (invoice?.billing_period_end) {
@@ -178,7 +202,6 @@ export async function POST(request: Request) {
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', subscription.id)
-                            .eq('organization_id', paymentTx.organization_id)
 
                         console.log(`[Webhook] ✅ Updated saas_subscription ${subscription.id} for Org ${paymentTx.organization_id} until ${newEnd.toISOString()}`)
                     }
@@ -193,16 +216,15 @@ export async function POST(request: Request) {
                                     payment_transaction_id: paymentTx.id,
                                     updated_at: new Date().toISOString() 
                                 })
-                                .eq('id', paymentTx.metadata.invoice_id)
-                                .eq('organization_id', paymentTx.organization_id);
+                                .eq('id', paymentTx.metadata.invoice_id);
 
                             if (platformInvoiceError) {
-                                console.error('[Webhook] ❌ Error updating platform invoice status:', platformInvoiceError);
+                                logWompiWebhookError('[Webhook] ❌ Error updating platform invoice status:', platformInvoiceError);
                             } else {
                                 console.log(`[Webhook] ✅ Platform Invoice ${paymentTx.metadata.invoice_id} marked as PAID`);
                             }
                         } catch (e: any) {
-                            console.error('[Webhook] ❌ Unexpected error updating platform invoice:', e);
+                            logWompiWebhookError('[Webhook] ❌ Unexpected error updating platform invoice:', e);
                         }
                     }
 
@@ -232,16 +254,10 @@ export async function POST(request: Request) {
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
                     // ... (existing invoice update logic) ...
 
-                    let invoiceUpdateQuery = supabaseAdmin
+                    const { data: updatedInvoices, error: updateError } = await supabaseAdmin
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
-
-                    if (paymentTx.organization_id) {
-                        invoiceUpdateQuery = invoiceUpdateQuery.eq('organization_id', paymentTx.organization_id)
-                    }
-
-                    const { data: updatedInvoices, error: updateError } = await invoiceUpdateQuery
                         .select('id, client_id, number, total, organization_id') // Added organization_id
 
                     if (updateError) {
@@ -275,7 +291,7 @@ export async function POST(request: Request) {
                                     .from('notifications')
                                     .insert(notifications)
 
-                                if (notifError) console.error('Error creating internal notifications:', notifError)
+                                if (notifError) logWompiWebhookError('Error creating internal notifications:', notifError)
                                 else console.log(`Internal notifications sent to ${members.length} members`)
                             }
                         }
@@ -306,7 +322,7 @@ export async function POST(request: Request) {
                         .single()
 
                     if (error) {
-                        console.error('Error updating invoice status (Legacy/Direct):', error)
+                        logWompiWebhookError('Error updating invoice status (Legacy/Direct):', error)
                     } else {
                         console.log(`Invoice ${invoiceNumber} marked as paid via Wompi webhook (Legacy/Direct)`)
 
@@ -394,7 +410,7 @@ export async function POST(request: Request) {
                         }
                     }
                 } catch (e) {
-                    console.error("[Webhook] Error processing failure logic:", e)
+                    logWompiWebhookError("[Webhook] Error processing failure logic:", e)
                 }
             }
         } else {
@@ -404,7 +420,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true }, { status: 200 })
 
     } catch (error) {
-        console.error('Error processing Wompi webhook:', error)
+        logWompiWebhookError('Error processing Wompi webhook:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

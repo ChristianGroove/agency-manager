@@ -41,72 +41,23 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 }
 
 function updateEqResult(result: { error?: unknown } = { error: null }) {
-    const promise = Promise.resolve(result)
-    const query: any = {
-        eq: vi.fn(() => query),
-        then: promise.then.bind(promise),
-        catch: promise.catch.bind(promise),
-        finally: promise.finally.bind(promise),
-    }
-
     return {
-        update: vi.fn(() => query),
-        query,
+        update: vi.fn(() => ({
+            eq: vi.fn().mockResolvedValue(result),
+        })),
     }
 }
 
 function paymentTransactionBuilder(paymentTx: Record<string, unknown>) {
-    const updateResult = updateEqResult()
     return {
         select: vi.fn(() => ({
             eq: vi.fn(() => ({
                 single: vi.fn().mockResolvedValue({ data: paymentTx, error: null }),
             })),
         })),
-        update: updateResult.update,
-        updateQuery: updateResult.query,
-    }
-}
-
-function maybeSingleSelectResult(result: { data?: unknown, error?: unknown }) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        maybeSingle: vi.fn().mockResolvedValue(result),
-    }
-
-    return {
-        select: vi.fn(() => query),
-        query,
-    }
-}
-
-function singleSelectResult(result: { data?: unknown, error?: unknown }) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        single: vi.fn().mockResolvedValue(result),
-    }
-
-    return {
-        select: vi.fn(() => query),
-        query,
-    }
-}
-
-function directInvoiceUpdateBuilder(invoice: Record<string, unknown>) {
-    return {
         update: vi.fn(() => ({
-            eq: vi.fn(() => ({
-                select: vi.fn(() => ({
-                    single: vi.fn().mockResolvedValue({ data: invoice, error: null }),
-                })),
-            })),
+            eq: vi.fn().mockResolvedValue({ error: null }),
         })),
-    }
-}
-
-function insertResult(result: { error?: unknown } = { error: null }) {
-    return {
-        insert: vi.fn().mockResolvedValue(result),
     }
 }
 
@@ -141,7 +92,7 @@ describe('/api/wompi/webhook', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         vi.stubEnv('WOMPI_EVENTS_SECRET', 'events-secret')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
 
         const transaction = {
             id: 'tx-1',
@@ -151,25 +102,23 @@ describe('/api/wompi/webhook', () => {
             redirect_url: 'https://checkout.wompi.co/sandbox',
         }
 
-        const paymentTransaction = paymentTransactionBuilder({
-            id: 'payment-tx-1',
-            amount_in_cents: transaction.amount_in_cents,
-            currency: 'COP',
-            invoice_ids: [],
-            organization_id: 'org-secret-1',
-            metadata: {
-                type: 'branding_upgrade',
-                target_tier: 'whitelabel',
-            },
-        })
-
         mocks.supabaseFrom.mockImplementation((table: string) => {
             if (table === 'organization_settings') {
                 return updateEqResult()
             }
 
             if (table === 'payment_transactions') {
-                return paymentTransaction
+                return paymentTransactionBuilder({
+                    id: 'payment-tx-1',
+                    amount_in_cents: transaction.amount_in_cents,
+                    currency: 'COP',
+                    invoice_ids: [],
+                    organization_id: 'org-1',
+                    metadata: {
+                        type: 'branding_upgrade',
+                        target_tier: 'whitelabel',
+                    },
+                })
             }
 
             return updateEqResult()
@@ -186,149 +135,9 @@ describe('/api/wompi/webhook', () => {
 
         expect(response.status).toBe(200)
         expect(responseText).toContain('"success":true')
-        expect(paymentTransaction.updateQuery.eq).toHaveBeenCalledWith('id', 'payment-tx-1')
-        expect(paymentTransaction.updateQuery.eq).toHaveBeenCalledWith('reference', transaction.reference)
-        expect(paymentTransaction.updateQuery.eq).toHaveBeenCalledWith('organization_id', 'org-secret-1')
 
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('integrity')
-
-        const infoLogText = collectConsoleCalls(logSpy)
-        expect(infoLogText).not.toContain(transaction.reference)
-        expect(infoLogText).not.toContain('org-secret-1')
-        expect(infoLogText).toContain('referencePresent')
-        expect(infoLogText).toContain('organizationIdPresent')
-    })
-
-    it('does not expose direct invoice references in production logs', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        vi.stubEnv('WOMPI_EVENTS_SECRET', 'events-secret')
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-
-        const transaction = {
-            id: 'tx-legacy-1',
-            status: 'APPROVED',
-            amount_in_cents: 450000,
-            reference: 'INV-SECRET-001-1710000000000',
-            redirect_url: 'https://checkout.wompi.co/sandbox',
-        }
-
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'invoices') {
-                return directInvoiceUpdateBuilder({
-                    id: 'invoice-secret-id',
-                    client_id: 'client-secret-id',
-                    total: 4500,
-                })
-            }
-
-            if (table === 'client_events') {
-                return insertResult()
-            }
-
-            return updateEqResult()
-        })
-
-        const { POST } = await import('./route')
-        const response = await POST(signedWompiRequest(transaction))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('"success":true')
-        expect(mocks.logDomainEvent).toHaveBeenCalledWith(expect.objectContaining({
-            entity_id: 'invoice-secret-id',
-            event_type: 'invoice.paid',
-        }))
-
-        const combinedLogs = [
-            collectConsoleCalls(logSpy),
-            collectConsoleCalls(errorSpy),
-        ].join('\n')
-
-        expect(combinedLogs).not.toContain('INV-SECRET-001-1710000000000')
-        expect(combinedLogs).not.toContain('SECRET-001')
-        expect(combinedLogs).not.toContain('invoice-secret-id')
-        expect(combinedLogs).not.toContain('client-secret-id')
-        expect(combinedLogs).toContain('referencePresent')
-        expect(combinedLogs).toContain('invoiceNumberPresent')
-    })
-
-    it('scopes subscription payment updates to the payment organization', async () => {
-        vi.stubEnv('WOMPI_EVENTS_SECRET', 'events-secret')
-
-        const transaction = {
-            id: 'tx-subscription-1',
-            status: 'APPROVED',
-            amount_in_cents: 990000,
-            reference: 'PAY-1710000000000-SUBSCRIPTION',
-            redirect_url: 'https://checkout.wompi.co/sandbox',
-        }
-
-        const paymentTransaction = paymentTransactionBuilder({
-            id: 'payment-tx-1',
-            amount_in_cents: transaction.amount_in_cents,
-            currency: 'COP',
-            invoice_ids: [],
-            organization_id: 'org-current',
-            metadata: {
-                type: 'subscription_payment',
-                platform_invoice: true,
-                invoice_id: 'platform-invoice-1',
-            },
-        })
-        const subscriptionRead = maybeSingleSelectResult({
-            data: {
-                id: 'subscription-1',
-                current_period_end: '2026-07-01T00:00:00.000Z',
-            },
-            error: null,
-        })
-        const subscriptionUpdate = updateEqResult()
-        const platformInvoiceRead = singleSelectResult({
-            data: {
-                billing_period_end: '2026-08-01T00:00:00.000Z',
-            },
-            error: null,
-        })
-        const platformInvoiceUpdate = updateEqResult()
-        let subscriptionCalls = 0
-        let platformInvoiceCalls = 0
-
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'organization_settings') return updateEqResult()
-            if (table === 'payment_transactions') return paymentTransaction
-            if (table === 'saas_subscriptions') {
-                subscriptionCalls += 1
-                return subscriptionCalls === 1 ? subscriptionRead : subscriptionUpdate
-            }
-            if (table === 'saas_platform_invoices') {
-                platformInvoiceCalls += 1
-                return platformInvoiceCalls === 1 ? platformInvoiceRead : platformInvoiceUpdate
-            }
-            if (table === 'notifications') return insertResult()
-            throw new Error(`Unexpected table ${table}`)
-        })
-        mocks.registerBillableEvent.mockResolvedValue({ success: true })
-
-        const { POST } = await import('./route')
-        const response = await POST(signedWompiRequest(transaction))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(200)
-        expect(responseText).toContain('"success":true')
-        expect(paymentTransaction.updateQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(subscriptionRead.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(subscriptionUpdate.query.eq).toHaveBeenCalledWith('id', 'subscription-1')
-        expect(subscriptionUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(platformInvoiceRead.query.eq).toHaveBeenCalledWith('id', 'platform-invoice-1')
-        expect(platformInvoiceRead.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(platformInvoiceUpdate.query.eq).toHaveBeenCalledWith('id', 'platform-invoice-1')
-        expect(platformInvoiceUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(mocks.registerBillableEvent).toHaveBeenCalledWith(expect.objectContaining({
-            organization_id: 'org-current',
-            event_type: 'subscription_base',
-        }))
     })
 })
