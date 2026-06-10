@@ -3,11 +3,47 @@
 import { AIEngine } from "../service"
 import { QuoteSettings } from "@/modules/features/crm/services/logic/quote-settings"
 
+const PUBLIC_QUOTE_COPY_ERROR = "No se pudo generar el texto"
+
+type GenerateQuoteCopyResult =
+    | { success: true; text: string; error?: never }
+    | { success: false; error: string; text?: never }
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeQuoteCopyError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function quoteCopyFailure(error: unknown): GenerateQuoteCopyResult {
+    console.error("Error generating copy:", isDeployedRuntime() ? summarizeQuoteCopyError(error) : error)
+
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_QUOTE_COPY_ERROR }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_QUOTE_COPY_ERROR }
+}
+
 export async function generateQuoteCopy(
     settings: QuoteSettings,
     field: 'header' | 'footer',
     tone: string = "Professional"
-): Promise<{ success: boolean; text?: string; error?: string }> {
+): Promise<GenerateQuoteCopyResult> {
     try {
         const contextPrompt = `
         You are an expert copywriter for business documents.
@@ -15,8 +51,7 @@ export async function generateQuoteCopy(
         CONTEXT:
         - Industry/Vertical: ${settings.vertical}
         - Action Buttons: Approve="${settings.approve_label}", Reject="${settings.reject_label}"
-        - Organization ID: ${settings.organization_id}
-        
+
         TASK:
         Generate a single, short, professional ${field} text for a Price Quote / Proposal.
         
@@ -49,21 +84,15 @@ export async function generateQuoteCopy(
             bypassCache: true
         })
 
-        // Since we are using an ad-hoc task type that might not be registered in the strict registry,
-        // we might fail if AIEngine enforces registry.
-        // However, looking at AIEngine implementation, it calls `getTaskDefinition(taskType)`.
-        // If "gen_quote_copy" is not registered, it will throw.
-        // WE MUST REGISTER THIS TASK FIRST. 
-        // OR use a generic "completion" task if available.
-        // Let's optimize: We will use a registered task "text.completion_v1" if it exists, or register one.
-        // For now, let's assume we need to add the task definition. 
-        // Wait, I cannot edit AIEngine core extensively without checking `tasks/registry.ts`.
-        // Let's check `src/modules/core/ai-engine/tasks/registry.ts` first.
+        const text = typeof response.data?.text === 'string'
+            ? response.data.text
+            : typeof response.data === 'string'
+                ? response.data
+                : ""
 
-        return { success: true, text: response.data?.text || response.data || "" }
+        return { success: true, text }
 
-    } catch (error: any) {
-        console.error("Error generating copy:", error)
-        return { success: false, error: error.message }
+    } catch (error: unknown) {
+        return quoteCopyFailure(error)
     }
 }
