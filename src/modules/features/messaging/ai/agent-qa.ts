@@ -5,6 +5,44 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
+const PUBLIC_AGENT_QA_ERROR = 'Agent QA failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logAgentQaError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiError(error))
+}
+
 export interface AgentQAResult {
     empathy: number
     resolution: number
@@ -83,9 +121,9 @@ export async function analyzeAgentPerformance(
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "Unauthorized" }
 
-    const supabase = await createClient() // Use standard client for cached data read (RLS applies)
-
     try {
+        const supabase = await createClient() // Use standard client for cached data read (RLS applies)
+
         // 1. Check Cache (Recent report within last 24h?)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
@@ -160,7 +198,7 @@ export async function analyzeAgentPerformance(
         }
 
     } catch (error: any) {
-        console.error('[AgentQA] Error:', error)
-        return { success: false, error: error.message }
+        logAgentQaError('[AgentQA] Error:', error)
+        return { success: false, error: publicAiError(PUBLIC_AGENT_QA_ERROR, error) }
     }
 }

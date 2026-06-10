@@ -100,6 +100,32 @@ describe('auxiliary AI API routes', () => {
         expect(mocks.analyzeAgentPerformance).not.toHaveBeenCalled()
     })
 
+    it('does not expose resolved agent QA failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.analyzeAgentPerformance.mockResolvedValue({
+            success: false,
+            error: 'openai api key secret-value failed during agent qa',
+        })
+
+        const { POST } = await import('./agent-qa/route')
+        const response = await POST(makeRequest('/api/ai/agent-qa', {
+            agentId: 'agent-1',
+            messageLimit: 25,
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('Agent QA failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
+    })
+
     it('rejects oversized FAQ extraction payloads before auth and AI work', async () => {
         const { POST } = await import('./extract-faq/route')
         const response = await POST(makeRequest('/api/ai/extract-faq', {

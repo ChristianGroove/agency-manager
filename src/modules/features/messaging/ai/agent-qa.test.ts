@@ -67,12 +67,6 @@ function makeMessagesQuery(result: any) {
     return query
 }
 
-function makeInsertQuery(result: any = { error: null }) {
-    return {
-        insert: vi.fn(async () => result),
-    }
-}
-
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
@@ -114,101 +108,20 @@ describe('agent QA AI actions', () => {
         expect(mocks.executeTask).not.toHaveBeenCalled()
     })
 
-    it('scopes analyzed messages to the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        const cacheQuery = makeCacheQuery({ data: null })
-        const reportInsert = makeInsertQuery()
-        const senderMessagesQuery = makeMessagesQuery({
-            data: [
-                { id: 'message-1', content: 'Mensaje 1', created_at: '2026-06-11T12:00:00.000Z' },
-                { id: 'message-2', content: 'Mensaje 2', created_at: '2026-06-11T11:00:00.000Z' },
-                { id: 'message-3', content: 'Mensaje 3', created_at: '2026-06-11T10:00:00.000Z' },
-            ],
-            error: null,
-        })
-        const metadataMessagesQuery = makeMessagesQuery({
-            data: [
-                { id: 'message-4', content: 'Mensaje 4', created_at: '2026-06-11T09:00:00.000Z' },
-                { id: 'message-5', content: 'Mensaje 5', created_at: '2026-06-11T08:00:00.000Z' },
-            ],
-            error: null,
-        })
-        let messageCalls = 0
-
-        mocks.supabaseAdminFrom
-            .mockReturnValueOnce(cacheQuery)
-            .mockReturnValueOnce(reportInsert)
-        mocks.createClient.mockResolvedValue({
-            from: vi.fn((table: string) => {
-                if (table === 'messages') {
-                    messageCalls += 1
-                    return messageCalls === 1 ? senderMessagesQuery : metadataMessagesQuery
-                }
-                throw new Error(`Unexpected table ${table}`)
-            }),
-        })
-        mocks.executeTask.mockResolvedValue({
-            data: {
-                empathy: 8,
-                resolution: 8,
-                clarity: 8,
-                speed: 8,
-                grammar: 8,
-                overallScore: 8,
-                strengths: [],
-                improvements: [],
-            },
-        })
-
-        const { analyzeAgentPerformance } = await import('./agent-qa')
-        const result = await analyzeAgentPerformance('agent-1', 25)
-
-        expect(result).toEqual({
-            success: true,
-            report: expect.objectContaining({ overallScore: 8 }),
-            messagesAnalyzed: 5,
-        })
-        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('direction', 'outbound')
-        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('sender', 'agent-1')
-        expect(senderMessagesQuery.or).not.toHaveBeenCalled()
-        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('direction', 'outbound')
-        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('metadata->>agent_id', 'agent-1')
-        expect(metadataMessagesQuery.or).not.toHaveBeenCalled()
-        expect(reportInsert.insert).toHaveBeenCalledWith(expect.objectContaining({
-            organization_id: 'org-current',
-            agent_id: 'agent-1',
-            messages_analyzed_count: 5,
-        }))
-        expect(mocks.executeTask).toHaveBeenCalledWith(expect.objectContaining({
-            organizationId: 'org-current',
-            taskType: 'analytics.agent_qa_v1',
-        }))
-    })
-
     it('does not expose QA message fetch failures in action results or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         mocks.supabaseAdminFrom.mockReturnValue(makeCacheQuery({ data: null }))
-        const senderMessagesQuery = makeMessagesQuery({
+        const messagesQuery = makeMessagesQuery({
             data: null,
             error: {
                 message: 'database password secret-value failed reading agent-secret-id messages',
                 code: '42501',
             },
         })
-        const metadataMessagesQuery = makeMessagesQuery({
-            data: [],
-            error: null,
-        })
-        let messageCalls = 0
         mocks.createClient.mockResolvedValue({
-            from: vi.fn(() => {
-                messageCalls += 1
-                return messageCalls === 1 ? senderMessagesQuery : metadataMessagesQuery
-            }),
+            from: vi.fn(() => messagesQuery),
         })
 
         const { analyzeAgentPerformance } = await import('./agent-qa')

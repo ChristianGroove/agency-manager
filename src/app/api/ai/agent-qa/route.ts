@@ -31,6 +31,13 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await analyzeAgentPerformance(agentId.trim(), messageLimit)
+        if (!result.success) {
+            logAiRouteError('[Agent QA API] Analysis failed:', result.error)
+            return NextResponse.json({
+                ...result,
+                error: aiRouteErrorMessage(result.error, PUBLIC_AGENT_QA_ERROR),
+            })
+        }
 
         return NextResponse.json(result)
 
