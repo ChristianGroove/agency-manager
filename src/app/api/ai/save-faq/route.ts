@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
                 ? faq.category.trim().slice(0, MAX_CATEGORY_LENGTH)
                 : 'general'
         })
+        if (!result.success) {
+            logAiRouteError('[Save FAQ API] Save failed:', result.error)
+            return NextResponse.json({
+                ...result,
+                error: aiRouteErrorMessage(result.error, PUBLIC_SAVE_FAQ_ERROR),
+            })
+        }
 
         return NextResponse.json(result)
 

@@ -126,6 +126,31 @@ describe('auxiliary AI API routes', () => {
         expect(mocks.extractFAQ).toHaveBeenCalledWith('pregunta frecuente')
     })
 
+    it('does not expose resolved FAQ extraction failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.extractFAQ.mockResolvedValue({
+            success: false,
+            error: 'llm provider token secret-value failed extracting faq',
+        })
+
+        const { POST } = await import('./extract-faq/route')
+        const response = await POST(makeRequest('/api/ai/extract-faq', {
+            conversationText: 'pregunta frecuente',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('FAQ extraction failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('provider token')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('provider token')
+    })
+
     it('rejects anonymous FAQ saves before writes', async () => {
         mocks.getCurrentOrganizationId.mockResolvedValue(null)
 
@@ -158,6 +183,32 @@ describe('auxiliary AI API routes', () => {
             answer: 'Respuesta',
             category: 'general',
         })
+    })
+
+    it('does not expose resolved FAQ save failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.saveFAQ.mockResolvedValue({
+            success: false,
+            error: 'database password secret-value failed saving faq',
+        })
+
+        const { POST } = await import('./save-faq/route')
+        const response = await POST(makeRequest('/api/ai/save-faq', {
+            question: 'Pregunta',
+            answer: 'Respuesta',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('FAQ save failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('database password')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('database password')
     })
 
     it('does not expose agent QA failures in production responses or logs', async () => {

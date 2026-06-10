@@ -30,6 +30,13 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await extractFAQ(conversationText.trim())
+        if (!result.success) {
+            logAiRouteError('[Extract FAQ API] Extraction failed:', result.error)
+            return NextResponse.json({
+                ...result,
+                error: aiRouteErrorMessage(result.error, PUBLIC_EXTRACT_FAQ_ERROR),
+            })
+        }
 
         return NextResponse.json(result)
 
