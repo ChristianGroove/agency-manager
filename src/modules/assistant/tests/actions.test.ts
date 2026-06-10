@@ -89,7 +89,7 @@ describe('Assistant Actions Verification', () => {
     });
 
     it('should be IDEMPOTENT (Second Execution returns cached result)', async () => {
-        console.log("   🔄 Testing Idempotency on Log:", logId);
+        console.log("   Testing idempotency on log:", { logIdPresent: !!logId });
 
         const result = await IntentExecutor.execute(logId, context, supabase);
 

@@ -2,6 +2,7 @@ import { AssistantContext, AssistantResult } from "./types";
 import { IntentValidator } from "./intent-validator";
 import { getIntentDefinition } from "./intent-registry";
 import { createClient } from "@/modules/core/database/supabase-server";
+import { logAssistantError } from "./safe-logging";
 
 export type IntentProposal = {
     status: 'proposed' | 'confirmed' | 'rejected';
@@ -100,8 +101,12 @@ export class IntentService {
         }).select('id').single();
 
         if (error) {
-            console.error("CRITICAL: Failed to audit intent log", error);
-            console.error("CRITICAL: Failed to audit intent log", error);
+            logAssistantError("CRITICAL: Failed to audit intent log", error, {
+                intentId,
+                organizationId: context.tenant_id,
+                spaceId: context.space_id,
+                userId: context.user_id,
+            });
             return `audit-failed: ${error.message} (${error.details})`;
         }
         return data?.id;
