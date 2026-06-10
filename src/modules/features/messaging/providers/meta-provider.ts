@@ -12,8 +12,17 @@ import {
     WebhookValidationResult
 } from "./types";
 
+const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
+const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
+const PUBLIC_WEBHOOK_VALIDATION_ERROR = 'Webhook validation failed';
+
 function isDeployedRuntime() {
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV;
+}
+
+function publicMetaProviderError(publicMessage: string, rawMessage?: string) {
+    if (isDeployedRuntime()) return publicMessage;
+    return rawMessage || publicMessage;
 }
 
 function summarizeMetaProviderError(error: unknown) {
@@ -316,13 +325,22 @@ export class MetaProvider implements MessagingProvider {
             const data = await response.json();
             if (!response.ok) {
                 logMetaProviderError('[MetaProvider] WA API Error:', data);
-                return { success: false, error: data.error?.message || 'WhatsApp API Error' };
+                return {
+                    success: false,
+                    error: publicMetaProviderError(PUBLIC_WHATSAPP_SEND_ERROR, data.error?.message || 'WhatsApp API Error'),
+                };
             }
 
             return { success: true, messageId: data.messages?.[0]?.id };
         } catch (error) {
             logMetaProviderError('[MetaProvider] WA Send Exception:', error);
-            return { success: false, error: error instanceof Error ? error.message : 'WhatsApp Send Exception' };
+            return {
+                success: false,
+                error: publicMetaProviderError(
+                    PUBLIC_WHATSAPP_SEND_ERROR,
+                    error instanceof Error ? error.message : 'WhatsApp Send Exception'
+                ),
+            };
         }
     }
 
@@ -399,13 +417,22 @@ export class MetaProvider implements MessagingProvider {
             const data = await response.json();
             if (!response.ok) {
                 logMetaProviderError('[MetaProvider] Social API Error:', data);
-                return { success: false, error: data.error?.message || 'Social API Error' };
+                return {
+                    success: false,
+                    error: publicMetaProviderError(PUBLIC_SOCIAL_SEND_ERROR, data.error?.message || 'Social API Error'),
+                };
             }
 
             return { success: true, messageId: data.message_id || data.id };
         } catch (error) {
             logMetaProviderError('[MetaProvider] Social Send Exception:', error);
-            return { success: false, error: error instanceof Error ? error.message : 'Social Send Exception' };
+            return {
+                success: false,
+                error: publicMetaProviderError(
+                    PUBLIC_SOCIAL_SEND_ERROR,
+                    error instanceof Error ? error.message : 'Social Send Exception'
+                ),
+            };
         }
     }
 
@@ -764,7 +791,7 @@ export class MetaProvider implements MessagingProvider {
             }
             return { isValid: false, reason: 'Invalid verify token' };
         } catch (error: any) {
-            return { isValid: false, reason: error.message };
+            return { isValid: false, reason: publicMetaProviderError(PUBLIC_WEBHOOK_VALIDATION_ERROR, error.message) };
         }
     }
 

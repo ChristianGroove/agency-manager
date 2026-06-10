@@ -164,4 +164,89 @@ describe('MetaProvider', () => {
         expect(logText).not.toContain('phone_secret_id')
         expect(logText).toContain('messageIdPresent')
     })
+
+    it('returns generic WhatsApp send failures in production', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+            error: {
+                message: 'Graph rejected +1555secret with active-token-secret for phone_secret_id',
+                type: 'OAuthException',
+                code: 190,
+                error_subcode: 460,
+            },
+        }), { status: 400 }))
+        vi.stubGlobal('fetch', fetchMock)
+
+        const { MetaProvider } = await import('./meta-provider')
+        const provider = new MetaProvider('constructor-token-secret', 'phone_secret_id', 'verify-token')
+
+        const result = await provider.sendMessage({
+            to: '+1555secret',
+            content: { type: 'text', text: 'hello' },
+            metadata: { channel: 'whatsapp' },
+            credentials: {
+                accessToken: 'active-token-secret',
+                phoneNumberId: 'phone_secret_id',
+            },
+        })
+
+        expect(result).toEqual({
+            success: false,
+            error: 'WhatsApp message could not be sent',
+        })
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://graph.facebook.com/v21.0/phone_secret_id/messages',
+            expect.any(Object)
+        )
+
+        const logText = collectConsoleCalls(logSpy, errorSpy)
+        expect(logText).not.toContain('+1555secret')
+        expect(logText).not.toContain('active-token-secret')
+        expect(logText).not.toContain('constructor-token-secret')
+        expect(logText).not.toContain('phone_secret_id')
+    })
+
+    it('returns generic social send failures in production', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+            error: {
+                message: 'Graph rejected psid_secret with page-token-secret for page_secret_id',
+                type: 'GraphMethodException',
+                code: 100,
+            },
+        }), { status: 400 }))
+        vi.stubGlobal('fetch', fetchMock)
+
+        const { MetaProvider } = await import('./meta-provider')
+        const provider = new MetaProvider('constructor-token-secret', 'page_secret_id', 'verify-token')
+
+        const result = await provider.sendMessage({
+            to: 'psid_secret',
+            content: { type: 'text', text: 'hello' },
+            metadata: { channel: 'messenger' },
+            credentials: {
+                accessToken: 'page-token-secret',
+                pageId: 'page_secret_id',
+            },
+        })
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Social message could not be sent',
+        })
+        expect(fetchMock).toHaveBeenCalledWith(
+            'https://graph.facebook.com/v21.0/me/messages',
+            expect.any(Object)
+        )
+
+        const logText = collectConsoleCalls(logSpy, errorSpy)
+        expect(logText).not.toContain('psid_secret')
+        expect(logText).not.toContain('page-token-secret')
+        expect(logText).not.toContain('constructor-token-secret')
+        expect(logText).not.toContain('page_secret_id')
+    })
 })
