@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-import { MetaConnector } from "@/modules/infrastructure/meta/services/connector"
-import { AdsService } from "@/modules/infrastructure/meta/services/ads-service"
+import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
-    const token = searchParams.get('token')
-    const datePreset = searchParams.get('date_preset') // 'today', 'yesterday', 'this_month'
+    const token = searchParams.get('token')?.trim()
 
     if (!token) {
         return NextResponse.json({ error: "Token required" }, { status: 400 })
@@ -16,73 +14,82 @@ export async function GET(req: Request) {
 
     try {
         // 1. Verify Portal Token & Get Client
-        const { data: client, error: clientError } = await supabaseAdmin
+        const isUuidToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+        let clientQuery = supabaseAdmin
             .from('leads')
-            .select('id, services(name, status)')
-            .eq('portal_short_token', token)
-            .single()
+            .select('id, organization_id, portal_token_never_expires, portal_token_expires_at, portal_insights_settings, services(name, status, insights_access)')
+            .is('deleted_at', null)
+
+        clientQuery = isUuidToken
+            ? clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+            : clientQuery.eq('portal_short_token', token)
+
+        const { data: client, error: clientError } = await clientQuery.maybeSingle()
 
         if (clientError || !client) {
-            console.error("[PortalAPI] Invalid token or client not found:", token, clientError)
+            console.error("[PortalAPI] Invalid token or client not found:", clientError)
             return NextResponse.json({ error: "Invalid token" }, { status: 401 })
         }
 
-        console.log(`[PortalAPI] Resolved Client: ${client.id} for token: ${token}`)
-
-        let adsMetrics = null
-        let isLiveFetch = false
-
-        // 2. LIVE FETCH OPTION
-        // If specific date preset is requested (today/yesterday) OR just for debugging/verification, we fetch LIVE
-        if (datePreset) {
-            try {
-                const { data: config } = await supabaseAdmin
-                    .from('integration_configs')
-                    .select('access_token, ad_account_id')
-                    .eq('client_id', client.id)
-                    .eq('platform', 'meta')
-                    .single()
-
-                if (config?.access_token && config?.ad_account_id) {
-                    const connector = new MetaConnector(config.access_token)
-                    const service = new AdsService(connector)
-                    adsMetrics = await service.getMetrics(config.ad_account_id, datePreset)
-                    isLiveFetch = true
-                    console.log(`[PortalAPI] Live Fetch Success for ${datePreset}`)
-                }
-            } catch (liveError) {
-                console.error("[PortalAPI] Live Fetch Failed, falling back to cache:", liveError)
-            }
+        if (client.portal_token_never_expires !== true &&
+            client.portal_token_expires_at &&
+            new Date(client.portal_token_expires_at) < new Date()) {
+            return NextResponse.json({ error: "Portal token expired" }, { status: 401 })
         }
 
-        // 3. Fallback to Cache (Default behavior or if Live Fetch failed)
-        if (!adsMetrics) {
+        const [{ data: orgData }, { data: orgSettings }] = await Promise.all([
+            supabaseAdmin
+                .from('organizations')
+                .select('active_app_id, saas_apps(portal_template)')
+                .eq('id', client.organization_id)
+                .maybeSingle(),
+            supabaseAdmin
+                .from('organization_settings')
+                .select('portal_modules')
+                .eq('organization_id', client.organization_id)
+                .maybeSingle(),
+        ])
+
+        const portalTemplate = (orgData?.saas_apps as any)?.portal_template || 'b2b_dashboard'
+        if (portalTemplate !== 'b2b_dashboard' || orgSettings?.portal_modules?.insights === false) {
+            return NextResponse.json({ error: "Insights not available" }, { status: 403 })
+        }
+
+        const insightsAccess = resolvePortalInsightsAccess(
+            (client.services || []) as any[],
+            client.portal_insights_settings
+        )
+
+        if (!insightsAccess.show) {
+            return NextResponse.json({ error: "Insights not available" }, { status: 403 })
+        }
+
+        let adsMetrics = null
+        if (insightsAccess.mode.ads) {
             const { data: cachedAds, error: adsError } = await supabaseAdmin
                 .from('meta_ads_metrics')
                 .select('*')
                 .eq('client_id', client.id)
                 .order('snapshot_date', { ascending: false })
                 .limit(1)
-                .single()
+                .maybeSingle()
 
             if (adsError) console.warn("[PortalAPI] Ads Fetch Error (or empty):", adsError.message)
             adsMetrics = cachedAds
         }
 
-        // 3. Get Social Data (Latest)
-        // 3. Get Social Data (Latest)
-        const { data: socialMetrics, error: socialError } = await supabaseAdmin
-            .from('meta_social_metrics')
-            .select('*')
-            .eq('client_id', client.id)
-            .order('snapshot_date', { ascending: false })
-            .limit(1)
-            .single()
+        let socialMetrics = null
+        if (insightsAccess.mode.organic) {
+            const { data: cachedSocial, error: socialError } = await supabaseAdmin
+                .from('meta_social_metrics')
+                .select('*')
+                .eq('client_id', client.id)
+                .order('snapshot_date', { ascending: false })
+                .limit(1)
+                .maybeSingle()
 
-        if (socialError && socialError.code !== 'PGRST116') {
-            console.error("[PortalAPI] Social Fetch Error", socialError)
-        } else if (socialMetrics) {
-            // Data found
+            if (socialError) console.warn("[PortalAPI] Social Fetch Error (or empty):", socialError.message)
+            socialMetrics = cachedSocial
         }
 
         return NextResponse.json({

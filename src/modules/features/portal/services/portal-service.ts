@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 
 /**
  * Core Data Fetcher for the Portal
@@ -132,7 +133,8 @@ export async function getPortalData(token: string) {
                 return true
             })
 
-            const showInsights = isB2B && resolveModuleVisibility('insights', () => {
+            const resolvedInsightsAccess = resolvePortalInsightsAccess((services || []) as Service[], client.portal_insights_settings)
+            const showInsights = resolvedInsightsAccess.show && isB2B && resolveModuleVisibility('insights', () => {
                 const activeServices = services || []
                 const organicKeywords = ['social media', 'community', 'redes', 'content', 'orgánico', 'organico']
                 const adsKeywords = ['ads', 'pauta', 'trafficker', 'publicidad', 'meta', 'google', 'campaign']
@@ -184,10 +186,9 @@ export async function getPortalData(token: string) {
                 activePortalModules: computedModules,
                 paymentMethods: (paymentMethods || []),
                 catalog: catalogItems || [],
-                insightsAccess: {
-                    show: !!showInsights,
-                    mode: { organic: true, ads: true }
-                }
+                insightsAccess: showInsights
+                    ? resolvedInsightsAccess
+                    : { show: false, mode: { organic: false, ads: false } }
             }
         }
 
