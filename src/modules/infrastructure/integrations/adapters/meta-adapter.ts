@@ -1,5 +1,8 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
+const PUBLIC_META_SEND_ERROR = 'Meta send failed'
+const PUBLIC_META_STATUS_ERROR = 'Meta status check failed'
+
 // Simple in-memory cache for Access Tokens
 class AccessTokenCache {
     private static cache: Map<string, { token: string, expires: number }> = new Map();
@@ -18,6 +21,108 @@ class AccessTokenCache {
     static set(key: string, token: string): void {
         this.cache.set(key, { token, expires: Date.now() + this.TTL });
     }
+}
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function summarizeMetaId(value: unknown) {
+    return value ? 'present' : 'missing';
+}
+
+function summarizeMetaGraphError(error: unknown) {
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as any).error : error;
+        return {
+            type: graphError?.type,
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            hasMessage: typeof graphError?.message === 'string' && graphError.message.length > 0,
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function summarizeMetaPayload(payload: any) {
+    return {
+        type: payload?.type || (payload?.message ? 'messenger' : undefined),
+        hasRecipient: !!(payload?.to || payload?.recipient),
+        hasMedia: !!(payload?.image || payload?.video || payload?.audio || payload?.document || payload?.sticker || payload?.message?.attachment),
+    };
+}
+
+function metaSendErrorMessage(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) {
+        return PUBLIC_META_SEND_ERROR;
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as any).error?.message;
+        if (typeof message === 'string' && message.length > 0) {
+            return message;
+        }
+    }
+
+    return fallback || PUBLIC_META_SEND_ERROR;
+}
+
+function metaStatusErrorMessage(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) return PUBLIC_META_STATUS_ERROR;
+
+    if (error && typeof error === 'object') {
+        const message = (error as any).error?.message || (error as any).message;
+        if (typeof message === 'string' && message.length > 0) return message;
+    }
+
+    return fallback || PUBLIC_META_STATUS_ERROR;
+}
+
+function logMetaSendStart(recipient: string, metadata: any) {
+    if (!isDeployedRuntime()) {
+        console.log(`[MetaAdapter] START sendMessage to ${recipient} | Meta:`, JSON.stringify(metadata));
+        return;
+    }
+
+    console.log('[MetaAdapter] START sendMessage', {
+        hasRecipient: !!recipient,
+        hasMetadata: !!metadata,
+        channel: typeof metadata?.channel === 'string' ? metadata.channel : undefined,
+    });
+}
+
+function logResolvedMetaIds(phoneNumberId: unknown, pageId: unknown, accessToken: unknown) {
+    if (!isDeployedRuntime()) {
+        console.log(`[MetaAdapter] Resolved IDs - WA: ${phoneNumberId}, Page/IG: ${pageId}, HasToken: ${!!accessToken}`);
+        return;
+    }
+
+    console.log('[MetaAdapter] Resolved IDs', {
+        phoneNumberId: summarizeMetaId(phoneNumberId),
+        pageId: summarizeMetaId(pageId),
+        hasToken: !!accessToken,
+    });
+}
+
+function logMetaAdapterError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : summarizeMetaGraphError(error));
+}
+
+function logMetaAdapterWarning(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, error);
+        return;
+    }
+
+    console.warn(label, summarizeMetaGraphError(error));
 }
 
 export class MetaAdapter implements IntegrationAdapter {
@@ -43,30 +148,36 @@ export class MetaAdapter implements IntegrationAdapter {
      */
     async checkConnectionStatus(credentials: ConnectionCredentials): Promise<{ status: 'active' | 'inactive' | 'error', message?: string }> {
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
-        return await globalCircuitBreaker.execute('meta_status', async () => {
-            const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
-            const creds = decryptObject(credentials);
-        const accessToken = creds.accessToken || creds.access_token;
-
-        if (!accessToken) return { status: 'inactive', message: 'No access token' };
-
         try {
-            // Simple call to verify token
-            const resp = await fetch(`https://graph.facebook.com/v21.0/me?fields=id&access_token=${accessToken}`);
-            if (resp.ok) {
-                return { status: 'active' };
-            } else {
-                const err = await resp.json();
-                return { status: 'error', message: err.error?.message || 'Token invalid' };
-            }
-        } catch (error: any) {
-            return { status: 'error', message: error.message };
+            return await globalCircuitBreaker.execute('meta_status', async () => {
+                const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
+                const creds = decryptObject(credentials);
+                const accessToken = creds.accessToken || creds.access_token;
+
+                if (!accessToken) return { status: 'inactive', message: 'No access token' };
+
+                try {
+                    // Simple call to verify token
+                    const resp = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                    });
+                    if (resp.ok) {
+                        return { status: 'active' };
+                    } else {
+                        const err = await resp.json().catch(() => null);
+                        return { status: 'error', message: metaStatusErrorMessage(err, 'Token invalid') };
+                    }
+                } catch (error: unknown) {
+                    return { status: 'error', message: metaStatusErrorMessage(error, 'Token invalid') };
+                }
+            });
+        } catch (error: unknown) {
+            return { status: 'error', message: metaStatusErrorMessage(error, 'Token invalid') };
         }
-        });
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
-        console.log(`[MetaAdapter] START sendMessage to ${recipient} | Meta:`, JSON.stringify(metadata));
+        logMetaSendStart(recipient, metadata);
         const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
 
         let creds: any = credentials;
@@ -80,10 +191,14 @@ export class MetaAdapter implements IntegrationAdapter {
         const pageId = metadata?.pageId || creds.pageId || creds.page_id || creds.assetId || creds.instagramBusinessId;
         const accessToken = creds.accessToken || creds.access_token;
 
-        console.log(`[MetaAdapter] Resolved IDs - WA: ${phoneNumberId}, Page/IG: ${pageId}, HasToken: ${!!accessToken}`);
+        logResolvedMetaIds(phoneNumberId, pageId, accessToken);
 
         if ((!phoneNumberId && !pageId) || !accessToken) {
-            console.error('[MetaAdapter] CRITICAL: Missing IDs or Token', { phoneNumberId, pageId, hasToken: !!accessToken });
+            logMetaAdapterError('[MetaAdapter] CRITICAL: Missing IDs or Token', {
+                phoneNumberId: summarizeMetaId(phoneNumberId),
+                pageId: summarizeMetaId(pageId),
+                hasToken: !!accessToken
+            });
             throw new Error("Missing Meta credentials (ID or Token)");
         }
 
@@ -121,7 +236,7 @@ export class MetaAdapter implements IntegrationAdapter {
                             AccessTokenCache.set(cacheKey, effectiveToken);
                         }
                     }
-                } catch (e) { console.warn("[MetaAdapter] Token fetch error", e); }
+                } catch (e) { logMetaAdapterWarning("[MetaAdapter] Token fetch error", e); }
             }
 
             payload = {
@@ -296,7 +411,7 @@ export class MetaAdapter implements IntegrationAdapter {
             // Fallback for Buttons: If failed, try basic text
             if (!response.ok && buttons.length > 0) {
                 const err = await response.clone().json().catch(() => ({}))
-                console.warn(`[MetaAdapter] Button send failed (${response.status}). Retrying with text only. Error:`, err);
+                logMetaAdapterWarning(`[MetaAdapter] Button send failed (${response.status}). Retrying with text only. Error:`, err);
 
                 // Construct text-only payload
                 if (isMessenger) {
@@ -319,9 +434,13 @@ export class MetaAdapter implements IntegrationAdapter {
 
             if (!response.ok) {
                 const err = await response.json().catch(() => ({ error: { message: response.statusText } }));
-                console.error('[MetaAdapter] CRITICAL SEND ERROR:', JSON.stringify(err, null, 2));
-                console.error('[MetaAdapter] Failed Payload was:', JSON.stringify(payload, null, 2));
-                throw new Error(`Meta Send Failed: ${err.error?.message || response.statusText}`)
+                logMetaAdapterError('[MetaAdapter] CRITICAL SEND ERROR:', err);
+                if (!isDeployedRuntime()) {
+                    console.error('[MetaAdapter] Failed Payload was:', JSON.stringify(payload, null, 2));
+                } else {
+                    console.error('[MetaAdapter] Failed Payload summary:', summarizeMetaPayload(payload));
+                }
+                throw new Error(metaSendErrorMessage(err, response.statusText))
             }
 
             const data = await response.json()
