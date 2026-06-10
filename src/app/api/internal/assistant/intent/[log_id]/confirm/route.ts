@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAssistantContext } from '@/modules/assistant/context-resolver';
 import { IntentExecutor } from '@/modules/assistant/intent-executor';
+import { assistantIntentFailureBody, logAssistantIntentError } from '../../error-utils';
 
 /**
  * 🔒 CONFIRM INTENT API
@@ -41,7 +42,7 @@ export async function POST(
         });
 
     } catch (error: any) {
-        console.error("[Assistant API] Confirmation Error:", error);
+        logAssistantIntentError("[Assistant API] Confirmation Error:", error);
 
         // Handle Logic Errors cleanly
         if (error.message.includes("Unauthorized") || error.message.includes("mismatch")) {
@@ -55,7 +56,7 @@ export async function POST(
         }
 
         return NextResponse.json(
-            { error: 'Execution Failed', details: error.message },
+            assistantIntentFailureBody('Execution Failed', error),
             { status: 500 }
         );
     }

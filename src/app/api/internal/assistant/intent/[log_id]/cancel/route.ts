@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAssistantContext } from '@/modules/assistant/context-resolver';
 import { IntentExecutor } from '@/modules/assistant/intent-executor';
+import { assistantIntentFailureBody, logAssistantIntentError } from '../../error-utils';
 
 /**
  * 🔒 CANCEL INTENT API
@@ -42,7 +43,7 @@ export async function POST(
         });
 
     } catch (error: any) {
-        console.error("[Assistant API] Cancellation Error:", error);
+        logAssistantIntentError("[Assistant API] Cancellation Error:", error);
 
         if (error.message.includes("Unauthorized")) {
             return NextResponse.json({ error: error.message }, { status: 403 });
@@ -52,7 +53,7 @@ export async function POST(
         }
 
         return NextResponse.json(
-            { error: 'Cancellation Failed', details: error.message },
+            assistantIntentFailureBody('Cancellation Failed', error),
             { status: 500 }
         );
     }
