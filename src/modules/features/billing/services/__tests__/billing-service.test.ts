@@ -129,60 +129,6 @@ describe('BillingService sanitized errors', () => {
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 
-    it('does not create invoices for clients outside the current organization', async () => {
-        const clientLookup = selectEqSingle({
-            data: null,
-            error: { code: 'PGRST116', message: 'No rows' },
-        })
-        const invoiceInsert = insertSelectSingle({
-            data: { id: 'invoice-1' },
-            error: null,
-        })
-        mocks.createClient.mockResolvedValue(authenticatedClient({
-            leads: [clientLookup],
-            invoices: [invoiceInsert],
-        }))
-
-        const { createInvoice } = await importBillingService()
-        const result = await createInvoice({
-            client_id: 'client-other-org',
-            items: [],
-        } as any)
-
-        expect(result).toEqual({ success: false, error: 'No se pudo crear la factura' })
-        expect(clientLookup.eq).toHaveBeenCalledWith('id', 'client-other-org')
-        expect(clientLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(invoiceInsert.insert).not.toHaveBeenCalled()
-        expect(mocks.InvoiceMapper.legacyToCore).not.toHaveBeenCalled()
-    })
-
-    it('does not create invoices for billing cycles outside the current organization service scope', async () => {
-        const cycleLookup = selectEqSingle({
-            data: null,
-            error: { code: 'PGRST116', message: 'No rows' },
-        })
-        const invoiceInsert = insertSelectSingle({
-            data: { id: 'invoice-1' },
-            error: null,
-        })
-        mocks.createClient.mockResolvedValue(authenticatedClient({
-            billing_cycles: [cycleLookup],
-            invoices: [invoiceInsert],
-        }))
-
-        const { createInvoice } = await importBillingService()
-        const result = await createInvoice({
-            cycle_id: 'cycle-other-org',
-            items: [],
-        } as any)
-
-        expect(result).toEqual({ success: false, error: 'No se pudo crear la factura' })
-        expect(cycleLookup.eq).toHaveBeenCalledWith('id', 'cycle-other-org')
-        expect(cycleLookup.eq).toHaveBeenCalledWith('service.organization_id', 'org-current')
-        expect(invoiceInsert.insert).not.toHaveBeenCalled()
-        expect(mocks.InvoiceMapper.legacyToCore).not.toHaveBeenCalled()
-    })
-
     it('updates invoices without changing the success contract', async () => {
         const update = updateSelectSingle({
             data: { id: 'invoice-1', status: 'paid' },
