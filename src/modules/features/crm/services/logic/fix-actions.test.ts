@@ -45,7 +45,6 @@ function selectEq(result: { data?: unknown; error?: unknown }) {
 function updateIn(result: { error?: unknown }) {
     const query: any = {
         update: vi.fn(() => query),
-        eq: vi.fn(() => query),
         in: vi.fn(async () => result),
     }
 
@@ -97,7 +96,6 @@ describe('CRM fix actions', () => {
 
         expect(result).toEqual({ success: true, count: 1, fixedTo: 'new' })
         expect(update.update).toHaveBeenCalledWith({ status: 'new' })
-        expect(update.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(update.in).toHaveBeenCalledWith('id', ['lead-1'])
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')
     })

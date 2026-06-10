@@ -6,6 +6,41 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { getPipelineStages } from "./pipeline-actions"
 import { revalidatePath } from "next/cache"
 
+const PUBLIC_FIX_ACTION_ERROR = "No se pudo reparar el estado de los leads"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeFixError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logFixError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeFixError(error) : error)
+}
+
+function fixActionFailure(error: unknown) {
+    logFixError("Error fixing lead statuses:", error)
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_FIX_ACTION_ERROR }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_FIX_ACTION_ERROR }
+}
+
 export async function fixLeadsStatus() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -39,7 +74,7 @@ export async function fixLeadsStatus() {
         .eq('organization_id', orgId)
         .in('id', orphanIds)
 
-    if (error) return { success: false, error: error.message }
+    if (error) return fixActionFailure(error)
 
     revalidatePath('/crm')
     return { success: true, count: orphans.length, fixedTo: firstStageKey }
