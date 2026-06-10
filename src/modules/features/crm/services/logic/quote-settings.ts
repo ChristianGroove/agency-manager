@@ -29,6 +29,42 @@ export interface QuoteSettings {
 
 // Templates moved to ./templates.ts
 
+const PUBLIC_QUOTE_SETTINGS_LOAD_ERROR = "No se pudo cargar la configuracion de cotizaciones"
+const PUBLIC_QUOTE_SETTINGS_SAVE_ERROR = "No se pudo guardar la configuracion de cotizaciones"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeQuoteSettingsError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logQuoteSettingsError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeQuoteSettingsError(error) : error)
+}
+
+function quoteSettingsFailure(label: string, error: unknown, fallback: string) {
+    logQuoteSettingsError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: fallback }
+}
+
 export async function getQuoteSettings(overrideOrgId?: string): Promise<{ success: boolean; settings?: QuoteSettings; error?: string }> {
     const supabase = await createClient()
 
@@ -66,7 +102,7 @@ export async function getQuoteSettings(overrideOrgId?: string): Promise<{ succes
             }
         }
 
-        console.log(`[getQuoteSettings] Resolved Org ID: ${orgId}`)
+        console.log("[getQuoteSettings] Resolved organization", { orgIdPresent: !!orgId })
 
         if (!orgId) return { success: false, error: "No organization found" }
 
@@ -99,18 +135,16 @@ export async function getQuoteSettings(overrideOrgId?: string): Promise<{ succes
                     .single()
 
                 if (createError) {
-                    console.error("[getQuoteSettings] Create Error:", createError.message)
-                    return { success: false, error: "Could not init settings: " + createError.message }
+                    return quoteSettingsFailure("[getQuoteSettings] Create Error:", createError, PUBLIC_QUOTE_SETTINGS_LOAD_ERROR)
                 }
                 return { success: true, settings: newSettings }
             }
-            return { success: false, error: error.message }
+            return quoteSettingsFailure("[getQuoteSettings] Read Error:", error, PUBLIC_QUOTE_SETTINGS_LOAD_ERROR)
         }
 
         return { success: true, settings: data }
     } catch (e: any) {
-        console.error("[getQuoteSettings] Server Error:", e?.message || e)
-        return { success: false, error: "Server Error" }
+        return quoteSettingsFailure("[getQuoteSettings] Server Error:", e, PUBLIC_QUOTE_SETTINGS_LOAD_ERROR)
     }
 }
 
@@ -153,12 +187,11 @@ export async function updateQuoteSettings(settings: Partial<QuoteSettings>) {
             .update(settings)
             .eq('organization_id', orgId)
 
-        if (error) return { success: false, error: error.message }
+        if (error) return quoteSettingsFailure("[updateQuoteSettings] Update Error:", error, PUBLIC_QUOTE_SETTINGS_SAVE_ERROR)
 
         revalidatePath('/settings/quotes')
         return { success: true }
     } catch (e: any) {
-        console.error("[updateQuoteSettings] Error:", e?.message || e)
-        return { success: false, error: "Server Error" }
+        return quoteSettingsFailure("[updateQuoteSettings] Error:", e, PUBLIC_QUOTE_SETTINGS_SAVE_ERROR)
     }
 }
