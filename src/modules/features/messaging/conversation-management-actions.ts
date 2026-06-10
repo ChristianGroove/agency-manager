@@ -6,6 +6,89 @@ import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 
+const PUBLIC_CONVERSATION_MANAGEMENT_ERROR = "Conversation management action failed"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeConversationManagementLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'clientId',
+        'conversationId',
+        'leadId',
+        'organizationId',
+        'phone',
+        'userId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'conversationIds' && Array.isArray(value)) {
+                return ['conversationIdsCount', value.length]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeConversationManagementError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logConversationManagementError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeConversationManagementLogDetails(details),
+        detail: summarizeConversationManagementError(error),
+    })
+}
+
+function publicConversationManagementError(error: unknown, fallback = PUBLIC_CONVERSATION_MANAGEMENT_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
+
 /**
  * Assign a conversation to a specific user/agent
  */
@@ -44,7 +127,7 @@ export async function assignConversation(conversationId: string, userId: string 
             .eq('id', conversationId)
             .eq('organization_id', current.organization_id)
 
-        if (error) return { success: false, error: error.message }
+        if (error) return { success: false, error: publicConversationManagementError(error) }
         revalidatePath('/inbox')
         return { success: true }
     }
@@ -122,8 +205,8 @@ export async function updateConversationState(
         .select()
 
     if (error) {
-        console.error("[updateConversationState] FAILED:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("[updateConversationState] FAILED:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/crm/inbox')
@@ -165,8 +248,8 @@ export async function archiveConversation(conversationId: string) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to archive conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to archive conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -190,8 +273,8 @@ export async function unarchiveConversation(conversationId: string) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to unarchive conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to unarchive conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -215,8 +298,8 @@ export async function markAsSpam(conversationId: string) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to mark as spam:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to mark as spam:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -240,8 +323,8 @@ export async function setConversationPriority(conversationId: string, priority: 
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to set priority:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to set priority:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -265,8 +348,8 @@ export async function tagConversation(conversationId: string, tags: string[]) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to tag conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to tag conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -317,8 +400,12 @@ export async function searchConversations(query: string, filters?: {
     const { data, error } = await queryBuilder
 
     if (error) {
-        console.error("Failed to search conversations:", error)
-        return { success: false, error: error.message, data: [] }
+        logConversationManagementError("Failed to search conversations:", error, {
+            queryPresent: Boolean(query),
+            assignedToPresent: Boolean(filters?.assignedTo),
+            tagsCount: filters?.tags?.length || 0,
+        })
+        return { success: false, error: publicConversationManagementError(error), data: [] }
     }
 
     return { success: true, data }
@@ -341,8 +428,8 @@ export async function bulkArchiveConversations(conversationIds: string[]) {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to bulk archive:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to bulk archive:", error, { conversationIds })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -409,8 +496,8 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to bulk assign:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to bulk assign:", error, { conversationIds, userId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -492,7 +579,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                     .select()
                     .single()
 
-                if (leadError) return { success: false, error: 'Failed to create lead: ' + leadError.message }
+                if (leadError) return { success: false, error: publicConversationManagementError(leadError, 'Failed to create lead') }
                 finalLeadId = newLead.id
                 resolvedOrgId = orgId
             }
@@ -572,8 +659,13 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         .single()
 
     if (error) {
-        console.error("Failed to create conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to create conversation:", error, {
+            clientId: finalClientId,
+            leadId: finalLeadId,
+            organizationId: organization_id,
+            phone,
+        })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
