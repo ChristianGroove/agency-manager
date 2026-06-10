@@ -5,13 +5,14 @@ import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizePasskeyEmail } from '../_utils'
 
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient()
         const body = await request.json()
         const credential: AuthenticationResponseJSON = body.credential
-        const email: string = body.email
+        const email = normalizePasskeyEmail(body.email)
 
         if (!email || !credential) {
             return NextResponse.json(

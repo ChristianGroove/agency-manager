@@ -1,11 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { normalizePasskeyEmail } from '../_utils'
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const email = body.email
+        const email = normalizePasskeyEmail(body.email)
 
         if (!email) {
             return NextResponse.json({ hasPasskeys: false }, { status: 200 })

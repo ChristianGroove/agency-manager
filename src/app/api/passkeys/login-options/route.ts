@@ -4,12 +4,13 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizePasskeyEmail, passkeyLoginUnavailableResponse } from '../_utils'
 
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient()
         const body = await request.json()
-        const email = body.email
+        const email = normalizePasskeyEmail(body.email)
 
         if (!email) {
             return NextResponse.json(
@@ -21,13 +22,10 @@ export async function POST(request: NextRequest) {
         // Find user by email
         const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
 
-        const user = userData?.users?.find((u: any) => u.email === email)
+        const user = userData?.users?.find((u: any) => u.email?.toLowerCase() === email)
 
         if (!user) {
-            return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
-            )
+            return passkeyLoginUnavailableResponse()
         }
 
         // Get user's passkeys
@@ -37,10 +35,7 @@ export async function POST(request: NextRequest) {
             .eq('user_id', user.id)
 
         if (passkeysError || !passkeys || passkeys.length === 0) {
-            return NextResponse.json(
-                { error: 'No passkeys registered for this user' },
-                { status: 404 }
-            )
+            return passkeyLoginUnavailableResponse()
         }
 
         // Get RP configuration
