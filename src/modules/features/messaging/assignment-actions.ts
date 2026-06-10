@@ -67,6 +67,15 @@ function logAssignmentActionError(label: string, error: unknown, details: Record
     })
 }
 
+function logAssignmentActionInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeAssignmentActionLogDetails(details))
+}
+
 function publicAssignmentActionError(error: unknown, fallback = PUBLIC_ASSIGNMENT_ACTION_ERROR) {
     if (isDeployedRuntime()) {
         return fallback
@@ -425,11 +434,19 @@ export async function upsertAssignmentRule(rule: {
         .single()
 
     if (error) {
-        console.error('[upsertAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[upsertAssignmentRule] Failed:', error, {
+            organizationId: orgId,
+            ruleId: rule.id,
+            userId: user.id,
+            strategy: rule.strategy,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
-    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
+    logAssignmentActionInfo('[upsertAssignmentRule] Saved rule', {
+        ruleId: data.id,
+        strategy: data.strategy,
+    })
     revalidatePath('/inbox/settings')
     revalidatePath('/crm/settings/channels')
     return { success: true, data }
@@ -445,8 +462,8 @@ export async function deleteAssignmentRule(ruleId: string) {
         .eq('id', ruleId)
 
     if (error) {
-        console.error('[deleteAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[deleteAssignmentRule] Failed:', error, { ruleId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -466,7 +483,8 @@ export async function toggleAssignmentRule(ruleId: string, isActive: boolean) {
         .eq('id', ruleId)
 
     if (error) {
-        return { success: false, error: error.message }
+        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -502,8 +520,11 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         .insert(skillsData)
 
     if (error) {
-        console.error('Failed to update agent skills:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('Failed to update agent skills:', error, {
+            userId: user.id,
+            skillsCount: skills.length,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     return { success: true }
@@ -529,7 +550,7 @@ export async function getChannelAssignmentRule(connectionId: string) {
 
     if (error) {
         if (error.code !== 'PGRST116') { // Not found code
-            console.error('Error fetching channel rule:', error)
+            logAssignmentActionError('Error fetching channel rule:', error, { connectionId, organizationId: orgId })
         }
         return null
     }
@@ -552,7 +573,8 @@ export async function getAssignmentRules() {
         .order('priority', { ascending: true })
 
     if (error) {
-        return { success: false, error: error.message, data: [] }
+        logAssignmentActionError('[getAssignmentRules] Failed:', error, { organizationId: orgId })
+        return { success: false, error: publicAssignmentActionError(error), data: [] }
     }
 
     return { success: true, data }
@@ -588,7 +610,12 @@ export async function getSidebarAgents() {
         .eq('organization_id', memberData.organization_id)
 
     if (membersError || !members) {
-        return { success: false, error: membersError?.message || 'Error fetching members', data: [] }
+        if (membersError) {
+            logAssignmentActionError('[getSidebarAgents] Failed to fetch members:', membersError, {
+                organizationId: memberData.organization_id,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
     }
 
     const userIds = members.map(m => m.user_id)
@@ -689,7 +716,13 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     const { data: unassigned, error: convError } = await convQuery
 
-    if (convError) return { success: false, error: convError.message }
+    if (convError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch conversations:', convError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(convError) }
+    }
     if (!unassigned || unassigned.length === 0) return { success: true, count: 0, message: 'No unassigned conversations' }
 
     // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
@@ -702,7 +735,13 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
         .eq('auto_assign_enabled', true)
         .gt('last_seen_at', heartbeatThreshold)
 
-    if (agentError) return { success: false, error: agentError.message }
+    if (agentError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch agents:', agentError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(agentError) }
+    }
     if (!agents || agents.length === 0) return { success: false, error: 'No online agents available' }
 
     const agentIds = agents.map(a => a.agent_id)
@@ -757,6 +796,12 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
                 
                 if (!updateError) {
                     await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)
+                } else {
+                    logAssignmentActionError('[distributeUnassignedConversations] Failed to assign conversation:', updateError, {
+                        agentId: agent.agent_id,
+                        conversationId: chat.id,
+                        organizationId: orgId,
+                    })
                 }
             })())
             totalDistributed++
@@ -792,7 +837,12 @@ export async function getUnassignedDistributionStats() {
         .eq('status', 'open')
 
     if (convError || !convs) {
-        return { success: false, error: convError?.message, data: [] }
+        if (convError) {
+            logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch conversations:', convError, {
+                organizationId: orgId,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(convError), data: [] }
     }
 
     const { data: connections, error: connError } = await supabaseAdmin
@@ -801,7 +851,10 @@ export async function getUnassignedDistributionStats() {
         .eq('organization_id', orgId)
 
     if (connError) {
-        return { success: false, error: connError.message, data: [] }
+        logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch connections:', connError, {
+            organizationId: orgId,
+        })
+        return { success: false, error: publicAssignmentActionError(connError), data: [] }
     }
 
     const connMap = new Map(connections?.map(c => [c.id, c]) || [])

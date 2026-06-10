@@ -119,6 +119,33 @@ function eqQuery(result: unknown) {
     return query
 }
 
+function upsertSingleQuery(result: unknown) {
+    const query: any = {
+        select: vi.fn(() => query),
+        single: vi.fn(async () => result),
+    }
+
+    return {
+        upsert: vi.fn(() => query),
+    }
+}
+
+function awaitableQuery(result: unknown) {
+    const promise = Promise.resolve(result)
+    const query: any = {
+        eq: vi.fn(() => query),
+        gt: vi.fn(() => query),
+        in: vi.fn(() => query),
+        is: vi.fn(() => query),
+        select: vi.fn(() => query),
+        then: promise.then.bind(promise),
+        catch: promise.catch.bind(promise),
+        finally: promise.finally.bind(promise),
+    }
+
+    return query
+}
+
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
@@ -189,5 +216,67 @@ describe('assignment actions logging', () => {
         expect(logText).not.toContain('workload denied')
         expect(logText).toContain('organizationIdPresent')
         expect(logText).toContain('PGRST123')
+    })
+
+    it('does not expose assignment rule save failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue(authClient())
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
+        mocks.supabaseAdminFrom.mockReturnValueOnce(upsertSingleQuery({
+            data: null,
+            error: {
+                code: '42501',
+                message: 'rule-secret-id denied for org-secret-id user-secret-id connection-secret-id',
+            },
+        }))
+
+        const { upsertAssignmentRule } = await import('./assignment-actions')
+        const result = await upsertAssignmentRule({
+            id: 'rule-secret-id',
+            name: 'VIP routing',
+            priority: 1,
+            conditions: { connection_id: ['connection-secret-id'] },
+            strategy: 'round_robin',
+        })
+
+        expect(result).toEqual({ success: false, error: 'Assignment action failed' })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('rule-secret-id')
+        expect(logText).not.toContain('org-secret-id')
+        expect(logText).not.toContain('user-secret-id')
+        expect(logText).not.toContain('connection-secret-id')
+        expect(logText).not.toContain('denied')
+        expect(logText).toContain('ruleIdPresent')
+        expect(logText).toContain('organizationIdPresent')
+        expect(logText).toContain('userIdPresent')
+        expect(logText).toContain('42501')
+    })
+
+    it('does not expose bulk distribution query failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue(authClient())
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
+        mocks.supabaseAdminFrom.mockReturnValueOnce(awaitableQuery({
+            data: null,
+            error: {
+                code: '42501',
+                message: 'conversation-secret-id connection-secret-id denied for org-secret-id',
+            },
+        }))
+
+        const { distributeUnassignedConversations } = await import('./assignment-actions')
+        const result = await distributeUnassignedConversations(['connection-secret-id'])
+
+        expect(result).toEqual({ success: false, error: 'Assignment action failed' })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('conversation-secret-id')
+        expect(logText).not.toContain('connection-secret-id')
+        expect(logText).not.toContain('org-secret-id')
+        expect(logText).not.toContain('denied')
+        expect(logText).toContain('organizationIdPresent')
+        expect(logText).toContain('targetConnectionIdsCount')
+        expect(logText).toContain('42501')
     })
 })
