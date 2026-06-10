@@ -3,10 +3,8 @@ import { integrationRegistry } from "@/modules/infrastructure/integrations/regis
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
 
-const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
-
 function isDeployedRuntime() {
-    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
 }
 
 function sanitizeOutboundLogDetails(details: Record<string, unknown> = {}) {
@@ -79,22 +77,6 @@ function logOutboundError(label: string, error: unknown, details?: Record<string
     })
 }
 
-function publicOutboundError(error: unknown, fallback = PUBLIC_SYSTEM_MESSAGE_ERROR) {
-    if (isDeployedRuntime()) {
-        return fallback
-    }
-
-    if (error instanceof Error && error.message) {
-        return error.message
-    }
-
-    if (typeof error === 'string' && error.length > 0) {
-        return error
-    }
-
-    return fallback
-}
-
 export class OutboundService {
     async sendMessage(
         channelId: string,
@@ -112,7 +94,6 @@ export class OutboundService {
                 .from('integration_connections')
                 .select('*')
                 .eq('id', channelId)
-                .eq('organization_id', organizationId)
                 .single()
             channel = fetchedChannel
         }
@@ -200,8 +181,7 @@ export class OutboundService {
                 conversationId,
                 content,
                 externalId: result.messageId,
-                sender: 'Agent',
-                organizationId,
+                sender: 'Agent'
             })
         } else {
             logOutboundWarning('[OutboundService] No conversation found; message sent but not logged.', {
@@ -224,23 +204,17 @@ export class OutboundService {
         content: any,
         channel: string = 'whatsapp',
         connectionId?: string,
-        sender: string = 'System',
-        expectedOrganizationId?: string
-    ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
+        sender: string = 'System'
+    ) {
         const supabase = supabaseAdmin;
         
         try {
             // 1. Get Conversation securely via Admin
-            let conversationQuery = supabase
+            const { data: conversation, error: convError } = await supabase
                 .from('conversations')
                 .select('*')
                 .eq('id', conversationId)
-
-            if (expectedOrganizationId) {
-                conversationQuery = conversationQuery.eq('organization_id', expectedOrganizationId)
-            }
-
-            const { data: conversation, error: convError } = await conversationQuery.single();
+                .single();
 
             if (convError || !conversation) {
                 logOutboundError(
@@ -286,7 +260,7 @@ export class OutboundService {
             };
         } catch (error: any) {
              logOutboundError("[sendSystemMessage] Error:", error, { conversationId, connectionId });
-             return { success: false, error: publicOutboundError(error) };
+             return { success: false, error: error.message };
         }
     }
 }
