@@ -128,7 +128,7 @@ async function transcribeWithGemini(audioUrl: string, credential: any, orgId: st
         const genAI = new GoogleGenerativeAI(apiKey)
 
         // Fetch audio ONCE
-        const audioResponse = await fetch(audioUrl)
+        const audioResponse = await fetch(audioUrl, { redirect: 'manual', cache: 'no-store' })
         if (!audioResponse.ok) return { success: false, error: "Failed to fetch audio file" }
 
         const arrayBuffer = await audioResponse.arrayBuffer()
@@ -215,7 +215,7 @@ async function transcribeWithOpenAI(audioUrl: string, credential: any, orgId: st
         }
 
         const client = new OpenAI({ apiKey })
-        const audioResponse = await fetch(audioUrl)
+        const audioResponse = await fetch(audioUrl, { redirect: 'manual', cache: 'no-store' })
         if (!audioResponse.ok) return { success: false, error: "Failed to fetch audio file" }
 
         const audioBlob = await audioResponse.blob()
