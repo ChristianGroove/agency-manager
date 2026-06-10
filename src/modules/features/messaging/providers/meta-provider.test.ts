@@ -128,4 +128,40 @@ describe('MetaProvider', () => {
         expect(logText).not.toContain('constructor-token-secret')
         expect(logText).not.toContain('+1555secret')
     })
+
+    it('does not expose WhatsApp echo message ids in production logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+        const { MetaProvider } = await import('./meta-provider')
+        const provider = new MetaProvider('constructor-token-secret', 'phone_secret_id', 'verify-token')
+
+        const messages = await provider.parseWebhook({
+            object: 'whatsapp_business_account',
+            entry: [{
+                changes: [{
+                    value: {
+                        metadata: { phone_number_id: 'phone_secret_id' },
+                        messages: [{
+                            id: 'wamid.secret.echo',
+                            from: 'phone_secret_id',
+                            timestamp: '1710000000',
+                            type: 'text',
+                            text: { body: 'sent by business' },
+                        }],
+                    },
+                }],
+            }],
+        })
+
+        expect(messages).toHaveLength(1)
+        expect(messages[0]).toEqual(expect.objectContaining({
+            origin: 'outbound',
+        }))
+
+        const logText = collectConsoleCalls(logSpy)
+        expect(logText).not.toContain('wamid.secret.echo')
+        expect(logText).not.toContain('phone_secret_id')
+        expect(logText).toContain('messageIdPresent')
+    })
 })

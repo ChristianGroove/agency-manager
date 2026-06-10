@@ -34,6 +34,37 @@ function summarizeMetaProviderError(error: unknown) {
     return { type: typeof error };
 }
 
+function sanitizeMetaProviderLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'assetId',
+        'mediaId',
+        'messageId',
+        'phoneNumberId',
+        'recipient',
+        'to',
+        'url',
+    ]);
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function logMetaProviderInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeMetaProviderLogDetails(details));
+}
+
 function logMetaProviderError(label: string, error: unknown) {
     if (!isDeployedRuntime()) {
         console.error(label, error);
@@ -827,7 +858,7 @@ export class MetaProvider implements MessagingProvider {
                         }
 
                         const isEcho = phoneNumberId === from || msg.is_echo === true;
-                        if (isEcho) console.log(`[MetaProvider] ???? Echo detected for WA message: ${msg.id}`);
+                        if (isEcho) logMetaProviderInfo('[MetaProvider] Echo detected for WA message', { messageId: msg.id });
 
                         messages.push({
                             id: msg.id,
