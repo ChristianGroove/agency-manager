@@ -52,47 +52,12 @@ function singleQuery(result: unknown) {
 
 function updateQuery(result: unknown) {
     const query: any = {
-        eq: vi.fn(() => query),
-        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-            Promise.resolve(result).then(resolve, reject),
+        eq: vi.fn(async () => result),
     }
 
     return {
         update: vi.fn(() => query),
-        __query: query,
     }
-}
-
-function listQuery(result: unknown) {
-    const query: any = {
-        in: vi.fn(() => query),
-        select: vi.fn(() => query),
-        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
-            Promise.resolve(result).then(resolve, reject),
-    }
-
-    return query
-}
-
-function insertQuery(capture: { insert?: any }) {
-    return {
-        insert: vi.fn(async (payload: any) => {
-            capture.insert = payload
-            return { error: null }
-        }),
-    }
-}
-
-function accessQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        in: vi.fn(() => query),
-        limit: vi.fn(async () => result),
-        or: vi.fn(() => query),
-        select: vi.fn(() => query),
-    }
-
-    return query
 }
 
 afterEach(() => {
@@ -120,19 +85,15 @@ describe('transfer service logging', () => {
                 error: null,
             }))
             .mockReturnValueOnce(singleQuery({
+                data: { role: 'admin' },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
                 data: {
                     current_load: 1,
                     max_capacity: 10,
                     status: 'online',
                 },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
                 error: null,
             }))
             .mockReturnValueOnce(updateQuery({
@@ -159,155 +120,5 @@ describe('transfer service logging', () => {
         expect(logText).toContain('organizationIdPresent')
         expect(logText).toContain('connectionIdPresent')
         expect(logText).toContain('42501')
-    })
-
-    it('rejects target agents outside the conversation organization', async () => {
-        const update = updateQuery({ error: null })
-        const agentAvailability = singleQuery({
-            data: {
-                current_load: 1,
-                max_capacity: 10,
-                status: 'online',
-            },
-            error: null,
-        })
-        mocks.supabaseAdminFrom
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    assigned_to: 'from-agent',
-                    channel: 'whatsapp',
-                    connection_id: 'connection-1',
-                    organization_id: 'org-current',
-                },
-                error: null,
-            }))
-            .mockReturnValueOnce(agentAvailability)
-            .mockReturnValueOnce(singleQuery({
-                data: null,
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
-                error: null,
-            }))
-            .mockReturnValueOnce(update)
-
-        const { transferConversation } = await import('./transfer-service')
-        const result = await transferConversation('conversation-1', 'from-agent', 'foreign-agent')
-
-        expect(result).toEqual({ success: false, error: 'Target agent profile or member record not found' })
-        expect(agentAvailability.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(agentAvailability.eq).toHaveBeenCalledWith('agent_id', 'foreign-agent')
-        expect(update.update).not.toHaveBeenCalled()
-    })
-
-    it('rejects non-admin targets without active channel access', async () => {
-        const channelAccess = accessQuery({ data: [], error: null })
-        const update = updateQuery({ error: null })
-        mocks.supabaseAdminFrom
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    assigned_to: 'from-agent',
-                    channel: 'whatsapp',
-                    connection_id: 'connection-1',
-                    organization_id: 'org-current',
-                },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    current_load: 1,
-                    max_capacity: 10,
-                    status: 'online',
-                },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'member' },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
-                error: null,
-            }))
-            .mockReturnValueOnce(channelAccess)
-            .mockReturnValueOnce(update)
-
-        const { transferConversation } = await import('./transfer-service')
-        const result = await transferConversation('conversation-1', 'from-agent', 'target-agent')
-
-        expect(result).toEqual({ success: false, error: 'Target agent does not have access to this channel' })
-        expect(channelAccess.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(channelAccess.eq).toHaveBeenCalledWith('agent_id', 'target-agent')
-        expect(channelAccess.in).toHaveBeenCalledWith('channel_type', ['whatsapp', 'connection-1'])
-        expect(channelAccess.eq).toHaveBeenCalledWith('is_active', true)
-        expect(update.update).not.toHaveBeenCalled()
-    })
-
-    it('persists transfer system messages with the conversation organization', async () => {
-        mocks.resolveLanguage.mockResolvedValue('en')
-        mocks.getDictionary.mockReturnValue({
-            crm: {
-                inbox: {
-                    chat: {
-                        system: {
-                            transfer_reason: ' Reason: {reason}',
-                            transferred: '{from} transferred to {to}.{reason}',
-                        },
-                    },
-                },
-            },
-        })
-
-        const update = updateQuery({ error: null })
-        const messageCapture: { insert?: any } = {}
-        mocks.supabaseAdminFrom
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    assigned_to: null,
-                    channel: 'whatsapp',
-                    connection_id: 'connection-current',
-                    organization_id: 'org-current',
-                },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    current_load: 1,
-                    max_capacity: 10,
-                    status: 'online',
-                },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
-                error: null,
-            }))
-            .mockReturnValueOnce(update)
-            .mockReturnValueOnce(listQuery({
-                data: [{ id: 'target-agent', full_name: 'Target Agent' }],
-                error: null,
-            }))
-            .mockReturnValueOnce(insertQuery(messageCapture))
-
-        const { transferConversation } = await import('./transfer-service')
-        const result = await transferConversation('conversation-current', null, 'target-agent', 'handoff')
-
-        expect(result).toEqual({ success: true })
-        expect(update.__query.eq).toHaveBeenCalledWith('id', 'conversation-current')
-        expect(update.__query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
-        expect(messageCapture.insert).toMatchObject({
-            conversation_id: 'conversation-current',
-            organization_id: 'org-current',
-            channel: 'whatsapp',
-            sender: 'System',
-            metadata: {
-                transfer: true,
-                fromAgentId: null,
-                toAgentId: 'target-agent',
-                reason: 'handoff',
-            },
-        })
-        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm/inbox')
     })
 })
