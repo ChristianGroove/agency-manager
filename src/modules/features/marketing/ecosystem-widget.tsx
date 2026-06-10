@@ -25,7 +25,7 @@ export function EcosystemWidget({ client, services }: EcosystemWidgetProps) {
     const checkConnections = async () => {
         setLoading(true)
         const { config } = await getMetaConfig(client.id)
-        if (config?.access_token) {
+        if (config?.has_access_token) {
             setMetaConnected(true)
         }
         setLoading(false)
