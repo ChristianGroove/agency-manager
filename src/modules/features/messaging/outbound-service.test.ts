@@ -134,7 +134,7 @@ describe('OutboundService', () => {
         const { OutboundService } = await import('./outbound-service')
         const result = await new OutboundService().sendSystemMessage('conversation-secret-id', 'hola')
 
-        expect(result).toEqual({ success: false, error: 'Conversation not found' })
+        expect(result).toEqual({ success: false, error: 'System message could not be sent' })
 
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('conversation-secret-id')
@@ -142,5 +142,52 @@ describe('OutboundService', () => {
         expect(logText).toContain('conversationIdPresent')
         expect(logText).toContain('PGRST116')
         expect(logText).toContain('hasMessage')
+    })
+
+    it('does not expose system adapter failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const adapterSendMessage = vi.fn(async () => {
+            throw new Error('adapter failed token-secret phone-secret-value connection-secret-id')
+        })
+        mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') {
+                return conversationSingleQuery({
+                    id: 'conversation-secret-id',
+                    channel: 'whatsapp',
+                    connection_id: 'connection-secret-id',
+                    metadata: { phone: 'phone-secret-value' },
+                    organization_id: 'org-secret-id',
+                    phone: 'phone-secret-value',
+                })
+            }
+
+            if (table === 'integration_connections') {
+                return conversationSingleQuery({
+                    id: 'connection-secret-id',
+                    credentials: { accessToken: 'token-secret' },
+                    metadata: {},
+                    provider_key: 'whatsapp_cloud',
+                })
+            }
+
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { OutboundService } = await import('./outbound-service')
+        const result = await new OutboundService().sendSystemMessage('conversation-secret-id', 'hola', 'whatsapp', 'connection-secret-id')
+
+        expect(result).toEqual({ success: false, error: 'System message could not be sent' })
+        const logText = collectConsoleCalls(logSpy, errorSpy)
+        expect(logText).not.toContain('conversation-secret-id')
+        expect(logText).not.toContain('connection-secret-id')
+        expect(logText).not.toContain('phone-secret-value')
+        expect(logText).not.toContain('token-secret')
+        expect(logText).not.toContain('adapter failed')
+        expect(logText).toContain('conversationIdPresent')
+        expect(logText).toContain('connectionIdPresent')
+        expect(logText).toContain('Error')
     })
 })

@@ -3,8 +3,10 @@ import { integrationRegistry } from "@/modules/infrastructure/integrations/regis
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
 
+const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
+
 function isDeployedRuntime() {
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
 }
 
 function sanitizeOutboundLogDetails(details: Record<string, unknown> = {}) {
@@ -75,6 +77,22 @@ function logOutboundError(label: string, error: unknown, details?: Record<string
         ...(details ? sanitizeOutboundLogDetails(details) : {}),
         detail: summarizeOutboundError(error),
     })
+}
+
+function publicOutboundError(error: unknown, fallback = PUBLIC_SYSTEM_MESSAGE_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
 }
 
 export class OutboundService {
@@ -205,7 +223,7 @@ export class OutboundService {
         channel: string = 'whatsapp',
         connectionId?: string,
         sender: string = 'System'
-    ) {
+    ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
         const supabase = supabaseAdmin;
         
         try {
@@ -260,7 +278,7 @@ export class OutboundService {
             };
         } catch (error: any) {
              logOutboundError("[sendSystemMessage] Error:", error, { conversationId, connectionId });
-             return { success: false, error: error.message };
+             return { success: false, error: publicOutboundError(error) };
         }
     }
 }
