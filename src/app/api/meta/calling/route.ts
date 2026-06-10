@@ -4,15 +4,128 @@ import { getCurrentOrganizationId } from '@/modules/core/organizations/organizat
 
 const META_API_VERSION = 'v22.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
+const META_CALLING_PUBLIC_ERROR = 'Meta Calling request failed'
+
+class CallingRouteError extends Error {
+    constructor(message: string, public status = 500) {
+        super(message)
+    }
+}
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCallingError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as any).error : error
+        return {
+            type: typeof error,
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            metaType: graphError?.type,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logCallingError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeCallingError(error))
+}
+
+function logCallingResponse(label: string, data: unknown) {
+    if (!isDeployedRuntime()) {
+        console.log(label, JSON.stringify(data))
+        return
+    }
+
+    const payload = data && typeof data === 'object' ? data as Record<string, any> : {}
+    console.log(label, {
+        hasCalling: !!payload.calling,
+        hasDisplayPhone: !!payload.display_phone_number,
+        phoneNumberId: payload.id ? 'present' : 'missing',
+        success: typeof payload.success === 'boolean' ? payload.success : undefined,
+    })
+}
+
+function publicCallingError(error: unknown, fallback: string) {
+    if (error instanceof CallingRouteError && (!isDeployedRuntime() || error.status < 500)) {
+        return error.message
+    }
+
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    return error instanceof Error ? error.message : fallback
+}
+
+function publicMetaGraphError(data: unknown) {
+    if (isDeployedRuntime()) {
+        return META_CALLING_PUBLIC_ERROR
+    }
+
+    if (data && typeof data === 'object') {
+        const message = (data as any).error?.message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    return META_CALLING_PUBLIC_ERROR
+}
+
+function metaCallingFailurePayload(data: unknown) {
+    const payload: Record<string, unknown> = {
+        success: false,
+        error: publicMetaGraphError(data),
+    }
+
+    if (!isDeployedRuntime() && data && typeof data === 'object') {
+        const graphError = (data as any).error
+        if (graphError) payload.meta_error = graphError
+    }
+
+    return payload
+}
+
+function callingErrorResponse(error: unknown, fallback: Record<string, unknown> = {}) {
+    const isExpected = error instanceof CallingRouteError
+    const message = publicCallingError(error, 'Internal server error')
+
+    if (!isExpected) {
+        logCallingError('[Calling API] Error:', error)
+    }
+
+    return NextResponse.json(
+        { error: message, ...fallback },
+        { status: isExpected ? error.status : 500 }
+    )
+}
 
 /**
  * Resolves Meta credentials from the active WhatsApp connection
  */
 async function resolveCallingCredentials() {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error('No active organization')
-
     const supabase = await createClient()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new CallingRouteError('Unauthorized', 401)
+    }
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new CallingRouteError('No active organization', 403)
 
     const { data: connection, error } = await supabase
         .from('integration_connections')
@@ -24,10 +137,14 @@ async function resolveCallingCredentials() {
         .limit(1)
         .single()
 
-    console.log('[resolveCallingCredentials] DB Lookup for org:', orgId, 'Found:', !!connection, 'Error:', error?.message);
+    if (!isDeployedRuntime()) {
+        console.log('[resolveCallingCredentials] DB Lookup for org:', orgId, 'Found:', !!connection, 'Error:', error?.message);
+    } else {
+        console.log('[resolveCallingCredentials] DB Lookup:', { found: !!connection, hasError: !!error });
+    }
 
     if (error || !connection) {
-        throw new Error('No active WhatsApp connection found')
+        throw new CallingRouteError('No active WhatsApp connection found', 404)
     }
 
     // Decrypt credentials
@@ -52,11 +169,11 @@ async function resolveCallingCredentials() {
 
     if (!accessToken) {
         console.error('[resolveCallingCredentials] âŒ Missing Meta access token');
-        throw new Error('Missing Meta access token');
+        throw new CallingRouteError('Missing Meta access token', 500);
     }
     if (!phoneNumberId) {
         console.error('[resolveCallingCredentials] âŒ Missing Phone Number ID');
-        throw new Error('Missing Phone Number ID');
+        throw new CallingRouteError('Missing Phone Number ID', 500);
     }
 
     console.log('[resolveCallingCredentials] âœ… Resolved:', { phoneNumberId, hasToken: !!accessToken });
@@ -82,10 +199,10 @@ export async function GET() {
         )
 
         const data = await response.json()
-        console.log('[Calling GET] Response:', JSON.stringify(data))
+        logCallingResponse('[Calling GET] Response:', data)
 
         if (!response.ok) {
-            console.error('[Calling GET] Meta API error:', data)
+            logCallingError('[Calling GET] Meta API error:', data)
 
             // If calling not available, return defaults
             if (response.status === 400 || response.status === 404) {
@@ -101,7 +218,7 @@ export async function GET() {
                 enabled: false,
                 iconVisibility: 'HIDE',
                 source: 'error',
-                error: data?.error?.message || 'Unknown error'
+                error: publicMetaGraphError(data)
             })
         }
 
@@ -119,11 +236,7 @@ export async function GET() {
             source: 'meta'
         })
     } catch (error: any) {
-        console.error('[Calling GET] Error:', error.message)
-        return NextResponse.json(
-            { error: error.message, enabled: false, iconVisibility: 'HIDE', source: 'error' },
-            { status: 500 }
-        )
+        return callingErrorResponse(error, { enabled: false, iconVisibility: 'HIDE', source: 'error' })
     }
 }
 
@@ -157,7 +270,7 @@ export async function POST(req: NextRequest) {
                 callingPayload.call_icon_visibility = 'DEFAULT'
             }
 
-            console.log('[Calling POST toggle] Sending:', JSON.stringify({ calling: callingPayload }))
+            console.log('[Calling POST toggle] Sending:', { calling: callingPayload })
 
             const response = await fetch(
                 `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
@@ -174,15 +287,11 @@ export async function POST(req: NextRequest) {
             )
 
             const data = await response.json()
-            console.log('[Calling POST toggle] Response:', JSON.stringify(data))
+            logCallingResponse('[Calling POST toggle] Response:', data)
 
             if (!response.ok) {
-                console.error('[Calling POST toggle] Meta error:', data)
-                return NextResponse.json({
-                    success: false,
-                    error: data?.error?.message || 'Meta API error',
-                    meta_error: data?.error
-                }, { status: response.status })
+                logCallingError('[Calling POST toggle] Meta error:', data)
+                return NextResponse.json(metaCallingFailurePayload(data), { status: response.status })
             }
 
             return NextResponse.json({
@@ -202,7 +311,7 @@ export async function POST(req: NextRequest) {
             // Meta uses 'DEFAULT' for visible, 'DISABLED' for hidden
             const metaVisibility = targetVisibility === 'DEFAULT' ? 'DEFAULT' : 'DISABLED'
 
-            console.log('[Calling POST icon] Sending:', JSON.stringify({ calling: { call_icon_visibility: metaVisibility } }))
+            console.log('[Calling POST icon] Sending:', { calling: { call_icon_visibility: metaVisibility } })
 
             const response = await fetch(
                 `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
@@ -221,15 +330,11 @@ export async function POST(req: NextRequest) {
             )
 
             const data = await response.json()
-            console.log('[Calling POST icon] Response:', JSON.stringify(data))
+            logCallingResponse('[Calling POST icon] Response:', data)
 
             if (!response.ok) {
-                console.error('[Calling POST icon] Meta error:', data)
-                return NextResponse.json({
-                    success: false,
-                    error: data?.error?.message || 'Meta API error',
-                    meta_error: data?.error
-                }, { status: response.status })
+                logCallingError('[Calling POST icon] Meta error:', data)
+                return NextResponse.json(metaCallingFailurePayload(data), { status: response.status })
             }
 
             return NextResponse.json({
@@ -241,8 +346,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ error: 'Unknown action. Use "toggle" or "icon".' }, { status: 400 })
     } catch (error: any) {
-        console.error('[Calling POST] Error:', error.message)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return callingErrorResponse(error)
     }
 }
 
