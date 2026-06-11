@@ -285,6 +285,7 @@ export async function createQuoteFromLead(leadId: string) {
         quote_status: 'draft'
       })
       .eq('id', leadId)
+      .eq('organization_id', orgId)
 
     if (linkError) console.error('Error linking quote to lead:', linkError)
 
@@ -300,6 +301,18 @@ export async function linkQuoteToLead(leadId: string, quoteId: string) {
   const orgId = await getCurrentOrganizationId()
 
   if (!orgId) return { success: false, error: "Unauthorized" }
+
+  const { data: quote, error: quoteError } = await supabase
+    .from('quotes')
+    .select('id')
+    .eq('id', quoteId)
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
+    .single()
+
+  if (quoteError || !quote) {
+    return quoteFailure("[QuotesService.linkQuoteToLead] Quote lookup error:", quoteError, PUBLIC_QUOTE_LINK_ERROR)
+  }
 
   const { error } = await supabase
     .from('leads')
@@ -324,6 +337,7 @@ export async function getQuoteForLead(leadId: string) {
     .from('leads')
     .select('quote_id')
     .eq('id', leadId)
+    .eq('organization_id', orgId)
     .single()
 
   if (!lead?.quote_id) return null
@@ -332,6 +346,8 @@ export async function getQuoteForLead(leadId: string) {
     .from('quotes')
     .select('*')
     .eq('id', lead.quote_id)
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
     .single()
 
   return quote as Quote
