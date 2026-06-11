@@ -477,6 +477,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     let query = supabaseAdmin
         .from('agent_skills')
         .select('agent_id, skill, proficiency')
+        .eq('organization_id', orgId)
         .in('skill', requiredSkills)
 
     if (agentPool && agentPool.length > 0) {
@@ -507,6 +508,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     const { data: members } = await supabaseAdmin
         .from('organization_members')
         .select('user_id, role, permissions')
+        .eq('organization_id', orgId)
         .in('user_id', sortedAgents)
 
     const memberMap = new Map((members || []).map(m => [m.user_id, m]));
@@ -525,6 +527,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
                 const { data: hasAccess } = await supabaseAdmin
                     .from('agent_channels')
                     .select('agent_id')
+                    .eq('organization_id', orgId)
                     .eq('agent_id', agentId)
                     .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
                     .eq('is_active', true)
@@ -537,6 +540,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
         const { data: availability } = await supabaseAdmin
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity, last_seen_at')
+            .eq('organization_id', orgId)
             .eq('agent_id', agentId)
             .eq('status', 'online')
             .eq('auto_assign_enabled', true)

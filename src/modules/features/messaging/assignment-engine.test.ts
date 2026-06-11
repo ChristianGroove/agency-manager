@@ -33,6 +33,8 @@ function supabaseQuery(result: unknown) {
         eq: vi.fn(() => query),
         in: vi.fn(() => query),
         insert: vi.fn(async () => result),
+        limit: vi.fn(() => query),
+        or: vi.fn(() => query),
         order: vi.fn(() => query),
         single: vi.fn(async () => result),
         update: vi.fn(() => query),
@@ -163,5 +165,78 @@ describe('AssignmentEngine', () => {
         expect(agentRead.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(agentUpdate.eq).toHaveBeenCalledWith('agent_id', 'agent-1')
         expect(agentUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
+    it('scopes skills-based assignment lookups to the conversation organization', async () => {
+        const conversationRead = supabaseQuery({
+            data: {
+                id: 'conversation-1',
+                assigned_to: null,
+                organization_id: 'org-current',
+                channel: 'whatsapp',
+                connection_id: 'connection-1',
+                tags: ['billing'],
+                leads: {},
+            },
+            error: null,
+        })
+        const conversationUpdate = supabaseQuery({ error: null })
+        const rulesQuery = supabaseQuery({
+            data: [{
+                id: 'rule-1',
+                name: 'Skills',
+                strategy: 'skills-based',
+                conditions: {},
+                assign_to: [],
+            }],
+            error: null,
+        })
+        const skillsQuery = supabaseQuery({
+            data: [{ agent_id: 'agent-1', skill: 'billing', proficiency: 5 }],
+            error: null,
+        })
+        const membersQuery = supabaseQuery({
+            data: [{ user_id: 'agent-1', role: 'member', permissions: {} }],
+            error: null,
+        })
+        const channelQuery = supabaseQuery({
+            data: [{ agent_id: 'agent-1' }],
+            error: null,
+        })
+        const availabilityQuery = supabaseQuery({
+            data: {
+                agent_id: 'agent-1',
+                current_load: 1,
+                max_capacity: 5,
+                last_seen_at: new Date(Date.now() + 60_000).toISOString(),
+            },
+            error: null,
+        })
+        const historyQuery = supabaseQuery({ error: null })
+        let conversationCalls = 0
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') {
+                conversationCalls += 1
+                return conversationCalls === 1 ? conversationRead : conversationUpdate
+            }
+            if (table === 'assignment_rules') return rulesQuery
+            if (table === 'agent_skills') return skillsQuery
+            if (table === 'organization_members') return membersQuery
+            if (table === 'agent_channels') return channelQuery
+            if (table === 'agent_availability') return availabilityQuery
+            if (table === 'assignment_history') return historyQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { assignConversation } = await import('./assignment-engine')
+        const result = await assignConversation('conversation-1')
+
+        expect(result).toBe('agent-1')
+        expect(skillsQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(membersQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(availabilityQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(conversationUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 })
