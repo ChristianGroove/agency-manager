@@ -236,6 +236,7 @@ describe('AssignmentEngine', () => {
         expect(skillsQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(membersQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.in).toHaveBeenCalledWith('channel_type', ['whatsapp', 'connection-1'])
         expect(availabilityQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(conversationUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
@@ -296,6 +297,7 @@ describe('AssignmentEngine', () => {
 
         expect(result).toBe('agent-1')
         expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.in).toHaveBeenCalledWith('channel_type', ['whatsapp', 'connection-1'])
         expect(conversationUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 })

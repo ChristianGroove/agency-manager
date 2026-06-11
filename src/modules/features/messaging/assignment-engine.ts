@@ -81,6 +81,12 @@ function logAssignmentError(label: string, error: unknown, details?: Record<stri
     })
 }
 
+function channelBindingValues(channelType?: string, connectionId?: string): string[] {
+    return Array.from(new Set(
+        [channelType, connectionId].filter((value): value is string => typeof value === 'string' && value.length > 0)
+    ))
+}
+
 /**
  * ASSIGNMENT ENGINE - High Level Architecture
  * 
@@ -351,9 +357,10 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     if (activeAgents.length === 0) return null;
 
     // Filter by Channel Access AND Admin Role
+    const channelBindings = channelBindingValues(channelType, connectionId)
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelBindings.length > 0 ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).in('channel_type', channelBindings).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -432,9 +439,10 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
     if (activeAgents.length === 0) return null;
 
     // 2. Filter by Channel Access AND Admin Role
+    const channelBindings = channelBindingValues(channelType, connectionId)
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelBindings.length > 0 ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).in('channel_type', channelBindings).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -514,13 +522,14 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     const memberMap = new Map((members || []).map(m => [m.user_id, m]));
 
     const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const channelBindings = channelBindingValues(channelType, connectionId)
 
     for (const agentId of sortedAgents) {
         const member = memberMap.get(agentId);
         const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
 
         // Validation: Channel Access (Skip if Admin)
-        if (channelType && !isAdmin) {
+        if (channelBindings.length > 0 && !isAdmin) {
             const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
             
             if (!hasExplicitAccess) {
@@ -529,7 +538,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
                     .select('agent_id')
                     .eq('organization_id', orgId)
                     .eq('agent_id', agentId)
-                    .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
+                    .in('channel_type', channelBindings)
                     .eq('is_active', true)
                     .limit(1)
 

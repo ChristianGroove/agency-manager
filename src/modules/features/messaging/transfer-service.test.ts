@@ -86,6 +86,7 @@ function insertQuery(capture: { insert?: any }) {
 function accessQuery(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
+        in: vi.fn(() => query),
         limit: vi.fn(async () => result),
         or: vi.fn(() => query),
         select: vi.fn(() => query),
@@ -238,6 +239,7 @@ describe('transfer service logging', () => {
         expect(result).toEqual({ success: false, error: 'Target agent does not have access to this channel' })
         expect(channelAccess.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(channelAccess.eq).toHaveBeenCalledWith('agent_id', 'target-agent')
+        expect(channelAccess.in).toHaveBeenCalledWith('channel_type', ['whatsapp', 'connection-1'])
         expect(channelAccess.eq).toHaveBeenCalledWith('is_active', true)
         expect(update.update).not.toHaveBeenCalled()
     })

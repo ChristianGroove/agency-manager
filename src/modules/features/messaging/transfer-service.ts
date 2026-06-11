@@ -67,12 +67,16 @@ export async function transferConversation(
     // 3. VALIDATION: Channel Access (with Admin Bypass)
     const isAdmin = ['admin', 'owner'].includes(member.role?.toLowerCase())
     if (!isAdmin) {
+        const channelBindings = Array.from(new Set(
+            [conv.channel, conv.connection_id].filter((value): value is string => typeof value === 'string' && value.length > 0)
+        ))
+
         const { data: hasAccess } = await supabaseAdmin
             .from('agent_channels')
             .select('agent_id')
             .eq('organization_id', conv.organization_id)
             .eq('agent_id', toAgentId)
-            .or(`channel_type.eq.${conv.channel},channel_type.eq.${conv.connection_id}`)
+            .in('channel_type', channelBindings)
             .eq('is_active', true)
             .limit(1)
 
