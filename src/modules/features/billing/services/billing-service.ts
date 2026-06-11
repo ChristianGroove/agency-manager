@@ -97,19 +97,44 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
         let receiver = undefined
 
         if (data.emitter_id) {
-            const { data: e } = await supabase.from('emitters').select('*').eq('id', data.emitter_id).single()
-            if (e) {
-                const { EmitterMapper } = await import('@/modules/billing/legacy/EntityMappers')
-                issuer = EmitterMapper.legacyToCore(e)
-            }
+            const { data: e } = await supabase
+                .from('emitters')
+                .select('*')
+                .eq('id', data.emitter_id)
+                .eq('organization_id', orgId)
+                .single()
+            if (!e) return { success: false, error: PUBLIC_BILLING_CREATE_INVOICE_ERROR }
+
+            const { EmitterMapper } = await import('@/modules/billing/legacy/EntityMappers')
+            issuer = EmitterMapper.legacyToCore(e)
         }
 
         if (data.client_id) {
-            const { data: c } = await supabase.from('leads').select('*').eq('id', data.client_id).single()
-            if (c) {
-                const { ClientMapper } = await import('@/modules/billing/legacy/EntityMappers')
-                receiver = ClientMapper.legacyToCore(c)
-            }
+            const { data: c } = await supabase
+                .from('leads')
+                .select('*')
+                .eq('id', data.client_id)
+                .eq('organization_id', orgId)
+                .single()
+            if (!c) return { success: false, error: PUBLIC_BILLING_CREATE_INVOICE_ERROR }
+
+            const { ClientMapper } = await import('@/modules/billing/legacy/EntityMappers')
+            receiver = ClientMapper.legacyToCore(c)
+        }
+
+        const { items, cycle_id, ...invoiceData } = data
+        let billingCycleContext: any = null
+
+        if (cycle_id) {
+            const { data: cycle } = await supabase
+                .from('billing_cycles')
+                .select('id, service_id, end_date, service:services!inner(id, organization_id, type, frequency, amount)')
+                .eq('id', cycle_id)
+                .eq('service.organization_id', orgId)
+                .single()
+
+            if (!cycle) return { success: false, error: PUBLIC_BILLING_CREATE_INVOICE_ERROR }
+            billingCycleContext = cycle
         }
 
         const coreDocument = InvoiceMapper.legacyToCore(data, orgId, user.id, issuer, receiver)
@@ -121,7 +146,6 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
         const processedDocument = await documentService.createDocument(coreDocument)
         const legacyInvoice = InvoiceMapper.coreToLegacy(processedDocument)
 
-        const { items, cycle_id, ...invoiceData } = data
         const payload: any = {
             ...invoiceData,
             organization_id: orgId,
@@ -137,18 +161,19 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
 
         // Handle Billing Cycles for recurring services
         if (cycle_id && newInvoice) {
-            const { data: currentCycle } = await supabase
+            const { error: cycleUpdateError } = await supabase
                 .from('billing_cycles')
                 .update({ status: 'invoiced', invoice_id: newInvoice.id, updated_at: new Date().toISOString() })
                 .eq('id', cycle_id)
-                .select('end_date, service_id')
-                .single()
+            if (cycleUpdateError) throw cycleUpdateError
 
-            if (currentCycle) {
-                const { data: service } = await supabase.from('services').select('id, type, frequency, amount').eq('id', currentCycle.service_id).single()
+            if (billingCycleContext) {
+                const service = Array.isArray(billingCycleContext.service)
+                    ? billingCycleContext.service[0]
+                    : billingCycleContext.service
                 if (service && service.type === 'recurring' && service.frequency) {
                     const { calculateFrequencyNextDate } = await import('@/modules/features/billing/services/billing-utils')
-                    const nextStart = new Date(currentCycle.end_date)
+                    const nextStart = new Date(billingCycleContext.end_date)
                     const nextEnd = calculateFrequencyNextDate(nextStart, service.frequency)
 
                     await supabase.from('billing_cycles').insert({
@@ -160,7 +185,7 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
                         status: 'pending'
                     })
 
-                    await supabase.from('services').update({ next_billing_date: nextEnd.toISOString() }).eq('id', service.id)
+                    await supabase.from('services').update({ next_billing_date: nextEnd.toISOString() }).eq('id', service.id).eq('organization_id', orgId)
                 }
             }
         }
