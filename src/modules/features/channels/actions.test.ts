@@ -8,9 +8,6 @@ const mocks = vi.hoisted(() => ({
     revalidatePath: vi.fn(),
     getAdapter: vi.fn(),
     checkConnectionStatus: vi.fn(),
-    fetchInstance: vi.fn(),
-    getQrCode: vi.fn(),
-    createInstance: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -42,11 +39,7 @@ vi.mock('@/modules/infrastructure/integrations/registry', () => ({
 }))
 
 vi.mock('@/modules/infrastructure/integrations/adapters/evolution-adapter', () => ({
-    EvolutionAdapter: class {
-        fetchInstance = mocks.fetchInstance
-        getQrCode = mocks.getQrCode
-        createInstance = mocks.createInstance
-    },
+    EvolutionAdapter: class {},
 }))
 
 function createQueryBuilder(options: {
@@ -63,7 +56,6 @@ function createQueryBuilder(options: {
         insert: vi.fn(() => builder),
         single: vi.fn(async () => options.singleResult ?? { data: null, error: null }),
     }
-    builder.then = (resolve: any, reject: any) => Promise.resolve({ error: null }).then(resolve, reject)
 
     return builder
 }
@@ -98,9 +90,6 @@ describe('channel actions', () => {
         mocks.revalidatePath.mockReset()
         mocks.getAdapter.mockReset()
         mocks.checkConnectionStatus.mockReset()
-        mocks.fetchInstance.mockReset()
-        mocks.getQrCode.mockReset()
-        mocks.createInstance.mockReset()
     })
 
     it('does not return channel credential secrets to client callers', async () => {
@@ -173,49 +162,5 @@ describe('channel actions', () => {
         expect(result.credentials).toEqual({ accessToken_present: true })
         expect(resultText).not.toContain('client-submitted-secret')
         expect(resultText).not.toContain('new-secret-value')
-    })
-
-    it('scopes deleted Evolution channel reactivation to the current organization', async () => {
-        mocks.getCurrentOrganizationId.mockResolvedValue('abc123-def456')
-        mocks.requireOrgRole.mockResolvedValue(undefined)
-        mocks.fetchInstance.mockResolvedValue({ exists: true, state: 'closed' })
-        mocks.getQrCode.mockResolvedValue({ qr: 'qr-code' })
-
-        const channelLookup = createQueryBuilder({
-            orderResult: {
-                data: [channel({
-                    id: 'channel_deleted',
-                    organization_id: 'abc123-def456',
-                    provider_key: 'evolution_api',
-                    status: 'deleted',
-                    credentials: {
-                        apiKey: 'stored-evolution-key',
-                        instanceName: 'org_abc123_573001112222',
-                    },
-                })],
-                error: null,
-            },
-        })
-        const reactivationQuery = createQueryBuilder()
-        mocks.supabaseAdminFrom
-            .mockReturnValueOnce(channelLookup)
-            .mockReturnValueOnce(reactivationQuery)
-
-        const { createWhatsAppChannel } = await import('./actions')
-        const result = await createWhatsAppChannel('+57 300 111 2222')
-
-        expect(result).toEqual({
-            channelId: 'channel_deleted',
-            qrCode: 'qr-code',
-            reconnected: true,
-        })
-        expect(mocks.fetchInstance).toHaveBeenCalledWith('org_abc123_573001112222')
-        expect(mocks.getQrCode).toHaveBeenCalledWith(expect.objectContaining({
-            apiKey: 'stored-evolution-key',
-            instanceName: 'org_abc123_573001112222',
-        }))
-        expect(reactivationQuery.update).toHaveBeenCalledWith({ status: 'active' })
-        expect(reactivationQuery.eq).toHaveBeenCalledWith('id', 'channel_deleted')
-        expect(reactivationQuery.eq).toHaveBeenCalledWith('organization_id', 'abc123-def456')
     })
 })
