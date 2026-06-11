@@ -37,6 +37,21 @@ function metaError(message: string, code = 190) {
     }
 }
 
+function expectBearerFetchCall(callIndex: number, token: string, pathFragment: string) {
+    const fetchCall = mocks.fetch.mock.calls[callIndex] as unknown[]
+    const fetchUrl = new URL(String(fetchCall[0]))
+
+    expect(String(fetchCall[0])).toContain(pathFragment)
+    expect(fetchUrl.searchParams.has('access_token')).toBe(false)
+    expect(fetchCall[1]).toEqual(expect.objectContaining({
+        headers: expect.objectContaining({
+            Authorization: `Bearer ${token}`,
+        }),
+    }))
+
+    return fetchUrl
+}
+
 describe('MetaGraphAPI', () => {
     afterEach(() => {
         vi.unstubAllEnvs()
@@ -192,5 +207,44 @@ describe('MetaGraphAPI', () => {
         const errorText = collectConsoleCalls(errorSpy)
         expect(errorText).not.toContain('secret-value')
         expect(errorText).not.toContain('token secret')
+
+        expectBearerFetchCall(0, 'user-token-secret-value', '/me/whatsapp_business_accounts')
+        expectBearerFetchCall(1, 'user-token-secret-value', '/me/businesses')
+        expectBearerFetchCall(2, 'user-token-secret-value', '/me/accounts')
+    })
+
+    it('uses Authorization headers for granular WABA detail fetches', async () => {
+        setupProductionEnv()
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        mocks.fetch
+            .mockResolvedValueOnce(new Response(JSON.stringify(metaError('direct unavailable')), { status: 400 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify(metaError('business unavailable')), { status: 400 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify(metaError('pages unavailable')), { status: 400 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                data: {
+                    granular_scopes: [{
+                        scope: 'whatsapp_business_management',
+                        target_ids: ['waba_123'],
+                    }],
+                },
+            }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                id: 'waba_123',
+                name: 'Pixy WABA',
+                currency: 'COP',
+            }), { status: 200 }))
+
+        const { MetaGraphAPI } = await import('./graph-api')
+        const result = await new MetaGraphAPI('https://pixy.test')
+            .getWhatsAppAccounts('user-token-secret-value')
+
+        expect(result).toEqual({
+            data: [expect.objectContaining({
+                id: 'waba_123',
+                name: 'Pixy WABA',
+                business_name: 'Granular Access',
+            })],
+        })
+        expectBearerFetchCall(4, 'user-token-secret-value', '/waba_123')
     })
 })

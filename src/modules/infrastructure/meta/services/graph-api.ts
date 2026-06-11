@@ -280,8 +280,9 @@ export class MetaGraphAPI {
             // --- STRATEGY 1: Direct Fetch (Standard) ---
             // Works if 'whatsapp_business_management' is granted and user has direct access
             try {
-                const url1 = `${META_GRAPH_URL}/${META_API_VERSION}/me/whatsapp_business_accounts?access_token=${accessToken}&fields=id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}`;
-                const res1 = await fetch(url1);
+                const url1 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/whatsapp_business_accounts`);
+                url1.searchParams.append('fields', 'id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}');
+                const res1 = await fetch(url1.toString(), metaAuthInit(accessToken));
                 const body1 = await res1.json();
                 if (!body1.error && body1.data) {
                     console.log(`✅ Strategy 1 (Direct) found ${body1.data.length} WABAs`);
@@ -295,8 +296,9 @@ export class MetaGraphAPI {
             // Works if 'business_management' is granted. Good for Agencies.
             if (allWabas.length === 0) {
                 try {
-                    const url2 = `${META_GRAPH_URL}/${META_API_VERSION}/me/businesses?access_token=${accessToken}&fields=id,name,whatsapp_business_accounts{id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}}`;
-                    const res2 = await fetch(url2);
+                    const url2 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/businesses`);
+                    url2.searchParams.append('fields', 'id,name,whatsapp_business_accounts{id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}}');
+                    const res2 = await fetch(url2.toString(), metaAuthInit(accessToken));
                     const body2 = await res2.json();
 
                     if (!body2.error && body2.data) {
@@ -318,8 +320,9 @@ export class MetaGraphAPI {
             if (allWabas.length === 0) {
                 try {
                     console.log("🔍 [Strategy 3] Attempting Page-Linked WABA discovery...");
-                    const url3 = `${META_GRAPH_URL}/${META_API_VERSION}/me/accounts?access_token=${accessToken}&fields=id,name,connected_whatsapp_business_account{id,name,currency,timezone_id}`;
-                    const res3 = await fetch(url3);
+                    const url3 = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/accounts`);
+                    url3.searchParams.append('fields', 'id,name,connected_whatsapp_business_account{id,name,currency,timezone_id}');
+                    const res3 = await fetch(url3.toString(), metaAuthInit(accessToken));
                     const body3 = await res3.json();
 
                     if (!body3.error && body3.data) {
@@ -370,8 +373,9 @@ export class MetaGraphAPI {
 
                             // Now fetch details for each ID
                             const wabaPromises = wabaScope.target_ids.map(async (id: string) => {
-                                const wUrl = `${META_GRAPH_URL}/${META_API_VERSION}/${id}?access_token=${accessToken}&fields=id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}`;
-                                const wRes = await fetch(wUrl);
+                                const wUrl = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${id}`);
+                                wUrl.searchParams.append('fields', 'id,name,currency,timezone_id,message_templates,phone_numbers{id,display_phone_number,verified_name,quality_rating}');
+                                const wRes = await fetch(wUrl.toString(), metaAuthInit(accessToken));
                                 return wRes.json();
                             });
 
