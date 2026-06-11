@@ -52,9 +52,33 @@ function makeListQuery(result: any) {
     }
 }
 
+function setupProductionRuntime() {
+    vi.stubEnv('VERCEL_ENV', 'production')
+}
+
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
 afterEach(() => {
-    vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.resetModules()
+    mocks.generateSmartReplies.mockReset()
+    mocks.logSuggestion.mockReset()
+    mocks.executeTask.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.createClient.mockReset()
 })
 
 describe('inbox AI API routes', () => {
@@ -125,6 +149,8 @@ describe('inbox AI API routes', () => {
         expect(response.status).toBe(200)
         expect(await response.json()).toMatchObject({ success: true, usedKnowledge: 1 })
         expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conv-1')
+        expect(messagesQuery.eq).toHaveBeenCalledWith('conversation_id', 'conv-1')
+        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.generateSmartReplies).toHaveBeenCalledWith(expect.objectContaining({
             conversationHistory: [
                 expect.objectContaining({ content: 'Bienvenido' }),
@@ -136,6 +162,82 @@ describe('inbox AI API routes', () => {
             conversationId: 'conv-1',
             messageId: 'msg-new',
         }))
+    })
+
+    it('does not expose smart replies message fetch failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const conversationQuery = makeSingleQuery({
+            data: { priority: 'normal', tags: [], leads: null },
+            error: null,
+        })
+        const messagesQuery = makeListQuery({
+            data: null,
+            error: { message: 'database password secret-value failed reading messages' },
+        })
+        const supabase = {
+            from: vi.fn((table: string) => table === 'conversations' ? conversationQuery : messagesQuery),
+        }
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue(supabase)
+
+        const { POST } = await import('./smart-replies/route')
+        const response = await POST(makeRequest('/api/ai/smart-replies', {
+            conversationId: 'conv-1',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Conversation messages unavailable')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('database password')
+        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.generateSmartReplies).not.toHaveBeenCalled()
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('database password')
+    })
+
+    it('does not expose smart replies generation failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const conversationQuery = makeSingleQuery({
+            data: { priority: 'normal', tags: ['sales'], leads: null },
+            error: null,
+        })
+        const messagesQuery = makeListQuery({
+            data: [
+                { id: 'msg-1', content: 'Hola', direction: 'incoming', created_at: '2026-01-01T00:00:00Z' },
+            ],
+            error: null,
+        })
+        const supabase = {
+            from: vi.fn((table: string) => table === 'conversations' ? conversationQuery : messagesQuery),
+        }
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue(supabase)
+        mocks.generateSmartReplies.mockResolvedValue({
+            success: false,
+            error: 'openai api key secret-value failed generating replies',
+        })
+
+        const { POST } = await import('./smart-replies/route')
+        const response = await POST(makeRequest('/api/ai/smart-replies', {
+            conversationId: 'conv-1',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Smart replies failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
     })
 
     it('rejects anonymous voice analysis before reading messages or running AI', async () => {
@@ -212,5 +314,35 @@ describe('inbox AI API routes', () => {
             }),
         })
         expect(messageQuery.eq).toHaveBeenCalledWith('id', 'msg-1')
+    })
+
+    it('does not expose voice analysis failures in production responses or logs', async () => {
+        setupProductionRuntime()
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const supabase = {
+            from: vi.fn(),
+        }
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue(supabase)
+        mocks.executeTask.mockResolvedValue({
+            success: false,
+            error: 'openai api key secret-value failed voice analysis',
+        })
+
+        const { POST } = await import('./analyze-voice/route')
+        const response = await POST(makeRequest('/api/ai/analyze-voice', {
+            text: 'hola',
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Voice analysis failed')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('api key')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('api key')
     })
 })

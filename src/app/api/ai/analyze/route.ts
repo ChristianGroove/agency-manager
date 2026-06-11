@@ -48,6 +48,7 @@ export async function POST(request: Request) {
             .select('id')
             .eq('id', messageId)
             .eq('conversation_id', conversationId)
+            .eq('organization_id', orgId)
             .single()
 
         if (messageError || !message) {

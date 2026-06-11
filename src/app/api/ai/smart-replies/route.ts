@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
             .from('messages')
             .select('id, content, direction, created_at')
             .eq('conversation_id', normalizedConversationId)
+            .eq('organization_id', orgId)
             .order('created_at', { ascending: false })
             .limit(10)
 

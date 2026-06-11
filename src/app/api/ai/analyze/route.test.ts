@@ -141,6 +141,7 @@ describe('/api/ai/analyze', () => {
         expect(response.status).toBe(200)
         expect(await response.json()).toMatchObject({ success: true })
         expect(messageQuery.eq).toHaveBeenCalledWith('conversation_id', 'conv-1')
+        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.saveSentimentAnalysis).toHaveBeenCalledWith(
             'msg-1',
             'conv-1',
