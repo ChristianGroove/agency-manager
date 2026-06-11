@@ -174,11 +174,8 @@ export default function QuoteDetailPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    quoteId: quote.id,
                     email,
-                    quoteNumber: quote.number,
-                    clientName: quote.client?.name || quote.lead?.name,
-                    total: `$${quote.total.toLocaleString()}`,
-                    date: new Date(quote.date).toLocaleDateString(),
                     pdfBase64,
                     organizationId: quote.organization_id
                 }),
