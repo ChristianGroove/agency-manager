@@ -26,7 +26,10 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
                 .from('messages')
                 .select('metadata')
                 .eq('id', messageId)
+                .eq('organization_id', orgId)
                 .single()
+
+            if (!msg) return { success: false, error: "Message not found" }
 
             if (msg?.metadata && (msg.metadata as any).transcription) {
                 return { success: true, text: (msg.metadata as any).transcription, debug: 'cache-hit' }
@@ -87,6 +90,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
                 .from('messages')
                 .select('metadata')
                 .eq('id', messageId)
+                .eq('organization_id', orgId)
                 .single()
 
             const currentMetadata = (currentMsg?.metadata || {}) as Record<string, any>
@@ -95,6 +99,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
             await supabaseAdmin.from('messages')
                 .update({ metadata: newMetadata })
                 .eq('id', messageId)
+                .eq('organization_id', orgId)
         }
 
         if (finalResult) return finalResult;
