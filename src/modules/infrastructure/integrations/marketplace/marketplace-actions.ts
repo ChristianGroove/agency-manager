@@ -36,6 +36,14 @@ function publicMarketplaceError(error: unknown, fallback: string) {
         : fallback
 }
 
+function sanitizeInstalledCredentials(credentials: Record<string, any> | null | undefined) {
+    if (!credentials || typeof credentials !== 'object') return {}
+
+    return Object.fromEntries(
+        Object.entries(credentials).map(([key, value]) => [`${key}_present`, Boolean(value)])
+    )
+}
+
 /**
  * Get all available providers from the marketplace
  */
@@ -102,6 +110,7 @@ export async function getInstalledIntegrations(): Promise<InstalledIntegration[]
 
     return (data as any[]).map(conn => ({
         ...conn,
+        credentials: sanitizeInstalledCredentials(conn.credentials),
         provider: conn.integration_providers
     })) as InstalledIntegration[]
 }

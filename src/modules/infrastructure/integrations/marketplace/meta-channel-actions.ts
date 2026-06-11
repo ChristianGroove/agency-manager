@@ -74,7 +74,6 @@ interface UIActivateInput {
     assetId: string
     assetType: "page" | "instagram" | "whatsapp"
     assetName: string
-    accessToken: string
     wabaId?: string
     pageId?: string
 }
@@ -143,10 +142,28 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             'whatsapp': 'whatsapp_cloud'
         };
         providerKey = providerKeyMap[input.assetType];
-        accessToken = input.accessToken;
         assetId = input.assetId;
         assetName = input.assetName;
         wabaId = input.wabaId;
+
+        const { data: parentConnection, error: parentError } = await supabaseAdmin
+            .from('integration_connections')
+            .select('credentials')
+            .eq('id', input.parentConnectionId)
+            .eq('organization_id', orgId)
+            .eq('provider_key', 'meta_business')
+            .maybeSingle();
+
+        const parentCredentials = parentConnection?.credentials as { access_token?: string } | undefined;
+        if (parentError || !parentCredentials?.access_token) {
+            logMetaChannelError(
+                '[activateMetaChannel] Parent Meta connection unavailable:',
+                parentError || new Error('missing_parent_access_token')
+            );
+            return { success: false, error: 'Meta parent connection is not available' };
+        }
+
+        accessToken = parentCredentials.access_token;
     }
 
     try {

@@ -161,6 +161,41 @@ describe('marketplace actions', () => {
         expect(errorLogText).not.toContain('deleted connection')
     })
 
+    it('does not return installed integration credential secrets to client callers', async () => {
+        mockSupabaseWithQueries(
+            createQueryBuilder({
+                awaitResult: {
+                    data: [{
+                        id: 'connection_123',
+                        organization_id: 'org_123',
+                        provider_key: 'meta_business',
+                        credentials: {
+                            access_token: 'meta-token-secret-value',
+                            apiKey: 'api-secret-value',
+                        },
+                        integration_providers: { key: 'meta_business' },
+                    }],
+                    error: null,
+                },
+            })
+        )
+
+        const { getInstalledIntegrations } = await import('./marketplace-actions')
+        const result = await getInstalledIntegrations()
+        const resultText = JSON.stringify(result)
+
+        expect(result).toEqual([expect.objectContaining({
+            id: 'connection_123',
+            credentials: {
+                access_token_present: true,
+                apiKey_present: true,
+            },
+            provider: { key: 'meta_business' },
+        })])
+        expect(resultText).not.toContain('meta-token-secret-value')
+        expect(resultText).not.toContain('api-secret-value')
+    })
+
     it('keeps installing an integration when persistence succeeds', async () => {
         mockSupabaseWithQueries(
             createQueryBuilder({ singleResult: { data: provider(), error: null } }),
