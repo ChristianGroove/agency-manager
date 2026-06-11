@@ -24,11 +24,15 @@ export async function sendTemplateMessage(input: {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized")
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
     // 2. Fetch Conversation with Lead phone
     const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .select(`*, leads ( phone, name )`)
         .eq('id', input.conversationId)
+        .eq('organization_id', orgId)
         .single()
 
     if (convError || !conversation) {
@@ -45,6 +49,7 @@ export async function sendTemplateMessage(input: {
             .from('integration_connections')
             .select('*')
             .eq('id', (conversation as any).connection_id)
+            .eq('organization_id', orgId)
             .eq('status', 'active')
             .single()
         connection = boundConn
@@ -53,7 +58,7 @@ export async function sendTemplateMessage(input: {
         const { data: defaultConn } = await supabase
             .from('integration_connections')
             .select('*')
-            .eq('organization_id', conversation.organization_id)
+            .eq('organization_id', orgId)
             .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
             .eq('status', 'active')
             .order('created_at', { ascending: false })
@@ -130,7 +135,7 @@ export async function sendTemplateMessage(input: {
 
     // 6. POST to Meta Graph API
     const { assertUsageAllowed } = await import("@/modules/infrastructure/usage/usage-limiter")
-    await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' })
+    await assertUsageAllowed({ organizationId: orgId, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`
     const response = await fetch(apiUrl, {
@@ -174,6 +179,7 @@ export async function sendTemplateMessage(input: {
         content: messageContent,
         sender: user.email || 'Agent',
         messageId: messageId,
+        organizationId: orgId,
         channel: 'whatsapp'
     })
 
