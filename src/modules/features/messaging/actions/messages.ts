@@ -8,17 +8,104 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
+const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"
+const PUBLIC_MESSAGE_SIMULATION_ERROR = "Failed to handle message"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeMessageActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'conversationId',
+        'from',
+        'messageId',
+        'organizationId',
+        'recipientPhone',
+        'sender',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeMessageActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logMessageActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeMessageActionLogDetails(details),
+        detail: summarizeMessageActionError(error),
+    })
+}
+
+function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
+
+async function rejectUnauthenticatedMessageAction(supabase: Awaited<ReturnType<typeof createClient>>) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" } as const
+    return null
+}
+
 /**
  * FunciÃ³n para marcar una conversaciÃ³n como leÃ­da.
  */
 export async function markConversationAsRead(id: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const { error } = await supabase
         .from("conversations")
         .update({ unread_count: 0 })
         .eq("id", id)
 
-    if (error) console.error("[markConversationAsRead] Error:", error)
+    if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
     revalidatePath("/inbox")
     return { success: !error }
 }
@@ -35,7 +122,7 @@ export async function getMessages(conversationId: string) {
         .order("created_at", { ascending: true })
 
     if (error) {
-        console.error("[getMessages] Error:", error)
+        logMessageActionError("[getMessages] Error:", error, { conversationId })
         return []
     }
     return data as any[]
@@ -75,6 +162,7 @@ async function internalSend({
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
+            .eq("organization_id", conversation.organization_id)
             .single()
 
         if (!connection) throw new Error("Connection not found")
@@ -142,24 +230,50 @@ async function internalSend({
             try {
                 const result = await provider.sendMessage(providerOptions)
                 if (result.success && result.messageId) {
-                    await supabaseAdmin.from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
+                    await supabaseAdmin
+                        .from('messages')
+                        .update({ external_id: result.messageId, status: 'sent' })
+                        .eq('id', messageId)
+                        .eq('conversation_id', conversationId)
                 } else {
-                    await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: result.error } } as any).eq('id', messageId)
+                    await supabaseAdmin
+                        .from('messages')
+                        .update({
+                            status: 'failed',
+                            metadata: { error: publicMessageActionError(result.error) }
+                        } as any)
+                        .eq('id', messageId)
+                        .eq('conversation_id', conversationId)
                 }
             } catch (bgError: any) {
-                await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: bgError.message } } as any).eq('id', messageId)
+                await supabaseAdmin
+                    .from('messages')
+                    .update({
+                        status: 'failed',
+                        metadata: { error: publicMessageActionError(bgError) }
+                    } as any)
+                    .eq('id', messageId)
+                    .eq('conversation_id', conversationId)
             }
         })
 
         return { success: true, messageId }
     } catch (error: any) {
-        console.error("[internalSend] Error:", error)
-        return { success: false, error: error.message }
+        logMessageActionError("[internalSend] Error:", error, {
+            connectionId: connectionIdOverride,
+            conversationId,
+            messageId: msgId,
+            sender,
+        })
+        return { success: false, error: publicMessageActionError(error) }
     }
 }
 
 export async function sendMessage(conversationId: string, content: any, sender: string, messageId?: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const result = await internalSend({ conversationId, content, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
@@ -173,6 +287,9 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
 
 export async function sendAudioMessage(conversationId: string, audioUrl: string, duration: number, sender: string, messageId?: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const result = await internalSend({ conversationId, content: { type: 'audio', mediaUrl: audioUrl, duration }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
@@ -180,6 +297,9 @@ export async function sendAudioMessage(conversationId: string, audioUrl: string,
 
 export async function sendImageMessage(conversationId: string, imageUrl: string, caption: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const result = await internalSend({ conversationId, content: { type: 'image', mediaUrl: imageUrl, caption }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
@@ -187,6 +307,8 @@ export async function sendImageMessage(conversationId: string, imageUrl: string,
 
 export async function sendLocationMessage(conversationId: string, lat: number, lon: number, address: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
     const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
@@ -194,6 +316,9 @@ export async function sendLocationMessage(conversationId: string, lat: number, l
 
 export async function retryMessage(messageId: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const { data: message } = await supabase.from("messages").select("*").eq("id", messageId).single()
     if (!message) return { success: false, error: "Message not found" }
     await supabase.from('messages').update({ status: 'sending', metadata: { ...message.metadata, error: null } }).eq('id', messageId)
@@ -203,6 +328,10 @@ export async function retryMessage(messageId: string) {
 }
 
 export async function sendProductCardMessage(conversationId: string, product: any, sender: string, messageId?: string, extraText?: string) {
+    const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return unauthorized
+
     const parts = [`*${product.name.toUpperCase()}*`];
     if (product.description) parts.push(`\n${product.description}`);
     const features = product.metadata?.portal_card?.features || [];
@@ -213,13 +342,20 @@ export async function sendProductCardMessage(conversationId: string, product: an
     const bodyContent = parts.join('\n');
     const content = product.image_url ? { type: 'image', mediaUrl: product.image_url, caption: bodyContent } : { type: 'text', text: bodyContent };
     
-    const supabase = await createClient()
     const result = await internalSend({ conversationId, content, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
 
 export async function simulateInboundMessage(from: string, text: string = "Mensaje simulado") {
+    if (isProductionRuntime()) {
+        return { success: false, error: PUBLIC_MESSAGE_SIMULATION_ERROR }
+    }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
     try {
         const { inboxService } = await import("../inbox-service")
         const result = await inboxService.handleIncomingMessage({
@@ -232,6 +368,7 @@ export async function simulateInboundMessage(from: string, text: string = "Mensa
         })
         return { success: !!result, error: result ? undefined : "Failed to handle message" }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMessageActionError('[simulateInboundMessage] Failed:', error, { from })
+        return { success: false, error: publicMessageActionError(error, PUBLIC_MESSAGE_SIMULATION_ERROR) }
     }
 }
