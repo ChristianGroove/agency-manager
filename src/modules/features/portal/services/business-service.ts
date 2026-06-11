@@ -1,6 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Business Actions and Activity Logging for the Portal
@@ -31,10 +32,14 @@ export async function logPortalAccess(params: {
 
 export async function getPortalAccessLogs(clientId: string, limit: number = 50) {
     try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('Unauthorized')
+
         const { data, error } = await supabaseAdmin
             .from('portal_access_logs')
             .select('*')
             .eq('client_id', clientId)
+            .eq('organization_id', orgId)
             .order('created_at', { ascending: false })
             .limit(limit)
 

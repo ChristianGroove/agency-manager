@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
+    getCurrentOrganizationId: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: {
         from: mocks.from,
     },
+}))
+
+vi.mock('@/modules/core/organizations/organization-actions', () => ({
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
 function query(result: { data?: unknown; error?: unknown }) {
@@ -18,8 +23,11 @@ function query(result: { data?: unknown; error?: unknown }) {
     chain.eq = vi.fn(() => chain)
     chain.or = vi.fn(() => chain)
     chain.gte = vi.fn(() => chain)
+    chain.order = vi.fn(() => chain)
+    chain.limit = vi.fn(() => chain)
     chain.single = vi.fn(async () => result)
     chain.maybeSingle = vi.fn(async () => result)
+    chain.then = (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject)
     return chain
 }
 
@@ -39,9 +47,32 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.from.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
 })
 
 describe('portal business actions tenant safety', () => {
+    it('scopes portal access logs to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const logLookup = query({
+            data: [{ id: 'log-current', client_id: 'client-current', organization_id: 'org-current' }],
+            error: null,
+        })
+        useTableQueues({
+            portal_access_logs: [logLookup],
+        })
+
+        const { getPortalAccessLogs } = await import('./business-service')
+        const result = await getPortalAccessLogs('client-current', 10)
+
+        expect(result).toEqual({
+            success: true,
+            data: [{ id: 'log-current', client_id: 'client-current', organization_id: 'org-current' }],
+        })
+        expect(logLookup.eq).toHaveBeenCalledWith('client_id', 'client-current')
+        expect(logLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(logLookup.limit).toHaveBeenCalledWith(10)
+    })
+
     it('scopes accepted quotes to the portal token organization', async () => {
         const clientLookup = query({
             data: { id: 'client-current', name: 'Client', user_id: null, organization_id: 'org-current' },
