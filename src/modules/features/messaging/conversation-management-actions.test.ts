@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
+    getCurrentOrganizationId: vi.fn(),
     isSuperAdmin: vi.fn(),
     revalidatePath: vi.fn(),
     supabaseFrom: vi.fn(),
@@ -16,6 +17,10 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
+}))
+
+vi.mock('@/modules/core/organizations/organization-actions', () => ({
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({
@@ -93,6 +98,7 @@ function maybeSingleQuery(result: unknown) {
 
 function selectInQuery(result: unknown) {
     const query: any = {
+        eq: vi.fn(() => query),
         in: vi.fn(async () => result),
         select: vi.fn(() => query),
     }
@@ -111,12 +117,18 @@ function selectEqInQuery(result: unknown) {
 }
 
 function updateInQuery(result: unknown) {
+    const promise = Promise.resolve(result)
     const query: any = {
-        in: vi.fn(async () => result),
+        eq: vi.fn(() => query),
+        in: vi.fn(() => query),
+        then: promise.then.bind(promise),
+        catch: promise.catch.bind(promise),
+        finally: promise.finally.bind(promise),
     }
 
     return {
         update: vi.fn(() => query),
+        query,
     }
 }
 
@@ -139,6 +151,7 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
     mocks.isSuperAdmin.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.supabaseFrom.mockReset()
@@ -272,6 +285,29 @@ describe('conversation management actions logging', () => {
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
     })
 
+    it('scopes simple conversation updates to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const update = adminUpdateEqQuery({ error: null })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations') return update
+            throw new Error(`Unexpected table ${table}`)
+        })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { setConversationPriority } = await import('./conversation-management-actions')
+        const result = await setConversationPriority('conversation-current', 'urgent')
+
+        expect(result).toEqual({ success: true })
+        expect(update.update).toHaveBeenCalledWith(expect.objectContaining({ priority: 'urgent' }))
+        expect(update.query.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
     it('rejects bulk assignments without an authenticated user before reads', async () => {
         const from = vi.fn()
         mocks.createClient.mockResolvedValue({
@@ -289,6 +325,7 @@ describe('conversation management actions logging', () => {
     })
 
     it('rejects bulk assignments when the target is outside a selected organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-1')
         const conversationQuery = selectInQuery({
             data: [
                 { id: 'conversation-1', organization_id: 'org-1' },
@@ -323,9 +360,34 @@ describe('conversation management actions logging', () => {
             error: 'Target agent is not a member of every selected organization',
         })
         expect(conversationQuery.in).toHaveBeenCalledWith('id', ['conversation-1', 'conversation-2'])
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-1')
         expect(membershipQuery.eq).toHaveBeenCalledWith('user_id', 'target-agent')
         expect(membershipQuery.in).toHaveBeenCalledWith('organization_id', ['org-1', 'org-2'])
         expect(update.update).not.toHaveBeenCalled()
+    })
+
+    it('scopes bulk archive updates to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const update = updateInQuery({ error: null })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations') return update
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { bulkArchiveConversations } = await import('./conversation-management-actions')
+        const result = await bulkArchiveConversations(['conversation-1', 'conversation-2'])
+
+        expect(result).toEqual({ success: true })
+        expect(update.update).toHaveBeenCalledWith(expect.objectContaining({ state: 'archived' }))
+        expect(update.query.in).toHaveBeenCalledWith('id', ['conversation-1', 'conversation-2'])
+        expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 
     it('does not expose admin update failures in production responses or logs', async () => {

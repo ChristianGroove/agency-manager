@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
@@ -137,11 +138,14 @@ export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { data: current } = await supabase
         .from('conversations')
         .select('metadata')
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
         .single()
 
     const { error } = await supabase
@@ -158,6 +162,7 @@ export async function archiveConversation(conversationId: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to archive conversation:", error)
@@ -175,11 +180,14 @@ export async function unarchiveConversation(conversationId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'active', updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to unarchive conversation:", error)
@@ -197,11 +205,14 @@ export async function markAsSpam(conversationId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'spam', updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to mark as spam:", error)
@@ -219,11 +230,14 @@ export async function setConversationPriority(conversationId: string, priority: 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ priority, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to set priority:", error)
@@ -241,11 +255,14 @@ export async function tagConversation(conversationId: string, tags: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ tags, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to tag conversation:", error)
@@ -309,11 +326,14 @@ export async function bulkArchiveConversations(conversationIds: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'archived', updated_at: new Date().toISOString() })
         .in('id', conversationIds)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to bulk archive:", error)
@@ -331,6 +351,8 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const uniqueConversationIds = Array.from(new Set(conversationIds))
 
@@ -338,6 +360,7 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
         const { data: conversations, error: conversationError } = await supabase
             .from('conversations')
             .select('id, organization_id')
+            .eq('organization_id', orgId)
             .in('id', uniqueConversationIds)
 
         if (conversationError) {
@@ -378,6 +401,7 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
         .from('conversations')
         .update({ assigned_to: userId, updated_at: new Date().toISOString() })
         .in('id', uniqueConversationIds)
+        .eq('organization_id', orgId)
 
     if (error) {
         console.error("Failed to bulk assign:", error)
