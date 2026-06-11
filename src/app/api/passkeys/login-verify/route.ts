@@ -7,6 +7,13 @@ import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
 import { logPasskeyRouteError, normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
 
+function passkeySessionResponse(sessionData: unknown) {
+    const actionLink = (sessionData as any)?.properties?.action_link
+    return typeof actionLink === 'string' && actionLink
+        ? { properties: { action_link: actionLink } }
+        : null
+}
+
 export async function POST(request: NextRequest) {
     const rateLimited = requirePasskeyPublicRateLimit(request)
     if (rateLimited) return rateLimited
@@ -133,9 +140,17 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        const session = passkeySessionResponse(sessionData)
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Failed to create session' },
+                { status: 500 }
+            )
+        }
+
         return NextResponse.json({
             verified: true,
-            session: sessionData,
+            session,
             user: {
                 id: user.id,
                 email: user.email,
