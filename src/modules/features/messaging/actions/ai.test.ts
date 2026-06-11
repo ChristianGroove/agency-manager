@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+    createClient: vi.fn(),
     executeTask: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
     supabaseFrom: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('@/modules/core/organizations/actions/crud', () => ({
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
-    createClient: vi.fn(),
+    createClient: mocks.createClient,
 }))
 
 vi.mock('@/modules/core/database/supabase-admin', () => ({
@@ -51,6 +52,12 @@ function singleQuery(result: unknown) {
     return query
 }
 
+function insertQuery(result: unknown = { error: null }) {
+    return {
+        insert: vi.fn(async () => result),
+    }
+}
+
 function updateQuery(result: unknown = { error: null }) {
     const query: any = {
         eq: vi.fn(() => query),
@@ -67,6 +74,7 @@ afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     vi.resetModules()
+    mocks.createClient.mockReset()
     mocks.executeTask.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
     mocks.supabaseFrom.mockReset()
@@ -200,5 +208,71 @@ describe('messaging AI action wrappers', () => {
         expect(conversationUpdate.update).toHaveBeenCalledWith({ priority: 'urgent' })
         expect(conversationUpdate.query.eq).toHaveBeenCalledWith('id', 'conversation-1')
         expect(conversationUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
+    it('does not save intents for conversations outside the current organization', async () => {
+        const conversationQuery = singleQuery({ data: null, error: { message: 'not found' } })
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') return conversationQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { saveIntent } = await import('./ai')
+        const result = await saveIntent('conversation-foreign', 'message-1', {
+            intent: 'billing_inquiry',
+            confidence: 0.91,
+            extractedEntities: {},
+        })
+
+        expect(result).toEqual({ success: false, error: 'Conversation not found' })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('scopes sentiment persistence to the current conversation and organization', async () => {
+        const conversationQuery = singleQuery({ data: { id: 'conversation-1' }, error: null })
+        const messageQuery = singleQuery({ data: { id: 'message-1' }, error: null })
+        const messageUpdate = updateQuery()
+        const alertInsert = insertQuery()
+        let messagesCalls = 0
+
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') return conversationQuery
+                if (table === 'messages') {
+                    messagesCalls += 1
+                    return messagesCalls === 1 ? messageQuery : messageUpdate
+                }
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'sentiment_alerts') return alertInsert
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { saveSentimentAnalysis } = await import('./ai')
+        const result = await saveSentimentAnalysis('message-1', 'conversation-1', {
+            sentiment: 'urgent',
+            score: -0.91,
+            emotions: ['angry'],
+            needsEscalation: true,
+        })
+
+        expect(result).toEqual({ success: true })
+        expect(messageQuery.eq).toHaveBeenCalledWith('conversation_id', 'conversation-1')
+        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(messageUpdate.query.eq).toHaveBeenCalledWith('id', 'message-1')
+        expect(messageUpdate.query.eq).toHaveBeenCalledWith('conversation_id', 'conversation-1')
+        expect(messageUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(alertInsert.insert).toHaveBeenCalledWith(expect.objectContaining({
+            conversation_id: 'conversation-1',
+            message_id: 'message-1',
+            severity: 'critical',
+        }))
     })
 })
