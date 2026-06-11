@@ -25,6 +25,7 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
         .from('leads')
         .select('name, email, phone, portal_short_token, portal_token')
         .eq('id', clientId)
+        .eq('organization_id', orgId)
         .single()
 
     // Also try fetch lead if client not found? (For CRM)
@@ -32,7 +33,12 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
     let portalToken = client?.portal_short_token || client?.portal_token
 
     if (!recipient) {
-        const { data: lead } = await supabase.from('leads').select('name, email, phone').eq('id', clientId).single()
+        const { data: lead } = await supabase
+            .from('leads')
+            .select('name, email, phone')
+            .eq('id', clientId)
+            .eq('organization_id', orgId)
+            .single()
         recipient = lead
         // Leads might not have portal access yet? 
         // If it's a lead, we might not have a token. 
@@ -47,23 +53,33 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
     if (!portalToken && templateKey !== 'briefing_submission') {
         // Try to use ID as fallback only if likely to fail later? 
         // Better to warn. For now let's not block, but link will 404/401.
-        console.warn("Client has no portal token", clientId)
+        console.warn("Client has no portal token", { clientIdPresent: !!clientId })
     }
 
     // Normalize key
     const normalizedKey = templateKey.trim().toLowerCase()
     console.log(`[SendEmail] Starting. Key: '${normalizedKey}', Client: ${clientId}`)
+    const requiresInvoiceContext = normalizedKey === 'invoice_new' || normalizedKey === 'invoice_sent' || normalizedKey === 'payment_reminder'
+    const requiresQuoteContext = normalizedKey === 'quote_new'
+    let requiredContextFound = !(requiresInvoiceContext || requiresQuoteContext)
 
     // 2. Fetch Context Data (Invoice or Quote)
     let contextData: any = {}
 
     try {
-        if (contextId) {
+        if (contextId && requiresInvoiceContext) {
             console.log(`[SendEmail] Fetching Context ID: ${contextId}`)
-            // Try Invoice
-            const { data: invoice } = await supabase.from('invoices').select('*').eq('id', contextId).single()
+            const { data: invoice } = await supabase
+                .from('invoices')
+                .select('*')
+                .eq('id', contextId)
+                .eq('organization_id', orgId)
+                .eq('client_id', clientId)
+                .single()
+
             if (invoice) {
                 console.log(`[SendEmail] Found Invoice: ${invoice.number}`)
+                requiredContextFound = true
                 contextData = {
                     ...contextData,
                     invoice_number: invoice.number,
@@ -75,41 +91,55 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
                     document_type: 'invoice'
                 }
             } else {
-                // Try Quote
-                console.log(`[SendEmail] Invoice not found. Trying Quote...`)
-                const { data: quote } = await supabase.from('quotes').select('*').eq('id', contextId).single()
-                if (quote) {
-                    console.log(`[SendEmail] Found Quote: ${quote.number}`)
+                console.warn(`[SendEmail] Invoice context not found or not owned by client.`)
+            }
+        } else if (contextId && requiresQuoteContext) {
+            console.log(`[SendEmail] Fetching Context ID: ${contextId}`)
+            const { data: quote } = await supabase
+                .from('quotes')
+                .select('*')
+                .eq('id', contextId)
+                .eq('organization_id', orgId)
+                .single()
 
-                    // Fix: Use 'total' instead of 'price' (which might be null/deprecated)
-                    const amount = quote.total || 0
+            if (quote && (quote.client_id === clientId || quote.lead_id === clientId)) {
+                console.log(`[SendEmail] Found Quote: ${quote.number}`)
+                requiredContextFound = true
 
-                    // Fix: Robust Link Generation
-                    // If client has portal access, send them there. Otherwise, public link.
-                    const linkUrl = portalToken
-                        ? getPortalUrl(`/portal/${portalToken}/quote/${quote.id}`)
-                        : getPortalUrl(`/quote/${quote.id}`)
+                // Fix: Use 'total' instead of 'price' (which might be null/deprecated)
+                const amount = quote.total || 0
 
-                    contextData = {
-                        ...contextData,
-                        number: quote.number,
-                        price: amount, // Keep for backward compat if template uses it
-                        formatted_amount: `$${amount.toLocaleString()}`,
-                        concept: quote.title,
-                        link_url: linkUrl,
-                        document_type: 'quote'
-                    }
-                } else {
-                    console.warn(`[SendEmail] Context ID ${contextId} not found in Invoices or Quotes.`)
+                // Fix: Robust Link Generation
+                // If client has portal access, send them there. Otherwise, public link.
+                const linkUrl = portalToken
+                    ? getPortalUrl(`/portal/${portalToken}/quote/${quote.id}`)
+                    : getPortalUrl(`/quote/${quote.id}`)
+
+                contextData = {
+                    ...contextData,
+                    number: quote.number,
+                    price: amount, // Keep for backward compat if template uses it
+                    formatted_amount: `$${amount.toLocaleString()}`,
+                    concept: quote.title,
+                    link_url: linkUrl,
+                    document_type: 'quote'
                 }
+            } else {
+                console.warn(`[SendEmail] Quote context not found or not owned by client.`)
             }
         }
+
+        if (!requiredContextFound) {
+            return { success: false, error: "Context not found" }
+        }
+
         if ((normalizedKey === 'invoice_summary' || normalizedKey.includes('summary') || normalizedKey.includes('estado')) && clientId) {
             console.log(`[SendEmail] Generating Invoice Summary...`)
             // Special Case: Account Summary
             const { data: pendingInvoices, error: invError } = await supabase
                 .from('invoices')
                 .select('id, total')
+                .eq('organization_id', orgId)
                 .eq('client_id', clientId)
                 .or('status.eq.pending,status.eq.overdue')
 
