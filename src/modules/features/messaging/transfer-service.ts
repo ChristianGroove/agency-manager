@@ -21,17 +21,22 @@ export async function transferConversation(
 ): Promise<TransferResult> {
 
     // 1. Fetch the conversation first so every following check is scoped to its organization.
-    const [convResult, agentResult] = await Promise.all([
-        supabaseAdmin.from('conversations').select('organization_id, channel, connection_id, assigned_to').eq('id', conversationId).single(),
-        supabaseAdmin.from('agent_availability').select('*').eq('agent_id', toAgentId).single()
-    ])
-
+    const convResult = await supabaseAdmin
+        .from('conversations')
+        .select('organization_id, channel, connection_id, assigned_to')
+        .eq('id', conversationId)
+        .single()
     const conv = convResult.data
-    const agent = agentResult.data
 
     if (!conv) return { success: false, error: "Conversation not found" }
 
-    const [memberResult, sourceMemberResult] = await Promise.all([
+    const [agentResult, memberResult, sourceMemberResult] = await Promise.all([
+        supabaseAdmin
+            .from('agent_availability')
+            .select('*')
+            .eq('organization_id', conv.organization_id)
+            .eq('agent_id', toAgentId)
+            .single(),
         supabaseAdmin
             .from('organization_members')
             .select('role')
@@ -48,6 +53,7 @@ export async function transferConversation(
             : Promise.resolve({ data: null, error: null }),
     ])
 
+    const agent = agentResult.data
     const member = memberResult.data
     const sourceMember = sourceMemberResult.data
 

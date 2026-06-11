@@ -141,6 +141,14 @@ describe('transfer service logging', () => {
 
     it('rejects target agents outside the conversation organization', async () => {
         const update = updateQuery({ error: null })
+        const agentAvailability = singleQuery({
+            data: {
+                current_load: 1,
+                max_capacity: 10,
+                status: 'online',
+            },
+            error: null,
+        })
         mocks.supabaseAdminFrom
             .mockReturnValueOnce(singleQuery({
                 data: {
@@ -151,14 +159,7 @@ describe('transfer service logging', () => {
                 },
                 error: null,
             }))
-            .mockReturnValueOnce(singleQuery({
-                data: {
-                    current_load: 1,
-                    max_capacity: 10,
-                    status: 'online',
-                },
-                error: null,
-            }))
+            .mockReturnValueOnce(agentAvailability)
             .mockReturnValueOnce(singleQuery({
                 data: null,
                 error: null,
@@ -173,6 +174,8 @@ describe('transfer service logging', () => {
         const result = await transferConversation('conversation-1', 'from-agent', 'foreign-agent')
 
         expect(result).toEqual({ success: false, error: 'Target agent profile or member record not found' })
+        expect(agentAvailability.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(agentAvailability.eq).toHaveBeenCalledWith('agent_id', 'foreign-agent')
         expect(update.update).not.toHaveBeenCalled()
     })
 
