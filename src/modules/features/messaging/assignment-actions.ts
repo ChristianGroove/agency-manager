@@ -525,14 +525,21 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         return { success: false, error: 'Unauthorized' }
     }
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) {
+        return { success: false, error: 'No organization found' }
+    }
+
     // Delete existing skills
     await supabase
         .from('agent_skills')
         .delete()
         .eq('agent_id', user.id)
+        .eq('organization_id', orgId)
 
     // Insert new skills
     const skillsData = skills.map(s => ({
+        organization_id: orgId,
         agent_id: user.id,
         skill: s.skill,
         proficiency: s.proficiency

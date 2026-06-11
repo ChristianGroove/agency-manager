@@ -170,6 +170,27 @@ function deleteTwoEqQuery(result: unknown) {
     }
 }
 
+function deleteAwaitableEqQuery(result: unknown) {
+    const promise = Promise.resolve(result)
+    const query: any = {
+        eq: vi.fn(() => query),
+        then: promise.then.bind(promise),
+        catch: promise.catch.bind(promise),
+        finally: promise.finally.bind(promise),
+    }
+
+    return {
+        delete: vi.fn(() => query),
+        query,
+    }
+}
+
+function insertQuery(result: unknown = { error: null }) {
+    return {
+        insert: vi.fn(async () => result),
+    }
+}
+
 function updateAwaitableEqQuery(result: unknown) {
     const promise = Promise.resolve(result)
     const query: any = {
@@ -414,6 +435,39 @@ describe('assignment actions logging', () => {
         expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.assignConversation).toHaveBeenCalledWith('conversation-1')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
+    })
+
+    it('scopes agent skill updates to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const deleteQuery = deleteAwaitableEqQuery({ error: null })
+        const skillsInsert = insertQuery()
+        let skillsCalls = 0
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'agent-1' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'agent_skills') {
+                    skillsCalls += 1
+                    return skillsCalls === 1 ? deleteQuery : skillsInsert
+                }
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { updateAgentSkills } = await import('./assignment-actions')
+        const result = await updateAgentSkills([{ skill: 'billing', proficiency: 5 }])
+
+        expect(result).toEqual({ success: true })
+        expect(deleteQuery.delete).toHaveBeenCalled()
+        expect(deleteQuery.query.eq).toHaveBeenCalledWith('agent_id', 'agent-1')
+        expect(deleteQuery.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(skillsInsert.insert).toHaveBeenCalledWith([{
+            organization_id: 'org-current',
+            agent_id: 'agent-1',
+            skill: 'billing',
+            proficiency: 5,
+        }])
     })
 
     it('scopes bulk distribution updates to the current organization', async () => {
