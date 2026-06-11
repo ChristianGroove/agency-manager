@@ -302,11 +302,55 @@ export async function bulkArchiveConversations(conversationIds: string[]) {
  */
 export async function bulkAssignConversations(conversationIds: string[], userId: string | null) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    const uniqueConversationIds = Array.from(new Set(conversationIds))
+
+    if (userId && uniqueConversationIds.length > 0) {
+        const { data: conversations, error: conversationError } = await supabase
+            .from('conversations')
+            .select('id, organization_id')
+            .in('id', uniqueConversationIds)
+
+        if (conversationError) {
+            logConversationManagementError("Failed to validate bulk assign conversations:", conversationError, { conversationIds, userId })
+            return { success: false, error: publicConversationManagementError(conversationError) }
+        }
+
+        if (!conversations || conversations.length !== uniqueConversationIds.length) {
+            return { success: false, error: "Unauthorized" }
+        }
+
+        const organizationIds = Array.from(new Set(
+            conversations
+                .map(conversation => conversation.organization_id)
+                .filter((organizationId): organizationId is string => typeof organizationId === 'string' && organizationId.length > 0)
+        ))
+
+        if (organizationIds.length === 0) return { success: false, error: "Unauthorized" }
+
+        const { data: memberships, error: membershipError } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', userId)
+            .in('organization_id', organizationIds)
+
+        if (membershipError) {
+            logConversationManagementError("Failed to validate bulk assign target:", membershipError, { conversationIds, userId })
+            return { success: false, error: publicConversationManagementError(membershipError) }
+        }
+
+        const membershipOrganizationIds = new Set(memberships?.map(membership => membership.organization_id) || [])
+        if (organizationIds.some(organizationId => !membershipOrganizationIds.has(organizationId))) {
+            return { success: false, error: "Target agent is not a member of every selected organization" }
+        }
+    }
 
     const { error } = await supabase
         .from('conversations')
         .update({ assigned_to: userId, updated_at: new Date().toISOString() })
-        .in('id', conversationIds)
+        .in('id', uniqueConversationIds)
 
     if (error) {
         console.error("Failed to bulk assign:", error)

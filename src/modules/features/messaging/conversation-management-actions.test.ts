@@ -76,6 +76,35 @@ function maybeSingleQuery(result: unknown) {
     return query
 }
 
+function selectInQuery(result: unknown) {
+    const query: any = {
+        in: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
+function selectEqInQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        in: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
+function updateInQuery(result: unknown) {
+    const query: any = {
+        in: vi.fn(async () => result),
+    }
+
+    return {
+        update: vi.fn(() => query),
+    }
+}
+
 function searchQuery(result: unknown) {
     const query: any = {
         contains: vi.fn(() => query),
@@ -157,6 +186,62 @@ describe('conversation management actions logging', () => {
 
         expect(result).toEqual({ success: false, error: 'Unauthorized' })
         expect(mocks.transferConversation).not.toHaveBeenCalled()
+    })
+
+    it('rejects bulk assignments without an authenticated user before reads', async () => {
+        const from = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+            from,
+        })
+
+        const { bulkAssignConversations } = await import('./conversation-management-actions')
+        const result = await bulkAssignConversations(['conversation-1'], 'target-agent')
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(from).not.toHaveBeenCalled()
+    })
+
+    it('rejects bulk assignments when the target is outside a selected organization', async () => {
+        const conversationQuery = selectInQuery({
+            data: [
+                { id: 'conversation-1', organization_id: 'org-1' },
+                { id: 'conversation-2', organization_id: 'org-2' },
+            ],
+            error: null,
+        })
+        const membershipQuery = selectEqInQuery({
+            data: [{ organization_id: 'org-1' }],
+            error: null,
+        })
+        const update = updateInQuery({ error: null })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations' && from.mock.calls.length === 1) return conversationQuery
+            if (table === 'organization_members') return membershipQuery
+            if (table === 'conversations') return update
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { bulkAssignConversations } = await import('./conversation-management-actions')
+        const result = await bulkAssignConversations(['conversation-1', 'conversation-2'], 'target-agent')
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Target agent is not a member of every selected organization',
+        })
+        expect(conversationQuery.in).toHaveBeenCalledWith('id', ['conversation-1', 'conversation-2'])
+        expect(membershipQuery.eq).toHaveBeenCalledWith('user_id', 'target-agent')
+        expect(membershipQuery.in).toHaveBeenCalledWith('organization_id', ['org-1', 'org-2'])
+        expect(update.update).not.toHaveBeenCalled()
     })
 
     it('does not expose admin update failures in production responses or logs', async () => {
