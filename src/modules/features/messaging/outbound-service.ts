@@ -103,7 +103,8 @@ export class OutboundService {
                 conversationId,
                 content,
                 externalId: result.messageId,
-                sender: 'Agent'
+                sender: 'Agent',
+                organizationId,
             })
         } else {
             console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
