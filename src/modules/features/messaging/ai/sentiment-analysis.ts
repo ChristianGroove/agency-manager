@@ -139,6 +139,9 @@ export async function autoEscalateIfNeeded(
     "use server"
     if (!result.needsEscalation) return
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return
+
     const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
 
@@ -154,6 +157,7 @@ export async function autoEscalateIfNeeded(
             })
         })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     console.log(`[SentimentAnalysis] Auto-escalated conversation ${conversationId}`)
 }
