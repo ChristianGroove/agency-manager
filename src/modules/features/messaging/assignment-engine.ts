@@ -76,6 +76,7 @@ export async function assignConversation(conversationId: string): Promise<string
             .from('conversations')
             .update({ assigned_to: agentId, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
+            .eq('organization_id', orgId)
 
         await logAssignment(conversationId, agentId, ruleId, strategy, orgId)
         console.log(`[AssignmentEngine] ✅ Assigned to agent: ${agentId} via ${rule ? 'rule: ' + rule.name : 'fallback balance'}`)
