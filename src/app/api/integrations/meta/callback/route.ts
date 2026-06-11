@@ -41,6 +41,19 @@ function logMetaCallbackError(label: string, error: unknown, context?: Record<st
     });
 }
 
+function sanitizeAssetsPreviewForMetadata(assets: any[]) {
+    return assets.map((asset) => {
+        const {
+            access_token: _accessToken,
+            page_access_token: _pageAccessToken,
+            token: _token,
+            ...safeAsset
+        } = asset;
+
+        return safeAsset;
+    });
+}
+
 function errorRedirectParams(error: string, publicDesc: string, detail?: string | null): Record<string, string> {
     const desc = isDeployedRuntime() ? publicDesc : detail;
     const params: Record<string, string> = { error };
@@ -428,7 +441,7 @@ export async function GET(request: Request) {
             },
             metadata: {
                 total_assets_available: filteredAssets.length,
-                assets_preview: filteredAssets,
+                assets_preview: sanitizeAssetsPreviewForMetadata(filteredAssets),
                 waba_debug_error: wabaError
             },
             is_primary: true,

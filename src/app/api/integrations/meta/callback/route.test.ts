@@ -147,6 +147,69 @@ describe('/api/integrations/meta/callback', () => {
         ])
     })
 
+    it('does not store page asset tokens in full connection metadata previews', async () => {
+        setupMetaCallbackEnv()
+        const insertedConnections: any[] = []
+
+        vi.doMock('@supabase/supabase-js', () => ({
+            createClient: vi.fn(() => ({
+                from: vi.fn(() => {
+                    const builder: any = {
+                        select: vi.fn(() => builder),
+                        eq: vi.fn(() => builder),
+                        order: vi.fn(() => builder),
+                        limit: vi.fn(async () => ({ data: [], error: null })),
+                        insert: vi.fn(async (payload: unknown) => {
+                            insertedConnections.push(payload)
+                            return { error: null }
+                        }),
+                    }
+                    return builder
+                }),
+            })),
+        }))
+        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
+            MetaGraphAPI: class {
+                exchangeCodeForToken = vi.fn(async () => 'long-lived-token')
+                getUserProfile = vi.fn(async () => ({ id: 'meta_user_123', name: 'Meta User' }))
+                getConnectedAssets = vi.fn(async () => [{
+                    id: 'page_123',
+                    name: 'Pixy Page',
+                    access_token: 'page-token-secret-value',
+                    instagram_business_account: { id: 'ig_123' },
+                }])
+                getInstagramUsername = vi.fn(async () => 'pixygram')
+                getWhatsAppAccounts = vi.fn(async () => ({ data: [] }))
+            },
+        }))
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+        const { GET } = await import('./route')
+        const response = await GET(new Request(callbackUrl({
+            code: 'code_123',
+            state: createOrgState(),
+        })))
+        const responseText = await response.text()
+
+        expect(response.status).toBe(200)
+        expect(responseText).toContain('success=meta_connected')
+
+        expect(insertedConnections).toHaveLength(1)
+        const payloadText = JSON.stringify(insertedConnections[0])
+        expect(payloadText).not.toContain('page-token-secret-value')
+        expect(insertedConnections[0].credentials).toEqual(expect.objectContaining({
+            access_token: 'long-lived-token',
+        }))
+        expect(insertedConnections[0].metadata.assets_preview).toEqual([
+            expect.not.objectContaining({ access_token: expect.anything() }),
+            expect.not.objectContaining({ access_token: expect.anything() }),
+        ])
+        expect(insertedConnections[0].metadata.assets_preview).toEqual(expect.arrayContaining([
+            expect.objectContaining({ id: 'ig_123', type: 'instagram', page_id: 'page_123' }),
+            expect.objectContaining({ id: 'page_123', type: 'page', has_ig: true }),
+        ]))
+    })
+
     it('does not expose Meta profile or WABA identifiers in production logs', async () => {
         setupMetaCallbackEnv()
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
