@@ -54,11 +54,13 @@ function singleQuery(result: unknown) {
 
 function updateEqQuery(result: unknown) {
     const query: any = {
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
+        then: (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject),
     }
 
     return {
         update: vi.fn(() => query),
+        query,
     }
 }
 
@@ -104,6 +106,7 @@ describe('conversation actions logging', () => {
     it('does not expose archive database errors in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         const from = vi.fn()
             .mockReturnValueOnce(singleQuery({
                 data: { organization_id: 'org-secret-id' },
@@ -130,9 +133,33 @@ describe('conversation actions logging', () => {
         expect(logText).toContain('hasMessage')
     })
 
+    it('scopes mark-as-read updates to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const update = updateEqQuery({ error: null })
+        const from = vi.fn().mockReturnValueOnce(update)
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { markAsRead } = await import('./conversation-actions')
+        const result = await markAsRead('conversation-current')
+
+        expect(result).toEqual({ success: true })
+        expect(update.update).toHaveBeenCalledWith(expect.objectContaining({
+            unread_count: 0,
+        }))
+        expect(update.query.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
+    })
+
     it('does not expose lead preview message fetch failures in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const from = vi.fn()
             .mockReturnValueOnce(singleQuery({
                 data: { id: 'conversation-secret-id' },
