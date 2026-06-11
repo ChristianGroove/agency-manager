@@ -51,7 +51,12 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
 
     try {
         // 1. Get Invoice
-        const { data: invoice } = await supabase.from('invoices').select('*').eq('id', invoiceId).single()
+        const { data: invoice } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('id', invoiceId)
+            .eq('organization_id', orgId)
+            .single()
         if (!invoice) throw new Error("Invoice not found")
 
         // 2. Logic for status
@@ -106,11 +111,34 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
 async function handleProcessEngineTransition(invoiceId: string, orgId: string) {
     try {
         const supabase = await createClient()
-        const { data: invoice } = await supabase.from('invoices').select('*, client:leads!client_id(id)').eq('id', invoiceId).single()
+        const { data: invoice } = await supabase
+            .from('invoices')
+            .select('*, client:leads!client_id(id, email)')
+            .eq('id', invoiceId)
+            .eq('organization_id', orgId)
+            .single()
         if (!invoice) return
 
         let leadId = (invoice as any).lead_id || (invoice as any).metadata?.lead_id
-        if (!leadId && invoice.client) {
+        if (leadId) {
+            const { data: lead } = await supabase
+                .from('leads')
+                .select('id')
+                .eq('id', leadId)
+                .eq('organization_id', orgId)
+                .maybeSingle()
+            leadId = lead?.id
+        }
+        if (!leadId && invoice.client?.id) {
+            const { data: lead } = await supabase
+                .from('leads')
+                .select('id')
+                .eq('id', invoice.client.id)
+                .eq('organization_id', orgId)
+                .maybeSingle()
+            if (lead) leadId = lead.id
+        }
+        if (!leadId && invoice.client?.email) {
              const { data: lead } = await supabase.from('leads').select('id').eq('organization_id', orgId).eq('email', (invoice.client as any).email).maybeSingle()
              if (lead) leadId = lead.id
         }
@@ -125,7 +153,7 @@ async function handleProcessEngineTransition(invoiceId: string, orgId: string) {
                     if (mapping) {
                         const { data: stage } = await supabaseAdmin.from('pipeline_stages').select('status_key').eq('id', mapping.pipeline_stage_id).single()
                         if (stage) {
-                            await supabaseAdmin.from('leads').update({ status: stage.status_key }).eq('id', leadId)
+                            await supabaseAdmin.from('leads').update({ status: stage.status_key }).eq('id', leadId).eq('organization_id', orgId)
                         }
                     }
                 }
