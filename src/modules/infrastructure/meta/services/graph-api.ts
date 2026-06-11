@@ -428,10 +428,9 @@ export class MetaGraphAPI {
     async getInstagramUsername(instagramBusinessId: string, accessToken: string): Promise<string | null> {
         try {
             const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${instagramBusinessId}`);
-            url.searchParams.append('access_token', accessToken);
             url.searchParams.append('fields', 'username');
 
-            const res = await fetch(url.toString());
+            const res = await fetch(url.toString(), metaAuthInit(accessToken));
             const data = await res.json();
 
             if (data.error) {
@@ -451,10 +450,9 @@ export class MetaGraphAPI {
      */
     async getUserProfile(userAccessToken: string) {
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me`);
-        url.searchParams.append('access_token', userAccessToken);
         url.searchParams.append('fields', 'id,name,email');
 
-        const res = await fetch(url.toString());
+        const res = await fetch(url.toString(), metaAuthInit(userAccessToken));
         return await res.json();
     }
 
@@ -463,11 +461,10 @@ export class MetaGraphAPI {
      */
     async getAdAccounts(accessToken: string): Promise<any[]> {
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/adaccounts`);
-        url.searchParams.append('access_token', accessToken);
         url.searchParams.append('fields', 'id,name,account_id,currency');
         url.searchParams.append('limit', '100');
 
-        const res = await fetch(url.toString());
+        const res = await fetch(url.toString(), metaAuthInit(accessToken));
         const data = await res.json();
 
         if (data.error) {

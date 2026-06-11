@@ -123,6 +123,44 @@ describe('MetaGraphAPI', () => {
         }))
     })
 
+    it('uses Authorization headers instead of query tokens for read-only graph calls', async () => {
+        setupProductionEnv()
+        mocks.fetch
+            .mockResolvedValueOnce(new Response(JSON.stringify({ username: 'pixygram' }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user_123', name: 'Meta User', email: 'meta@example.com' }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                data: [{ id: 'act_123', name: 'Pixy Ads', account_id: '123', currency: 'COP' }],
+            }), { status: 200 }))
+
+        const { MetaGraphAPI } = await import('./graph-api')
+        const api = new MetaGraphAPI('https://pixy.test')
+
+        await expect(api.getInstagramUsername('ig_123', 'instagram-token-secret-value'))
+            .resolves.toBe('pixygram')
+        await expect(api.getUserProfile('user-token-secret-value'))
+            .resolves.toEqual({ id: 'user_123', name: 'Meta User', email: 'meta@example.com' })
+        await expect(api.getAdAccounts('ad-token-secret-value'))
+            .resolves.toEqual([{ id: 'act_123', name: 'Pixy Ads', account_id: '123', currency: 'COP' }])
+
+        const expectedCalls = [
+            ['ig_123', 'instagram-token-secret-value'],
+            ['/me', 'user-token-secret-value'],
+            ['/me/adaccounts', 'ad-token-secret-value'],
+        ] as const
+
+        for (const [index, [pathFragment, token]] of expectedCalls.entries()) {
+            const fetchCall = mocks.fetch.mock.calls[index] as unknown[]
+            const fetchUrl = new URL(String(fetchCall[0]))
+            expect(String(fetchCall[0])).toContain(pathFragment)
+            expect(fetchUrl.searchParams.has('access_token')).toBe(false)
+            expect(fetchCall[1]).toEqual(expect.objectContaining({
+                headers: expect.objectContaining({
+                    Authorization: `Bearer ${token}`,
+                }),
+            }))
+        }
+    })
+
     it('does not expose WABA discovery errors in production results or logs', async () => {
         setupProductionEnv()
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
