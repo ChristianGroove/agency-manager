@@ -100,6 +100,21 @@ function updateTwoEqQuery(result: unknown) {
     }
 }
 
+function updateTwoEqQueryWithInspect(result: unknown) {
+    let eqCalls = 0
+    const query: any = {
+        eq: vi.fn(() => {
+            eqCalls += 1
+            return eqCalls < 2 ? query : Promise.resolve(result)
+        }),
+    }
+
+    return {
+        update: vi.fn(() => query),
+        query,
+    }
+}
+
 function orderQuery(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
@@ -292,6 +307,37 @@ describe('assignment actions logging', () => {
         expect(deleteQuery.delete).toHaveBeenCalled()
         expect(deleteQuery.query.eq).toHaveBeenCalledWith('id', 'rule-1')
         expect(deleteQuery.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox/settings')
+    })
+
+    it('rejects assignment rule toggles without organization context', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue(null)
+
+        const { toggleAssignmentRule } = await import('./assignment-actions')
+        const result = await toggleAssignmentRule('rule-1', false)
+
+        expect(result).toEqual({ success: false, error: 'No organization found' })
+        expect(mocks.createClient).not.toHaveBeenCalled()
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it('scopes assignment rule toggles to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const updateQuery = updateTwoEqQueryWithInspect({ error: null })
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'assignment_rules') return updateQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { toggleAssignmentRule } = await import('./assignment-actions')
+        const result = await toggleAssignmentRule('rule-1', false)
+
+        expect(result).toEqual({ success: true })
+        expect(updateQuery.update).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }))
+        expect(updateQuery.query.eq).toHaveBeenCalledWith('id', 'rule-1')
+        expect(updateQuery.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox/settings')
     })
 

@@ -479,15 +479,19 @@ export async function deleteAssignmentRule(ruleId: string) {
  * Toggle assignment rule active status
  */
 export async function toggleAssignmentRule(ruleId: string, isActive: boolean) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found' }
+
     const supabase = await createClient()
 
     const { error } = await supabase
         .from('assignment_rules')
         .update({ is_active: isActive, updated_at: new Date().toISOString() })
         .eq('id', ruleId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId })
+        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId, organizationId: orgId })
         return { success: false, error: publicAssignmentActionError(error) }
     }
 
