@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
+    isSuperAdmin: vi.fn(),
     revalidatePath: vi.fn(),
     supabaseFrom: vi.fn(),
     transferConversation: vi.fn(),
@@ -15,6 +16,10 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
+}))
+
+vi.mock('@/modules/core/iam/services/platform-roles', () => ({
+    isSuperAdmin: mocks.isSuperAdmin,
 }))
 
 vi.mock('next/cache', () => ({
@@ -51,6 +56,26 @@ function adminUpdateSelectQuery(result: unknown) {
     }
 }
 
+function singleQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        select: vi.fn(() => query),
+        single: vi.fn(async () => result),
+    }
+
+    return query
+}
+
+function maybeSingleQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        maybeSingle: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
 function searchQuery(result: unknown) {
     const query: any = {
         contains: vi.fn(() => query),
@@ -70,12 +95,56 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
+    mocks.isSuperAdmin.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.supabaseFrom.mockReset()
     mocks.transferConversation.mockReset()
 })
 
 describe('conversation management actions logging', () => {
+    it('rejects state updates without an authenticated user before admin reads', async () => {
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+        })
+
+        const { updateConversationState } = await import('./conversation-management-actions')
+        const result = await updateConversationState('conversation-1', { state: 'active' })
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('rejects state updates outside the caller organization before admin writes', async () => {
+        mocks.isSuperAdmin.mockResolvedValue(false)
+        const membership = maybeSingleQuery({ data: null, error: null })
+        const update = adminUpdateSelectQuery({ data: null, error: null })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') return membership
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom
+            .mockReturnValueOnce(singleQuery({
+                data: { organization_id: 'org-foreign', metadata: {} },
+                error: null,
+            }))
+            .mockReturnValueOnce(update)
+
+        const { updateConversationState } = await import('./conversation-management-actions')
+        const result = await updateConversationState('conversation-foreign', { state: 'active' })
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(membership.eq).toHaveBeenCalledWith('organization_id', 'org-foreign')
+        expect(membership.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(update.update).not.toHaveBeenCalled()
+    })
+
     it('rejects manual assignments without an authenticated user', async () => {
         mocks.createClient.mockResolvedValue({
             auth: {
@@ -93,19 +162,30 @@ describe('conversation management actions logging', () => {
     it('does not expose admin update failures in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'conversations') {
-                return adminUpdateSelectQuery({
-                    data: null,
-                    error: {
-                        code: '42501',
-                        message: 'admin update denied conversation-secret-id org-secret-id',
-                    },
-                })
-            }
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-secret-id' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') {
+                    return maybeSingleQuery({ data: { role: 'admin' }, error: null })
+                }
 
-            throw new Error(`Unexpected table ${table}`)
+                throw new Error(`Unexpected table ${table}`)
+            }),
         })
+        mocks.supabaseFrom
+            .mockReturnValueOnce(singleQuery({
+                data: { organization_id: 'org-secret-id', metadata: {} },
+                error: null,
+            }))
+            .mockReturnValueOnce(adminUpdateSelectQuery({
+                data: null,
+                error: {
+                    code: '42501',
+                    message: 'admin update denied conversation-secret-id org-secret-id',
+                },
+            }))
 
         const { updateConversationState } = await import('./conversation-management-actions')
         const result = await updateConversationState('conversation-secret-id', { state: 'active' })

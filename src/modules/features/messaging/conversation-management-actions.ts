@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 
@@ -44,19 +45,39 @@ export async function updateConversationState(
     conversationId: string,
     updates: { state?: string; status?: string }
 ) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
     const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+
+    const { data: current, error: currentError } = await supabaseAdmin
+        .from('conversations')
+        .select('organization_id, metadata')
+        .eq('id', conversationId)
+        .single()
+
+    if (currentError || !current) {
+        if (currentError) logConversationManagementError("[updateConversationState] Read failed:", currentError, { conversationId })
+        return { success: false, error: publicConversationManagementError(currentError, "Conversation not found") }
+    }
+
+    const { data: membership } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('organization_id', current.organization_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (!membership && !(await isSuperAdmin(user.id))) {
+        return { success: false, error: "Unauthorized" }
+    }
 
     const safeUpdates: any = { updated_at: new Date().toISOString() }
     if (updates.state) safeUpdates.state = updates.state
     if (updates.status) safeUpdates.status = updates.status
 
     if (updates.status === 'closed' || updates.state === 'archived') {
-        const { data: current } = await supabaseAdmin
-            .from('conversations')
-            .select('metadata')
-            .eq('id', conversationId)
-            .single()
-
         safeUpdates.metadata = {
             ...(current?.metadata || {}),
             resolved_at: new Date().toISOString()
@@ -69,6 +90,7 @@ export async function updateConversationState(
         .from('conversations')
         .update(safeUpdates)
         .eq('id', conversationId)
+        .eq('organization_id', current.organization_id)
         .select()
 
     if (error) {
