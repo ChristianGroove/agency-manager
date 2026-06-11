@@ -352,6 +352,31 @@ describe('team settings actions', () => {
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 
+    it('does not reset passwords for existing users during manual creation', async () => {
+        mocks.supabaseAdmin.auth.admin.createUser.mockResolvedValue({
+            data: { user: null },
+            error: { message: 'User already been registered' },
+        })
+        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+            organization_roles: [selectEqSingle({ hierarchy_level: 10 })],
+        }).from)
+
+        const { createUserManually } = await importTeamActions()
+        const result = await createUserManually({
+            email: 'existing@example.com',
+            password: 'replacement-password',
+            fullName: 'Existing User',
+            role: 'role-member',
+        })
+
+        expect(result).toEqual({
+            success: false,
+            error: 'El correo ya esta registrado. Usa invitacion para agregarlo al equipo.',
+        })
+        expect(mocks.supabaseAdmin.auth.admin.updateUserById).not.toHaveBeenCalled()
+        expect(mocks.supabaseAdmin.from).toHaveBeenCalledTimes(1)
+    })
+
     it('does not expose manual member linking failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)

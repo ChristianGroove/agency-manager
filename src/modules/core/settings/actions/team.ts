@@ -17,6 +17,7 @@ const PUBLIC_TEAM_ROLE_ERROR = "No se pudo actualizar el rol"
 const PUBLIC_TEAM_PERMISSIONS_ERROR = "No se pudieron actualizar los permisos"
 const PUBLIC_TEAM_PROFILE_ERROR = "No se pudo crear el perfil"
 const PUBLIC_TEAM_CREATE_ERROR = "No se pudo crear el usuario"
+const PUBLIC_TEAM_EXISTING_USER_ERROR = "El correo ya esta registrado. Usa invitacion para agregarlo al equipo."
 const PUBLIC_TEAM_LINK_ERROR = "Usuario creado pero no se pudo vincular al equipo"
 
 function isDeployedRuntime() {
@@ -611,27 +612,7 @@ export async function createUserManually(data: {
 
         if (createError) {
             if (createError.message?.includes("already been registered")) {
-                const { data: profile } = await supabaseAdmin
-                    .from('profiles')
-                    .select('id')
-                    .eq('email', data.email)
-                    .single()
-
-                if (!profile) {
-                    return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario." }
-                }
-
-                const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                    profile.id,
-                    {
-                        password: data.password,
-                        user_metadata: { full_name: data.fullName },
-                        email_confirm: true
-                    }
-                )
-
-                if (updateError) throw updateError
-                userData = { user: updatedUser.user }
+                return { success: false, error: PUBLIC_TEAM_EXISTING_USER_ERROR }
             } else {
                 throw createError
             }
