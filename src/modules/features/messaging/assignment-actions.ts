@@ -816,6 +816,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
                     .from('conversations')
                     .update({ assigned_to: agent.agent_id, updated_at: new Date().toISOString() })
                     .eq('id', chat.id)
+                    .eq('organization_id', orgId)
                 
                 if (!updateError) {
                     await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)

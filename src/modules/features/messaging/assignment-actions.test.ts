@@ -170,6 +170,21 @@ function deleteTwoEqQuery(result: unknown) {
     }
 }
 
+function updateAwaitableEqQuery(result: unknown) {
+    const promise = Promise.resolve(result)
+    const query: any = {
+        eq: vi.fn(() => query),
+        then: promise.then.bind(promise),
+        catch: promise.catch.bind(promise),
+        finally: promise.finally.bind(promise),
+    }
+
+    return {
+        update: vi.fn(() => query),
+        query,
+    }
+}
+
 function awaitableQuery(result: unknown) {
     const promise = Promise.resolve(result)
     const query: any = {
@@ -398,6 +413,51 @@ describe('assignment actions logging', () => {
         expect(result).toEqual({ success: true, agentId: 'agent-1' })
         expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.assignConversation).toHaveBeenCalledWith('conversation-1')
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
+    })
+
+    it('scopes bulk distribution updates to the current organization', async () => {
+        mocks.createClient.mockResolvedValue(authClient())
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const conversationsQuery = awaitableQuery({
+            data: [{ id: 'conversation-1', channel: 'whatsapp', connection_id: 'connection-1' }],
+            error: null,
+        })
+        const agentsQuery = awaitableQuery({
+            data: [{
+                agent_id: 'agent-1',
+                organization_id: 'org-current',
+                last_seen_at: new Date(Date.now() + 60_000).toISOString(),
+            }],
+            error: null,
+        })
+        const rolesQuery = awaitableQuery({
+            data: [{ user_id: 'agent-1', role: 'admin', permissions: {} }],
+            error: null,
+        })
+        const accessQuery = awaitableQuery({ data: [], error: null })
+        const assignmentUpdate = updateAwaitableEqQuery({ error: null })
+        let conversationsCalls = 0
+
+        mocks.supabaseAdminFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') {
+                conversationsCalls += 1
+                return conversationsCalls === 1 ? conversationsQuery : assignmentUpdate
+            }
+            if (table === 'agent_availability') return agentsQuery
+            if (table === 'organization_members') return rolesQuery
+            if (table === 'agent_channels') return accessQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { distributeUnassignedConversations } = await import('./assignment-actions')
+        const result = await distributeUnassignedConversations()
+
+        expect(result).toEqual({ success: true, count: 1 })
+        expect(assignmentUpdate.update).toHaveBeenCalledWith(expect.objectContaining({ assigned_to: 'agent-1' }))
+        expect(assignmentUpdate.query.eq).toHaveBeenCalledWith('id', 'conversation-1')
+        expect(assignmentUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.logAssignment).toHaveBeenCalledWith('conversation-1', 'agent-1', null, 'round-robin-bulk', 'org-current')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
     })
 
