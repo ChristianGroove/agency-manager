@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { EmailService } from "@/modules/features/notifications/email.service"
+import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import crypto from "crypto"
@@ -183,13 +184,14 @@ export class PlatformBillingService {
                 .eq('is_active', true)
                 .order('display_order', { ascending: true });
             
-            if (methods && methods.length > 0) {
-                pdfPaymentMethods = methods;
+            const safeMethods = sanitizePaymentMethodsForClient(methods || []);
+            if (safeMethods.length > 0) {
+                pdfPaymentMethods = safeMethods;
                 paymentMethodsHtml = `
                     <div style="margin-top: 30px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #fcfcfd;">
                         <h3 style="margin-top: 0; color: #0F172A; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px;">Instrucciones de Pago Manual</h3>
                         <div style="space-y: 12px;">
-                            ${methods.map(m => `
+                            ${safeMethods.map(m => `
                                 <div style="margin-bottom: 15px;">
                                     <div style="font-weight: bold; color: #0F172A; font-size: 14px; margin-bottom: 4px;">${m.title}</div>
                                     <div style="color: #475569; font-size: 13px;">${m.instructions || ''}</div>
@@ -374,7 +376,7 @@ export class PlatformBillingService {
             .eq('is_active', true)
             .order('display_order', { ascending: true });
         
-        return methods || [];
+        return sanitizePaymentMethodsForClient(methods || []);
     }
 
     static async deletePlatformInvoice(invoiceId: string) {

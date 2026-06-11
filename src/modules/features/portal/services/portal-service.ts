@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 
 /**
@@ -185,7 +186,7 @@ export async function getPortalData(token: string) {
                 services: filteredServices as Service[],
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
-                paymentMethods: (paymentMethods || []),
+                paymentMethods: sanitizePaymentMethodsForClient(paymentMethods || []),
                 catalog: catalogItems || [],
                 insightsAccess: showInsights
                     ? resolvedInsightsAccess

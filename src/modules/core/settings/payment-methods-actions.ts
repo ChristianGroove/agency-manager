@@ -4,6 +4,7 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
+import { sanitizePaymentMethodsForClient } from "./payment-methods-sanitizer"
 
 const PUBLIC_PAYMENT_METHOD_CREATE_ERROR = "No se pudo crear el metodo de pago"
 const PUBLIC_PAYMENT_METHOD_UPDATE_ERROR = "No se pudo actualizar el metodo de pago"
@@ -70,11 +71,11 @@ export async function getPaymentMethods() {
         .order('display_order', { ascending: true })
 
     if (error) {
-        console.error("Error fetching payment methods:", error)
+        logPaymentMethodError("Error fetching payment methods:", error)
         return []
     }
 
-    return data as PaymentMethod[]
+    return sanitizePaymentMethodsForClient(data as PaymentMethod[])
 }
 
 export async function createPaymentMethod(formData: {

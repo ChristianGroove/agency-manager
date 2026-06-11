@@ -248,6 +248,53 @@ describe('PlatformBillingService sanitized errors', () => {
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     }, 15000)
 
+    it('sanitizes platform payment method details before email and PDF rendering', async () => {
+        vi.stubEnv('RESEND_API_KEY', 'resend-key')
+        mocks.createClient.mockResolvedValue(authClient())
+        mocks.generatePlatformInvoicePDF.mockResolvedValue({
+            arrayBuffer: vi.fn(async () => new Uint8Array([1, 2, 3]).buffer),
+        })
+        mocks.EmailService.send.mockResolvedValue({ success: true })
+
+        createQueuedAdmin({
+            saas_platform_invoices: [selectEqSingleQuery({
+                data: platformInvoice(),
+                error: null,
+            })],
+            organizations: [selectEqSingleQuery({
+                data: { id: 'platform-org-id' },
+                error: null,
+            })],
+            organization_payment_methods: [orderedListQuery([
+                {
+                    id: 'method-1',
+                    type: 'MANUAL',
+                    title: 'Bank transfer',
+                    details: {
+                        account_number: '123456',
+                        api_key: 'api-secret-value',
+                        nested: {
+                            access_token: 'token-secret-value',
+                            note: 'visible note',
+                        },
+                    },
+                    instructions: 'Send receipt',
+                },
+            ])],
+        })
+
+        const { PlatformBillingService } = await import('../platform-billing-service')
+        const result = await PlatformBillingService.sendPlatformInvoiceEmail('invoice-secret-id', 'billing@example.com')
+        const pdfPayload = mocks.generatePlatformInvoicePDF.mock.calls[0][0]
+        const emailPayload = mocks.EmailService.send.mock.calls[0][0]
+        const renderedOutput = JSON.stringify({ pdfPayload, html: emailPayload.html })
+
+        expect(result).toEqual({ success: true })
+        expect(renderedOutput).toContain('123456')
+        expect(renderedOutput).not.toContain('api-secret-value')
+        expect(renderedOutput).not.toContain('token-secret-value')
+    }, 15000)
+
     it('does not expose manual subscription activation failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
