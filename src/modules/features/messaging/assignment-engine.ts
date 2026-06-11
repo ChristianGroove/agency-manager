@@ -353,7 +353,7 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     // Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -434,7 +434,7 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
     // 2. Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').eq('organization_id', orgId).or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));

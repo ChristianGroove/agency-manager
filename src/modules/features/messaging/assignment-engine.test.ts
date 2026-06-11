@@ -239,4 +239,63 @@ describe('AssignmentEngine', () => {
         expect(availabilityQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(conversationUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
+
+    it('scopes fallback load-balance channel lookup to the organization', async () => {
+        mocks.supabaseRpc.mockResolvedValue({ data: null, error: null })
+        const conversationRead = supabaseQuery({
+            data: {
+                id: 'conversation-1',
+                assigned_to: null,
+                organization_id: 'org-current',
+                channel: 'whatsapp',
+                connection_id: 'connection-1',
+                tags: [],
+                leads: {},
+            },
+            error: null,
+        })
+        const conversationUpdate = supabaseQuery({ error: null })
+        const rulesQuery = supabaseQuery({ data: [], error: null })
+        const availabilityQuery = supabaseQuery({
+            data: [{
+                agent_id: 'agent-1',
+                current_load: 1,
+                max_capacity: 5,
+                status: 'online',
+                organization_id: 'org-current',
+                last_seen_at: new Date(Date.now() + 60_000).toISOString(),
+            }],
+            error: null,
+        })
+        const membersQuery = supabaseQuery({
+            data: [{ user_id: 'agent-1', role: 'member', permissions: {} }],
+            error: null,
+        })
+        const channelQuery = supabaseQuery({
+            data: [{ agent_id: 'agent-1' }],
+            error: null,
+        })
+        const historyQuery = supabaseQuery({ error: null })
+        let conversationCalls = 0
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') {
+                conversationCalls += 1
+                return conversationCalls === 1 ? conversationRead : conversationUpdate
+            }
+            if (table === 'assignment_rules') return rulesQuery
+            if (table === 'agent_availability') return availabilityQuery
+            if (table === 'organization_members') return membersQuery
+            if (table === 'agent_channels') return channelQuery
+            if (table === 'assignment_history') return historyQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { assignConversation } = await import('./assignment-engine')
+        const result = await assignConversation('conversation-1')
+
+        expect(result).toBe('agent-1')
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(conversationUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
 })
