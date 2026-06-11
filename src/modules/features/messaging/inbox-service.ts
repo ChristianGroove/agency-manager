@@ -224,7 +224,11 @@ export class InboxService {
             updates.metadata = metadataChange
 
             if (Object.keys(updates).length > 0) {
-                await supabase.from('conversations').update(updates).eq('id', conversation.id)
+                await supabase
+                    .from('conversations')
+                    .update(updates)
+                    .eq('id', conversation.id)
+                    .eq('organization_id', organizationId)
             }
         } else {
             // Create New Conversation
@@ -293,6 +297,7 @@ export class InboxService {
                     .from('conversations')
                     .select('last_auto_reply_at')
                     .eq('id', conversationId)
+                    .eq('organization_id', orgId)
                     .single()
 
                 if (conv?.last_auto_reply_at) {
@@ -319,6 +324,7 @@ export class InboxService {
                             .from('conversations')
                             .update({ last_auto_reply_at: new Date().toISOString() })
                             .eq('id', conversationId)
+                            .eq('organization_id', orgId)
                     }
                     console.log(`[InboxService] Auto-reply SENT successfully.`);
                 } catch (error: any) {
