@@ -15,7 +15,8 @@ export class MessagingPersistence {
         messageId?: string | null, // Added for compatibility
         sender: string,
         id?: string,
-        channel?: string
+        channel?: string,
+        organizationId?: string | null
     }) {
         const { 
             conversationId, 
@@ -24,7 +25,8 @@ export class MessagingPersistence {
             messageId, 
             sender, 
             id, 
-            channel = 'whatsapp' 
+            channel = 'whatsapp',
+            organizationId,
         } = params
         
         // Use externalId or messageId
@@ -32,9 +34,10 @@ export class MessagingPersistence {
         
         const supabase = supabaseAdmin
 
-        const { error } = await supabase.from('messages').insert({
+        const payload: Record<string, unknown> = {
             id: id || messageId || undefined, // Use provided ID to match optimistic UI
             conversation_id: conversationId,
+            ...(organizationId ? { organization_id: organizationId } : {}),
             direction: 'outbound',
             channel: channel,
             content: typeof content === 'string' ? { type: 'text', text: content } : content,
@@ -44,7 +47,9 @@ export class MessagingPersistence {
             metadata: {
                 sender_type: sender === 'System' ? 'bot' : 'human'
             }
-        })
+        }
+
+        const { error } = await supabase.from('messages').insert(payload)
 
         if (error) {
             console.error('[MessagingPersistence] Failed to save outbound message:', error)

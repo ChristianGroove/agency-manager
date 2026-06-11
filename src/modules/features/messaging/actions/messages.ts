@@ -150,7 +150,8 @@ async function internalSend({
     supabase,
     messageId: msgId,
     isRetry = false,
-    connectionIdOverride
+    connectionIdOverride,
+    expectedOrganizationId
 }: {
     conversationId: string,
     content: any,
@@ -158,13 +159,20 @@ async function internalSend({
     supabase: any,
     messageId?: string,
     isRetry?: boolean,
-    connectionIdOverride?: string
+    connectionIdOverride?: string,
+    expectedOrganizationId?: string
 }) {
     try {
-        const { data: conversation, error: convError } = await supabase
+        let conversationQuery = supabase
             .from("conversations")
             .select("*, organization_id")
             .eq("id", conversationId)
+
+        if (expectedOrganizationId) {
+            conversationQuery = conversationQuery.eq("organization_id", expectedOrganizationId)
+        }
+
+        const { data: conversation, error: convError } = await conversationQuery
             .single()
 
         if (convError || !conversation) throw new Error("Conversation not found")
@@ -222,6 +230,7 @@ async function internalSend({
                 content,
                 sender,
                 messageId,
+                organizationId: conversation.organization_id,
                 channel: dbChannel
             })
         }
@@ -247,6 +256,7 @@ async function internalSend({
                         .update({ external_id: result.messageId, status: 'sent' })
                         .eq('id', messageId)
                         .eq('conversation_id', conversationId)
+                        .eq('organization_id', conversation.organization_id)
                 } else {
                     await supabaseAdmin
                         .from('messages')
@@ -256,6 +266,7 @@ async function internalSend({
                         } as any)
                         .eq('id', messageId)
                         .eq('conversation_id', conversationId)
+                        .eq('organization_id', conversation.organization_id)
                 }
             } catch (bgError: any) {
                 await supabaseAdmin
@@ -266,6 +277,7 @@ async function internalSend({
                     } as any)
                     .eq('id', messageId)
                     .eq('conversation_id', conversationId)
+                    .eq('organization_id', conversation.organization_id)
             }
         })
 
@@ -286,7 +298,10 @@ export async function sendMessage(conversationId: string, content: any, sender: 
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
 
-    const result = await internalSend({ conversationId, content, sender, supabase, messageId })
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const result = await internalSend({ conversationId, content, sender, supabase, messageId, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -302,7 +317,10 @@ export async function sendAudioMessage(conversationId: string, audioUrl: string,
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
 
-    const result = await internalSend({ conversationId, content: { type: 'audio', mediaUrl: audioUrl, duration }, sender, supabase, messageId })
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const result = await internalSend({ conversationId, content: { type: 'audio', mediaUrl: audioUrl, duration }, sender, supabase, messageId, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -312,7 +330,10 @@ export async function sendImageMessage(conversationId: string, imageUrl: string,
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
 
-    const result = await internalSend({ conversationId, content: { type: 'image', mediaUrl: imageUrl, caption }, sender, supabase, messageId })
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const result = await internalSend({ conversationId, content: { type: 'image', mediaUrl: imageUrl, caption }, sender, supabase, messageId, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -321,7 +342,11 @@ export async function sendLocationMessage(conversationId: string, lat: number, l
     const supabase = await createClient()
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
-    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId })
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -346,7 +371,7 @@ export async function retryMessage(messageId: string) {
         .update({ status: 'sending', metadata: { ...message.metadata, error: null } })
         .eq('id', messageId)
         .eq("organization_id", orgId)
-    const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true })
+    const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${message.conversation_id}`)
     return result
 }
@@ -355,6 +380,9 @@ export async function sendProductCardMessage(conversationId: string, product: an
     const supabase = await createClient()
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const parts = [`*${product.name.toUpperCase()}*`];
     if (product.description) parts.push(`\n${product.description}`);
@@ -366,7 +394,7 @@ export async function sendProductCardMessage(conversationId: string, product: an
     const bodyContent = parts.join('\n');
     const content = product.image_url ? { type: 'image', mediaUrl: product.image_url, caption: bodyContent } : { type: 'text', text: bodyContent };
     
-    const result = await internalSend({ conversationId, content, sender, supabase, messageId })
+    const result = await internalSend({ conversationId, content, sender, supabase, messageId, expectedOrganizationId: orgId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }

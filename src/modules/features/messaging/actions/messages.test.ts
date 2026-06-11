@@ -169,6 +169,24 @@ describe('message actions logging', () => {
         expect(from).not.toHaveBeenCalled()
     })
 
+    it('does not send UI messages without an active organization', async () => {
+        const from = vi.fn()
+        mocks.getCurrentOrganizationId.mockResolvedValue(null)
+        mocks.createClient.mockResolvedValue({
+            auth: authUser(),
+            from,
+        })
+
+        const { sendMessage } = await import('./messages')
+        const result = await sendMessage('conversation-1', { type: 'text', text: 'hola' }, 'Agent')
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(from).not.toHaveBeenCalled()
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+        expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
+        expect(mocks.after).not.toHaveBeenCalled()
+    })
+
     it('does not expose conversation ids or database messages when marking as read fails', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -244,6 +262,7 @@ describe('message actions logging', () => {
     it('does not expose outbound send failure details in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         mocks.saveOutboundMessage.mockRejectedValue(new Error('message-secret-id conversation-secret-id meta-token-secret phone-secret-value'))
         mocks.createClient.mockResolvedValue({
             auth: authUser(),
@@ -308,23 +327,95 @@ describe('message actions logging', () => {
         expect(logText).toContain('senderPresent')
     })
 
+    it('scopes UI outbound sends and provider status updates to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const providerSend = vi.fn(async () => ({ success: true, messageId: 'wamid-current' }))
+        mocks.MetaProvider.mockImplementation(function () {
+            return { sendMessage: providerSend }
+        })
+
+        const conversationQuery = singleQuery({
+            data: {
+                id: 'conversation-current',
+                connection_id: 'connection-current',
+                organization_id: 'org-current',
+                metadata: { phone: 'phone-current' },
+            },
+            error: null,
+        })
+        const connectionQuery = singleQuery({
+            data: {
+                id: 'connection-current',
+                credentials: {
+                    accessToken: 'token-current',
+                    verifyToken: 'verify-current',
+                },
+                external_id: 'asset-current',
+                metadata: { asset_id: 'asset-current' },
+                provider_key: 'meta_whatsapp',
+            },
+            error: null,
+        })
+        const updateQuery = updateEqQuery({ error: null })
+
+        mocks.createClient.mockResolvedValue({
+            auth: authUser(),
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') return conversationQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'integration_connections') return connectionQuery
+            if (table === 'messages') return updateQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { sendMessage } = await import('./messages')
+        const result = await sendMessage('conversation-current', { type: 'text', text: 'Hola' }, 'Agent', 'message-current')
+
+        expect(result).toEqual({ success: true, messageId: 'message-current' })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(connectionQuery.eq).toHaveBeenCalledWith('id', 'connection-current')
+        expect(connectionQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.saveOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
+            conversationId: 'conversation-current',
+            messageId: 'message-current',
+            organizationId: 'org-current',
+        }))
+
+        const runAfter = mocks.after.mock.calls[0]?.[0]
+        expect(runAfter).toEqual(expect.any(Function))
+        await runAfter()
+
+        expect(providerSend).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'phone-current',
+            metadata: expect.objectContaining({ organizationId: 'org-current' }),
+        }))
+        expect(updateQuery.update).toHaveBeenCalledWith({ external_id: 'wamid-current', status: 'sent' })
+        expect(updateQuery.__query.eq).toHaveBeenCalledWith('id', 'message-current')
+        expect(updateQuery.__query.eq).toHaveBeenCalledWith('conversation_id', 'conversation-current')
+        expect(updateQuery.__query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
     it('does not load channel credentials outside the conversation organization', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const conversationQuery = singleQuery({
+            data: {
+                id: 'conversation-current',
+                connection_id: 'connection-other-org',
+                organization_id: 'org-current',
+                metadata: { phone: 'phone-current' },
+            },
+            error: null,
+        })
         const connectionQuery = singleQuery({ data: null, error: null })
         mocks.createClient.mockResolvedValue({
             auth: authUser(),
             from: vi.fn((table: string) => {
-                if (table === 'conversations') {
-                    return singleQuery({
-                        data: {
-                            id: 'conversation-current',
-                            connection_id: 'connection-other-org',
-                            organization_id: 'org-current',
-                            metadata: { phone: 'phone-current' },
-                        },
-                        error: null,
-                    })
-                }
+                if (table === 'conversations') return conversationQuery
 
                 throw new Error(`Unexpected table ${table}`)
             }),
@@ -338,6 +429,8 @@ describe('message actions logging', () => {
         const result = await sendMessage('conversation-current', { type: 'text', text: 'Hola' }, 'Agent', 'message-current')
 
         expect(result).toEqual({ success: false, error: 'Message could not be sent' })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(connectionQuery.eq).toHaveBeenCalledWith('id', 'connection-other-org')
         expect(connectionQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
@@ -405,6 +498,7 @@ describe('message actions logging', () => {
         expect(retryMessageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(resetMessageQuery.__query.eq).toHaveBeenCalledWith('id', 'message-current')
         expect(resetMessageQuery.__query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(connectionQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.after).toHaveBeenCalled()
     })
