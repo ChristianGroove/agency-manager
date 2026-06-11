@@ -345,6 +345,70 @@ describe('message actions logging', () => {
         expect(mocks.after).not.toHaveBeenCalled()
     })
 
+    it('scopes retry message reads and status resets to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const retryMessageQuery = singleQuery({
+            data: {
+                id: 'message-current',
+                conversation_id: 'conversation-current',
+                content: { type: 'text', text: 'Hola' },
+                metadata: { error: 'old failure' },
+                sender_id: 'Agent',
+            },
+            error: null,
+        })
+        const resetMessageQuery = updateEqQuery({ error: null })
+        const conversationQuery = singleQuery({
+            data: {
+                id: 'conversation-current',
+                connection_id: 'connection-current',
+                metadata: { phone: 'phone-current' },
+                organization_id: 'org-current',
+            },
+            error: null,
+        })
+        const connectionQuery = singleQuery({
+            data: {
+                id: 'connection-current',
+                credentials: {
+                    accessToken: 'token-current',
+                    verifyToken: 'verify-current',
+                },
+                external_id: 'asset-current',
+                metadata: { asset_id: 'asset-current' },
+                provider_key: 'meta_whatsapp',
+            },
+            error: null,
+        })
+        let messageCalls = 0
+        mocks.createClient.mockResolvedValue({
+            auth: authUser(),
+            from: vi.fn((table: string) => {
+                if (table === 'messages') {
+                    messageCalls++
+                    return messageCalls === 1 ? retryMessageQuery : resetMessageQuery
+                }
+                if (table === 'conversations') return conversationQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'integration_connections') return connectionQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { retryMessage } = await import('./messages')
+        const result = await retryMessage('message-current')
+
+        expect(result).toEqual({ success: true, messageId: 'message-current' })
+        expect(retryMessageQuery.eq).toHaveBeenCalledWith('id', 'message-current')
+        expect(retryMessageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(resetMessageQuery.__query.eq).toHaveBeenCalledWith('id', 'message-current')
+        expect(resetMessageQuery.__query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(connectionQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.after).toHaveBeenCalled()
+    })
+
     it('blocks simulated inbound messages in production', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const { simulateInboundMessage } = await import('./messages')

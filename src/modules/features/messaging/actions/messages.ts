@@ -331,9 +331,21 @@ export async function retryMessage(messageId: string) {
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
 
-    const { data: message } = await supabase.from("messages").select("*").eq("id", messageId).single()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const { data: message } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("id", messageId)
+        .eq("organization_id", orgId)
+        .single()
     if (!message) return { success: false, error: "Message not found" }
-    await supabase.from('messages').update({ status: 'sending', metadata: { ...message.metadata, error: null } }).eq('id', messageId)
+    await supabase
+        .from('messages')
+        .update({ status: 'sending', metadata: { ...message.metadata, error: null } })
+        .eq('id', messageId)
+        .eq("organization_id", orgId)
     const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true })
     revalidatePath(`/inbox/${message.conversation_id}`)
     return result
