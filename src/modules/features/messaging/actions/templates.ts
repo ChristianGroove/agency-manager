@@ -73,6 +73,10 @@ export async function createTemplate(input: {
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
+    if (input.channel_id) {
+        await assertTemplateChannelBelongsToOrganization(supabase, orgId, input.channel_id)
+    }
+
     const { data, error } = await supabase
         .from("messaging_templates")
         .insert({
@@ -98,6 +102,9 @@ export async function updateTemplate(id: string, input: Partial<MessageTemplate>
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
+    if ('channel_id' in input && input.channel_id) {
+        await assertTemplateChannelBelongsToOrganization(supabase, orgId, input.channel_id)
+    }
 
     // If components update, update legacy content preview too
     const updates: any = { ...input }
@@ -134,6 +141,22 @@ export async function deleteTemplate(id: string) {
 function extractBodyText(components: TemplateComponent[]): string {
     const body = components.find(c => c.type === 'BODY')
     return body?.text || "Sin contenido de texto"
+}
+
+async function assertTemplateChannelBelongsToOrganization(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    orgId: string,
+    channelId: string
+) {
+    const { data: connection, error } = await supabase
+        .from('integration_connections')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('id', channelId)
+        .maybeSingle()
+
+    if (error) throwTemplateActionError(error)
+    if (!connection) throw new Error("Template channel not found")
 }
 
 // â”€â”€â”€ META GRAPH API INTEGRATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

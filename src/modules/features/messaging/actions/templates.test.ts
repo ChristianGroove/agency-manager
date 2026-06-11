@@ -67,6 +67,33 @@ function templatesListQuery(result: unknown) {
     return query
 }
 
+function templateInsertQuery(insertSpy: ReturnType<typeof vi.fn>, result: unknown = { data: { id: 'template-1' }, error: null }) {
+    const selectQuery = {
+        single: vi.fn(async () => result),
+    }
+    const insertQuery = {
+        select: vi.fn(() => selectQuery),
+    }
+    insertSpy.mockReturnValue(insertQuery)
+
+    return {
+        insert: insertSpy,
+    }
+}
+
+function templateUpdateActionQuery(updateSpy: ReturnType<typeof vi.fn>, result: unknown = { error: null }) {
+    const updateQuery: any = {
+        eq: vi.fn(() => updateQuery),
+        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
+            Promise.resolve(result).then(resolve, reject),
+    }
+    updateSpy.mockReturnValue(updateQuery)
+
+    return {
+        update: updateSpy,
+    }
+}
+
 function templateSubmitQuery(template: unknown, updateEqSpy: ReturnType<typeof vi.fn>) {
     const selectQuery: any = {
         eq: vi.fn(() => selectQuery),
@@ -129,6 +156,114 @@ afterEach(() => {
     mocks.decryptObject.mockImplementation((value: unknown) => value)
     mocks.getCurrentOrganizationId.mockReset()
     mocks.revalidatePath.mockReset()
+})
+
+describe('messaging template channel isolation', () => {
+    const components = [{ type: 'BODY' as const, format: 'TEXT' as const, text: 'Hola' }]
+
+    it('rejects template creation when the channel is outside the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const channelQuery = connectionQuery({ data: null, error: null })
+        const insertSpy = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'integration_connections') return channelQuery
+                if (table === 'messaging_templates') return templateInsertQuery(insertSpy)
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { createTemplate } = await import('./templates')
+        await expect(createTemplate({
+            name: 'welcome',
+            category: 'UTILITY',
+            language: 'es',
+            components,
+            channel_id: 'foreign-channel',
+        })).rejects.toThrow('Template channel not found')
+
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'foreign-channel')
+        expect(insertSpy).not.toHaveBeenCalled()
+    })
+
+    it('creates templates when the channel belongs to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const channelQuery = connectionQuery({ data: { id: 'owned-channel' }, error: null })
+        const insertSpy = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'integration_connections') return channelQuery
+                if (table === 'messaging_templates') return templateInsertQuery(insertSpy)
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { createTemplate } = await import('./templates')
+        await expect(createTemplate({
+            name: 'welcome',
+            category: 'UTILITY',
+            language: 'es',
+            components,
+            channel_id: 'owned-channel',
+        })).resolves.toEqual({ id: 'template-1' })
+
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'owned-channel')
+        expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({
+            channel_id: 'owned-channel',
+            content: 'Hola',
+            organization_id: 'org-current',
+        }))
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm/settings/templates')
+    })
+
+    it('rejects template channel updates when the channel is outside the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const channelQuery = connectionQuery({ data: null, error: null })
+        const updateSpy = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'integration_connections') return channelQuery
+                if (table === 'messaging_templates') return templateUpdateActionQuery(updateSpy)
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { updateTemplate } = await import('./templates')
+        await expect(updateTemplate('template-1', {
+            channel_id: 'foreign-channel',
+        } as any)).rejects.toThrow('Template channel not found')
+
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'foreign-channel')
+        expect(updateSpy).not.toHaveBeenCalled()
+    })
+
+    it('updates template channels when the channel belongs to the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const channelQuery = connectionQuery({ data: { id: 'owned-channel' }, error: null })
+        const updateSpy = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'integration_connections') return channelQuery
+                if (table === 'messaging_templates') return templateUpdateActionQuery(updateSpy)
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { updateTemplate } = await import('./templates')
+        await expect(updateTemplate('template-1', {
+            channel_id: 'owned-channel',
+        } as any)).resolves.toBeUndefined()
+
+        expect(channelQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(channelQuery.eq).toHaveBeenCalledWith('id', 'owned-channel')
+        expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+            channel_id: 'owned-channel',
+        }))
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm/settings/templates')
+    })
 })
 
 describe('messaging template Meta actions logging', () => {
