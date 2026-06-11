@@ -115,10 +115,17 @@ export async function markConversationAsRead(id: string) {
  */
 export async function getMessages(conversationId: string) {
     const supabase = await createClient()
+    const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
+    if (unauthorized) return []
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
+
     const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
+        .eq("organization_id", orgId)
         .order("created_at", { ascending: true })
 
     if (error) {

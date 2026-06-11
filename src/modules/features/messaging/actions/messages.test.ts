@@ -143,6 +143,22 @@ describe('message actions logging', () => {
         expect(mocks.after).not.toHaveBeenCalled()
     })
 
+    it('does not load messages without a user session', async () => {
+        const from = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+            from,
+        })
+
+        const { getMessages } = await import('./messages')
+        const result = await getMessages('conversation-1')
+
+        expect(result).toEqual([])
+        expect(from).not.toHaveBeenCalled()
+    })
+
     it('does not expose conversation ids or database messages when marking as read fails', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -178,16 +194,19 @@ describe('message actions logging', () => {
     it('does not expose conversation ids or database messages when loading messages fails', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const messagesQuery = orderQuery({
+            data: null,
+            error: {
+                code: '42501',
+                message: 'messages denied conversation-secret-id with phone-secret-value',
+            },
+        })
         mocks.createClient.mockResolvedValue({
+            auth: authUser(),
             from: vi.fn((table: string) => {
                 if (table === 'messages') {
-                    return orderQuery({
-                        data: null,
-                        error: {
-                            code: '42501',
-                            message: 'messages denied conversation-secret-id with phone-secret-value',
-                        },
-                    })
+                    return messagesQuery
                 }
 
                 throw new Error(`Unexpected table ${table}`)
@@ -198,6 +217,8 @@ describe('message actions logging', () => {
         const result = await getMessages('conversation-secret-id')
 
         expect(result).toEqual([])
+        expect(messagesQuery.eq).toHaveBeenCalledWith('conversation_id', 'conversation-secret-id')
+        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('conversation-secret-id')
         expect(logText).not.toContain('phone-secret-value')
