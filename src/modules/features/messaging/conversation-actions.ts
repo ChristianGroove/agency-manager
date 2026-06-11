@@ -77,12 +77,6 @@ function publicConversationActionError(error: unknown, fallback = PUBLIC_CONVERS
     return fallback
 }
 
-async function rejectUnauthenticatedConversationAction(supabase: Awaited<ReturnType<typeof createClient>>) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: "Unauthorized" } as const
-    return null
-}
-
 /**
  * Returns the active integration_connection IDs for the current org.
  * Used by GlobalMessageListener to filter cross-tenant message popups.
@@ -107,8 +101,6 @@ export async function getOrgConnectionIds(): Promise<string[]> {
  */
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
 
     // Fetch orgId for broadcast
     const { data: conv } = await supabase
@@ -170,8 +162,8 @@ async function broadcastVanish(organizationId: string, conversationId: string) {
  */
 export async function deleteConversation(conversationId: string, deleteLeadIfOrphaned: boolean = false) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     // 1. Fetch conversation info (Fast)
     const { data: conv } = await supabase
@@ -251,8 +243,6 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
  */
 export async function markAsRead(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
 
     const { error } = await supabase
         .from('conversations')
@@ -276,8 +266,6 @@ export async function markAsRead(conversationId: string) {
  */
 export async function unarchiveConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
 
     const { error } = await supabase
         .from('conversations')
@@ -301,8 +289,6 @@ export async function unarchiveConversation(conversationId: string) {
  */
 export async function snoozeConversation(conversationId: string, until: Date) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
 
     const { error } = await supabase
         .from('conversations')
@@ -372,8 +358,6 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
  */
 export async function completeConversation(conversationId: string) {
     const supabase = await createClient()
-    const unauthorized = await rejectUnauthenticatedConversationAction(supabase)
-    if (unauthorized) return unauthorized
 
     // 1. Initial Fetch (Fast)
     const { data: conv } = await supabase

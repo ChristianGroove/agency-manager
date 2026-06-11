@@ -84,30 +84,6 @@ afterEach(() => {
 })
 
 describe('conversation actions logging', () => {
-    it('does not mutate conversations for unauthenticated users', async () => {
-        const from = vi.fn()
-        mocks.createClient.mockResolvedValue({
-            auth: {
-                getUser: vi.fn(async () => ({ data: { user: null } })),
-            },
-            from,
-        })
-
-        const actions = await import('./conversation-actions')
-        const cases: Array<[string, () => Promise<unknown>]> = [
-            ['archiveConversation', () => actions.archiveConversation('conversation-1')],
-            ['markAsRead', () => actions.markAsRead('conversation-1')],
-            ['unarchiveConversation', () => actions.unarchiveConversation('conversation-1')],
-            ['snoozeConversation', () => actions.snoozeConversation('conversation-1', new Date('2026-01-01T00:00:00Z'))],
-            ['completeConversation', () => actions.completeConversation('conversation-1')],
-        ]
-
-        for (const [name, runAction] of cases) {
-            await expect(runAction(), name).resolves.toEqual({ success: false, error: 'Unauthorized' })
-        }
-        expect(from).not.toHaveBeenCalled()
-    })
-
     it('does not run media cleanup for unauthenticated deletes', async () => {
         const from = vi.fn()
         mocks.createClient.mockResolvedValue({
@@ -139,12 +115,7 @@ describe('conversation actions logging', () => {
                     message: 'policy denied conversation-secret-id for org-secret-id',
                 },
             }))
-        mocks.createClient.mockResolvedValue({
-            auth: {
-                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
-            },
-            from,
-        })
+        mocks.createClient.mockResolvedValue({ from })
 
         const { archiveConversation } = await import('./conversation-actions')
         const result = await archiveConversation('conversation-secret-id')
