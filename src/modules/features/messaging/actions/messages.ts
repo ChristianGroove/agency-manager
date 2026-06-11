@@ -101,10 +101,14 @@ export async function markConversationAsRead(id: string) {
     const unauthorized = await rejectUnauthenticatedMessageAction(supabase)
     if (unauthorized) return unauthorized
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
     const { error } = await supabase
         .from("conversations")
         .update({ unread_count: 0 })
         .eq("id", id)
+        .eq("organization_id", orgId)
 
     if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
     revalidatePath("/inbox")

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
     after: vi.fn(),
     createClient: vi.fn(),
+    getCurrentOrganizationId: vi.fn(),
     MetaProvider: vi.fn(function () {
         return { sendMessage: vi.fn() }
     }),
@@ -68,11 +69,14 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 
 function updateEqQuery(result: unknown, updateSpy = vi.fn()) {
     const query: any = {
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
+        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
+            Promise.resolve(result).then(resolve, reject),
     }
 
     return {
         update: updateSpy.mockReturnValue(query),
+        __query: query,
     }
 }
 
@@ -108,6 +112,7 @@ afterEach(() => {
     vi.resetModules()
     mocks.after.mockReset()
     mocks.createClient.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
     mocks.handleIncomingMessage.mockReset()
     mocks.MetaProvider.mockReset()
     mocks.MetaProvider.mockImplementation(function () {
@@ -167,16 +172,18 @@ describe('message actions logging', () => {
     it('does not expose conversation ids or database messages when marking as read fails', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const conversationsQuery = updateEqQuery({
+            error: {
+                code: '42501',
+                message: 'policy denied conversation-secret-id for phone-secret-value',
+            },
+        })
         mocks.createClient.mockResolvedValue({
             auth: authUser(),
             from: vi.fn((table: string) => {
                 if (table === 'conversations') {
-                    return updateEqQuery({
-                        error: {
-                            code: '42501',
-                            message: 'policy denied conversation-secret-id for phone-secret-value',
-                        },
-                    })
+                    return conversationsQuery
                 }
 
                 throw new Error(`Unexpected table ${table}`)
@@ -187,6 +194,8 @@ describe('message actions logging', () => {
         const result = await markConversationAsRead('conversation-secret-id')
 
         expect(result).toEqual({ success: false })
+        expect(conversationsQuery.__query.eq).toHaveBeenCalledWith('id', 'conversation-secret-id')
+        expect(conversationsQuery.__query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('conversation-secret-id')
         expect(logText).not.toContain('phone-secret-value')
