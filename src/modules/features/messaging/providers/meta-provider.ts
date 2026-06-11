@@ -628,9 +628,11 @@ export class MetaProvider implements MessagingProvider {
 
             // Fields vary by channel
             const fields = channel === 'instagram' ? 'username,name' : 'first_name,last_name,name';
-            const url = `https://graph.facebook.com/v21.0/${psid}?fields=${fields}&access_token=${token}`;
+            const url = `https://graph.facebook.com/v21.0/${psid}?fields=${fields}`;
             
-            const res = await fetch(url);
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
             const data = await res.json();
 
             if (data.error) {
