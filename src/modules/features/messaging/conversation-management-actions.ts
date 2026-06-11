@@ -247,6 +247,8 @@ export async function searchConversations(query: string, filters?: {
  */
 export async function bulkArchiveConversations(conversationIds: string[]) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')

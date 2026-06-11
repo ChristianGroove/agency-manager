@@ -1,0 +1,428 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({
+    createClient: vi.fn(),
+    isSuperAdmin: vi.fn(),
+    revalidatePath: vi.fn(),
+    supabaseFrom: vi.fn(),
+    transferConversation: vi.fn(),
+}))
+
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: {
+        from: mocks.supabaseFrom,
+    },
+}))
+
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: mocks.createClient,
+}))
+
+vi.mock('@/modules/core/iam/services/platform-roles', () => ({
+    isSuperAdmin: mocks.isSuperAdmin,
+}))
+
+vi.mock('next/cache', () => ({
+    revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock('./transfer-service', () => ({
+    transferConversation: mocks.transferConversation,
+}))
+
+function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
+    return spies
+        .flatMap(spy => spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
+function adminUpdateSelectQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        select: vi.fn(async () => result),
+    }
+
+    return {
+        update: vi.fn(() => query),
+    }
+}
+
+function adminUpdateEqQuery(result: unknown) {
+    const promise = Promise.resolve(result)
+    const query: any = {
+        eq: vi.fn(() => query),
+        then: promise.then.bind(promise),
+        catch: promise.catch.bind(promise),
+        finally: promise.finally.bind(promise),
+    }
+
+    return {
+        update: vi.fn(() => query),
+        query,
+    }
+}
+
+function singleQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        select: vi.fn(() => query),
+        single: vi.fn(async () => result),
+    }
+
+    return query
+}
+
+function maybeSingleQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        maybeSingle: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
+function selectInQuery(result: unknown) {
+    const query: any = {
+        in: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
+function selectEqInQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        in: vi.fn(async () => result),
+        select: vi.fn(() => query),
+    }
+
+    return query
+}
+
+function updateInQuery(result: unknown) {
+    const query: any = {
+        in: vi.fn(async () => result),
+    }
+
+    return {
+        update: vi.fn(() => query),
+    }
+}
+
+function searchQuery(result: unknown) {
+    const query: any = {
+        contains: vi.fn(() => query),
+        eq: vi.fn(() => query),
+        order: vi.fn(() => query),
+        select: vi.fn(() => query),
+        textSearch: vi.fn(() => query),
+        then: (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
+            Promise.resolve(result).then(resolve, reject),
+    }
+
+    return query
+}
+
+afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+    vi.resetModules()
+    mocks.createClient.mockReset()
+    mocks.isSuperAdmin.mockReset()
+    mocks.revalidatePath.mockReset()
+    mocks.supabaseFrom.mockReset()
+    mocks.transferConversation.mockReset()
+})
+
+describe('conversation management actions logging', () => {
+    it('rejects state updates without an authenticated user before admin reads', async () => {
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+        })
+
+        const { updateConversationState } = await import('./conversation-management-actions')
+        const result = await updateConversationState('conversation-1', { state: 'active' })
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('rejects state updates outside the caller organization before admin writes', async () => {
+        mocks.isSuperAdmin.mockResolvedValue(false)
+        const membership = maybeSingleQuery({ data: null, error: null })
+        const update = adminUpdateSelectQuery({ data: null, error: null })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') return membership
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom
+            .mockReturnValueOnce(singleQuery({
+                data: { organization_id: 'org-foreign', metadata: {} },
+                error: null,
+            }))
+            .mockReturnValueOnce(update)
+
+        const { updateConversationState } = await import('./conversation-management-actions')
+        const result = await updateConversationState('conversation-foreign', { state: 'active' })
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(membership.eq).toHaveBeenCalledWith('organization_id', 'org-foreign')
+        expect(membership.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(update.update).not.toHaveBeenCalled()
+    })
+
+    it('rejects manual assignments without an authenticated user', async () => {
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+        })
+
+        const { assignConversation } = await import('./conversation-management-actions')
+        const result = await assignConversation('conversation-1', 'target-agent')
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(mocks.transferConversation).not.toHaveBeenCalled()
+    })
+
+    it('rejects manual unassignment without an authenticated user', async () => {
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+        })
+
+        const { assignConversation } = await import('./conversation-management-actions')
+        const result = await assignConversation('conversation-1', null)
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('rejects manual unassignment outside the caller organization', async () => {
+        mocks.isSuperAdmin.mockResolvedValue(false)
+        const membership = maybeSingleQuery({ data: null, error: null })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') return membership
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom.mockReturnValueOnce(singleQuery({
+            data: { organization_id: 'org-foreign' },
+            error: null,
+        }))
+
+        const { assignConversation } = await import('./conversation-management-actions')
+        const result = await assignConversation('conversation-foreign', null)
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(membership.eq).toHaveBeenCalledWith('organization_id', 'org-foreign')
+        expect(membership.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(mocks.supabaseFrom).toHaveBeenCalledTimes(1)
+    })
+
+    it('scopes manual unassignment to the conversation organization', async () => {
+        const membership = maybeSingleQuery({ data: { role: 'admin' }, error: null })
+        const update = adminUpdateEqQuery({ error: null })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') return membership
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom
+            .mockReturnValueOnce(singleQuery({
+                data: { organization_id: 'org-current' },
+                error: null,
+            }))
+            .mockReturnValueOnce(update)
+
+        const { assignConversation } = await import('./conversation-management-actions')
+        const result = await assignConversation('conversation-1', null)
+
+        expect(result).toEqual({ success: true })
+        expect(update.update).toHaveBeenCalledWith(expect.objectContaining({ assigned_to: null }))
+        expect(update.query.eq).toHaveBeenCalledWith('id', 'conversation-1')
+        expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
+    })
+
+    it('rejects bulk assignments without an authenticated user before reads', async () => {
+        const from = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+            from,
+        })
+
+        const { bulkAssignConversations } = await import('./conversation-management-actions')
+        const result = await bulkAssignConversations(['conversation-1'], 'target-agent')
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(from).not.toHaveBeenCalled()
+    })
+
+    it('rejects bulk archives without an authenticated user before writes', async () => {
+        const from = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+            from,
+        })
+
+        const { bulkArchiveConversations } = await import('./conversation-management-actions')
+        const result = await bulkArchiveConversations(['conversation-1'])
+
+        expect(result).toEqual({ success: false, error: 'Unauthorized' })
+        expect(from).not.toHaveBeenCalled()
+    })
+
+    it('rejects bulk assignments when the target is outside a selected organization', async () => {
+        const conversationQuery = selectInQuery({
+            data: [
+                { id: 'conversation-1', organization_id: 'org-1' },
+                { id: 'conversation-2', organization_id: 'org-2' },
+            ],
+            error: null,
+        })
+        const membershipQuery = selectEqInQuery({
+            data: [{ organization_id: 'org-1' }],
+            error: null,
+        })
+        const update = updateInQuery({ error: null })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations' && from.mock.calls.length === 1) return conversationQuery
+            if (table === 'organization_members') return membershipQuery
+            if (table === 'conversations') return update
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { bulkAssignConversations } = await import('./conversation-management-actions')
+        const result = await bulkAssignConversations(['conversation-1', 'conversation-2'], 'target-agent')
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Target agent is not a member of every selected organization',
+        })
+        expect(conversationQuery.in).toHaveBeenCalledWith('id', ['conversation-1', 'conversation-2'])
+        expect(membershipQuery.eq).toHaveBeenCalledWith('user_id', 'target-agent')
+        expect(membershipQuery.in).toHaveBeenCalledWith('organization_id', ['org-1', 'org-2'])
+        expect(update.update).not.toHaveBeenCalled()
+    })
+
+    it('does not expose admin update failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-secret-id' } } })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') {
+                    return maybeSingleQuery({ data: { role: 'admin' }, error: null })
+                }
+
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.supabaseFrom
+            .mockReturnValueOnce(singleQuery({
+                data: { organization_id: 'org-secret-id', metadata: {} },
+                error: null,
+            }))
+            .mockReturnValueOnce(adminUpdateSelectQuery({
+                data: null,
+                error: {
+                    code: '42501',
+                    message: 'admin update denied conversation-secret-id org-secret-id',
+                },
+            }))
+
+        const { updateConversationState } = await import('./conversation-management-actions')
+        const result = await updateConversationState('conversation-secret-id', { state: 'active' })
+
+        expect(result).toEqual({ success: false, error: 'Conversation management action failed' })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('conversation-secret-id')
+        expect(logText).not.toContain('org-secret-id')
+        expect(logText).not.toContain('admin update denied')
+        expect(logText).toContain('conversationIdPresent')
+        expect(logText).toContain('42501')
+        expect(logText).toContain('hasMessage')
+    })
+
+    it('does not expose search query or assignment identifiers in production logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') {
+                    return searchQuery({
+                        data: null,
+                        error: {
+                            code: '42703',
+                            message: 'search failed for secret-search-text user-secret-id tag-secret-value',
+                        },
+                    })
+                }
+
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { searchConversations } = await import('./conversation-management-actions')
+        const result = await searchConversations('secret-search-text', {
+            assignedTo: 'user-secret-id',
+            tags: ['tag-secret-value'],
+        })
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Conversation management action failed',
+            data: [],
+        })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('secret-search-text')
+        expect(logText).not.toContain('user-secret-id')
+        expect(logText).not.toContain('tag-secret-value')
+        expect(logText).not.toContain('search failed')
+        expect(logText).toContain('queryPresent')
+        expect(logText).toContain('assignedToPresent')
+        expect(logText).toContain('tagsCount')
+        expect(logText).toContain('42703')
+    })
+})
