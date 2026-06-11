@@ -102,12 +102,8 @@ export async function saveOrgMetaConfig(formData: FormData) {
         updated_at: new Date().toISOString()
     }
 
-    const { error } = existing
-        ? await supabase.from('integration_connections')
-            .update(connectionData)
-            .eq('id', existing.id)
-            .eq('organization_id', member.organization_id)
-            .eq('provider_key', META_PROVIDER_KEY)
+    const { error } = existing 
+        ? await supabase.from('integration_connections').update(connectionData).eq('id', existing.id)
         : await supabase.from('integration_connections').insert(connectionData)
 
     if (error) {

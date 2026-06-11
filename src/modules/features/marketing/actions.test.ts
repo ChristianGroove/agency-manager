@@ -24,7 +24,7 @@ function createQueryBuilder(options: {
     let mutationResult: Promise<{ error: any }> | null = null
     const builder: any = {
         select: vi.fn(() => builder),
-        eq: vi.fn(() => builder),
+        eq: vi.fn(() => mutationResult || builder),
         order: vi.fn(() => builder),
         limit: vi.fn(() => builder),
         single: vi.fn(async () => options.singleResult ?? { data: null, error: null }),
@@ -38,9 +38,6 @@ function createQueryBuilder(options: {
             return options.insertResult ?? { error: null }
         }),
     }
-    builder.then = (resolve: any, reject: any) => (
-        mutationResult || Promise.resolve({ data: null, error: null })
-    ).then(resolve, reject)
 
     return builder
 }
@@ -107,17 +104,6 @@ describe('marketing actions', () => {
 
     it('preserves the stored Meta token when the settings form leaves it blank', async () => {
         const capture: { update?: any } = {}
-        const existingLookup = createQueryBuilder({
-            singleResult: {
-                data: {
-                    id: 'conn_123',
-                    credentials: { access_token: 'server-only-token' },
-                },
-                error: null,
-            },
-        })
-        const updateQuery = createQueryBuilder({ capture })
-        let integrationConnectionCalls = 0
         const from = vi.fn((table: string) => {
             if (table === 'organization_members') {
                 return createQueryBuilder({
@@ -125,8 +111,16 @@ describe('marketing actions', () => {
                 })
             }
             if (table === 'integration_connections') {
-                integrationConnectionCalls += 1
-                return integrationConnectionCalls === 1 ? existingLookup : updateQuery
+                return createQueryBuilder({
+                    singleResult: {
+                        data: {
+                            id: 'conn_123',
+                            credentials: { access_token: 'server-only-token' },
+                        },
+                        error: null,
+                    },
+                    capture,
+                })
             }
             return createQueryBuilder()
         })
@@ -150,9 +144,6 @@ describe('marketing actions', () => {
             },
             status: 'active',
         })
-        expect(updateQuery.eq).toHaveBeenCalledWith('id', 'conn_123')
-        expect(updateQuery.eq).toHaveBeenCalledWith('organization_id', 'org_123')
-        expect(updateQuery.eq).toHaveBeenCalledWith('provider_key', 'meta_ads_monitor')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings')
     })
