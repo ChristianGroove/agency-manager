@@ -66,6 +66,7 @@ export async function analyzeAgentPerformance(
             .from('messages')
             .select('content, created_at')
             .eq('direction', 'outbound' as any) // Cast if type mismatch
+            .eq('organization_id', orgId)
             .or(`sender.eq.${agentId},metadata->>agent_id.eq.${agentId}`) // Try to match broadly
             // Note: In real app, 'sender' might be 'Agent', need robust agent mapping. 
             // For now assuming filtering by direction outbound is enough distinct for demo
@@ -84,6 +85,7 @@ export async function analyzeAgentPerformance(
                 .from('messages')
                 .select('content')
                 .eq('direction', 'outbound')
+                .eq('organization_id', orgId)
                 .limit(messageLimit)
 
             if (!genericMessages || genericMessages.length < 5) {
