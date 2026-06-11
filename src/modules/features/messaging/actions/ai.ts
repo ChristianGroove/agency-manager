@@ -139,7 +139,11 @@ export async function applyIntentRouting(conversationId: string, organizationId:
     const updates: any = {}
     if (rule.set_priority) updates.priority = rule.set_priority
     if (Object.keys(updates).length > 0) {
-        await supabaseAdmin.from('conversations').update(updates).eq('id', conversationId)
+        await supabaseAdmin
+            .from('conversations')
+            .update(updates)
+            .eq('id', conversationId)
+            .eq('organization_id', organizationId)
     }
 }
 
