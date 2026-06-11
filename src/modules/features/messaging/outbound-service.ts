@@ -20,6 +20,7 @@ export class OutboundService {
                 .from('integration_connections')
                 .select('*')
                 .eq('id', channelId)
+                .eq('organization_id', organizationId)
                 .single()
             channel = fetchedChannel
         }
