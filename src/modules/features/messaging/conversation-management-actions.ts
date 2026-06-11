@@ -25,8 +25,9 @@ export async function assignConversation(conversationId: string, userId: string 
     // Get current sender if possible (authenticated user)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
-    const result = await transferConversation(conversationId, user?.id || null, userId, "Manual assignment")
+    const result = await transferConversation(conversationId, user.id, userId, "Manual assignment")
 
     if (!result.success) {
         return { success: false, error: result.error }

@@ -20,20 +20,38 @@ export async function transferConversation(
     reason?: string
 ): Promise<TransferResult> {
 
-    // 1. Parallelize initial checks (Conversation, Target Member, and Target Agent Availability)
-    const [convResult, memberResult, agentResult] = await Promise.all([
+    // 1. Fetch the conversation first so every following check is scoped to its organization.
+    const [convResult, agentResult] = await Promise.all([
         supabaseAdmin.from('conversations').select('organization_id, channel, connection_id, assigned_to').eq('id', conversationId).single(),
-        supabaseAdmin.from('organization_members').select('role').eq('user_id', toAgentId).single(), // Note: needs org filter ideally, but we'll check it later
         supabaseAdmin.from('agent_availability').select('*').eq('agent_id', toAgentId).single()
     ])
 
     const conv = convResult.data
-    const member = memberResult.data
     const agent = agentResult.data
 
     if (!conv) return { success: false, error: "Conversation not found" }
-    
-    // Ensure member belongs to the same organization as the conversation
+
+    const [memberResult, sourceMemberResult] = await Promise.all([
+        supabaseAdmin
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', conv.organization_id)
+            .eq('user_id', toAgentId)
+            .single(),
+        fromAgentId
+            ? supabaseAdmin
+                .from('organization_members')
+                .select('role')
+                .eq('organization_id', conv.organization_id)
+                .eq('user_id', fromAgentId)
+                .single()
+            : Promise.resolve({ data: null, error: null }),
+    ])
+
+    const member = memberResult.data
+    const sourceMember = sourceMemberResult.data
+
+    if (fromAgentId && !sourceMember) return { success: false, error: "Transfer source is not a member of this organization" }
     if (!member || !agent) return { success: false, error: "Target agent profile or member record not found" }
 
     // 2. VALIDATION: Status & Capacity
@@ -52,6 +70,9 @@ export async function transferConversation(
             .eq('is_active', true)
             .limit(1)
 
+        if (!hasAccess || hasAccess.length === 0) {
+            return { success: false, error: "Target agent does not have access to this channel" }
+        }
     }
 
     // 5. EXECUTE TRANSFER
@@ -63,6 +84,7 @@ export async function transferConversation(
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
+        .eq('organization_id', conv.organization_id)
 
     if (updateError) {
         console.error("[TransferService] Update failed:", updateError)
