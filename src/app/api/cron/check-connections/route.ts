@@ -5,15 +5,42 @@ import { isProductionRuntime, requireCronSecret } from "@/app/api/_guards/reques
 
 const PUBLIC_CHECK_CONNECTIONS_ERROR = 'Connection health cron failed'
 
-function logCheckConnectionsError(label: string, error: unknown) {
+function sanitizeCheckConnectionsDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set(['connectionId', 'connectionName', 'organizationId'])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function logCheckConnectionsInfo(label: string, details: Record<string, unknown> = {}) {
     if (!isProductionRuntime()) {
-        console.error(label, error)
+        console.log(label, details)
         return
     }
 
-    console.error(label, error instanceof Error
-        ? { name: error.name }
-        : { type: typeof error })
+    console.log(label, sanitizeCheckConnectionsDetails(details))
+}
+
+function logCheckConnectionsError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isProductionRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeCheckConnectionsDetails(details),
+        detail: error instanceof Error
+            ? { name: error.name }
+            : { type: typeof error }
+    })
 }
 
 function checkConnectionsErrorMessage(error: unknown) {
@@ -80,10 +107,19 @@ export async function GET(request: Request) {
                     healthy++
                 } else {
                     issues++
-                    console.log(`[Cron:CheckConnections] Issue detected: ${conn.connection_name} (${conn.id}) - ${health.status}`)
+                    logCheckConnectionsInfo('[Cron:CheckConnections] Issue detected', {
+                        connectionId: conn.id,
+                        connectionName: conn.connection_name,
+                        organizationId: conn.organization_id,
+                        status: health.status,
+                    })
                 }
             } catch (err: any) {
-                logCheckConnectionsError(`[Cron:CheckConnections] Error checking ${conn.id}:`, err)
+                logCheckConnectionsError('[Cron:CheckConnections] Error checking connection:', err, {
+                    connectionId: conn.id,
+                    connectionName: conn.connection_name,
+                    organizationId: conn.organization_id,
+                })
                 results.push({
                     id: conn.id,
                     status: 'error',
