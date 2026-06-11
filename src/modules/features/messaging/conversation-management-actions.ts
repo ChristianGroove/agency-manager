@@ -85,6 +85,8 @@ export async function updateConversationState(
  */
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { data: current } = await supabase
         .from('conversations')
@@ -121,6 +123,8 @@ export async function archiveConversation(conversationId: string) {
  */
 export async function unarchiveConversation(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -141,6 +145,8 @@ export async function unarchiveConversation(conversationId: string) {
  */
 export async function markAsSpam(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -161,6 +167,8 @@ export async function markAsSpam(conversationId: string) {
  */
 export async function setConversationPriority(conversationId: string, priority: 'urgent' | 'high' | 'normal' | 'low') {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
@@ -181,6 +189,8 @@ export async function setConversationPriority(conversationId: string, priority: 
  */
 export async function tagConversation(conversationId: string, tags: string[]) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')

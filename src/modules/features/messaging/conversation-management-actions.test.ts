@@ -217,6 +217,25 @@ describe('conversation management actions logging', () => {
         expect(mocks.supabaseFrom).not.toHaveBeenCalled()
     })
 
+    it('rejects simple conversation mutations without an authenticated user before reads or writes', async () => {
+        const from = vi.fn()
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: null } })),
+            },
+            from,
+        })
+
+        const actions = await import('./conversation-management-actions')
+
+        await expect(actions.archiveConversation('conversation-1')).resolves.toEqual({ success: false, error: 'Unauthorized' })
+        await expect(actions.unarchiveConversation('conversation-1')).resolves.toEqual({ success: false, error: 'Unauthorized' })
+        await expect(actions.markAsSpam('conversation-1')).resolves.toEqual({ success: false, error: 'Unauthorized' })
+        await expect(actions.setConversationPriority('conversation-1', 'urgent')).resolves.toEqual({ success: false, error: 'Unauthorized' })
+        await expect(actions.tagConversation('conversation-1', ['vip'])).resolves.toEqual({ success: false, error: 'Unauthorized' })
+        expect(from).not.toHaveBeenCalled()
+    })
+
     it('rejects manual unassignment outside the caller organization', async () => {
         mocks.isSuperAdmin.mockResolvedValue(false)
         const membership = maybeSingleQuery({ data: null, error: null })
