@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
                 .from('messages')
                 .select('metadata, conversation_id')
                 .eq('id', normalizedMessageId)
+                .eq('organization_id', orgId)
                 .single()
 
             if (messageError || !msg?.conversation_id) {
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
                 .from('messages')
                 .update({ metadata: newMetadata })
                 .eq('id', normalizedMessageId)
+                .eq('organization_id', orgId)
         }
 
         return NextResponse.json({

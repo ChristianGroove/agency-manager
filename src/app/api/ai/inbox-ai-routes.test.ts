@@ -307,6 +307,7 @@ describe('inbox AI API routes', () => {
             taskType: 'media.analyze_voice_v1',
             payload: { text: 'audio original' },
         })
+        expect(messageQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(messageQuery.update).toHaveBeenCalledWith({
             metadata: expect.objectContaining({
                 transcription: 'audio original',
