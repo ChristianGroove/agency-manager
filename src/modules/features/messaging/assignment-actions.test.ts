@@ -86,6 +86,16 @@ function maybeSingleQuery(result: unknown) {
     return query
 }
 
+function singleSelectEqQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        select: vi.fn(() => query),
+        single: vi.fn(async () => result),
+    }
+
+    return query
+}
+
 function updateTwoEqQuery(result: unknown) {
     let eqCalls = 0
     const query: any = {
@@ -339,6 +349,56 @@ describe('assignment actions logging', () => {
         expect(updateQuery.query.eq).toHaveBeenCalledWith('id', 'rule-1')
         expect(updateQuery.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox/settings')
+    })
+
+    it('rejects manual auto-assignment without organization context', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue(null)
+
+        const { triggerAutoAssignment } = await import('./assignment-actions')
+        const result = await triggerAutoAssignment('conversation-1')
+
+        expect(result).toEqual({ success: false, error: 'No organization found' })
+        expect(mocks.createClient).not.toHaveBeenCalled()
+        expect(mocks.assignConversation).not.toHaveBeenCalled()
+    })
+
+    it('rejects manual auto-assignment for conversations outside the current organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const conversationQuery = singleSelectEqQuery({ data: null, error: { message: 'not found' } })
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') return conversationQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+
+        const { triggerAutoAssignment } = await import('./assignment-actions')
+        const result = await triggerAutoAssignment('conversation-foreign')
+
+        expect(result).toEqual({ success: false, error: 'Conversation not found' })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conversation-foreign')
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.assignConversation).not.toHaveBeenCalled()
+    })
+
+    it('runs manual auto-assignment only after conversation organization validation', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const conversationQuery = singleSelectEqQuery({ data: { id: 'conversation-1' }, error: null })
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'conversations') return conversationQuery
+                throw new Error(`Unexpected table ${table}`)
+            }),
+        })
+        mocks.assignConversation.mockResolvedValue('agent-1')
+
+        const { triggerAutoAssignment } = await import('./assignment-actions')
+        const result = await triggerAutoAssignment('conversation-1')
+
+        expect(result).toEqual({ success: true, agentId: 'agent-1' })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.assignConversation).toHaveBeenCalledWith('conversation-1')
+        expect(mocks.revalidatePath).toHaveBeenCalledWith('/inbox')
     })
 
     it('does not expose bulk distribution query failures in production responses or logs', async () => {

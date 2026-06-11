@@ -375,6 +375,21 @@ export async function getAgentsWorkload() {
  * Manually trigger auto-assignment for a conversation
  */
 export async function triggerAutoAssignment(conversationId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found' }
+
+    const supabase = await createClient()
+    const { data: conversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .eq('organization_id', orgId)
+        .single()
+
+    if (!conversation) {
+        return { success: false, error: 'Conversation not found' }
+    }
+
     const agentId = await autoAssignConversation(conversationId)
 
     if (!agentId) {
