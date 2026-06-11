@@ -130,6 +130,38 @@ describe('settings actions sanitized errors', () => {
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
     })
 
+    it('does not return payment secrets from settings reads', async () => {
+        const settings = selectMaybeSingle({
+            data: {
+                id: 'settings-1',
+                organization_id: 'org-current',
+                agency_name: 'Pixy Client',
+                wompi_public_key: 'pub_test_123',
+                wompi_integrity_secret: 'wompi-secret-value',
+                stripe_private_key: 'stripe-secret-value',
+            },
+            error: null,
+        })
+        mocks.createClient.mockResolvedValue(createQueuedClient({
+            organization_settings: [settings],
+        }))
+
+        const { getSettings } = await importSettingsCrud()
+        const result = await getSettings()
+        const resultText = JSON.stringify(result)
+
+        expect(result).toMatchObject({
+            id: 'settings-1',
+            wompi_public_key: 'pub_test_123',
+            wompi_integrity_secret: '',
+            wompi_integrity_secret_present: true,
+            stripe_private_key: '',
+            stripe_private_key_present: true,
+        })
+        expect(resultText).not.toContain('wompi-secret-value')
+        expect(resultText).not.toContain('stripe-secret-value')
+    })
+
     it('updates settings without changing the success contract', async () => {
         const update = updateEq()
         mocks.createClient.mockResolvedValue(createQueuedClient({
@@ -151,6 +183,33 @@ describe('settings actions sanitized errors', () => {
         expect(update.update.mock.calls[0][0]).not.toHaveProperty('stripe_private_key')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/settings')
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/', 'layout')
+    })
+
+    it('preserves existing payment secrets when client settings submit blanks or placeholders', async () => {
+        const update = updateEq()
+        mocks.createClient.mockResolvedValue(createQueuedClient({
+            organization_settings: [update],
+        }))
+
+        const { updateSettings } = await importSettingsCrud()
+        const result = await updateSettings({
+            id: 'settings-1',
+            wompi_public_key: 'pub_test_123',
+            wompi_integrity_secret: '',
+            wompi_integrity_secret_present: true,
+            stripe_private_key: '●●●●●●●●',
+            stripe_private_key_present: true,
+        })
+
+        expect(result).toEqual({ success: true })
+        expect(update.update).toHaveBeenCalledWith(expect.objectContaining({
+            wompi_public_key: 'pub_test_123',
+            updated_at: expect.any(String),
+        }))
+        expect(update.update.mock.calls[0][0]).not.toHaveProperty('wompi_integrity_secret')
+        expect(update.update.mock.calls[0][0]).not.toHaveProperty('wompi_integrity_secret_present')
+        expect(update.update.mock.calls[0][0]).not.toHaveProperty('stripe_private_key')
+        expect(update.update.mock.calls[0][0]).not.toHaveProperty('stripe_private_key_present')
     })
 
     it('does not expose settings update failures in deployed runtimes', async () => {

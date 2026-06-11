@@ -480,7 +480,15 @@ export function SettingsForm({
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="wompi_integrity_secret">Secreto de Integridad</Label>
-                                    <Input type="password" id="wompi_integrity_secret" name="wompi_integrity_secret" value={formData.wompi_integrity_secret || ''} onChange={handleChange} placeholder="Secret..." className="bg-white" />
+                                    <Input
+                                        type="password"
+                                        id="wompi_integrity_secret"
+                                        name="wompi_integrity_secret"
+                                        value={formData.wompi_integrity_secret || ''}
+                                        onChange={handleChange}
+                                        placeholder={formData.wompi_integrity_secret_present ? "Secreto configurado; deja vacio para conservarlo" : "Secret..."}
+                                        className="bg-white"
+                                    />
                                 </div>
                             </div>
                             <div className="flex items-center justify-between pt-2">

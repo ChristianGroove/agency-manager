@@ -9,6 +9,14 @@ import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { cache } from "react"
 
 const PUBLIC_SETTINGS_UPDATE_ERROR = "No se pudo actualizar la configuracion"
+const MASKED_SECRET_VALUE = '●●●●●●●●'
+const SECRET_SETTING_FIELDS = [
+    'stripe_private_key',
+    'wompi_integrity_secret',
+] as const
+const CLIENT_ONLY_SETTING_FIELDS = new Set(
+    SECRET_SETTING_FIELDS.map(field => `${field}_present`)
+)
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -45,6 +53,36 @@ function settingsActionErrorMessage(error: unknown, publicMessage: string) {
         return error.message
     }
     return publicMessage
+}
+
+function sanitizeSettingsForClient<T extends Record<string, any> | null>(settings: T): T {
+    if (!settings) return settings
+
+    const safeSettings = { ...settings }
+    for (const field of SECRET_SETTING_FIELDS) {
+        const hasSecret = Boolean(safeSettings[field])
+        safeSettings[`${field}_present`] = hasSecret
+        safeSettings[field] = ''
+    }
+
+    return safeSettings as T
+}
+
+function stripClientOnlySettingsFields(data: Record<string, any>) {
+    const cleanData = { ...data }
+
+    for (const field of SECRET_SETTING_FIELDS) {
+        const value = cleanData[field]
+        if (value === undefined || value === null || value === '' || value === MASKED_SECRET_VALUE) {
+            delete cleanData[field]
+        }
+    }
+
+    for (const field of CLIENT_ONLY_SETTING_FIELDS) {
+        delete cleanData[field]
+    }
+
+    return cleanData
 }
 
 export const getSettings = cache(async () => {
@@ -98,15 +136,15 @@ export const getSettings = cache(async () => {
                     .select("*")
                     .eq('organization_id', orgId)
                     .single()
-                return existingData
+                return sanitizeSettingsForClient(existingData)
             }
             logSettingsActionError("[getSettings] Default settings create error:", createError)
             return null
         }
-        return newData
+        return sanitizeSettingsForClient(newData)
     }
 
-    return data
+    return sanitizeSettingsForClient(data)
 })
 
 export async function updateSettings(data: any) {
@@ -121,7 +159,7 @@ export async function updateSettings(data: any) {
     await requireOrgRole('admin')
 
     const activeModules = await getActiveModules(orgId)
-    const validatedData = await validateSettingsData(updateData, activeModules || [])
+    const validatedData = await validateSettingsData(stripClientOnlySettingsFields(updateData), activeModules || [])
 
     const { error } = await supabase
         .from("organization_settings")
