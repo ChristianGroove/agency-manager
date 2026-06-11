@@ -79,6 +79,9 @@ function adminUpdateEqQuery(result: unknown) {
 function singleQuery(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
+        neq: vi.fn(() => query),
+        order: vi.fn(() => query),
+        limit: vi.fn(() => query),
         select: vi.fn(() => query),
         single: vi.fn(async () => result),
     }
@@ -388,6 +391,95 @@ describe('conversation management actions logging', () => {
         expect(update.update).toHaveBeenCalledWith(expect.objectContaining({ state: 'archived' }))
         expect(update.query.in).toHaveBeenCalledWith('id', ['conversation-1', 'conversation-2'])
         expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
+    it('scopes direct phone conversation creation to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const existingClient = singleQuery({ data: null, error: { code: 'PGRST116' } })
+        const existingLead = singleQuery({
+            data: { id: 'lead-current', organization_id: 'org-current' },
+            error: null,
+        })
+        const existingConversation = singleQuery({
+            data: { id: 'conversation-current', organization_id: 'org-current' },
+            error: null,
+        })
+        const from = vi.fn((table: string) => {
+            if (table === 'leads' && from.mock.calls.length === 1) return existingClient
+            if (table === 'leads') return existingLead
+            if (table === 'conversations') return existingConversation
+            throw new Error(`Unexpected table ${table}`)
+        })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { createConversation } = await import('./conversation-management-actions')
+        const result = await createConversation({ phone: '3001234567' })
+
+        expect(result).toEqual({
+            success: true,
+            data: { id: 'conversation-current', organization_id: 'org-current' },
+        })
+        expect(existingClient.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(existingLead.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(existingConversation.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(existingConversation.eq).toHaveBeenCalledWith('lead_id', 'lead-current')
+    })
+
+    it('does not create conversations for client ids outside the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const existingConversation = singleQuery({ data: null, error: { code: 'PGRST116' } })
+        const clientLookup = singleQuery({ data: null, error: { code: 'PGRST116' } })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations') return existingConversation
+            if (table === 'leads') return clientLookup
+            throw new Error(`Unexpected table ${table}`)
+        })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { createConversation } = await import('./conversation-management-actions')
+        const result = await createConversation({ client_id: 'client-other-org' })
+
+        expect(result).toEqual({ success: false, error: 'Entity not found or missing organization context' })
+        expect(existingConversation.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(clientLookup.eq).toHaveBeenCalledWith('id', 'client-other-org')
+        expect(clientLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
+    it('rejects channels outside the active organization before resolving contacts', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const connectionLookup = maybeSingleQuery({ data: null, error: null })
+        const from = vi.fn((table: string) => {
+            if (table === 'integration_connections') return connectionLookup
+            throw new Error(`Unexpected table ${table}`)
+        })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { createConversation } = await import('./conversation-management-actions')
+        const result = await createConversation({
+            phone: '3001234567',
+            connection_id: 'connection-other-org',
+        })
+
+        expect(result).toEqual({ success: false, error: 'Channel not found for organization' })
+        expect(connectionLookup.eq).toHaveBeenCalledWith('id', 'connection-other-org')
+        expect(connectionLookup.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(connectionLookup.eq).toHaveBeenCalledWith('status', 'active')
+        expect(from).toHaveBeenCalledTimes(1)
     })
 
     it('does not expose admin update failures in production responses or logs', async () => {

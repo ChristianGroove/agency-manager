@@ -425,19 +425,22 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         return { success: false, error: 'Must provide either lead_id, client_id, or phone' }
     }
 
-    // Helper to get Org ID from authenticated user
-    const getOrgId = async () => {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) return null
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { success: false, error: "Unauthorized" }
 
-        const { data: member } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .limit(1)
-            .single()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found for user.' }
 
-        return member?.organization_id
+    if (connection_id) {
+        const { data: connection } = await supabase
+            .from('integration_connections')
+            .select('id')
+            .eq('id', connection_id)
+            .eq('organization_id', orgId)
+            .eq('status', 'active')
+            .maybeSingle()
+
+        if (!connection) return { success: false, error: 'Channel not found for organization' }
     }
 
     // Resolve Entity
@@ -452,6 +455,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
             .from('leads')
             .select('id, organization_id')
             .eq('phone', normalizedPhone)
+            .eq('organization_id', orgId)
             .single()
 
         if (existingClient) {
@@ -463,6 +467,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('id, organization_id')
                 .eq('phone', normalizedPhone)
+                .eq('organization_id', orgId)
                 .single()
 
             if (existingLead) {
@@ -470,9 +475,6 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 resolvedOrgId = existingLead.organization_id
             } else {
                 // C. Create new Lead (Quick Contact)
-                const orgId = await getOrgId()
-                if (!orgId) return { success: false, error: 'No organization found for user.' }
-
                 const { data: newLead, error: leadError } = await supabase
                     .from('leads')
                     .insert({
@@ -497,6 +499,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         .from('conversations')
         .select('*')
         .neq('state', 'archived')
+        .eq('organization_id', orgId)
         .order('last_message_at', { ascending: false })
         .limit(1)
 
@@ -523,6 +526,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('organization_id')
                 .eq('id', finalClientId)
+                .eq('organization_id', orgId)
                 .single()
             organization_id = client?.organization_id || null
         } else if (finalLeadId) {
@@ -530,6 +534,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('organization_id')
                 .eq('id', finalLeadId)
+                .eq('organization_id', orgId)
                 .single()
             organization_id = lead?.organization_id || null
         }
@@ -537,6 +542,10 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
 
     if (!organization_id) {
         return { success: false, error: 'Entity not found or missing organization context' }
+    }
+
+    if (organization_id !== orgId) {
+        return { success: false, error: 'Unauthorized' }
     }
 
     // 3. Create new conversation
