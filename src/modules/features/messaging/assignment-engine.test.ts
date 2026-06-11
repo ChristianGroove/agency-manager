@@ -31,6 +31,7 @@ function supabaseQuery(result: unknown) {
     const query: any = {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
+        in: vi.fn(() => query),
         insert: vi.fn(async () => result),
         order: vi.fn(() => query),
         single: vi.fn(async () => result),
@@ -135,5 +136,32 @@ describe('AssignmentEngine', () => {
         expect(logText).toContain('agentIdPresent')
         expect(logText).toContain('organizationIdPresent')
         expect(logText).toContain('23503')
+    })
+
+    it('scopes agent load reconciliation to the organization', async () => {
+        const conversationsCount = supabaseQuery({ count: 3, error: null })
+        const agentRead = supabaseQuery({ data: { current_load: 1 }, error: null })
+        const agentUpdate = supabaseQuery({ error: null })
+        let availabilityCalls = 0
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') return conversationsCount
+            if (table === 'agent_availability') {
+                availabilityCalls += 1
+                return availabilityCalls === 1 ? agentRead : agentUpdate
+            }
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { reconcileAgentLoad } = await import('./assignment-engine')
+        const result = await reconcileAgentLoad('agent-1', 'org-current')
+
+        expect(result).toEqual({ previous: 1, actual: 3 })
+        expect(conversationsCount.eq).toHaveBeenCalledWith('assigned_to', 'agent-1')
+        expect(conversationsCount.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(agentRead.eq).toHaveBeenCalledWith('agent_id', 'agent-1')
+        expect(agentRead.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(agentUpdate.eq).toHaveBeenCalledWith('agent_id', 'agent-1')
+        expect(agentUpdate.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 })

@@ -701,7 +701,7 @@ export async function reconcileAllAgentLoads() {
     if (!agents || agents.length === 0) return { success: true, data: [] }
 
     const results = await Promise.all(
-        agents.map(a => reconcileAgentLoad(a.agent_id))
+        agents.map(a => reconcileAgentLoad(a.agent_id, orgId))
     )
 
     const fixed = results.filter(r => r.previous !== r.actual)
