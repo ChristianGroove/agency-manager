@@ -11,10 +11,37 @@ import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 export async function assignConversation(conversationId: string, userId: string | null) {
     if (!userId) {
         const supabase = await createClient()
-        const { error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: "Unauthorized" }
+
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { data: current, error: currentError } = await supabaseAdmin
+            .from('conversations')
+            .select('organization_id')
+            .eq('id', conversationId)
+            .single()
+
+        if (currentError || !current) {
+            if (currentError) logConversationManagementError("[assignConversation] Read failed:", currentError, { conversationId })
+            return { success: false, error: publicConversationManagementError(currentError, "Conversation not found") }
+        }
+
+        const { data: membership } = await supabase
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', current.organization_id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+        if (!membership && !(await isSuperAdmin(user.id))) {
+            return { success: false, error: "Unauthorized" }
+        }
+
+        const { error } = await supabaseAdmin
             .from('conversations')
             .update({ assigned_to: null, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
+            .eq('organization_id', current.organization_id)
 
         if (error) return { success: false, error: error.message }
         revalidatePath('/inbox')
