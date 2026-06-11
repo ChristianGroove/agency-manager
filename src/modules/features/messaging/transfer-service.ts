@@ -130,6 +130,7 @@ export async function transferConversation(
 
     await supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,
+        organization_id: conv.organization_id,
         direction: 'outbound',
         channel: conv.channel,
         content: { type: 'system', text: systemText },
