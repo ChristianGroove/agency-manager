@@ -7,6 +7,98 @@ import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_ASSIGNMENT_ACTION_ERROR = 'Assignment action failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeAssignmentActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'agentId',
+        'connectionId',
+        'conversationId',
+        'organizationId',
+        'ruleId',
+        'userId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'targetConnectionIds' && Array.isArray(value)) {
+                return ['targetConnectionIdsCount', value.length]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeAssignmentActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAssignmentActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeAssignmentActionLogDetails(details),
+        detail: summarizeAssignmentActionError(error),
+    })
+}
+
+function logAssignmentActionInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeAssignmentActionLogDetails(details))
+}
+
+function publicAssignmentActionError(error: unknown, fallback = PUBLIC_ASSIGNMENT_ACTION_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
+
 /**
  * Update agent's online status and availability
  */
@@ -52,8 +144,12 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
             .eq('organization_id', memberData.organization_id)
 
         if (error) {
-            console.error('Failed to update agent status:', error)
-            return { success: false, error: error.message }
+            logAssignmentActionError('Failed to update agent status:', error, {
+                userId: user.id,
+                organizationId: memberData.organization_id,
+                status,
+            })
+            return { success: false, error: publicAssignmentActionError(error) }
         }
     } else {
         // Insert new agent with sensible defaults
@@ -70,8 +166,12 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
             })
 
         if (error) {
-            console.error('Failed to insert agent availability:', error)
-            return { success: false, error: error.message }
+            logAssignmentActionError('Failed to insert agent availability:', error, {
+                userId: user.id,
+                organizationId: memberData.organization_id,
+                status,
+            })
+            return { success: false, error: publicAssignmentActionError(error) }
         }
     }
 
@@ -115,7 +215,7 @@ export async function toggleAutoAssign(enabled: boolean) {
         })
 
     if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -170,7 +270,7 @@ export async function updateAgentCapacity(maxCapacity: number) {
         })
 
     if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -214,8 +314,10 @@ export async function getAgentsWorkload() {
     ])
 
     if (availabilityResult.error) {
-        console.error('Failed to fetch agents workload:', availabilityResult.error)
-        return { success: false, error: availabilityResult.error.message, data: [] }
+        logAssignmentActionError('Failed to fetch agents workload:', availabilityResult.error, {
+            organizationId: memberData.organization_id,
+        })
+        return { success: false, error: publicAssignmentActionError(availabilityResult.error), data: [] }
     }
 
     const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, { role: m.role, permissions: m.permissions }]));
@@ -232,7 +334,10 @@ export async function getAgentsWorkload() {
     console.timeEnd('agents:profiles_fetch')
 
     if (profileError) {
-        console.error('Error fetching agent profiles:', profileError)
+        logAssignmentActionError('Error fetching agent profiles:', profileError, {
+            organizationId: memberData.organization_id,
+            agentsCount: activeAgents.length,
+        })
     }
 
     const profileMap = new Map((profiles || []).map(p => [p.id, p]))
@@ -329,11 +434,19 @@ export async function upsertAssignmentRule(rule: {
         .single()
 
     if (error) {
-        console.error('[upsertAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[upsertAssignmentRule] Failed:', error, {
+            organizationId: orgId,
+            ruleId: rule.id,
+            userId: user.id,
+            strategy: rule.strategy,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
-    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
+    logAssignmentActionInfo('[upsertAssignmentRule] Saved rule', {
+        ruleId: data.id,
+        strategy: data.strategy,
+    })
     revalidatePath('/inbox/settings')
     revalidatePath('/crm/settings/channels')
     return { success: true, data }
@@ -343,14 +456,18 @@ export async function upsertAssignmentRule(rule: {
  * Delete an assignment rule
  */
 export async function deleteAssignmentRule(ruleId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found' }
+
     const { error } = await supabaseAdmin
         .from('assignment_rules')
         .delete()
         .eq('id', ruleId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error('[deleteAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[deleteAssignmentRule] Failed:', error, { ruleId, organizationId: orgId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -370,7 +487,8 @@ export async function toggleAssignmentRule(ruleId: string, isActive: boolean) {
         .eq('id', ruleId)
 
     if (error) {
-        return { success: false, error: error.message }
+        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -406,8 +524,11 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         .insert(skillsData)
 
     if (error) {
-        console.error('Failed to update agent skills:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('Failed to update agent skills:', error, {
+            userId: user.id,
+            skillsCount: skills.length,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     return { success: true }
@@ -433,7 +554,7 @@ export async function getChannelAssignmentRule(connectionId: string) {
 
     if (error) {
         if (error.code !== 'PGRST116') { // Not found code
-            console.error('Error fetching channel rule:', error)
+            logAssignmentActionError('Error fetching channel rule:', error, { connectionId, organizationId: orgId })
         }
         return null
     }
@@ -456,7 +577,8 @@ export async function getAssignmentRules() {
         .order('priority', { ascending: true })
 
     if (error) {
-        return { success: false, error: error.message, data: [] }
+        logAssignmentActionError('[getAssignmentRules] Failed:', error, { organizationId: orgId })
+        return { success: false, error: publicAssignmentActionError(error), data: [] }
     }
 
     return { success: true, data }
@@ -492,7 +614,12 @@ export async function getSidebarAgents() {
         .eq('organization_id', memberData.organization_id)
 
     if (membersError || !members) {
-        return { success: false, error: membersError?.message || 'Error fetching members', data: [] }
+        if (membersError) {
+            logAssignmentActionError('[getSidebarAgents] Failed to fetch members:', membersError, {
+                organizationId: memberData.organization_id,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
     }
 
     const userIds = members.map(m => m.user_id)
@@ -593,7 +720,13 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     const { data: unassigned, error: convError } = await convQuery
 
-    if (convError) return { success: false, error: convError.message }
+    if (convError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch conversations:', convError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(convError) }
+    }
     if (!unassigned || unassigned.length === 0) return { success: true, count: 0, message: 'No unassigned conversations' }
 
     // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
@@ -606,7 +739,13 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
         .eq('auto_assign_enabled', true)
         .gt('last_seen_at', heartbeatThreshold)
 
-    if (agentError) return { success: false, error: agentError.message }
+    if (agentError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch agents:', agentError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(agentError) }
+    }
     if (!agents || agents.length === 0) return { success: false, error: 'No online agents available' }
 
     const agentIds = agents.map(a => a.agent_id)
@@ -661,6 +800,12 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
                 
                 if (!updateError) {
                     await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)
+                } else {
+                    logAssignmentActionError('[distributeUnassignedConversations] Failed to assign conversation:', updateError, {
+                        agentId: agent.agent_id,
+                        conversationId: chat.id,
+                        organizationId: orgId,
+                    })
                 }
             })())
             totalDistributed++
@@ -696,7 +841,12 @@ export async function getUnassignedDistributionStats() {
         .eq('status', 'open')
 
     if (convError || !convs) {
-        return { success: false, error: convError?.message, data: [] }
+        if (convError) {
+            logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch conversations:', convError, {
+                organizationId: orgId,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(convError), data: [] }
     }
 
     const { data: connections, error: connError } = await supabaseAdmin
@@ -705,7 +855,10 @@ export async function getUnassignedDistributionStats() {
         .eq('organization_id', orgId)
 
     if (connError) {
-        return { success: false, error: connError.message, data: [] }
+        logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch connections:', connError, {
+            organizationId: orgId,
+        })
+        return { success: false, error: publicAssignmentActionError(connError), data: [] }
     }
 
     const connMap = new Map(connections?.map(c => [c.id, c]) || [])
