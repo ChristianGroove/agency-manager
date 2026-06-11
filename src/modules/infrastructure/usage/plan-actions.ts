@@ -2,6 +2,7 @@
 
 import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
 // ============================================
 // TYPES
@@ -46,6 +47,66 @@ export interface UsageStatus {
     is_exceeded: boolean
 }
 
+async function canAccessOrganizationUsage(supabase: any, organizationId: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+
+    const { data: membership } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (membership) return true
+
+    return isSuperAdmin(user.id)
+}
+
+async function loadOrgUsageStatus(organizationId: string): Promise<UsageStatus[]> {
+    if (!organizationId) return []
+
+    const { data: limits } = await supabaseAdmin
+        .from('usage_limits')
+        .select('engine, period, limit_value')
+        .eq('organization_id', organizationId)
+
+    if (!limits || limits.length === 0) {
+        return []
+    }
+
+    const today = new Date().toISOString().split('T')[0]
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        .toISOString().split('T')[0]
+
+    const { data: counters } = await supabaseAdmin
+        .from('usage_counters')
+        .select('engine, period, period_start, used')
+        .eq('organization_id', organizationId)
+        .in('period_start', [today, monthStart])
+
+    return limits.map(limit => {
+        const periodStart = limit.period === 'day' ? today : monthStart
+        const counter = counters?.find(
+            c => c.engine === limit.engine && c.period === limit.period && c.period_start === periodStart
+        )
+
+        const used = counter?.used || 0
+        const limitVal = limit.limit_value
+        const isUnlimited = limitVal === -1
+
+        return {
+            engine: limit.engine,
+            limit: limitVal,
+            used,
+            remaining: isUnlimited ? Infinity : Math.max(0, limitVal - used),
+            percentage: isUnlimited ? 0 : Math.min(100, Math.round((used / limitVal) * 100)),
+            is_unlimited: isUnlimited,
+            is_exceeded: !isUnlimited && used >= limitVal
+        }
+    })
+}
+
 // ============================================
 // GET AVAILABLE PLANS
 // ============================================
@@ -74,50 +135,9 @@ export async function getAvailablePlans(): Promise<PlanTemplate[]> {
 export async function getOrgUsageStatus(organizationId: string): Promise<UsageStatus[]> {
     const supabase = await createClient()
 
-    // Get limits
-    const { data: limits } = await supabase
-        .from('usage_limits')
-        .select('engine, period, limit_value')
-        .eq('organization_id', organizationId)
+    if (!(await canAccessOrganizationUsage(supabase, organizationId))) return []
 
-    if (!limits || limits.length === 0) {
-        return []
-    }
-
-    // Get current counters
-    const today = new Date().toISOString().split('T')[0]
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-        .toISOString().split('T')[0]
-
-    const { data: counters } = await supabase
-        .from('usage_counters')
-        .select('engine, period, period_start, used')
-        .eq('organization_id', organizationId)
-        .in('period_start', [today, monthStart])
-
-    // Build status for each engine
-    const statuses: UsageStatus[] = limits.map(limit => {
-        const periodStart = limit.period === 'day' ? today : monthStart
-        const counter = counters?.find(
-            c => c.engine === limit.engine && c.period === limit.period && c.period_start === periodStart
-        )
-
-        const used = counter?.used || 0
-        const limitVal = limit.limit_value
-        const isUnlimited = limitVal === -1
-
-        return {
-            engine: limit.engine,
-            limit: limitVal,
-            used,
-            remaining: isUnlimited ? Infinity : Math.max(0, limitVal - used),
-            percentage: isUnlimited ? 0 : Math.min(100, Math.round((used / limitVal) * 100)),
-            is_unlimited: isUnlimited,
-            is_exceeded: !isUnlimited && used >= limitVal
-        }
-    })
-
-    return statuses
+    return loadOrgUsageStatus(organizationId)
 }
 
 // ============================================
@@ -131,7 +151,7 @@ export async function incrementUsage(
 ): Promise<{ success: boolean; error?: string; exceeded?: boolean }> {
 
     // First check if allowed
-    const status = await getOrgUsageStatus(organizationId)
+    const status = await loadOrgUsageStatus(organizationId)
     const engineStatus = status.find(s => s.engine === engine)
 
     if (engineStatus && !engineStatus.is_unlimited) {
@@ -201,6 +221,7 @@ export async function upgradePlan(
     organizationId: string,
     newPlanCode: PlanCode
 ): Promise<{ success: boolean; error?: string }> {
+    await requireSuperAdmin()
 
     const { data, error } = await supabaseAdmin
         .rpc('upgrade_org_plan', {
@@ -222,9 +243,10 @@ export async function upgradePlan(
 
 export async function getOrgPlan(organizationId: string): Promise<PlanTemplate | null> {
     const supabase = await createClient()
+    if (!(await canAccessOrganizationUsage(supabase, organizationId))) return null
 
     // Get org limits to determine plan
-    const { data: limits } = await supabase
+    const { data: limits } = await supabaseAdmin
         .from('usage_limits')
         .select('limit_value')
         .eq('organization_id', organizationId)
