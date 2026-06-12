@@ -172,6 +172,7 @@ export class ProcessEngine {
             .from('process_instances')
             .update(updates)
             .eq('id', instanceId)
+            .eq('organization_id', instance.organization_id)
             .select()
             .single()
 
@@ -186,6 +187,7 @@ export class ProcessEngine {
                 .from('leads') // Assuming 'leads' table (or clients/contacts?)
                 .select('tags, id')
                 .eq('id', instance.lead_id)
+                .eq('organization_id', instance.organization_id)
                 .single()
 
             if (lead) {
@@ -196,6 +198,7 @@ export class ProcessEngine {
                     .from('leads')
                     .update({ tags: newTags })
                     .eq('id', lead.id)
+                    .eq('organization_id', instance.organization_id)
             }
         }
 
