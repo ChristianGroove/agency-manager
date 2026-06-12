@@ -509,6 +509,7 @@ describe('assignment actions logging', () => {
 
         expect(result).toEqual({ success: true, count: 1 })
         expect(assignmentUpdate.update).toHaveBeenCalledWith(expect.objectContaining({ assigned_to: 'agent-1' }))
+        expect(accessQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(assignmentUpdate.query.eq).toHaveBeenCalledWith('id', 'conversation-1')
         expect(assignmentUpdate.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
         expect(mocks.logAssignment).toHaveBeenCalledWith('conversation-1', 'agent-1', null, 'round-robin-bulk', 'org-current')

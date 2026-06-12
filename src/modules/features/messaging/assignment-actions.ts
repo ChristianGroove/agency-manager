@@ -779,7 +779,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
     // 3. Get roles and channel access for these agents
     const [rolesResult, accessResult] = await Promise.all([
         supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
-        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
+        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('organization_id', orgId).eq('is_active', true).in('agent_id', agentIds)
     ])
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]))
