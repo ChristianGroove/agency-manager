@@ -23,6 +23,54 @@ export interface QAAnalysisResult {
     error?: string
 }
 
+type AgentMessage = {
+    id?: string | null
+    content: string | null
+    created_at?: string | null
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+async function fetchAgentMessages(
+    supabase: SupabaseServerClient,
+    orgId: string,
+    agentId: string,
+    messageLimit: number
+): Promise<AgentMessage[]> {
+    const [senderResult, metadataResult] = await Promise.all([
+        supabase
+            .from('messages')
+            .select('id, content, created_at')
+            .eq('direction', 'outbound' as any)
+            .eq('organization_id', orgId)
+            .eq('sender', agentId)
+            .limit(messageLimit)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('messages')
+            .select('id, content, created_at')
+            .eq('direction', 'outbound' as any)
+            .eq('organization_id', orgId)
+            .eq('metadata->>agent_id', agentId)
+            .limit(messageLimit)
+            .order('created_at', { ascending: false }),
+    ])
+
+    if (senderResult.error) throw senderResult.error
+    if (metadataResult.error) throw metadataResult.error
+
+    const seenIds = new Set<string>()
+    return ([...(senderResult.data || []), ...(metadataResult.data || [])] as AgentMessage[])
+        .filter(message => {
+            if (!message.id) return true
+            if (seenIds.has(message.id)) return false
+            seenIds.add(message.id)
+            return true
+        })
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, messageLimit)
+}
+
 /**
  * Generate a QA performance report for an agent based on their recent messages
  */
@@ -62,21 +110,9 @@ export async function analyzeAgentPerformance(
 
         // 2. No Cache? Generate New.
         // Fetch agent's recent outgoing messages
-        const { data: messages, error: fetchError } = await supabase
-            .from('messages')
-            .select('content, created_at')
-            .eq('direction', 'outbound' as any) // Cast if type mismatch
-            .eq('organization_id', orgId)
-            .or(`sender.eq.${agentId},metadata->>agent_id.eq.${agentId}`) // Try to match broadly
-            // Note: In real app, 'sender' might be 'Agent', need robust agent mapping. 
-            // For now assuming filtering by direction outbound is enough distinct for demo
-            .limit(messageLimit)
-            .order('created_at', { ascending: false })
+        const messages = await fetchAgentMessages(supabase, orgId, agentId, messageLimit)
 
-        // Fallback for demo if no agentId specific messages:
         // In a real scenario, we'd strict filter. For this demo, we'll take last 50 outbound.
-
-        if (fetchError) throw fetchError
 
         if (!messages || messages.length < 5) {
             // Try fetching *any* outbound messages if the specific filter failed

@@ -118,23 +118,32 @@ describe('agent QA AI actions', () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const cacheQuery = makeCacheQuery({ data: null })
         const reportInsert = makeInsertQuery()
-        const messagesQuery = makeMessagesQuery({
+        const senderMessagesQuery = makeMessagesQuery({
             data: [
-                { content: 'Mensaje 1' },
-                { content: 'Mensaje 2' },
-                { content: 'Mensaje 3' },
-                { content: 'Mensaje 4' },
-                { content: 'Mensaje 5' },
+                { id: 'message-1', content: 'Mensaje 1', created_at: '2026-06-11T12:00:00.000Z' },
+                { id: 'message-2', content: 'Mensaje 2', created_at: '2026-06-11T11:00:00.000Z' },
+                { id: 'message-3', content: 'Mensaje 3', created_at: '2026-06-11T10:00:00.000Z' },
             ],
             error: null,
         })
+        const metadataMessagesQuery = makeMessagesQuery({
+            data: [
+                { id: 'message-4', content: 'Mensaje 4', created_at: '2026-06-11T09:00:00.000Z' },
+                { id: 'message-5', content: 'Mensaje 5', created_at: '2026-06-11T08:00:00.000Z' },
+            ],
+            error: null,
+        })
+        let messageCalls = 0
 
         mocks.supabaseAdminFrom
             .mockReturnValueOnce(cacheQuery)
             .mockReturnValueOnce(reportInsert)
         mocks.createClient.mockResolvedValue({
             from: vi.fn((table: string) => {
-                if (table === 'messages') return messagesQuery
+                if (table === 'messages') {
+                    messageCalls += 1
+                    return messageCalls === 1 ? senderMessagesQuery : metadataMessagesQuery
+                }
                 throw new Error(`Unexpected table ${table}`)
             }),
         })
@@ -159,8 +168,14 @@ describe('agent QA AI actions', () => {
             report: expect.objectContaining({ overallScore: 8 }),
             messagesAnalyzed: 5,
         })
-        expect(messagesQuery.eq).toHaveBeenCalledWith('direction', 'outbound')
-        expect(messagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('direction', 'outbound')
+        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(senderMessagesQuery.eq).toHaveBeenCalledWith('sender', 'agent-1')
+        expect(senderMessagesQuery.or).not.toHaveBeenCalled()
+        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('direction', 'outbound')
+        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(metadataMessagesQuery.eq).toHaveBeenCalledWith('metadata->>agent_id', 'agent-1')
+        expect(metadataMessagesQuery.or).not.toHaveBeenCalled()
         expect(reportInsert.insert).toHaveBeenCalledWith(expect.objectContaining({
             organization_id: 'org-current',
             agent_id: 'agent-1',
@@ -177,15 +192,23 @@ describe('agent QA AI actions', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         mocks.supabaseAdminFrom.mockReturnValue(makeCacheQuery({ data: null }))
-        const messagesQuery = makeMessagesQuery({
+        const senderMessagesQuery = makeMessagesQuery({
             data: null,
             error: {
                 message: 'database password secret-value failed reading agent-secret-id messages',
                 code: '42501',
             },
         })
+        const metadataMessagesQuery = makeMessagesQuery({
+            data: [],
+            error: null,
+        })
+        let messageCalls = 0
         mocks.createClient.mockResolvedValue({
-            from: vi.fn(() => messagesQuery),
+            from: vi.fn(() => {
+                messageCalls += 1
+                return messageCalls === 1 ? senderMessagesQuery : metadataMessagesQuery
+            }),
         })
 
         const { analyzeAgentPerformance } = await import('./agent-qa')
