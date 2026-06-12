@@ -30,6 +30,36 @@ export interface GenerateRepliesOptions {
     }
 }
 
+type SupabaseServerClient = Awaited<ReturnType<typeof import('@/modules/core/database/supabase-server').createClient>>
+
+async function verifySuggestionConversationAccess(
+    supabase: SupabaseServerClient,
+    orgId: string,
+    conversationId: string,
+    messageId?: string
+) {
+    const { data: conversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .eq('organization_id', orgId)
+        .single()
+
+    if (!conversation) return false
+
+    if (!messageId) return true
+
+    const { data: message } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('id', messageId)
+        .eq('conversation_id', conversationId)
+        .eq('organization_id', orgId)
+        .single()
+
+    return Boolean(message)
+}
+
 /**
  * Generate 3 AI-powered reply suggestions via Central Engine
  */
@@ -97,8 +127,14 @@ export async function logSuggestion(data: {
     generationTimeMs: number
     modelUsed?: string
 }) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return
+
     const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
+
+    const hasAccess = await verifySuggestionConversationAccess(supabase, orgId, data.conversationId, data.messageId)
+    if (!hasAccess) return
 
     const { error } = await supabase
         .from('ai_suggestions')
@@ -125,8 +161,22 @@ export async function markSuggestionUsed(
     finalMessage: string,
     wasEdited: boolean
 ) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return
+
     const { createClient } = await import('@/modules/core/database/supabase-server')
     const supabase = await createClient()
+
+    const { data: suggestion } = await supabase
+        .from('ai_suggestions')
+        .select('id, conversation_id')
+        .eq('id', suggestionId)
+        .single()
+
+    if (!suggestion?.conversation_id) return
+
+    const hasAccess = await verifySuggestionConversationAccess(supabase, orgId, suggestion.conversation_id)
+    if (!hasAccess) return
 
     await supabase
         .from('ai_suggestions')
@@ -137,6 +187,7 @@ export async function markSuggestionUsed(
             used_at: new Date().toISOString()
         })
         .eq('id', suggestionId)
+        .eq('conversation_id', suggestion.conversation_id)
 }
 
 /**
