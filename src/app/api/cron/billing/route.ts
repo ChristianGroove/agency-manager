@@ -136,6 +136,7 @@ export async function GET(request: Request) {
                     .from('notifications')
                     .select('id, read')
                     .eq('type', 'payment_due')
+                    .eq('organization_id', invoice.organization_id)
                     .eq('action_url', `/invoices/${invoice.id}`)
                     .or(`read.eq.false,created_at.gte.${new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()}`) // Unread OR Recent
                     .limit(1)
