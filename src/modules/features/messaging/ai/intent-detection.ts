@@ -180,16 +180,26 @@ export async function applyIntentRouting(
         return
     }
 
+    const { data: conv } = await supabaseAdmin
+        .from('conversations')
+        .select('id, tags')
+        .eq('id', conversationId)
+        .eq('organization_id', organizationId)
+        .single()
+
+    if (!conv) {
+        logIntentInfo('[IntentRouting] Conversation not found for organization', {
+            conversationId,
+            organizationId,
+            intent,
+        })
+        return
+    }
+
     // Build update object
     const updates: any = {}
 
     if (rules.add_tags && rules.add_tags.length > 0) {
-        const { data: conv } = await supabaseAdmin
-            .from('conversations')
-            .select('tags')
-            .eq('id', conversationId)
-            .single()
-
         const existingTags = conv?.tags || []
         updates.tags = [...new Set([...existingTags, ...rules.add_tags])]
     }
@@ -204,6 +214,7 @@ export async function applyIntentRouting(
             .from('conversations')
             .update(updates)
             .eq('id', conversationId)
+            .eq('organization_id', organizationId)
 
         console.log(`[IntentRouting] Applied routing for ${intent}:`, updates)
     }
