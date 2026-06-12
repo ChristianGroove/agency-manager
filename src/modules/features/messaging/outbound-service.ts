@@ -3,6 +3,98 @@ import { integrationRegistry } from "@/modules/infrastructure/integrations/regis
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
 
+const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeOutboundLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'channelId',
+        'connectionId',
+        'conversationId',
+        'externalId',
+        'messageId',
+        'organizationId',
+        'phone',
+        'recipientPhone',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeOutboundError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logOutboundInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeOutboundLogDetails(details))
+}
+
+function logOutboundWarning(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, details)
+        return
+    }
+
+    console.warn(label, sanitizeOutboundLogDetails(details))
+}
+
+function logOutboundError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeOutboundLogDetails(details) : {}),
+        detail: summarizeOutboundError(error),
+    })
+}
+
+function publicOutboundError(error: unknown, fallback = PUBLIC_SYSTEM_MESSAGE_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
+
 export class OutboundService {
     async sendMessage(
         channelId: string,
@@ -33,7 +125,12 @@ export class OutboundService {
             throw new Error(`Provider ${channel.provider_key} does not support sending messages`)
         }
 
-        console.log(`[OutboundService] Sending via ${channel.provider_key} to ${recipientPhone}`)
+        logOutboundInfo('[OutboundService] Sending message', {
+            providerKey: channel.provider_key,
+            recipientPhone,
+            channelId,
+            organizationId,
+        })
 
         // 3. Resolve Metadata for Send
         const normalizedRecipient = normalizePhone(recipientPhone)
@@ -107,7 +204,11 @@ export class OutboundService {
                 organizationId,
             })
         } else {
-            console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
+            logOutboundWarning('[OutboundService] No conversation found; message sent but not logged.', {
+                recipientPhone,
+                messageId: result.messageId,
+                organizationId,
+            })
         }
 
         // 6. Return Result
@@ -123,20 +224,30 @@ export class OutboundService {
         content: any,
         channel: string = 'whatsapp',
         connectionId?: string,
-        sender: string = 'System'
-    ) {
+        sender: string = 'System',
+        expectedOrganizationId?: string
+    ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
         const supabase = supabaseAdmin;
         
         try {
             // 1. Get Conversation securely via Admin
-            const { data: conversation, error: convError } = await supabase
+            let conversationQuery = supabase
                 .from('conversations')
                 .select('*')
                 .eq('id', conversationId)
-                .single();
+
+            if (expectedOrganizationId) {
+                conversationQuery = conversationQuery.eq('organization_id', expectedOrganizationId)
+            }
+
+            const { data: conversation, error: convError } = await conversationQuery.single();
 
             if (convError || !conversation) {
-                console.error(`[OutboundService.sendSystemMessage] Conversation not found: ${conversationId}`);
+                logOutboundError(
+                    '[OutboundService.sendSystemMessage] Conversation not found:',
+                    convError || new Error('conversation_not_found'),
+                    { conversationId }
+                );
                 throw new Error("Conversation not found");
             }
 
@@ -145,7 +256,11 @@ export class OutboundService {
             const recipientPhone = conversation.phone || conversation.metadata?.phone || conversation.metadata?.external_id;
 
             if (!recipientPhone) {
-                console.error(`[OutboundService.sendSystemMessage] Missing recipient for conversation: ${conversationId}`);
+                logOutboundError(
+                    '[OutboundService.sendSystemMessage] Missing recipient:',
+                    new Error('recipient_missing'),
+                    { conversationId }
+                );
                 throw new Error("Recipient phone/id is missing in conversation");
             }
 
@@ -170,8 +285,8 @@ export class OutboundService {
                 error: null
             };
         } catch (error: any) {
-             console.error("[sendSystemMessage] Error:", error);
-             return { success: false, error: error.message };
+             logOutboundError("[sendSystemMessage] Error:", error, { conversationId, connectionId });
+             return { success: false, error: publicOutboundError(error) };
         }
     }
 }

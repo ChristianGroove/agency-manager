@@ -46,6 +46,10 @@ export class SendMessageNode {
             }
 
             const connectionId = this.contextManager.get('connection_id') as string | undefined;
+            const organizationId = (
+                this.contextManager.get('organization_id') ||
+                this.contextManager.get('organizationId')
+            ) as string | undefined;
 
             // 3. Construct Payload with WhatsApp Markdown for Header/Footer emulation
             let finalBody = body;
@@ -96,7 +100,9 @@ export class SendMessageNode {
                 conversationId,
                 payload,
                 channel,
-                connectionId
+                connectionId,
+                'System',
+                organizationId
             );
 
             if (!result.success) {

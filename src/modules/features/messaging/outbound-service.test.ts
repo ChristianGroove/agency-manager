@@ -182,6 +182,62 @@ describe('OutboundService', () => {
         expect(logText).toContain('hasMessage')
     })
 
+    it('scopes system conversation lookup to the workflow organization when provided', async () => {
+        const adapterSendMessage = vi.fn(async () => ({ messageId: 'wamid.current.system' }))
+        mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        const conversationQuery = conversationSingleQuery({
+            id: 'conversation-current',
+            channel: 'whatsapp',
+            connection_id: 'connection-current',
+            metadata: { phone: 'phone-current' },
+            organization_id: 'org-current',
+            phone: 'phone-current',
+        })
+        const connectionQuery = conversationSingleQuery({
+            id: 'connection-current',
+            credentials: { accessToken: 'token-current' },
+            metadata: {},
+            provider_key: 'whatsapp_cloud',
+        })
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') return conversationQuery
+            if (table === 'integration_connections') return connectionQuery
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { OutboundService } = await import('./outbound-service')
+        const result = await new OutboundService().sendSystemMessage(
+            'conversation-current',
+            'hola',
+            'whatsapp',
+            'connection-current',
+            'System',
+            'org-current'
+        )
+
+        expect(result).toEqual({
+            success: true,
+            externalId: 'wamid.current.system',
+            error: null,
+        })
+        expect(conversationQuery.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(conversationQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(connectionQuery.eq).toHaveBeenCalledWith('id', 'connection-current')
+        expect(connectionQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(adapterSendMessage).toHaveBeenCalledWith(
+            { accessToken: 'token-current' },
+            'phone-current',
+            'hola',
+            expect.objectContaining({ channel: 'whatsapp' })
+        )
+        expect(mocks.saveOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
+            conversationId: 'conversation-current',
+            externalId: 'wamid.current.system',
+            organizationId: 'org-current',
+        }))
+    })
+
     it('does not expose system adapter failures in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
