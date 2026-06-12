@@ -51,9 +51,9 @@ export class LeadsService {
                     await this.repo.update(lead.id, {
                         pipeline_stage_id: stage.id,
                         status: stage.status_key
-                    })
+                    }, this.organizationId)
                 } else {
-                    await this.repo.update(lead.id, { status: startState })
+                    await this.repo.update(lead.id, { status: startState }, this.organizationId)
                 }
             }
         } catch (procErr) {
