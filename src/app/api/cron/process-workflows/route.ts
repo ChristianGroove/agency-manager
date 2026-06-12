@@ -69,6 +69,10 @@ export async function GET(request: NextRequest) {
         }
 
         console.log(`[Cron] Processing ${jobs.length} pending jobs`);
+        const scopeScheduledJob = (query: any, job: any) =>
+            query.eq('id', job.id).eq('organization_id', job.organization_id);
+        const scopeWorkflowExecution = (query: any, job: any) =>
+            query.eq('id', job.execution_id).eq('organization_id', job.organization_id);
 
         // Process each job
         for (const job of jobs) {
@@ -80,6 +84,7 @@ export async function GET(request: NextRequest) {
                     .from('workflows')
                     .select('id, name, definition, is_active')
                     .eq('id', job.workflow_id)
+                    .eq('organization_id', job.organization_id)
                     .single();
 
                 if (workflowError || !workflow) {
@@ -88,14 +93,13 @@ export async function GET(request: NextRequest) {
 
                 if (!workflow.is_active) {
                     // Skip inactive workflows
-                    await supabase
+                    await scopeScheduledJob(supabase
                         .from('scheduled_workflow_jobs')
                         .update({
                             status: 'cancelled',
                             completed_at: new Date().toISOString(),
                             last_error: 'Workflow is inactive'
-                        })
-                        .eq('id', job.id);
+                        }), job);
 
                     console.log(`[Cron] Skipped inactive workflow for job ${job.id}`);
                     continue;
@@ -123,7 +127,7 @@ export async function GET(request: NextRequest) {
 
                 // Update execution record if exists
                 if (job.execution_id) {
-                    await supabase
+                    await scopeWorkflowExecution(supabase
                         .from('workflow_executions')
                         .update({
                             status: 'running',
@@ -131,18 +135,16 @@ export async function GET(request: NextRequest) {
                                 resumed_at: new Date().toISOString(),
                                 resumed_from: job.resume_from_node_id
                             }
-                        })
-                        .eq('id', job.execution_id);
+                        }), job);
                 }
 
                 // Mark job as completed
-                await supabase
+                await scopeScheduledJob(supabase
                     .from('scheduled_workflow_jobs')
                     .update({
                         status: 'completed',
                         completed_at: new Date().toISOString()
-                    })
-                    .eq('id', job.id);
+                    }), job);
 
                 results.completed++;
                 console.log(`[Cron] Completed job ${job.id}`);
@@ -158,26 +160,24 @@ export async function GET(request: NextRequest) {
                     const retryAt = new Date();
                     retryAt.setMinutes(retryAt.getMinutes() + 5); // Retry in 5 minutes
 
-                    await supabase
+                    await scopeScheduledJob(supabase
                         .from('scheduled_workflow_jobs')
                         .update({
                             status: 'pending',
                             scheduled_for: retryAt.toISOString(),
                             last_error: errorMessage
-                        })
-                        .eq('id', job.id);
+                        }), job);
 
                     console.log(`[Cron] Job ${job.id} scheduled for retry at ${retryAt.toISOString()}`);
                 } else {
                     // Max attempts reached, mark as failed
-                    await supabase
+                    await scopeScheduledJob(supabase
                         .from('scheduled_workflow_jobs')
                         .update({
                             status: 'failed',
                             completed_at: new Date().toISOString(),
                             last_error: errorMessage
-                        })
-                        .eq('id', job.id);
+                        }), job);
 
                     console.error(`[Cron] Job ${job.id} failed permanently: ${errorMessage}`);
                 }
