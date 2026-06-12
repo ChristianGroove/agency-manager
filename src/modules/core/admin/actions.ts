@@ -6,11 +6,31 @@ import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { EmailService } from "@/modules/features/notifications/email.service"
 
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+
 /**
  * =======================
  * ADMIN AUTH ACTIONS
  * =======================
  */
+
+async function requireMetaClientAccess(clientId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
+    const { data: client, error } = await supabaseAdmin
+        .from('clients')
+        .select('organization_id')
+        .eq('id', clientId)
+        .maybeSingle()
+    
+    if (error || !client || client.organization_id !== orgId) {
+        throw new Error("Unauthorized")
+    }
+
+    await requireOrgRole('admin')
+}
 
 async function logAdminAction(orgId: string | null, action: string, details: any = {}) {
     try {
