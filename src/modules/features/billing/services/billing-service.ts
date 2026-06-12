@@ -3,6 +3,8 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { Invoice, InvoiceItem } from "@/types"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
+const PUBLIC_BILLING_CREATE_INVOICE_ERROR = "Invoice creation failed: entity validation error"
+
 /**
  * Service Layer for Billing Module - Invoices
  * Contains pure business logic and DB interactions.

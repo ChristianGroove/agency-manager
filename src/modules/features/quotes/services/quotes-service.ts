@@ -3,6 +3,13 @@ import { Quote } from "@/types"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_QUOTE_LINK_ERROR = "Failed to link quote to lead"
+
+function quoteFailure(logMsg: string, error: unknown, publicMsg: string) {
+    console.error(logMsg, error)
+    return { success: false, error: publicMsg }
+}
+
 /**
  * Service Layer for Quotes Module
  * 
