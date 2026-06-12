@@ -193,7 +193,7 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
 
     // 2. PARALLEL CLEANUP: Media + Tags + Delete Transaction (Conceptually)
     // We start media cleanup as early as possible
-    const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId)
+    const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId, currentOrgId)
         .catch(e => logConversationActionError("[ConversationActions] Media cleanup error:", e, { conversationId }));
 
     // Clear tags using the IDs we ALREADY have (No new fetch needed)

@@ -5,14 +5,20 @@ export class MessagingCleanupService {
     /**
      * Identifies and deletes all physical media files associated with a conversation
      */
-    async deleteConversationMedia(conversationId: string) {
+    async deleteConversationMedia(conversationId: string, organizationId?: string) {
         const supabase = supabaseAdmin;
 
         // 1. Fetch all messages with media
-        const { data: messages, error } = await supabase
+        let query = supabase
             .from('messages')
             .select('content, metadata')
             .eq('conversation_id', conversationId);
+
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId);
+        }
+
+        const { data: messages, error } = await query;
 
         if (error || !messages) return;
 
@@ -69,7 +75,7 @@ export class MessagingCleanupService {
         if (!conversations || conversations.length === 0) return;
 
         for (const conv of conversations) {
-            await this.deleteConversationMedia(conv.id);
+            await this.deleteConversationMedia(conv.id, organizationId);
         }
     }
 }

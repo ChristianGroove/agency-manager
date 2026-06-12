@@ -64,6 +64,18 @@ function updateEqQuery(result: unknown) {
     }
 }
 
+function deleteEqQuery(result: unknown) {
+    const query: any = {
+        eq: vi.fn(() => query),
+        then: (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject),
+    }
+
+    return {
+        delete: vi.fn(() => query),
+        query,
+    }
+}
+
 function limitedQuery(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
@@ -101,6 +113,38 @@ describe('conversation actions logging', () => {
         expect(result).toEqual({ success: false, error: 'Unauthorized' })
         expect(from).not.toHaveBeenCalled()
         expect(mocks.deleteConversationMedia).not.toHaveBeenCalled()
+    })
+
+    it('passes the active organization to conversation media cleanup before deleting', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        mocks.deleteConversationMedia.mockResolvedValue(undefined)
+        const conversationLookup = singleQuery({
+            data: { lead_id: null, organization_id: 'org-current' },
+            error: null,
+        })
+        const deletion = deleteEqQuery({ error: null, count: 1 })
+        const from = vi.fn()
+            .mockReturnValueOnce(conversationLookup)
+            .mockReturnValueOnce(deletion)
+        const channel = { send: vi.fn(async () => undefined) }
+        const supabase = {
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+            channel: vi.fn(() => channel),
+            removeChannel: vi.fn(async () => undefined),
+        }
+        mocks.createClient.mockResolvedValue(supabase)
+
+        const { deleteConversation } = await import('./conversation-actions')
+        const result = await deleteConversation('conversation-current')
+
+        expect(result).toEqual({ success: true })
+        expect(mocks.deleteConversationMedia).toHaveBeenCalledWith('conversation-current', 'org-current')
+        expect(deletion.delete).toHaveBeenCalledWith({ count: 'exact' })
+        expect(deletion.query.eq).toHaveBeenCalledWith('id', 'conversation-current')
+        expect(deletion.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 
     it('does not expose archive database errors in production responses or logs', async () => {

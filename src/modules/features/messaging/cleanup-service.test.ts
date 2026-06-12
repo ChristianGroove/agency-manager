@@ -32,9 +32,11 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 
 function messageQuery(result: unknown) {
     const query: any = {
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
         select: vi.fn(() => query),
     }
+    query.then = (resolve: (value: unknown) => unknown, reject: (reason?: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject)
 
     return query
 }
@@ -98,8 +100,11 @@ describe('messaging cleanup service logging', () => {
         })
 
         const { MessagingCleanupService } = await import('./cleanup-service')
-        await new MessagingCleanupService().deleteConversationMedia('conversation-secret-id')
+        await new MessagingCleanupService().deleteConversationMedia('conversation-secret-id', 'org-secret')
 
+        const messageLookup = mocks.from.mock.results[0].value
+        expect(messageLookup.eq).toHaveBeenCalledWith('conversation_id', 'conversation-secret-id')
+        expect(messageLookup.eq).toHaveBeenCalledWith('organization_id', 'org-secret')
         expect(mocks.remove).toHaveBeenCalledWith([
             'org-secret/conversation-secret-id/file-secret.png',
             'org-secret/from-metadata-secret.mp3',
