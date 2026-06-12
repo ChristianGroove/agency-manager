@@ -57,7 +57,7 @@ function billingCronResultsForResponse(results: BillingCronResults) {
         remindersSent: results.remindersSent,
         invoicesGenerated: results.invoicesGenerated,
         overdueAlerts: results.overdueAlerts,
-        errors: results.errors
+        errors: results.errors.map(() => PUBLIC_BILLING_CRON_ERROR)
     };
 }
 
@@ -75,8 +75,8 @@ export async function GET(request: Request) {
         };
 
         const log = (msg: string) => {
-            console.log(msg);
             if (!isProductionRuntime()) {
+                console.log(msg);
                 results.logs.push(msg);
             }
         };
@@ -156,7 +156,10 @@ export async function GET(request: Request) {
                         log(`[BillingCron] Date not reached yet for Sub ${sub.id}`);
                     }
                 } catch (err: any) {
-                    logBillingCronError(`Error processing subscription ${sub.id}:`, err);
+                    logBillingCronError(
+                        isProductionRuntime() ? 'Error processing subscription:' : `Error processing subscription ${sub.id}:`,
+                        err
+                    );
                     results.errors.push(`Sub ${sub.id}: ${billingCronErrorMessage(err)}`);
                 }
             }
@@ -327,7 +330,11 @@ async function generateInvoiceSystem(subscription: any, client: any) {
 
         // SELF-HEALING: If service is deleted, cancel subscription and do not invoice
         if (service && service.deleted_at) {
-            console.log(`[BillingCron] Service ${service.id} is deleted. Cancelling subscription ${subscription.id} and skipping invoice.`);
+            console.log(
+                isProductionRuntime()
+                    ? '[BillingCron] Deleted service subscription cancellation'
+                    : `[BillingCron] Service ${service.id} is deleted. Cancelling subscription ${subscription.id} and skipping invoice.`
+            );
 
             await supabaseAdmin
                 .from('subscriptions')

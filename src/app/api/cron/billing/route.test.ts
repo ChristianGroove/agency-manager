@@ -181,17 +181,19 @@ describe('/api/cron/billing', () => {
         expect(response.status).toBe(200)
         expect(body.success).toBe(true)
         expect(body.results.errors).toEqual([
-            'Sub sub-1: Billing cron failed',
+            'Billing cron failed',
         ])
         expect(responseText).not.toContain('secret-value')
         expect(responseText).not.toContain('service role')
         expect(responseText).not.toContain('Client Secret')
         expect(responseText).not.toContain('Sensitive Subscription')
+        expect(responseText).not.toContain('sub-1')
         expect(body.results.logs).toBeUndefined()
 
         const errorLogText = collectConsoleCalls(errorSpy)
         expect(errorLogText).not.toContain('secret-value')
         expect(errorLogText).not.toContain('service role')
         expect(errorLogText).not.toContain('Client Secret')
+        expect(errorLogText).not.toContain('sub-1')
     })
 })
