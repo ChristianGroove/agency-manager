@@ -5,6 +5,78 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { revalidatePath } from "next/cache"
 import { messagingCleanupService } from "./cleanup-service"
 
+const PUBLIC_CONVERSATION_ACTION_ERROR = "Conversation action failed"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeConversationActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'conversationId',
+        'leadId',
+        'organizationId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeConversationActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logConversationActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeConversationActionLogDetails(details),
+        detail: summarizeConversationActionError(error),
+    })
+}
+
+function publicConversationActionError(error: unknown, fallback = PUBLIC_CONVERSATION_ACTION_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    return fallback
+}
+
 /**
  * Returns the active integration_connection IDs for the current org.
  * Used by GlobalMessageListener to filter cross-tenant message popups.
@@ -49,13 +121,16 @@ export async function archiveConversation(conversationId: string) {
         .eq('id', conversationId)
 
     if (updateError) {
-        console.error('[ConversationActions] Failed to resolve:', updateError)
-        return { success: false, error: updateError.message }
+        logConversationActionError('[ConversationActions] Failed to archive:', updateError, { conversationId })
+        return { success: false, error: publicConversationActionError(updateError) }
     }
 
     // BROADCAST: Notify other agents so the card vanishes in their inboxes too
     if (orgId) {
-        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
+        broadcastVanish(orgId, conversationId).catch(e => logConversationActionError("[ConversationActions] Broadcast error:", e, {
+            conversationId,
+            organizationId: orgId,
+        }))
     }
 
     revalidatePath('/inbox')
@@ -102,7 +177,7 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
     // 2. PARALLEL CLEANUP: Media + Tags + Delete Transaction (Conceptually)
     // We start media cleanup as early as possible
     const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId)
-        .catch(e => console.error("[ConversationActions] Media cleanup error:", e));
+        .catch(e => logConversationActionError("[ConversationActions] Media cleanup error:", e, { conversationId }));
 
     // Clear tags using the IDs we ALREADY have (No new fetch needed)
     const tagCleanupPromise = (conv.lead_id && conv.organization_id)
@@ -121,14 +196,21 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         .eq('id', conversationId)
 
     if (error) {
-        console.error('[ConversationActions] Failed to delete:', error)
-        return { success: false, error: error.message }
+        logConversationActionError('[ConversationActions] Failed to delete:', error, {
+            conversationId,
+            leadId: conv.lead_id,
+            organizationId: orgId,
+        })
+        return { success: false, error: publicConversationActionError(error) }
     }
 
     // 4. MULTI-AGENT BROADCAST (Critical for real-time consistency)
     // Emit immedately after DB delete to ensure all clients vanish the item
     if (orgId) {
-        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
+        broadcastVanish(orgId, conversationId).catch(e => logConversationActionError("[ConversationActions] Broadcast error:", e, {
+            conversationId,
+            organizationId: orgId,
+        }))
     }
 
     // 5. Optional Orphaned Lead Cleanup
@@ -169,8 +251,8 @@ export async function markAsRead(conversationId: string) {
         .eq('id', conversationId)
 
     if (error) {
-        console.error('[ConversationActions] Failed to mark as read:', error)
-        return { success: false, error: error.message }
+        logConversationActionError('[ConversationActions] Failed to mark as read:', error, { conversationId })
+        return { success: false, error: publicConversationActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -192,8 +274,8 @@ export async function unarchiveConversation(conversationId: string) {
         .eq('id', conversationId)
 
     if (error) {
-        console.error('[ConversationActions] Failed to unarchive:', error)
-        return { success: false, error: error.message }
+        logConversationActionError('[ConversationActions] Failed to unarchive:', error, { conversationId })
+        return { success: false, error: publicConversationActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -216,8 +298,8 @@ export async function snoozeConversation(conversationId: string, until: Date) {
         .eq('id', conversationId)
 
     if (error) {
-        console.error('[ConversationActions] Failed to snooze:', error)
-        return { success: false, error: error.message }
+        logConversationActionError('[ConversationActions] Failed to snooze:', error, { conversationId })
+        return { success: false, error: publicConversationActionError(error) }
     }
 
     // BROADCAST: Notify other agents
@@ -258,8 +340,11 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
         .limit(limit)
 
     if (msgError) {
-        console.error('[GetLeadPreview] Failed to fetch messages:', msgError)
-        return { success: false, error: msgError.message }
+        logConversationActionError('[GetLeadPreview] Failed to fetch messages:', msgError, {
+            conversationId: conversation.id,
+            leadId,
+        })
+        return { success: false, error: publicConversationActionError(msgError) }
     }
 
     // Return reversed so they appear chronologically if needed
@@ -304,8 +389,12 @@ export async function completeConversation(conversationId: string) {
     const [updateResult, tagResult] = await Promise.all([updatePromise, tagCleanupPromise]);
 
     if (updateResult.error) {
-        console.error('[ConversationActions] Failed to resolve:', updateResult.error)
-        return { success: false, error: updateResult.error.message }
+        logConversationActionError('[ConversationActions] Failed to resolve:', updateResult.error, {
+            conversationId,
+            leadId: conv.lead_id,
+            organizationId: conv.organization_id,
+        })
+        return { success: false, error: publicConversationActionError(updateResult.error) }
     }
 
     // BROADCAST: Notify other agents

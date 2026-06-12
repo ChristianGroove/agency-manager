@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
+import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 
 /**
  * Core Data Fetcher for the Portal
@@ -71,15 +73,16 @@ export async function getPortalData(token: string) {
                 { data: appPortalConfig },
                 { data: catalogItems }
             ] = await Promise.all([
-                supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
+                supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
                 isB2B ? supabaseAdmin.from('quotes').select('*')
+                    .eq('organization_id', client.organization_id)
                     .or(`client_id.eq.${client.id},lead_id.eq.${client.id}`)
                     .is('deleted_at', null)
                     .order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 isB2B ? supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 isB2B ? supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
                 supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
                 isB2C ? supabaseAdmin.from('service_catalog').select('*').eq('organization_id', client.organization_id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
@@ -132,7 +135,8 @@ export async function getPortalData(token: string) {
                 return true
             })
 
-            const showInsights = isB2B && resolveModuleVisibility('insights', () => {
+            const resolvedInsightsAccess = resolvePortalInsightsAccess((services || []) as Service[], client.portal_insights_settings)
+            const showInsights = resolvedInsightsAccess.show && isB2B && resolveModuleVisibility('insights', () => {
                 const activeServices = services || []
                 const organicKeywords = ['social media', 'community', 'redes', 'content', 'orgánico', 'organico']
                 const adsKeywords = ['ads', 'pauta', 'trafficker', 'publicidad', 'meta', 'google', 'campaign']
@@ -182,12 +186,11 @@ export async function getPortalData(token: string) {
                 services: filteredServices as Service[],
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
-                paymentMethods: (paymentMethods || []),
+                paymentMethods: sanitizePaymentMethodsForClient(paymentMethods || []),
                 catalog: catalogItems || [],
-                insightsAccess: {
-                    show: !!showInsights,
-                    mode: { organic: true, ads: true }
-                }
+                insightsAccess: showInsights
+                    ? resolvedInsightsAccess
+                    : { show: false, mode: { organic: false, ads: false } }
             }
         }
 
@@ -372,7 +375,7 @@ export async function getPortalMetadata(token: string) {
  */
 export async function getPortalBriefing(token: string, briefingId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = supabaseAdmin.from('leads').select('id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
     const { data: client, error: clientError } = await query.single()
@@ -383,6 +386,7 @@ export async function getPortalBriefing(token: string, briefingId: string) {
         .select('*, template:briefing_templates(id, name, description, structure), client:leads(name, email)')
         .eq('id', briefingId)
         .eq('client_id', client.id)
+        .eq('organization_id', client.organization_id)
         .single()
 
     if (error) throw error
@@ -391,13 +395,23 @@ export async function getPortalBriefing(token: string, briefingId: string) {
 
 export async function getPortalBriefingResponses(token: string, briefingId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = supabaseAdmin.from('leads').select('id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
     const { data: client, error: clientError } = await query.single()
     if (clientError || !client) throw new Error('Unauthorized')
 
-    const { data, error } = await supabaseAdmin.from('briefing_responses').select('*').eq('briefing_id', briefingId)
+    const { data: briefing, error: briefingError } = await supabaseAdmin
+        .from('briefings')
+        .select('id')
+        .eq('id', briefingId)
+        .eq('client_id', client.id)
+        .eq('organization_id', client.organization_id)
+        .single()
+
+    if (briefingError || !briefing) throw new Error('Unauthorized')
+
+    const { data, error } = await supabaseAdmin.from('briefing_responses').select('*').eq('briefing_id', briefing.id)
     if (error) throw error
     return data || []
 }
@@ -448,6 +462,7 @@ export async function getPortalQuote(token: string, quoteId: string) {
         .from('quotes')
         .select('*, client:leads!client_id (*), lead:leads!lead_id (*), emitter:emitters (*)')
         .eq('id', quoteId)
+        .eq('organization_id', client.organization_id)
         .or(`client_id.eq.${client.id},lead_id.eq.${client.id}`)
         .single()
 
@@ -475,6 +490,7 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
         .select('*, client:leads (*), emitter:emitters (*)')
         .eq('id', invoiceId)
         .eq('client_id', client.id)
+        .eq('organization_id', client.organization_id)
         .is('deleted_at', null)
         .single()
 

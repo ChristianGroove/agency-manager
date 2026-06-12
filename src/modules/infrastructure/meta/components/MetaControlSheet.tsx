@@ -35,6 +35,7 @@ export default function MetaControlSheet({
 }) {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('calling'); // Default to calling (P0)
+    const reviewerTabEnabled = process.env.NEXT_PUBLIC_REVIEWER_MODE === 'true';
 
     return (
         <>
@@ -67,7 +68,7 @@ export default function MetaControlSheet({
                     {/* Tab Navigation */}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0">
                         <div className="sticky top-[73px] z-10 bg-background border-b px-6 py-2">
-                            <TabsList className="grid grid-cols-7 w-full h-auto">
+                            <TabsList className={`grid ${reviewerTabEnabled ? 'grid-cols-7' : 'grid-cols-6'} w-full h-auto`}>
                                 <TabsTrigger
                                     value="infrastructure"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -103,13 +104,15 @@ export default function MetaControlSheet({
                                     <TrendingUp className="w-4 h-4" />
                                     <span className="text-xs">{t("meta.tabs.marketing")}</span>
                                 </TabsTrigger>
-                                <TabsTrigger
-                                    value="review"
-                                    className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                                >
-                                    <CheckCircle className="w-4 h-4" />
-                                    <span className="text-xs">{t("meta.tabs.review")}</span>
-                                </TabsTrigger>
+                                {reviewerTabEnabled && (
+                                    <TabsTrigger
+                                        value="review"
+                                        className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                                    >
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="text-xs">{t("meta.tabs.review")}</span>
+                                    </TabsTrigger>
+                                )}
                                 <TabsTrigger
                                     value="config"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -142,9 +145,11 @@ export default function MetaControlSheet({
                                 <MarketingTab />
                             </TabsContent>
 
-                            <TabsContent value="review" className="mt-0">
-                                <AppReviewTab />
-                            </TabsContent>
+                            {reviewerTabEnabled && (
+                                <TabsContent value="review" className="mt-0">
+                                    <AppReviewTab />
+                                </TabsContent>
+                            )}
 
                             <TabsContent value="config" className="mt-0">
                                 <MasterConfigTab />

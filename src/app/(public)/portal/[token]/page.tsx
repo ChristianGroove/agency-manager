@@ -14,6 +14,7 @@ import { PaymentOptionsModal } from "@/modules/features/portal/components/modals
 import { InvoiceDetailModal } from "@/modules/features/portal/components/modals/invoice-detail-modal"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { AttendanceStaffPortal } from "@/modules/features/attendance/components/staff-portal-view"
+import { isPortalInvoicePayable } from "@/modules/features/portal/utils/invoice-payability"
 
 // ... existing imports
 
@@ -158,8 +159,8 @@ export default function PortalPage() {
 
         // Check min payment amount
         const totalAmount = invoices
-            .filter(i => invoiceIds.includes(i.id))
-            .reduce((acc, curr) => acc + curr.total, 0)
+            .filter(i => invoiceIds.includes(i.id) && isPortalInvoicePayable(i))
+            .reduce((acc, curr) => acc + Number(curr.total), 0)
 
         if (settings.min_payment_amount && totalAmount < settings.min_payment_amount) {
             alert(`El monto mínimo para pagos en línea es de $${parseInt(settings.min_payment_amount).toLocaleString()}`)
@@ -265,8 +266,8 @@ export default function PortalPage() {
 
     // Determine Payment Amount
     const paymentAmount = invoices
-        .filter(i => paymentInvoiceIds.includes(i.id))
-        .reduce((acc, curr) => acc + curr.total, 0)
+        .filter(i => paymentInvoiceIds.includes(i.id) && isPortalInvoicePayable(i))
+        .reduce((acc, curr) => acc + Number(curr.total), 0)
 
     // Determinar la plantilla pública
     // Por el momento tomamos el template directamente de settings si lo exponen allí 

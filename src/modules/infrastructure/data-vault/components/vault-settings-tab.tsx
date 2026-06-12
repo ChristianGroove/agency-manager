@@ -41,8 +41,13 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
         setConfig(newConfig) // Optimistic
 
         startConfiguring(async () => {
-            await updateVaultConfig(newConfig)
-            toast.success("Configuración de backup actualizada")
+            const result = await updateVaultConfig(newConfig)
+            if (result.success) {
+                toast.success("Configuración de backup actualizada")
+            } else {
+                setConfig(config)
+                toast.error(result.error)
+            }
         })
     }
 
@@ -82,8 +87,10 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
         restoreSnapshot(id).then(res => {
             if (res.success) {
                 toast.success(res.message)
+            } else {
+                toast.error(res.error)
             }
-        }).catch(err => toast.error(err.message))
+        }).catch(() => toast.error("No se pudo validar el backup"))
     }
 
     return (

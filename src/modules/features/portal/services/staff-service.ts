@@ -9,7 +9,7 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
     try {
         const { data: staff, error: staffError } = await supabaseAdmin
             .from('cleaning_staff_profiles')
-            .select('*')
+            .select('id, organization_id')
             .eq('access_token', token)
             .is('deleted_at', null)
             .single()
@@ -18,9 +18,10 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
 
         const { data: job, error: jobError } = await supabaseAdmin
             .from('appointments')
-            .select('id, start_time')
+            .select('id, start_time, organization_id')
             .eq('id', jobId)
             .eq('staff_id', staff.id)
+            .eq('organization_id', staff.organization_id)
             .single()
 
         if (jobError || !job) throw new Error('Job not found or not assigned to you')
@@ -32,6 +33,8 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
                 gps_coordinates: location ? location : undefined
             })
             .eq('id', jobId)
+            .eq('staff_id', staff.id)
+            .eq('organization_id', staff.organization_id)
 
         if (updateError) throw updateError
         return { success: true }
@@ -45,7 +48,7 @@ export async function completeJob(token: string, jobId: string) {
     try {
         const { data: staff, error: staffError } = await supabaseAdmin
             .from('cleaning_staff_profiles')
-            .select('*')
+            .select('id, organization_id')
             .eq('access_token', token)
             .is('deleted_at', null)
             .single()
@@ -54,9 +57,10 @@ export async function completeJob(token: string, jobId: string) {
 
         const { data: job, error: jobError } = await supabaseAdmin
             .from('appointments')
-            .select('id')
+            .select('id, organization_id')
             .eq('id', jobId)
             .eq('staff_id', staff.id)
+            .eq('organization_id', staff.organization_id)
             .single()
 
         if (jobError || !job) throw new Error('Job not found or not assigned to you')
@@ -65,6 +69,8 @@ export async function completeJob(token: string, jobId: string) {
             .from('appointments')
             .update({ status: 'completed' })
             .eq('id', jobId)
+            .eq('staff_id', staff.id)
+            .eq('organization_id', staff.organization_id)
 
         if (updateError) throw updateError
         return { success: true }

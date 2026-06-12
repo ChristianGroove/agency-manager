@@ -116,7 +116,6 @@ export function IntegrationSetupSheet({
                     assetId: asset.id,
                     assetType: asset.type,
                     assetName: asset.name,
-                    accessToken: existingConnection.credentials?.access_token,
                     wabaId: asset.waba_id,
                     pageId: asset.page_id
                 })

@@ -5,13 +5,24 @@ import { verifyAuthenticationResponse } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logPasskeyRouteError, normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
+
+function passkeySessionResponse(sessionData: unknown) {
+    const actionLink = (sessionData as any)?.properties?.action_link
+    return typeof actionLink === 'string' && actionLink
+        ? { properties: { action_link: actionLink } }
+        : null
+}
 
 export async function POST(request: NextRequest) {
+    const rateLimited = requirePasskeyPublicRateLimit(request)
+    if (rateLimited) return rateLimited
+
     try {
         const supabase = await createClient()
         const body = await request.json()
         const credential: AuthenticationResponseJSON = body.credential
-        const email: string = body.email
+        const email = normalizePasskeyEmail(body.email)
 
         if (!email || !credential) {
             return NextResponse.json(
@@ -92,12 +103,16 @@ export async function POST(request: NextRequest) {
                 last_used_at: new Date().toISOString(),
             })
             .eq('id', passkey.id)
+            .eq('user_id', passkey.user_id)
 
         // Delete used challenge
         await supabase
             .from('passkey_challenges')
             .delete()
             .eq('id', challengeData.id)
+            .eq('user_id', challengeData.user_id)
+            .eq('email', email)
+            .eq('type', 'authentication')
 
         // Get user data to create session
         const { data: userData } = await supabase.auth.admin.listUsers()
@@ -125,16 +140,24 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        const session = passkeySessionResponse(sessionData)
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Failed to create session' },
+                { status: 500 }
+            )
+        }
+
         return NextResponse.json({
             verified: true,
-            session: sessionData,
+            session,
             user: {
                 id: user.id,
                 email: user.email,
             },
         })
     } catch (error) {
-        console.error('Authentication verification error:', error)
+        logPasskeyRouteError('Authentication verification error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

@@ -111,7 +111,7 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
         }
     }
 
-    const isMetaConnected = !!metaConfig?.access_token
+    const isMetaConnected = !!metaConfig?.has_access_token
 
     // Determine effective visibility for Preview
     const isEffectiveEnabled = controlMode === 'automatic'
@@ -174,7 +174,13 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-1.5 col-span-2">
                                                                 <Label className="text-xs font-medium text-gray-500">System User Token</Label>
-                                                                <Input name="access_token" type="password" defaultValue={metaConfig?.access_token} className="bg-gray-50/50 font-mono text-xs h-9 border-gray-200" placeholder="EAA..." />
+                                                                <Input
+                                                                    name="access_token"
+                                                                    type="password"
+                                                                    defaultValue=""
+                                                                    className="bg-gray-50/50 font-mono text-xs h-9 border-gray-200"
+                                                                    placeholder={metaConfig?.has_access_token ? "Token configurado; deja vacio para conservarlo" : "EAA..."}
+                                                                />
                                                             </div>
                                                             <div className="space-y-1.5">
                                                                 <Label className="text-xs font-medium text-gray-500">Ad Account ID</Label>

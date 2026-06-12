@@ -196,7 +196,7 @@ export class WaitInputNode {
             }
 
             // Mark as completed
-            await supabaseAdmin
+            let updatePendingInputQuery = supabaseAdmin
                 .from('workflow_pending_inputs')
                 .update({
                     status: 'completed',
@@ -204,6 +204,12 @@ export class WaitInputNode {
                     completed_at: new Date().toISOString()
                 })
                 .eq('id', pendingInput.id)
+
+            if (pendingInput.organization_id) {
+                updatePendingInputQuery = updatePendingInputQuery.eq('organization_id', pendingInput.organization_id)
+            }
+
+            await updatePendingInputQuery
 
             return {
                 success: true,
@@ -225,13 +231,19 @@ export class WaitInputNode {
     async handleTimeout(pendingInput: any): Promise<WaitInputResult> {
         const config = pendingInput.config as WaitInputNodeData
 
-        await supabaseAdmin
+        let timeoutUpdateQuery = supabaseAdmin
             .from('workflow_pending_inputs')
             .update({
                 status: 'timeout',
                 completed_at: new Date().toISOString()
             })
             .eq('id', pendingInput.id)
+
+        if (pendingInput.organization_id) {
+            timeoutUpdateQuery = timeoutUpdateQuery.eq('organization_id', pendingInput.organization_id)
+        }
+
+        await timeoutUpdateQuery
 
         switch (config.timeoutAction) {
             case 'continue':

@@ -63,6 +63,62 @@ const INTENT_DEFINITIONS = {
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_INTENT_ERROR = 'Intent detection failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logIntentError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiError(error))
+}
+
+function logIntentInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    const updates = details.updates && typeof details.updates === 'object'
+        ? Object.keys(details.updates as Record<string, unknown>).sort()
+        : []
+
+    console.log(label, {
+        conversationIdPresent: Boolean(details.conversationId),
+        organizationIdPresent: Boolean(details.organizationId),
+        intentPresent: Boolean(details.intent),
+        updateKeys: updates,
+    })
+}
+
 /**
  * Detect customer intent using Central Engine
  */
@@ -95,8 +151,8 @@ export async function detectIntent(messageContent: string): Promise<{
         return { success: true, result }
 
     } catch (error: any) {
-        console.error('[IntentDetection] Failed:', error)
-        return { success: false, error: error.message }
+        logIntentError('[IntentDetection] Failed:', error)
+        return { success: false, error: publicAiError(PUBLIC_INTENT_ERROR, error) }
     }
 }
 
@@ -150,7 +206,7 @@ export async function saveIntent(
         })
 
     if (error) {
-        console.error('[IntentDetection] Failed to save:', error)
+        logIntentError('[IntentDetection] Failed to save:', error)
     }
 }
 
@@ -176,7 +232,26 @@ export async function applyIntentRouting(
         .single()
 
     if (!rules) {
-        console.log(`[IntentRouting] No rule found for intent: ${intent}`)
+        logIntentInfo('[IntentRouting] No rule found', {
+            organizationId,
+            intent,
+        })
+        return
+    }
+
+    const { data: conv } = await supabaseAdmin
+        .from('conversations')
+        .select('id, tags')
+        .eq('id', conversationId)
+        .eq('organization_id', organizationId)
+        .single()
+
+    if (!conv) {
+        console.info('[IntentRouting] Conversation not found for organization', {
+            conversationId,
+            organizationId,
+            intent,
+        })
         return
     }
 
@@ -184,12 +259,6 @@ export async function applyIntentRouting(
     const updates: any = {}
 
     if (rules.add_tags && rules.add_tags.length > 0) {
-        const { data: conv } = await supabaseAdmin
-            .from('conversations')
-            .select('tags')
-            .eq('id', conversationId)
-            .single()
-
         const existingTags = conv?.tags || []
         updates.tags = [...new Set([...existingTags, ...rules.add_tags])]
     }
@@ -204,8 +273,14 @@ export async function applyIntentRouting(
             .from('conversations')
             .update(updates)
             .eq('id', conversationId)
+            .eq('organization_id', organizationId)
 
-        console.log(`[IntentRouting] Applied routing for ${intent}:`, updates)
+        logIntentInfo('[IntentRouting] Applied routing', {
+            conversationId,
+            organizationId,
+            intent,
+            updates,
+        })
     }
 
     // Mark as auto-routed

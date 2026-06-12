@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
 import { MetaConnector } from '@/modules/infrastructure/meta/services/connector';
+import { isProductionRuntime, requirePlatformAdminOrInternalSecret } from '@/app/api/_guards/request-guards';
 
 const ACCESS_TOKEN = process.env.META_PERMANENT_ACCESS_TOKEN || '';
 const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';
 
-export async function GET() {
+function logMetaFlowsError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+export async function GET(request: Request) {
+    const unauthorized = await requirePlatformAdminOrInternalSecret(request);
+    if (unauthorized) return unauthorized;
+
     if (!ACCESS_TOKEN || !WABA_ID) {
         return NextResponse.json(
             { error: 'Missing Meta Configuration (Token or WABA ID)' },
@@ -21,15 +36,18 @@ export async function GET() {
         });
 
     } catch (error: any) {
-        console.error('[API] Get Flows Error:', error);
+        logMetaFlowsError('[API] Get Flows Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to fetch flows' },
+            { error: 'Failed to fetch flows' },
             { status: 500 }
         );
     }
 }
 
 export async function POST(request: Request) {
+    const unauthorized = await requirePlatformAdminOrInternalSecret(request);
+    if (unauthorized) return unauthorized;
+
     if (!ACCESS_TOKEN) {
         return NextResponse.json(
             { error: 'Missing Meta Access Token' },
@@ -55,9 +73,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
     } catch (error: any) {
-        console.error('[API] Publish Flow Error:', error);
+        logMetaFlowsError('[API] Publish Flow Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to publish flow' },
+            { error: 'Failed to publish flow' },
             { status: 500 }
         );
     }

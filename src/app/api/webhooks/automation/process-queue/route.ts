@@ -1,12 +1,46 @@
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { NextResponse } from "next/server"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
+import { isProductionRuntime, requireCronSecret } from "@/app/api/_guards/request-guards"
 
 // Force dynamic to ensure we always check the DB for latest items
 export const dynamic = 'force-dynamic'
 
+const PUBLIC_QUEUE_ERROR = 'Automation queue processing failed'
+const PUBLIC_QUEUE_FETCH_ERROR = 'Failed to fetch automation queue'
+
+function logQueueError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function queueErrorMessage(error: unknown, fallback = PUBLIC_QUEUE_ERROR) {
+    if (isProductionRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return fallback
+}
+
 export async function POST(req: Request) {
-    const supabase = await createClient()
+    const unauthorized = requireCronSecret(req)
+    if (unauthorized) return unauthorized
+
+    const supabase = supabaseAdmin
 
     try {
         // 1. Fetch pending items from queue that are due
@@ -17,15 +51,13 @@ export async function POST(req: Request) {
                 id,
                 step_id,
                 execution_id,
-                workflow_executions (
+                workflow_executions:execution_id (
                     id,
                     context,
-                    workflow_id
-                ),
-                workflow_executions:execution_id (
-                     workflows (
+                    workflow_id,
+                    workflows (
                         definition
-                     )
+                    )
                 )
             `)
             .eq('status', 'pending')
@@ -33,8 +65,8 @@ export async function POST(req: Request) {
             .limit(10) // Process in batches
 
         if (error) {
-            console.error("Error fetching queue items:", error)
-            return NextResponse.json({ error: error.message }, { status: 500 })
+            logQueueError("Error fetching queue items:", error)
+            return NextResponse.json({ error: queueErrorMessage(error, PUBLIC_QUEUE_FETCH_ERROR) }, { status: 500 })
         }
 
         if (!items || items.length === 0) {
@@ -101,10 +133,11 @@ export async function POST(req: Request) {
                     // Execution status remains 'waiting' (set by engine/action)
                     results.push({ id: item.id, status: 'suspended_again' })
                 } else {
-                    console.error(`[Queue] Error processing item ${item.id}:`, err)
-                    await supabase.from('automation_queue').update({ status: 'failed', error_message: err.message }).eq('id', item.id)
-                    await supabase.from('workflow_executions').update({ status: 'failed', error_message: err.message }).eq('id', execution.id)
-                    results.push({ id: item.id, status: 'failed', reason: err.message })
+                    logQueueError(`[Queue] Error processing item ${item.id}:`, err)
+                    const safeError = queueErrorMessage(err)
+                    await supabase.from('automation_queue').update({ status: 'failed', error_message: safeError }).eq('id', item.id)
+                    await supabase.from('workflow_executions').update({ status: 'failed', error_message: safeError }).eq('id', execution.id)
+                    results.push({ id: item.id, status: 'failed', reason: safeError })
                 }
             }
         }
@@ -112,7 +145,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ processed: items.length, results })
 
     } catch (e: any) {
-        console.error("Critical Queue Error:", e)
-        return NextResponse.json({ error: e.message }, { status: 500 })
+        logQueueError("Critical Queue Error:", e)
+        return NextResponse.json({ error: queueErrorMessage(e) }, { status: 500 })
     }
 }

@@ -1,5 +1,19 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
+const PUBLIC_EVOLUTION_VERIFICATION_ERROR = "Evolution credentials could not be verified"
+const PUBLIC_EVOLUTION_STATUS_ERROR = "Evolution status check failed"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function publicEvolutionError(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) return fallback
+    if (error instanceof Error && error.message) return error.message
+    if (typeof error === 'string' && error) return error
+    return fallback
+}
+
 export class EvolutionAdapter implements IntegrationAdapter {
     key = "evolution_api"
 
@@ -31,10 +45,16 @@ export class EvolutionAdapter implements IntegrationAdapter {
                     }
                 }
             } else {
-                return { isValid: false, error: `Evolution Verification Failed: ${response.status} ${response.statusText}` }
+                return {
+                    isValid: false,
+                    error: publicEvolutionError(
+                        `Evolution Verification Failed: ${response.status} ${response.statusText}`,
+                        PUBLIC_EVOLUTION_VERIFICATION_ERROR
+                    )
+                }
             }
-        } catch (err: any) {
-            return { isValid: false, error: `Network error connecting to Evolution: ${err.message}` }
+        } catch (err: unknown) {
+            return { isValid: false, error: publicEvolutionError(err, PUBLIC_EVOLUTION_VERIFICATION_ERROR) }
         }
     }
 
@@ -72,28 +92,35 @@ export class EvolutionAdapter implements IntegrationAdapter {
         if (!baseUrl || !apiKey || !instanceName) return { status: 'error', message: 'Missing credentials' }
 
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
-        return await globalCircuitBreaker.execute('evolution_status', async () => {
-            try {
-                const url = `${baseUrl.replace(/\/$/, '')}/instance/connectionState/${instanceName}`
-            const response = await fetch(url, {
-                headers: { "apikey": apiKey }
-            })
+        try {
+            return await globalCircuitBreaker.execute('evolution_status', async () => {
+                try {
+                    const url = `${baseUrl.replace(/\/$/, '')}/instance/connectionState/${instanceName}`
+                    const response = await fetch(url, {
+                        headers: { "apikey": apiKey }
+                    })
 
-            if (response.ok) {
-                const data = await response.json()
-                // Evolution: { instance: { state: "open" } }
-                if (data.instance?.state === 'open') {
-                    return { status: 'active' }
-                } else if (data.instance?.state === 'close' || data.instance?.state === 'connecting') {
-                    return { status: 'inactive', message: data.instance?.state }
+                    if (response.ok) {
+                        const data = await response.json()
+                        // Evolution: { instance: { state: "open" } }
+                        if (data.instance?.state === 'open') {
+                            return { status: 'active' }
+                        } else if (data.instance?.state === 'close' || data.instance?.state === 'connecting') {
+                            return { status: 'inactive', message: data.instance?.state }
+                        }
+                        return { status: 'inactive', message: 'Unknown state' }
+                    }
+                    return {
+                        status: 'error',
+                        message: publicEvolutionError(`API Error: ${response.status}`, PUBLIC_EVOLUTION_STATUS_ERROR)
+                    }
+                } catch (error: unknown) {
+                    return { status: 'error', message: publicEvolutionError(error, PUBLIC_EVOLUTION_STATUS_ERROR) }
                 }
-                return { status: 'inactive', message: 'Unknown state' }
-            }
-            return { status: 'error', message: `API Error: ${response.status}` }
-        } catch (error: any) {
-            return { status: 'error', message: error.message }
+            });
+        } catch (error: unknown) {
+            return { status: 'error', message: publicEvolutionError(error, PUBLIC_EVOLUTION_STATUS_ERROR) }
         }
-        });
     }
 
     async sendMessage(credentials: ConnectionCredentials, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {

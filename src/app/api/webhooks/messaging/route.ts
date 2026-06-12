@@ -3,6 +3,51 @@ import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidati
 import { ChannelType } from '@/types/messaging'
 import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
 import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+
+const PUBLIC_MESSAGING_WEBHOOK_FAILURE = 'Webhook processing failed'
+
+function logMessagingWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function logMessagingWebhookFailure(label: string, message: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, message)
+        return
+    }
+
+    console.error(label, { hasMessage: typeof message === 'string' && message.length > 0 })
+}
+
+function logMessagingWebhookResult(result: { success?: boolean; message?: unknown }) {
+    if (!isProductionRuntime()) {
+        console.log('[Webhook POST] Result:', result)
+        return
+    }
+
+    console.log('[Webhook POST] Result:', {
+        success: result.success === true,
+        hasMessage: typeof result.message === 'string' && result.message.length > 0,
+    })
+}
+
+function messagingWebhookFailureMessage(message: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_MESSAGING_WEBHOOK_FAILURE
+    }
+
+    return typeof message === 'string' && message.length > 0
+        ? message
+        : PUBLIC_MESSAGING_WEBHOOK_FAILURE
+}
 
 // --- Loopback Strategy (Keep for loopback tests) ---
 class LoopbackStrategy implements MessagingProvider {
@@ -21,7 +66,7 @@ async function getConfiguredManager() {
         webhookManagerModule = await import('@/modules/features/messaging/webhook-handler')
         console.log('[getConfiguredManager] Import successful')
     } catch (err: any) {
-        console.error('[getConfiguredManager] Import FAILED:', err)
+        logMessagingWebhookError('[getConfiguredManager] Import FAILED:', err)
         throw new Error(`Failed to import webhook-handler: ${err.message}`)
     }
 
@@ -53,7 +98,7 @@ async function getConfiguredManager() {
         })
         webhookManager.registerProvider('evolution', evolutionProvider)
     } catch (err: any) {
-        console.error('[getConfiguredManager] Registration FAILED:', err)
+        logMessagingWebhookError('[getConfiguredManager] Registration FAILED:', err)
         throw new Error(`Failed to register providers: ${err.message}`)
     }
 
@@ -81,8 +126,8 @@ export async function GET(req: NextRequest) {
 
         return new NextResponse('Validation failed', { status: 403 })
     } catch (error: any) {
-        console.error('[Webhook GET] Error:', error)
-        return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 })
+        logMessagingWebhookError('[Webhook GET] Error:', error)
+        return new NextResponse('Internal Server Error', { status: 500 })
     }
 }
 
@@ -108,19 +153,18 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook POST] Manager loaded, processing...')
 
         const result = await manager.handleParsed(channel, body)
-        console.log('[Webhook POST] Result:', result)
+        logMessagingWebhookResult(result)
 
         if (!result.success) {
-            console.error('[Webhook POST] Failed:', result.message)
-            return NextResponse.json({ error: result.message }, { status: 401 })
+            logMessagingWebhookFailure('[Webhook POST] Failed:', result.message)
+            return NextResponse.json({ error: messagingWebhookFailureMessage(result.message) }, { status: 401 })
         }
 
         console.log('[Webhook POST] ✅ Success')
         console.log('==========================================\n')
         return NextResponse.json({ status: 'ok' })
     } catch (error: any) {
-        console.error('[Webhook POST] ❌ ERROR:', error)
-        console.error('[Webhook POST] Stack:', error.stack)
-        return NextResponse.json({ error: `Internal Server Error: ${error.message}` }, { status: 500 })
+        logMessagingWebhookError('[Webhook POST] Error:', error)
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

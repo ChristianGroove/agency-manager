@@ -1,6 +1,7 @@
 
 import { createClient } from "@/modules/core/database/supabase-server";
 import { AssistantContext } from "../types";
+import { logAssistantError, logAssistantInfo } from "../safe-logging";
 
 /**
  * CREATE BRIEF ACTION (Standardized Adapter)
@@ -22,8 +23,12 @@ export async function createBriefAction(
     context: AssistantContext,
     injectedClient?: any
 ) {
-    console.log("⚡ [DEBUG] createBriefAction Entered");
-    console.log(`[ACTION] Create Brief | User: ${context.user_id} | Org: ${context.tenant_id}`);
+    logAssistantInfo("[ACTION] createBriefAction entered");
+    logAssistantInfo("[ACTION] Create Brief", {
+        userId: context.user_id,
+        organizationId: context.tenant_id,
+        clientId: params.client_id,
+    });
 
     // 1. Strict Validation
     if (!params.client_id || !params.title) {
@@ -53,13 +58,19 @@ export async function createBriefAction(
         .single();
 
     if (error) {
-        console.error("[ACTION] Create Brief Failed. Message:", error.message);
-        console.error("Details:", error.details);
-        console.error("Hint:", error.hint);
+        logAssistantError("[ACTION] Create Brief Failed:", error, {
+            userId: context.user_id,
+            organizationId: context.tenant_id,
+            clientId: params.client_id,
+        });
         throw new Error(`Database Error: ${error.message}`);
     }
 
-    console.log(`[ACTION] Created Brief ${data.id}`);
+    logAssistantInfo("[ACTION] Created Brief", {
+        briefId: data.id,
+        userId: context.user_id,
+        organizationId: context.tenant_id,
+    });
 
     return {
         success: true,

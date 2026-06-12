@@ -10,6 +10,60 @@ export interface TransferResult {
     error?: string
 }
 
+const PUBLIC_TRANSFER_ERROR = "Conversation transfer failed"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeTransferLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'conversationId',
+        'fromAgentId',
+        'organizationId',
+        'toAgentId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeTransferError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logTransferError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeTransferLogDetails(details),
+        detail: summarizeTransferError(error),
+    })
+}
+
 /**
  * Service to handle conversation transfers between agents with strict validation
  */
@@ -20,20 +74,44 @@ export async function transferConversation(
     reason?: string
 ): Promise<TransferResult> {
 
-    // 1. Parallelize initial checks (Conversation, Target Member, and Target Agent Availability)
-    const [convResult, memberResult, agentResult] = await Promise.all([
-        supabaseAdmin.from('conversations').select('organization_id, channel, connection_id, assigned_to').eq('id', conversationId).single(),
-        supabaseAdmin.from('organization_members').select('role').eq('user_id', toAgentId).single(), // Note: needs org filter ideally, but we'll check it later
-        supabaseAdmin.from('agent_availability').select('*').eq('agent_id', toAgentId).single()
-    ])
-
+    // 1. Fetch the conversation first so every following check is scoped to its organization.
+    const convResult = await supabaseAdmin
+        .from('conversations')
+        .select('organization_id, channel, connection_id, assigned_to')
+        .eq('id', conversationId)
+        .single()
     const conv = convResult.data
-    const member = memberResult.data
-    const agent = agentResult.data
 
     if (!conv) return { success: false, error: "Conversation not found" }
-    
-    // Ensure member belongs to the same organization as the conversation
+
+    const [agentResult, memberResult, sourceMemberResult] = await Promise.all([
+        supabaseAdmin
+            .from('agent_availability')
+            .select('*')
+            .eq('organization_id', conv.organization_id)
+            .eq('agent_id', toAgentId)
+            .single(),
+        supabaseAdmin
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', conv.organization_id)
+            .eq('user_id', toAgentId)
+            .single(),
+        fromAgentId
+            ? supabaseAdmin
+                .from('organization_members')
+                .select('role')
+                .eq('organization_id', conv.organization_id)
+                .eq('user_id', fromAgentId)
+                .single()
+            : Promise.resolve({ data: null, error: null }),
+    ])
+
+    const agent = agentResult.data
+    const member = memberResult.data
+    const sourceMember = sourceMemberResult.data
+
+    if (fromAgentId && !sourceMember) return { success: false, error: "Transfer source is not a member of this organization" }
     if (!member || !agent) return { success: false, error: "Target agent profile or member record not found" }
 
     // 2. VALIDATION: Status & Capacity
@@ -43,15 +121,22 @@ export async function transferConversation(
     // 3. VALIDATION: Channel Access (with Admin Bypass)
     const isAdmin = ['admin', 'owner'].includes(member.role?.toLowerCase())
     if (!isAdmin) {
+        const channelBindings = Array.from(new Set(
+            [conv.channel, conv.connection_id].filter((value): value is string => typeof value === 'string' && value.length > 0)
+        ))
+
         const { data: hasAccess } = await supabaseAdmin
             .from('agent_channels')
             .select('agent_id')
             .eq('organization_id', conv.organization_id)
             .eq('agent_id', toAgentId)
-            .or(`channel_type.eq.${conv.channel},channel_type.eq.${conv.connection_id}`)
+            .in('channel_type', channelBindings)
             .eq('is_active', true)
             .limit(1)
 
+        if (!hasAccess || hasAccess.length === 0) {
+            return { success: false, error: "Target agent does not have access to this channel" }
+        }
     }
 
     // 5. EXECUTE TRANSFER
@@ -63,10 +148,17 @@ export async function transferConversation(
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
+        .eq('organization_id', conv.organization_id)
 
     if (updateError) {
-        console.error("[TransferService] Update failed:", updateError)
-        return { success: false, error: updateError.message }
+        logTransferError("[TransferService] Update failed:", updateError, {
+            conversationId,
+            fromAgentId,
+            toAgentId,
+            organizationId: conv.organization_id,
+            connectionId: conv.connection_id,
+        })
+        return { success: false, error: PUBLIC_TRANSFER_ERROR }
     }
 
     // 6. LOG SYSTEM MESSAGE (Surgical optimization)
@@ -102,6 +194,7 @@ export async function transferConversation(
 
     await supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,
+        organization_id: conv.organization_id,
         direction: 'outbound',
         channel: conv.channel,
         content: { type: 'system', text: systemText },

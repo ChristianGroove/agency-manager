@@ -44,10 +44,12 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
         
         try {
             const res = await getDealCart(leadId)
-            if (res.success && res.cart) {
+            if (!res.success) {
+                setError(res.error || "Error al cargar carrito")
+            } else if (res.cart) {
                 updateCartCache(leadId, res.cart)
             } else {
-                setError(res.error || "Error al cargar carrito")
+                setError("Error al cargar carrito")
             }
         } finally {
             setLoading(false)

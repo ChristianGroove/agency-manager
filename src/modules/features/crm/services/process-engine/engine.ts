@@ -3,6 +3,42 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { ProcessInstance, ProcessState, ProcessContext } from "@/types/process-engine"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_PROCESS_START_ERROR = "No se pudo iniciar el proceso"
+const PUBLIC_PROCESS_TRANSITION_ERROR = "No se pudo cambiar el estado del proceso"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeProcessEngineError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logProcessEngineError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeProcessEngineError(error) : error)
+}
+
+function processEngineFailure(label: string, error: unknown, fallback: string) {
+    logProcessEngineError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: fallback }
+}
+
 export class ProcessEngine {
 
     /**
@@ -67,8 +103,7 @@ export class ProcessEngine {
 
             return { success: true, process: newProcess as ProcessInstance }
         } catch (e: any) {
-            console.error("Process Start Error:", e)
-            return { success: false, error: e.message }
+            return processEngineFailure("Process Start Error:", e, PUBLIC_PROCESS_START_ERROR)
         }
     }
 
@@ -172,10 +207,11 @@ export class ProcessEngine {
             .from('process_instances')
             .update(updates)
             .eq('id', instanceId)
+            .eq('organization_id', instance.organization_id)
             .select()
             .single()
 
-        if (updateError) return { success: false, error: updateError.message }
+        if (updateError) return processEngineFailure("[ProcessEngine] Transition update error:", updateError, PUBLIC_PROCESS_TRANSITION_ERROR)
 
         // 5. Apply Auto-Tags (if any)
         if (targetState.auto_tags && targetState.auto_tags.length > 0) {
@@ -186,6 +222,7 @@ export class ProcessEngine {
                 .from('leads') // Assuming 'leads' table (or clients/contacts?)
                 .select('tags, id')
                 .eq('id', instance.lead_id)
+                .eq('organization_id', instance.organization_id)
                 .single()
 
             if (lead) {
@@ -196,6 +233,7 @@ export class ProcessEngine {
                     .from('leads')
                     .update({ tags: newTags })
                     .eq('id', lead.id)
+                    .eq('organization_id', instance.organization_id)
             }
         }
 

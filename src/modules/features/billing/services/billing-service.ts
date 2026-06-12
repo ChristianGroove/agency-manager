@@ -3,6 +3,52 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { Invoice, InvoiceItem } from "@/types"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
+const PUBLIC_BILLING_CREATE_INVOICE_ERROR = "No se pudo crear la factura"
+const PUBLIC_BILLING_UPDATE_INVOICE_ERROR = "No se pudo actualizar la factura"
+const PUBLIC_BILLING_DELETE_INVOICES_ERROR = "No se pudieron eliminar las facturas"
+const PUBLIC_BILLING_REGISTER_SERVICE_ERROR = "No se pudo registrar el servicio"
+const PUBLIC_BILLING_DELETE_SERVICES_ERROR = "No se pudieron eliminar los servicios"
+const PUBLIC_BILLING_TOGGLE_SERVICE_ERROR = "No se pudo actualizar el servicio"
+const PUBLIC_BILLING_PUBLIC_INVOICE_ERROR = "No se pudo cargar la factura"
+const PUBLIC_BILLING_INVOICE_NOT_FOUND = "Invoice not found"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeBillingServiceError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logBillingServiceError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeBillingServiceError(error))
+}
+
+function billingServiceErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 /**
  * Service Layer for Billing Module - Invoices
  * Contains pure business logic and DB interactions.
@@ -25,7 +71,7 @@ export async function getInvoices() {
         .order('date', { ascending: false })
 
     if (error) {
-        console.error("[BillingService.getInvoices] Error:", error)
+        logBillingServiceError("[BillingService.getInvoices] Error:", error)
         return []
     }
 
@@ -50,7 +96,7 @@ export async function getInvoiceById(id: string) {
         .single()
 
     if (error) {
-        console.error("[BillingService.getInvoiceById] Error:", error)
+        logBillingServiceError("[BillingService.getInvoiceById] Error:", error)
         return null
     }
 
@@ -167,8 +213,8 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
 
         return { success: true, data: newInvoice }
     } catch (error: any) {
-        console.error("[BillingService.createInvoice] Error:", error)
-        return { success: false, error: error.message }
+        logBillingServiceError("[BillingService.createInvoice] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_CREATE_INVOICE_ERROR) }
     }
 }
 
@@ -186,7 +232,10 @@ export async function updateInvoice(id: string, data: Partial<Invoice>) {
         .select()
         .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logBillingServiceError("[BillingService.updateInvoice] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_UPDATE_INVOICE_ERROR) }
+    }
     return { success: true, data: updated }
 }
 
@@ -202,7 +251,10 @@ export async function deleteInvoices(ids: string[]) {
         .in('id', ids)
         .eq('organization_id', orgId)
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logBillingServiceError("[BillingService.deleteInvoices] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_DELETE_INVOICES_ERROR) }
+    }
     return { success: true }
 }
 
@@ -223,7 +275,10 @@ export async function registerService(data: any) {
         .select()
         .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logBillingServiceError("[BillingService.registerService] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_REGISTER_SERVICE_ERROR) }
+    }
     return { success: true, data: service }
 }
 
@@ -239,7 +294,10 @@ export async function deleteServices(ids: string[]) {
         .in('id', ids)
         .eq('organization_id', orgId)
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logBillingServiceError("[BillingService.deleteServices] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_DELETE_SERVICES_ERROR) }
+    }
     return { success: true }
 }
 
@@ -257,7 +315,10 @@ export async function toggleServiceStatus(id: string, status: 'active' | 'paused
         .select()
         .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+        logBillingServiceError("[BillingService.toggleServiceStatus] Error:", error)
+        return { success: false, error: billingServiceErrorMessage(error, PUBLIC_BILLING_TOGGLE_SERVICE_ERROR) }
+    }
     return { success: true, data: updated }
 }
 
@@ -268,7 +329,12 @@ export async function getPublicInvoice(id: string) {
         .eq('id', id)
         .single()
 
-    if (error || !invoice) return { error: error?.message || "Invoice not found" }
+    if (error) {
+        logBillingServiceError("[BillingService.getPublicInvoice] Error:", error)
+        return { error: billingServiceErrorMessage(error, PUBLIC_BILLING_PUBLIC_INVOICE_ERROR) }
+    }
+
+    if (!invoice) return { error: PUBLIC_BILLING_INVOICE_NOT_FOUND }
 
     if (!invoice.emitter) {
         const { data: defaultEmitter } = await supabaseAdmin
@@ -305,7 +371,7 @@ export async function getSubscriptionHistory() {
         .limit(20)
 
     if (error) {
-        console.error("[BillingService.getSubscriptionHistory] Error:", error)
+        logBillingServiceError("[BillingService.getSubscriptionHistory] Error:", error)
         return []
     }
 
@@ -327,7 +393,7 @@ export async function getOrganizationSubscription() {
         .maybeSingle()
 
     if (error) {
-        console.error("[BillingService.getOrganizationSubscription] Error:", error)
+        logBillingServiceError("[BillingService.getOrganizationSubscription] Error:", error)
         return null
     }
 
@@ -352,7 +418,7 @@ export async function getContactOptions() {
         .order('name')
 
     if (error) {
-        console.error('[BillingService.getContactOptions] Error:', error)
+        logBillingServiceError('[BillingService.getContactOptions] Error:', error)
         return []
     }
 

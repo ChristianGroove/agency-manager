@@ -4,7 +4,11 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getUserOrganizations } from "./crud"
+
+const PUBLIC_LIMITS_UPDATE_ERROR = "No se pudieron actualizar los limites"
+const LIMITS_PERMISSION_ERROR = "No tienes permiso para gestionar limites de esta organizacion."
 
 /**
  * Switch the active organization context.
@@ -14,17 +18,19 @@ export async function switchOrganization(organizationId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (user) {
-        const { data: member } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('organization_id', organizationId)
-            .eq('user_id', user.id)
-            .single()
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
 
-        if (!member) {
-            throw new Error("User is not a member of this organization")
-        }
+    const { data: member } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('organization_id', organizationId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!member) {
+        throw new Error("User is not a member of this organization")
     }
 
     cookieStore.set('pixy_org_id', organizationId, {
@@ -51,7 +57,22 @@ export async function updateOrganizationLimits(organizationId: string, limits: {
         .eq('id', organizationId)
         .single()
 
-    if (targetOrg?.parent_organization_id) {
+    if (!targetOrg) return { success: false, error: LIMITS_PERMISSION_ERROR }
+
+    let canManageLimits = await isSuperAdmin(user.id)
+
+    if (!canManageLimits && !targetOrg.parent_organization_id) {
+        const { data: membership } = await supabase
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', organizationId)
+            .eq('user_id', user.id)
+            .single()
+
+        canManageLimits = !!membership && ['owner', 'admin'].includes(membership.role)
+    }
+
+    if (!canManageLimits && targetOrg?.parent_organization_id) {
         const { data: parentMembership } = await supabase
             .from('organization_members')
             .select('role')
@@ -62,6 +83,14 @@ export async function updateOrganizationLimits(organizationId: string, limits: {
         if (!parentMembership || !['owner', 'admin'].includes(parentMembership.role)) {
             return { success: false, error: "No tienes permiso para gestionar límites de esta organización." }
         }
+    }
+
+    if (!canManageLimits && targetOrg.parent_organization_id) {
+        canManageLimits = true
+    }
+
+    if (!canManageLimits) {
+        return { success: false, error: LIMITS_PERMISSION_ERROR }
     }
 
     const rows = limits.map(l => ({
@@ -77,7 +106,7 @@ export async function updateOrganizationLimits(organizationId: string, limits: {
 
     if (error) {
         console.error("Error updating limits:", error)
-        return { success: false, error: error.message }
+        return { success: false, error: PUBLIC_LIMITS_UPDATE_ERROR }
     }
 
     revalidatePath('/platform/organizations')

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { sanitizePaymentMethodsForClient } from "../payment-methods-sanitizer"
 
 /**
  * PUBLIC SETTINGS & BRANDING (Safe for unauthenticated use)
@@ -64,6 +65,6 @@ export async function getPublicInvoiceSettings(organizationId: string) {
         invoice_legal_text: s?.legal_text,
         agency_logo: s?.document_logo_url || s?.main_logo_url || s?.portal_logo_url,
         company_name: s?.agency_legal_name || s?.agency_name,
-        payment_methods: paymentMethods || []
+        payment_methods: sanitizePaymentMethodsForClient(paymentMethods || [])
     }
 }

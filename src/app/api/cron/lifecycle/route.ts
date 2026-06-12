@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { processLifecycleTransitions, getExpiringTrials } from '@/modules/core/lifecycle/lifecycle-actions'
 import { cleanupAttendancePhotos } from '@/modules/features/attendance/actions'
+import { isProductionRuntime, requireCronSecret } from '@/app/api/_guards/request-guards'
 
 /**
  * Lifecycle Cleanup Cron Job
@@ -12,17 +13,43 @@ import { cleanupAttendancePhotos } from '@/modules/features/attendance/actions'
  * 
  * Security: Verify CRON_SECRET header
  */
-export async function GET(request: Request) {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
+const PUBLIC_LIFECYCLE_CRON_ERROR = 'Lifecycle cron failed'
+const PUBLIC_LIFECYCLE_PROCESSING_ERROR = 'Lifecycle processing failed'
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json(
-            { error: 'Unauthorized' },
-            { status: 401 }
-        )
+function logLifecycleCronError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
     }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function lifecycleCronErrorMessage(error: unknown, fallback = PUBLIC_LIFECYCLE_CRON_ERROR) {
+    if (isProductionRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    if (typeof error === 'string' && error) {
+        return error
+    }
+
+    return fallback
+}
+
+export async function GET(request: Request) {
+    const unauthorized = requireCronSecret(request)
+    if (unauthorized) return unauthorized
 
     try {
         console.log('[Lifecycle Cron] Starting lifecycle processing...')
@@ -34,16 +61,23 @@ export async function GET(request: Request) {
         // TODO: Send actual notification emails here
         // For now, just log them
         for (const trial of expiringTrials) {
-            console.log(`[Lifecycle Cron] Would notify ${trial.ownerEmail} - ${trial.notificationType}`)
+            if (isProductionRuntime()) {
+                console.log(`[Lifecycle Cron] Trial notification pending: ${trial.notificationType}`)
+            } else {
+                console.log(`[Lifecycle Cron] Would notify ${trial.ownerEmail} - ${trial.notificationType}`)
+            }
         }
 
         // 2. Process all lifecycle transitions
         const { success, results, error } = await processLifecycleTransitions()
 
         if (!success) {
-            console.error('[Lifecycle Cron] Processing failed:', error)
+            logLifecycleCronError('[Lifecycle Cron] Processing failed:', error)
             return NextResponse.json(
-                { error: 'Processing failed', details: error },
+                {
+                    error: lifecycleCronErrorMessage(error, PUBLIC_LIFECYCLE_PROCESSING_ERROR),
+                    ...(isProductionRuntime() ? {} : { details: error })
+                },
                 { status: 500 }
             )
         }
@@ -59,13 +93,13 @@ export async function GET(request: Request) {
             notificationsQueued: expiringTrials.length,
             transitionsProcessed: results.length,
             attendancePhotosCleaned: cleanupResult.count || 0,
-            results
+            ...(isProductionRuntime() ? {} : { results })
         })
 
     } catch (error) {
-        console.error('[Lifecycle Cron] Unexpected error:', error)
+        logLifecycleCronError('[Lifecycle Cron] Unexpected error:', error)
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: lifecycleCronErrorMessage(error) },
             { status: 500 }
         )
     }

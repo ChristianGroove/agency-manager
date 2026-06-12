@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import * as BillingUtils from '@/modules/features/billing/services/billing-utils';
+import { isProductionRuntime, requireCronSecret } from '@/app/api/_guards/request-guards';
 
 // SCR (Server-Side Cron) Implementation
 // This route is designed to be called by a trusted external scheduler (like Vercel Cron, GitHub Actions, or a simple curl loop)
@@ -10,15 +11,62 @@ import * as BillingUtils from '@/modules/features/billing/services/billing-utils
 // 2. Automatic Invoice Generation
 // 3. Overdue Invoice Alerts
 
+const PUBLIC_BILLING_CRON_ERROR = 'Billing cron failed';
+
+type BillingCronResults = {
+    remindersSent: number;
+    invoicesGenerated: number;
+    overdueAlerts: number;
+    errors: string[];
+    logs: string[];
+};
+
+function logBillingCronError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function billingCronErrorMessage(error: unknown) {
+    if (isProductionRuntime()) {
+        return PUBLIC_BILLING_CRON_ERROR;
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message;
+    }
+
+    return PUBLIC_BILLING_CRON_ERROR;
+}
+
+function billingCronResultsForResponse(results: BillingCronResults) {
+    if (!isProductionRuntime()) {
+        return results;
+    }
+
+    return {
+        remindersSent: results.remindersSent,
+        invoicesGenerated: results.invoicesGenerated,
+        overdueAlerts: results.overdueAlerts,
+        errors: results.errors.map(() => PUBLIC_BILLING_CRON_ERROR)
+    };
+}
+
 export async function GET(request: Request) {
-    // 1. security check
-    const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    //     return new NextResponse('Unauthorized', { status: 401 });
-    // }
+    const unauthorized = requireCronSecret(request);
+    if (unauthorized) return unauthorized;
 
     try {
-        const results = {
+        const results: BillingCronResults = {
             remindersSent: 0,
             invoicesGenerated: 0,
             overdueAlerts: 0,
@@ -27,8 +75,10 @@ export async function GET(request: Request) {
         };
 
         const log = (msg: string) => {
-            console.log(msg);
-            results.logs.push(msg);
+            if (!isProductionRuntime()) {
+                console.log(msg);
+                results.logs.push(msg);
+            }
         };
 
         const today = new Date();
@@ -67,7 +117,7 @@ export async function GET(request: Request) {
                         continue;
                     }
 
-                    log(`[BillingCron] Processing Sub ${sub.id} (${sub.name}) for Client ${client.name}. Next Billing: ${billingDate.toISOString()} vs Today: ${today.toISOString()}`);
+                    log(`[BillingCron] Processing Sub ${sub.id}. Next Billing: ${billingDate.toISOString()} vs Today: ${today.toISOString()}`);
 
                     // A. Payment Reminder (2 Days Before)
                     if (billingDate.getTime() === twoDaysFromNow.getTime()) {
@@ -106,8 +156,11 @@ export async function GET(request: Request) {
                         log(`[BillingCron] Date not reached yet for Sub ${sub.id}`);
                     }
                 } catch (err: any) {
-                    console.error(`Error processing subscription ${sub.id}:`, err);
-                    results.errors.push(`Sub ${sub.id}: ${err.message}`);
+                    logBillingCronError(
+                        isProductionRuntime() ? 'Error processing subscription:' : `Error processing subscription ${sub.id}:`,
+                        err
+                    );
+                    results.errors.push(`Sub ${sub.id}: ${billingCronErrorMessage(err)}`);
                 }
             }
         } else {
@@ -154,11 +207,11 @@ export async function GET(request: Request) {
             }
         }
 
-        return NextResponse.json({ success: true, results });
+        return NextResponse.json({ success: true, results: billingCronResultsForResponse(results) });
 
     } catch (error: any) {
-        console.error('Cron Job Failed:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        logBillingCronError('Cron Job Failed:', error);
+        return NextResponse.json({ success: false, error: billingCronErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -277,7 +330,11 @@ async function generateInvoiceSystem(subscription: any, client: any) {
 
         // SELF-HEALING: If service is deleted, cancel subscription and do not invoice
         if (service && service.deleted_at) {
-            console.log(`[BillingCron] Service ${service.id} is deleted. Cancelling subscription ${subscription.id} and skipping invoice.`);
+            console.log(
+                isProductionRuntime()
+                    ? '[BillingCron] Deleted service subscription cancellation'
+                    : `[BillingCron] Service ${service.id} is deleted. Cancelling subscription ${subscription.id} and skipping invoice.`
+            );
 
             await supabaseAdmin
                 .from('subscriptions')
@@ -314,7 +371,7 @@ async function generateInvoiceSystem(subscription: any, client: any) {
                 // Link invoice back to cycle if column exists
                 await supabaseAdmin.from('invoices').update({ billing_cycle_id: cycle.id }).eq('id', invoice.id);
             } else if (cycleErr) {
-                console.error('Error creating billing cycle:', cycleErr);
+                logBillingCronError('Error creating billing cycle:', cycleErr);
             }
 
             // 6. Sync Service Next Billing Date (Crucial for UI)
@@ -326,7 +383,7 @@ async function generateInvoiceSystem(subscription: any, client: any) {
             }
         }
     } catch (err) {
-        console.error('Error in cycle creation logic:', err);
+        logBillingCronError('Error in cycle creation logic:', err);
     }
 
     return invoice.id;

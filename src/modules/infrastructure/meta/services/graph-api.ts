@@ -2,6 +2,9 @@
 
 const META_API_VERSION = 'v24.0';
 const META_GRAPH_URL = 'https://graph.facebook.com';
+const PUBLIC_META_GRAPH_ERROR = 'Meta API request failed';
+const PUBLIC_META_WEBHOOK_ERROR = 'Meta webhook subscription failed';
+const PUBLIC_WABA_DISCOVERY_ERROR = 'No WhatsApp accounts found';
 
 export interface MetaTokenResponse {
     access_token: string;
@@ -17,6 +20,88 @@ export interface MetaPage {
         id: string;
     };
     tasks: string[];
+}
+
+function isDeployedRuntime(): boolean {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function getGraphError(error: unknown): any {
+    if (error && typeof error === 'object' && 'error' in error) {
+        return (error as any).error;
+    }
+
+    return error;
+}
+
+function summarizeGraphError(error: unknown) {
+    const graphError = getGraphError(error);
+
+    if (graphError instanceof Error) {
+        return { name: graphError.name };
+    }
+
+    if (graphError && typeof graphError === 'object') {
+        return {
+            code: graphError.code,
+            subcode: graphError.error_subcode || graphError.subcode,
+            type: graphError.type,
+            traceId: graphError.fbtrace_id,
+        };
+    }
+
+    return { type: typeof graphError };
+}
+
+function logGraphError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, summarizeGraphError(error));
+}
+
+function graphErrorMessage(error: unknown, fallback: string) {
+    const graphError = getGraphError(error);
+
+    if (graphError instanceof Error && graphError.message) {
+        return graphError.message;
+    }
+
+    if (graphError && typeof graphError === 'object' && typeof graphError.message === 'string') {
+        return graphError.message;
+    }
+
+    return fallback;
+}
+
+function publicGraphError(error: unknown, fallback: string = PUBLIC_META_GRAPH_ERROR) {
+    return isDeployedRuntime()
+        ? fallback
+        : graphErrorMessage(error, fallback);
+}
+
+function metaGraphFailure(prefix: string, error: unknown) {
+    if (isDeployedRuntime()) {
+        return new Error(prefix);
+    }
+
+    const graphError = getGraphError(error);
+    const type = graphError && typeof graphError === 'object' ? graphError.type : undefined;
+    const suffix = type ? ` (${type})` : '';
+    return new Error(`${prefix}: ${graphErrorMessage(error, PUBLIC_META_GRAPH_ERROR)}${suffix}`);
+}
+
+function summarizeStrategyErrors(errors: any[]) {
+    if (!isDeployedRuntime()) {
+        return errors;
+    }
+
+    return errors.map(({ strategy, error }) => ({
+        strategy,
+        ...summarizeGraphError(error),
+    }));
 }
 
 export class MetaGraphAPI {
@@ -58,8 +143,8 @@ export class MetaGraphAPI {
         const data = await res.json();
 
         if (data.error) {
-            console.error('[MetaGraphAPI] Exchange Failed Error Content:', JSON.stringify(data.error));
-            throw new Error(`Meta Token Exchange Failed: ${data.error.message} (${data.error.type})`);
+            logGraphError('[MetaGraphAPI] Exchange Failed Error Content:', data.error);
+            throw metaGraphFailure('Meta Token Exchange Failed', data.error);
         }
 
         return data.access_token;
@@ -81,7 +166,7 @@ export class MetaGraphAPI {
         const data = await res.json();
 
         if (data.error) {
-            throw new Error(`Page Token Exchange Failed: ${data.error.message}`);
+            throw metaGraphFailure('Page Token Exchange Failed', data.error);
         }
 
         return data.access_token;
@@ -102,15 +187,15 @@ export class MetaGraphAPI {
             const data = await res.json();
 
             if (data.error) {
-                console.error('[MetaGraphAPI] Webhook subscription failed:', data.error);
-                return { success: false, error: data.error.message };
+                logGraphError('[MetaGraphAPI] Webhook subscription failed:', data.error);
+                return { success: false, error: publicGraphError(data.error, PUBLIC_META_WEBHOOK_ERROR) };
             }
 
             console.log('[MetaGraphAPI] ✅ Webhooks subscribed for page:', pageId);
             return { success: true };
         } catch (error: any) {
-            console.error('[MetaGraphAPI] Webhook subscription error:', error);
-            return { success: false, error: error.message };
+            logGraphError('[MetaGraphAPI] Webhook subscription error:', error);
+            return { success: false, error: publicGraphError(error, PUBLIC_META_WEBHOOK_ERROR) };
         }
     }
 
@@ -128,7 +213,7 @@ export class MetaGraphAPI {
         let data = await res.json();
 
         if (data.error) {
-            throw new Error(`Meta Assets Fetch Failed: ${data.error.message}`);
+            throw metaGraphFailure('Meta Assets Fetch Failed', data.error);
         }
 
         let pages = data.data as MetaPage[];
@@ -160,13 +245,13 @@ export class MetaGraphAPI {
                                 p.tasks = ['MANAGE']; // mock tasks to satisfy MetaPage type
                                 pages.push(p as MetaPage);
                             } else {
-                                console.error(`❌ [MetaGraphAPI] Failed to fetch granular page ${p.error.message}`);
+                                logGraphError('[MetaGraphAPI] Failed to fetch granular page:', p.error);
                             }
                         });
                     }
                 }
             } catch (error) {
-                console.error("❌ [MetaGraphAPI] Granular Scopes Fallback Error:", error);
+                logGraphError("[MetaGraphAPI] Granular Scopes Fallback Error:", error);
             }
         }
 
@@ -305,18 +390,26 @@ export class MetaGraphAPI {
             }
 
             // If completely failed, return detailed report of ALL strategies
-            console.error("❌ All WABA strategies failed:", JSON.stringify(errors, null, 2));
+            const safeErrors = summarizeStrategyErrors(errors);
+            console.error("❌ All WABA strategies failed:", safeErrors);
             return {
                 data: [],
                 error: {
-                    message: "No se encontraron cuentas de WhatsApp con ninguno de los métodos.",
-                    strategies_attempted: errors
+                    message: isDeployedRuntime()
+                        ? PUBLIC_WABA_DISCOVERY_ERROR
+                        : "No se encontraron cuentas de WhatsApp con ninguno de los métodos.",
+                    strategies_attempted: safeErrors
                 }
             };
 
         } catch (error: any) {
-            console.error("❌ Critical WABA Fetch Error:", error);
-            return { data: [], error: error };
+            logGraphError("❌ Critical WABA Fetch Error:", error);
+            return {
+                data: [],
+                error: isDeployedRuntime()
+                    ? { message: PUBLIC_WABA_DISCOVERY_ERROR }
+                    : error
+            };
         }
     }
 
@@ -333,13 +426,13 @@ export class MetaGraphAPI {
             const data = await res.json();
 
             if (data.error) {
-                console.error('[MetaGraphAPI] Instagram username fetch failed:', data.error);
+                logGraphError('[MetaGraphAPI] Instagram username fetch failed:', data.error);
                 return null;
             }
 
             return data.username || null;
         } catch (error) {
-            console.error('[MetaGraphAPI] Instagram username fetch error:', error);
+            logGraphError('[MetaGraphAPI] Instagram username fetch error:', error);
             return null;
         }
     }
@@ -369,7 +462,7 @@ export class MetaGraphAPI {
         const data = await res.json();
 
         if (data.error) {
-            console.error('[MetaGraphAPI] Ad Accounts Fetch Failed:', data.error);
+            logGraphError('[MetaGraphAPI] Ad Accounts Fetch Failed:', data.error);
             // Don't throw, just return empty to avoid breaking the whole flow
             return [];
         }

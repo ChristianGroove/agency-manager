@@ -7,6 +7,43 @@ import { revalidatePath } from "next/cache"
 import { IntegrationProvider, InstalledIntegration } from "./types"
 import { integrationRegistry } from "../registry"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeMarketplaceError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error }
+}
+
+function logMarketplaceError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeMarketplaceError(error))
+}
+
+function publicMarketplaceError(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    return error instanceof Error
+        ? error.message
+        : fallback
+}
+
+function sanitizeInstalledCredentials(credentials: Record<string, any> | null | undefined) {
+    if (!credentials || typeof credentials !== 'object') return {}
+
+    return Object.fromEntries(
+        Object.entries(credentials).map(([key, value]) => [`${key}_present`, Boolean(value)])
+    )
+}
+
 /**
  * Get all available providers from the marketplace
  */
@@ -27,7 +64,7 @@ export async function getMarketplaceProviders(category?: string): Promise<Integr
     const { data, error } = await query
 
     if (error) {
-        console.error('[Marketplace] Error fetching providers:', error)
+        logMarketplaceError('[Marketplace] Error fetching providers:', error)
         return []
     }
 
@@ -67,12 +104,13 @@ export async function getInstalledIntegrations(): Promise<InstalledIntegration[]
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('[Marketplace] Error fetching installed integrations:', error)
+        logMarketplaceError('[Marketplace] Error fetching installed integrations:', error)
         return []
     }
 
     return (data as any[]).map(conn => ({
         ...conn,
+        credentials: sanitizeInstalledCredentials(conn.credentials),
         provider: conn.integration_providers
     })) as InstalledIntegration[]
 }
@@ -186,8 +224,12 @@ export async function installIntegration(input: {
             .from('integration_connections')
             .update(updateData)
             .eq('id', existing.id)
+            .eq('organization_id', orgId)
 
-        if (updateError) return { success: false, error: updateError.message }
+        if (updateError) {
+            logMarketplaceError('[Marketplace] Error updating integration:', updateError)
+            return { success: false, error: publicMarketplaceError(updateError, 'Integration install failed') }
+        }
 
         revalidatePath('/platform/integrations')
         return { success: true, connectionId: existing.id }
@@ -212,7 +254,8 @@ export async function installIntegration(input: {
 
 
     if (insertError) {
-        return { success: false, error: insertError.message }
+        logMarketplaceError('[Marketplace] Error installing integration:', insertError)
+        return { success: false, error: publicMarketplaceError(insertError, 'Integration install failed') }
     }
 
     revalidatePath('/platform/integrations')
@@ -237,7 +280,8 @@ export async function uninstallIntegration(connectionId: string): Promise<{ succ
         .eq('organization_id', orgId)
 
     if (error) {
-        return { success: false, error: error.message }
+        logMarketplaceError('[Marketplace] Error uninstalling integration:', error)
+        return { success: false, error: publicMarketplaceError(error, 'Integration uninstall failed') }
     }
 
     revalidatePath('/platform/integrations')

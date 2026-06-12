@@ -4,6 +4,56 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Emitter } from "@/types/billing"
 
+const PUBLIC_EMITTER_CREATE_ERROR = "No se pudo crear el emisor"
+const PUBLIC_EMITTER_UPDATE_ERROR = "No se pudo actualizar el emisor"
+const PUBLIC_EMITTER_DELETE_ERROR = "No se pudo eliminar el emisor"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeEmitterActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logEmitterActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeEmitterActionError(error))
+}
+
+function emitterActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
+function logEmitterContext(orgId: string | null | undefined) {
+    if (!isDeployedRuntime()) {
+        console.log("DEBUG: getEmitters called. Context OrgId:", orgId)
+        return
+    }
+
+    console.log("DEBUG: getEmitters called.", { organizationIdPresent: Boolean(orgId) })
+}
+
 export async function getActiveEmitters() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -28,7 +78,7 @@ export async function getEmitters() {
 
     // Debug logging kept for traceability
     const orgId = await getCurrentOrganizationId()
-    console.log("DEBUG: getEmitters called. Context OrgId:", orgId)
+    logEmitterContext(orgId)
 
     // Strict filtering: Do NOT rely solely on RLS
     const { data, error } = await supabase
@@ -62,8 +112,8 @@ export async function createEmitter(data: Partial<Emitter>) {
         .single()
 
     if (error) {
-        console.error("Error creating emitter:", error)
-        return { error: error.message }
+        logEmitterActionError("Error creating emitter:", error)
+        return { error: emitterActionErrorMessage(error, PUBLIC_EMITTER_CREATE_ERROR) }
     }
     return { data: result as Emitter }
 }
@@ -83,8 +133,8 @@ export async function updateEmitter(id: string, data: Partial<Emitter>) {
         .single()
 
     if (error) {
-        console.error("Error updating emitter:", error)
-        return { error: error.message }
+        logEmitterActionError("Error updating emitter:", error)
+        return { error: emitterActionErrorMessage(error, PUBLIC_EMITTER_UPDATE_ERROR) }
     }
     return { data: result as Emitter }
 }
@@ -101,7 +151,10 @@ export async function deleteEmitter(id: string) {
         .eq('id', id)
         .eq('organization_id', orgId)
 
-    if (error) throw error
+    if (error) {
+        logEmitterActionError("Error deleting emitter:", error)
+        throw new Error(emitterActionErrorMessage(error, PUBLIC_EMITTER_DELETE_ERROR))
+    }
     return { success: true }
 }
 

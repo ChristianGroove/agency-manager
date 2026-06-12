@@ -4,6 +4,45 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
 
+const PUBLIC_CONNECTION_HEALTH_ERROR = 'Connection health check failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function logConnectionHealthError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function connectionHealthMessage(
+    status: 'active' | 'disconnected' | 'error' | 'unknown',
+    message?: string
+) {
+    if (isDeployedRuntime()) {
+        if (status === 'active') return 'Connection healthy'
+        if (status === 'disconnected') return 'Connection issues detected'
+        if (status === 'unknown') return 'No health check available for this provider'
+        return PUBLIC_CONNECTION_HEALTH_ERROR
+    }
+
+    return message || (
+        status === 'active'
+            ? 'Connection healthy'
+            : status === 'disconnected'
+                ? 'Connection issues detected'
+                : status === 'unknown'
+                    ? 'No health check available for this provider'
+                    : PUBLIC_CONNECTION_HEALTH_ERROR
+    )
+}
+
 /**
  * Check health of a single connection
  */
@@ -43,10 +82,10 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
 
         return {
             status: newStatus as any,
-            message: result.message || (newStatus === 'active' ? 'Connection healthy' : 'Connection issues detected')
+            message: connectionHealthMessage(newStatus as any, result.message)
         }
     } catch (error: any) {
-        console.error(`[HealthCheck] Error checking connection ${connectionId}:`, error)
+        logConnectionHealthError(`[HealthCheck] Error checking connection ${connectionId}:`, error)
 
         // Mark as error
         await supabaseAdmin
@@ -54,7 +93,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
             .update({ status: 'error' })
             .eq('id', connectionId)
 
-        return { status: 'error', message: error.message }
+        return { status: 'error', message: connectionHealthMessage('error', error.message) }
     }
 }
 

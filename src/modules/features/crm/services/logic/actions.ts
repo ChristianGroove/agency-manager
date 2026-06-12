@@ -6,6 +6,46 @@ import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Client } from "@/types"
 
+const PUBLIC_CRM_CREATE_PROSPECT_ERROR = "No se pudo crear el prospecto"
+const PUBLIC_CRM_DELETE_CLIENTS_ERROR = "No se pudieron eliminar los clientes"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCrmLogicActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logCrmLogicActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeCrmLogicActionError(error))
+}
+
+function crmLogicActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 export type CreateProspectInput = {
     name: string
     email?: string
@@ -60,8 +100,8 @@ export async function quickCreateProspect(data: CreateProspectInput) {
             .single()
 
         if (error) {
-            console.error("Supabase insert error:", error)
-            return { success: false, error: error.message }
+            logCrmLogicActionError("Supabase insert error:", error)
+            return { success: false, error: crmLogicActionErrorMessage(error, PUBLIC_CRM_CREATE_PROSPECT_ERROR) }
         }
 
         await logDomainEvent({
@@ -80,8 +120,8 @@ export async function quickCreateProspect(data: CreateProspectInput) {
         revalidatePath('/clients')
         return { success: true, client: newClient as Client }
     } catch (error: any) {
-        console.error("Error creating prospect:", error)
-        return { success: false, error: error.message || 'Failed to create prospect' }
+        logCrmLogicActionError("Error creating prospect:", error)
+        return { success: false, error: crmLogicActionErrorMessage(error, PUBLIC_CRM_CREATE_PROSPECT_ERROR) }
     }
 }
 
@@ -108,7 +148,7 @@ export async function getClients() {
     const { data, error } = await query
 
     if (error) {
-        console.error("Error fetching clients:", error)
+        logCrmLogicActionError("Error fetching clients:", error)
         return []
     }
 
@@ -133,7 +173,7 @@ export async function getPaginatedClients(page: number = 1, pageSize: number = 5
     })
 
     if (error) {
-        console.error("❌ RPC get_paginated_clients error:", error)
+        logCrmLogicActionError("RPC get_paginated_clients error:", error)
         return { clients: [], totalCount: 0, counts: { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 } }
     }
 
@@ -158,8 +198,8 @@ export async function deleteClients(ids: string[]) {
         revalidatePath('/clients')
         return { success: true }
     } catch (error: any) {
-        console.error("Error deleting clients:", error)
-        return { success: false, error: error.message }
+        logCrmLogicActionError("Error deleting clients:", error)
+        return { success: false, error: crmLogicActionErrorMessage(error, PUBLIC_CRM_DELETE_CLIENTS_ERROR) }
     }
 }
 

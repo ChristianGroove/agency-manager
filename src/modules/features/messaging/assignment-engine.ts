@@ -2,6 +2,85 @@
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeAssignmentLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'agentId',
+        'agentPool',
+        'connectionId',
+        'conversationId',
+        'convId',
+        'organizationId',
+        'orgId',
+        'ruleId',
+        'ruleName',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeAssignmentError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAssignmentInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeAssignmentLogDetails(details))
+}
+
+function logAssignmentWarning(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.warn(label, error, details)
+        else console.warn(label, error)
+        return
+    }
+
+    console.warn(label, {
+        ...(details ? sanitizeAssignmentLogDetails(details) : {}),
+        detail: summarizeAssignmentError(error),
+    })
+}
+
+function logAssignmentError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeAssignmentLogDetails(details) : {}),
+        detail: summarizeAssignmentError(error),
+    })
+}
+
 /**
  * ASSIGNMENT ENGINE - High Level Architecture
  * 
@@ -41,7 +120,7 @@ export async function assignConversation(conversationId: string): Promise<string
         .single()
 
     if (convError || !conv) {
-        console.error('[AssignmentEngine] Failed to fetch conversation:', convError)
+        logAssignmentError('[AssignmentEngine] Failed to fetch conversation:', convError, { conversationId })
         return null
     }
 
@@ -78,7 +157,14 @@ export async function assignConversation(conversationId: string): Promise<string
             .eq('id', conversationId)
 
         await logAssignment(conversationId, agentId, ruleId, strategy, orgId)
-        console.log(`[AssignmentEngine] ✅ Assigned to agent: ${agentId} via ${rule ? 'rule: ' + rule.name : 'fallback balance'}`)
+        logAssignmentInfo('[AssignmentEngine] Assigned conversation', {
+            agentId,
+            conversationId,
+            organizationId: orgId,
+            ruleId,
+            ruleName: rule?.name,
+            strategy,
+        })
     }
 
     return agentId
@@ -168,7 +254,11 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
         case 'specific-agent':
             const specificAgents = rule.assign_to
             if (!specificAgents || specificAgents.length === 0) {
-                console.warn('[AssignmentEngine] Specific agent rule has no agents in assign_to:', rule.name)
+                logAssignmentWarning(
+                    '[AssignmentEngine] Specific agent rule has no agents in assign_to:',
+                    new Error('specific_agent_rule_empty'),
+                    { ruleId: rule.id, ruleName: rule.name, organizationId: conv.organization_id }
+                )
                 return null
             }
             
@@ -200,9 +290,23 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
         if (!rpcError && nextAgentId) {
             return nextAgentId;
         }
-        if (rpcError) console.warn('[AssignmentEngine] RPC Atomic Round Robin skipped/failed:', rpcError.message);
+        if (rpcError) {
+            logAssignmentWarning('[AssignmentEngine] RPC Atomic Round Robin skipped/failed:', rpcError, {
+                agentPool,
+                channelType,
+                connectionId,
+                organizationId: orgId,
+                strategy: method,
+            });
+        }
     } catch (e) {
-        console.error('[AssignmentEngine] RPC Error:', e);
+        logAssignmentError('[AssignmentEngine] RPC Error:', e, {
+            agentPool,
+            channelType,
+            connectionId,
+            organizationId: orgId,
+            strategy: method,
+        });
     }
 
     // 2. Manual Fallback Logic (Legacy/Non-Atomic)
@@ -284,9 +388,23 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
         if (!rpcError && nextAgentId) {
             return nextAgentId;
         }
-        if (rpcError) console.warn('[AssignmentEngine] RPC Atomic Load Balance skipped/failed:', rpcError.message);
+        if (rpcError) {
+            logAssignmentWarning('[AssignmentEngine] RPC Atomic Load Balance skipped/failed:', rpcError, {
+                agentPool,
+                channelType,
+                connectionId,
+                organizationId: orgId,
+                strategy: 'load-balance',
+            });
+        }
     } catch (e) {
-        console.error('[AssignmentEngine] RPC Error:', e);
+        logAssignmentError('[AssignmentEngine] RPC Error:', e, {
+            agentPool,
+            channelType,
+            connectionId,
+            organizationId: orgId,
+            strategy: 'load-balance',
+        });
     }
 
     // 2. Manual Fallback Logic
@@ -448,7 +566,13 @@ export async function logAssignment(convId: string, agentId: string, ruleId: str
 
     if (error) {
         // CRITICAL: Ensure organization_id is logged. Missing this ID broke rotation in previous versions.
-        console.error('[AssignmentEngine] ❌ Failed to log assignment history (Required for rotation):', error.message, { convId, agentId, method, orgId })
+        logAssignmentError('[AssignmentEngine] Failed to log assignment history (Required for rotation):', error, {
+            agentId,
+            conversationId: convId,
+            method,
+            organizationId: orgId,
+            ruleId,
+        })
     }
 }
 
@@ -479,7 +603,11 @@ export async function reconcileAgentLoad(agentId: string): Promise<{ previous: n
             .from('agent_availability')
             .update({ current_load: actualLoad })
             .eq('agent_id', agentId)
-        console.log(`[AssignmentEngine] Reconciled load for ${agentId}: ${previousLoad} → ${actualLoad}`)
+        logAssignmentInfo('[AssignmentEngine] Reconciled agent load', {
+            agentId,
+            actualLoad,
+            previousLoad,
+        })
     }
 
     return { previous: previousLoad, actual: actualLoad }

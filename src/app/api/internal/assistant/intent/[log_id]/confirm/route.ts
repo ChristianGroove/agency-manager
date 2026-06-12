@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAssistantContext } from '@/modules/assistant/context-resolver';
 import { IntentExecutor } from '@/modules/assistant/intent-executor';
+import { assistantIntentClientError, assistantIntentFailureBody, logAssistantIntentError } from '../../error-utils';
 
 /**
  * 🔒 CONFIRM INTENT API
@@ -40,22 +41,23 @@ export async function POST(
             intent_log_id: logId
         });
 
-    } catch (error: any) {
-        console.error("[Assistant API] Confirmation Error:", error);
+    } catch (error: unknown) {
+        logAssistantIntentError("[Assistant API] Confirmation Error:", error);
+        const errorMessage = error instanceof Error ? error.message : '';
 
         // Handle Logic Errors cleanly
-        if (error.message.includes("Unauthorized") || error.message.includes("mismatch")) {
-            return NextResponse.json({ error: error.message }, { status: 403 });
+        if (errorMessage.includes("Unauthorized") || errorMessage.includes("mismatch")) {
+            return NextResponse.json({ error: assistantIntentClientError(error, 'Unauthorized') }, { status: 403 });
         }
-        if (error.message.includes("cannot be executed")) {
-            return NextResponse.json({ error: error.message }, { status: 409 }); // Conflict
+        if (errorMessage.includes("cannot be executed")) {
+            return NextResponse.json({ error: assistantIntentClientError(error, 'Intent cannot be executed') }, { status: 409 }); // Conflict
         }
-        if (error.message.includes("not found")) {
-            return NextResponse.json({ error: error.message }, { status: 404 });
+        if (errorMessage.includes("not found")) {
+            return NextResponse.json({ error: assistantIntentClientError(error, 'Intent not found') }, { status: 404 });
         }
 
         return NextResponse.json(
-            { error: 'Execution Failed', details: error.message },
+            assistantIntentFailureBody('Execution Failed', error),
             { status: 500 }
         );
     }

@@ -12,10 +12,14 @@ export async function getCallStatus(conversationId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Unauthorized' }
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'Unauthorized' }
+
     const { data: conv, error: convError } = await supabase
         .from('conversations')
         .select('organization_id, connection_id, lead_id')
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
         .single()
 
     if (convError || !conv) return { success: false, error: 'Conversation not found' }
@@ -25,6 +29,7 @@ export async function getCallStatus(conversationId: string) {
         .from('integration_connections')
         .select('working_hours')
         .eq('id', conv.connection_id)
+        .eq('organization_id', orgId)
         .single()
 
     const { CallPermissionManager } = await import('@/modules/infrastructure/meta/services/calling/call-permission-manager')

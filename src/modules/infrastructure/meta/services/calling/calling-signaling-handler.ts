@@ -47,6 +47,33 @@ interface SDPOffer {
     crypto: MediaConfig['encryption'];
 }
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function logCallingSignalInfo(label: string, details: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeCallingSignalLogDetails(details));
+}
+
+function sanitizeCallingSignalLogDetails(details: Record<string, unknown>) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'callId') {
+                return ['callIdPresent', Boolean(value)];
+            }
+            if (key === 'sdp') {
+                return ['sdpLength', typeof value === 'string' ? value.length : 0];
+            }
+            return [key, value];
+        })
+    );
+}
+
 /**
  * WebRTC Signaling Handler for WhatsApp Calls
  */
@@ -81,7 +108,7 @@ export class CallingSignalingHandler {
         sdpAnswer: string;
         callSetup: CallSetup;
     }> {
-        console.log('[Calling] Processing SDP Offer for call:', params.callId);
+        logCallingSignalInfo('[Calling] Processing SDP Offer', { callId: params.callId });
 
         // Check concurrent call limit
         if (this.activeCallsCount >= this.MAX_CONCURRENT_CALLS) {
@@ -252,7 +279,7 @@ export class CallingSignalingHandler {
 
         const sdp = sdpLines.join('\r\n') + '\r\n';
 
-        console.log('[Calling] Generated SDP Answer:', sdp.substring(0, 200) + '...');
+        logCallingSignalInfo('[Calling] Generated SDP Answer', { sdp });
 
         return sdp;
     }

@@ -1,6 +1,68 @@
 import { BillingAdapter, SubscriptionStatus } from "../types";
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV;
+}
+
+function sanitizeWompiSaasLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'bypassUntil',
+        'organizationId',
+        'orgId',
+        'planId',
+        'reference',
+        'subscriptionId',
+    ]);
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function summarizeWompiSaasError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name };
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function logWompiSaasInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeWompiSaasLogDetails(details));
+}
+
+function logWompiSaasError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details);
+        return;
+    }
+
+    console.error(label, {
+        ...sanitizeWompiSaasLogDetails(details),
+        detail: summarizeWompiSaasError(error),
+    });
+}
+
 /**
  * Wompi Adapter for SaaS Subscriptions
  * 
@@ -13,7 +75,7 @@ export class WompiSaasAdapter implements BillingAdapter {
         // 1. Get Organization details
         // 2. Prepare transaction with Wompi
         // 3. Return payment URL or initialization data
-        console.log(`[Wompi] Initializing subscription for Org: ${orgId}, Plan: ${planId}`);
+        logWompiSaasInfo('[Wompi] Initializing subscription', { orgId, planId });
         return { message: "Wompi initialization pending" };
     }
 
@@ -39,7 +101,7 @@ export class WompiSaasAdapter implements BillingAdapter {
         if (transaction.status === 'APPROVED') {
             const reference = transaction.reference;
             // logic to update saas_subscriptions and record revenue
-            console.log(`[Wompi] Transaction APPROVED: ${reference}`);
+            logWompiSaasInfo('[Wompi] Transaction APPROVED', { reference });
         }
 
         return { processed: true };
@@ -63,13 +125,16 @@ export class WompiSaasAdapter implements BillingAdapter {
             .single();
 
         if (error || !sub || !sub.payment_method_id) {
-            console.error(`[Wompi] Cannot charge recurring: subscription or token missing`);
+            logWompiSaasError('[Wompi] Cannot charge recurring: subscription or token missing', error || new Error('missing_subscription_or_token'), { subscriptionId });
             return false;
         }
 
         // 1. Validate Bypass
         if (sub.bypass_until && new Date(sub.bypass_until) > new Date()) {
-            console.log(`[Wompi] Bypassing charge for Sub: ${subscriptionId} (Active bypass until ${sub.bypass_until})`);
+            logWompiSaasInfo('[Wompi] Bypassing charge', {
+                bypassUntil: sub.bypass_until,
+                subscriptionId,
+            });
             return true; // Consider success but skip transaction
         }
 
@@ -88,7 +153,11 @@ export class WompiSaasAdapter implements BillingAdapter {
         const amountInCents = Math.round((amount || 0) * 100);
         const reference = `SUB-${sub.id.split('-')[0]}-${Date.now()}`;
 
-        console.log(`[Wompi] Charging ${amountInCents} cents for Sub: ${subscriptionId} (Ref: ${reference})`);
+        logWompiSaasInfo('[Wompi] Charging recurring subscription', {
+            amountInCents,
+            reference,
+            subscriptionId,
+        });
 
         try {
             const privateKey = process.env.WOMPI_PRIVATE_KEY;
@@ -138,7 +207,10 @@ export class WompiSaasAdapter implements BillingAdapter {
 
             return true;
         } catch (err) {
-            console.error(`[Wompi] Recurring charge failed:`, err);
+            logWompiSaasError('[Wompi] Recurring charge failed:', err, {
+                reference,
+                subscriptionId,
+            });
             return false;
         }
     }

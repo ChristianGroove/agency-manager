@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { inngest } from '@/modules/infrastructure/automation/inngest/client'
+import { isProductionRuntime, requireStripeWebhookSignature } from '@/app/api/_guards/request-guards'
+
+function logStripeWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
 
 /**
  * Stripe Webhook Handler (Async Offloading)
@@ -10,8 +22,8 @@ import { inngest } from '@/modules/infrastructure/automation/inngest/client'
 export async function POST(request: NextRequest) {
     const body = await request.text()
 
-    // TODO: Verify signature in production
-    // const sig = request.headers.get('stripe-signature')!
+    const signatureError = requireStripeWebhookSignature(request, body)
+    if (signatureError) return signatureError
     
     let event: any
     try {
@@ -31,7 +43,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({ received: true, async: true })
     } catch (error: any) {
-        console.error('[Webhook:Stripe] Error dispatching to Inngest:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        logStripeWebhookError('[Webhook:Stripe] Error dispatching to Inngest:', error)
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }

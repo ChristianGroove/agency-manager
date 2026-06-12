@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { revalidatePath } from "next/cache"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export interface CheckoutPayload {
     orgId: string
@@ -64,6 +65,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                     .from('conversations')
                     .update({ state: 'active', status: 'open', updated_at: new Date().toISOString() })
                     .eq('id', conversationId)
+                    .eq('organization_id', payload.orgId)
             }
 
             console.log(`[Resto Checkout] ✅ Reutilizando conversación existente: ${conversationId} (connection: ${bestMatch.connection_id || 'none'})`)
@@ -97,14 +99,14 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
 
             if (!portalToken) {
                 const { data: newToken } = await supabase.rpc('generate_short_token')
-                await supabase.from('leads').update({ portal_short_token: newToken }).eq('id', clientIdToUse)
+                await supabase.from('leads').update({ portal_short_token: newToken }).eq('id', clientIdToUse).eq('organization_id', payload.orgId)
                 portalToken = newToken
             }
 
             await supabase.from('leads').update({
                 name: payload.customerName,
                 ...(payload.deliveryAddress ? { address: payload.deliveryAddress } : {})
-            }).eq('id', clientIdToUse)
+            }).eq('id', clientIdToUse).eq('organization_id', payload.orgId)
         } else {
             const { data: newToken } = await supabase.rpc('generate_short_token')
             portalToken = newToken
@@ -138,6 +140,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                 .from('conversations')
                 .update({ client_id: clientIdToUse })
                 .eq('id', conversationId)
+                .eq('organization_id', payload.orgId)
                 .is('client_id', null) // Solo si no tiene client_id aún
         }
 
@@ -209,11 +212,15 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
     const supabase = supabaseAdmin
 
     try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('Unauthorized')
+
         // 1. Obtener metadatos actuales
         const { data: current, error: fError } = await supabase
             .from('messages')
             .select('metadata')
             .eq('id', messageId)
+            .eq('organization_id', orgId)
             .single()
 
         if (fError) throw fError
@@ -236,6 +243,7 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
                 metadata: newMetadata
             })
             .eq('id', messageId)
+            .eq('organization_id', orgId)
 
         if (error) throw error
 
@@ -246,14 +254,25 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
     }
 }
 
-export async function updateClientAddress(clientId: string, address: string) {
+export async function updateClientAddress(token: string, clientId: string, address: string) {
     const supabase = supabaseAdmin
 
     try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+        let clientQuery = supabase
+            .from('leads')
+            .select('id, organization_id')
+        if (isUuid) clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        else clientQuery = clientQuery.eq('portal_short_token', token)
+
+        const { data: tokenClient, error: tokenError } = await clientQuery.single()
+        if (tokenError || !tokenClient || tokenClient.id !== clientId) throw new Error('Unauthorized')
+
         const { error } = await supabase
             .from('leads')
             .update({ address })
             .eq('id', clientId)
+            .eq('organization_id', tokenClient.organization_id)
 
         if (error) throw error
         revalidatePath('/')

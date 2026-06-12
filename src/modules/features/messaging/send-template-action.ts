@@ -5,6 +5,83 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/c
 import { revalidatePath } from "next/cache"
 import { MessagingPersistence } from "./services/persistence"
 
+const PUBLIC_SEND_TEMPLATE_ERROR = 'Template message send failed'
+const PUBLIC_CONVERSATION_NOT_FOUND_ERROR = 'Conversation not found'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function publicTemplateMessageError(error: unknown, fallback = PUBLIC_SEND_TEMPLATE_ERROR) {
+    if (isDeployedRuntime()) return fallback
+    if (typeof error === 'string' && error) return error
+    if (error instanceof Error && error.message) return error.message
+    if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+        return (error as { message: string }).message
+    }
+    return fallback
+}
+
+function sanitizeTemplateLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'bodyParameters',
+        'headerParameters',
+        'messageId',
+        'phoneNumberId',
+        'recipientPhone',
+        'to',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeTemplateError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as any).error : error
+        return {
+            type: graphError?.type || 'object',
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            hasMessage: typeof graphError?.message === 'string' && graphError.message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logTemplateInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeTemplateLogDetails(details))
+}
+
+function logTemplateError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeTemplateLogDetails(details),
+        detail: summarizeTemplateError(error),
+    })
+}
+
 /**
  * Send a WhatsApp HSM Template Message via Meta Graph API v24.0
  * 
@@ -24,15 +101,22 @@ export async function sendTemplateMessage(input: {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized")
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
     // 2. Fetch Conversation with Lead phone
     const { data: conversation, error: convError } = await supabase
         .from('conversations')
         .select(`*, leads ( phone, name )`)
         .eq('id', input.conversationId)
+        .eq('organization_id', orgId)
         .single()
 
     if (convError || !conversation) {
-        throw new Error(`Conversation not found: ${input.conversationId}`)
+        throw new Error(publicTemplateMessageError(
+            convError || `Conversation not found: ${input.conversationId}`,
+            PUBLIC_CONVERSATION_NOT_FOUND_ERROR
+        ))
     }
 
     const recipientPhone = conversation.leads?.phone || (conversation as any).phone
@@ -45,6 +129,7 @@ export async function sendTemplateMessage(input: {
             .from('integration_connections')
             .select('*')
             .eq('id', (conversation as any).connection_id)
+            .eq('organization_id', orgId)
             .eq('status', 'active')
             .single()
         connection = boundConn
@@ -53,7 +138,7 @@ export async function sendTemplateMessage(input: {
         const { data: defaultConn } = await supabase
             .from('integration_connections')
             .select('*')
-            .eq('organization_id', conversation.organization_id)
+            .eq('organization_id', orgId)
             .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
             .eq('status', 'active')
             .order('created_at', { ascending: false })
@@ -126,11 +211,18 @@ export async function sendTemplateMessage(input: {
         }
     }
 
-    console.log('[sendTemplateMessage] Sending HSM:', JSON.stringify(metaPayload, null, 2))
+    logTemplateInfo('[sendTemplateMessage] Sending HSM:', {
+        bodyParameterCount: input.bodyParameters?.length || 0,
+        headerParameterCount: input.headerParameters?.length || 0,
+        phoneNumberId: finalPhoneId,
+        recipientPhone,
+        templateLanguage: input.templateLanguage,
+        templateName: input.templateName,
+    })
 
     // 6. POST to Meta Graph API
     const { assertUsageAllowed } = await import("@/modules/infrastructure/usage/usage-limiter")
-    await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' })
+    await assertUsageAllowed({ organizationId: orgId, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`
     const response = await fetch(apiUrl, {
@@ -145,13 +237,22 @@ export async function sendTemplateMessage(input: {
     const result = await response.json()
 
     if (!response.ok) {
-        console.error('[sendTemplateMessage] Meta API Error:', result)
+        logTemplateError('[sendTemplateMessage] Meta API Error:', result, {
+            phoneNumberId: finalPhoneId,
+            recipientPhone,
+            templateLanguage: input.templateLanguage,
+            templateName: input.templateName,
+        })
         const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
-        throw new Error(errorMsg)
+        throw new Error(publicTemplateMessageError(errorMsg))
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`
-    console.log('[sendTemplateMessage] Success:', messageId)
+    logTemplateInfo('[sendTemplateMessage] Success:', {
+        messageId,
+        templateLanguage: input.templateLanguage,
+        templateName: input.templateName,
+    })
 
     // 7. Build preview text for DB storage
     let previewText = `ðŸ“‹ Plantilla: ${input.templateName}`
@@ -174,6 +275,7 @@ export async function sendTemplateMessage(input: {
         content: messageContent,
         sender: user.email || 'Agent',
         messageId: messageId,
+        organizationId: orgId,
         channel: 'whatsapp'
     })
 

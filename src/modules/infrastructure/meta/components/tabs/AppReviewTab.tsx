@@ -14,11 +14,13 @@ export default function AppReviewTab() {
     const { toast } = useToast();
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+    const reviewerPassword = process.env.NEXT_PUBLIC_META_REVIEWER_PASSWORD || '';
+    const passwordDisplayValue = reviewerPassword || 'Configured outside the browser';
 
     // Test credentials from reviewer-mode.ts
     const credentials = {
         email: 'meta_reviewer@pixy.test',
-        password: 'MetaReview2026!Secure',
+        password: reviewerPassword,
         phoneNumber: '+15550000001',
         testNumbers: ['+15550000001', '+15550000002'],
         wabaId: 'test_waba_123456',
@@ -50,7 +52,7 @@ export default function AppReviewTab() {
 Meta Reviewer Test Credentials
 =============================
 Email: ${credentials.email}
-Password: ${credentials.password}
+Password: ${credentials.password || '[provided separately]'}
 Phone Number: ${credentials.phoneNumber}
 Test Numbers: ${credentials.testNumbers.join(', ')}
 WABA ID: ${credentials.wabaId}
@@ -108,7 +110,7 @@ Dashboard URL: https://pixy-demo.vercel.app
                             <Input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
-                                value={credentials.password}
+                                value={passwordDisplayValue}
                                 readOnly
                                 className="font-mono text-sm"
                             />
@@ -126,6 +128,7 @@ Dashboard URL: https://pixy-demo.vercel.app
                             <Button
                                 size="icon"
                                 variant="outline"
+                                disabled={!credentials.password}
                                 onClick={() => copyToClipboard(credentials.password, 'Password')}
                             >
                                 {copiedField === 'Password' ? (

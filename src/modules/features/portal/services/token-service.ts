@@ -1,12 +1,16 @@
 'use server'
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Token Management and Security for the Portal
  */
 export async function regeneratePortalToken(clientId: string) {
     try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('Unauthorized')
+
         // 1. Generate new token using DB function
         const { data: newToken, error: tokenError } = await supabaseAdmin
             .rpc('generate_short_token')
@@ -21,6 +25,7 @@ export async function regeneratePortalToken(clientId: string) {
                 portal_token_created_at: new Date().toISOString()
             })
             .eq('id', clientId)
+            .eq('organization_id', orgId)
 
         if (updateError) throw updateError
 
@@ -37,6 +42,9 @@ export async function updatePortalTokenExpiration(
     expiresAt?: string | null
 ) {
     try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('Unauthorized')
+
         const updateData: Record<string, any> = {
             portal_token_never_expires: neverExpires
         }
@@ -51,6 +59,7 @@ export async function updatePortalTokenExpiration(
             .from('leads')
             .update(updateData)
             .eq('id', clientId)
+            .eq('organization_id', orgId)
 
         if (error) throw error
 
@@ -63,10 +72,14 @@ export async function updatePortalTokenExpiration(
 
 export async function updateClientPortalConfig(clientId: string, config: any) {
     try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('Unauthorized')
+
         const { error } = await supabaseAdmin
             .from('leads')
             .update({ portal_config: config })
             .eq('id', clientId)
+            .eq('organization_id', orgId)
 
         if (error) throw error
         return { success: true }

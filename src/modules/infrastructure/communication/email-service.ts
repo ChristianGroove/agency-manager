@@ -1,9 +1,45 @@
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { transporter, SENDER_EMAIL } from "@/modules/infrastructure/notifications/services/mailer";
 
+const PUBLIC_EMAIL_SEND_ERROR = "No se pudo enviar el email";
+
 interface EmailContext {
     organizationId?: string;
     verticalSlug?: string;
+}
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV;
+}
+
+function summarizeEmailError(error: unknown) {
+    if (error instanceof Error) return { name: error.name };
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        };
+    }
+
+    return { type: typeof error };
+}
+
+function logEmailError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeEmailError(error) : error);
+}
+
+function emailFailure(error: unknown) {
+    logEmailError(`[EmailService] Nodemailer error:`, error);
+
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_EMAIL_SEND_ERROR };
+    if (error instanceof Error) return { success: false, error: error.message };
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message };
+    }
+    return { success: false, error: PUBLIC_EMAIL_SEND_ERROR };
 }
 
 export const emailService = {
@@ -13,7 +49,11 @@ export const emailService = {
         variables: Record<string, string>,
         context?: EmailContext
     ) {
-        console.log(`[EmailService] Sending '${templateSlug}' to ${to}`);
+        if (isDeployedRuntime()) {
+            console.log(`[EmailService] Sending`, { templateSlug, recipientPresent: !!to });
+        } else {
+            console.log(`[EmailService] Sending '${templateSlug}' to ${to}`);
+        }
 
         // 1. Resolve Template (Hierarchy: Org -> Vertical -> Global)
         // We fetch all potential matches and pick the most specific one in code logic
@@ -39,8 +79,8 @@ export const emailService = {
         const { data: templates, error } = await query
 
         if (error || !templates || templates.length === 0) {
-            console.error(`[EmailService] Template '${templateSlug}' not found!`, error);
-            throw new Error(`Template not found: ${templateSlug}`);
+            logEmailError(`[EmailService] Template not found`, error);
+            throw new Error("Email template not found");
         }
 
         // Filter logic: Best Match
@@ -77,11 +117,14 @@ export const emailService = {
                 html: htmlInfo,
             });
 
-            console.log(`[EmailService] Sent successfully. ID: ${info.messageId}`);
+            if (isDeployedRuntime()) {
+                console.log(`[EmailService] Sent successfully`, { messageIdPresent: !!info.messageId });
+            } else {
+                console.log(`[EmailService] Sent successfully. ID: ${info.messageId}`);
+            }
             return { success: true, messageId: info.messageId };
         } catch (err: any) {
-            console.error(`[EmailService] Nodemailer error:`, err);
-            return { success: false, error: err.message };
+            return emailFailure(err);
         }
     }
 };

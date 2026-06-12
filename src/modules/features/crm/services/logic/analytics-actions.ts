@@ -4,6 +4,115 @@ import { createClient } from '@/modules/core/database/supabase-server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
+const PUBLIC_ANALYTICS_ERROR = "No se pudieron cargar las metricas de CRM"
+const PUBLIC_REPORTS_ERROR = "No se pudo generar el reporte"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAnalyticsError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAnalyticsError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...details,
+        detail: summarizeAnalyticsError(error),
+    })
+}
+
+function logAnalyticsWarn(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, error, details)
+        return
+    }
+
+    console.warn(label, {
+        ...details,
+        detail: summarizeAnalyticsError(error),
+    })
+}
+
+function analyticsFailure(label: string, error: unknown, fallback = PUBLIC_ANALYTICS_ERROR) {
+    logAnalyticsError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    return { success: false, error: String(error) }
+}
+
+function logBase64ImageFetch(url: string) {
+    if (!isDeployedRuntime()) {
+        console.log("[getBase64Image] Fetching logo from server:", url)
+        return
+    }
+
+    console.log("[getBase64Image] Fetching logo from server", {
+        urlPresent: !!url,
+        supabaseStorage: url.includes('/storage/v1/object/public/'),
+    })
+}
+
+function logSupabaseAsset(bucket: string, fileName: string) {
+    if (!isDeployedRuntime()) {
+        console.log(`[getBase64Image] Found Supabase asset: Bucket=${bucket}, Path=${fileName}`)
+        return
+    }
+
+    console.log("[getBase64Image] Found Supabase asset", {
+        bucketPresent: !!bucket,
+        pathPresent: !!fileName,
+    })
+}
+
+function logAdvancedReportsRequest(orgId: string | undefined, targetOrgId: string | null | undefined, startDate: string, endDate: string) {
+    if (!isDeployedRuntime()) {
+        console.log('**************************************************')
+        console.log('CRITICAL DEBUG: getAdvancedReports')
+        console.log('Received orgId from client:', orgId)
+        console.log('Derived targetOrgId:', targetOrgId)
+        console.log('Start:', startDate, 'End:', endDate)
+        console.log('**************************************************')
+        return
+    }
+
+    console.log('[REPORTS] getAdvancedReports request', {
+        orgIdProvided: !!orgId,
+        targetOrgIdPresent: !!targetOrgId,
+        startDatePresent: !!startDate,
+        endDatePresent: !!endDate,
+    })
+}
+
+function logAdvancedReportsResult(data: any) {
+    if (!isDeployedRuntime()) {
+        console.log('[REPORTS] Result Summary:', data?.summary)
+        console.log('[REPORTS] Agents returned:', data?.agent_performance?.length)
+        console.log('**************************************************')
+        return
+    }
+
+    console.log('[REPORTS] Result Summary', {
+        summaryPresent: !!data?.summary,
+        agentPerformanceCount: Array.isArray(data?.agent_performance) ? data.agent_performance.length : 0,
+    })
+}
+
 // Helper to get org
 async function getOrgId() {
     return await getCurrentOrganizationId()
@@ -72,7 +181,7 @@ export async function getBase64Image(url: string): Promise<string> {
     if (url.startsWith('data:')) return url;
 
     try {
-        console.log("[getBase64Image] Fetching logo from server:", url);
+        logBase64ImageFetch(url);
         
         // --- Special Case: Supabase Storage ---
         // If it's a supabase storage link, we can use the admin client to download it directly
@@ -84,7 +193,7 @@ export async function getBase64Image(url: string): Promise<string> {
                 const bucket = pathParts[0];
                 const fileName = pathParts.slice(1).join('/');
                 
-                console.log(`[getBase64Image] Found Supabase asset: Bucket=${bucket}, Path=${fileName}`);
+                logSupabaseAsset(bucket, fileName);
                 
                 const { data, error } = await supabaseAdmin.storage.from(bucket).download(fileName);
                 if (data && !error) {
@@ -94,9 +203,9 @@ export async function getBase64Image(url: string): Promise<string> {
                     console.log(`[getBase64Image] Successfully downloaded via Admin SDK: ${contentType}`);
                     return `data:${contentType};base64,${base64}`;
                 }
-                console.warn("[getBase64Image] Admin download failed, trying regular fetch...", error);
+                logAnalyticsWarn("[getBase64Image] Admin download failed, trying regular fetch...", error);
             } catch (e) {
-                console.warn("[getBase64Image] Failed to parse Supabase URL, falling back to fetch");
+                logAnalyticsWarn("[getBase64Image] Failed to parse Supabase URL, falling back to fetch", e);
             }
         }
 
@@ -109,7 +218,10 @@ export async function getBase64Image(url: string): Promise<string> {
         });
         
         if (!response.ok) {
-            console.error(`[getBase64Image] HTTP error! status: ${response.status} for ${url}`);
+            logAnalyticsError("[getBase64Image] HTTP error", null, {
+                status: response.status,
+                urlPresent: !!url,
+            });
             return '';
         }
         
@@ -119,7 +231,7 @@ export async function getBase64Image(url: string): Promise<string> {
         
         return `data:${contentType};base64,${base64}`;
     } catch (error) {
-        console.error("[getBase64Image] Fatal Error:", error);
+        logAnalyticsError("[getBase64Image] Fatal Error:", error);
         return '';
     }
 }
@@ -214,8 +326,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             }
         }
     } catch (error) {
-        console.error('getCRMStats error:', error)
-        return { success: false, error: String(error) }
+        return analyticsFailure('getCRMStats error:', error)
     }
 }
 
@@ -259,7 +370,7 @@ export async function getLeadsBySource(days: number = 30): Promise<{ success: bo
 
         return { success: true, data: result }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getLeadsBySource error:', error)
     }
 }
 
@@ -301,7 +412,7 @@ export async function getLeadsByStatus(): Promise<{ success: boolean, data?: Lea
 
         return { success: true, data: result }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getLeadsByStatus error:', error)
     }
 }
 
@@ -340,7 +451,7 @@ export async function getRecentActivity(limit: number = 10): Promise<{ success: 
 
         return { success: true, data: activities }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getRecentActivity error:', error)
     }
 }
 
@@ -415,7 +526,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
         return { success: true, data: performance.sort((a, b) => b.totalValue - a.totalValue) }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getAgentPerformance error:', error)
     }
 }
 
@@ -423,12 +534,7 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
     try {
         const targetOrgId = orgId || await getOrgId()
         
-        console.log('**************************************************')
-        console.log('CRITICAL DEBUG: getAdvancedReports')
-        console.log('Received orgId from client:', orgId)
-        console.log('Derived targetOrgId:', targetOrgId)
-        console.log('Start:', startDate, 'End:', endDate)
-        console.log('**************************************************')
+        logAdvancedReportsRequest(orgId, targetOrgId, startDate, endDate)
 
         if (!targetOrgId) {
             console.error('[REPORTS] No organization ID provided or found')
@@ -442,18 +548,15 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
         })
 
         if (error) {
-            console.error('[REPORTS] RPC Error:', error)
+            logAnalyticsError('[REPORTS] RPC Error:', error)
             throw error
         }
 
-        console.log('[REPORTS] Result Summary:', data?.summary)
-        console.log('[REPORTS] Agents returned:', data?.agent_performance?.length)
-        console.log('**************************************************')
+        logAdvancedReportsResult(data)
 
         return { success: true, data: data as AdvancedReportData }
     } catch (error) {
-        console.error('[REPORTS] Catch:', error)
-        return { success: false, error: String(error) }
+        return analyticsFailure('[REPORTS] Catch:', error, PUBLIC_REPORTS_ERROR)
     }
 }
 

@@ -6,11 +6,31 @@ import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { EmailService } from "@/modules/features/notifications/email.service"
 
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+
 /**
  * =======================
  * ADMIN AUTH ACTIONS
  * =======================
  */
+
+async function requireMetaClientAccess(clientId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
+    const { data: client, error } = await supabaseAdmin
+        .from('clients')
+        .select('organization_id')
+        .eq('id', clientId)
+        .maybeSingle()
+    
+    if (error || !client || client.organization_id !== orgId) {
+        throw new Error("Unauthorized")
+    }
+
+    await requireOrgRole('admin')
+}
 
 async function logAdminAction(orgId: string | null, action: string, details: any = {}) {
     try {
@@ -562,23 +582,86 @@ export async function forceLogoutUser(userId: string) {
     return { success: true }
 }
 
+function sanitizeMetaConfigForClient(config: Record<string, any> | null) {
+    if (!config) return null
+
+    const safeConfig = { ...config }
+    const hasAccessToken = Boolean(safeConfig.access_token)
+    delete safeConfig.access_token
+
+    return {
+        ...safeConfig,
+        has_access_token: hasAccessToken,
+    }
+}
+
+function getOptionalFormString(formData: FormData, key: string) {
+    const value = formData.get(key)
+    return typeof value === 'string' ? value.trim() : ''
+}
+
 export async function getMetaConfig(clientId: string) {
-    const { data, error } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
-    return { config: data, error }
+    if (!clientId) return { config: null, error: "Client ID required" }
+
+    try {
+        await requireMetaClientAccess(clientId)
+
+        const { data, error } = await supabaseAdmin
+            .from("integration_configs")
+            .select("*")
+            .eq("client_id", clientId)
+            .eq("platform", "meta")
+            .maybeSingle()
+
+        if (error) {
+            console.error("Error fetching Meta config:", error)
+            return { config: null, error: "Error loading config" }
+        }
+
+        return { config: sanitizeMetaConfigForClient(data), error: null }
+    } catch (error) {
+        console.error("Unauthorized Meta config access:", error)
+        return { config: null, error: "Unauthorized" }
+    }
 }
 
 export async function saveMetaConfig(clientId: string, formData: FormData) {
     if (!clientId) return { success: false, error: "Client ID required" }
+
+    try {
+        await requireMetaClientAccess(clientId)
+    } catch (error) {
+        console.error("Unauthorized Meta config save:", error)
+        return { success: false, error: "Unauthorized" }
+    }
+
+    const submittedAccessToken = getOptionalFormString(formData, "access_token")
+    const { data: existing, error: existingError } = await supabaseAdmin
+        .from("integration_configs")
+        .select("id, access_token")
+        .eq("client_id", clientId)
+        .eq("platform", "meta")
+        .maybeSingle()
+
+    if (existingError) {
+        console.error("Error loading existing Meta config:", existingError)
+        return { success: false, error: "Error saving config" }
+    }
+
+    const accessToken = submittedAccessToken || existing?.access_token
+    if (!accessToken) {
+        return { success: false, error: "Access token required" }
+    }
+
     const configData = {
         client_id: clientId,
         platform: "meta",
-        access_token: formData.get("access_token") as string,
-        ad_account_id: formData.get("ad_account_id") as string,
-        page_id: formData.get("page_id") as string,
+        access_token: accessToken,
+        ad_account_id: getOptionalFormString(formData, "ad_account_id"),
+        page_id: getOptionalFormString(formData, "page_id"),
         settings: { show_ads: formData.get("show_ads") === "true", show_social: formData.get("show_social") === "true" },
         updated_at: new Date().toISOString()
     }
-    const { data: existing } = await supabaseAdmin.from("integration_configs").select("id").eq("client_id", clientId).eq("platform", "meta").single()
     const { error } = existing ? await supabaseAdmin.from("integration_configs").update(configData).eq("id", existing.id) : await supabaseAdmin.from("integration_configs").insert(configData)
     if (error) return { success: false, error: "Error saving config" }
     revalidatePath(`/clients/${clientId}`)
@@ -589,6 +672,13 @@ export async function saveMetaConfig(clientId: string, formData: FormData) {
 
 export async function disconnectMetaConfig(clientId: string) {
     if (!clientId) return { success: false, error: "Client ID required" }
+
+    try {
+        await requireMetaClientAccess(clientId)
+    } catch (error) {
+        console.error("Unauthorized Meta disconnect:", error)
+        return { success: false, error: "Unauthorized" }
+    }
 
     // We remove the config entirely or just clear the sensitive token/ids?
     // Let's delete the row for clean start.
@@ -611,12 +701,14 @@ export async function getMetaAssets(clientId: string) {
     if (!clientId) return { success: false, error: "Client ID required" }
 
     try {
+        await requireMetaClientAccess(clientId)
+
         const { data: config } = await supabaseAdmin
             .from("integration_configs")
             .select("access_token")
             .eq("client_id", clientId)
             .eq("platform", "meta")
-            .single()
+            .maybeSingle()
 
         if (!config?.access_token) {
             return { success: false, error: "No access token found" }
@@ -670,7 +762,9 @@ export async function syncClientAdsMetrics(clientId: string) {
     if (!clientId) return { success: false, error: "Client ID required" }
 
     try {
-        const { data: config } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
+        await requireMetaClientAccess(clientId)
+
+        const { data: config } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").maybeSingle()
         if (!config || !config.access_token || !config.ad_account_id) return { success: false, error: "Faltan credenciales (Token o Ad Account)" }
 
         const { MetaConnector } = await import('@/modules/infrastructure/meta/services/connector')
@@ -706,13 +800,15 @@ export async function syncClientSocialMetrics(clientId: string) {
     if (!clientId) return { success: false, error: "Client ID required" }
 
     try {
+        await requireMetaClientAccess(clientId)
+
         // 1. Get Config
         const { data: config } = await supabaseAdmin
             .from("integration_configs")
             .select("*")
             .eq("client_id", clientId)
             .eq("platform", "meta")
-            .single()
+            .maybeSingle()
 
         if (!config || !config.access_token || !config.page_id) {
             return { success: false, error: "Faltan credenciales (Token o Page ID)" }

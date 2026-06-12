@@ -3,9 +3,52 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { EmailService } from "@/modules/features/notifications/email.service"
+import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import crypto from "crypto"
+
+const PUBLIC_PLATFORM_INVOICE_CREATE_ERROR = "No se pudo crear la factura de plataforma"
+const PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR = "No se pudo enviar la factura de plataforma"
+const PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR = "No se pudo activar la suscripcion"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePlatformBillingError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPlatformBillingError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizePlatformBillingError(error))
+}
+
+function platformBillingErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    if (typeof error === 'string' && error) return error
+    return publicMessage
+}
 
 /**
  * PlatformBillingService handles management-level billing operations
@@ -54,7 +97,7 @@ export class PlatformBillingService {
                         updated_at: new Date().toISOString()
                     });
             } catch (e) {
-                console.error("Warning: Profile upsert failed (continuing invoice creation):", e);
+                logPlatformBillingError("Warning: Profile upsert failed (continuing invoice creation):", e);
             }
         }
 
@@ -85,8 +128,8 @@ export class PlatformBillingService {
             .single()
 
         if (error) {
-            console.error("Full error creating platform invoice:", error)
-            return { success: false, error: `Error DB: ${error.message}` }
+            logPlatformBillingError("Full error creating platform invoice:", error)
+            return { success: false, error: platformBillingErrorMessage(error, PUBLIC_PLATFORM_INVOICE_CREATE_ERROR) }
         }
 
         return { 
@@ -96,6 +139,7 @@ export class PlatformBillingService {
     }
 
     static async sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Fetch Invoice
@@ -140,13 +184,14 @@ export class PlatformBillingService {
                 .eq('is_active', true)
                 .order('display_order', { ascending: true });
             
-            if (methods && methods.length > 0) {
-                pdfPaymentMethods = methods;
+            const safeMethods = sanitizePaymentMethodsForClient(methods || []);
+            if (safeMethods.length > 0) {
+                pdfPaymentMethods = safeMethods;
                 paymentMethodsHtml = `
                     <div style="margin-top: 30px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #fcfcfd;">
                         <h3 style="margin-top: 0; color: #0F172A; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px;">Instrucciones de Pago Manual</h3>
                         <div style="space-y: 12px;">
-                            ${methods.map(m => `
+                            ${safeMethods.map(m => `
                                 <div style="margin-bottom: 15px;">
                                     <div style="font-weight: bold; color: #0F172A; font-size: 14px; margin-bottom: 4px;">${m.title}</div>
                                     <div style="color: #475569; font-size: 13px;">${m.instructions || ''}</div>
@@ -280,7 +325,8 @@ export class PlatformBillingService {
         })
 
         if (!result.success) {
-            return { success: false, error: `Fallo de envío: ${result.error}` }
+            logPlatformBillingError("[PlatformBilling] Email send failed:", result.error)
+            return { success: false, error: platformBillingErrorMessage(result.error, PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR) }
         }
 
         return { success: true }
@@ -310,6 +356,7 @@ export class PlatformBillingService {
     }
 
     static async getPlatformPaymentMethods() {
+        await requireSuperAdmin();
         const supabase = await createClient()
         
         // 1. Find Platform Organization
@@ -329,7 +376,7 @@ export class PlatformBillingService {
             .eq('is_active', true)
             .order('display_order', { ascending: true });
         
-        return methods || [];
+        return sanitizePaymentMethodsForClient(methods || []);
     }
 
     static async deletePlatformInvoice(invoiceId: string) {
@@ -344,6 +391,7 @@ export class PlatformBillingService {
     }
 
     static async manualActivateSubscription(organizationId: string, options?: { expiryDate?: string, monthsToAdd?: number }) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Security Check
@@ -438,7 +486,8 @@ export class PlatformBillingService {
 
             return { success: true };
         } catch (dbError: any) {
-            return { success: false, error: dbError.message };
+            logPlatformBillingError("[PlatformBilling.manualActivateSubscription] Error:", dbError)
+            return { success: false, error: platformBillingErrorMessage(dbError, PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR) };
         }
     }
 

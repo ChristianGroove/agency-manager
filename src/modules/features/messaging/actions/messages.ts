@@ -8,6 +8,80 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
+const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"
+const PUBLIC_MESSAGE_SIMULATION_ERROR = "Failed to handle message"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeMessageActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'conversationId',
+        'from',
+        'messageId',
+        'organizationId',
+        'recipientPhone',
+        'sender',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeMessageActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logMessageActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeMessageActionLogDetails(details),
+        detail: summarizeMessageActionError(error),
+    })
+}
+
+function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
+
 /**
  * FunciÃ³n para marcar una conversaciÃ³n como leÃ­da.
  */
@@ -18,7 +92,7 @@ export async function markConversationAsRead(id: string) {
         .update({ unread_count: 0 })
         .eq("id", id)
 
-    if (error) console.error("[markConversationAsRead] Error:", error)
+    if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
     revalidatePath("/inbox")
     return { success: !error }
 }
@@ -35,7 +109,7 @@ export async function getMessages(conversationId: string) {
         .order("created_at", { ascending: true })
 
     if (error) {
-        console.error("[getMessages] Error:", error)
+        logMessageActionError("[getMessages] Error:", error, { conversationId })
         return []
     }
     return data as any[]
@@ -144,17 +218,28 @@ async function internalSend({
                 if (result.success && result.messageId) {
                     await supabaseAdmin.from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
                 } else {
-                    await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: result.error } } as any).eq('id', messageId)
+                    await supabaseAdmin.from('messages').update({
+                        status: 'failed',
+                        metadata: { error: publicMessageActionError(result.error) }
+                    } as any).eq('id', messageId)
                 }
             } catch (bgError: any) {
-                await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: bgError.message } } as any).eq('id', messageId)
+                await supabaseAdmin.from('messages').update({
+                    status: 'failed',
+                    metadata: { error: publicMessageActionError(bgError) }
+                } as any).eq('id', messageId)
             }
         })
 
         return { success: true, messageId }
     } catch (error: any) {
-        console.error("[internalSend] Error:", error)
-        return { success: false, error: error.message }
+        logMessageActionError("[internalSend] Error:", error, {
+            connectionId: connectionIdOverride,
+            conversationId,
+            messageId: msgId,
+            sender,
+        })
+        return { success: false, error: publicMessageActionError(error) }
     }
 }
 
@@ -232,6 +317,7 @@ export async function simulateInboundMessage(from: string, text: string = "Mensa
         })
         return { success: !!result, error: result ? undefined : "Failed to handle message" }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMessageActionError('[simulateInboundMessage] Failed:', error, { from })
+        return { success: false, error: publicMessageActionError(error, PUBLIC_MESSAGE_SIMULATION_ERROR) }
     }
 }

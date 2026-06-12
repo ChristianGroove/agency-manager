@@ -55,10 +55,10 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
         )
     }
 
-    const isConnected = !!config?.credentials?.access_token
+    const isConnected = !!config?.has_access_token
 
     return (
-        <div className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                     <div className="space-y-2">
@@ -69,10 +69,9 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
                         <Input 
                             name="access_token" 
                             type="password" 
-                            placeholder="EAA..." 
-                            defaultValue={config?.credentials?.access_token}
+                            placeholder={isConnected ? "Token configurado; deja vacio para conservarlo" : "EAA..."}
                             className="h-11 bg-white dark:bg-zinc-800 border-slate-200 dark:border-white/10 rounded-xl font-mono text-sm focus:ring-indigo-500 shadow-sm"
-                            required 
+                            required={!isConnected}
                         />
                     </div>
 
@@ -153,12 +152,12 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex items-center justify-end pt-6 border-t border-slate-100 dark:border-white/5">
+            <div className="flex items-center justify-end pt-6 border-t border-slate-100 dark:border-white/5">
                 <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 rounded-xl shadow-lg shadow-indigo-500/20 font-bold text-sm transition-all active:scale-95">
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Guardar Configuración
                 </Button>
-            </form>
-        </div>
+            </div>
+        </form>
     );
 }

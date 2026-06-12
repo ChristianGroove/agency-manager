@@ -7,6 +7,37 @@ import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { Channel, ChannelConfig } from "./types"
 
+function sanitizeChannelCredentials(credentials: Record<string, any> | null | undefined) {
+    if (!credentials || typeof credentials !== 'object') return {}
+
+    return Object.fromEntries(
+        Object.entries(credentials).map(([key, value]) => [`${key}_present`, Boolean(value)])
+    )
+}
+
+function sanitizeChannelForClient(channel: Channel): Channel {
+    return {
+        ...channel,
+        credentials: sanitizeChannelCredentials(channel.credentials),
+    }
+}
+
+async function getChannelInternal(id: string): Promise<Channel | null> {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('integration_connections')
+        .select('*')
+        .eq('id', id)
+        .eq('organization_id', orgId)
+        .single()
+
+    if (error) return null
+    return data as Channel
+}
+
 /**
  * Get all channels for the current organization
  */
@@ -27,26 +58,15 @@ export async function getChannels(): Promise<Channel[]> {
         return []
     }
 
-    return data as Channel[]
+    return (data as Channel[]).map(sanitizeChannelForClient)
 }
 
 /**
  * Get a specific channel by ID
  */
 export async function getChannel(id: string): Promise<Channel | null> {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return null
-
-    const supabase = await createClient()
-    const { data, error } = await supabase
-        .from('integration_connections')
-        .select('*')
-        .eq('id', id)
-        .eq('organization_id', orgId)
-        .single()
-
-    if (error) return null
-    return data as Channel
+    const channel = await getChannelInternal(id)
+    return channel ? sanitizeChannelForClient(channel) : null
 }
 
 /**
@@ -100,7 +120,7 @@ export async function getChannelDetails(channelString: string): Promise<{ name: 
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 
 export async function checkChannelStatus(id: string) {
-    const channel = await getChannel(id)
+    const channel = await getChannelInternal(id)
     if (!channel) {
         return { status: 'error', message: 'Channel not found' }
     }
@@ -204,7 +224,7 @@ export async function createChannel(input: {
     if (error) throw new Error(error.message)
 
     revalidatePath('/crm/settings/channels')
-    return data as Channel
+    return sanitizeChannelForClient(data as Channel)
 }
 
 /**
@@ -223,6 +243,7 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
     delete (updates as any).organization_id
     delete (updates as any).created_at
     delete (updates as any).provider_key // Managing provider type shouldn't change
+    delete (updates as any).credentials
 
     // If setting as primary, handle exclusivity
     if (updates.is_primary) {
@@ -253,7 +274,7 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
     if (error) throw new Error(error.message)
 
     revalidatePath('/crm/settings/channels')
-    return data as Channel
+    return sanitizeChannelForClient(data as Channel)
 }
 
 /**
@@ -412,6 +433,7 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
                     .from('integration_connections')
                     .update({ status: 'active' })
                     .eq('id', existingChannel.id)
+                    .eq('organization_id', orgId)
             }
 
             return {

@@ -29,6 +29,7 @@ export class TagsService {
     }
 
     async getLeadTags(leadId: string): Promise<any[]> {
+        await this.ensureLeadInOrganization(leadId)
         const data = await this.repo.getLeadTags(leadId)
         return data.map((item: any) => ({
             ...item.tag,
@@ -37,6 +38,10 @@ export class TagsService {
     }
 
     async toggleLeadTag(leadId: string, tagId: string): Promise<{ action: 'added' | 'removed' }> {
+        await this.ensureLeadInOrganization(leadId)
+        const tag = await this.repo.findById(tagId, this.orgId)
+        if (!tag) throw new Error('Tag not found')
+
         // Check if link exists
         const leadTags = await this.getLeadTags(leadId)
         const existing = leadTags.find(t => t.id === tagId)
@@ -54,6 +59,8 @@ export class TagsService {
     }
 
     async addTagByName(leadId: string, tagName: string, defaultColor: string = '#f59e0b'): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
+
         // Find or Create Tag
         let tag = await this.repo.findByName(tagName, this.orgId)
         if (!tag) {
@@ -72,6 +79,8 @@ export class TagsService {
     }
 
     async removeTagByName(leadId: string, tagName: string): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
+
         const tag = await this.repo.findByName(tagName, this.orgId)
         if (tag) {
             await this.repo.unlinkTag(leadId, tag.id)
@@ -80,13 +89,13 @@ export class TagsService {
     }
 
     async clearLeadTags(leadId: string): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
         await this.repo.clearLeadTags(leadId)
         
         // Parallel sync
-        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
         await Promise.all([
-            this.supabase.from('leads').update({ tags: [] }).eq('id', leadId),
-            this.supabase.from('conversations').update({ tags: [] }).eq('lead_id', leadId).neq('state', 'archived')
+            this.supabase.from('leads').update({ tags: [] }).eq('id', leadId).eq('organization_id', this.orgId),
+            this.supabase.from('conversations').update({ tags: [] }).eq('lead_id', leadId).eq('organization_id', this.orgId).neq('state', 'archived')
         ])
     }
 
@@ -99,6 +108,19 @@ export class TagsService {
             .from('conversations')
             .update({ tags: tagNames })
             .eq('lead_id', leadId)
+            .eq('organization_id', this.orgId)
             .neq('state', 'archived')
+    }
+
+    private async ensureLeadInOrganization(leadId: string): Promise<void> {
+        const { data, error } = await this.supabase
+            .from('leads')
+            .select('id')
+            .eq('id', leadId)
+            .eq('organization_id', this.orgId)
+            .maybeSingle()
+
+        if (error) throw error
+        if (!data) throw new Error('Lead not found')
     }
 }

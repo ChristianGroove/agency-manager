@@ -17,6 +17,21 @@ export interface Role {
     member_count?: number;
 }
 
+function sanitizeRolePermissions(permissions: unknown): Record<string, boolean> {
+    if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) return {};
+
+    return Object.entries(permissions as Record<string, unknown>).reduce<Record<string, boolean>>((safePermissions, [key, value]) => {
+        if (key === 'all') return safePermissions;
+        if (typeof value === 'boolean') safePermissions[key] = value;
+        return safePermissions;
+    }, {});
+}
+
+function normalizeCustomRoleHierarchy(hierarchyLevel: unknown) {
+    if (typeof hierarchyLevel !== 'number' || !Number.isFinite(hierarchyLevel)) return 1;
+    return Math.max(1, Math.min(49, Math.floor(hierarchyLevel)));
+}
+
 /**
  * Get all roles for the current organization
  * Returns roles sorted by hierarchy level
@@ -131,12 +146,22 @@ export async function upsertRole(role: Partial<Role>) {
         organization_id: orgId,
         name: role.name,
         description: role.description,
-        permissions: role.permissions || {},
-        hierarchy_level: role.hierarchy_level || 1, // Default to lowest
+        permissions: sanitizeRolePermissions(role.permissions),
+        hierarchy_level: normalizeCustomRoleHierarchy(role.hierarchy_level),
         // Prevent touching system flags or IDs if it's a new role
     };
 
     if (role.id) {
+        const { data: existingRole, error: existingRoleError } = await supabaseAdmin
+            .from('organization_roles')
+            .select('is_system_role')
+            .eq('id', role.id)
+            .eq('organization_id', orgId)
+            .single();
+
+        if (existingRoleError || !existingRole) throw new Error('Role not found');
+        if (existingRole.is_system_role) throw new Error('Cannot modify a System Role');
+
         // Update
         // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
         // Security is maintained because we explicitly checked hasPermission above.

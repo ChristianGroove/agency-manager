@@ -150,7 +150,7 @@ export function B2CRestaurantLayout({
                             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Mi Perfil</h2>
 
                             {client ? (
-                                <RestoClientProfile client={client} primaryColor={settings?.portal_primary_color} />
+                                <RestoClientProfile client={client} token={token} primaryColor={settings?.portal_primary_color} />
                             ) : (
                                 // Modo Guest: Leer de Zustand Memory
                                 (() => {
@@ -239,7 +239,7 @@ export function B2CRestaurantLayout({
     )
 }
 
-function RestoClientProfile({ client, primaryColor }: { client: any, primaryColor?: string }) {
+function RestoClientProfile({ client, token, primaryColor }: { client: any, token?: string, primaryColor?: string }) {
     const [address, setAddress] = useState(client.address || '')
     const [isEditing, setIsEditing] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -253,8 +253,9 @@ function RestoClientProfile({ client, primaryColor }: { client: any, primaryColo
     }, [client.address, setCustomerProfile])
 
     const handleSave = async () => {
+        if (!token) return
         setSaving(true)
-        const result = await updateClientAddress(client.id, address)
+        const result = await updateClientAddress(token, client.id, address)
         if (result.success) {
             setCustomerProfile({ address })
             setIsEditing(false)
