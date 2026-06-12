@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
         for (const conn of connections) {
             try {
-                const health = await checkConnectionHealth(conn.id)
+                const health = await checkConnectionHealth(conn.id, conn.organization_id)
                 results.push({
                     id: conn.id,
                     status: health.status,
