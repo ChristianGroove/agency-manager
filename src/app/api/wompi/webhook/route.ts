@@ -88,10 +88,17 @@ export async function POST(request: Request) {
                 }
 
                 // 2. Update Transaction Status
-                await supabaseAdmin
+                let paymentTxUpdate = supabaseAdmin
                     .from('payment_transactions')
                     .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
                     .eq('id', paymentTx.id)
+                    .eq('reference', reference)
+
+                if (paymentTx.organization_id) {
+                    paymentTxUpdate = paymentTxUpdate.eq('organization_id', paymentTx.organization_id)
+                }
+
+                await paymentTxUpdate
 
                 // 3. Update All Linked Invoices
                 const invoiceIds = paymentTx.invoice_ids
@@ -146,6 +153,7 @@ export async function POST(request: Request) {
                                 .from('saas_platform_invoices')
                                 .select('billing_period_end')
                                 .eq('id', paymentTx.metadata.invoice_id)
+                                .eq('organization_id', paymentTx.organization_id)
                                 .single()
                             
                             if (invoice?.billing_period_end) {
@@ -170,6 +178,7 @@ export async function POST(request: Request) {
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', subscription.id)
+                            .eq('organization_id', paymentTx.organization_id)
 
                         console.log(`[Webhook] ✅ Updated saas_subscription ${subscription.id} for Org ${paymentTx.organization_id} until ${newEnd.toISOString()}`)
                     }
@@ -184,7 +193,8 @@ export async function POST(request: Request) {
                                     payment_transaction_id: paymentTx.id,
                                     updated_at: new Date().toISOString() 
                                 })
-                                .eq('id', paymentTx.metadata.invoice_id);
+                                .eq('id', paymentTx.metadata.invoice_id)
+                                .eq('organization_id', paymentTx.organization_id);
 
                             if (platformInvoiceError) {
                                 console.error('[Webhook] ❌ Error updating platform invoice status:', platformInvoiceError);
@@ -222,10 +232,16 @@ export async function POST(request: Request) {
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
                     // ... (existing invoice update logic) ...
 
-                    const { data: updatedInvoices, error: updateError } = await supabaseAdmin
+                    let invoiceUpdateQuery = supabaseAdmin
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
+
+                    if (paymentTx.organization_id) {
+                        invoiceUpdateQuery = invoiceUpdateQuery.eq('organization_id', paymentTx.organization_id)
+                    }
+
+                    const { data: updatedInvoices, error: updateError } = await invoiceUpdateQuery
                         .select('id, client_id, number, total, organization_id') // Added organization_id
 
                     if (updateError) {
