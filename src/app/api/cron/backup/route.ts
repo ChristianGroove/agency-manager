@@ -42,11 +42,25 @@ function backupCronErrorMessage(error: unknown) {
 }
 
 function sanitizeBackupResult(result: any) {
-    if (!isProductionRuntime() || !result || result.success !== false || typeof result.error !== 'string') {
+    if (!isProductionRuntime() || !result) {
         return result
     }
 
-    return { ...result, error: PUBLIC_BACKUP_JOB_ERROR }
+    if (result.success === false) {
+        return { success: false, error: PUBLIC_BACKUP_JOB_ERROR }
+    }
+
+    return { success: Boolean(result.success) }
+}
+
+function backupResultForResponse(orgId: string, result: any) {
+    const sanitized = sanitizeBackupResult(result)
+
+    if (isProductionRuntime()) {
+        return sanitized
+    }
+
+    return { orgId, ...sanitized }
 }
 
 export async function GET(req: NextRequest) {
@@ -105,7 +119,7 @@ export async function GET(req: NextRequest) {
         const results = []
         for (const orgId of uniqueOrgIds) {
             const result = await BackupService.performBackup(orgId)
-            results.push({ orgId, ...sanitizeBackupResult(result) })
+            results.push(backupResultForResponse(orgId, result))
         }
 
         return NextResponse.json({ success: true, results })

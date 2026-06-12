@@ -129,8 +129,9 @@ describe('/api/cron/backup', () => {
         expect(response.status).toBe(200)
         expect(body).toEqual({
             success: true,
-            results: [{ orgId: 'org-1', success: false, error: 'Backup failed' }],
+            results: [{ success: false, error: 'Backup failed' }],
         })
+        expect(responseText).not.toContain('org-1')
         expect(responseText).not.toContain('secret-value')
         expect(responseText).not.toContain('access key')
     })
