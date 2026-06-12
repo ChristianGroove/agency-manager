@@ -114,7 +114,9 @@ export async function createConnection(params: CreateConnectionParams) {
             metadata: params.metadata || {},
             status: 'active',
             last_synced_at: new Date().toISOString()
-        }).eq('id', existingConn.id)
+        })
+            .eq('id', existingConn.id)
+            .eq('organization_id', orgMember.organization_id)
 
         error = result.error
         if (!error) {
