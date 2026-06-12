@@ -109,8 +109,12 @@ export async function GET(request: Request) {
                     }
 
                 } catch (err: any) {
-                    logHostingCronError(`Error processing hosting account ${account.id}:`, err);
-                    results.errors.push(`Account ${account.id}: ${hostingCronErrorMessage(err)}`);
+                    logHostingCronError(
+                        isProductionRuntime() ? 'Error processing hosting account:' : `Error processing hosting account ${account.id}:`,
+                        err
+                    );
+                    const errorMessage = hostingCronErrorMessage(err);
+                    results.errors.push(isProductionRuntime() ? errorMessage : `Account ${account.id}: ${errorMessage}`);
                 }
             }
         }
