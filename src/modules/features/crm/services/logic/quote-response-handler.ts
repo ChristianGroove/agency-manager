@@ -26,24 +26,31 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
 
 
     try {
-        // 1. Update cart status to approved
+        // 1. Resolve cart tenant before applying privileged writes
+        const { data: cart } = await supabaseAdmin
+            .from('deal_carts')
+            .select('lead_id, organization_id')
+            .eq('id', context.cartId)
+            .single()
+
+        if (!cart?.organization_id) {
+            throw new Error("Cart not found")
+        }
+
+        // 2. Update cart status to approved
         await supabaseAdmin
             .from('deal_carts')
             .update({ status: 'approved' })
             .eq('id', context.cartId)
+            .eq('organization_id', cart.organization_id)
 
-        // 2. Update associated lead's pipeline stage (if configured)
-        const { data: cart } = await supabaseAdmin
-            .from('deal_carts')
-            .select('lead_id')
-            .eq('id', context.cartId)
-            .single()
-
+        // 3. Update associated lead's pipeline stage (if configured)
         if (cart?.lead_id) {
             // Find "won" stage
             const { data: stage } = await supabaseAdmin
                 .from('pipeline_stages')
                 .select('id')
+                .eq('organization_id', cart.organization_id)
                 .eq('name', 'won')
                 .limit(1)
                 .single()
@@ -53,10 +60,11 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
                     .from('leads')
                     .update({ stage_id: stage.id })
                     .eq('id', cart.lead_id)
+                    .eq('organization_id', cart.organization_id)
             }
         }
 
-        // 3. Send confirmation message (optional)
+        // 4. Send confirmation message (optional)
         // await sendConfirmationMessage(context, "¡Gracias! Tu cotización ha sido aprobada. ✅")
 
 
@@ -162,6 +170,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
                 .from('conversations')
                 .select('connection_id')
                 .eq('id', context.conversationId)
+                .eq('organization_id', conversation.organization_id)
                 .single()
             connectionId = convData?.connection_id || ''
 
@@ -178,6 +187,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
             .from('integration_connections')
             .select('*, credentials')
             .eq('id', connectionId)
+            .eq('organization_id', conversation.organization_id)
             .single()
 
         connection = directConn
@@ -189,6 +199,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
                 .from('integration_connections')
                 .select('*, credentials')
                 .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
+                .eq('organization_id', conversation.organization_id)
                 .eq('status', 'active')
                 .limit(1)
 
@@ -280,15 +291,7 @@ export async function handleRejectionReasonSelected(
 
 
     try {
-        // 1. Update cart with rejection reason and status
-        await supabaseAdmin
-            .from('deal_carts')
-            .update({
-                status: 'rejected'
-            })
-            .eq('id', cartId)
-
-        // 2. Get conversation info for sending message
+        // 1. Get conversation info for tenant scoping and messaging
         const { data: conv } = await supabaseAdmin
             .from('conversations')
             .select('phone, organization_id, connection_id')
@@ -299,6 +302,15 @@ export async function handleRejectionReasonSelected(
             console.error("[QuoteHandler] No phone found for conversation")
             return { success: false, error: "No phone found" }
         }
+
+        // 2. Update cart with rejection reason and status
+        await supabaseAdmin
+            .from('deal_carts')
+            .update({
+                status: 'rejected'
+            })
+            .eq('id', cartId)
+            .eq('organization_id', conv.organization_id)
 
         // 3. Get quote settings for configurable message
         let settings = null
@@ -329,6 +341,7 @@ export async function handleRejectionReasonSelected(
             .from('integration_connections')
             .select('*, credentials')
             .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
+            .eq('organization_id', conv.organization_id)
             .eq('status', 'active')
             .limit(1)
 
