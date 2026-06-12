@@ -250,5 +250,15 @@ describe('InboxService', () => {
             'org-current',
             expect.any(Object)
         )
+        expect(mocks.evaluateInput).toHaveBeenCalledWith(
+            'hola',
+            'conversation-current',
+            'whatsapp',
+            '+57 123 456 7890',
+            'lead-current',
+            'connection-current',
+            undefined,
+            'org-current'
+        )
     })
 })

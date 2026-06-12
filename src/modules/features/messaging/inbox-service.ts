@@ -8,6 +8,75 @@ import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours
 import { MessagingPersistence } from "./services/persistence"
 import { LeadLifecycleManager } from "@/modules/features/crm/services/logic/lead-lifecycle-manager"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeInboxLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'conversationId',
+        'externalId',
+        'from',
+        'leadId',
+        'metadata',
+        'organizationId',
+        'phone',
+        'recipientPhone',
+        'stageId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeInboxError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error }
+}
+
+function logInboxInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeInboxLogDetails(details))
+}
+
+function logInboxWarning(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.warn(label, error, details)
+        else console.warn(label, error)
+        return
+    }
+
+    console.warn(label, {
+        ...(details ? sanitizeInboxLogDetails(details) : {}),
+        detail: summarizeInboxError(error),
+    })
+}
+
+function logInboxError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeInboxLogDetails(details) : {}),
+        detail: summarizeInboxError(error),
+    })
+}
 
 export class InboxService {
 
@@ -15,7 +84,7 @@ export class InboxService {
      * Process and save an incoming message to the database
      */
     async handleIncomingMessage(msg: IncomingMessage, supabase: SupabaseClient = supabaseAdmin) {
-        console.log('[InboxService] 📥 handleIncomingMessage from:', msg.from, 'Channel:', msg.channel)
+        logInboxInfo('[InboxService] handleIncomingMessage', { from: msg.from, channel: msg.channel })
 
         // 1. Idempotency Check (Primary)
         if (msg.externalId) {
@@ -26,7 +95,7 @@ export class InboxService {
                 .maybeSingle()
 
             if (existingMsg) {
-                console.log(`[InboxService] Duplicate message detected: ${msg.externalId}. Evaluating automation triggers.`)
+                logInboxInfo('[InboxService] Duplicate message detected', { externalId: msg.externalId })
                 const convId = existingMsg.conversation_id;
                 const leadId = (existingMsg.conversations as any)?.lead_id;
 
@@ -41,10 +110,16 @@ export class InboxService {
         // 2. Resolve Context (Tenant, Lead, Conversation)
         const match = await ChannelResolver.resolveConnection(msg, supabase)
         if (!match) {
-            console.log('[InboxService] ❌ REJECTED: No matching integration connection found for:', msg.from, 'Metadata:', JSON.stringify(msg.metadata))
+            logInboxInfo('[InboxService] Rejected: no matching integration connection found', {
+                from: msg.from,
+                metadata: msg.metadata,
+            })
             return { success: false, error: 'Tenant isolation: No matching connection' }
         }
-        console.log('[InboxService] ✅ Match found:', match.connectionId, 'Org:', match.organizationId)
+        logInboxInfo('[InboxService] Match found', {
+            connectionId: match.connectionId,
+            organizationId: match.organizationId,
+        })
 
         const { conversation, lead, isNewLead } = await this.resolveMetadataContext(msg, match, supabase)
         if (!conversation) return null
@@ -84,10 +159,13 @@ export class InboxService {
         if (msgError) {
             // Handle unique constraint violation (idempotency at DB level)
             if (msgError.code === '23505') {
-                console.log(`[InboxService] Atomic duplicate detected for ${msg.externalId}. Skipping insert.`)
+                logInboxInfo('[InboxService] Atomic duplicate detected', { externalId: msg.externalId })
                 return { success: true, conversationId: conversation.id }
             }
-            console.error('[InboxService] Failed to save message:', msgError)
+            logInboxError('[InboxService] Failed to save message:', msgError, {
+                conversationId: conversation.id,
+                organizationId: match.organizationId,
+            })
             return null
         }
 
@@ -107,14 +185,17 @@ export class InboxService {
             
             // Workflow Automation Triggers
             // Meta 2026: Triggers generally fire AFTER welcome/offline if applicable
-            await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId)
+            await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId, match.organizationId)
 
             // 5. REACTIVE LEAD LIFECYCLE (Innovative sync)
             if (lead?.id) {
                 const lifecycleManager = new LeadLifecycleManager(supabase);
                 // Background execution to maintain high-frequency inbox performance
                 lifecycleManager.handleLeadIncomingActivity(lead.id, match.organizationId).catch(err => 
-                    console.error('[InboxService] Lifecycle Manager Error:', err)
+                    logInboxError('[InboxService] Lifecycle Manager Error:', err, {
+                        leadId: lead.id,
+                        organizationId: match.organizationId,
+                    })
                 );
             }
         }
@@ -122,11 +203,11 @@ export class InboxService {
         return { success: true, conversationId: conversation.id }
     }
 
-    private async triggerAutomation(msg: IncomingMessage, conversationId: string, leadId: string, connectionId?: string) {
-        console.log('[InboxService] 🤖 triggerAutomation called for conv:', conversationId)
+    private async triggerAutomation(msg: IncomingMessage, conversationId: string, leadId: string, connectionId?: string, organizationId?: string) {
+        logInboxInfo('[InboxService] triggerAutomation called', { conversationId, leadId, connectionId })
         try {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
-            console.log('[InboxService] 🤖 Calling evaluateInput...')
+            logInboxInfo('[InboxService] Calling evaluateInput')
             await automationTrigger.evaluateInput(
                 typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
                 conversationId,
@@ -134,11 +215,12 @@ export class InboxService {
                 msg.from,
                 leadId,
                 connectionId,
-                msg.id || msg.externalId || undefined
-            ).catch(err => console.error('[InboxService] Automation Trigger Error:', err))
-            console.log('[InboxService] 🤖 evaluateInput completed.')
+                msg.id || msg.externalId || undefined,
+                organizationId
+            ).catch(err => logInboxError('[InboxService] Automation Trigger Error:', err, { conversationId, leadId, connectionId }))
+            logInboxInfo('[InboxService] evaluateInput completed')
         } catch (e) {
-            console.warn('[InboxService] Failed to load automation service:', e)
+            logInboxWarning('[InboxService] Failed to load automation service:', e, { conversationId, leadId, connectionId })
         }
     }
 
@@ -146,7 +228,11 @@ export class InboxService {
         const { organizationId, connectionId } = match
         const normalizedPhone = normalizePhone(msg.from)
         
-        console.log(`[InboxService] Resolving context for Org: ${organizationId}, Phone: ${normalizedPhone}`);
+        logInboxInfo('[InboxService] Resolving context', {
+            organizationId,
+            phone: normalizedPhone,
+            connectionId,
+        });
 
         // 1. Resolve Lead
         let lead = null
@@ -161,10 +247,10 @@ export class InboxService {
 
         if (foundLeads && foundLeads.length > 0) {
             lead = foundLeads[0]
-            console.log(`[InboxService] Existing lead found: ${lead.id}`);
+            logInboxInfo('[InboxService] Existing lead found', { leadId: lead.id });
             // ... (rest of update logic)
         } else {
-            console.log(`[InboxService] Lead not found. Creating new lead...`);
+            logInboxInfo('[InboxService] Lead not found. Creating new lead', { phone: normalizedPhone, organizationId });
             const { data: newLead, error: leadInsertError } = await supabase.from('leads').insert({
                 organization_id: organizationId,
                 phone: normalizedPhone,
@@ -175,14 +261,17 @@ export class InboxService {
             }).select().single()
 
             if (leadInsertError) {
-                console.error(`[InboxService] Error creating lead:`, leadInsertError);
+                logInboxError('[InboxService] Error creating lead:', leadInsertError, { organizationId, phone: normalizedPhone });
             }
             lead = newLead
             isNewLead = true
         }
 
         if (!lead) {
-            console.error(`[InboxService] CRITICAL: Lead resolution failed (lead is null)`);
+            logInboxError('[InboxService] CRITICAL: Lead resolution failed', new Error('lead_resolution_failed'), {
+                organizationId,
+                phone: normalizedPhone,
+            });
             return { conversation: null, lead: null, isNewLead: false }
         }
 
@@ -287,7 +376,7 @@ export class InboxService {
         const timezone = connection.working_hours?.timezone || 'America/Bogota'
         const isOnline = this.isWithinWorkingHours(connection.working_hours, timezone)
         
-        console.log(`[InboxService] Business Hours Status: ${isOnline ? 'ONLINE' : 'OFFLINE'} | Timezone: ${timezone}`);
+        logInboxInfo('[InboxService] Business hours status', { isOnline, timezone });
 
         if (!isOnline && connection.auto_reply_when_offline) {
             let shouldSend = true
@@ -326,20 +415,29 @@ export class InboxService {
                             .eq('id', conversationId)
                             .eq('organization_id', orgId)
                     }
-                    console.log(`[InboxService] Auto-reply SENT successfully.`);
+                    logInboxInfo('[InboxService] Auto-reply sent successfully', {
+                        conversationId,
+                        organizationId: orgId,
+                    });
                 } catch (error: any) {
-                    console.error("[InboxService] ERROR sending auto-reply:", error.message);
+                    logInboxError('[InboxService] ERROR sending auto-reply:', error, {
+                        conversationId,
+                        organizationId: orgId,
+                        recipientPhone,
+                    });
                 }
             }
             return;
         } else if (!isOnline) {
-            console.log(`[InboxService] Channel is OFFLINE but no auto-reply message is configured.`);
+            logInboxInfo('[InboxService] Channel is offline but no auto-reply message is configured', {
+                organizationId: orgId,
+            });
         }
 
         // 3. Welcome Message (New Leads Only) - ONLY if Online
         if (!existingLead && connection.welcome_message && isOnline) {
             try {
-                console.log(`[InboxService] Sending welcome message to new lead ${lead.id}`)
+                logInboxInfo('[InboxService] Sending welcome message to new lead', { leadId: lead.id })
                 await outboundService.sendMessage(
                     connection.id,
                     recipientPhone,
@@ -348,7 +446,11 @@ export class InboxService {
                     { connection }
                 )
             } catch (error: any) {
-                console.error("[InboxService] Failed to send welcome message:", error.message)
+                logInboxError('[InboxService] Failed to send welcome message:', error, {
+                    leadId: lead.id,
+                    organizationId: orgId,
+                    recipientPhone,
+                })
             }
         }
     }
@@ -376,10 +478,10 @@ export class InboxService {
                     .from('leads')
                     .update({ status: stage.status_key })
                     .eq('id', leadId);
-                console.log(`[InboxService] Auto - assigned lead ${leadId} to stage ${stage.status_key} `);
+                logInboxInfo('[InboxService] Auto-assigned lead to stage', { leadId, stageStatus: stage.status_key });
             }
         } catch (error) {
-            console.error('[InboxService] Failed to auto-assign pipeline stage:', error);
+            logInboxError('[InboxService] Failed to auto-assign pipeline stage:', error, { leadId, stageId });
         }
     }
 }
