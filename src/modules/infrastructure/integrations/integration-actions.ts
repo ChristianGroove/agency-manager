@@ -149,10 +149,32 @@ export async function createConnection(params: CreateConnectionParams) {
 
 export async function deleteConnection(connectionId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Unauthorized" }
+
+    const { data: orgMemberships, error: membershipError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin'])
+
+    if (membershipError) {
+        logIntegrationActionError("Error validating connection deletion permissions:", membershipError, { userId: user.id })
+        return { error: "Failed to delete connection" }
+    }
+
+    const organizationIds = (orgMemberships || []).map(member => member.organization_id)
+
+    if (organizationIds.length === 0) {
+        return { error: "You must be an admin of an organization to delete integrations." }
+    }
+
     const { data: deletedConn, error } = await supabase
         .from('integration_connections')
         .delete()
         .eq('id', connectionId)
+        .in('organization_id', organizationIds)
         .select('organization_id, provider_key')
         .single()
 
@@ -161,7 +183,6 @@ export async function deleteConnection(connectionId: string) {
     }
 
     // Security Log
-    const { data: { user } } = await supabase.auth.getUser()
     if (user && deletedConn) {
         const { SecurityLogger, SecurityAction } = await import('@/modules/core/security/security-logger')
         await SecurityLogger.log({
