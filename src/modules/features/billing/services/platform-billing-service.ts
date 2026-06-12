@@ -344,6 +344,7 @@ export class PlatformBillingService {
     }
 
     static async manualActivateSubscription(organizationId: string, options?: { expiryDate?: string, monthsToAdd?: number }) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Security Check
