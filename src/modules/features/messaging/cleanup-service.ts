@@ -51,14 +51,20 @@ export class MessagingCleanupService {
     /**
      * Cleans up media for multiple leads
      */
-    async deleteLeadsMedia(leadIds: string[]) {
+    async deleteLeadsMedia(leadIds: string[], organizationId?: string) {
         const supabase = supabaseAdmin;
 
         // Find all conversations for these leads
-        const { data: conversations } = await supabase
+        let query = supabase
             .from('conversations')
             .select('id')
             .in('lead_id', leadIds);
+
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId);
+        }
+
+        const { data: conversations } = await query;
 
         if (!conversations || conversations.length === 0) return;
 
