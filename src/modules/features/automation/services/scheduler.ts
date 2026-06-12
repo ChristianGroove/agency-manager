@@ -117,6 +117,8 @@ export async function getPendingJobs(batchSize: number = 10): Promise<ScheduledJ
  */
 export async function completeJob(jobId: string): Promise<boolean> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const { error } = await supabase
         .from('scheduled_workflow_jobs')
@@ -124,7 +126,8 @@ export async function completeJob(jobId: string): Promise<boolean> {
             status: 'completed',
             completed_at: new Date().toISOString()
         })
-        .eq('id', jobId);
+        .eq('id', jobId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Scheduler] Failed to complete job:', error);
@@ -139,6 +142,8 @@ export async function completeJob(jobId: string): Promise<boolean> {
  */
 export async function failJob(jobId: string, errorMessage: string): Promise<boolean> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const { error } = await supabase
         .from('scheduled_workflow_jobs')
@@ -147,7 +152,8 @@ export async function failJob(jobId: string, errorMessage: string): Promise<bool
             completed_at: new Date().toISOString(),
             last_error: errorMessage
         })
-        .eq('id', jobId);
+        .eq('id', jobId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Scheduler] Failed to mark job as failed:', error);
@@ -162,6 +168,8 @@ export async function failJob(jobId: string, errorMessage: string): Promise<bool
  */
 export async function retryJob(jobId: string, delayMinutes: number = 5): Promise<boolean> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const scheduledFor = new Date();
     scheduledFor.setMinutes(scheduledFor.getMinutes() + delayMinutes);
@@ -174,7 +182,8 @@ export async function retryJob(jobId: string, delayMinutes: number = 5): Promise
             started_at: null,
             completed_at: null
         })
-        .eq('id', jobId);
+        .eq('id', jobId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Scheduler] Failed to retry job:', error);
@@ -189,6 +198,8 @@ export async function retryJob(jobId: string, delayMinutes: number = 5): Promise
  */
 export async function cancelJob(jobId: string): Promise<boolean> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const { error } = await supabase
         .from('scheduled_workflow_jobs')
@@ -197,6 +208,7 @@ export async function cancelJob(jobId: string): Promise<boolean> {
             completed_at: new Date().toISOString()
         })
         .eq('id', jobId)
+        .eq('organization_id', organizationId)
         .eq('status', 'pending');
 
     if (error) {
@@ -212,11 +224,14 @@ export async function cancelJob(jobId: string): Promise<boolean> {
  */
 export async function getWorkflowScheduledJobs(workflowId: string): Promise<ScheduledJob[]> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return [];
 
     const { data, error } = await supabase
         .from('scheduled_workflow_jobs')
         .select('*')
         .eq('workflow_id', workflowId)
+        .eq('organization_id', organizationId)
         .order('scheduled_for', { ascending: true });
 
     if (error) {
