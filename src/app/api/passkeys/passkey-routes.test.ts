@@ -68,7 +68,23 @@ function createSupabaseMock(tableQueries: Record<string, any>) {
     }
 }
 
+function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
+    return (spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
 afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     vi.resetModules()
 })
@@ -163,6 +179,31 @@ describe('passkey API routes', () => {
         })
     })
 
+    it('does not expose login option admin failures in production logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.supabaseAdmin.auth.admin.listUsers.mockResolvedValue({
+            data: null,
+            error: { message: 'service role secret-value failed listing auth users' },
+        })
+
+        const { POST } = await import('./login-options/route')
+        const response = await POST(new Request('https://pixy.test/api/passkeys/login-options', {
+            method: 'POST',
+            body: JSON.stringify({ email: 'agent@pixy.test' }),
+        }) as any)
+        const responseText = await response.text()
+
+        expect(response.status).toBe(500)
+        expect(responseText).toContain('Failed to generate authentication options')
+        expect(responseText).not.toContain('secret-value')
+        expect(responseText).not.toContain('service role')
+
+        const errorLogText = collectConsoleCalls(errorSpy)
+        expect(errorLogText).not.toContain('secret-value')
+        expect(errorLogText).not.toContain('service role')
+    })
+
     it('returns a generic unavailable response when the passkey login user is unknown', async () => {
         mocks.supabaseAdmin.auth.admin.listUsers.mockResolvedValue({
             data: { users: [] },
@@ -242,5 +283,139 @@ describe('passkey API routes', () => {
         expect(passkeysQuery.eq).toHaveBeenCalledWith('credential_id', 'credential-1')
         expect(passkeysQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
         expect(mocks.verifyAuthenticationResponse).not.toHaveBeenCalled()
+    })
+
+    it('returns only the passkey login action link after successful verification', async () => {
+        const challengeQuery = createQuery({
+            data: {
+                id: 'challenge-1',
+                challenge: 'authentication-challenge',
+                user_id: 'user-1',
+                email: 'agent@pixy.test',
+                type: 'authentication',
+                expires_at: new Date(Date.now() + 60_000).toISOString(),
+            },
+            error: null,
+        })
+        const passkeysQuery = createQuery({
+            data: {
+                id: 'passkey-1',
+                user_id: 'user-1',
+                credential_id: 'credential-1',
+                credential_public_key: Buffer.from('public-key').toString('base64'),
+                counter: 0,
+            },
+            error: null,
+        })
+        mocks.supabaseAdmin.from.mockImplementation((table: string) => {
+            if (table === 'passkey_challenges') return challengeQuery
+            if (table === 'user_passkeys') return passkeysQuery
+            throw new Error(`Unexpected admin table ${table}`)
+        })
+        mocks.verifyAuthenticationResponse.mockResolvedValue({
+            verified: true,
+            authenticationInfo: { newCounter: 1 },
+        })
+        mocks.supabaseAdmin.auth.admin.getUserById.mockResolvedValue({
+            data: { user: { id: 'user-1', email: 'agent@pixy.test' } },
+            error: null,
+        })
+        mocks.supabaseAdmin.auth.admin.generateLink.mockResolvedValue({
+            data: {
+                properties: {
+                    action_link: 'https://pixy.test/auth/confirm?token=token-hash',
+                    email_otp: 'raw-otp-secret-value',
+                    hashed_token: 'hashed-secret-value',
+                },
+                user: { id: 'user-1' },
+            },
+            error: null,
+        })
+
+        const { POST } = await import('./login-verify/route')
+        const response = await POST(new Request('https://pixy.test/api/passkeys/login-verify', {
+            method: 'POST',
+            body: JSON.stringify({
+                email: ' Agent@Pixy.TEST ',
+                credential: { id: 'credential-1' },
+            }),
+        }) as any)
+        const responseText = await response.text()
+        const body = JSON.parse(responseText)
+
+        expect(response.status).toBe(200)
+        expect(body).toEqual({
+            verified: true,
+            session: {
+                properties: {
+                    action_link: 'https://pixy.test/auth/confirm?token=token-hash',
+                },
+            },
+            user: {
+                id: 'user-1',
+                email: 'agent@pixy.test',
+            },
+        })
+        expect(responseText).not.toContain('raw-otp-secret-value')
+        expect(responseText).not.toContain('hashed-secret-value')
+        expect(passkeysQuery.eq).toHaveBeenCalledWith('id', 'passkey-1')
+        expect(passkeysQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('id', 'challenge-1')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('email', 'agent@pixy.test')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('type', 'authentication')
+    })
+
+    it('scopes registration challenge cleanup to the authenticated user', async () => {
+        const authClient = createSupabaseMock({
+            user_passkeys: createQuery({ error: null }),
+        })
+        authClient.auth.getUser.mockResolvedValue({
+            data: { user: { id: 'user-1', email: 'agent@pixy.test' } },
+            error: null,
+        })
+        mocks.createClient.mockResolvedValue(authClient)
+
+        const challengeQuery = createQuery({
+            data: {
+                id: 'challenge-1',
+                challenge: 'registration-challenge',
+                user_id: 'user-1',
+                type: 'registration',
+                expires_at: new Date(Date.now() + 60_000).toISOString(),
+            },
+            error: null,
+        })
+        mocks.supabaseAdmin.from.mockImplementation((table: string) => {
+            if (table === 'passkey_challenges') return challengeQuery
+            throw new Error(`Unexpected admin table ${table}`)
+        })
+        mocks.verifyRegistrationResponse.mockResolvedValue({
+            verified: true,
+            registrationInfo: {
+                credentialID: Buffer.from('credential-id'),
+                credentialPublicKey: Buffer.from('public-key'),
+                counter: 0,
+            },
+        })
+
+        const { POST } = await import('./register-verify/route')
+        const response = await POST(new Request('https://pixy.test/api/passkeys/register-verify', {
+            method: 'POST',
+            body: JSON.stringify({
+                credential: {
+                    response: { transports: ['internal'] },
+                },
+                deviceName: 'Laptop',
+            }),
+        }) as any)
+        const body = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(body.verified).toBe(true)
+        expect(challengeQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('type', 'registration')
+        expect(challengeQuery.eq).toHaveBeenCalledWith('id', 'challenge-1')
+        expect(authClient.from).toHaveBeenCalledWith('user_passkeys')
     })
 })

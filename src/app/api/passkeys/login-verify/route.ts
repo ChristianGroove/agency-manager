@@ -96,12 +96,16 @@ export async function POST(request: NextRequest) {
                 last_used_at: new Date().toISOString(),
             })
             .eq('id', passkey.id)
+            .eq('user_id', passkey.user_id)
 
         // Delete used challenge
         await supabase
             .from('passkey_challenges')
             .delete()
             .eq('id', challengeData.id)
+            .eq('user_id', challengeData.user_id)
+            .eq('email', email)
+            .eq('type', 'authentication')
 
         // Get user data to create session
         const { data: userData } = await supabase.auth.admin.listUsers()

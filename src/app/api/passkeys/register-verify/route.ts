@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
             .from('passkey_challenges')
             .delete()
             .eq('id', challengeData.id)
+            .eq('user_id', user.id)
+            .eq('type', 'registration')
 
         return NextResponse.json({
             verified: true,
