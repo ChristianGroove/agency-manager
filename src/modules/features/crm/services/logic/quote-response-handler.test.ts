@@ -229,7 +229,6 @@ describe('quote response handler logging and failures', () => {
                         message: 'settings denied for org-secret-id using policy-secret',
                     },
                 }),
-                quoteSettings(null),
             ],
             integration_connections: [
                 directConnection,

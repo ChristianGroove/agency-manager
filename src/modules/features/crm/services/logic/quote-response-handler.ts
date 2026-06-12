@@ -108,18 +108,6 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
         settings = orgSettings
 
-        // Fallback: get any available quote_settings if org-specific not found
-        if (!settings) {
-
-            const { data: fallbackSettings } = await supabaseAdmin
-                .from('quote_settings')
-                .select('actions_config')
-                .limit(1)
-                .single()
-
-            settings = fallbackSettings
-        }
-
         if (settingsError && !settings) {
             console.error(`[QuoteHandler] Settings fetch error:`, settingsError.message)
         }
@@ -322,16 +310,6 @@ export async function handleRejectionReasonSelected(
             .single()
 
         settings = orgSettings
-
-        // Fallback: get any available quote_settings
-        if (!settings) {
-            const { data: fallbackSettings } = await supabaseAdmin
-                .from('quote_settings')
-                .select('actions_config')
-                .limit(1)
-                .single()
-            settings = fallbackSettings
-        }
 
         const ackMessage = settings?.actions_config?.reject?.acknowledgment_message ||
             `Gracias por su respuesta. Hemos registrado: "${reason}". Un asesor se comunicará pronto.`
