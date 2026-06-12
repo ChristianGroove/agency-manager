@@ -135,7 +135,12 @@ export async function GET(request: Request) {
             };
 
             if (existing) {
-                await supabaseAdmin.from("integration_configs").update(payload).eq("id", existing.id);
+                await supabaseAdmin
+                    .from("integration_configs")
+                    .update(payload)
+                    .eq("id", existing.id)
+                    .eq("client_id", clientId)
+                    .eq("platform", "meta");
             } else {
                 await supabaseAdmin.from("integration_configs").insert(payload);
             }
@@ -386,7 +391,10 @@ export async function GET(request: Request) {
             const { error } = await supabase
                 .from('integration_connections')
                 .update(connectionPayload)
-                .eq('id', existingConnection.id);
+                .eq('id', existingConnection.id)
+                .eq('organization_id', orgId)
+                .eq('provider_key', 'meta_business')
+                .eq('is_primary', true);
             dbError = error;
         } else {
             console.log("Inserting new connection");
