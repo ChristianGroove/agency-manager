@@ -28,6 +28,8 @@ export interface WorkflowPermission {
  */
 export async function getWorkflowPermissions(workflowId: string): Promise<WorkflowPermission[]> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return [];
 
     const { data, error } = await supabase
         .from('workflow_permissions')
@@ -38,7 +40,8 @@ export async function getWorkflowPermissions(workflowId: string): Promise<Workfl
                 raw_user_meta_data
             )
         `)
-        .eq('workflow_id', workflowId);
+        .eq('workflow_id', workflowId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Permissions] Failed to get permissions:', error);
@@ -99,12 +102,15 @@ export async function setWorkflowPermission(
  */
 export async function removeWorkflowPermission(workflowId: string, userId: string): Promise<boolean> {
     const supabase = await createClient();
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const { error } = await supabase
         .from('workflow_permissions')
         .delete()
         .eq('workflow_id', workflowId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Permissions] Failed to remove permission:', error);
