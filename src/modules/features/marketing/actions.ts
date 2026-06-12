@@ -5,6 +5,26 @@ import { revalidatePath } from "next/cache"
 
 const META_PROVIDER_KEY = 'meta_ads_monitor'
 
+function getOptionalFormString(formData: FormData, key: string) {
+    const value = formData.get(key)
+    return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function sanitizeMetaConfigForClient(config: any) {
+    if (!config) return null
+
+    const credentials = config.credentials && typeof config.credentials === 'object'
+        ? config.credentials
+        : {}
+    const { access_token: _accessToken, ...safeCredentials } = credentials
+
+    return {
+        ...config,
+        credentials: safeCredentials,
+        has_access_token: Boolean(credentials.access_token),
+    }
+}
+
 export async function getOrgMetaConfig() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -26,7 +46,7 @@ export async function getOrgMetaConfig() {
         .eq('provider_key', META_PROVIDER_KEY)
         .single()
 
-    return { config: data, error }
+    return { config: sanitizeMetaConfigForClient(data), error }
 }
 
 export async function saveOrgMetaConfig(formData: FormData) {
@@ -45,9 +65,29 @@ export async function saveOrgMetaConfig(formData: FormData) {
         return { success: false, error: "Insufficient permissions" }
     }
 
-    const accessToken = formData.get('access_token') as string
-    const adAccountId = formData.get('ad_account_id') as string
-    const pageId = formData.get('page_id') as string
+    const submittedAccessToken = getOptionalFormString(formData, 'access_token')
+    const adAccountId = getOptionalFormString(formData, 'ad_account_id')
+    const pageId = getOptionalFormString(formData, 'page_id')
+
+    if (!adAccountId || !pageId) {
+        return { success: false, error: "Faltan Ad Account ID o Page ID" }
+    }
+
+    const { data: existing } = await supabase
+        .from('integration_connections')
+        .select('id, credentials')
+        .eq('organization_id', member.organization_id)
+        .eq('provider_key', META_PROVIDER_KEY)
+        .single()
+
+    const existingCredentials = existing?.credentials && typeof existing.credentials === 'object'
+        ? existing.credentials
+        : {}
+    const accessToken = submittedAccessToken || existingCredentials.access_token
+
+    if (!accessToken) {
+        return { success: false, error: "Falta el token de acceso de Meta" }
+    }
 
     const connectionData = {
         organization_id: member.organization_id,
@@ -62,15 +102,12 @@ export async function saveOrgMetaConfig(formData: FormData) {
         updated_at: new Date().toISOString()
     }
 
-    const { data: existing } = await supabase
-        .from('integration_connections')
-        .select('id')
-        .eq('organization_id', member.organization_id)
-        .eq('provider_key', META_PROVIDER_KEY)
-        .single()
-
-    const { error } = existing 
-        ? await supabase.from('integration_connections').update(connectionData).eq('id', existing.id)
+    const { error } = existing
+        ? await supabase.from('integration_connections')
+            .update(connectionData)
+            .eq('id', existing.id)
+            .eq('organization_id', member.organization_id)
+            .eq('provider_key', META_PROVIDER_KEY)
         : await supabase.from('integration_connections').insert(connectionData)
 
     if (error) {
