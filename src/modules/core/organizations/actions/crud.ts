@@ -292,20 +292,53 @@ export async function deleteOrganizations(ids: string[]) {
 
     if (!user) return { success: false, error: "Unauthorized" }
 
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)))
+    if (uniqueIds.length === 0) return { success: true }
+
     const memberships = await getUserOrganizations()
-    const isPrivileged = memberships.some(m =>
+    const privilegedMemberships = memberships.filter(m =>
         ['platform', 'reseller'].includes(m.organization?.organization_type || '') &&
         ['owner', 'admin'].includes(m.role)
     )
+    const hasPlatformAccess = privilegedMemberships.some(m => m.organization?.organization_type === 'platform')
+    const resellerOrgIds = privilegedMemberships
+        .filter(m => m.organization?.organization_type === 'reseller')
+        .map(m => m.organization_id)
 
-    if (!isPrivileged) {
+    if (!hasPlatformAccess && resellerOrgIds.length === 0) {
         return { success: false, error: "No tienes permisos suficientes para eliminar organizaciones." }
     }
 
-    const { error } = await supabaseAdmin
+    if (!hasPlatformAccess) {
+        const { data: targetOrganizations, error: targetError } = await supabaseAdmin
+            .from('organizations')
+            .select('id, parent_organization_id')
+            .in('id', uniqueIds)
+
+        if (targetError) {
+            console.error("Error validating organizations for deletion:", targetError)
+            return { success: false, error: targetError.message }
+        }
+
+        const targetIds = new Set((targetOrganizations || []).map(org => org.id))
+        const hasOutsideScope = uniqueIds.some(id => !targetIds.has(id)) ||
+            (targetOrganizations || []).some(org => !resellerOrgIds.includes(org.parent_organization_id))
+
+        if (hasOutsideScope) {
+            return { success: false, error: "No tienes permisos suficientes para eliminar organizaciones." }
+        }
+    }
+
+    let deleteQuery = supabaseAdmin
         .from('organizations')
         .delete()
-        .in('id', ids)
+        .in('id', uniqueIds)
+
+    if (!hasPlatformAccess) {
+        deleteQuery = deleteQuery.in('parent_organization_id', resellerOrgIds)
+    }
+
+    const { error } = await deleteQuery
 
     if (error) {
         console.error("Error deleting organizations:", error)
