@@ -156,20 +156,6 @@ export class ChannelResolver {
             }
         }
 
-        // 5. Evolution API Matching
-        if (channel === 'evolution' && metadata?.instance) {
-            const { data: connections } = await supabase
-                .from('integration_connections')
-                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
-                .eq('provider_key', 'evolution_api')
-                .in('status', ['active', 'connected'])
-
-            if (connections) {
-                const matched = connections.find((c: any) => c.credentials?.instanceName === metadata.instance)
-                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
-            }
-        }
-
         return null
     }
 }

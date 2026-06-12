@@ -5,7 +5,6 @@ import { ChannelCard } from "./channel-card"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle, Store, Instagram } from "lucide-react"
 import { useState } from "react"
-import { EvolutionConnectSheet } from "./evolution-connect-sheet"
 import { WhatsAppConnectModal } from "./whatsapp-connect-modal"
 import { useRouter } from "next/navigation"
 import {
@@ -35,7 +34,6 @@ interface ChannelsListProps {
 
 export function ChannelsList({ channels, pipelineStages, agents, organizationId }: ChannelsListProps) {
     const { t } = useTranslation()
-    const [isEvolutionOpen, setIsEvolutionOpen] = useState(false)
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const router = useRouter()
 
@@ -124,24 +122,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
                             Instagram
                         </Button>
 
-                        {/* Evolution (QR) - Small Plus Button */}
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        onClick={() => setIsEvolutionOpen(true)}
-                                        variant="outline"
-                                        size="icon"
-                                        className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:border-green-600 dark:text-green-500"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{t('crm.channels.connect_qr')}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+
                     </div>
                 }
             />
@@ -172,11 +153,6 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
                 )}
             </div>
 
-            <EvolutionConnectSheet
-                open={isEvolutionOpen}
-                onOpenChange={setIsEvolutionOpen}
-                onSuccess={handleSuccess}
-            />
 
             <WhatsAppConnectModal
                 open={isWhatsAppModalOpen}

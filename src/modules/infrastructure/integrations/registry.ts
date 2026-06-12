@@ -1,7 +1,6 @@
 import { IntegrationAdapter } from "./adapters/types"
 import { OpenAIAdapter } from "./adapters/openai-adapter"
 import { MockAdapter } from "./adapters/mock-adapter"
-import { EvolutionAdapter } from "./adapters/evolution-adapter"
 import { MetaAdapter } from "./adapters/meta-adapter"
 import { S3StorageAdapter } from "./adapters/s3-adapter"
 import { GoogleDriveAdapter } from "./adapters/google-drive-adapter"
@@ -23,7 +22,6 @@ class IntegrationRegistry {
         this.register(new MockAdapter('twilio_sms'))
         this.register(new MockAdapter('google_calendar'))
         this.register(new MockAdapter('anthropic'))
-        this.register(new EvolutionAdapter()) 
         this.register(new S3StorageAdapter())
         this.register(new GoogleDriveAdapter())
     }

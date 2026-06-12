@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidationResult } from '@/modules/features/messaging/providers/types'
 import { ChannelType } from '@/types/messaging'
 import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
-import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
 import { isProductionRuntime } from '@/app/api/_guards/request-guards'
 
 const PUBLIC_MESSAGING_WEBHOOK_FAILURE = 'Webhook processing failed'
@@ -88,15 +87,6 @@ async function getConfiguredManager() {
         webhookManager.registerProvider('messenger', metaProvider)
         webhookManager.registerProvider('instagram', metaProvider)
 
-        // Register Evolution API (Unofficial WhatsApp)
-        // Note: For sending, we need real credentials. For receiving webhook, dummy config suffices 
-        // as we trust the endpoint hit (or use URL token verification if implemented).
-        const evolutionProvider = new EvolutionProvider({
-            baseUrl: "https://placeholder-inbound.com",
-            apiKey: "placeholder",
-            instanceName: "placeholder"
-        })
-        webhookManager.registerProvider('evolution', evolutionProvider)
     } catch (err: any) {
         logMessagingWebhookError('[getConfiguredManager] Registration FAILED:', err)
         throw new Error(`Failed to register providers: ${err.message}`)

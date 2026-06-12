@@ -167,13 +167,6 @@ async function internalSend({
                 assetId,
                 credentials.verifyToken || 'pixy_webhook_2026'
             )
-        } else if (providerKey === 'evolution_api') {
-            const { EvolutionProvider } = await import("../providers/evolution-provider")
-            provider = new EvolutionProvider({
-                baseUrl: credentials.baseUrl,
-                apiKey: credentials.apiKey,
-                instanceName: credentials.instanceName
-            })
         }
 
         if (!provider) throw new Error(`Unsupported provider type: ${providerKey}`)
@@ -183,9 +176,7 @@ async function internalSend({
             'meta_whatsapp': 'whatsapp',
             'meta_business': 'whatsapp',
             'facebook_page': 'messenger',
-            'instagram_dm': 'instagram',
-            'instagram_dme': 'instagram',
-            'evolution_api': 'evolution'
+            'instagram_dme': 'instagram'
         }
         const dbChannel = channelMap[providerKey] || 'whatsapp'
         const messageId = msgId || crypto.randomUUID()
