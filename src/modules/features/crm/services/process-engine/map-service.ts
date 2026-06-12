@@ -7,12 +7,17 @@ export class ProcessMapper {
     /**
      * Get the Process State linked to a Pipeline Stage
      */
-    static async getProcessStateForStage(stageId: string): Promise<PipelineProcessMap | null> {
-        const { data, error } = await supabaseAdmin
+    static async getProcessStateForStage(stageId: string, organizationId?: string): Promise<PipelineProcessMap | null> {
+        let query = supabaseAdmin
             .from('pipeline_process_map')
             .select('*')
             .eq('pipeline_stage_id', stageId)
-            .single()
+
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId)
+        }
+
+        const { data, error } = await query.single()
 
         if (error) return null
         return data as PipelineProcessMap
@@ -27,7 +32,7 @@ export class ProcessMapper {
         if (!orgId) return { allowed: true } // No org context, permissive (or strict?) -> Permissive for legacy
 
         // 1. Does the target stage map to a Process State?
-        const mapping = await this.getProcessStateForStage(targetStageId)
+        const mapping = await this.getProcessStateForStage(targetStageId, orgId)
 
         if (!mapping) {
             // Target stage is "Unmapped" (Legacy/Free).
@@ -40,6 +45,7 @@ export class ProcessMapper {
         const { data: processInstance } = await supabaseAdmin
             .from('process_instances')
             .select('*')
+            .eq('organization_id', orgId)
             .eq('lead_id', leadId)
             .eq('type', mapping.process_type)
             .eq('status', 'active')
