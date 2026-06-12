@@ -263,13 +263,15 @@ async function generateInvoiceSystem(subscription: any, client: any) {
             next_billing_date: nextBillingDate ? nextBillingDate.toISOString() : null,
             invoice_id: invoice.id
         })
-        .eq('id', subscription.id);
+        .eq('id', subscription.id)
+        .eq('organization_id', subscription.organization_id);
 
     // 5. Create Billing Cycle (For Visualization)
     try {
         const { data: service } = await supabaseAdmin
             .from('services')
             .select('id, deleted_at')
+            .eq('organization_id', subscription.organization_id)
             .eq('client_id', subscription.client_id)
             .eq('name', subscription.name) // Heuristic match
             .order('created_at', { ascending: false })
@@ -286,7 +288,8 @@ async function generateInvoiceSystem(subscription: any, client: any) {
                     status: 'cancelled',
                     deleted_at: new Date().toISOString()
                 })
-                .eq('id', subscription.id);
+                .eq('id', subscription.id)
+                .eq('organization_id', subscription.organization_id);
 
             return null; // Skip invoice generation
         }
@@ -313,7 +316,11 @@ async function generateInvoiceSystem(subscription: any, client: any) {
 
             if (!cycleErr && cycle) {
                 // Link invoice back to cycle if column exists
-                await supabaseAdmin.from('invoices').update({ billing_cycle_id: cycle.id }).eq('id', invoice.id);
+                await supabaseAdmin
+                    .from('invoices')
+                    .update({ billing_cycle_id: cycle.id })
+                    .eq('id', invoice.id)
+                    .eq('organization_id', subscription.organization_id);
             } else if (cycleErr) {
                 console.error('Error creating billing cycle:', cycleErr);
             }
@@ -323,7 +330,8 @@ async function generateInvoiceSystem(subscription: any, client: any) {
                 await supabaseAdmin
                     .from('services')
                     .update({ next_billing_date: nextBillingDate.toISOString() })
-                    .eq('id', service.id);
+                    .eq('id', service.id)
+                    .eq('organization_id', subscription.organization_id);
             }
         }
     } catch (err) {
