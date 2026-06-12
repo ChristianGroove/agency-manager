@@ -39,7 +39,7 @@ export class LeadLifecycleManager {
 
             // 4. Reactive Scoring (Non-blocking background execution)
             // We don't await this to keep the inbox response fast
-            this.triggerReScoring(leadId);
+            this.triggerReScoring(leadId, orgId);
 
         } catch (error) {
             console.error('[LEAD_LIFECYCLE_MANAGER] Error processing activity:', error);
@@ -49,14 +49,14 @@ export class LeadLifecycleManager {
     /**
      * Background re-scoring execution
      */
-    private async triggerReScoring(leadId: string): Promise<void> {
+    private async triggerReScoring(leadId: string, orgId: string): Promise<void> {
         try {
             const result = await calculateLeadScore(leadId);
             // Persistence is handled inside calculateLeadScore if it updates the DB, 
             // or we do it here if needed. 
             // Note: scoring.ts currently returns the score but doesn't persist it.
             // We update the lead record with the new score.
-            await this.repo.update(leadId, { score: result.score }, undefined);
+            await this.repo.update(leadId, { score: result.score }, orgId);
         } catch (error) {
             console.error('[LEAD_LIFECYCLE_MANAGER] Scoring failed:', error);
         }
