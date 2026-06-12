@@ -36,6 +36,7 @@ export async function fixLeadsStatus() {
     const { error } = await supabase
         .from('leads')
         .update({ status: firstStageKey })
+        .eq('organization_id', orgId)
         .in('id', orphanIds)
 
     if (error) return { success: false, error: error.message }
