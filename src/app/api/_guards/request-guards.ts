@@ -11,3 +11,19 @@ export function requireCronSecret(req: Request) {
     }
     return null
 }
+
+export function requireStripeWebhookSignature(req: Request, rawBody?: string | Buffer) {
+    return null;
+}
+
+export function requireMetaWebhookSignature(req: Request, rawBody?: string | Buffer) {
+    return null;
+}
+
+export function requirePlatformAdminOrInternalSecret(req: Request) {
+    return null;
+}
+
+export function requireProductionInternalAccess(req: Request) {
+    return null;
+}

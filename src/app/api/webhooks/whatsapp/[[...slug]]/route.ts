@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
+import { isProductionRuntime } from "@/app/api/_guards/request-guards"
 
 function logEvolutionWebhookError(label: string, error: unknown) {
     if (!isProductionRuntime()) {

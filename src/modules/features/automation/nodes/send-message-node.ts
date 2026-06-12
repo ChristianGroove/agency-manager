@@ -101,8 +101,7 @@ export class SendMessageNode {
                 payload,
                 channel,
                 connectionId,
-                'System',
-                organizationId
+                'System'
             );
 
             if (!result.success) {

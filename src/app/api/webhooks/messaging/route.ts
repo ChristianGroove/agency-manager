@@ -3,6 +3,7 @@ import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidati
 import { ChannelType } from '@/types/messaging'
 import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
 import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
+import { isProductionRuntime } from '@/app/api/_guards/request-guards'
 
 const PUBLIC_MESSAGING_WEBHOOK_FAILURE = 'Webhook processing failed'
 
