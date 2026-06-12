@@ -96,6 +96,7 @@ export class PlatformBillingService {
     }
 
     static async sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Fetch Invoice
@@ -310,6 +311,7 @@ export class PlatformBillingService {
     }
 
     static async getPlatformPaymentMethods() {
+        await requireSuperAdmin();
         const supabase = await createClient()
         
         // 1. Find Platform Organization

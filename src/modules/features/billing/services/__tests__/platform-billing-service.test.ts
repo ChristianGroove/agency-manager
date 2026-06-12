@@ -295,6 +295,34 @@ describe('PlatformBillingService sanitized errors', () => {
         expect(renderedOutput).not.toContain('token-secret-value')
     }, 15000)
 
+    it('requires super admin before sending a platform invoice email', async () => {
+        mocks.requireSuperAdmin.mockRejectedValue(new Error('Unauthorized: Super admin access required'))
+
+        const { PlatformBillingService } = await import('../platform-billing-service')
+
+        await expect(
+            PlatformBillingService.sendPlatformInvoiceEmail('invoice-secret-id', 'billing@example.com'),
+        ).rejects.toThrow('Unauthorized: Super admin access required')
+
+        expect(mocks.createClient).not.toHaveBeenCalled()
+        expect(mocks.supabaseAdmin.from).not.toHaveBeenCalled()
+        expect(mocks.generatePlatformInvoicePDF).not.toHaveBeenCalled()
+        expect(mocks.EmailService.send).not.toHaveBeenCalled()
+    }, 15000)
+
+    it('requires super admin before listing platform payment methods', async () => {
+        mocks.requireSuperAdmin.mockRejectedValue(new Error('Unauthorized: Super admin access required'))
+
+        const { PlatformBillingService } = await import('../platform-billing-service')
+
+        await expect(PlatformBillingService.getPlatformPaymentMethods()).rejects.toThrow(
+            'Unauthorized: Super admin access required',
+        )
+
+        expect(mocks.createClient).not.toHaveBeenCalled()
+        expect(mocks.supabaseAdmin.from).not.toHaveBeenCalled()
+    }, 15000)
+
     it('requires super admin before manually activating a subscription', async () => {
         mocks.requireSuperAdmin.mockRejectedValue(new Error('Unauthorized: Super admin access required'))
 
