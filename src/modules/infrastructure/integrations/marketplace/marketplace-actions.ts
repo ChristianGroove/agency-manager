@@ -186,6 +186,7 @@ export async function installIntegration(input: {
             .from('integration_connections')
             .update(updateData)
             .eq('id', existing.id)
+            .eq('organization_id', orgId)
 
         if (updateError) return { success: false, error: updateError.message }
 
