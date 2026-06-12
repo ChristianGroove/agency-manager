@@ -412,6 +412,7 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
                     .from('integration_connections')
                     .update({ status: 'active' })
                     .eq('id', existingChannel.id)
+                    .eq('organization_id', orgId)
             }
 
             return {
