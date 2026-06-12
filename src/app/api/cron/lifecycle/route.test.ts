@@ -107,4 +107,33 @@ describe('/api/cron/lifecycle', () => {
         expect(logText).toContain('Trial notification pending: trial_expiring')
         expect(logText).not.toContain('owner-secret@example.com')
     })
+
+    it('does not expose lifecycle transition organization details in production success responses', async () => {
+        setupProductionCron()
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        mocks.getExpiringTrials.mockResolvedValue([])
+        mocks.processLifecycleTransitions.mockResolvedValue({
+            success: true,
+            results: [{
+                orgId: 'org-secret-id',
+                orgName: 'Secret Organization',
+                actionTaken: 'suspended',
+            }],
+            error: null,
+        })
+        mocks.cleanupAttendancePhotos.mockResolvedValue({ count: 2 })
+
+        const { GET } = await import('./route')
+        const response = await GET(cronRequest())
+        const body = await response.json()
+        const responseText = JSON.stringify(body)
+
+        expect(response.status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.transitionsProcessed).toBe(1)
+        expect(body.attendancePhotosCleaned).toBe(2)
+        expect(body.results).toBeUndefined()
+        expect(responseText).not.toContain('org-secret-id')
+        expect(responseText).not.toContain('Secret Organization')
+    })
 })

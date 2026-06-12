@@ -93,7 +93,7 @@ export async function GET(request: Request) {
             notificationsQueued: expiringTrials.length,
             transitionsProcessed: results.length,
             attendancePhotosCleaned: cleanupResult.count || 0,
-            results
+            ...(isProductionRuntime() ? {} : { results })
         })
 
     } catch (error) {
