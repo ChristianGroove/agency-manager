@@ -115,6 +115,7 @@ function uiActivationInput(overrides: Partial<Parameters<typeof import('./meta-c
         assetId: 'asset_123',
         assetType: 'whatsapp' as const,
         assetName: 'WhatsApp Main',
+        accessToken: 'mock-token',
         wabaId: 'waba_123',
         ...overrides,
     }

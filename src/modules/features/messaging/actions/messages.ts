@@ -6,6 +6,7 @@ import { MetaProvider } from "../providers/meta-provider"
 import { MessagingPersistence } from "../services/persistence"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import crypto from "crypto"
 
 const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"

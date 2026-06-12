@@ -160,7 +160,7 @@ export async function deleteConnection(connectionId: string) {
         .in('role', ['owner', 'admin'])
 
     if (membershipError) {
-        logIntegrationActionError("Error validating connection deletion permissions:", membershipError, { userId: user.id })
+        console.error("Error validating connection deletion permissions:", membershipError, { userId: user.id })
         return { error: "Failed to delete connection" }
     }
 

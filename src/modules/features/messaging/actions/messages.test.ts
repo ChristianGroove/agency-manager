@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     revalidatePath: vi.fn(),
     saveOutboundMessage: vi.fn(),
     supabaseFrom: vi.fn(),
+    getCurrentOrganizationId: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -28,6 +29,10 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
+}))
+
+vi.mock('@/modules/core/organizations/organization-actions', () => ({
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
 vi.mock('../providers/meta-provider', () => ({

@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
-
 function setupMetaCallbackEnv() {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321')
@@ -28,17 +26,11 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 }
 
 function createOrgState() {
-    return createMetaOAuthState(
-        { flow: 'org', orgId: 'org_123' },
-        { now: Date.now(), nonce: 'nonce-value-123456' }
-    )
+    return 'org_123'
 }
 
 function createContactState() {
-    return createMetaOAuthState(
-        { flow: 'contact_connect', clientId: 'client_123' },
-        { now: Date.now(), nonce: 'nonce-value-123456' }
-    )
+    return 'contact_connect:client_123'
 }
 
 describe('/api/integrations/meta/callback', () => {
