@@ -18,17 +18,19 @@ export async function switchOrganization(organizationId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (user) {
-        const { data: member } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('organization_id', organizationId)
-            .eq('user_id', user.id)
-            .single()
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
 
-        if (!member) {
-            throw new Error("User is not a member of this organization")
-        }
+    const { data: member } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('organization_id', organizationId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!member) {
+        throw new Error("User is not a member of this organization")
     }
 
     cookieStore.set('pixy_org_id', organizationId, {

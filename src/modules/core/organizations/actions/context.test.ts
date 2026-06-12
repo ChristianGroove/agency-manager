@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     isSuperAdmin: vi.fn(),
     revalidatePath: vi.fn(),
+    cookieSet: vi.fn(),
     supabaseAdmin: {
         from: vi.fn(),
     },
@@ -23,6 +24,12 @@ vi.mock('@/modules/core/iam/services/platform-roles', () => ({
 
 vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock('next/headers', () => ({
+    cookies: vi.fn(async () => ({
+        set: mocks.cookieSet,
+    })),
 }))
 
 function singleQuery(data: unknown = null) {
@@ -72,10 +79,21 @@ afterEach(() => {
     mocks.createClient.mockReset()
     mocks.isSuperAdmin.mockReset()
     mocks.revalidatePath.mockReset()
+    mocks.cookieSet.mockReset()
     mocks.supabaseAdmin.from.mockReset()
 })
 
 describe('organization context actions', () => {
+    it('does not write the active organization cookie without an authenticated user', async () => {
+        mocks.createClient.mockResolvedValue(authClient(null))
+
+        const { switchOrganization } = await import('./context')
+
+        await expect(switchOrganization('org-any')).rejects.toThrow('Unauthorized')
+        expect(mocks.cookieSet).not.toHaveBeenCalled()
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+
     it('rejects root organization limit updates when the user is not owner, admin, or super admin', async () => {
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [singleQuery({ role: 'member' })],
