@@ -76,6 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                     last_synced_at: new Date().toISOString()
                 })
                 .eq('id', channel.id)
+                .eq('organization_id', channel.organization_id)
 
             console.log(`[Webhook:Evolution] Connection update: ${instanceName} -> ${channelStatus}`)
             return NextResponse.json({ status: 'ok', event: 'connection_processed' })
