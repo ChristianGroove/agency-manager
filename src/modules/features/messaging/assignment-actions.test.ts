@@ -299,13 +299,15 @@ describe('assignment actions logging', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.createClient.mockResolvedValue(authClient())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
-        mocks.supabaseAdminFrom.mockReturnValueOnce(upsertSingleQuery({
-            data: null,
-            error: {
-                code: '42501',
-                message: 'rule-secret-id denied for org-secret-id user-secret-id connection-secret-id',
-            },
-        }))
+        mocks.supabaseAdminFrom
+            .mockReturnValueOnce(maybeSingleQuery({ data: { id: 'rule-secret-id' }, error: null }))
+            .mockReturnValueOnce(upsertSingleQuery({
+                data: null,
+                error: {
+                    code: '42501',
+                    message: 'rule-secret-id denied for org-secret-id user-secret-id connection-secret-id',
+                },
+            }))
 
         const { upsertAssignmentRule } = await import('./assignment-actions')
         const result = await upsertAssignmentRule({
@@ -327,6 +329,28 @@ describe('assignment actions logging', () => {
         expect(logText).toContain('organizationIdPresent')
         expect(logText).toContain('userIdPresent')
         expect(logText).toContain('42501')
+    })
+
+    it('rejects assignment rule updates outside the current organization before upsert', async () => {
+        mocks.createClient.mockResolvedValue(authClient('user-current'))
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const lookupQuery = maybeSingleQuery({ data: null, error: null })
+        mocks.supabaseAdminFrom.mockReturnValueOnce(lookupQuery)
+
+        const { upsertAssignmentRule } = await import('./assignment-actions')
+        const result = await upsertAssignmentRule({
+            id: 'rule-foreign',
+            name: 'VIP routing',
+            priority: 1,
+            conditions: { connection_id: ['connection-1'] },
+            strategy: 'round_robin',
+        })
+
+        expect(result).toEqual({ success: false, error: 'Assignment rule not found' })
+        expect(lookupQuery.eq).toHaveBeenCalledWith('id', 'rule-foreign')
+        expect(lookupQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(mocks.supabaseAdminFrom).toHaveBeenCalledTimes(1)
+        expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 
     it('rejects assignment rule deletion without organization context', async () => {

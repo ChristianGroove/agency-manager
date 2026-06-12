@@ -437,8 +437,27 @@ export async function upsertAssignmentRule(rule: {
         updated_at: new Date().toISOString()
     }
 
-    // If updating existing rule, include ID
     if (rule.id) {
+        const { data: existingRule, error: existingRuleError } = await supabaseAdmin
+            .from('assignment_rules')
+            .select('id')
+            .eq('id', rule.id)
+            .eq('organization_id', orgId)
+            .maybeSingle()
+
+        if (existingRuleError) {
+            logAssignmentActionError('[upsertAssignmentRule] Existing rule lookup failed:', existingRuleError, {
+                organizationId: orgId,
+                ruleId: rule.id,
+                userId: user.id,
+            })
+            return { success: false, error: publicAssignmentActionError(existingRuleError) }
+        }
+
+        if (!existingRule) {
+            return { success: false, error: 'Assignment rule not found' }
+        }
+
         ruleData.id = rule.id
     }
 
