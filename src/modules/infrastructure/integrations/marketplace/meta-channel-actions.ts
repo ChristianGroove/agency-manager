@@ -164,7 +164,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                     credentials: { access_token: finalAccessToken },
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', existingChannel.id);
+                .eq('id', existingChannel.id)
+                .eq('organization_id', orgId);
 
             if (error) {
                 return { success: false, error: error.message };
