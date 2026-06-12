@@ -188,7 +188,7 @@ export async function applyIntentRouting(
         .single()
 
     if (!conv) {
-        logIntentInfo('[IntentRouting] Conversation not found for organization', {
+        console.info('[IntentRouting] Conversation not found for organization', {
             conversationId,
             organizationId,
             intent,

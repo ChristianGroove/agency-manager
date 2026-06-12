@@ -23,8 +23,8 @@ export async function assignConversation(conversationId: string, userId: string 
             .single()
 
         if (currentError || !current) {
-            if (currentError) logConversationManagementError("[assignConversation] Read failed:", currentError, { conversationId })
-            return { success: false, error: publicConversationManagementError(currentError, "Conversation not found") }
+            if (currentError) console.error("[assignConversation] Read failed:", currentError, { conversationId })
+            return { success: false, error: "Conversation not found" }
         }
 
         const { data: membership } = await supabase
@@ -86,8 +86,8 @@ export async function updateConversationState(
         .single()
 
     if (currentError || !current) {
-        if (currentError) logConversationManagementError("[updateConversationState] Read failed:", currentError, { conversationId })
-        return { success: false, error: publicConversationManagementError(currentError, "Conversation not found") }
+        if (currentError) console.error("[updateConversationState] Read failed:", currentError, { conversationId })
+        return { success: false, error: "Conversation not found" }
     }
 
     const { data: membership } = await supabase
@@ -369,8 +369,8 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
             .in('id', uniqueConversationIds)
 
         if (conversationError) {
-            logConversationManagementError("Failed to validate bulk assign conversations:", conversationError, { conversationIds, userId })
-            return { success: false, error: publicConversationManagementError(conversationError) }
+            console.error("Failed to validate bulk assign conversations:", conversationError, { conversationIds, userId })
+            return { success: false, error: "Failed to validate conversations" }
         }
 
         if (!conversations || conversations.length !== uniqueConversationIds.length) {
@@ -392,8 +392,8 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
             .in('organization_id', organizationIds)
 
         if (membershipError) {
-            logConversationManagementError("Failed to validate bulk assign target:", membershipError, { conversationIds, userId })
-            return { success: false, error: publicConversationManagementError(membershipError) }
+            console.error("Failed to validate bulk assign target:", membershipError, { conversationIds, userId })
+            return { success: false, error: "Failed to validate target user" }
         }
 
         const membershipOrganizationIds = new Set(memberships?.map(membership => membership.organization_id) || [])

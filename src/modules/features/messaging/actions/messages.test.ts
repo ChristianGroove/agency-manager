@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
     revalidatePath: vi.fn(),
     saveOutboundMessage: vi.fn(),
     supabaseFrom: vi.fn(),
-    getCurrentOrganizationId: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
