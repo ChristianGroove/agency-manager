@@ -283,10 +283,15 @@ export async function searchConversations(query: string, filters?: {
     tags?: string[]
 }) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized", data: [] }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized", data: [] }
 
     let queryBuilder = supabase
         .from('conversations')
         .select('*, leads(name, phone)')
+        .eq('organization_id', orgId)
         .order('last_message_at', { ascending: false })
 
     if (query) {

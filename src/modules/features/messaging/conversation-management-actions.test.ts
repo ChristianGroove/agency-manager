@@ -393,6 +393,38 @@ describe('conversation management actions logging', () => {
         expect(update.query.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
 
+    it('scopes conversation search to the active organization', async () => {
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+        const search = searchQuery({
+            data: [{ id: 'conversation-current', organization_id: 'org-current' }],
+            error: null,
+        })
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations') return search
+            throw new Error(`Unexpected table ${table}`)
+        })
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })),
+            },
+            from,
+        })
+
+        const { searchConversations } = await import('./conversation-management-actions')
+        const result = await searchConversations('urgent', { state: 'active' })
+
+        expect(result).toEqual({
+            success: true,
+            data: [{ id: 'conversation-current', organization_id: 'org-current' }],
+        })
+        expect(search.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(search.textSearch).toHaveBeenCalledWith('last_message', 'urgent', {
+            type: 'websearch',
+            config: 'english',
+        })
+        expect(search.eq).toHaveBeenCalledWith('state', 'active')
+    })
+
     it('scopes direct phone conversation creation to the active organization', async () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const existingClient = singleQuery({ data: null, error: { code: 'PGRST116' } })
@@ -526,7 +558,11 @@ describe('conversation management actions logging', () => {
     it('does not expose search query or assignment identifiers in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({ data: { user: { id: 'user-secret-id' } } })),
+            },
             from: vi.fn((table: string) => {
                 if (table === 'conversations') {
                     return searchQuery({
