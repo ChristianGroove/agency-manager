@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache"
 import { getDictionary, Locale } from "@/modules/core/i18n/dictionaries"
 import { resolveLanguage } from "@/modules/core/i18n"
 import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 export interface TransferResult {
     success: boolean
@@ -144,6 +145,7 @@ export async function transferConversation(
         .update({
             assigned_to: toAgentId,
             is_bot_active: false, // Ensure bot mode is cleared on handover
+            organization_id: conv.organization_id, // Crucial for Realtime RLS filter!
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
@@ -191,7 +193,8 @@ export async function transferConversation(
         .replace('{to}', toName)
         .replace('{reason}', reasonSuffix)
 
-    await (await createClient()).from('messages').insert({
+    // Use supabaseAdmin to ensure the system message is inserted even after the agent loses access
+    await supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,
         organization_id: conv.organization_id,
         direction: 'outbound',
@@ -199,6 +202,14 @@ export async function transferConversation(
         content: { type: 'system', text: systemText },
         sender: 'System',
         metadata: { transfer: true, fromAgentId, toAgentId, reason }
+    })
+
+    // Broadcast a custom event over Supabase Realtime so that clients viewing this chat
+    // can manually refetch or apply the update if their `messages` RLS blocks the direct INSERT event
+    await supabaseAdmin.channel(`chat-area-${conversationId}`).send({
+        type: 'broadcast',
+        event: 'system_message_inserted',
+        payload: { conversationId }
     })
 
     // 7. Update loads (Handling is done by DB triggers ideally, but we double check or trigger revalidation)

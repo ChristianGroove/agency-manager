@@ -126,6 +126,9 @@ export function useChatActions(params: {
             if (!result.success) {
                 setMessages(prev => prev.filter(m => m.id !== optimisticId))
                 toast.error(t('crm.inbox.chat.actions.chat_error'), { description: (result as any).error || t('crm.inbox.layout.unknown') })
+            } else {
+                // If the human agent sent a message, instantly remove the bot icon locally
+                window.dispatchEvent(new CustomEvent('pixy:conversation-bot-disabled', { detail: { conversationId } }))
             }
         } catch (error) {
             console.error("Failed to send", error)

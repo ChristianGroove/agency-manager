@@ -310,7 +310,34 @@ export function SidebarConversationList({
                     if (!oldData || !oldData.pages) return oldData;
                     return {
                         ...oldData,
-                        pages: oldData.pages.map((page: any[]) => page.map(c => c.id === conversationId ? { ...c, assigned_to: agentId } : c))
+                        // Update assigned_to and immediately disable the bot icon locally 
+                        pages: oldData.pages.map((page: any[]) => page.map(c => c.id === conversationId ? { ...c, assigned_to: agentId, is_bot_active: false } : c))
+                    }
+                });
+            }
+        };
+
+        const handleBotDisabled = (e: Event) => {
+            const { conversationId } = (e as CustomEvent).detail;
+            if (conversationId && effectiveOrgId) {
+                queryClient.setQueriesData({ queryKey: ['conversations', effectiveOrgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any[]) => page.map(c => c.id === conversationId ? { ...c, is_bot_active: false } : c))
+                    }
+                });
+            }
+        };
+
+        const handleConversationRead = (e: Event) => {
+            const { conversationId } = (e as CustomEvent).detail;
+            if (conversationId && effectiveOrgId) {
+                queryClient.setQueriesData({ queryKey: ['conversations', effectiveOrgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any[]) => page.map(c => c.id === conversationId ? { ...c, unread_count: 0 } : c))
                     }
                 });
             }
@@ -335,11 +362,15 @@ export function SidebarConversationList({
 
         window.addEventListener('pixy:conversation-deleted', handleGlobalDelete);
         window.addEventListener('pixy:conversation-assigned', handleGlobalAssign);
+        window.addEventListener('pixy:conversation-bot-disabled', handleBotDisabled);
+        window.addEventListener('pixy:conversation-read', handleConversationRead);
         window.addEventListener('pixy:lead-status-changed', handleLeadStatusChange);
 
         return () => {
             window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
             window.removeEventListener('pixy:conversation-assigned', handleGlobalAssign);
+            window.removeEventListener('pixy:conversation-bot-disabled', handleBotDisabled);
+            window.removeEventListener('pixy:conversation-read', handleConversationRead);
             window.removeEventListener('pixy:lead-status-changed', handleLeadStatusChange);
         }
     }, [effectiveOrgId, queryClient])

@@ -608,11 +608,18 @@ export async function getSidebarAgents() {
         return { success: false, error: 'No organization found', data: [] }
     }
 
-    // 1. Get all members of the organization
-    const { data: members, error: membersError } = await (await createClient())
-        .from('organization_members')
-        .select('user_id, role')
-        .eq('organization_id', memberData.organization_id)
+    // 1. Concurrent Fetch for members, availability, profiles, and auth users
+    const [
+        { data: members, error: membersError },
+        { data: availability },
+        { data: profiles },
+        { data: authUsers }
+    ] = await Promise.all([
+        (await createClient()).from('organization_members').select('user_id, role').eq('organization_id', memberData.organization_id),
+        (await createClient()).from('agent_availability').select('agent_id, agent_channels(channel_type)').eq('organization_id', memberData.organization_id),
+        (await createClient()).from('profiles').select('id, full_name, avatar_url, platform_role'),
+        supabaseAdmin.auth.admin.listUsers()
+    ])
 
     if (membersError || !members) {
         if (membersError) {
@@ -623,25 +630,12 @@ export async function getSidebarAgents() {
         return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
     }
 
-    const userIds = members.map(m => m.user_id)
-
-    // 2. Get profiles for names, avatars, and platform roles (to filter super_admins)
-    const { data: profiles } = await (await createClient())
-        .from('profiles')
-        .select('id, full_name, avatar_url, platform_role')
-        .in('id', userIds)
-
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+    const authMap = new Map(authUsers?.users.map(u => [u.id, u.user_metadata]) || [])
+    
     const platformAdminIds = new Set(
         profiles?.filter(p => p.platform_role === 'super_admin').map(p => p.id) || []
     )
-
-    // 3. Get channel access from agent_availability
-    const { data: availability } = await (await createClient())
-        .from('agent_availability')
-        .select('agent_id, agent_channels(channel_type)')
-        .eq('organization_id', memberData.organization_id)
-        .in('agent_id', userIds)
 
     const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
 
@@ -650,10 +644,11 @@ export async function getSidebarAgents() {
         .filter(m => !platformAdminIds.has(m.user_id))
         .map(m => {
             const profile = profileMap.get(m.user_id)
+            const authMeta = authMap.get(m.user_id)
             return {
                 id: m.user_id,
-                name: profile?.full_name || 'Agente', // Fast local fallback instead of auth fetch
-                avatar_url: profile?.avatar_url || null,
+                name: authMeta?.full_name || authMeta?.name || profile?.full_name || 'Agente', // Fast auth fallback
+                avatar_url: authMeta?.avatar_url || profile?.avatar_url || null,
                 role: m.role,
                 channels: channelsMap.get(m.user_id) || []
             }

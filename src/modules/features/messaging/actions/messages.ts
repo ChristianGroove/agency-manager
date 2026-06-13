@@ -86,9 +86,16 @@ function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND
  */
 export async function markConversationAsRead(id: string) {
     const supabase = await createClient()
+    
+    // First, fetch the org_id so we can include it in the update payload for Realtime RLS
+    const { data: conv } = await supabase.from('conversations').select('organization_id').eq('id', id).single()
+    
     const { error } = await supabase
         .from("conversations")
-        .update({ unread_count: 0 })
+        .update({ 
+            unread_count: 0,
+            ...(conv?.organization_id ? { organization_id: conv.organization_id } : {})
+        })
         .eq("id", id)
 
     if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
@@ -188,6 +195,15 @@ async function internalSend({
                 messageId,
                 channel: dbChannel
             })
+
+            // If a human agent replies, automatically disable the bot mode
+            if (sender !== 'System' && conversation.is_bot_active) {
+                const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+                await supabaseAdmin.from('conversations').update({ 
+                    is_bot_active: false,
+                    organization_id: conversation.organization_id // Crucial for Realtime RLS filter!
+                }).eq('id', conversationId)
+            }
         }
 
         const recipientPhone = conversation.metadata?.phone || conversation.metadata?.external_id || (conversation as any).phone

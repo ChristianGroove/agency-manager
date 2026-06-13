@@ -84,6 +84,10 @@ export function useChatLogic(conversationId: string) {
 
         if (data) {
             setConversation(data as any)
+            
+            // Instantly hide the unread bubble in the sidebar UI regardless of backend sync state
+            window.dispatchEvent(new CustomEvent('pixy:conversation-read', { detail: { conversationId } }))
+            
             if (data.unread_count > 0) {
                 debouncedMarkAsRead(conversationId)
             }
@@ -177,6 +181,10 @@ export function useChatLogic(conversationId: string) {
                     if (newMsg.direction === 'inbound') debouncedMarkAsRead(conversationId)
                 }
             )
+            .on('broadcast', { event: 'system_message_inserted' }, (payload: any) => {
+                // Fetch the latest messages to catch the system message
+                fetchMessages(true)
+            })
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'conversations' },
                 (payload: any) => {

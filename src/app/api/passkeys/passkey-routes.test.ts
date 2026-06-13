@@ -310,7 +310,7 @@ describe('passkey API routes', () => {
         const authClient = createSupabaseMock({
             passkey_challenges: challengeQuery,
             user_passkeys: passkeysQuery,
-        })
+        }) as any
         authClient.auth = {
             ...authClient.auth,
             admin: {

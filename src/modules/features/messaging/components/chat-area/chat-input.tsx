@@ -62,10 +62,17 @@ export function ChatInput({
         }
     }, [inputValue])
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.nativeEvent.isComposing) return
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
-            onSend()
+            
+            // Only send if there's actually content, preventing empty submits
+            if (inputValue.trim() || pendingAttachment || pendingProduct) {
+                if (!sending && !uploading) {
+                    onSend()
+                }
+            }
         }
     }
 
