@@ -58,6 +58,9 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
         // 1. OPTIMISTIC UPDATE: Close menu and update parent UI immediately
         setOpen(false);
         onAssigned?.(agentId); // Now accepts agentId for optimism
+        window.dispatchEvent(new CustomEvent('pixy:conversation-assigned', {
+            detail: { conversationId, agentId }
+        }))
 
         try {
             const result = await assignConversation(conversationId, agentId);

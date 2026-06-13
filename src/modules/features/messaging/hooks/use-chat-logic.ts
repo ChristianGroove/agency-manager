@@ -36,6 +36,12 @@ export function useChatLogic(conversationId: string) {
     // Core State
     const [messages, setMessages] = useState<Message[]>([])
     const [conversation, setConversation] = useState<Conversation | null>(null)
+    const conversationRef = useRef<Conversation | null>(null)
+    
+    // Sincronizar ref para el listener
+    useEffect(() => {
+        conversationRef.current = conversation
+    }, [conversation])
     const [hasMoreMessages, setHasMoreMessages] = useState(false)
     const [loadingOlder, setLoadingOlder] = useState(false)
     const [callStatus, setCallStatus] = useState<any | null>(null)
@@ -183,7 +189,8 @@ export function useChatLogic(conversationId: string) {
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'leads' },
                 (payload: any) => {
-                    if (payload.new.id === conversation?.leads?.id) {
+                    const currentConv = conversationRef.current;
+                    if (currentConv && payload.new.id === currentConv.lead_id) {
                         fetchConversation()
                     }
                 }
@@ -194,7 +201,6 @@ export function useChatLogic(conversationId: string) {
             })
         })
 
-        // Listen for External Sync
         const handleExternalSync = (e: Event) => {
             const { conversationId: syncConvId } = (e as CustomEvent).detail;
             if (syncConvId === conversationId) {
@@ -202,11 +208,21 @@ export function useChatLogic(conversationId: string) {
             }
         };
 
+        const handleLocalLeadUpdate = (e: Event) => {
+            const { leadId } = (e as CustomEvent).detail;
+            const currentConv = conversationRef.current;
+            if (currentConv && currentConv.lead_id === leadId) {
+                fetchConversation();
+            }
+        };
+
         window.addEventListener('pixy:sync-active-chat', handleExternalSync);
+        window.addEventListener('pixy:lead-status-changed', handleLocalLeadUpdate);
 
         return () => {
             realtimeManager.releaseChannel(channelName)
             window.removeEventListener('pixy:sync-active-chat', handleExternalSync);
+            window.removeEventListener('pixy:lead-status-changed', handleLocalLeadUpdate);
             if (markAsReadTimeout.current) clearTimeout(markAsReadTimeout.current)
         }
     }, [conversationId])

@@ -128,8 +128,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
                     {logic.conversation?.leads && (
                         <LeadStageStepper 
-                            leadId={logic.conversation.leads.id}
-                            leadStatus={logic.conversation.leads.status}
+                            leadId={logic.conversation.lead_id}
+                            leadStatus={logic.conversation.leads?.status}
                         />
                     )}
                 </div>

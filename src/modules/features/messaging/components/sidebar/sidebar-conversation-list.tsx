@@ -33,6 +33,8 @@ import { Check as CheckIcon } from "lucide-react"
 import { getSidebarAgents } from "@/modules/features/messaging/assignment-actions"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
+import { useConversations } from "@/hooks/queries/useConversations"
+import { useQueryClient } from "@tanstack/react-query"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -77,14 +79,13 @@ export function SidebarConversationList({
 }: SidebarConversationListProps) {
     const { t } = useTranslation()
     const { updateLeadCache } = useSafeInboxContext() as any
-    const [conversations, setConversations] = useState<Conversation[]>([])
+    const queryClient = useQueryClient()
     const [channels, setChannels] = useState<ChannelType[]>([])
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
     const [agents, setAgents] = useState<SidebarAgent[]>([])
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
-    const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [activeMenuConvId, setActiveMenuConvId] = useState<string | null>(null)
     const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
@@ -128,6 +129,24 @@ export function SidebarConversationList({
         return evaluateInboxPermissions(effectivePermissions);
     }, [effectivePermissions]);
 
+    const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useConversations({
+        orgId: effectiveOrgId,
+        userId: currentUserId,
+        hasGlobalView,
+        isAdmin,
+        authorizedChannels,
+        searchQuery,
+        activeFilter,
+        selectedChannelId,
+        selectedAgentId,
+        identityLoaded
+    })
+
+    const conversations = useMemo(() => {
+        if (!data || !data.pages) return [];
+        return data.pages.flat() as Conversation[];
+    }, [data])
+
     // Sincronizar refs para uso en handler Realtime sin stale closures
     useEffect(() => { selectedChannelIdRef.current = selectedChannelId }, [selectedChannelId])
     useEffect(() => { selectedAgentIdRef.current = selectedAgentId }, [selectedAgentId])
@@ -155,16 +174,47 @@ export function SidebarConversationList({
         });
     }, [agents, selectedChannelId, isAdmin, hasGlobalView, authorizedChannels])
 
-    // Capa visual: aplica filtros de canal y agente encima del estado Realtime (FIX BUG 2)
+    // Capa visual: aplica filtros locales encima del estado para ocultar cards optimísticamente
     const visibleConversations = useMemo(() => {
         let list = conversations
+
+        // 0. Búsqueda local (espejo del servidor pero en memoria para UI instantánea)
+        if (searchQuery.trim()) {
+            const sq = searchQuery.toLowerCase()
+            list = list.filter(c => 
+                c.phone?.toLowerCase().includes(sq) ||
+                c.last_message_preview?.toLowerCase().includes(sq) ||
+                c.leads?.name?.toLowerCase().includes(sq) ||
+                c.clients?.name?.toLowerCase().includes(sq)
+            )
+        }
+
+        // 1. Filtrado de Estado (Espejo del Backend para UI instantánea)
+        switch (activeFilter) {
+            case 'unread':
+                list = list.filter(c => c.unread_count && c.unread_count > 0 && c.state !== 'archived' && c.status !== 'snoozed')
+                break
+            case 'assigned':
+                if (currentUserId) list = list.filter(c => c.assigned_to === currentUserId && c.state !== 'archived' && c.status !== 'snoozed')
+                break
+            case 'archived':
+                list = list.filter(c => c.state === 'archived')
+                break
+            case 'snoozed':
+                list = list.filter(c => c.status === 'snoozed')
+                break
+            default: // 'all'
+                list = list.filter(c => c.state !== 'archived' && c.status !== 'snoozed')
+                break
+        }
+
         if (selectedChannelId) list = list.filter(c => c.connection_id === selectedChannelId)
         if (selectedAgentId) {
             if (selectedAgentId === 'unassigned') list = list.filter(c => !c.assigned_to)
             else list = list.filter(c => c.assigned_to === selectedAgentId)
         }
         return list
-    }, [conversations, selectedChannelId, selectedAgentId])
+    }, [conversations, selectedChannelId, selectedAgentId, activeFilter, currentUserId])
 
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences } = useInboxPreferences()
@@ -220,17 +270,6 @@ export function SidebarConversationList({
         }
     }, [effectiveOrgId, identityLoaded, hasGlobalView, isAdmin])
 
-    // Main fetch controller for conversations
-    useEffect(() => {
-        if (identityLoaded && effectiveOrgId) {
-            // Debounce search
-            const timer = setTimeout(() => {
-                fetchConversations(true)
-            }, 300)
-            return () => clearTimeout(timer)
-        }
-    }, [activeFilter, effectiveOrgId, identityLoaded, selectedChannelId, selectedAgentId, searchQuery, isAdmin, hasGlobalView, effectivePermissions])
-
     const fetchChannels = async () => {
         const data = await getChannels()
         const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
@@ -243,289 +282,67 @@ export function SidebarConversationList({
         }
     }
 
-    const PAGE_SIZE = 50
-    const [hasMore, setHasMore] = useState(true)
-    const [offset, setOffset] = useState(0)
-
-    const fetchConversations = async (showLoading = false, isLoadMore = false) => {
-        if (!identityLoaded || !effectiveOrgId || (!hasMore && isLoadMore)) return
-
-        if (showLoading) setLoading(true)
-        const currentOffset = isLoadMore ? offset : 0
-
-        let query = supabase
-            .from('conversations')
-            .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
-            .order('last_message_at', { ascending: false })
-            .range(currentOffset, currentOffset + PAGE_SIZE - 1)
-
-        if (searchQuery.trim()) {
-            const search = `%${searchQuery.toLowerCase()}%`
-            query = query.or(`phone.ilike.${search},last_message_preview.ilike.${search},leads.name.ilike.${search}`)
-        }
-
-        switch (activeFilter) {
-            case 'unread':
-                query = query.gt('unread_count', 0).neq('state', 'archived').neq('status', 'snoozed')
-                break
-            case 'assigned':
-                if (currentUserId) query = query.eq('assigned_to', currentUserId).neq('state', 'archived').neq('status', 'snoozed')
-                break
-            case 'archived':
-                query = query.eq('state', 'archived')
-                break
-            case 'snoozed':
-                query = query.eq('status', 'snoozed')
-                break
-            default:
-                query = query.neq('state', 'archived').neq('status', 'snoozed')
-                break
-        }
-
-        // NOTE: Canal y agente se filtran visualmente via useMemo 'visibleConversations'.
-        // La query REST SÍ usa el filtro de canal para eficiencia en DB (no carga datos innecesarios).
-        if (selectedChannelId) query = query.eq('connection_id', selectedChannelId)
-        if (selectedAgentId) {
-            if (selectedAgentId === 'unassigned') query = query.is('assigned_to', null)
-            else query = query.eq('assigned_to', selectedAgentId)
-        }
-
-        // SEGURIDAD: Restricción por rol
-        if (hasGlobalView) {
-            // Owner ve todo
-        } else if (isAdmin) {
-            if (authorizedChannels && authorizedChannels.length > 0) {
-                query = query.in('connection_id', authorizedChannels)
-            } else {
-                setConversations([])
-                setLoading(false)
-                return
-            }
-        } else if (currentUserId) {
-            query = query.eq('assigned_to', currentUserId)
-        } else {
-            setConversations([])
-            setLoading(false)
-            return
-        }
-
-        query = query.eq('organization_id', effectiveOrgId)
-
-        const { data, error } = await query
-
-        if (!error && data) {
-            if (isLoadMore) {
-                setConversations(prev => [...prev, ...data as Conversation[]])
-                setOffset(prev => prev + PAGE_SIZE)
-            } else {
-                setConversations(data as Conversation[])
-                setOffset(PAGE_SIZE)
-            }
-            setHasMore(data.length === PAGE_SIZE)
-        }
-        if (showLoading) setLoading(false)
-    }
-
     const loadMore = () => {
-        if (!loading && hasMore) fetchConversations(false, true)
+        if (!isLoading && !isFetchingNextPage && hasNextPage) {
+            fetchNextPage()
+        }
     }
 
-    const debouncedFetchConversations = useDebouncedCallback((showLoading = false, isLoadMore = false) => {
-        fetchConversations(showLoading, isLoadMore)
-    }, 1000)
-
-    // FIX BUG 1 + 2 + 3: Realtime con refs en lugar de dependencias de closure
-    // - Las refs (selectedChannelIdRef, activeFilterRef, etc.) se leen en tiempo de ejecucion
-    //   evitando stale closures sin re-registrar el canal (no accumulation de listeners)
-    // - El canal Realtime solo se destruye/recrea en cambio de org o user (no por filtros)
-    // - Conversaciones archivadas con nuevo mensaje se reabren quirurgicamente via refetch
+    // Local Optimistic UI listeners (Realtime is handled by useConversations)
     useEffect(() => {
-        if (!effectiveOrgId || !currentUserId) return;
-        
-        const channelName = `inbox-org-${effectiveOrgId}`
-        
-        realtimeManager.getOrCreateChannel(channelName, (channel: any) => {
-            channel.on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations' },
-                async (payload: any) => {
-                    const eventType = payload.eventType
-                    const updatedConv = payload.new as Conversation
-                    const oldConv = payload.old as any
-                    
-                    if (updatedConv && updatedConv.organization_id !== effectiveOrgId) return;
-
-                    // Leer valores actuales desde refs (no closures) — FIX BUG 2
-                    const curFilter = activeFilterRef.current
-                    const curUserId = currentUserIdRef.current
-                    const curHasGlobalView = hasGlobalViewRef.current
-                    const curIsAdmin = isAdminRef.current
-                    const curAuthorizedChannels = authorizedChannelsRef.current
-
-                    setConversations((prev) => {
-                        if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
-
-                        const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
-                        const existingConv = existingIndex > -1 ? prev[existingIndex] : null
-                        const effectiveConnectionId = updatedConv.connection_id || existingConv?.connection_id
-
-                        // SEGURIDAD: verificar autorizacion del canal
-                        // USA identityLoadedRef.current — NO identityLoaded del closure.
-                        // Si se usara el closure, quedaría false si el canal se registró
-                        // antes de que cargaran los permisos, deshabilitando este check.
-                        if (!curHasGlobalView && identityLoadedRef.current) {
-                            if (!effectiveConnectionId || !curAuthorizedChannels.includes(effectiveConnectionId)) {
-                                return prev.filter(c => c.id !== updatedConv.id)
-                            }
-                        }
-
-                        const state = updatedConv.state ?? existingConv?.state ?? 'active'
-                        const status = updatedConv.status ?? existingConv?.status ?? 'open'
-                        const unreadCount = updatedConv.unread_count !== undefined ? updatedConv.unread_count : (existingConv?.unread_count || 0)
-                        const assignedTo = updatedConv.assigned_to ?? existingConv?.assigned_to
-
-                        // AGENT PRIVACY — misma razón: usar ref no closure
-                        if (identityLoadedRef.current) {
-                            const isAuthorizedForView = curHasGlobalView || curIsAdmin || assignedTo === curUserId
-                            if (!isAuthorizedForView) return prev.filter(c => c.id !== updatedConv.id)
-                        }
-
-                        // FIX BUG 1: Conversacion archivada que recibe NUEVO mensaje externo
-                        // Solo aplica si el unread_count AUMENTÓ respecto al estado anterior en memoria,
-                        // lo que indica un mensaje nuevo entrante — no una resolución local.
-                        // Esto evita que al resolver localmente (state → archived) el refetch
-                        // reinsertre la conversación en el sidebar.
-                        const prevUnreadCount = existingConv?.unread_count ?? 0
-                        const unreadIncreased = unreadCount > prevUnreadCount
-                        if (state === 'archived' && unreadIncreased && curFilter === 'all') {
-                            // Refetch asíncrono: si el webhook reabrió la conversación en BD, aparecerá
-                            supabase
-                                .from('conversations')
-                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
-                                .eq('id', updatedConv.id)
-                                .single()
-                                .then(({ data }) => {
-                                    if (data && data.state !== 'archived') {
-                                        // Solo reinsertar si la BD ya lo marcó como activo
-                                        setConversations(current => {
-                                            const idx = current.findIndex(c => c.id === data.id)
-                                            if (idx > -1) {
-                                                const arr = [...current]
-                                                arr[idx] = data as Conversation
-                                                return [arr[idx], ...arr.filter((_, i) => i !== idx)]
-                                            }
-                                            return [data as Conversation, ...current]
-                                        })
-                                    }
-                                })
-                            // Mientras llega el refetch, mantener fuera del sidebar (state=archived)
-                            return prev.filter(c => c.id !== updatedConv.id)
-                        }
-
-                        // Evaluar si la conversacion debe estar visible en el filtro activo
-                        let matches = true
-                        if (curFilter === 'all') matches = state !== 'archived' && status !== 'snoozed'
-                        else if (curFilter === 'unread') matches = unreadCount > 0 && state !== 'archived' && status !== 'snoozed'
-                        else if (curFilter === 'assigned') matches = assignedTo === curUserId && state !== 'archived'
-                        else if (curFilter === 'archived') matches = state === 'archived'
-                        else if (curFilter === 'snoozed') matches = status === 'snoozed'
-
-                        if (!matches) return prev.filter(c => c.id !== updatedConv.id)
-
-                        if (existingIndex > -1) {
-                            // La conversación ya está en lista — actualizar in-place y re-ordenar al tope
-                            const updated = {
-                                ...prev[existingIndex],
-                                ...updatedConv,
-                                // Preservar datos relacionales que el payload Realtime no incluye
-                                leads: prev[existingIndex].leads,
-                                clients: prev[existingIndex].clients,
-                                integration_connections: prev[existingIndex].integration_connections
-                            }
-                            return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
-                        } else if (eventType === 'INSERT') {
-                            // Nueva fila — fetch quirúrgico para obtener metadatos relacionales
-                            supabase
-                                .from('conversations')
-                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
-                                .eq('id', updatedConv.id)
-                                .single()
-                                .then(({ data }) => {
-                                    if (data) {
-                                        setConversations(current => {
-                                            const idx = current.findIndex(c => c.id === data.id)
-                                            if (idx > -1) {
-                                                const arr = [...current]
-                                                arr[idx] = data as Conversation
-                                                return arr
-                                            }
-                                            return [data as Conversation, ...current]
-                                        })
-                                    }
-                                })
-                            return [updatedConv, ...prev]
-                        } else if (eventType === 'UPDATE') {
-                            // FIX BUG 1 DEFINITIVO:
-                            // La conversación NO está en la lista (existingIndex = -1)
-                            // pero el servidor la reactivó (state: archived → active).
-                            // Supabase dispara UPDATE (no INSERT) porque el row ya existía.
-                            // Sin este bloque, caía en 'return prev' sin hacer nada visible.
-                            supabase
-                                .from('conversations')
-                                .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
-                                .eq('id', updatedConv.id)
-                                .single()
-                                .then(({ data }) => {
-                                    if (data) {
-                                        setConversations(current => {
-                                            const idx = current.findIndex(c => c.id === data.id)
-                                            if (idx > -1) {
-                                                // Otra actualización llegó antes — actualizar y re-ordenar
-                                                const arr = [...current]
-                                                arr[idx] = data as Conversation
-                                                return [arr[idx], ...arr.filter((_, i) => i !== idx)]
-                                            }
-                                            return [data as Conversation, ...current]
-                                        })
-                                    }
-                                })
-                            // Placeholder optimista mientras llega el fetch con todos los metadatos
-                            return [updatedConv, ...prev]
-                        }
-                        return prev 
-                    })
-
-                    if (updatedConv?.id === selectedIdRef.current) {
-                        window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
-                            detail: { conversationId: updatedConv.id } 
-                        }));
-                    }
-                }
-            )
-            .on('broadcast', { event: 'vanish' }, (payload: any) => {
-                const { conversationId } = payload.payload;
-                if (conversationId) {
-                    setConversations(prev => prev.filter(c => c.id !== conversationId));
-                }
-            })
-        })
-
         const handleGlobalDelete = (e: Event) => {
             const { conversationId } = (e as CustomEvent).detail;
-            if (conversationId) {
-                setConversations(prev => prev.filter(c => c.id !== conversationId));
+            if (conversationId && effectiveOrgId) {
+                queryClient.setQueriesData({ queryKey: ['conversations', effectiveOrgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any[]) => page.filter(c => c.id !== conversationId))
+                    }
+                });
+            }
+        };
+
+        const handleGlobalAssign = (e: Event) => {
+            const { conversationId, agentId } = (e as CustomEvent).detail;
+            if (conversationId && effectiveOrgId) {
+                queryClient.setQueriesData({ queryKey: ['conversations', effectiveOrgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any[]) => page.map(c => c.id === conversationId ? { ...c, assigned_to: agentId } : c))
+                    }
+                });
+            }
+        };
+
+        const handleLeadStatusChange = (e: Event) => {
+            const { leadId, newStatus } = (e as CustomEvent).detail;
+            if (leadId && effectiveOrgId) {
+                queryClient.setQueriesData({ queryKey: ['conversations', effectiveOrgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    return {
+                        ...oldData,
+                        pages: oldData.pages.map((page: any[]) => page.map(c => 
+                            c.lead_id === leadId && c.leads 
+                                ? { ...c, leads: { ...c.leads, status: newStatus } } 
+                                : c
+                        ))
+                    }
+                });
             }
         };
 
         window.addEventListener('pixy:conversation-deleted', handleGlobalDelete);
+        window.addEventListener('pixy:conversation-assigned', handleGlobalAssign);
+        window.addEventListener('pixy:lead-status-changed', handleLeadStatusChange);
 
         return () => {
-            realtimeManager.releaseChannel(channelName)
             window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
+            window.removeEventListener('pixy:conversation-assigned', handleGlobalAssign);
+            window.removeEventListener('pixy:lead-status-changed', handleLeadStatusChange);
         }
-    // CRITICO: NO agregar selectedChannelId, selectedAgentId, activeFilter aqui.
-    // Se leen via refs para evitar re-registro de listeners (BUG 3 fix).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveOrgId, currentUserId, identityLoaded])
+    }, [effectiveOrgId, queryClient])
 
     const counts = useMemo(() => {
         return {
@@ -547,7 +364,7 @@ export function SidebarConversationList({
             <BulkDistributionModal 
                 open={isDistributeModalOpen} 
                 onOpenChange={setIsDistributeModalOpen}
-                onSuccess={() => fetchConversations(false)}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ['conversations', effectiveOrgId] })}
             />
 
             <TooltipProvider>
@@ -737,7 +554,7 @@ export function SidebarConversationList({
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         {t('crm.inbox.sidebar.loading')}
                     </div>
-                ) : conversations.length === 0 && !loading ? (
+                ) : conversations.length === 0 && !isLoading ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60">
                         <MessageSquare className="h-8 w-8 mb-3 text-muted-foreground" />
                         <p className="text-sm font-medium text-foreground">{t('crm.inbox.sidebar.no_conversations')}</p>
@@ -775,12 +592,12 @@ export function SidebarConversationList({
                                         setActiveMenuConvId(id)
                                         setActiveMenuIsArchived(isArchived)
                                     }}
-                                    fetchConversations={() => fetchConversations(false)}
+                                    fetchConversations={() => queryClient.invalidateQueries({ queryKey: ['conversations', effectiveOrgId] })}
                                 />
                             </div>
                         )}
                         components={{
-                            Footer: () => hasMore ? (
+                            Footer: () => hasNextPage ? (
                                 <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">
                                     {t('crm.inbox.sidebar.loading')}...
                                 </div>
@@ -794,7 +611,7 @@ export function SidebarConversationList({
                         <ConversationActionsMenu 
                             conversationId={activeMenuConvId}
                             isArchived={activeMenuIsArchived}
-                            onActionComplete={() => fetchConversations(false)}
+                            onActionComplete={() => queryClient.invalidateQueries({ queryKey: ['conversations', effectiveOrgId] })}
                         />
                     </div>
                 )}

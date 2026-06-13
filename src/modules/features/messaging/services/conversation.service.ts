@@ -1,3 +1,13 @@
+import { messagingCleanupService } from '@/modules/features/messaging/cleanup-service';
+async function broadcastVanish(organizationId: string, conversationId: string) {
+    const { createClient } = await import('@/modules/core/database/supabase-server');
+    const supabase = await createClient();
+    await supabase.channel('inbox-org-' + organizationId).send({
+        type: 'broadcast',
+        event: 'vanish',
+        payload: { conversationId }
+    });
+}
 import { SupabaseClient } from '@supabase/supabase-js';
 
 

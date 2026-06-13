@@ -36,6 +36,9 @@ export function LeadStageStepper({ leadId, leadStatus, onStageChanged }: LeadSta
             if (res.success) {
                 toast.success(`Lead movido a: ${stage.name}`)
                 onStageChanged?.(stage.id)
+                window.dispatchEvent(new CustomEvent('pixy:lead-status-changed', {
+                    detail: { leadId, newStatus: stage.status_key }
+                }))
                 setIsOpen(false)
             } else {
                 toast.error(res.error || "Error al mover lead")

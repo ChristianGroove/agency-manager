@@ -1,9 +1,15 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { createClient } from '@/modules/core/database/supabase-client';
-import { Conversation } from '@/types';
+import { supabase } from '@/modules/core/database/supabase';
+import { Database } from '@/types/supabase';
 
-// Omitimos la importación de types complejos para mantenerlo portable, asumiendo Conversation
+type Conversation = Database['public']['Tables']['conversations']['Row'] & {
+    leads: { name: string | null; phone: string | null; avatar_url: string | null; status: string | null } | null;
+    integration_connections: { connection_name: string | null } | null;
+    clients: { name: string | null; phone: string | null; avatar_url: string | null } | null;
+};
+
+// Omitimos la importación de types complejos para mantenerlo portable
 interface UseConversationsProps {
     orgId: string | null;
     userId: string | null;
@@ -16,6 +22,8 @@ interface UseConversationsProps {
     selectedAgentId?: string | null;
     identityLoaded: boolean;
 }
+
+const PAGE_SIZE = 50;
 
 export function useConversations({
     orgId,
@@ -30,16 +38,15 @@ export function useConversations({
     identityLoaded
 }: UseConversationsProps) {
     const queryClient = useQueryClient();
-    const supabase = createClient();
 
-    const fetchConversations = async () => {
+    const fetchConversationsPage = async ({ pageParam = 0 }) => {
         if (!identityLoaded || !orgId) return [];
 
         let query = supabase
             .from('conversations')
             .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
-            .range(0, 100); // Para simplicidad en el piloto, traemos las últimas 100
+            .range(pageParam, pageParam + PAGE_SIZE - 1);
 
         if (searchQuery.trim()) {
             const search = `%${searchQuery.toLowerCase()}%`;
@@ -104,9 +111,16 @@ export function useConversations({
         identityLoaded
     ];
 
-    const result = useQuery({
+    const result = useInfiniteQuery({
         queryKey,
-        queryFn: fetchConversations,
+        queryFn: fetchConversationsPage,
+        getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.length === PAGE_SIZE) {
+                return allPages.length * PAGE_SIZE;
+            }
+            return undefined;
+        },
+        initialPageParam: 0,
         enabled: identityLoaded && !!orgId,
         staleTime: 1000 * 60, // 1 minuto
     });
@@ -116,13 +130,70 @@ export function useConversations({
         if (!orgId || !identityLoaded) return;
         const channelName = `inbox-org-${orgId}-ping`;
 
-        // Realtime Subscription (Optimized: solo invalida caché, no maneja estado local)
+        // Realtime Subscription (Híbrida: muta caché local y solo invalida si los filtros cambian)
         const channel = supabase.channel(channelName)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'conversations', filter: `organization_id=eq.${orgId}` },
-                () => {
-                    // Ping recibido: Invalidar caché para hacer un refetch HTTP silencioso
-                    queryClient.invalidateQueries({ queryKey: ['conversations', orgId] });
+                (payload) => {
+                    let needsRefetch = true;
+
+                    if (payload.eventType === 'UPDATE') {
+                        let itemFound = false;
+
+                        queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
+                            if (!oldData || !oldData.pages) return oldData;
+                            
+                            let modified = false;
+                            const newPages = oldData.pages.map((page: any[]) => {
+                                const index = page.findIndex(c => c.id === payload.new.id);
+                                if (index !== -1) {
+                                    itemFound = true;
+                                    const cachedItem = page[index];
+                                    
+                                    // Si cambia un estado clave que afecta a los filtros, requerimos un refetch
+                                    if (
+                                        cachedItem.state !== payload.new.state ||
+                                        cachedItem.status !== payload.new.status ||
+                                        cachedItem.assigned_to !== payload.new.assigned_to ||
+                                        // Validar si pasa a 0 o >0 (afecta la pestaña 'unread')
+                                        (cachedItem.unread_count > 0) !== (payload.new.unread_count > 0)
+                                    ) {
+                                        needsRefetch = true;
+                                    } else {
+                                        needsRefetch = false;
+                                    }
+
+                                    modified = true;
+                                    const updatedPage = [...page];
+                                    updatedPage[index] = { ...updatedPage[index], ...payload.new };
+                                    return updatedPage;
+                                }
+                                return page;
+                            });
+                            
+                            return modified ? { ...oldData, pages: newPages } : oldData;
+                        });
+
+                        // Si no lo encontramos en caché, requerimos refetch para que entre a la lista
+                        if (!itemFound) needsRefetch = true;
+                    } else if (payload.eventType === 'DELETE') {
+                        queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
+                            if (!oldData || !oldData.pages) return oldData;
+                            let modified = false;
+                            const newPages = oldData.pages.map((page: any[]) => {
+                                const newPage = page.filter(c => c.id !== payload.old.id);
+                                if (newPage.length !== page.length) modified = true;
+                                return newPage;
+                            });
+                            return modified ? { ...oldData, pages: newPages } : oldData;
+                        });
+                        // Todavía requerimos refetch para asegurar paginación correcta a largo plazo
+                    }
+                    // Para INSERT, siempre requerimos refetch (el INSERT no trae JOINs como leads/clients)
+
+                    if (needsRefetch) {
+                        queryClient.invalidateQueries({ queryKey: ['conversations', orgId] });
+                    }
                 }
             )
             .subscribe();

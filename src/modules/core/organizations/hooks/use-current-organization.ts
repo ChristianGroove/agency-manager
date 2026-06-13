@@ -49,6 +49,8 @@ export function useCurrentOrganization() {
 
                 if (data) {
                     setOrganizationId(data.organization_id)
+                    // Auto-heal the cookie to prevent server-side spam and security fallback loops
+                    document.cookie = `pixy_org_id=${data.organization_id}; path=/; max-age=31536000; SameSite=Lax`
                 }
             } catch (error) {
                 console.error("[useCurrentOrganization] Error:", error)

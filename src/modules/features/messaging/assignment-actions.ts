@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { assignConversation as autoAssignConversation, logAssignment } from "./assignment-engine"
 import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "./assignment-constants"
 import { revalidatePath } from "next/cache"
@@ -330,6 +331,10 @@ export async function getAgentsWorkload() {
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', activeAgents.map(a => a.agent_id))
+
+    // Fallback to auth.users if profiles is missing/empty
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const userMap = new Map(authUsers?.users?.map(u => [u.id, u]) || [])
     console.timeEnd('agents:profiles_fetch')
 
     if (profileError) {
@@ -344,12 +349,13 @@ export async function getAgentsWorkload() {
     // Debug log
     console.log(`[Inbox] Agentes activos: ${activeAgents.length}, Perfiles encontrados: ${profiles?.length || 0}`)
     if (activeAgents.length > 0 && (!profiles || profiles.length === 0)) {
-        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles.')
+        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles. Usando fallback de auth.users.')
     }
 
     // Assemble agents with their loaded data
     const agentsWithUsers = activeAgents.map((agent) => {
         const profile = profileMap.get(agent.agent_id)
+        const authUser = userMap.get(agent.agent_id)
         const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} }
         
         return {
@@ -357,10 +363,10 @@ export async function getAgentsWorkload() {
             role: memberInfo.role,
             permissions: memberInfo.permissions,
             users: {
-                email: 'N/A', // Email usually in auth.users, keeping N/A to avoid Auth API waterfalls
+                email: authUser?.email || 'N/A',
                 raw_user_meta_data: {
-                    name: profile?.full_name || 'Agente',
-                    avatar_url: profile?.avatar_url
+                    name: profile?.full_name || authUser?.user_metadata?.name || authUser?.user_metadata?.full_name || 'Agente',
+                    avatar_url: profile?.avatar_url || authUser?.user_metadata?.avatar_url
                 }
             }
         }
