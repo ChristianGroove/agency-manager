@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
 import type { IncomingMessage } from "@/modules/features/messaging/providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
@@ -83,7 +83,8 @@ export class InboxService {
     /**
      * Process and save an incoming message to the database
      */
-    async handleIncomingMessage(msg: IncomingMessage, supabase: SupabaseClient = supabaseAdmin) {
+    async handleIncomingMessage(msg: IncomingMessage, supabase?: SupabaseClient) {
+        if (!supabase) supabase = await createClient()
         logInboxInfo('[InboxService] handleIncomingMessage', { from: msg.from, channel: msg.channel })
 
         // 1. Idempotency Check (Primary)

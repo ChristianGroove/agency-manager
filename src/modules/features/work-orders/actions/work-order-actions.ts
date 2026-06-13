@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { WorkOrder } from "@/types"
@@ -58,7 +57,7 @@ export async function createWorkOrder(data: Partial<WorkOrder>) {
         }
 
         // 4. Insert Work Order
-        const { data: workOrder, error } = await supabaseAdmin
+        const { data: workOrder, error } = await (await createClient())
             .from('work_orders')
             .insert(payload)
             .select()

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createHash, timingSafeEqual } from 'crypto'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { logDomainEvent } from "@/modules/infrastructure/logging/services/event-logger"
 import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function sanitizeWompiWebhookLogDetails(details: Record<string, unknown>) {
     const sensitiveKeys = new Set([
@@ -82,7 +82,7 @@ export async function GET() {
 }
 
 async function updateWompiSyncStatus(organizationId: string, environment: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('organization_settings')
         .update({
             wompi_last_sync: new Date().toISOString(),
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
             if (reference.startsWith('PAY-')) {
                 logWompiWebhookInfo('[WompiWebhook] Detected batch payment')
                 // 1. Find the transaction record
-                const { data: paymentTx, error: txError } = await supabaseAdmin
+                const { data: paymentTx, error: txError } = await (await createClient())
                     .from('payment_transactions')
                     .select('*')
                     .eq('reference', reference)
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
                 }
 
                 // 2. Update Transaction Status
-                await supabaseAdmin
+                await (await createClient())
                     .from('payment_transactions')
                     .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
                     .eq('id', paymentTx.id)
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
                     logWompiWebhookInfo('[WompiWebhook] Processing subscription payment', { organizationId: paymentTx.organization_id })
 
                     // 1. Update saas_subscriptions table
-                    const { data: subscription } = await supabaseAdmin
+                    const { data: subscription } = await (await createClient())
                         .from('saas_subscriptions')
                         .select('id, current_period_end')
                         .eq('organization_id', paymentTx.organization_id)
@@ -220,7 +220,7 @@ export async function POST(request: Request) {
                         
                         // Check if it's a platform manual invoice with specific date
                         if (paymentTx.metadata?.platform_invoice && paymentTx.metadata?.invoice_id) {
-                            const { data: invoice } = await supabaseAdmin
+                            const { data: invoice } = await (await createClient())
                                 .from('saas_platform_invoices')
                                 .select('billing_period_end')
                                 .eq('id', paymentTx.metadata.invoice_id)
@@ -238,7 +238,7 @@ export async function POST(request: Request) {
                             newEnd.setMonth(newEnd.getMonth() + 1)
                         }
 
-                        await supabaseAdmin
+                        await (await createClient())
                             .from('saas_subscriptions')
                             .update({
                                 status: 'active',
@@ -259,7 +259,7 @@ export async function POST(request: Request) {
                     // 1.5. If this is a Platform Manual Invoice, mark it as PAID
                     if (paymentTx.metadata?.platform_invoice && paymentTx.metadata?.invoice_id) {
                         try {
-                            const { error: platformInvoiceError } = await supabaseAdmin
+                            const { error: platformInvoiceError } = await (await createClient())
                                 .from('saas_platform_invoices')
                                 .update({ 
                                     status: 'PAID', 
@@ -289,7 +289,7 @@ export async function POST(request: Request) {
                     })
 
                     // 3. Send Notification
-                    await supabaseAdmin.from('notifications').insert({
+                    await (await createClient()).from('notifications').insert({
                         organization_id: paymentTx.organization_id,
                         type: 'system',
                         title: '✅ Pago de Suscripción Recibido',
@@ -304,7 +304,7 @@ export async function POST(request: Request) {
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
                     // ... (existing invoice update logic) ...
 
-                    const { data: updatedInvoices, error: updateError } = await supabaseAdmin
+                    const { data: updatedInvoices, error: updateError } = await (await createClient())
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
@@ -321,7 +321,7 @@ export async function POST(request: Request) {
 
                         // 2. Notify Agency Admins (Internal)
                         if (organizationId) {
-                            const { data: members } = await supabaseAdmin
+                            const { data: members } = await (await createClient())
                                 .from('organization_members')
                                 .select('user_id')
                                 .eq('organization_id', organizationId)
@@ -337,7 +337,7 @@ export async function POST(request: Request) {
                                     client_id: updatedInvoices[0].client_id
                                 }))
 
-                                const { error: notifError } = await supabaseAdmin
+                                const { error: notifError } = await (await createClient())
                                     .from('notifications')
                                     .insert(notifications)
 
@@ -364,7 +364,7 @@ export async function POST(request: Request) {
                 logWompiWebhookInfo('[WompiWebhook] Extracted invoice number', { invoiceNumber, reference })
 
                 if (invoiceNumber) {
-                    const { data: updatedInvoice, error } = await supabaseAdmin
+                    const { data: updatedInvoice, error } = await (await createClient())
                         .from('invoices')
                         .update({ status: 'paid' })
                         .eq('number', invoiceNumber)
@@ -378,7 +378,7 @@ export async function POST(request: Request) {
 
                         // Create Client Event
                         if (updatedInvoice) {
-                            await supabaseAdmin.from('client_events').insert({
+                            await (await createClient()).from('client_events').insert({
                                 client_id: updatedInvoice.client_id,
                                 type: 'payment',
                                 title: 'Pago Recibido',
@@ -421,7 +421,7 @@ export async function POST(request: Request) {
             }
 
             // Find Invoice to get Client/Lead
-            const { data: invoice } = await supabaseAdmin
+            const { data: invoice } = await (await createClient())
                 .from('invoices')
                 .select('id, client_id, organization_id') // client_id determines lead
                 .eq('number', invoiceNumber)
@@ -447,7 +447,7 @@ export async function POST(request: Request) {
                             logWompiWebhookInfo('[WompiWebhook] Moved process to payment_issue', { processId: process.id })
 
                             // Create Notification
-                            await supabaseAdmin.from('notifications').insert({
+                            await (await createClient()).from('notifications').insert({
                                 organization_id: invoice.organization_id,
                                 user_id: process.lead_id, // This might be wrong, leads aren't users. We should notify admins.
                                 type: 'payment_failed',

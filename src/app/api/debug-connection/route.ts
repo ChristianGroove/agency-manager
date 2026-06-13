@@ -1,8 +1,12 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     const { searchParams } = new URL(req.url);
     const shouldDelete = searchParams.get('delete') === 'true';
 

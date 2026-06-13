@@ -1,10 +1,9 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export interface CheckoutPayload {
     orgId: string
@@ -17,7 +16,7 @@ export interface CheckoutPayload {
 }
 
 export async function dispatchRestoOrder(payload: CheckoutPayload) {
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
 
     // Normalizar teléfono al formato internacional (ej. 3001234567 → 573001234567)
     payload.customerPhone = normalizePhone(payload.customerPhone)
@@ -209,7 +208,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
 }
 
 export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'shipped' | 'completed' | 'failed') {
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
 
     try {
         const orgId = await getCurrentOrganizationId()
@@ -255,7 +254,7 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
 }
 
 export async function updateClientAddress(token: string, clientId: string, address: string) {
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
 
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)

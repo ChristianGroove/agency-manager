@@ -4,19 +4,15 @@ const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     isSuperAdmin: vi.fn(),
     requireSuperAdmin: vi.fn(),
-    supabaseAdmin: {
         from: vi.fn(),
         rpc: vi.fn(),
-    },
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
-}))
+
 
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({
     isSuperAdmin: mocks.isSuperAdmin,
@@ -66,15 +62,8 @@ function authClient(userId: string | null, queues: Record<string, any[]> = {}) {
             if (!queue?.length) throw new Error(`Unexpected table ${table}`)
             return queue.shift()
         }),
+        rpc: mocks.rpc,
     }
-}
-
-function createQueuedAdmin(queues: Record<string, any[]>) {
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
-        const queue = queues[table]
-        if (!queue?.length) throw new Error(`Unexpected admin table ${table}`)
-        return queue.shift()
-    })
 }
 
 afterEach(() => {
@@ -84,8 +73,8 @@ afterEach(() => {
     mocks.createClient.mockReset()
     mocks.isSuperAdmin.mockReset()
     mocks.requireSuperAdmin.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
-    mocks.supabaseAdmin.rpc.mockReset()
+    mocks.from.mockReset()
+    mocks.rpc.mockReset()
 })
 
 describe('usage plan actions', () => {
@@ -100,7 +89,7 @@ describe('usage plan actions', () => {
 
         expect(result).toEqual([])
         expect(mocks.isSuperAdmin).toHaveBeenCalledWith('user-1')
-        expect(mocks.supabaseAdmin.from).not.toHaveBeenCalled()
+        expect(mocks.from).not.toHaveBeenCalled()
     })
 
     it('returns usage status for organization members through the guarded loader', async () => {
@@ -108,8 +97,6 @@ describe('usage plan actions', () => {
         vi.setSystemTime(new Date('2026-06-10T12:00:00Z'))
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [membershipQuery({ role: 'owner' })],
-        }))
-        createQueuedAdmin({
             usage_limits: [adminEqListQuery([
                 {
                     engine: 'whatsapp',
@@ -125,7 +112,7 @@ describe('usage plan actions', () => {
                     used: 25,
                 },
             ])],
-        })
+        }))
 
         const { getOrgUsageStatus } = await import('./plan-actions')
         const result = await getOrgUsageStatus('org-current')
@@ -150,18 +137,19 @@ describe('usage plan actions', () => {
         const { upgradePlan } = await import('./plan-actions')
 
         await expect(upgradePlan('org-current', 'business')).rejects.toThrow('Unauthorized')
-        expect(mocks.supabaseAdmin.rpc).not.toHaveBeenCalled()
+        expect(mocks.rpc).not.toHaveBeenCalled()
     })
 
     it('keeps the successful upgrade plan contract for super admins', async () => {
         mocks.requireSuperAdmin.mockResolvedValue(undefined)
-        mocks.supabaseAdmin.rpc.mockResolvedValue({ data: true, error: null })
+        mocks.rpc.mockResolvedValue({ data: true, error: null })
+        mocks.createClient.mockResolvedValue(authClient('user-1'))
 
         const { upgradePlan } = await import('./plan-actions')
         const result = await upgradePlan('org-current', 'business')
 
         expect(result).toEqual({ success: true })
-        expect(mocks.supabaseAdmin.rpc).toHaveBeenCalledWith('upgrade_org_plan', {
+        expect(mocks.rpc).toHaveBeenCalledWith('upgrade_org_plan', {
             p_organization_id: 'org-current',
             p_new_plan_code: 'business',
         })

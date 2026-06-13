@@ -6,8 +6,8 @@
  */
 
 import { wabaSubscriptionManager } from '@/modules/infrastructure/meta/services/waba-subscription-manager';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { decryptObject } from '@/modules/infrastructure/integrations/encryption';
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
@@ -67,7 +67,7 @@ export async function autoSubscribeWABA(
         logIntegrationHelperInfo('[AutoSubscribe] Processing connection', { connectionId });
 
         // Get connection details
-        const { data: connection, error } = await supabaseAdmin
+        const { data: connection, error } = await (await createClient())
             .from('integration_connections')
             .select('credentials, metadata')
             .eq('id', connectionId)
@@ -138,7 +138,7 @@ export async function verifyAllWABASubscriptions(
 }> {
     try {
         // Get all Meta connections for organization
-        const { data: connections } = await supabaseAdmin
+        const { data: connections } = await (await createClient())
             .from('integration_connections')
             .select('credentials, metadata')
             .eq('organization_id', organizationId)

@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 
 export interface QuoteSettings {
@@ -91,7 +90,7 @@ export async function getQuoteSettings(overrideOrgId?: string): Promise<{ succes
         if (!orgId) {
             console.warn("[getQuoteSettings] No memberships found for user, checking fallback...")
             // Fallback: get first organization (using admin to ensure we can read it)
-            const { data: firstOrg } = await supabaseAdmin
+            const { data: firstOrg } = await (await createClient())
                 .from('organizations')
                 .select('id')
                 .limit(1)
@@ -128,7 +127,7 @@ export async function getQuoteSettings(overrideOrgId?: string): Promise<{ succes
                 }
 
                 // Use admin client to bypass RLS for initial creation
-                const { data: newSettings, error: createError } = await supabaseAdmin
+                const { data: newSettings, error: createError } = await (await createClient())
                     .from('quote_settings')
                     .insert(defaultSettings)
                     .select()
@@ -168,7 +167,7 @@ export async function updateQuoteSettings(settings: Partial<QuoteSettings>) {
             orgId = member.organization_id
         } else {
             // Fallback: get first organization
-            const { data: firstOrg } = await supabaseAdmin
+            const { data: firstOrg } = await (await createClient())
                 .from('organizations')
                 .select('id')
                 .limit(1)
@@ -182,7 +181,7 @@ export async function updateQuoteSettings(settings: Partial<QuoteSettings>) {
         if (!orgId) return { success: false, error: "No organization found" }
 
         // Use admin client to bypass RLS for update
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('quote_settings')
             .update(settings)
             .eq('organization_id', orgId)

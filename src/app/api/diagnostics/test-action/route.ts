@@ -1,10 +1,14 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 import { NextResponse } from "next/server"
 import { updateConversationState } from "@/modules/features/messaging/conversation-management-actions"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
-export async function GET() {
+export async function GET(req: Request) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     // First get any conversation ID to test with
-    const { data: conversations, error: fetchError } = await supabaseAdmin
+    const { data: conversations, error: fetchError } = await (await createClient())
         .from('conversations')
         .select('id, state')
         .limit(1)

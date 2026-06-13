@@ -1,6 +1,5 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export interface RestoOrderHistoryItem {
     id: string
@@ -18,7 +17,7 @@ export interface RestoOrderHistoryItem {
 }
 
 export async function getRestoClientOrders(orgId: string, clientId: string): Promise<RestoOrderHistoryItem[]> {
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
 
     try {
         // Encontramos todas las conversaciones de este cliente en esta org

@@ -1,12 +1,4 @@
-/**
- * Coexistence Monitor (Meta 14-Day Rule)
- * 
- * Monitors the "Last Echo" timestamp for each WABA.
- * If a WABA hasn't sent an echo (mobile app usage) in 12 days, 
- * it sends an alert to the admin to prevent disconnection.
- */
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export class CoexistenceMonitor {
     private readonly WARNING_THRESHOLD_DAYS = 12;
@@ -30,7 +22,7 @@ export class CoexistenceMonitor {
             // 1. Get all WABAs with their last_echo_at timestamp
             // Assuming we store this in integration_connections metadata or a separate table
             // For now, let's query integration_connections
-            const { data: connections, error } = await supabaseAdmin
+            const { data: connections, error } = await (await createClient())
                 .from('integration_connections')
                 .select('id, organization_id, metadata, connection_name')
                 .eq('provider_key', 'meta_whatsapp')
@@ -81,7 +73,7 @@ export class CoexistenceMonitor {
         // MVP: Log to DB or Send Email (using existing notification infrastructure)
         // For this audit, we'll log a security alert to the database
 
-        await supabaseAdmin.from('security_alerts').insert({
+        await (await createClient()).from('security_alerts').insert({
             organization_id: orgId,
             severity: 'high',
             title: 'Riesgo de Desconexión WhatsApp (Regla 14 días)',
@@ -103,7 +95,7 @@ export class CoexistenceMonitor {
         try {
             // Find connection by WABA ID (search in metadata)
             // This relies on metadata->>'waba_id' or 'phone_number_id'
-            const { data: search } = await supabaseAdmin
+            const { data: search } = await (await createClient())
                 .from('integration_connections')
                 .select('id, metadata')
                 .or(`metadata->>waba_id.eq.${wabaId},metadata->>phone_number_id.eq.${wabaId}`)
@@ -116,7 +108,7 @@ export class CoexistenceMonitor {
                     last_echo_at: new Date().toISOString()
                 };
 
-                await supabaseAdmin
+                await (await createClient())
                     .from('integration_connections')
                     .update({ metadata: newMeta })
                     .eq('id', search.id);

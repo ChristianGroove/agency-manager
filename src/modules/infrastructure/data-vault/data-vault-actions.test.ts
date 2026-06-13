@@ -17,14 +17,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-        storage: {
-            from: mocks.storageFrom,
-        },
-    },
-}))
+
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
@@ -60,6 +53,10 @@ function createSupabaseMock(user: { id: string } | null = { id: 'user-current' }
                 data: { user },
                 error: null,
             })),
+        },
+        from: mocks.supabaseFrom,
+        storage: {
+            from: mocks.storageFrom,
         },
     }
 }
@@ -224,6 +221,7 @@ describe('data vault actions', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         createStorageMock()
+        mocks.createClient.mockResolvedValue(createSupabaseMock())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         useTableQueues({
             data_snapshots: [
@@ -268,6 +266,7 @@ describe('data vault actions', () => {
                 },
             })),
         })
+        mocks.createClient.mockResolvedValue(createSupabaseMock())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         useTableQueues({
             data_snapshots: [
@@ -298,6 +297,7 @@ describe('data vault actions', () => {
     it('does not expose vault config failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue(createSupabaseMock())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         useTableQueues({
             organizations: [

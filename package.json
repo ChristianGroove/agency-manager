@@ -16,7 +16,10 @@
     "flows:publish-all": "tsx scripts/publish-flows.ts -- --all",
     "calling:init": "tsx scripts/setup-calling.ts",
     "calling:status": "tsx scripts/setup-calling.ts -- --status",
-    "clean": "tsx scripts/cleanup-workspace.ts"
+    "clean": "tsx scripts/cleanup-workspace.ts",
+    "test:release": "vitest run --reporter=dot --no-file-parallelism",
+    "check:types": "tsc --noEmit",
+    "check:build": "next build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",
@@ -47,6 +50,8 @@
     "@simplewebauthn/server": "^10.0.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
+    "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-query-devtools": "^5.101.0",
     "@types/dagre": "^0.7.53",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/leaflet": "^1.9.21",
@@ -124,6 +129,7 @@
     "pg": "^8.20.0",
     "supabase": "^2.88.1",
     "tailwindcss": "^4",
+    "ts-morph": "^28.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.0.16"

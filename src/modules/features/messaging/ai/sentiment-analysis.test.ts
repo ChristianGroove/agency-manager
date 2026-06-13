@@ -105,10 +105,15 @@ describe('sentiment analysis AI actions', () => {
     it('does not expose escalated conversation ids in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        const eq = vi.fn(async () => ({ error: null }))
-        const update = vi.fn(() => ({ eq }))
+        
+        const eqQuery: any = {}
+        eqQuery.eq = vi.fn(() => eqQuery)
+        eqQuery.then = (resolve: (value: unknown) => unknown) => resolve({ error: null })
+        const eq = eqQuery.eq
+        const update = vi.fn(() => eqQuery)
         const from = vi.fn(() => ({ update }))
         const rpc = vi.fn(() => ({ sql: 'array_append' }))
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         mocks.createClient.mockResolvedValue({ from, rpc })
 
         const { autoEscalateIfNeeded } = await import('./sentiment-analysis')

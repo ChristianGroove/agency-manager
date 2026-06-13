@@ -21,11 +21,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseAdminFrom,
-    },
-}))
+
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
     return spies
@@ -80,22 +76,28 @@ afterEach(() => {
 describe('agent QA AI actions', () => {
     it('returns cached QA reports without running AI', async () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.createClient.mockResolvedValue({ from: vi.fn() })
-        mocks.supabaseAdminFrom.mockReturnValue(makeCacheQuery({
-            data: {
-                report: {
-                    empathy: 9,
-                    resolution: 8,
-                    clarity: 9,
-                    speed: 7,
-                    grammar: 10,
-                    overallScore: 8.6,
-                    strengths: ['Claro'],
-                    improvements: ['Mas detalle'],
-                },
-                messages_analyzed_count: 12,
-            },
-        }))
+        mocks.createClient.mockResolvedValue({
+            from: vi.fn((table: string) => {
+                if (table === 'agent_qa_reports') {
+                    return makeCacheQuery({
+                        data: {
+                            report: {
+                                empathy: 9,
+                                resolution: 8,
+                                clarity: 9,
+                                speed: 7,
+                                grammar: 10,
+                                overallScore: 8.6,
+                                strengths: ['Claro'],
+                                improvements: ['Mas detalle'],
+                            },
+                            messages_analyzed_count: 12,
+                        },
+                    })
+                }
+                throw new Error(`Unexpected table ${table}`)
+            })
+        })
 
         const { analyzeAgentPerformance } = await import('./agent-qa')
         const result = await analyzeAgentPerformance('agent-1', 25)
@@ -112,7 +114,6 @@ describe('agent QA AI actions', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
-        mocks.supabaseAdminFrom.mockReturnValue(makeCacheQuery({ data: null }))
         const messagesQuery = makeMessagesQuery({
             data: null,
             error: {
@@ -121,7 +122,15 @@ describe('agent QA AI actions', () => {
             },
         })
         mocks.createClient.mockResolvedValue({
-            from: vi.fn(() => messagesQuery),
+            from: vi.fn((table: string) => {
+                if (table === 'agent_qa_reports') {
+                    return makeCacheQuery({ data: null })
+                }
+                if (table === 'messages') {
+                    return messagesQuery
+                }
+                throw new Error(`Unexpected table ${table}`)
+            }),
         })
 
         const { analyzeAgentPerformance } = await import('./agent-qa')

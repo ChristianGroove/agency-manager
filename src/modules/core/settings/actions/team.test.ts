@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
-    const supabaseAdmin = {
+    const dbClient = {
         auth: {
             admin: {
                 generateLink: vi.fn(),
@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
                 updateUserById: vi.fn(),
                 listUsers: vi.fn(),
             },
+            getUser: vi.fn(),
         },
         from: vi.fn(),
     }
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => {
         revalidatePath: vi.fn(),
         revalidateTag: vi.fn(),
         headers: vi.fn(),
-        supabaseAdmin,
+        dbClient,
     }
 })
 
@@ -33,7 +34,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 }))
 
 vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
+    supabaseAdmin: mocks.dbClient,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -161,11 +162,12 @@ afterEach(() => {
     mocks.revalidatePath.mockReset()
     mocks.revalidateTag.mockReset()
     mocks.headers.mockReset()
-    mocks.supabaseAdmin.auth.admin.generateLink.mockReset()
-    mocks.supabaseAdmin.auth.admin.createUser.mockReset()
-    mocks.supabaseAdmin.auth.admin.updateUserById.mockReset()
-    mocks.supabaseAdmin.auth.admin.listUsers.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
+    mocks.dbClient.auth.admin.generateLink.mockReset()
+    mocks.dbClient.auth.admin.createUser.mockReset()
+    mocks.dbClient.auth.admin.updateUserById.mockReset()
+    mocks.dbClient.auth.admin.listUsers.mockReset()
+    mocks.dbClient.auth.getUser.mockReset()
+    mocks.dbClient.from.mockReset()
 })
 
 async function importTeamActions() {
@@ -177,11 +179,15 @@ async function importTeamActions() {
     return import('./team')
 }
 
+beforeEach(() => {
+    mocks.createClient.mockResolvedValue(mocks.dbClient)
+})
+
 describe('team settings actions', () => {
     it('does not expose invite link failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseAdmin.auth.admin.generateLink.mockResolvedValue({
+        mocks.dbClient.auth.admin.generateLink.mockResolvedValue({
             data: null,
             error: secretError('invite secret-value link failure'),
         })
@@ -197,7 +203,7 @@ describe('team settings actions', () => {
     it('does not expose invite assignment failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseAdmin.auth.admin.generateLink.mockResolvedValue({
+        mocks.dbClient.auth.admin.generateLink.mockResolvedValue({
             data: {
                 user: { id: 'user-invite' },
                 properties: {
@@ -207,7 +213,7 @@ describe('team settings actions', () => {
             },
             error: null,
         })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             profiles: [directUpsert()],
             organization_members: [directUpsert(secretError('membership secret-value failure'))],
         }).from)
@@ -226,9 +232,9 @@ describe('team settings actions', () => {
     it('does not expose remove member failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.createClient.mockResolvedValue(currentUser())
+        mocks.dbClient.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
         const remove = deleteMatch(secretError('remove secret-value failure'))
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             organization_members: [remove],
         }).from)
 
@@ -246,7 +252,7 @@ describe('team settings actions', () => {
     it('updates member roles without changing the success contract', async () => {
         const role = selectEqSingle({ hierarchy_level: 50 })
         const update = updateMatch()
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             organization_roles: [role],
             organization_members: [update],
         }).from)
@@ -270,7 +276,7 @@ describe('team settings actions', () => {
             role_data: { hierarchy_level: 1 },
         })
         const update = updateMatch(secretError('permissions secret-value failure'))
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             organization_members: [member, update],
         }).from)
 
@@ -290,11 +296,11 @@ describe('team settings actions', () => {
     it('does not expose manual profile creation failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseAdmin.auth.admin.createUser.mockResolvedValue({
+        mocks.dbClient.auth.admin.createUser.mockResolvedValue({
             data: { user: { id: 'new-user' } },
             error: null,
         })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             profiles: [directUpsert(secretError('profile secret-value failure'))],
         }).from)
 
@@ -317,11 +323,11 @@ describe('team settings actions', () => {
     it('does not expose manual member linking failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseAdmin.auth.admin.createUser.mockResolvedValue({
+        mocks.dbClient.auth.admin.createUser.mockResolvedValue({
             data: { user: { id: 'new-user' } },
             error: null,
         })
-        mocks.supabaseAdmin.from.mockImplementation(queuedAdminClient({
+        mocks.dbClient.from.mockImplementation(queuedAdminClient({
             profiles: [directUpsert()],
             organization_roles: [selectEqSingle({ name: 'Administrador' })],
             organization_members: [directInsert(secretError('link secret-value failure'))],

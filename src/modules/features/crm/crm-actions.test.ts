@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
-    supabaseAdmin: { from: vi.fn() },
     getCurrentOrganizationId: vi.fn(),
     getSettings: vi.fn(),
     revalidatePath: vi.fn(),
@@ -67,10 +66,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
-}))
-
 vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
 }))
@@ -125,7 +120,6 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
     mocks.getSettings.mockReset()
     mocks.revalidatePath.mockReset()
@@ -292,7 +286,7 @@ describe('CRM tag server actions', () => {
         const result = await addContactTagSystemAction('lead-secret-id', 'VIP', 'org-current')
 
         expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de etiquetas' })
-        expect(mocks.TagService).toHaveBeenCalledWith(mocks.supabaseAdmin, 'org-current')
+        expect(mocks.TagService).toHaveBeenCalledWith(expect.anything(), 'org-current')
         expect(mocks.tagService.addTagByName).toHaveBeenCalledWith('lead-secret-id', 'VIP')
         expect(consoleError).toHaveBeenCalledWith('[addContactTagSystemAction] Error:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')

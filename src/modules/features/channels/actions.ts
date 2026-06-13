@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
@@ -199,7 +198,7 @@ export async function createChannel(input: {
 
     // If new channel is primary, unset other primaries first
     if (input.is_primary) {
-        await supabaseAdmin
+        await (await createClient())
             .from('integration_connections')
             .update({ is_primary: false })
             .eq('organization_id', orgId)
@@ -248,14 +247,14 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
     // If setting as primary, handle exclusivity
     if (updates.is_primary) {
         // Get the channel first to know provider
-        const { data: current } = await supabaseAdmin
+        const { data: current } = await (await createClient())
             .from('integration_connections')
             .select('provider_key')
             .eq('id', channelId)
             .single()
 
         if (current) {
-            await supabaseAdmin
+            await (await createClient())
                 .from('integration_connections')
                 .update({ is_primary: false })
                 .eq('organization_id', orgId)
@@ -288,7 +287,7 @@ export async function deleteChannel(channelId: string) {
     await requireOrgRole('admin')
 
     // Get channel details first to check if Evolution
-    const { data: channel } = await supabaseAdmin
+    const { data: channel } = await (await createClient())
         .from('integration_connections')
         .select('*')
         .eq('id', channelId)
@@ -300,7 +299,7 @@ export async function deleteChannel(channelId: string) {
     }
 
     // First try hard delete
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('integration_connections')
         .delete()
         .eq('id', channelId)
@@ -310,7 +309,7 @@ export async function deleteChannel(channelId: string) {
         console.log('[deleteChannel] Hard delete failed, trying soft delete:', error.message)
 
         // If FK constraint, do soft delete (set status to 'deleted')
-        const { error: softError } = await supabaseAdmin
+        const { error: softError } = await (await createClient())
             .from('integration_connections')
             .update({ status: 'deleted' })
             .eq('id', channelId)

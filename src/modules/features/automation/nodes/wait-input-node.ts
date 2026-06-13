@@ -1,7 +1,7 @@
 
 
 import { ContextManager } from '../context-manager'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export interface WaitInputNodeData {
     // What we're waiting for
@@ -78,7 +78,7 @@ export class WaitInputNode {
             }
 
             // Store pending input state in database
-            const { error } = await supabaseAdmin
+            const { error } = await (await createClient())
                 .from('workflow_pending_inputs')
                 .upsert({
                     execution_id: executionId,
@@ -196,7 +196,7 @@ export class WaitInputNode {
             }
 
             // Mark as completed
-            let updatePendingInputQuery = supabaseAdmin
+            let updatePendingInputQuery = (await createClient())
                 .from('workflow_pending_inputs')
                 .update({
                     status: 'completed',
@@ -231,7 +231,7 @@ export class WaitInputNode {
     async handleTimeout(pendingInput: any): Promise<WaitInputResult> {
         const config = pendingInput.config as WaitInputNodeData
 
-        let timeoutUpdateQuery = supabaseAdmin
+        let timeoutUpdateQuery = (await createClient())
             .from('workflow_pending_inputs')
             .update({
                 status: 'timeout',

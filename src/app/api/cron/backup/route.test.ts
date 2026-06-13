@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
@@ -6,10 +7,10 @@ const mocks = vi.hoisted(() => ({
     performBackup: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.from,
-    },
+    })),
 }))
 
 vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
@@ -67,6 +68,10 @@ function mockConnections(result: QueryResult) {
 }
 
 describe('/api/cron/backup', () => {
+    beforeEach(() => {
+        Object.assign(supabaseAdmin, { from: mocks.from })
+    })
+
     afterEach(() => {
         vi.unstubAllEnvs()
         vi.restoreAllMocks()

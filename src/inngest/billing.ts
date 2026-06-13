@@ -1,6 +1,6 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { WompiSaasAdapter } from "@/modules/billing/saas/adapters/wompi";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Monthly Subscription Billing Job
@@ -15,7 +15,7 @@ export const monthlySubscriptionBilling = inngest.createFunction(
         const today = new Date().toISOString();
 
         const dueSubscriptions = await step.run("fetch-due-subscriptions", async () => {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .from("saas_subscriptions")
                 .select("id, organization_id, payment_gateway, billing_cycle, bypass_until")
                 .eq("status", "active")
@@ -51,7 +51,7 @@ export const monthlySubscriptionBilling = inngest.createFunction(
                         else if (cycle === 'semi_annual') nextDate.setMonth(nextDate.getMonth() + 6);
                         else if (cycle === 'annual') nextDate.setFullYear(nextDate.getFullYear() + 1);
 
-                        await supabaseAdmin
+                        await (await createClient())
                             .from('saas_subscriptions')
                             .update({
                                 current_period_end: nextDate.toISOString(),

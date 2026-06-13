@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
@@ -10,11 +10,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
-}))
+
 
 vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
@@ -42,6 +38,11 @@ afterEach(() => {
     mocks.createClient.mockReset()
     mocks.supabaseFrom.mockReset()
     mocks.revalidatePath.mockReset()
+})
+
+
+beforeEach(() => {
+    mocks.createClient.mockResolvedValue({ from: mocks.supabaseFrom });
 })
 
 describe('SaaS billing actions', () => {

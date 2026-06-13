@@ -1,8 +1,12 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getPortalCatalog } from '@/modules/features/portal/services/portal-service'
+import { createClient } from "@/modules/core/database/supabase-server";
 
-export async function GET() {
+export async function GET(req: Request) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     const results: string[] = []
     const log = (msg: string) => results.push(`[${new Date().toISOString().split('T')[1].split('.')[0]}] ${msg}`)
     const error = (msg: string) => results.push(`❌ COMPROBACIÓN FAIL: ${msg}`)
@@ -17,15 +21,15 @@ export async function GET() {
 
         log(`Creando organizaciones de prueba: ${orgAName}, ${orgBName}`)
 
-        const { data: orgA, error: errA } = await supabaseAdmin.from('organizations').insert({ name: orgAName, slug: `test-org-a-${Date.now()}` }).select().single()
+        const { data: orgA, error: errA } = await (await createClient()).from('organizations').insert({ name: orgAName, slug: `test-org-a-${Date.now()}` }).select().single()
         if (errA) throw new Error(`Error creando Org A: ${errA.message}`)
 
-        const { data: orgB, error: errB } = await supabaseAdmin.from('organizations').insert({ name: orgBName, slug: `test-org-b-${Date.now()}` }).select().single()
+        const { data: orgB, error: errB } = await (await createClient()).from('organizations').insert({ name: orgBName, slug: `test-org-b-${Date.now()}` }).select().single()
         if (errB) throw new Error(`Error creando Org B: ${errB.message}`)
 
         // 2. Setup Services
         log('Creando servicios en ambas organizaciones...')
-        const { data: serviceA, error: sErrA } = await supabaseAdmin.from('services').insert({
+        const { data: serviceA, error: sErrA } = await (await createClient()).from('services').insert({
             organization_id: orgA.id,
             name: 'Service Only For A',
             description: 'Should be visible to A',
@@ -36,7 +40,7 @@ export async function GET() {
         }).select().single()
         if (sErrA) throw new Error(`Error creando Service A: ${sErrA.message}`)
 
-        const { data: serviceB, error: sErrB } = await supabaseAdmin.from('services').insert({
+        const { data: serviceB, error: sErrB } = await (await createClient()).from('services').insert({
             organization_id: orgB.id,
             name: 'Service Only For B',
             description: 'Should NOT be visible to A',
@@ -51,12 +55,12 @@ export async function GET() {
         log('Creando cliente en Org A...')
 
         // Fetch a valid user for FK constraint
-        const { data: { users }, error: uErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 })
+        const { data: { users }, error: uErr } = await (await createClient()).auth.admin.listUsers({ page: 1, perPage: 1 })
         if (uErr || !users || users.length === 0) throw new Error(`No se pudo obtener un usuario para el test: ${uErr?.message}`)
         const userId = users[0].id
 
         const portalToken = `test-token-${Date.now()}`
-        const { data: clientA, error: cErrA } = await supabaseAdmin.from('leads').insert({
+        const { data: clientA, error: cErrA } = await (await createClient()).from('leads').insert({
             organization_id: orgA.id,
             name: 'Client A',
             email: `client-a-${Date.now()}@test.com`,
@@ -95,9 +99,9 @@ export async function GET() {
 
         // 6. Cleanup
         log('Limpiando datos de prueba...')
-        await supabaseAdmin.from('services').delete().in('id', [serviceA.id, serviceB.id])
-        await supabaseAdmin.from('leads').delete().eq('id', clientA.id)
-        await supabaseAdmin.from('organizations').delete().in('id', [orgA.id, orgB.id])
+        await (await createClient()).from('services').delete().in('id', [serviceA.id, serviceB.id])
+        await (await createClient()).from('leads').delete().eq('id', clientA.id)
+        await (await createClient()).from('organizations').delete().in('id', [orgA.id, orgB.id])
         log('Limpieza completada.')
 
     } catch (e: any) {

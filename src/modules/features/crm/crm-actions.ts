@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { ContactService } from "./services/contact-service"
@@ -153,7 +152,7 @@ export async function createContactAction(input: any): Promise<ActionResponse<Le
  */
 export async function createContactSystemAction(input: any, orgId: string): Promise<ActionResponse<Lead>> {
     try {
-        const contacts = new ContactService(supabaseAdmin, orgId)
+        const contacts = new ContactService((await createClient()), orgId)
         const data = await contacts.createContact(input)
         return { success: true, data }
     } catch (e: any) {
@@ -203,7 +202,7 @@ export async function updateContactStatusAction(id: string, newStatus: string): 
 
 export async function updateContactStatusSystemAction(id: string, newStatus: string, orgId: string): Promise<ActionResponse<Lead>> {
     try {
-        const contacts = new ContactService(supabaseAdmin, orgId)
+        const contacts = new ContactService((await createClient()), orgId)
         const data = await contacts.updateContactStatus(id, newStatus)
         return { success: true, data }
     } catch (e: any) {
@@ -409,7 +408,7 @@ export async function deleteTagAction(tagId: string) {
  */
 export async function addContactTagSystemAction(leadId: string, tagName: string, orgId: string) {
     try {
-        const tags = new TagService(supabaseAdmin, orgId)
+        const tags = new TagService((await createClient()), orgId)
         const data = await tags.addTagByName(leadId, tagName)
         return { success: true, data }
     } catch (e: any) {

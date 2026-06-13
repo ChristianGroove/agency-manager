@@ -29,8 +29,7 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 
 function createOrgState() {
     return createMetaOAuthState(
-        { flow: 'org', orgId: 'org_123' },
-        { now: Date.now(), nonce: 'nonce-value-123456' }
+        { flow: 'org', orgId: 'org_123', now: Date.now(), nonce: 'nonce-value-123456' }
     )
 }
 

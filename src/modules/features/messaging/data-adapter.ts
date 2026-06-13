@@ -1,8 +1,6 @@
 
 import { DataModule } from "@/modules/infrastructure/data-vault/types"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 export const messagingDataAdapter: DataModule = {
     key: 'messaging',
     name: 'Messaging System (Chat)',
@@ -11,7 +9,7 @@ export const messagingDataAdapter: DataModule = {
 
     exportData: async (organizationId: string) => {
         // 1. Templates
-        const { data: templates } = await supabaseAdmin
+        const { data: templates } = await (await createClient())
             .from('messaging_templates')
             .select('*')
             .eq('organization_id', organizationId)
@@ -21,13 +19,13 @@ export const messagingDataAdapter: DataModule = {
         // Based on previous files, let's assume 'integration_connections' is the main one.
         // We need to be careful with secrets (API Keys). Ideally we export them encrypted or ask heavily.
         // For a full "Backup/Restore" within same environment, exporting is fine if Vault is secure.
-        const { data: channels } = await supabaseAdmin
+        const { data: channels } = await (await createClient())
             .from('integration_connections')
             .select('*')
             .eq('organization_id', organizationId)
 
         // 3. Conversations
-        const { data: conversations } = await supabaseAdmin
+        const { data: conversations } = await (await createClient())
             .from('conversations')
             .select('*')
             .eq('organization_id', organizationId)
@@ -35,14 +33,14 @@ export const messagingDataAdapter: DataModule = {
         // 4. Messages
         // WARNING: This can be huge. We might want to limit or batch execution.
         // For this implementation, we fetch all. In production, utilize pagination or streams.
-        const { data: messages } = await supabaseAdmin
+        const { data: messages } = await (await createClient())
             .from('messages')
             .select('*')
             .eq('organization_id', organizationId)
             .order('created_at', { ascending: true })
 
         // 5. Knowledge Base (FAQs)
-        const { data: knowledge } = await supabaseAdmin
+        const { data: knowledge } = await (await createClient())
             .from('knowledge_base')
             .select('*')
             .eq('organization_id', organizationId)
@@ -63,19 +61,19 @@ export const messagingDataAdapter: DataModule = {
         if (data.templates?.length > 0) {
             const temps = data.templates.map((t: any) => ({ ...t, organization_id: organizationId }))
             // remove id collision if needed, or use upsert
-            await supabaseAdmin.from('messaging_templates').upsert(temps)
+            await (await createClient()).from('messaging_templates').upsert(temps)
         }
 
         // 2. Import Channels
         if (data.channels?.length > 0) {
             const chans = data.channels.map((c: any) => ({ ...c, organization_id: organizationId }))
-            await supabaseAdmin.from('integration_connections').upsert(chans)
+            await (await createClient()).from('integration_connections').upsert(chans)
         }
 
         // 3. Import Conversations
         if (data.conversations?.length > 0) {
             const convs = data.conversations.map((c: any) => ({ ...c, organization_id: organizationId }))
-            await supabaseAdmin.from('conversations').upsert(convs)
+            await (await createClient()).from('conversations').upsert(convs)
         }
 
         // 4. Import Messages
@@ -86,7 +84,7 @@ export const messagingDataAdapter: DataModule = {
 
             for (let i = 0; i < messages.length; i += chunkSize) {
                 const chunk = messages.slice(i, i + chunkSize);
-                const { error } = await supabaseAdmin.from('messages').upsert(chunk)
+                const { error } = await (await createClient()).from('messages').upsert(chunk)
                 if (error) console.error("Error importing messages chunk:", error)
             }
         }
@@ -94,18 +92,18 @@ export const messagingDataAdapter: DataModule = {
         // 5. Import Knowledge Base
         if (data.knowledge?.length > 0) {
             const kb = data.knowledge.map((k: any) => ({ ...k, organization_id: organizationId }))
-            await supabaseAdmin.from('knowledge_base').upsert(kb)
+            await (await createClient()).from('knowledge_base').upsert(kb)
         }
     },
 
     clearData: async (organizationId: string) => {
         // Reverse order of dependencies
-        await supabaseAdmin.from('knowledge_base').delete().eq('organization_id', organizationId)
-        await supabaseAdmin.from('messages').delete().eq('organization_id', organizationId)
-        await supabaseAdmin.from('conversations').delete().eq('organization_id', organizationId)
-        await supabaseAdmin.from('messaging_templates').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('knowledge_base').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('messages').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('conversations').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('messaging_templates').delete().eq('organization_id', organizationId)
         // We might NOT want to clear connections automatically as they hold credentials?
         // But for a true "Restore", we should.
-        await supabaseAdmin.from('integration_connections').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('integration_connections').delete().eq('organization_id', organizationId)
     }
 }

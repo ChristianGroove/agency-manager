@@ -1,7 +1,11 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import { createClient } from "@/modules/core/database/supabase-server";
 
-export async function GET() {
+export async function GET(req: Request) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     try {
         const apps = [
             {
@@ -54,7 +58,7 @@ export async function GET() {
             }
         ];
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('saas_apps')
             .upsert(apps, { onConflict: 'id' })
             .select();
@@ -84,7 +88,7 @@ export async function GET() {
             { app_id: 'app_consulting_essential', module_key: 'module_appointments', auto_enable: false, is_core: false, is_optional: true, sort_order: 5 }
         ];
 
-        const { error: modulesError } = await supabaseAdmin
+        const { error: modulesError } = await (await createClient())
             .from('saas_app_modules')
             .upsert(modules, { onConflict: 'app_id, module_key' });
 

@@ -1,13 +1,12 @@
 'use server'
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Worker/Staff Portal Actions
  */
 export async function startJob(token: string, jobId: string, location?: { lat: number, lng: number }) {
     try {
-        const { data: staff, error: staffError } = await supabaseAdmin
+        const { data: staff, error: staffError } = await (await createClient())
             .from('cleaning_staff_profiles')
             .select('id, organization_id')
             .eq('access_token', token)
@@ -16,7 +15,7 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
 
         if (staffError || !staff) throw new Error('Unauthorized')
 
-        const { data: job, error: jobError } = await supabaseAdmin
+        const { data: job, error: jobError } = await (await createClient())
             .from('appointments')
             .select('id, start_time, organization_id')
             .eq('id', jobId)
@@ -26,7 +25,7 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
 
         if (jobError || !job) throw new Error('Job not found or not assigned to you')
 
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (await createClient())
             .from('appointments')
             .update({
                 status: 'in_progress',
@@ -46,7 +45,7 @@ export async function startJob(token: string, jobId: string, location?: { lat: n
 
 export async function completeJob(token: string, jobId: string) {
     try {
-        const { data: staff, error: staffError } = await supabaseAdmin
+        const { data: staff, error: staffError } = await (await createClient())
             .from('cleaning_staff_profiles')
             .select('id, organization_id')
             .eq('access_token', token)
@@ -55,7 +54,7 @@ export async function completeJob(token: string, jobId: string) {
 
         if (staffError || !staff) throw new Error('Unauthorized')
 
-        const { data: job, error: jobError } = await supabaseAdmin
+        const { data: job, error: jobError } = await (await createClient())
             .from('appointments')
             .select('id, organization_id')
             .eq('id', jobId)
@@ -65,7 +64,7 @@ export async function completeJob(token: string, jobId: string) {
 
         if (jobError || !job) throw new Error('Job not found or not assigned to you')
 
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (await createClient())
             .from('appointments')
             .update({ status: 'completed' })
             .eq('id', jobId)

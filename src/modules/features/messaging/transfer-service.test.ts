@@ -7,10 +7,10 @@ const mocks = vi.hoisted(() => ({
     supabaseAdminFrom: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.supabaseAdminFrom,
-    },
+    }))
 }))
 
 vi.mock('next/cache', () => ({
@@ -41,20 +41,19 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 }
 
 function singleQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        select: vi.fn(() => query),
-        single: vi.fn(async () => result),
-    }
-
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.select = vi.fn(() => query)
+    query.single = vi.fn(async () => result)
     return query
 }
 
 function updateQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(async () => result),
-    }
-
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject)
+    
     return {
         update: vi.fn(() => query),
     }
@@ -85,15 +84,19 @@ describe('transfer service logging', () => {
                 error: null,
             }))
             .mockReturnValueOnce(singleQuery({
-                data: { role: 'admin' },
-                error: null,
-            }))
-            .mockReturnValueOnce(singleQuery({
                 data: {
                     current_load: 1,
                     max_capacity: 10,
                     status: 'online',
                 },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: { role: 'admin' },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: { role: 'agent' },
                 error: null,
             }))
             .mockReturnValueOnce(updateQuery({

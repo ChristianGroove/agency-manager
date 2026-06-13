@@ -6,7 +6,6 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { encryptBuffer } from "@/modules/core/security/encryption"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 export async function exportContractAsPdf(payload: {
     contractId?: string
@@ -41,7 +40,7 @@ export async function exportContractAsPdf(payload: {
     // 5. Store in Supabase Contracts Bucket
     const fileName = `${orgId}/${Date.now()}_contract.pdf.vault`
 
-    const { error: uploadError } = await supabaseAdmin.storage
+    const { error: uploadError } = await (await createClient()).storage
         .from('contracts')
         .upload(fileName, encryptedBuffer, {
             contentType: 'application/octet-stream',

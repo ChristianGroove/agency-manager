@@ -1,6 +1,4 @@
 'use server'
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrgDetails, getCurrentOrganizationId } from "./actions/crud"
 
 // ============================================
@@ -27,7 +25,7 @@ export async function getOrgSpaceCategory(orgId?: string): Promise<SpaceCategory
         const orgDetails = await getCurrentOrgDetails(activeOrgId)
         if (!orgDetails?.active_app_id) return 'agency'
 
-        const { data: appData } = await supabaseAdmin
+        const { data: appData } = await (await createClient())
             .from('saas_apps')
             .select('space_category')
             .eq('id', orgDetails.active_app_id)
@@ -41,6 +39,7 @@ export async function getOrgSpaceCategory(orgId?: string): Promise<SpaceCategory
 }
 
 import { DynamicSpaceConfig, CAPABILITY_PRESETS } from "./capabilities-registry"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Resolves the full dynamic configuration for an organization.

@@ -1,8 +1,6 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Invoice, InvoiceItem } from "@/types"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 const PUBLIC_BILLING_CREATE_INVOICE_ERROR = "No se pudo crear la factura"
 const PUBLIC_BILLING_UPDATE_INVOICE_ERROR = "No se pudo actualizar la factura"
 const PUBLIC_BILLING_DELETE_INVOICES_ERROR = "No se pudieron eliminar las facturas"
@@ -323,7 +321,7 @@ export async function toggleServiceStatus(id: string, status: 'active' | 'paused
 }
 
 export async function getPublicInvoice(id: string) {
-    const { data: invoice, error } = await supabaseAdmin
+    const { data: invoice, error } = await (await createClient())
         .from('invoices')
         .select(`*, client:leads(*), emitter:emitters(*)`)
         .eq('id', id)
@@ -337,7 +335,7 @@ export async function getPublicInvoice(id: string) {
     if (!invoice) return { error: PUBLIC_BILLING_INVOICE_NOT_FOUND }
 
     if (!invoice.emitter) {
-        const { data: defaultEmitter } = await supabaseAdmin
+        const { data: defaultEmitter } = await (await createClient())
             .from('emitters')
             .select('*')
             .eq('organization_id', invoice.organization_id)
@@ -346,7 +344,7 @@ export async function getPublicInvoice(id: string) {
         if (defaultEmitter) invoice.emitter = defaultEmitter
     }
 
-    const { data: settings } = await supabaseAdmin
+    const { data: settings } = await (await createClient())
         .from('organization_settings')
         .select('*')
         .eq('organization_id', invoice.organization_id)
@@ -383,7 +381,7 @@ export async function getOrganizationSubscription() {
 
     if (!orgId) return null
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('saas_subscriptions')
         .select(`
             *,

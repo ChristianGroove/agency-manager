@@ -5,9 +5,7 @@ const mocks = vi.hoisted(() => ({
     getCurrentOrganizationId: vi.fn(),
     getCurrentOrganizationApp: vi.fn(),
     logDomainEvent: vi.fn(),
-    supabaseAdmin: {
-        from: vi.fn(),
-    },
+    from: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -16,10 +14,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/infrastructure/logging/services/event-logger', () => ({
@@ -85,7 +79,7 @@ afterEach(() => {
     mocks.getCurrentOrganizationId.mockReset()
     mocks.getCurrentOrganizationApp.mockReset()
     mocks.logDomainEvent.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
+    mocks.from.mockReset()
 })
 
 describe('PaymentService', () => {
@@ -103,13 +97,13 @@ describe('PaymentService', () => {
             error: null,
         })
         const invoiceUpdate = updateFilterQuery(null)
+        const transactionInsert = insertImmediateQuery(null)
+
         const client = createQueuedClient({
             invoices: [invoiceFetch, invoiceUpdate],
+            payment_transactions: [transactionInsert],
         })
         mocks.createClient.mockResolvedValue(client)
-
-        const transactionInsert = insertImmediateQuery(null)
-        mocks.supabaseAdmin.from.mockReturnValue(transactionInsert)
 
         const { registerPayment } = await import('../payment-service')
         const result = await registerPayment('invoice-1', 500, 'receipt ok')
@@ -148,16 +142,16 @@ describe('PaymentService', () => {
             },
             error: null,
         })
-        const client = createQueuedClient({
-            invoices: [invoiceFetch],
-        })
-        mocks.createClient.mockResolvedValue(client)
-
         const transactionInsert = insertImmediateQuery({
             message: 'payment secret-value failed for invoice-secret',
             code: '42501',
         })
-        mocks.supabaseAdmin.from.mockReturnValue(transactionInsert)
+
+        const client = createQueuedClient({
+            invoices: [invoiceFetch],
+            payment_transactions: [transactionInsert],
+        })
+        mocks.createClient.mockResolvedValue(client)
 
         const { registerPayment } = await import('../payment-service')
         const result = await registerPayment('invoice-secret', 500, 'secret note')
@@ -175,7 +169,7 @@ describe('PaymentService', () => {
 
     it('updates a gateway without changing the success contract', async () => {
         const update = updateFilterQuery(null)
-        mocks.supabaseAdmin.from.mockReturnValue(update)
+        mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue(update) })
 
         const { updatePaymentGateway } = await import('../payment-service')
         const result = await updatePaymentGateway('wompi', { is_enabled: true })
@@ -195,7 +189,7 @@ describe('PaymentService', () => {
             message: 'gateway secret-value failed',
             code: '42501',
         })
-        mocks.supabaseAdmin.from.mockReturnValue(update)
+        mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue(update) })
 
         const { updatePaymentGateway } = await import('../payment-service')
         const result = await updatePaymentGateway('wompi', { is_enabled: true })
@@ -228,7 +222,7 @@ describe('PaymentService', () => {
             data: { id: 'tx-1' },
             error: null,
         })
-        mocks.supabaseAdmin.from.mockReturnValue(transactionInsert)
+        mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue(transactionInsert) })
 
         const { createSubscriptionPaymentTransaction } = await import('../payment-service')
         const result = await createSubscriptionPaymentTransaction()
@@ -272,7 +266,7 @@ describe('PaymentService', () => {
                 code: '42501',
             },
         })
-        mocks.supabaseAdmin.from.mockReturnValue(transactionInsert)
+        mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue(transactionInsert) })
 
         const { createSubscriptionPaymentTransaction } = await import('../payment-service')
 

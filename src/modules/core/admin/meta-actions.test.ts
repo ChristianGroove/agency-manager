@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
     revalidatePath: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.from,
         auth: {
             admin: {
@@ -16,7 +16,7 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
                 signOut: vi.fn(),
             },
         },
-    },
+    }))
 }))
 
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({
@@ -96,7 +96,7 @@ describe('Meta admin actions', () => {
     it('redacts Meta access tokens before returning config to the client', async () => {
         mocks.from.mockImplementation((table: string) => {
             if (table === 'clients') {
-                return createQueryBuilder({ maybeSingle: { data: { id: 'client-1' }, error: null } })
+                return createQueryBuilder({ maybeSingle: { data: { id: 'client-1', organization_id: 'org-1' }, error: null } })
             }
             if (table === 'leads') {
                 return createQueryBuilder({ maybeSingle: { data: null, error: null } })
@@ -158,7 +158,7 @@ describe('Meta admin actions', () => {
         const capture: { update?: any } = {}
         mocks.from.mockImplementation((table: string) => {
             if (table === 'clients') {
-                return createQueryBuilder({ maybeSingle: { data: { id: 'client-1' }, error: null } })
+                return createQueryBuilder({ maybeSingle: { data: { id: 'client-1', organization_id: 'org-1' }, error: null } })
             }
             if (table === 'leads') {
                 return createQueryBuilder({ maybeSingle: { data: null, error: null } })

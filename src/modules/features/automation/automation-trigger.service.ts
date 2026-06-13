@@ -1,9 +1,9 @@
 
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { fileLogger } from "@/modules/infrastructure/logging/services/file-logger"
 import { WorkflowEngine } from "./engine"
 import { WorkflowDefinition } from "./engine"
 import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Service to evaluate incoming events and trigger workflows.
@@ -33,7 +33,7 @@ export class AutomationTriggerService {
         // Wait, RLS would block if we used client, but we use admin. We should ideally filter by Org.
 
         // Let's first get the conversation to know the Org
-        let conversationQuery = supabaseAdmin
+        let conversationQuery = (await createClient())
             .from('conversations')
             .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to, is_bot_active, integration_connections(working_hours)') // Fetch connection hours
             .eq('id', conversationId)
@@ -70,7 +70,7 @@ export class AutomationTriggerService {
             setTimeout(() => this.processingLocks.delete(finalMessageId), 10000);
         }
 
-        const { data: workflows } = await supabaseAdmin
+        const { data: workflows } = await (await createClient())
             .from('workflows')
             .select('*')
             .eq('organization_id', orgId)
@@ -173,7 +173,7 @@ export class AutomationTriggerService {
             // 3. "First Contact"
             else if (workflowTriggerType === 'first_contact') {
                 // Check if this workflow has EVER run for this lead
-                const { data: lastExecution } = await supabaseAdmin
+                const { data: lastExecution } = await (await createClient())
                     .from('workflow_executions')
                     .select('started_at')
                     .eq('organization_id', orgId)
@@ -330,7 +330,7 @@ export class AutomationTriggerService {
             if (match && config.cooldown_minutes && config.cooldown_minutes > 0) {
                 const cooldownMs = config.cooldown_minutes * 60 * 1000
                 const cutoffTime = new Date(Date.now() - cooldownMs).toISOString()
-                const { count: recentExecCount } = await supabaseAdmin
+                const { count: recentExecCount } = await (await createClient())
                     .from('workflow_executions')
                     .select('id', { count: 'exact', head: true })
                     .eq('organization_id', orgId)
@@ -348,7 +348,7 @@ export class AutomationTriggerService {
             if (match) {
                 console.log(`[AutomationTrigger] ✅ MATCH found for flow ${wf.name} (${wf.id})`)
                 // Fetch lead details for richer context (e.g. {{lead.name}})
-                const { data: fullLead } = await supabaseAdmin
+                const { data: fullLead } = await (await createClient())
                     .from('leads')
                     .select('*')
                     .eq('id', leadId)
@@ -372,7 +372,7 @@ export class AutomationTriggerService {
                 const finalMessageId = messageId || (messageContent as any).id || (typeof messageContent === 'object' ? (messageContent as any).id : `auto_${Date.now()}`);
 
                 if (finalMessageId) {
-                    const { count } = await supabaseAdmin
+                    const { count } = await (await createClient())
                         .from('workflow_executions')
                         .select('id', { count: 'exact', head: true })
                         .eq('organization_id', orgId)
@@ -390,7 +390,7 @@ export class AutomationTriggerService {
                     leadId: leadId
                 })
                 // SURGICAL: Mark bot as active during execution to pause agent response timer
-                await supabaseAdmin
+                await (await createClient())
                     .from('conversations')
                     .update({ 
                         is_bot_active: true, 
@@ -421,7 +421,7 @@ export class AutomationTriggerService {
     private async executeWorkflow(workflow: any, context: any) {
         try {
             // 1. Create Execution Record
-            const { data: execution, error } = await supabaseAdmin
+            const { data: execution, error } = await (await createClient())
                 .from('workflow_executions')
                 .insert({
                     organization_id: workflow.organization_id,
@@ -453,13 +453,13 @@ export class AutomationTriggerService {
             try {
                 await engine.start()
                 fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} completed.`)
-                await supabaseAdmin
+                await (await createClient())
                     .from('workflow_executions')
                     .update({ status: 'completed', completed_at: new Date().toISOString() })
                     .eq('id', execution.id)
                     .eq('organization_id', workflow.organization_id)
             } catch (err: any) {
-                const supabase = supabaseAdmin;
+                const supabase = (await createClient());
                 if (err.message === 'WORKFLOW_SUSPENDED') {
                     fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} suspended to wait for input.`)
                     await supabase

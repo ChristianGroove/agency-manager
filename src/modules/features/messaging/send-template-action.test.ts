@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
     assertUsageAllowed: vi.fn(),
     createClient: vi.fn(),
     decryptObject: vi.fn((value: unknown) => value),
+    getCurrentOrganizationId: vi.fn(),
     revalidatePath: vi.fn(),
     saveOutboundMessage: vi.fn(),
 }))
@@ -13,7 +14,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 }))
 
 vi.mock('@/modules/core/organizations/actions/crud', () => ({
-    getCurrentOrganizationId: vi.fn(),
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
 vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
@@ -118,6 +119,7 @@ afterEach(() => {
     mocks.createClient.mockReset()
     mocks.decryptObject.mockReset()
     mocks.decryptObject.mockImplementation((value: unknown) => value)
+    mocks.getCurrentOrganizationId.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.saveOutboundMessage.mockReset()
 })
@@ -127,6 +129,7 @@ describe('sendTemplateMessage', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const fetchMock = vi.fn()
         vi.stubGlobal('fetch', fetchMock)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock({
             conversationResult: {
                 data: null,
@@ -157,6 +160,7 @@ describe('sendTemplateMessage', () => {
             messages: [{ id: 'wamid.secret.template' }],
         }), { status: 200 }))
         vi.stubGlobal('fetch', fetchMock)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock())
 
         const { sendTemplateMessage } = await import('./send-template-action')
@@ -219,6 +223,7 @@ describe('sendTemplateMessage', () => {
             },
         }), { status: 400 }))
         vi.stubGlobal('fetch', fetchMock)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock())
 
         const { sendTemplateMessage } = await import('./send-template-action')

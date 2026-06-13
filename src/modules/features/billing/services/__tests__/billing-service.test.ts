@@ -3,9 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
-    supabaseAdmin: {
-        from: vi.fn(),
-    },
     InvoiceMapper: {
         legacyToCore: vi.fn(),
         coreToLegacy: vi.fn(),
@@ -14,10 +11,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -102,7 +95,6 @@ afterEach(() => {
     vi.resetModules()
     mocks.createClient.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
     mocks.InvoiceMapper.legacyToCore.mockReset()
     mocks.InvoiceMapper.coreToLegacy.mockReset()
 })
@@ -241,9 +233,9 @@ describe('BillingService sanitized errors', () => {
             data: null,
             error: secretError('public invoice secret-value fetch failed'),
         })
-        mocks.supabaseAdmin.from.mockImplementation(createQueuedClient({
+        mocks.createClient.mockResolvedValue(createQueuedClient({
             invoices: [invoice],
-        }).from)
+        }))
 
         const { getPublicInvoice } = await importBillingService()
         const result = await getPublicInvoice('invoice-secret-id')
@@ -262,9 +254,9 @@ describe('BillingService sanitized errors', () => {
             data: null,
             error: null,
         })
-        mocks.supabaseAdmin.from.mockImplementation(createQueuedClient({
+        mocks.createClient.mockResolvedValue(createQueuedClient({
             invoices: [invoice],
-        }).from)
+        }))
 
         const { getPublicInvoice } = await importBillingService()
         const result = await getPublicInvoice('missing-invoice')

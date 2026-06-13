@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
@@ -25,7 +24,7 @@ export async function getCallStatus(conversationId: string) {
     if (convError || !conv) return { success: false, error: 'Conversation not found' }
 
     const callingEnabled = true
-    const { data: connection } = await supabaseAdmin
+    const { data: connection } = await (await createClient())
         .from('integration_connections')
         .select('working_hours')
         .eq('id', conv.connection_id)

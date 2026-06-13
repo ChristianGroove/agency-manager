@@ -1,6 +1,6 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 import { InboxService } from "@/modules/features/messaging/inbox-service"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Handle incoming WhatsApp/Messaging events asynchronously
@@ -19,7 +19,7 @@ export const processIncomingMessage = inngest.createFunction(
         // 1. Process via InboxService
         const result = await step.run("inbox-service-processing", async () => {
              const inboxService = new InboxService()
-             return await inboxService.handleIncomingMessage(incomingMessage, supabaseAdmin)
+             return await inboxService.handleIncomingMessage(incomingMessage, (await createClient()))
         })
 
         // 2. Handle interactive elements (AI / Call permissions)

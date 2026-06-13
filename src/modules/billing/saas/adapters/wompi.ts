@@ -1,5 +1,5 @@
 import { BillingAdapter, SubscriptionStatus } from "../types";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV;
@@ -81,7 +81,7 @@ export class WompiSaasAdapter implements BillingAdapter {
 
     async cancelSubscription(subscriptionId: string): Promise<any> {
         // Mark as canceled in DB. Next cron won't charge.
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_subscriptions')
             .update({
                 status: 'canceled',
@@ -115,7 +115,7 @@ export class WompiSaasAdapter implements BillingAdapter {
      * Trigger a recurring charge using a stored token
      */
     async chargeRecurring(subscriptionId: string): Promise<boolean> {
-        const { data: sub, error } = await supabaseAdmin
+        const { data: sub, error } = await (await createClient())
             .from('saas_subscriptions')
             .select(`
                 *,
@@ -142,7 +142,7 @@ export class WompiSaasAdapter implements BillingAdapter {
         let amount = sub.custom_price;
 
         if (!amount) {
-            const { data: plan } = await supabaseAdmin
+            const { data: plan } = await (await createClient())
                 .from('saas_products')
                 .select('base_price')
                 .eq('id', sub.plan_id)
@@ -190,7 +190,7 @@ export class WompiSaasAdapter implements BillingAdapter {
             if (!response.ok) throw new Error(result.error?.type || 'Wompi API Error');
 
             // 3. Record Successful Transaction in History
-            await supabaseAdmin.from('payment_transactions').insert({
+            await (await createClient()).from('payment_transactions').insert({
                 organization_id: sub.organization_id,
                 reference: reference,
                 amount_in_cents: amountInCents,

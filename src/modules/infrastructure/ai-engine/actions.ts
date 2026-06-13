@@ -54,11 +54,6 @@ export async function getAICredentials(organizationId?: string) {
     }))
 }
 
-/**
- * Get available providers catalog
- */
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 // ...
 
 /**
@@ -66,7 +61,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
  */
 export async function getAIProviders() {
     // Use Admin client to bypass RLS for public catalog
-    const { data } = await supabaseAdmin.from('ai_providers').select('*')
+    const { data } = await (await createClient()).from('ai_providers').select('*')
     return data || []
 }
 

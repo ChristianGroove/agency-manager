@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -115,7 +114,7 @@ export async function getOrganizationActiveModules(organizationId?: string): Pro
 
     if (!orgId) return []
 
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('organizations')
         .select(`
             active_app_id,
@@ -136,7 +135,7 @@ export async function getOrganizationActiveModules(organizationId?: string): Pro
     // Extract Space (App) modules
     const spaceModules: string[] = []
     if (data?.active_app_id) {
-        const { data: appModulesData } = await supabaseAdmin
+        const { data: appModulesData } = await (await createClient())
             .from('saas_app_modules')
             .select('module_key')
             .eq('app_id', data.active_app_id)
@@ -205,7 +204,7 @@ export async function activateModuleForOrganization(input: {
             : [module_key]
 
         // Get current manual overrides
-        const { data: org } = await supabaseAdmin
+        const { data: org } = await (await createClient())
             .from('organizations')
             .select('manual_module_overrides')
             .eq('id', organization_id)
@@ -217,7 +216,7 @@ export async function activateModuleForOrganization(input: {
         const newOverrides = Array.from(new Set([...currentOverrides, ...modulesToActivate]))
 
         // Update organization
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organizations')
             .update({
                 manual_module_overrides: newOverrides,
@@ -289,7 +288,7 @@ export async function deactivateModuleForOrganization(input: {
         }
 
         // Get current manual overrides
-        const { data: org } = await supabaseAdmin
+        const { data: org } = await (await createClient())
             .from('organizations')
             .select('manual_module_overrides')
             .eq('id', organization_id)
@@ -303,7 +302,7 @@ export async function deactivateModuleForOrganization(input: {
         )
 
         // Update organization
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organizations')
             .update({
                 manual_module_overrides: newOverrides,
@@ -343,7 +342,7 @@ export async function updateModuleMetadata(input: {
     await requireSuperAdmin()
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('system_modules')
             .update({
                 ...input.updates,
@@ -372,7 +371,7 @@ export async function updateModuleMetadata(input: {
 export async function getModuleUsageStats() {
     await requireSuperAdmin()
 
-    const { data: orgs } = await supabaseAdmin
+    const { data: orgs } = await (await createClient())
         .from('organizations')
         .select('id, name, manual_module_overrides')
 

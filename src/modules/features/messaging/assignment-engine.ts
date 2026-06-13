@@ -1,6 +1,5 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
@@ -113,7 +112,7 @@ function logAssignmentError(label: string, error: unknown, details?: Record<stri
 export async function assignConversation(conversationId: string): Promise<string | null> {
 
     // 1. Get conversation details
-    const { data: conv, error: convError } = await supabaseAdmin
+    const { data: conv, error: convError } = await (await createClient())
         .from('conversations')
         .select('*, leads(*)')
         .eq('id', conversationId)
@@ -151,7 +150,7 @@ export async function assignConversation(conversationId: string): Promise<string
     // NOTE: DB trigger `trigger_update_agent_load` handles incrementing/decrementing
     //       agent load automatically when `assigned_to` changes.
     if (agentId) {
-        await supabaseAdmin
+        await (await createClient())
             .from('conversations')
             .update({ assigned_to: agentId, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
@@ -171,7 +170,7 @@ export async function assignConversation(conversationId: string): Promise<string
 }
 
 async function findMatchingRule(conv: any) {
-    const { data: rules } = await supabaseAdmin
+    const { data: rules } = await (await createClient())
         .from('assignment_rules')
         .select('*')
         .eq('organization_id', conv.organization_id)
@@ -279,7 +278,7 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
 async function roundRobinAssignment(orgId: string, agentPool?: string[], channelType?: string, connectionId?: string, method: string = 'round-robin'): Promise<string | null> {
     // 1. Try Atomic RPC first (prevents race conditions)
     try {
-        const { data: nextAgentId, error: rpcError } = await supabaseAdmin.rpc('fn_get_next_agent_atomic', {
+        const { data: nextAgentId, error: rpcError } = await (await createClient()).rpc('fn_get_next_agent_atomic', {
             p_org_id: orgId,
             p_strategy: method,
             p_agent_pool: agentPool && agentPool.length > 0 ? agentPool : null,
@@ -312,7 +311,7 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     // 2. Manual Fallback Logic (Legacy/Non-Atomic)
     const methods = method === 'round-robin' ? ['round-robin', 'auto-rule'] : [method]
     
-    let lastQuery = supabaseAdmin
+    let lastQuery = (await createClient())
         .from('assignment_history')
         .select('assigned_to, conversations!inner(organization_id)')
         .eq('conversations.organization_id', orgId)
@@ -327,7 +326,7 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     const { data: lastAssignment } = await lastQuery.maybeSingle()
 
     // Get available agents (scoped to org)
-    let agentQuery = supabaseAdmin
+    let agentQuery = (await createClient())
         .from('agent_availability')
         .select('agent_id, organization_id, last_seen_at')
         .eq('status', 'online')
@@ -351,8 +350,8 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     // Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -377,7 +376,7 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 async function loadBalanceAssignment(orgId: string, agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
     // 1. Try Atomic RPC first
     try {
-        const { data: nextAgentId, error: rpcError } = await supabaseAdmin.rpc('fn_get_next_agent_atomic', {
+        const { data: nextAgentId, error: rpcError } = await (await createClient()).rpc('fn_get_next_agent_atomic', {
             p_org_id: orgId,
             p_strategy: 'load-balance',
             p_agent_pool: agentPool && agentPool.length > 0 ? agentPool : null,
@@ -408,7 +407,7 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
     }
 
     // 2. Manual Fallback Logic
-    let query = supabaseAdmin
+    let query = (await createClient())
         .from('agent_availability')
         .select('agent_id, current_load, max_capacity, status, organization_id, last_seen_at')
         .eq('organization_id', orgId)
@@ -432,8 +431,8 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
 
     // 2. Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -473,7 +472,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     }
 
     // Find agents with matching skills
-    let query = supabaseAdmin
+    let query = (await createClient())
         .from('agent_skills')
         .select('agent_id, skill, proficiency')
         .in('skill', requiredSkills)
@@ -503,7 +502,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 
     // Check availability and CHANNEL ACCESS of top agents
     // Fetch roles for bypass
-    const { data: members } = await supabaseAdmin
+    const { data: members } = await (await createClient())
         .from('organization_members')
         .select('user_id, role, permissions')
         .in('user_id', sortedAgents)
@@ -521,7 +520,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
             const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
             
             if (!hasExplicitAccess) {
-                const { data: hasAccess } = await supabaseAdmin
+                const { data: hasAccess } = await (await createClient())
                     .from('agent_channels')
                     .select('agent_id')
                     .eq('agent_id', agentId)
@@ -533,7 +532,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
             }
         }
 
-        const { data: availability } = await supabaseAdmin
+        const { data: availability } = await (await createClient())
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity, last_seen_at')
             .eq('agent_id', agentId)
@@ -554,7 +553,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 }
 
 export async function logAssignment(convId: string, agentId: string, ruleId: string | null, method: string, orgId: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('assignment_history')
         .insert({
             organization_id: orgId,
@@ -581,7 +580,7 @@ export async function logAssignment(convId: string, agentId: string, ruleId: str
  * Call this if load counts drift out of sync.
  */
 export async function reconcileAgentLoad(agentId: string): Promise<{ previous: number; actual: number }> {
-    const { count } = await supabaseAdmin
+    const { count } = await (await createClient())
         .from('conversations')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_to', agentId)
@@ -590,7 +589,7 @@ export async function reconcileAgentLoad(agentId: string): Promise<{ previous: n
 
     const actualLoad = count || 0
 
-    const { data: agent } = await supabaseAdmin
+    const { data: agent } = await (await createClient())
         .from('agent_availability')
         .select('current_load')
         .eq('agent_id', agentId)
@@ -599,7 +598,7 @@ export async function reconcileAgentLoad(agentId: string): Promise<{ previous: n
     const previousLoad = agent?.current_load || 0
 
     if (previousLoad !== actualLoad) {
-        await supabaseAdmin
+        await (await createClient())
             .from('agent_availability')
             .update({ current_load: actualLoad })
             .eq('agent_id', agentId)

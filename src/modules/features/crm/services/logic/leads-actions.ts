@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { Lead, Client } from "@/types"
 import { PaginatedLeadsResponse } from "../../types"
 import { revalidatePath } from "next/cache"
@@ -106,7 +105,7 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResponse
  */
 export async function createLeadSystem(input: CreateLeadInput, organizationId: string): Promise<ActionResponse<Lead>> {
     try {
-        const service = new LeadsService(supabaseAdmin, organizationId)
+        const service = new LeadsService((await createClient()), organizationId)
         const data = await service.createLead({ ...input, source: 'automation' })
 
         return { success: true, data }
@@ -120,12 +119,12 @@ export async function updateLeadStatusSystem(leadId: string, newStatus: string, 
         // Find org if not provided? System webhook sometimes doesn't have it locally.
         let targetOrgId = organizationId
         if (!targetOrgId) {
-            const { data } = await supabaseAdmin.from('leads').select('organization_id').eq('id', leadId).single()
+            const { data } = await (await createClient()).from('leads').select('organization_id').eq('id', leadId).single()
             if (!data) throw new Error("Lead not found")
             targetOrgId = data.organization_id
         }
 
-        const repo = new LeadsRepository(supabaseAdmin)
+        const repo = new LeadsRepository((await createClient()))
         const data = await repo.update(leadId, { status: newStatus }, targetOrgId)
 
         return { success: true, data }
@@ -160,7 +159,7 @@ export async function getLeads(limit = 300, connectionId?: string | null, allowe
     if (!orgId) return { leads: [], totalCount: 0, stageCounts: {} }
 
     try {
-        const service = new LeadsService(supabaseAdmin, orgId)
+        const service = new LeadsService((await createClient()), orgId)
         const result = await service.getPaginated({ pageSize: limit, connectionId, allowedChannels, userId })
         return result
     } catch (error) {
@@ -184,7 +183,7 @@ export async function getPaginatedLeads(params: {
     if (!orgId) return { leads: [], totalCount: 0, stageCounts: {} }
 
     try {
-        const service = new LeadsService(supabaseAdmin, orgId)
+        const service = new LeadsService((await createClient()), orgId)
         const data = await service.getPaginated(params)
 
         return data as PaginatedLeadsResponse
@@ -204,7 +203,7 @@ export async function updateLeadStatus(leadId: string, newStatus: string): Promi
         const organizationId = await getCurrentOrganizationId()
         if (!organizationId) throw new Error("No organization selected")
 
-        const service = new LeadsService(supabaseAdmin, organizationId, user.id)
+        const service = new LeadsService((await createClient()), organizationId, user.id)
         const data = await service.updateLeadStatus(leadId, newStatus)
 
         revalidatePath('/crm')
@@ -248,7 +247,7 @@ export async function calculateLeadScore(leadId: string): Promise<ActionResponse
         const organizationId = await getCurrentOrganizationId()
         if (!organizationId) throw new Error("Missing org")
 
-        const service = new LeadsService(supabaseAdmin, organizationId)
+        const service = new LeadsService((await createClient()), organizationId)
         const data = await service.calculateScore(leadId)
 
         return { success: true, data }
@@ -259,7 +258,7 @@ export async function calculateLeadScore(leadId: string): Promise<ActionResponse
 
 export async function recalculateAllScores(organizationId: string): Promise<ActionResponse<{ updated: number }>> {
     try {
-        const service = new LeadsService(supabaseAdmin, organizationId)
+        const service = new LeadsService((await createClient()), organizationId)
         const updated = await service.recalculateAllScores()
         return { success: true, data: { updated } }
     } catch (error: any) {
@@ -272,7 +271,7 @@ export async function exportLeadsToCSV(): Promise<ActionResponse<string>> {
     if (!orgId) return { success: false, error: "No organization context" }
 
     try {
-        const service = new LeadsService(supabaseAdmin, orgId)
+        const service = new LeadsService((await createClient()), orgId)
         const data = await service.generateExportCSV()
         return { success: true, data }
     } catch (error: any) {
@@ -288,7 +287,7 @@ export async function purgeColdLeads(criteria: {
     if (!orgId) return { success: false, error: "No organization context" }
 
     try {
-        const service = new LeadsService(supabaseAdmin, orgId)
+        const service = new LeadsService((await createClient()), orgId)
         const deleted = await service.purgeColdAccounts(criteria)
         revalidatePath('/crm')
         return { success: true, data: { deleted } }

@@ -1,8 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 // ============================================
 // ACTIVITY TRACKING
 // ============================================
@@ -153,7 +151,7 @@ export async function processLifecycleTransitions(): Promise<{
 }> {
     try {
         // Process expirations and suspensions
-        const { data: expirationResults, error: expError } = await supabaseAdmin
+        const { data: expirationResults, error: expError } = await (await createClient())
             .rpc('process_trial_expirations')
 
         if (expError) {
@@ -161,7 +159,7 @@ export async function processLifecycleTransitions(): Promise<{
         }
 
         // Execute scheduled deletions
-        const { data: deletionResults, error: delError } = await supabaseAdmin
+        const { data: deletionResults, error: delError } = await (await createClient())
             .rpc('execute_scheduled_deletions')
 
         if (delError) {
@@ -205,7 +203,7 @@ export interface ExpiringTrial {
 }
 
 export async function getExpiringTrials(): Promise<ExpiringTrial[]> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .rpc('get_expiring_trials')
 
     if (error) {
@@ -229,7 +227,7 @@ export async function getExpiringTrials(): Promise<ExpiringTrial[]> {
 export async function reactivateAccount(
     organizationId: string
 ): Promise<{ success: boolean; error?: string }> {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('organizations')
         .update({
             status: 'active',

@@ -1,6 +1,4 @@
 'use server'
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
@@ -8,6 +6,7 @@ import { EmailService } from "@/modules/features/notifications/email.service"
 
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * =======================
@@ -19,7 +18,7 @@ async function requireMetaClientAccess(clientId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
-    const { data: client, error } = await supabaseAdmin
+    const { data: client, error } = await (await createClient())
         .from('clients')
         .select('organization_id')
         .eq('id', clientId)
@@ -39,7 +38,7 @@ async function logAdminAction(orgId: string | null, action: string, details: any
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
-        await supabaseAdmin.from('organization_audit_log').insert({
+        await (await createClient()).from('organization_audit_log').insert({
             organization_id: orgId,
             action: action,
             performed_by: user?.id,
@@ -59,7 +58,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
 
     let linkData, linkError;
 
-    const result = await supabaseAdmin.auth.admin.generateLink({
+    const result = await (await createClient()).auth.admin.generateLink({
         type: 'invite',
         email: email,
         options: {
@@ -72,7 +71,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
     linkError = result.error;
 
     if (linkError && linkError.message?.includes("already been registered")) {
-        const resultExisting = await supabaseAdmin.auth.admin.generateLink({
+        const resultExisting = await (await createClient()).auth.admin.generateLink({
             type: 'magiclink',
             email: email,
             options: {
@@ -118,7 +117,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
         })
     }
 
-    await supabaseAdmin.from('profiles').upsert({
+    await (await createClient()).from('profiles').upsert({
         id: userId,
         email: email,
         platform_role: 'user',
@@ -126,7 +125,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
         updated_at: new Date().toISOString()
     }, { onConflict: 'id', ignoreDuplicates: true })
 
-    const { error: memberError } = await supabaseAdmin
+    const { error: memberError } = await (await createClient())
         .from('organization_members')
         .upsert({
             organization_id: orgId,
@@ -138,7 +137,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
         throw new Error(`Failed to add user to organization: ${memberError.message}`)
     }
 
-    await supabaseAdmin.from('organizations').update({ owner_id: userId }).eq('id', orgId)
+    await (await createClient()).from('organizations').update({ owner_id: userId }).eq('id', orgId)
     revalidatePath(`/platform/admin/organizations/${orgId}`)
 
     return { success: true, userId, inviteLink }
@@ -146,7 +145,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
 
 export async function removeOrgUser(userId: string, orgId: string) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.from('organization_members').delete().match({ organization_id: orgId, user_id: userId })
+    const { error } = await (await createClient()).from('organization_members').delete().match({ organization_id: orgId, user_id: userId })
     if (error) throw error
 
     await logAdminAction(orgId, 'remove_user', { target_user_id: userId })
@@ -162,14 +161,14 @@ export async function adminResetUserPassword(userId: string, orgId: string | nul
     await requireSuperAdmin()
 
     // 1. Get user email
-    const { data: { user }, error: getError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    const { data: { user }, error: getError } = await (await createClient()).auth.admin.getUserById(userId)
     if (getError || !user?.email) throw new Error("No se pudo encontrar el correo del usuario")
 
     // 2. Generate Recovery Link
     const { getAdminUrlAsync } = await import('@/modules/infrastructure/utils/utils')
     const confirmUrl = await getAdminUrlAsync('/auth/confirm?next=/update-password')
 
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    const { data: linkData, error: linkError } = await (await createClient()).auth.admin.generateLink({
         type: 'recovery',
         email: user.email,
         options: { redirectTo: confirmUrl }
@@ -232,7 +231,7 @@ export async function adminUpdateUser(userId: string, orgId: string | null, upda
         // 1. Update Auth if email changed
         if (updates.email) {
             console.log(`[adminUpdateUser] Attempting Auth update to email: ${updates.email}`)
-            const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            const { error: authError } = await (await createClient()).auth.admin.updateUserById(userId, {
                 email: updates.email,
                 email_confirm: true // Force confirm if admin is changing it
             })
@@ -250,7 +249,7 @@ export async function adminUpdateUser(userId: string, orgId: string | null, upda
         profileUpdates.updated_at = new Date().toISOString()
 
         console.log(`[adminUpdateUser] Attempting Profile update:`, profileUpdates)
-        const { error: profileError } = await supabaseAdmin
+        const { error: profileError } = await (await createClient())
             .from('profiles')
             .update(profileUpdates)
             .eq('id', userId)
@@ -299,7 +298,7 @@ export interface AdminOrganization {
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organizations')
         .select(`
             *,
@@ -326,7 +325,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
 export async function getAdminOrganizationById(organizationId: string): Promise<AdminOrganization | null> {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organizations')
         .select(`
             *,
@@ -350,18 +349,18 @@ export async function getAdminOrganizationById(organizationId: string): Promise<
 
 export async function getOrganizationDetails(orgId: string) {
     await requireSuperAdmin()
-    const { data: org, error: orgError } = await supabaseAdmin.from('organizations').select('*').eq('id', orgId).single()
+    const { data: org, error: orgError } = await (await createClient()).from('organizations').select('*').eq('id', orgId).single()
     if (orgError) throw orgError
-    const { count: userCount } = await supabaseAdmin.from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
-    const { count: clientCount } = await supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
+    const { count: userCount } = await (await createClient()).from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
+    const { count: clientCount } = await (await createClient()).from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
     return { organization: org, stats: { users: userCount || 0, clients: clientCount || 0 } }
 }
 
 export async function updateOrganizationStatus(orgId: string, status: 'active' | 'suspended' | 'past_due' | 'archived', reason?: string) {
     await requireSuperAdmin()
-    const { data: orgCheck } = await supabaseAdmin.from('organizations').select('slug').eq('id', orgId).single()
+    const { data: orgCheck } = await (await createClient()).from('organizations').select('slug').eq('id', orgId).single()
     if (!orgCheck || PROTECTED_ORG_SLUGS.includes(orgCheck.slug)) throw new Error(`Cannot modify protected organization`)
-    const { error } = await supabaseAdmin.from('organizations').update({ status, suspended_at: status === 'suspended' ? new Date().toISOString() : null, suspended_reason: status === 'suspended' ? reason : null }).eq('id', orgId)
+    const { error } = await (await createClient()).from('organizations').update({ status, suspended_at: status === 'suspended' ? new Date().toISOString() : null, suspended_reason: status === 'suspended' ? reason : null }).eq('id', orgId)
     if (error) throw error
     revalidatePath('/platform/admin')
     return { success: true }
@@ -369,7 +368,7 @@ export async function updateOrganizationStatus(orgId: string, status: 'active' |
 
 export async function updateOrganization(orgId: string, data: { name: string, slug: string, base_app_slug?: string }) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.from('organizations').update({ name: data.name, slug: data.slug, base_app_slug: data.base_app_slug }).eq('id', orgId)
+    const { error } = await (await createClient()).from('organizations').update({ name: data.name, slug: data.slug, base_app_slug: data.base_app_slug }).eq('id', orgId)
     if (error) throw error
     revalidatePath('/platform/admin/organizations')
     return { success: true }
@@ -379,12 +378,12 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
     await requireSuperAdmin()
 
     // 1. Get current Org to find Owner
-    const { data: org, error: orgError } = await supabaseAdmin.from('organizations').select('owner_id, created_at').eq('id', orgId).single()
+    const { data: org, error: orgError } = await (await createClient()).from('organizations').select('owner_id, created_at').eq('id', orgId).single()
     if (orgError) throw new Error("Org not found")
 
     // 2. Update created_at if provided
     if (options.created_at && options.created_at !== org.created_at) {
-        const { error: tsError } = await supabaseAdmin.from('organizations').update({ created_at: options.created_at }).eq('id', orgId)
+        const { error: tsError } = await (await createClient()).from('organizations').update({ created_at: options.created_at }).eq('id', orgId)
         if (tsError) throw new Error("Error actualizando fecha de creación")
     }
 
@@ -394,11 +393,11 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
         if (options.new_email) authUpdates.email = options.new_email
         if (options.new_password) authUpdates.password = options.new_password
 
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(org.owner_id, authUpdates)
+        const { error: authError } = await (await createClient()).auth.admin.updateUserById(org.owner_id, authUpdates)
         if (authError) throw new Error(`Auth Error: ${authError.message}`)
 
         if (options.new_email) {
-            const { error: profileError } = await supabaseAdmin.from('profiles').update({ email: options.new_email }).eq('id', org.owner_id)
+            const { error: profileError } = await (await createClient()).from('profiles').update({ email: options.new_email }).eq('id', org.owner_id)
             if (profileError) throw new Error("Error actualizando perfil")
         }
     }
@@ -409,30 +408,30 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
 
 export async function getSaasProducts() {
     await requireSuperAdmin()
-    const { data } = await supabaseAdmin.from('saas_products').select('*').eq('is_active', true).order('name')
+    const { data } = await (await createClient()).from('saas_products').select('*').eq('is_active', true).order('name')
     return data || []
 }
 
 export async function getOrganizationUsers(orgId: string) {
     await requireSuperAdmin()
-    const { data: members, error } = await supabaseAdmin.from('organization_members').select('*').eq('organization_id', orgId)
+    const { data: members, error } = await (await createClient()).from('organization_members').select('*').eq('organization_id', orgId)
     if (error) throw error
     if (!members?.length) return []
     const userIds = members.map(m => m.user_id)
     const userMap = new Map<string, { email: string }>()
     await Promise.all(userIds.map(async (uid) => {
-        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(uid)
+        const { data: { user } } = await (await createClient()).auth.admin.getUserById(uid)
         if (user) userMap.set(uid, { email: user.email || 'No Email' })
     }))
-    const { data: profiles } = await supabaseAdmin.from('profiles').select('id, platform_role').in('id', userIds)
+    const { data: profiles } = await (await createClient()).from('profiles').select('id, platform_role').in('id', userIds)
     return members.map(member => ({ ...member, user: { email: userMap.get(member.user_id)?.email || 'Unknown', platform_role: profiles?.find(p => p.id === member.user_id)?.platform_role || 'user' } }))
 }
 
 export async function deleteOrganization(orgId: string) {
     await requireSuperAdmin()
-    const { data: orgCheck } = await supabaseAdmin.from('organizations').select('slug').eq('id', orgId).single()
+    const { data: orgCheck } = await (await createClient()).from('organizations').select('slug').eq('id', orgId).single()
     if (!orgCheck || PROTECTED_ORG_SLUGS.includes(orgCheck.slug)) throw new Error(`Cannot delete protected organization`)
-    const { error } = await supabaseAdmin.from('organizations').delete().eq('id', orgId)
+    const { error } = await (await createClient()).from('organizations').delete().eq('id', orgId)
     if (error) throw error
     revalidatePath('/platform/admin/organizations')
     return { success: true }
@@ -440,10 +439,10 @@ export async function deleteOrganization(orgId: string) {
 
 export async function getAdminDashboardStats() {
     await requireSuperAdmin()
-    const { count: totalOrgs } = await supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true })
-    const { count: totalUsers } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
-    const { count: activeAlerts } = await supabaseAdmin.from('system_alerts').select('*', { count: 'exact', head: true }).eq('is_active', true)
-    const { data: recentLogs } = await supabaseAdmin.from('organization_audit_log').select('*').order('created_at', { ascending: false }).limit(10)
+    const { count: totalOrgs } = await (await createClient()).from('organizations').select('*', { count: 'exact', head: true })
+    const { count: totalUsers } = await (await createClient()).from('profiles').select('*', { count: 'exact', head: true })
+    const { count: activeAlerts } = await (await createClient()).from('system_alerts').select('*', { count: 'exact', head: true }).eq('is_active', true)
+    const { data: recentLogs } = await (await createClient()).from('organization_audit_log').select('*').order('created_at', { ascending: false }).limit(10)
     return { totalOrgs: totalOrgs || 0, totalUsers: totalUsers || 0, activeAlerts: activeAlerts || 0, recentLogs: recentLogs || [] }
 }
 
@@ -459,13 +458,13 @@ export async function getActiveBroadcasts() {
 export async function getPublicBroadcasts() {
     // We use supabaseAdmin to ensure we can read the system alerts regardless of RLS on this specific table,
     // as system alerts are meant to be public/broadcasted to all users.
-    const { data } = await supabaseAdmin.from('system_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false })
+    const { data } = await (await createClient()).from('system_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false })
     return data || []
 }
 
 export async function getAllSystemModules() {
     await requireSuperAdmin()
-    const { data } = await supabaseAdmin.from('system_modules').select('*').order('name')
+    const { data } = await (await createClient()).from('system_modules').select('*').order('name')
     return data || []
 }
 
@@ -483,14 +482,14 @@ export async function getModules360Data(): Promise<Module360Data[]> {
     await requireSuperAdmin()
 
     // 1. Get all modules
-    const { data: modules } = await supabaseAdmin.from('system_modules').select('*').order('category')
+    const { data: modules } = await (await createClient()).from('system_modules').select('*').order('category')
 
     // 2. Get all apps (Spaces) with their modules
-    const { data: apps } = await supabaseAdmin.from('saas_apps').select('id, name, slug')
-    const { data: appModules } = await supabaseAdmin.from('saas_app_modules').select('*')
+    const { data: apps } = await (await createClient()).from('saas_apps').select('id, name, slug')
+    const { data: appModules } = await (await createClient()).from('saas_app_modules').select('*')
 
     // 3. Get all active organizations with their overrides and active App
-    const { data: orgs } = await supabaseAdmin.from('organizations')
+    const { data: orgs } = await (await createClient()).from('organizations')
         .select('id, name, slug, active_app_id, manual_module_overrides')
         .eq('status', 'active')
 
@@ -548,7 +547,7 @@ export async function getModules360Data(): Promise<Module360Data[]> {
 
 export async function createBroadcast(data: { title: string, message: string, severity: 'info' | 'warning' | 'critical', expires_at?: string }) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.from('system_alerts').insert({ ...data, is_active: true })
+    const { error } = await (await createClient()).from('system_alerts').insert({ ...data, is_active: true })
     if (error) throw error
     revalidatePath('/platform/admin')
     return { success: true }
@@ -558,7 +557,7 @@ export const createSystemBroadcast = createBroadcast
 
 export async function dismissBroadcast(alertId: string) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.from('system_alerts').update({ is_active: false }).eq('id', alertId)
+    const { error } = await (await createClient()).from('system_alerts').update({ is_active: false }).eq('id', alertId)
     if (error) throw error
     revalidatePath('/platform/admin')
     return { success: true }
@@ -569,7 +568,7 @@ export const stopBroadcast = dismissBroadcast
 
 export async function updateOrgModuleOverrides(orgId: string, modules: string[]) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.from('organizations').update({ manual_module_overrides: modules }).eq('id', orgId)
+    const { error } = await (await createClient()).from('organizations').update({ manual_module_overrides: modules }).eq('id', orgId)
     if (error) throw error
     revalidatePath(`/platform/admin/organizations/${orgId}`)
     return { success: true }
@@ -577,7 +576,7 @@ export async function updateOrgModuleOverrides(orgId: string, modules: string[])
 
 export async function forceLogoutUser(userId: string) {
     await requireSuperAdmin()
-    const { error } = await supabaseAdmin.auth.admin.signOut(userId)
+    const { error } = await (await createClient()).auth.admin.signOut(userId)
     if (error) throw new Error("Failed to sign out user")
     return { success: true }
 }
@@ -606,7 +605,7 @@ export async function getMetaConfig(clientId: string) {
     try {
         await requireMetaClientAccess(clientId)
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from("integration_configs")
             .select("*")
             .eq("client_id", clientId)
@@ -636,7 +635,7 @@ export async function saveMetaConfig(clientId: string, formData: FormData) {
     }
 
     const submittedAccessToken = getOptionalFormString(formData, "access_token")
-    const { data: existing, error: existingError } = await supabaseAdmin
+    const { data: existing, error: existingError } = await (await createClient())
         .from("integration_configs")
         .select("id, access_token")
         .eq("client_id", clientId)
@@ -662,7 +661,7 @@ export async function saveMetaConfig(clientId: string, formData: FormData) {
         settings: { show_ads: formData.get("show_ads") === "true", show_social: formData.get("show_social") === "true" },
         updated_at: new Date().toISOString()
     }
-    const { error } = existing ? await supabaseAdmin.from("integration_configs").update(configData).eq("id", existing.id) : await supabaseAdmin.from("integration_configs").insert(configData)
+    const { error } = existing ? await (await createClient()).from("integration_configs").update(configData).eq("id", existing.id) : await (await createClient()).from("integration_configs").insert(configData)
     if (error) return { success: false, error: "Error saving config" }
     revalidatePath(`/clients/${clientId}`)
     revalidatePath(`/clients/${clientId}`)
@@ -682,7 +681,7 @@ export async function disconnectMetaConfig(clientId: string) {
 
     // We remove the config entirely or just clear the sensitive token/ids?
     // Let's delete the row for clean start.
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from("integration_configs")
         .delete()
         .eq("client_id", clientId)
@@ -703,7 +702,7 @@ export async function getMetaAssets(clientId: string) {
     try {
         await requireMetaClientAccess(clientId)
 
-        const { data: config } = await supabaseAdmin
+        const { data: config } = await (await createClient())
             .from("integration_configs")
             .select("access_token")
             .eq("client_id", clientId)
@@ -764,7 +763,7 @@ export async function syncClientAdsMetrics(clientId: string) {
     try {
         await requireMetaClientAccess(clientId)
 
-        const { data: config } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").maybeSingle()
+        const { data: config } = await (await createClient()).from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").maybeSingle()
         if (!config || !config.access_token || !config.ad_account_id) return { success: false, error: "Faltan credenciales (Token o Ad Account)" }
 
         const { MetaConnector } = await import('@/modules/infrastructure/meta/services/connector')
@@ -776,7 +775,7 @@ export async function syncClientAdsMetrics(clientId: string) {
         // Sync multiple ranges? Ideally just 'last_30d' for the dashboard for now.
         const metrics = await service.getMetrics(config.ad_account_id, 'last_30d')
 
-        const { error } = await supabaseAdmin.from("meta_ads_metrics").upsert({
+        const { error } = await (await createClient()).from("meta_ads_metrics").upsert({
             client_id: clientId,
             snapshot_date: new Date().toISOString(),
             spend: String(metrics.spend),
@@ -803,7 +802,7 @@ export async function syncClientSocialMetrics(clientId: string) {
         await requireMetaClientAccess(clientId)
 
         // 1. Get Config
-        const { data: config } = await supabaseAdmin
+        const { data: config } = await (await createClient())
             .from("integration_configs")
             .select("*")
             .eq("client_id", clientId)
@@ -825,7 +824,7 @@ export async function syncClientSocialMetrics(clientId: string) {
         const metrics = await service.getMetrics(config.page_id)
 
         // 4. Save to DB Cache
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from("meta_social_metrics")
             .upsert({
                 client_id: clientId,
@@ -850,7 +849,7 @@ export async function syncClientSocialMetrics(clientId: string) {
 
 export async function getBrandingTiers() {
     await requireSuperAdmin()
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('branding_tiers')
         .select('*')
         .eq('is_active', true)
@@ -864,7 +863,7 @@ export async function updateOrganizationTier(orgId: string, tierId: string) {
     await requireSuperAdmin()
 
     // 1. Verify Tier Exists
-    const { data: tier, error: tierError } = await supabaseAdmin
+    const { data: tier, error: tierError } = await (await createClient())
         .from('branding_tiers')
         .select('*')
         .eq('id', tierId)
@@ -875,7 +874,7 @@ export async function updateOrganizationTier(orgId: string, tierId: string) {
     }
 
     // 2. Direct Update
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('organizations')
         .update({
             branding_tier_id: tierId,
@@ -887,7 +886,7 @@ export async function updateOrganizationTier(orgId: string, tierId: string) {
     if (error) throw error
 
     // 3. Upsert Add-on Subscription
-    await supabaseAdmin
+    await (await createClient())
         .from('organization_add_ons')
         .upsert({
             organization_id: orgId,
@@ -910,7 +909,7 @@ export async function updateOrganizationTier(orgId: string, tierId: string) {
 
 export async function getGlobalBanners() {
     await requireSuperAdmin()
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('global_dashboard_banners')
         .select('*')
         .order('created_at', { ascending: false })
@@ -927,13 +926,13 @@ export async function upsertGlobalBanner(bannerData: any) {
 
     // Si se está activando un banner, desactivar los demás del mismo space_type
     if (bannerData.is_active) {
-        await supabaseAdmin
+        await (await createClient())
             .from('global_dashboard_banners')
             .update({ is_active: false })
             .eq('space_type', bannerData.space_type)
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('global_dashboard_banners')
         .upsert({ ...bannerData, updated_at: new Date().toISOString() })
 
@@ -952,13 +951,13 @@ export async function toggleBannerActive(id: string, space_type: string, is_acti
 
     if (is_active) {
         // Desactivar todos los de este space_type primero
-        await supabaseAdmin
+        await (await createClient())
             .from('global_dashboard_banners')
             .update({ is_active: false })
             .eq('space_type', space_type)
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('global_dashboard_banners')
         .update({ is_active })
         .eq('id', id)
@@ -973,7 +972,7 @@ export async function toggleBannerActive(id: string, space_type: string, is_acti
 export async function deleteGlobalBanner(id: string) {
     await requireSuperAdmin()
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('global_dashboard_banners')
         .delete()
         .eq('id', id)
@@ -990,7 +989,7 @@ export async function deleteGlobalBanner(id: string) {
  */
 export async function getOrganizationAuditLogs(orgId: string) {
     await requireSuperAdmin()
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organization_audit_log')
         .select('*')
         .eq('organization_id', orgId)
@@ -1003,7 +1002,7 @@ export async function getOrganizationAuditLogs(orgId: string) {
     const performerIds = Array.from(new Set(data.map(log => log.performed_by).filter(id => !!id))) as string[]
     
     if (performerIds.length > 0) {
-        const { data: profiles } = await supabaseAdmin
+        const { data: profiles } = await (await createClient())
             .from('profiles')
             .select('id, full_name')
             .in('id', performerIds)
@@ -1024,13 +1023,13 @@ export async function getIntelligenceMetrics() {
     yesterday.setDate(yesterday.getDate() - 7); // Let's do 7 days for more interesting data
     
     // 1. Total usage by engine (Last 7d)
-    const { data: engineUsage } = await supabaseAdmin
+    const { data: engineUsage } = await (await createClient())
         .from('usage_events')
         .select('engine, quantity')
         .gte('occurred_at', yesterday.toISOString());
     
     // 2. Top tenants by AI usage (Last 7d)
-    const { data: tenantUsage } = await supabaseAdmin
+    const { data: tenantUsage } = await (await createClient())
         .from('usage_events')
         .select('organization_id, quantity')
         .eq('engine', 'ai')
@@ -1058,7 +1057,7 @@ export async function getIntelligenceMetrics() {
     let topTenantsWithNames: any[] = [];
 
     if (tenantIds.length > 0) {
-        const { data: orgNames } = await supabaseAdmin
+        const { data: orgNames } = await (await createClient())
             .from('organizations')
             .select('id, name')
             .in('id', tenantIds);

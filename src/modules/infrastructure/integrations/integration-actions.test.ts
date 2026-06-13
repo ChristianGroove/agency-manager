@@ -62,9 +62,10 @@ function singleQuery(result: unknown) {
 }
 
 function updateQuery(result: unknown, updateSpy: ReturnType<typeof vi.fn>) {
-    const query: any = {
-        eq: vi.fn(async () => result),
-    }
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject)
 
     return {
         update: updateSpy.mockReturnValue(query),

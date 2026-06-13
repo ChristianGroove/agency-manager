@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createHash, randomUUID } from 'crypto'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function logWompiSignatureError(label: string, error?: unknown) {
     if (!isProductionRuntime()) {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         }
 
         const isUuidToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedPortalToken)
-        let clientQuery = supabaseAdmin
+        let clientQuery = (await createClient())
             .from('leads')
             .select('id, organization_id, portal_token_never_expires, portal_token_expires_at')
 
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         }
 
         // Fetch all invoices using Admin client, scoped to the portal client.
-        const { data: invoices, error } = await supabaseAdmin
+        const { data: invoices, error } = await (await createClient())
             .from('invoices')
             .select('id, total, status, payment_status, client_id, organization_id, client:leads!client_id(id, organization_id)')
             .in('id', uniqueInvoiceIds)
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
         }
 
         // CRITICAL: Fetch organization-specific Wompi configuration
-        const { data: orgSettings, error: settingsError } = await supabaseAdmin
+        const { data: orgSettings, error: settingsError } = await (await createClient())
             .from('organization_settings')
             .select('wompi_public_key, wompi_integrity_secret, wompi_currency')
             .eq('organization_id', organizationId)
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
         const reference = `PAY-${timestamp}-${randomSuffix}`
 
         // Create Payment Transaction Record
-        const { error: transactionError } = await supabaseAdmin
+        const { error: transactionError } = await (await createClient())
             .from('payment_transactions')
             .insert({
                 id: randomUUID(), // Explicitly generate ID to bypass DB default issue

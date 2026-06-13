@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
+    getCurrentOrganizationId: vi.fn(),
+    isSuperAdmin: vi.fn(),
     revalidatePath: vi.fn(),
     supabaseFrom: vi.fn(),
 }))
@@ -16,8 +18,20 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
+vi.mock('@/modules/core/iam/services/platform-roles', () => ({
+    isSuperAdmin: mocks.isSuperAdmin,
+}))
+
+vi.mock('@/modules/core/organizations/organization-actions', () => ({
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
+}))
+
 vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock('@/modules/infrastructure/utils/normalize-phone', () => ({
+    normalizePhone: vi.fn((p: string) => p),
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -35,14 +49,23 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
         .join('\n')
 }
 
-function adminUpdateSelectQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        select: vi.fn(async () => result),
-    }
+function adminUpdateSelectQuery(updateResult: unknown) {
+    // Read path: .select().eq().single() -> returns organization data
+    const readQuery: any = {}
+    readQuery.eq = vi.fn(() => readQuery)
+    readQuery.single = vi.fn(async () => ({
+        data: { organization_id: 'org-test-id', metadata: {} },
+        error: null,
+    }))
+
+    // Update path: .update().eq().eq().select() -> returns the error result
+    const updateQuery: any = {}
+    updateQuery.eq = vi.fn(() => updateQuery)
+    updateQuery.select = vi.fn(async () => updateResult)
 
     return {
-        update: vi.fn(() => query),
+        select: vi.fn(() => readQuery),
+        update: vi.fn(() => updateQuery),
     }
 }
 
@@ -60,11 +83,21 @@ function searchQuery(result: unknown) {
     return query
 }
 
+function membershipQuery(result: unknown) {
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.select = vi.fn(() => query)
+    query.maybeSingle = vi.fn(async () => result)
+    return query
+}
+
 afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.isSuperAdmin.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.supabaseFrom.mockReset()
 })
@@ -73,6 +106,23 @@ describe('conversation management actions logging', () => {
     it('does not expose admin update failures in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({
+                    data: { user: { id: 'user-test-id' } },
+                    error: null,
+                })),
+            },
+            from: vi.fn((table: string) => {
+                if (table === 'organization_members') {
+                    return membershipQuery({
+                        data: { role: 'admin' },
+                        error: null,
+                    })
+                }
+                throw new Error(`Unexpected client table ${table}`)
+            }),
+        })
         mocks.supabaseFrom.mockImplementation((table: string) => {
             if (table === 'conversations') {
                 return adminUpdateSelectQuery({
@@ -103,7 +153,14 @@ describe('conversation management actions logging', () => {
     it('does not expose search query or assignment identifiers in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
         mocks.createClient.mockResolvedValue({
+            auth: {
+                getUser: vi.fn(async () => ({
+                    data: { user: { id: 'user-test-id' } },
+                    error: null,
+                })),
+            },
             from: vi.fn((table: string) => {
                 if (table === 'conversations') {
                     return searchQuery({

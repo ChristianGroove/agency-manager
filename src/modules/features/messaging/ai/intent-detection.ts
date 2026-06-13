@@ -1,8 +1,6 @@
 // "use server" removed from top
 
 import OpenAI from "openai"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "stub_key_for_build_only",
 })
@@ -62,6 +60,7 @@ const INTENT_DEFINITIONS = {
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const PUBLIC_INTENT_ERROR = 'Intent detection failed'
 
@@ -193,7 +192,7 @@ export async function saveIntent(
     result: IntentResult
 ) {
     "use server"
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('conversation_intents')
         .insert({
             conversation_id: conversationId,
@@ -221,7 +220,7 @@ export async function applyIntentRouting(
 ) {
     "use server"
     // Find matching routing rule
-    const { data: rules } = await supabaseAdmin
+    const { data: rules } = await (await createClient())
         .from('intent_routing_rules')
         .select('*')
         .eq('organization_id', organizationId)
@@ -239,7 +238,7 @@ export async function applyIntentRouting(
         return
     }
 
-    const { data: conv } = await supabaseAdmin
+    const { data: conv } = await (await createClient())
         .from('conversations')
         .select('id, tags')
         .eq('id', conversationId)
@@ -269,7 +268,7 @@ export async function applyIntentRouting(
 
     // Apply updates
     if (Object.keys(updates).length > 0) {
-        await supabaseAdmin
+        await (await createClient())
             .from('conversations')
             .update(updates)
             .eq('id', conversationId)
@@ -284,7 +283,7 @@ export async function applyIntentRouting(
     }
 
     // Mark as auto-routed
-    await supabaseAdmin
+    await (await createClient())
         .from('conversation_intents')
         .update({ auto_routed: true })
         .eq('conversation_id', conversationId)

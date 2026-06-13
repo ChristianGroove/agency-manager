@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { PipelineProcessMap } from "@/types/process-engine"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export class ProcessMapper {
 
@@ -8,7 +8,7 @@ export class ProcessMapper {
      * Get the Process State linked to a Pipeline Stage
      */
     static async getProcessStateForStage(stageId: string, organizationId?: string): Promise<PipelineProcessMap | null> {
-        let query = supabaseAdmin
+        let query = (await createClient())
             .from('pipeline_process_map')
             .select('*')
             .eq('pipeline_stage_id', stageId)
@@ -42,7 +42,7 @@ export class ProcessMapper {
         }
 
         // 2. Does the lead have an active process of this type?
-        const { data: processInstance } = await supabaseAdmin
+        const { data: processInstance } = await (await createClient())
             .from('process_instances')
             .select('*')
             .eq('organization_id', orgId)
@@ -69,7 +69,7 @@ export class ProcessMapper {
         }
 
         // Check rules
-        const { data: currentStateDef } = await supabaseAdmin
+        const { data: currentStateDef } = await (await createClient())
             .from('process_states')
             .select('allowed_next_states')
             .eq('organization_id', orgId)

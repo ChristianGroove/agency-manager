@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from '@/modules/core/database/supabase-server'
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from 'next/cache'
 import { DealService as DealsService } from '../deal-service'
 export type { CartItem, DealCart } from '../../types'
@@ -118,7 +117,7 @@ export async function searchCatalog(query: string = '', category?: string, page:
 export async function sendInteractiveQuote(cartId: string, conversationId: string) {
     try {
         // Must run with Admin permissions to route WhatsApp messages safely and bypass RLS reading connections
-        const service = new DealsService(supabaseAdmin)
+        const service = new DealsService((await createClient()))
         await service.sendInteractiveQuote(cartId, conversationId)
 
         revalidatePath('/inbox')

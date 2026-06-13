@@ -1,8 +1,12 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
+import { createClient } from "@/modules/core/database/supabase-server";
 
-export async function GET() {
+export async function GET(req: Request) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     try {
         const providers = [
             {
@@ -23,17 +27,17 @@ export async function GET() {
 
         // 1. Clean up old fragmented providers (Surgical Cleanup)
         // We delete them if they exist to avoid UI redundancy
-        await supabaseAdmin.from('integration_providers').delete().eq('key', 'meta_instagram');
-        await supabaseAdmin.from('integration_providers').delete().eq('key', 'meta_whatsapp');
-        await supabaseAdmin.from('integration_providers').delete().eq('key', 'meta_ads');
-        await supabaseAdmin.from('integration_providers').delete().eq('key', 'evolution_api');
+        await (await createClient()).from('integration_providers').delete().eq('key', 'meta_instagram');
+        await (await createClient()).from('integration_providers').delete().eq('key', 'meta_whatsapp');
+        await (await createClient()).from('integration_providers').delete().eq('key', 'meta_ads');
+        await (await createClient()).from('integration_providers').delete().eq('key', 'evolution_api');
 
         const results = [];
 
 
 
         for (const provider of providers) {
-            const { data: existing } = await supabaseAdmin
+            const { data: existing } = await (await createClient())
                 .from('integration_providers')
                 .select('id')
                 .eq('key', provider.key)
@@ -41,14 +45,14 @@ export async function GET() {
 
             if (existing) {
                 // Update
-                const { error } = await supabaseAdmin
+                const { error } = await (await createClient())
                     .from('integration_providers')
                     .update(provider)
                     .eq('id', existing.id);
                 results.push({ key: provider.key, action: 'updated', error: error?.message });
             } else {
                 // Insert
-                const { error } = await supabaseAdmin
+                const { error } = await (await createClient())
                     .from('integration_providers')
                     .insert(provider);
                 results.push({ key: provider.key, action: 'inserted', error: error?.message });

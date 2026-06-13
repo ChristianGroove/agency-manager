@@ -8,17 +8,11 @@ const mocks = vi.hoisted(() => ({
     EmailService: {
         send: vi.fn(),
     },
-    supabaseAdmin: {
-        from: vi.fn(),
-    },
+    from: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({
@@ -41,6 +35,7 @@ function authClient(userId = 'admin-user') {
                 data: { user: { id: userId } },
             })),
         },
+        from: mocks.from,
     }
 }
 
@@ -101,7 +96,7 @@ function upsertImmediateQuery(error: unknown = null) {
 }
 
 function createQueuedAdmin(queues: Record<string, any[]>) {
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
+    mocks.from.mockImplementation((table: string) => {
         const queue = queues[table]
         if (!queue?.length) throw new Error(`Unexpected table ${table}`)
         return queue.shift()
@@ -139,7 +134,7 @@ afterEach(() => {
     mocks.requireSuperAdmin.mockReset()
     mocks.generatePlatformInvoicePDF.mockReset()
     mocks.EmailService.send.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
+    mocks.from.mockReset()
 })
 
 describe('PlatformBillingService sanitized errors', () => {

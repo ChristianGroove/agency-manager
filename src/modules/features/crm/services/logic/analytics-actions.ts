@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/modules/core/database/supabase-server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 const PUBLIC_ANALYTICS_ERROR = "No se pudieron cargar las metricas de CRM"
@@ -195,7 +194,7 @@ export async function getBase64Image(url: string): Promise<string> {
                 
                 logSupabaseAsset(bucket, fileName);
                 
-                const { data, error } = await supabaseAdmin.storage.from(bucket).download(fileName);
+                const { data, error } = await (await createClient()).storage.from(bucket).download(fileName);
                 if (data && !error) {
                     const arrayBuffer = await data.arrayBuffer();
                     const base64 = Buffer.from(arrayBuffer).toString('base64');
@@ -246,20 +245,20 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
         const startDateStr = startDate.toISOString()
 
         // Total leads
-        const { count: totalLeads } = await supabaseAdmin
+        const { count: totalLeads } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
 
         // New leads this period
-        const { count: newLeads } = await supabaseAdmin
+        const { count: newLeads } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .gte('created_at', startDateStr)
 
         // Pipeline value (sum of all open deals)
-        const { data: dealsData } = await supabaseAdmin
+        const { data: dealsData } = await (await createClient())
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
@@ -268,14 +267,14 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
         const pipelineValue = dealsData?.reduce((sum, d) => sum + (d.value || 0), 0) || 0
 
         // Won deals for conversion rate
-        const { count: wonDeals } = await supabaseAdmin
+        const { count: wonDeals } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .eq('status', 'won')
 
         // All closed deals (won + lost)
-        const { count: closedDeals } = await supabaseAdmin
+        const { count: closedDeals } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
@@ -286,7 +285,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             : 0
 
         // Average deal size (won deals)
-        const { data: wonDealsData } = await supabaseAdmin
+        const { data: wonDealsData } = await (await createClient())
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
@@ -297,7 +296,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             : 0
 
         // Open conversations
-        const { data: convMetrics } = await supabaseAdmin
+        const { data: convMetrics } = await (await createClient())
             .from('conversations')
             .select('average_response_time_seconds')
             .eq('organization_id', orgId)
@@ -307,7 +306,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             ? Math.round(convMetrics.reduce((sum, c) => sum + (c.average_response_time_seconds || 0), 0) / convMetrics.length)
             : 0
 
-        const { count: openConversations } = await supabaseAdmin
+        const { count: openConversations } = await (await createClient())
             .from('conversations')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
@@ -344,7 +343,7 @@ export async function getLeadsBySource(days: number = 30): Promise<{ success: bo
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('leads')
             .select('source')
             .eq('organization_id', orgId)
@@ -385,7 +384,7 @@ export async function getLeadsByStatus(): Promise<{ success: boolean, data?: Lea
         const orgId = await getOrgId()
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('leads')
             .select('status, value')
             .eq('organization_id', orgId)
@@ -431,7 +430,7 @@ export async function getRecentActivity(limit: number = 10): Promise<{ success: 
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
         // Get recently created leads
-        const { data: recentLeads } = await supabaseAdmin
+        const { data: recentLeads } = await (await createClient())
             .from('leads')
             .select('id, name, status, created_at, updated_at')
             .eq('organization_id', orgId)
@@ -471,7 +470,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
         // Get all team members (without auth.users join)
-        const { data: members } = await supabaseAdmin
+        const { data: members } = await (await createClient())
             .from('organization_members')
             .select('user_id')
             .eq('organization_id', orgId)
@@ -482,14 +481,14 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
         for (const member of members) {
             // Count assigned leads
-            const { count: assigned } = await supabaseAdmin
+            const { count: assigned } = await (await createClient())
                 .from('leads')
                 .select('id', { count: 'exact', head: true })
                 .eq('organization_id', orgId)
                 .eq('user_id', member.user_id)
 
             // Count won deals and calculate avg response time
-            const { data: convData } = await supabaseAdmin
+            const { data: convData } = await (await createClient())
                 .from('conversations')
                 .select('average_response_time_seconds, state, last_message_direction, waiting_since')
                 .eq('organization_id', orgId)
@@ -497,7 +496,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
             const wonDeals = convData?.filter(c => c.state === 'closed').length || 0 // Simplified won check if we use state
             // Let's stick to leads table for value but use conversations for speed/response metrics
-            const { data: leadsData } = await supabaseAdmin
+            const { data: leadsData } = await (await createClient())
                 .from('leads')
                 .select('value, status')
                 .eq('organization_id', orgId)
@@ -541,7 +540,7 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
             return { success: false, error: 'No se pudo determinar la organización activa' }
         }
 
-        const { data, error } = await supabaseAdmin.rpc('get_advanced_crm_reports', {
+        const { data, error } = await (await createClient()).rpc('get_advanced_crm_reports', {
             p_org_id: targetOrgId,
             p_start_date: startDate,
             p_end_date: endDate

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export interface PermissionRequest {
     id: string;
@@ -56,7 +56,7 @@ export class CallPermissionManager {
      */
     private async getHistoryFromDb(conversationId: string): Promise<PermissionRequest[]> {
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .from('conversations')
                 .select('metadata')
                 .eq('id', conversationId)
@@ -85,7 +85,7 @@ export class CallPermissionManager {
     private async saveHistoryToDb(conversationId: string, history: PermissionRequest[]) {
         try {
             // First get existing metadata to preserve other fields
-            const { data: current } = await supabaseAdmin
+            const { data: current } = await (await createClient())
                 .from('conversations')
                 .select('metadata')
                 .eq('id', conversationId)
@@ -94,7 +94,7 @@ export class CallPermissionManager {
             const existingMeta = current?.metadata || {};
 
             logCallPermissionInfo('[CallPermission] Writing history', { conversationId, items: history.length });
-            const { error } = await supabaseAdmin
+            const { error } = await (await createClient())
                 .from('conversations')
                 .update({
                     metadata: {

@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
             .from('user_passkeys')
             .select('*')
             .eq('credential_id', credentialIDBase64)
+            .eq('user_id', challengeData.user_id)
             .single()
 
         if (passkeyError || !passkey) {
@@ -115,7 +116,8 @@ export async function POST(request: NextRequest) {
             .eq('type', 'authentication')
 
         // Get user data to create session
-        const { data: userData } = await supabase.auth.admin.listUsers()
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+        const { data: userData } = await supabaseAdmin.auth.admin.listUsers()
         const user = userData?.users?.find(u => u.id === passkey.user_id)
 
         if (!user) {
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
         // Create session token
         // Note: This is a simplified approach. In production, you'd want to use
         // Supabase's signInWithPassword or create a custom JWT
-        const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: user.email!,
         })

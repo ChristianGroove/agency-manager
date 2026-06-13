@@ -1,15 +1,15 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ModuleValidator } from './module-validator'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
-import { ModuleDependency, SystemModule } from './module-validator'
+
+const mockFrom = vi.fn()
+const mockRpc = vi.fn()
 
 // Mock dependencies
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: vi.fn(),
-        rpc: vi.fn()
-    }
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
+        from: mockFrom,
+        rpc: mockRpc
+    }))
 }))
 
 describe('ModuleValidator', () => {
@@ -22,12 +22,10 @@ describe('ModuleValidator', () => {
 
     describe('validateModuleActivation', () => {
         it('should return valid if RPC returns valid', async () => {
-            const mockRpc = vi.fn().mockResolvedValue({
+            mockRpc.mockResolvedValueOnce({
                 data: { valid: true },
                 error: null
             })
-            // @ts-ignore
-            supabaseAdmin.rpc = mockRpc
 
             const result = await validator.validateModuleActivation('crm', 'org-123', [])
 
@@ -40,12 +38,10 @@ describe('ModuleValidator', () => {
         })
 
         it('should handle RPC errors gracefully', async () => {
-            const mockRpc = vi.fn().mockResolvedValue({
+            mockRpc.mockResolvedValueOnce({
                 data: null,
                 error: { message: 'RPC Error' }
             })
-            // @ts-ignore
-            supabaseAdmin.rpc = mockRpc
 
             const result = await validator.validateModuleActivation('crm', 'org-123', [])
 
@@ -66,15 +62,13 @@ describe('ModuleValidator', () => {
                 .mockResolvedValue(['core'])
 
             // Mock cost calculation (step 4)
-            const mockFrom = vi.fn().mockReturnValue({
+            mockFrom.mockReturnValueOnce({
                 select: vi.fn().mockReturnValue({
                     in: vi.fn().mockReturnValue({
                         eq: vi.fn().mockResolvedValue({ data: [{ key: 'crm', price_monthly: 29 }] })
                     })
                 })
             })
-            // @ts-ignore
-            supabaseAdmin.from = mockFrom
 
             const plan = await validator.createActivationPlan('crm', 'org-123', [])
 
@@ -92,22 +86,13 @@ describe('ModuleValidator', () => {
             const mockGetOrphans = vi.spyOn(validator, 'getOrphanedModules')
                 .mockResolvedValue(['crm'])
 
-            // Mock module check (core check)
-            // We need to mock private method getSystemModule indirectly or assume it's used via public API
-            // Since getSystemModule is private, we can't easy mock it without casting to any or changing visibility
-            // For this test, let's assume getSystemModule returns a non-core module
-            // But wait, createDeactivationPlan calls getSystemModule internally via this.getSystemModule
-            // We can mock the supabaseAdmin call it makes
-
-            const mockFrom = vi.fn().mockReturnValue({
+            mockFrom.mockReturnValueOnce({
                 select: vi.fn().mockReturnValue({
                     eq: vi.fn().mockReturnValue({
                         single: vi.fn().mockResolvedValue({ data: { key: 'core', is_core: false } })
                     })
                 })
             })
-            // @ts-ignore
-            supabaseAdmin.from = mockFrom
 
             const plan = await validator.createDeactivationPlan('core', ['core', 'crm'])
 

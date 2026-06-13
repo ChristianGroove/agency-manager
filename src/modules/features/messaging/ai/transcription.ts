@@ -1,10 +1,9 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { decrypt } from "@/modules/infrastructure/ai-engine/encryption"
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const PUBLIC_TRANSCRIPTION_ERROR = 'Audio transcription failed'
 
@@ -75,7 +74,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
     try {
         // 0. Cache Check (Optimized Cost)
         if (messageId) {
-            const { data: msg } = await supabaseAdmin
+            const { data: msg } = await (await createClient())
                 .from('messages')
                 .select('metadata')
                 .eq('id', messageId)
@@ -89,7 +88,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
             }
         }
 
-        const { data: credentials, error: dbError } = await supabaseAdmin
+        const { data: credentials, error: dbError } = await (await createClient())
             .from('ai_credentials')
             .select('*, provider:ai_providers(name)')
             .eq('organization_id', orgId)
@@ -139,7 +138,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
         // 3. Save to DB (Persistent Cache)
         if (finalResult?.success && finalResult.text && messageId) {
             // Fetch current metadata again to be safe
-            const { data: currentMsg } = await supabaseAdmin
+            const { data: currentMsg } = await (await createClient())
                 .from('messages')
                 .select('metadata')
                 .eq('id', messageId)
@@ -149,7 +148,7 @@ export async function transcribeAudio(audioUrl: string, messageId?: string): Pro
             const currentMetadata = (currentMsg?.metadata || {}) as Record<string, any>
             const newMetadata = { ...currentMetadata, transcription: finalResult.text }
 
-            await supabaseAdmin.from('messages')
+            await (await createClient()).from('messages')
                 .update({ metadata: newMetadata })
                 .eq('id', messageId)
                 .eq('organization_id', orgId)
@@ -288,7 +287,7 @@ async function transcribeWithOpenAI(audioUrl: string, credential: any, orgId: st
 
 async function logUsage(orgId: string, credentialId: string, providerId: string, model: string) {
     try {
-        await supabaseAdmin.from('ai_usage_logs').insert({
+        await (await createClient()).from('ai_usage_logs').insert({
             organization_id: orgId, credential_id: credentialId, provider_id: providerId, model: model,
             task_type: 'media.transcribe_v1', input_tokens: 0, output_tokens: 0, status: 'success'
         })

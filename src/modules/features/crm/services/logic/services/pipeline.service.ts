@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { PipelineRepository } from '../repositories/pipeline.repository'
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 
 export class PipelineService {
     private repo: PipelineRepository
@@ -14,11 +14,9 @@ export class PipelineService {
     }
 
     async getCachedStages(): Promise<any[]> {
-        // Use unstable_cache for high-performance frontend data
-        return unstable_cache(
-            async () => this.repo.getStages(this.orgId),
-            ['pipeline-stages', this.orgId],
-            { revalidate: 3600 }
+        // Use cache for request-scoped memoization
+        return cache(
+            async () => this.repo.getStages(this.orgId)
         )()
     }
 

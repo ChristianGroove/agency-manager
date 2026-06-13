@@ -1,7 +1,6 @@
 'use server'
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Token Management and Security for the Portal
@@ -12,13 +11,13 @@ export async function regeneratePortalToken(clientId: string) {
         if (!orgId) throw new Error('Unauthorized')
 
         // 1. Generate new token using DB function
-        const { data: newToken, error: tokenError } = await supabaseAdmin
+        const { data: newToken, error: tokenError } = await (await createClient())
             .rpc('generate_short_token')
 
         if (tokenError) throw tokenError
 
         // 2. Update client
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (await createClient())
             .from('leads')
             .update({
                 portal_short_token: newToken,
@@ -55,7 +54,7 @@ export async function updatePortalTokenExpiration(
             updateData.portal_token_expires_at = null
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('leads')
             .update(updateData)
             .eq('id', clientId)
@@ -75,7 +74,7 @@ export async function updateClientPortalConfig(clientId: string, config: any) {
         const orgId = await getCurrentOrganizationId()
         if (!orgId) throw new Error('Unauthorized')
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('leads')
             .update({ portal_config: config })
             .eq('id', clientId)

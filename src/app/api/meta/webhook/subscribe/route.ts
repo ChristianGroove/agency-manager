@@ -17,6 +17,9 @@ function logMetaWebhookSubscribeError(label: string, error: unknown) {
 }
 
 export async function POST(request: Request) {
+    const guard = await requirePlatformAdminOrInternalSecret(request)
+    if (guard) return guard;
+
     const unauthorized = await requirePlatformAdminOrInternalSecret(request);
     if (unauthorized) return unauthorized;
 

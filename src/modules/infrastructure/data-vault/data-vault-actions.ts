@@ -2,7 +2,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { vaultRegistry } from "./registry"
 import { DataSnapshot } from "./types"
@@ -104,7 +103,7 @@ export async function createSnapshot(name: string, includedModules: string[] = [
         const { data: { user } } = await supabase.auth.getUser()
 
         // 0. Enforce Snapshot Limits (Rotation Policy)
-        const { count, data: oldSnapshots } = await supabaseAdmin
+        const { count, data: oldSnapshots } = await (await createClient())
             .from('data_snapshots')
             .select('id, created_at', { count: 'exact' })
             .eq('organization_id', orgId)
@@ -127,7 +126,7 @@ export async function createSnapshot(name: string, includedModules: string[] = [
         }
         logSnapshotPayload(payload)
 
-        const { data: snapshot, error: insertError } = await supabaseAdmin
+        const { data: snapshot, error: insertError } = await (await createClient())
             .from('data_snapshots')
             .insert(payload)
             .select()
@@ -166,7 +165,7 @@ export async function createSnapshot(name: string, includedModules: string[] = [
         const fileSize = Buffer.byteLength(jsonString)
         const filePath = `${orgId}/${snapshot.id}.json` // .gz if we implemented compression
 
-        const { error: uploadError } = await supabaseAdmin
+        const { error: uploadError } = await (await createClient())
             .storage
             .from(BUCKET_NAME)
             .upload(filePath, jsonString, {
@@ -176,12 +175,12 @@ export async function createSnapshot(name: string, includedModules: string[] = [
 
         if (uploadError) {
             logVaultError("Upload error:", uploadError)
-            await supabaseAdmin.from('data_snapshots').update({ status: 'failed' }).eq('id', snapshot.id)
+            await (await createClient()).from('data_snapshots').update({ status: 'failed' }).eq('id', snapshot.id)
             throw new Error("Failed to upload snapshot file")
         }
 
         // 4. Update Record (Completed)
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (await createClient())
             .from('data_snapshots')
             .update({
                 status: 'completed',
@@ -205,7 +204,7 @@ export async function getSnapshots() {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return []
 
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('data_snapshots')
         .select('*')
         .eq('organization_id', orgId)
@@ -220,7 +219,7 @@ export async function deleteSnapshot(id: string): Promise<VaultActionResult> {
         if (!orgId) throw new Error("Unauthorized")
 
         // 1. Get path
-        const { data: snapshot, error: lookupError } = await supabaseAdmin
+        const { data: snapshot, error: lookupError } = await (await createClient())
             .from('data_snapshots')
             .select('storage_path, organization_id')
             .eq('id', id)
@@ -232,12 +231,12 @@ export async function deleteSnapshot(id: string): Promise<VaultActionResult> {
 
         // 2. Delete file
         if (snapshot.storage_path) {
-            const { error: removeError } = await supabaseAdmin.storage.from(BUCKET_NAME).remove([snapshot.storage_path])
+            const { error: removeError } = await (await createClient()).storage.from(BUCKET_NAME).remove([snapshot.storage_path])
             if (removeError) throw removeError
         }
 
         // 3. Delete record
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('data_snapshots')
             .delete()
             .eq('id', id)
@@ -261,7 +260,7 @@ export async function restoreSnapshot(snapshotId: string): Promise<VaultActionRe
         const orgId = await getCurrentOrganizationId()
         if (!orgId) throw new Error("Unauthorized")
 
-        const { data: snapshot, error: lookupError } = await supabaseAdmin
+        const { data: snapshot, error: lookupError } = await (await createClient())
             .from('data_snapshots')
             .select('*')
             .eq('id', snapshotId)
@@ -271,7 +270,7 @@ export async function restoreSnapshot(snapshotId: string): Promise<VaultActionRe
         if (!snapshot || snapshot.organization_id !== orgId) throw new Error("Invalid snapshot")
 
         // Check file exists
-        const { data: file, error: downloadError } = await supabaseAdmin
+        const { data: file, error: downloadError } = await (await createClient())
             .storage
             .from(BUCKET_NAME)
             .download(snapshot.storage_path!)
@@ -312,7 +311,7 @@ export async function getVaultConfig() {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return null
 
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('organizations')
         .select('vault_config')
         .eq('id', orgId)
@@ -327,7 +326,7 @@ export async function updateVaultConfig(config: { enabled: boolean, frequency: '
         const orgId = await getCurrentOrganizationId()
         if (!orgId) throw new Error("Unauthorized")
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organizations')
             .update({ vault_config: config })
             .eq('id', orgId)

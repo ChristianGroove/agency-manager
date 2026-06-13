@@ -45,6 +45,7 @@ function selectEq(result: { data?: unknown; error?: unknown }) {
 function updateIn(result: { error?: unknown }) {
     const query: any = {
         update: vi.fn(() => query),
+        eq: vi.fn(() => query),
         in: vi.fn(async () => result),
     }
 

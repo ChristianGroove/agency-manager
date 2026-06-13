@@ -20,11 +20,7 @@ vi.mock('next/server', () => ({
     after: mocks.after,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
-}))
+
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
@@ -187,28 +183,24 @@ describe('message actions logging', () => {
                         error: null,
                     })
                 }
+                if (table === 'integration_connections') {
+                    return singleQuery({
+                        data: {
+                            id: 'connection-secret-id',
+                            credentials: {
+                                accessToken: 'meta-token-secret',
+                                verifyToken: 'verify-token-secret',
+                            },
+                            external_id: 'phone-number-secret-id',
+                            metadata: { asset_id: 'phone-number-secret-id' },
+                            provider_key: 'meta_whatsapp',
+                        },
+                        error: null,
+                    })
+                }
 
                 throw new Error(`Unexpected table ${table}`)
             }),
-        })
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'integration_connections') {
-                return singleQuery({
-                    data: {
-                        id: 'connection-secret-id',
-                        credentials: {
-                            accessToken: 'meta-token-secret',
-                            verifyToken: 'verify-token-secret',
-                        },
-                        external_id: 'phone-number-secret-id',
-                        metadata: { asset_id: 'phone-number-secret-id' },
-                        provider_key: 'meta_whatsapp',
-                    },
-                    error: null,
-                })
-            }
-
-            throw new Error(`Unexpected table ${table}`)
         })
 
         const { sendMessage } = await import('./messages')

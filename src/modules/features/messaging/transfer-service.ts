@@ -1,9 +1,8 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getDictionary, Locale } from "@/modules/core/i18n/dictionaries"
 import { resolveLanguage } from "@/modules/core/i18n"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export interface TransferResult {
     success: boolean
@@ -75,7 +74,7 @@ export async function transferConversation(
 ): Promise<TransferResult> {
 
     // 1. Fetch the conversation first so every following check is scoped to its organization.
-    const convResult = await supabaseAdmin
+    const convResult = await (await createClient())
         .from('conversations')
         .select('organization_id, channel, connection_id, assigned_to')
         .eq('id', conversationId)
@@ -85,20 +84,20 @@ export async function transferConversation(
     if (!conv) return { success: false, error: "Conversation not found" }
 
     const [agentResult, memberResult, sourceMemberResult] = await Promise.all([
-        supabaseAdmin
+        (await createClient())
             .from('agent_availability')
             .select('*')
             .eq('organization_id', conv.organization_id)
             .eq('agent_id', toAgentId)
             .single(),
-        supabaseAdmin
+        (await createClient())
             .from('organization_members')
             .select('role')
             .eq('organization_id', conv.organization_id)
             .eq('user_id', toAgentId)
             .single(),
         fromAgentId
-            ? supabaseAdmin
+            ? (await createClient())
                 .from('organization_members')
                 .select('role')
                 .eq('organization_id', conv.organization_id)
@@ -125,7 +124,7 @@ export async function transferConversation(
             [conv.channel, conv.connection_id].filter((value): value is string => typeof value === 'string' && value.length > 0)
         ))
 
-        const { data: hasAccess } = await supabaseAdmin
+        const { data: hasAccess } = await (await createClient())
             .from('agent_channels')
             .select('agent_id')
             .eq('organization_id', conv.organization_id)
@@ -140,7 +139,7 @@ export async function transferConversation(
     }
 
     // 5. EXECUTE TRANSFER
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await (await createClient())
         .from('conversations')
         .update({
             assigned_to: toAgentId,
@@ -170,7 +169,7 @@ export async function transferConversation(
     const userIds = [toAgentId]
     if (fromAgentId) userIds.push(fromAgentId)
 
-    const { data: profiles } = await supabaseAdmin
+    const { data: profiles } = await (await createClient())
         .from('profiles')
         .select('id, full_name')
         .in('id', userIds)
@@ -192,7 +191,7 @@ export async function transferConversation(
         .replace('{to}', toName)
         .replace('{reason}', reasonSuffix)
 
-    await supabaseAdmin.from('messages').insert({
+    await (await createClient()).from('messages').insert({
         conversation_id: conversationId,
         organization_id: conv.organization_id,
         direction: 'outbound',

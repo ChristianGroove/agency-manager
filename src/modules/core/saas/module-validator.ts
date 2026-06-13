@@ -4,8 +4,6 @@
  */
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 // ============================================
 // TYPES
 // ============================================
@@ -62,7 +60,7 @@ export class ModuleValidator {
      * Get system module by key
      */
     private async getSystemModule(moduleKey: string): Promise<SystemModule | null> {
-        const { data } = await supabaseAdmin
+        const { data } = await (await createClient())
             .from('system_modules')
             .select('*')
             .eq('key', moduleKey)
@@ -75,7 +73,7 @@ export class ModuleValidator {
      * Get organization's vertical
      */
     private async getOrganizationVertical(organizationId: string): Promise<string | null> {
-        const { data } = await supabaseAdmin
+        const { data } = await (await createClient())
             .from('organizations')
             .select('vertical')
             .eq('id', organizationId)
@@ -94,7 +92,7 @@ export class ModuleValidator {
     ): Promise<ValidationResult> {
 
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .rpc('validate_module_activation', {
                     p_module_key: moduleKey,
                     p_organization_id: organizationId,
@@ -130,7 +128,7 @@ export class ModuleValidator {
     ): Promise<string[]> {
 
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .rpc('auto_resolve_dependencies', {
                     p_module_key: moduleKey,
                     p_current_active_modules: currentActiveModules
@@ -158,7 +156,7 @@ export class ModuleValidator {
     ): Promise<string[]> {
 
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .rpc('get_orphaned_modules', {
                     p_module_to_disable: moduleKeyToDisable,
                     p_current_active_modules: currentActiveModules
@@ -233,7 +231,7 @@ export class ModuleValidator {
         }
 
         // 4. Calculate total cost
-        const { data: modules } = await supabaseAdmin
+        const { data: modules } = await (await createClient())
             .from('system_modules')
             .select('key, price_monthly')
             .in('key', modulesToEnable)
@@ -300,7 +298,7 @@ export class ModuleValidator {
      * Get compatible modules for a vertical
      */
     async getCompatibleModulesForVertical(vertical: string): Promise<SystemModule[]> {
-        const { data } = await supabaseAdmin
+        const { data } = await (await createClient())
             .from('system_modules')
             .select('*')
             .or(`compatible_verticals.cs.{"*"},compatible_verticals.cs.{${vertical}}`)
@@ -335,7 +333,7 @@ export class ModuleValidator {
             .filter(d => d.type === 'required')
             .map(d => d.module_key)
 
-        const { data: requiredDeps } = await supabaseAdmin
+        const { data: requiredDeps } = await (await createClient())
             .from('system_modules')
             .select('*')
             .in('key', requiredKeys)
@@ -345,13 +343,13 @@ export class ModuleValidator {
             .filter(d => d.type === 'recommended')
             .map(d => d.module_key)
 
-        const { data: recommendedDeps } = await supabaseAdmin
+        const { data: recommendedDeps } = await (await createClient())
             .from('system_modules')
             .select('*')
             .in('key', recommendedKeys)
 
         // Get conflicts
-        const { data: conflicts } = await supabaseAdmin
+        const { data: conflicts } = await (await createClient())
             .from('system_modules')
             .select('*')
             .in('key', module.conflicts_with || [])

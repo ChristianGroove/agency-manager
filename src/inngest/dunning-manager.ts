@@ -1,6 +1,6 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { EmailService } from "@/modules/features/notifications/email.service";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Platform Dunning Manager
@@ -12,7 +12,7 @@ export const platformDunningManager = inngest.createFunction(
     async ({ step }) => {
         // 1. Fetch pending invoices
         const pendingInvoices = await step.run("fetch-pending-invoices", async () => {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .from('saas_platform_invoices')
                 .select(`
                     *,
@@ -39,14 +39,14 @@ export const platformDunningManager = inngest.createFunction(
                     if (daysSinceCreation >= 10 || now > billingEnd) {
                         // Suspend subscription and organization
                         await Promise.all([
-                            supabaseAdmin
+                            (await createClient())
                                 .from('saas_subscriptions')
                                 .update({ 
                                     status: 'suspended',
                                     updated_at: new Date().toISOString() 
                                 })
                                 .eq('organization_id', invoice.organization_id),
-                            supabaseAdmin
+                            (await createClient())
                                 .from('organizations')
                                 .update({ 
                                     status: 'suspended',

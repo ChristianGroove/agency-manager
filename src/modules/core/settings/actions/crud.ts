@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
@@ -123,7 +122,7 @@ export const getSettings = cache(async () => {
             portal_enabled: true
         }
 
-        const { data: newData, error: createError } = await supabaseAdmin
+        const { data: newData, error: createError } = await (await createClient())
             .from("organization_settings")
             .insert(defaultSettings)
             .select()
@@ -131,7 +130,7 @@ export const getSettings = cache(async () => {
 
         if (createError) {
             if (createError.code === '23505') {
-                const { data: existingData } = await supabaseAdmin
+                const { data: existingData } = await (await createClient())
                     .from("organization_settings")
                     .select("*")
                     .eq('organization_id', orgId)

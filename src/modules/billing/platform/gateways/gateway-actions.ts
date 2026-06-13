@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
 const PUBLIC_GATEWAY_UPDATE_ERROR = 'No se pudo actualizar la pasarela de pago'
@@ -147,7 +146,7 @@ export async function updatePaymentGateway(
         return { success: false, error: PUBLIC_GATEWAY_UPDATE_ERROR }
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('payment_gateway_config')
         .update({
             ...allowedUpdates,
@@ -247,7 +246,7 @@ export async function testStripeConnection(): Promise<{
         const account = await response.json()
 
         // Update last tested
-        await supabaseAdmin
+        await (await createClient())
             .from('payment_gateway_config')
             .update({
                 last_tested_at: new Date().toISOString(),
@@ -265,7 +264,7 @@ export async function testStripeConnection(): Promise<{
         const publicError = publicGatewayActionError(PUBLIC_STRIPE_TEST_ERROR, error)
 
         // Update test result
-        await supabaseAdmin
+        await (await createClient())
             .from('payment_gateway_config')
             .update({
                 last_tested_at: new Date().toISOString(),

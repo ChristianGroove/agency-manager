@@ -3,7 +3,6 @@
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import crypto from "crypto"
 
 const PUBLIC_REFINE_ERROR = 'Draft could not be refined'
@@ -143,7 +142,7 @@ export async function saveSentimentAnalysis(messageId: string, conversationId: s
     }).eq('id', messageId)
 
     if (result.needsEscalation) {
-        await supabaseAdmin.from('sentiment_alerts').insert({
+        await (await createClient()).from('sentiment_alerts').insert({
             conversation_id: conversationId,
             message_id: messageId,
             alert_type: result.sentiment === 'urgent' ? 'urgent_keywords' : 'negative_spike',
@@ -168,7 +167,7 @@ export async function detectIntent(messageContent: string) {
 }
 
 export async function saveIntent(conversationId: string, messageId: string, result: any) {
-    await supabaseAdmin.from('conversation_intents').insert({
+    await (await createClient()).from('conversation_intents').insert({
         conversation_id: conversationId,
         message_id: messageId,
         intent: result.intent,
@@ -178,12 +177,12 @@ export async function saveIntent(conversationId: string, messageId: string, resu
 }
 
 export async function applyIntentRouting(conversationId: string, organizationId: string, intent: string, confidence: number) {
-    const { data: rule } = await supabaseAdmin.from('intent_routing_rules').select('*').eq('organization_id', organizationId).eq('intent', intent).eq('is_active', true).single()
+    const { data: rule } = await (await createClient()).from('intent_routing_rules').select('*').eq('organization_id', organizationId).eq('intent', intent).eq('is_active', true).single()
     if (!rule) return
     const updates: any = {}
     if (rule.set_priority) updates.priority = rule.set_priority
     if (Object.keys(updates).length > 0) {
-        await supabaseAdmin.from('conversations').update(updates).eq('id', conversationId)
+        await (await createClient()).from('conversations').update(updates).eq('id', conversationId)
     }
 }
 

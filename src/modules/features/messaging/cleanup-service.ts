@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { MESSAGING_STORAGE_BUCKET } from "./constants";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
@@ -59,7 +59,7 @@ export class MessagingCleanupService {
      * Identifies and deletes all physical media files associated with a conversation
      */
     async deleteConversationMedia(conversationId: string, organizationId?: string) {
-        const supabase = supabaseAdmin;
+        const supabase = (await createClient());
 
         // 1. Fetch all messages with media
         let query = supabase
@@ -111,7 +111,7 @@ export class MessagingCleanupService {
      * Cleans up media for multiple leads
      */
     async deleteLeadsMedia(leadIds: string[], organizationId?: string) {
-        const supabase = supabaseAdmin;
+        const supabase = (await createClient());
 
         // Find all conversations for these leads
         let query = supabase

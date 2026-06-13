@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
     supabaseRpc: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.supabaseFrom,
         rpc: mocks.supabaseRpc,
-    },
+    }))
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {

@@ -9,10 +9,12 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
+
+
+vi.mock('@/modules/core/iam/services/platform-roles', () => ({
+    requireSuperAdmin: vi.fn(),
+    isSuperAdmin: vi.fn(async () => true),
+    getUserPlatformRole: vi.fn(async () => 'super_admin'),
 }))
 
 function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
@@ -33,6 +35,7 @@ function mockAdminUpdate(error: unknown = null) {
     const eq = vi.fn(async () => ({ error }))
     const update = vi.fn(() => ({ eq }))
     mocks.supabaseFrom.mockReturnValue({ update })
+    mocks.createClient.mockResolvedValue({ from: mocks.supabaseFrom })
     return { update, eq }
 }
 
@@ -79,6 +82,7 @@ describe('payment gateway platform actions', () => {
             message: 'payment gateway secret-value failed for wompi-secret-id',
             code: '23505',
         })
+
 
         const { updatePaymentGateway } = await import('./gateway-actions')
         const result = await updatePaymentGateway('wompi', { is_enabled: true })
@@ -134,7 +138,8 @@ describe('payment gateway platform actions', () => {
                 },
             })),
         } as any)
-        const { update } = mockAdminUpdate(null)
+        const { update, eq } = mockAdminUpdate(null)
+
 
         const { testStripeConnection } = await import('./gateway-actions')
         const result = await testStripeConnection()

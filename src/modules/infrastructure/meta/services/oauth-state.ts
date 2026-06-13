@@ -1,8 +1,12 @@
-export function parseMetaOAuthState(state: string): Record<string, any> {
+export function parseMetaOAuthState(state: string): { ok: true; state: Record<string, any> } | { ok: false; error: string } {
     try {
-        return JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
-    } catch (e) {
-        return {};
+        const parsed = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        if (!parsed || typeof parsed !== 'object') {
+            return { ok: false, error: 'Invalid state format' };
+        }
+        return { ok: true, state: parsed };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
     }
 }
 

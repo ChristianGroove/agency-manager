@@ -6,13 +6,13 @@ import { revalidatePath } from "next/cache"
 import { SaasApp, AppModule } from "@/types/saas"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
-import { unstable_cache } from "next/cache"
+import { cache } from "react"
 
 /**
  * Fetch all available system modules.
  * Cached to prevent hitting DB on every portfolio load.
  */
-export const getSystemModules = unstable_cache(
+export const getSystemModules = cache(
     async () => {
         const supabase = await createClient()
         const { data, error } = await supabase
@@ -28,11 +28,6 @@ export const getSystemModules = unstable_cache(
         }
 
         return data as AppModule[]
-    },
-    ['system-modules-list'], // Cache Key
-    {
-        revalidate: 3600, // Revalidate every hour
-        tags: ['system-modules']
     }
 )
 
@@ -213,10 +208,8 @@ async function _getActiveModulesInternal(organizationId: string): Promise<string
 }
 
 // Cached version with 5-minute TTL
-const getCachedActiveModules = (orgId: string) => unstable_cache(
-    async () => _getActiveModulesInternal(orgId),
-    [`active-modules-${orgId}`],
-    { revalidate: 300, tags: ['org-modules'] }
+const getCachedActiveModules = (orgId: string) => cache(
+    async () => _getActiveModulesInternal(orgId)
 )()
 
 /**
@@ -384,4 +377,5 @@ export async function getSidebarContext(orgId?: string, user?: User | null, prel
         }
     }
 }
+
 

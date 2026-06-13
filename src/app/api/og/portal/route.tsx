@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export const runtime = 'edge'
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         if (token) {
             // Fetch organization branding via token
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-            let query = supabaseAdmin.from('leads').select('organization_id')
+            let query = (await createClient()).from('leads').select('organization_id')
 
             if (isUuid) {
                 query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
             const { data: client } = await query.single()
 
             if (client?.organization_id) {
-                const { data: settings } = await supabaseAdmin
+                const { data: settings } = await (await createClient())
                     .from('organization_settings')
                     .select('agency_name, logo_url, portal_logo_url, primary_color')
                     .eq('organization_id', client.organization_id)

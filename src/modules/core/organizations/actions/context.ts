@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
@@ -51,7 +50,7 @@ export async function updateOrganizationLimits(organizationId: string, limits: {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
 
-    const { data: targetOrg } = await supabaseAdmin
+    const { data: targetOrg } = await (await createClient())
         .from('organizations')
         .select('parent_organization_id')
         .eq('id', organizationId)
@@ -100,7 +99,7 @@ export async function updateOrganizationLimits(organizationId: string, limits: {
         limit_value: l.limit
     }))
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('usage_limits')
         .upsert(rows)
 
@@ -121,7 +120,7 @@ export async function getOrganizationLimits(organizationId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
-    const { data: targetOrg } = await supabaseAdmin
+    const { data: targetOrg } = await (await createClient())
         .from('organizations')
         .select('parent_organization_id')
         .eq('id', organizationId)
@@ -151,7 +150,7 @@ export async function getOrganizationLimits(organizationId: string) {
         return []
     }
 
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('usage_limits')
         .select('*')
         .eq('organization_id', organizationId)

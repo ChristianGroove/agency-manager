@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { MetaProvider } from "../providers/meta-provider"
 import { MessagingPersistence } from "../services/persistence"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
@@ -145,7 +144,7 @@ async function internalSend({
         if (convError || !conversation) throw new Error("Conversation not found")
 
         const connId = connectionIdOverride || conversation.connection_id
-        const { data: connection } = await supabaseAdmin
+        const { data: connection } = await (await createClient())
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
@@ -207,15 +206,15 @@ async function internalSend({
             try {
                 const result = await provider.sendMessage(providerOptions)
                 if (result.success && result.messageId) {
-                    await supabaseAdmin.from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
+                    await (await createClient()).from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
                 } else {
-                    await supabaseAdmin.from('messages').update({
+                    await (await createClient()).from('messages').update({
                         status: 'failed',
                         metadata: { error: publicMessageActionError(result.error) }
                     } as any).eq('id', messageId)
                 }
             } catch (bgError: any) {
-                await supabaseAdmin.from('messages').update({
+                await (await createClient()).from('messages').update({
                     status: 'failed',
                     metadata: { error: publicMessageActionError(bgError) }
                 } as any).eq('id', messageId)

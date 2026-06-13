@@ -6,10 +6,10 @@ const mocks = vi.hoisted(() => ({
     uploadFile: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.from,
-    },
+    }))
 }))
 
 vi.mock('@/modules/infrastructure/integrations/registry', () => ({

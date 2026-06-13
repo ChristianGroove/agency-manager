@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
@@ -16,7 +15,7 @@ export async function createBrandingUpgradeTransaction() {
     if (!orgId) throw new Error("No organization context")
 
     // 1. Verify current tier and direct billing permission
-    const { data: org } = await supabaseAdmin
+    const { data: org } = await (await createClient())
         .from('organizations')
         .select('branding_tier_id, name, allow_direct_billing')
         .eq('id', orgId)
@@ -36,7 +35,7 @@ export async function createBrandingUpgradeTransaction() {
     const reference = `BRAND-UPGRADE-${orgId.slice(0, 8)}-${Date.now()}`
 
     // 3. Record PENDING transaction
-    const { data: tx, error } = await supabaseAdmin
+    const { data: tx, error } = await (await createClient())
         .from('payment_transactions')
         .insert({
             organization_id: orgId,
@@ -76,7 +75,7 @@ export async function checkUpgradeStatus() {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return false
 
-    const { data: org } = await supabaseAdmin
+    const { data: org } = await (await createClient())
         .from('organizations')
         .select('branding_tier_id')
         .eq('id', orgId)

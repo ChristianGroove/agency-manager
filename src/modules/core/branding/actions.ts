@@ -1,8 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 import { cache } from "react"
 
 function debugLog(step: string, data: any) {
@@ -101,7 +99,7 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
         updatePayload.social_links = { website: data.website }
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from("platform_settings")
         .upsert({
             id: 1,
@@ -134,7 +132,7 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
     // 2. Parallel Fetch: Platform + Org with Tier + Tenant Settings
     const [platformBranding, orgResult, tenantSettingsResult] = await Promise.all([
         getPlatformSettings(),
-        supabaseAdmin
+        (await createClient())
             .from("organizations")
             .select(`
                 branding_tier_id,
@@ -142,7 +140,7 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
             `)
             .eq("id", orgId)
             .single(),
-        supabaseAdmin
+        (await createClient())
             .from("organization_settings")
             .select("*")
             .eq("organization_id", orgId)
@@ -366,7 +364,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
     debugLog('Saving Branding Payload', payload)
 
     // SELF-HEALING: Check for existing settings (including duplicates)
-    const { data: existingSettings } = await supabaseAdmin
+    const { data: existingSettings } = await (await createClient())
         .from("organization_settings")
         .select("id")
         .eq("organization_id", orgId)
@@ -378,11 +376,11 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
 
         if (duplicates.length > 0) {
             console.warn(`[BRANDING_FIX] Found duplicates for org ${orgId}. Deleting ${duplicates.length} extra rows.`)
-            await supabaseAdmin.from("organization_settings").delete().in('id', duplicates.map(d => d.id))
+            await (await createClient()).from("organization_settings").delete().in('id', duplicates.map(d => d.id))
         }
 
         // Update the primary one
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from("organization_settings")
             .update({ ...payload, updated_at: new Date().toISOString() })
             .eq('id', primary.id)
@@ -390,7 +388,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         if (error) throw new Error("Failed to update branding: " + error.message)
     } else {
         // Create new
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from("organization_settings")
             .insert(payload)
 

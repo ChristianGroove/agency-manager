@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 import { isProductionRuntime } from "@/app/api/_guards/request-guards"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
     try {
         // 1. Verify Portal Token & Get Client
         const isUuidToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-        let clientQuery = supabaseAdmin
+        let clientQuery = (await createClient())
             .from('leads')
             .select('id, organization_id, portal_token_never_expires, portal_token_expires_at, portal_insights_settings, services(name, status, insights_access)')
             .is('deleted_at', null)
@@ -79,12 +79,12 @@ export async function GET(req: Request) {
         }
 
         const [{ data: orgData }, { data: orgSettings }] = await Promise.all([
-            supabaseAdmin
+            (await createClient())
                 .from('organizations')
                 .select('active_app_id, saas_apps(portal_template)')
                 .eq('id', client.organization_id)
                 .maybeSingle(),
-            supabaseAdmin
+            (await createClient())
                 .from('organization_settings')
                 .select('portal_modules')
                 .eq('organization_id', client.organization_id)
@@ -107,7 +107,7 @@ export async function GET(req: Request) {
 
         let adsMetrics = null
         if (insightsAccess.mode.ads) {
-            const { data: cachedAds, error: adsError } = await supabaseAdmin
+            const { data: cachedAds, error: adsError } = await (await createClient())
                 .from('meta_ads_metrics')
                 .select('*')
                 .eq('client_id', client.id)
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
 
         let socialMetrics = null
         if (insightsAccess.mode.organic) {
-            const { data: cachedSocial, error: socialError } = await supabaseAdmin
+            const { data: cachedSocial, error: socialError } = await (await createClient())
                 .from('meta_social_metrics')
                 .select('*')
                 .eq('client_id', client.id)

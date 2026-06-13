@@ -18,6 +18,9 @@ function logSyncRouteError(label: string, error: unknown) {
 }
 
 export async function POST(req: Request) {
+    const guard = await requirePlatformAdminOrInternalSecret(req)
+    if (guard) return guard;
+
     const unauthorized = await requirePlatformAdminOrInternalSecret(req)
     if (unauthorized) return unauthorized
 

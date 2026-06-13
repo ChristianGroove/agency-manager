@@ -1,4 +1,3 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption";
 import { 
     MessagingProvider, 
@@ -11,6 +10,7 @@ import {
     InteractiveCallRequestContent,
     WebhookValidationResult
 } from "./types";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
 const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
@@ -187,7 +187,7 @@ export class MetaProvider implements MessagingProvider {
             // 2. Upload to Supabase Storage
             const extension = mimeType.split('/')[1]?.split(';')[0] || 'bin';
             const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${extension}`;
-            const { error: uploadError } = await supabaseAdmin.storage
+            const { error: uploadError } = await (await createClient()).storage
                 .from('chat-attachments')
                 .upload(fileName, buffer, { contentType: mimeType, upsert: true });
 
@@ -197,7 +197,7 @@ export class MetaProvider implements MessagingProvider {
             }
 
             // 3. Get Public URL
-            const { data: { publicUrl } } = supabaseAdmin.storage
+            const { data: { publicUrl } } = (await createClient()).storage
                 .from('chat-attachments')
                 .getPublicUrl(fileName);
 
@@ -220,7 +220,7 @@ export class MetaProvider implements MessagingProvider {
      */
     private async getTokenByAssetId(assetId: string): Promise<string | null> {
         try {
-            const { data: connections, error } = await supabaseAdmin
+            const { data: connections, error } = await (await createClient())
                 .from('integration_connections')
                 .select('credentials, metadata, provider_key')
                 .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm', 'instagram_dme'])

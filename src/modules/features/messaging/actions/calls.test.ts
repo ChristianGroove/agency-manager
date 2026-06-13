@@ -18,12 +18,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
-}))
-
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
@@ -113,12 +107,9 @@ describe('call actions', () => {
             auth: authUser(),
             from: vi.fn((table: string) => {
                 if (table === 'conversations') return conversationQuery
+                if (table === 'integration_connections') return connectionQuery
                 throw new Error(`Unexpected table ${table}`)
             }),
-        })
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'integration_connections') return connectionQuery
-            throw new Error(`Unexpected table ${table}`)
         })
 
         const { getCallStatus } = await import('./calls')

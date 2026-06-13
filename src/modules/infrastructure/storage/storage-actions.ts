@@ -1,8 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 // ============================================
 // TYPES
 // ============================================
@@ -127,7 +125,7 @@ export async function trackStorageUpload(
     organizationId: string,
     fileSizeBytes: number
 ): Promise<{ success: boolean }> {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .rpc('increment_storage_usage', {
             p_organization_id: organizationId,
             p_bytes: fileSizeBytes
@@ -149,7 +147,7 @@ export async function trackStorageDelete(
     organizationId: string,
     fileSizeBytes: number
 ): Promise<{ success: boolean }> {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .rpc('decrement_storage_usage', {
             p_organization_id: organizationId,
             p_bytes: fileSizeBytes
@@ -170,7 +168,7 @@ export async function trackStorageDelete(
 export async function recalculateStorage(
     organizationId: string
 ): Promise<{ totalBytes: number; fileCount: number } | null> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .rpc('calculate_org_storage', {
             p_organization_id: organizationId
         })

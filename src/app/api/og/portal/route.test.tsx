@@ -6,8 +6,8 @@ vi.mock('next/og', () => ({
     },
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {},
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({}))
 }))
 
 import {

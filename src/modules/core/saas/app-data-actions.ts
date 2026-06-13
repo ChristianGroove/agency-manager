@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { SaasApp } from "@/types/saas"
 import { cache } from "react"
@@ -31,7 +30,7 @@ export const getCurrentOrganizationApp = cache(async () => {
     const appId = org.active_app_id || (org.vertical_key ? `app_${org.vertical_key}` : null)
 
     if (appId) {
-        const { data: appData } = await supabaseAdmin
+        const { data: appData } = await (await createClient())
             .from('saas_apps')
             .select(`
                 id,

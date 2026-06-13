@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { assignConversation as autoAssignConversation, logAssignment } from "./assignment-engine"
 import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "./assignment-constants"
 import { revalidatePath } from "next/cache"
@@ -125,7 +124,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
 
     // Update if exists, insert if new agent
     // IMPORTANT: Use update first to avoid overwriting auto_assign_enabled and max_capacity
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await (await createClient())
         .from('agent_availability')
         .select('agent_id')
         .eq('organization_id', memberData.organization_id)
@@ -134,7 +133,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
 
     if (existing) {
         // Update only the status field (preserve other settings)
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('agent_availability')
             .update({
                 status,
@@ -153,7 +152,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
         }
     } else {
         // Insert new agent with sensible defaults
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('agent_availability')
             .insert({
                 organization_id: memberData.organization_id,
@@ -302,12 +301,12 @@ export async function getAgentsWorkload() {
 
     // Fetch availability with channels, and members separately to avoid complex joins across schemas
     const [availabilityResult, membersResult] = await Promise.all([
-        supabaseAdmin
+        (await createClient())
             .from('agent_availability')
             .select('*, agent_channels(channel_type)')
             .eq('organization_id', memberData.organization_id)
             .order('status', { ascending: false }),
-        supabaseAdmin
+        (await createClient())
             .from('organization_members')
             .select('user_id, role, permissions')
             .eq('organization_id', memberData.organization_id)
@@ -327,7 +326,7 @@ export async function getAgentsWorkload() {
 
     // 2. Get profiles for names and avatars
     console.time('agents:profiles_fetch')
-    const { data: profiles, error: profileError } = await supabaseAdmin
+    const { data: profiles, error: profileError } = await (await createClient())
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', activeAgents.map(a => a.agent_id))
@@ -427,7 +426,7 @@ export async function upsertAssignmentRule(rule: {
         ruleData.id = rule.id
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('assignment_rules')
         .upsert(ruleData)
         .select()
@@ -456,7 +455,7 @@ export async function upsertAssignmentRule(rule: {
  * Delete an assignment rule
  */
 export async function deleteAssignmentRule(ruleId: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('assignment_rules')
         .delete()
         .eq('id', ruleId)
@@ -604,7 +603,7 @@ export async function getSidebarAgents() {
     }
 
     // 1. Get all members of the organization
-    const { data: members, error: membersError } = await supabaseAdmin
+    const { data: members, error: membersError } = await (await createClient())
         .from('organization_members')
         .select('user_id, role')
         .eq('organization_id', memberData.organization_id)
@@ -621,7 +620,7 @@ export async function getSidebarAgents() {
     const userIds = members.map(m => m.user_id)
 
     // 2. Get profiles for names, avatars, and platform roles (to filter super_admins)
-    const { data: profiles } = await supabaseAdmin
+    const { data: profiles } = await (await createClient())
         .from('profiles')
         .select('id, full_name, avatar_url, platform_role')
         .in('id', userIds)
@@ -632,7 +631,7 @@ export async function getSidebarAgents() {
     )
 
     // 3. Get channel access from agent_availability
-    const { data: availability } = await supabaseAdmin
+    const { data: availability } = await (await createClient())
         .from('agent_availability')
         .select('agent_id, agent_channels(channel_type)')
         .eq('organization_id', memberData.organization_id)
@@ -670,7 +669,7 @@ export async function reconcileAllAgentLoads() {
 
     const { reconcileAgentLoad } = await import('./assignment-engine')
 
-    const { data: agents } = await supabaseAdmin
+    const { data: agents } = await (await createClient())
         .from('agent_availability')
         .select('agent_id')
         .eq('organization_id', orgId)
@@ -702,7 +701,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
     if (!orgId) return { success: false, error: 'No organization found' }
 
     // 1. Fetch unassigned conversations
-    let convQuery = supabaseAdmin
+    let convQuery = (await createClient())
         .from('conversations')
         .select('id, channel, connection_id')
         .eq('organization_id', orgId)
@@ -727,7 +726,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
     const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString()
-    const { data: agents, error: agentError } = await supabaseAdmin
+    const { data: agents, error: agentError } = await (await createClient())
         .from('agent_availability')
         .select('agent_id, organization_id, last_seen_at')
         .eq('organization_id', orgId)
@@ -748,8 +747,8 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     // 3. Get roles and channel access for these agents
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
-        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
+        (await createClient()).from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
     ])
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]))
@@ -789,7 +788,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
             
             // Push update promise - Wrapped in async to ensure correct Promise type
             assignmentPromises.push((async () => {
-                const { error: updateError } = await supabaseAdmin
+                const { error: updateError } = await (await createClient())
                     .from('conversations')
                     .update({ assigned_to: agent.agent_id, updated_at: new Date().toISOString() })
                     .eq('id', chat.id)
@@ -828,7 +827,7 @@ export async function getUnassignedDistributionStats() {
     if (!orgId) return { success: false, data: [] }
 
     // 1. Fetch unassigned conversations summary
-    const { data: convs, error: convError } = await supabaseAdmin
+    const { data: convs, error: convError } = await (await createClient())
         .from('conversations')
         .select('connection_id, channel')
         .eq('organization_id', orgId)
@@ -845,7 +844,7 @@ export async function getUnassignedDistributionStats() {
         return { success: false, error: publicAssignmentActionError(convError), data: [] }
     }
 
-    const { data: connections, error: connError } = await supabaseAdmin
+    const { data: connections, error: connError } = await (await createClient())
         .from('integration_connections')
         .select('id, connection_name, provider_key')
         .eq('organization_id', orgId)

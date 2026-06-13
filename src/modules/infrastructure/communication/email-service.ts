@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { transporter, SENDER_EMAIL } from "@/modules/infrastructure/notifications/services/mailer";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const PUBLIC_EMAIL_SEND_ERROR = "No se pudo enviar el email";
 
@@ -59,7 +59,7 @@ export const emailService = {
         // We fetch all potential matches and pick the most specific one in code logic
         // or via clever SQL. Doing simple fetch for simplicity.
 
-        let query = supabaseAdmin
+        let query = (await createClient())
             .from('email_templates')
             .select('*')
             .eq('slug', templateSlug)

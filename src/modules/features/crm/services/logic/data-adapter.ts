@@ -1,8 +1,6 @@
 
 import { DataModule } from "@/modules/infrastructure/data-vault/types"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 export const crmDataAdapter: DataModule = {
     key: 'crm',
     name: 'CRM Core (Leads & Pipelines)',
@@ -13,13 +11,13 @@ export const crmDataAdapter: DataModule = {
         const supabase = await createClient()
 
         // 1. Export Leads (includes clients with contact_type='client')
-        const { data: leads } = await supabaseAdmin
+        const { data: leads } = await (await createClient())
             .from('leads')
             .select('*')
             .eq('organization_id', organizationId)
 
         // 2. Export Pipeline Stages
-        const { data: pipelineStages } = await supabaseAdmin
+        const { data: pipelineStages } = await (await createClient())
             .from('pipeline_stages')
             .select('*')
             .eq('organization_id', organizationId)
@@ -42,7 +40,7 @@ export const crmDataAdapter: DataModule = {
                 ...s,
                 organization_id: organizationId
             }))
-            const { error } = await supabaseAdmin.from('pipeline_stages').upsert(stages)
+            const { error } = await (await createClient()).from('pipeline_stages').upsert(stages)
             if (error) throw new Error(`Error importing pipelines: ${error.message}`)
         }
 
@@ -52,7 +50,7 @@ export const crmDataAdapter: DataModule = {
                 ...l,
                 organization_id: organizationId
             }))
-            const { error } = await supabaseAdmin.from('leads').upsert(leads)
+            const { error } = await (await createClient()).from('leads').upsert(leads)
             if (error) throw new Error(`Error importing leads: ${error.message}`)
         }
 
@@ -63,13 +61,13 @@ export const crmDataAdapter: DataModule = {
                 organization_id: organizationId,
                 contact_type: 'client'
             }))
-            const { error } = await supabaseAdmin.from('leads').upsert(clients)
+            const { error } = await (await createClient()).from('leads').upsert(clients)
             if (error) throw new Error(`Error importing legacy clients: ${error.message}`)
         }
     },
 
     clearData: async (organizationId: string) => {
-        await supabaseAdmin.from('leads').delete().eq('organization_id', organizationId)
-        await supabaseAdmin.from('pipeline_stages').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('leads').delete().eq('organization_id', organizationId)
+        await (await createClient()).from('pipeline_stages').delete().eq('organization_id', organizationId)
     }
 }

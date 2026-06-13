@@ -13,7 +13,6 @@
  */
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
@@ -195,7 +194,7 @@ export async function setFeatureFlag(
     if (!orgId) return { success: false, error: 'No organization context' }
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('feature_flags')
             .upsert({
                 organization_id: orgId,
@@ -262,7 +261,7 @@ export async function bulkSetFeatureFlags(
             updated_at: new Date().toISOString()
         }))
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('feature_flags')
             .upsert(records, {
                 onConflict: 'organization_id,module_key,feature_key'
@@ -290,7 +289,7 @@ export async function deleteFeatureFlag(
     if (!orgId) return { success: false, error: 'No organization context' }
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('feature_flags')
             .delete()
             .eq('organization_id', orgId)

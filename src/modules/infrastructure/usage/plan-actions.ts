@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
 // ============================================
@@ -66,7 +65,7 @@ async function canAccessOrganizationUsage(supabase: any, organizationId: string)
 async function loadOrgUsageStatus(organizationId: string): Promise<UsageStatus[]> {
     if (!organizationId) return []
 
-    const { data: limits } = await supabaseAdmin
+    const { data: limits } = await (await createClient())
         .from('usage_limits')
         .select('engine, period, limit_value')
         .eq('organization_id', organizationId)
@@ -79,7 +78,7 @@ async function loadOrgUsageStatus(organizationId: string): Promise<UsageStatus[]
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
         .toISOString().split('T')[0]
 
-    const { data: counters } = await supabaseAdmin
+    const { data: counters } = await (await createClient())
         .from('usage_counters')
         .select('engine, period, period_start, used')
         .eq('organization_id', organizationId)
@@ -170,7 +169,7 @@ export async function incrementUsage(
         .toISOString().split('T')[0]
 
     // Check which period this engine uses
-    const { data: limits } = await supabaseAdmin
+    const { data: limits } = await (await createClient())
         .from('usage_limits')
         .select('period')
         .eq('organization_id', organizationId)
@@ -180,7 +179,7 @@ export async function incrementUsage(
     const periodStart = period === 'day' ? today : monthStart
 
     // Upsert counter
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('usage_counters')
         .upsert({
             organization_id: organizationId,
@@ -195,7 +194,7 @@ export async function incrementUsage(
 
     if (error) {
         // If upsert failed, try increment
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await (await createClient())
             .rpc('increment_usage_counter', {
                 p_org_id: organizationId,
                 p_engine: engine,
@@ -223,7 +222,7 @@ export async function upgradePlan(
 ): Promise<{ success: boolean; error?: string }> {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .rpc('upgrade_org_plan', {
             p_organization_id: organizationId,
             p_new_plan_code: newPlanCode
@@ -246,7 +245,7 @@ export async function getOrgPlan(organizationId: string): Promise<PlanTemplate |
     if (!(await canAccessOrganizationUsage(supabase, organizationId))) return null
 
     // Get org limits to determine plan
-    const { data: limits } = await supabaseAdmin
+    const { data: limits } = await (await createClient())
         .from('usage_limits')
         .select('limit_value')
         .eq('organization_id', organizationId)

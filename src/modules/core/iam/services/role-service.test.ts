@@ -3,9 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
-    supabaseAdmin: {
-        from: vi.fn(),
-    },
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -14,10 +11,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 function memberQuery(data: unknown) {
@@ -30,7 +23,7 @@ function memberQuery(data: unknown) {
     return query
 }
 
-function authClient() {
+function authClient(adminFrom: any) {
     return {
         auth: {
             getUser: vi.fn(async () => ({
@@ -40,6 +33,9 @@ function authClient() {
             })),
         },
         from: vi.fn((table: string) => {
+            if (table === 'organization_roles') {
+                return adminFrom(table);
+            }
             if (table !== 'organization_members') {
                 throw new Error(`Unexpected table ${table}`)
             }
@@ -73,11 +69,12 @@ function selectEqSingleQuery(result: { data?: unknown; error?: unknown }) {
 }
 
 function createQueuedAdmin(queues: Record<string, any[]>) {
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
+    const adminFrom = vi.fn((table: string) => {
         const queue = queues[table]
         if (!queue?.length) throw new Error(`Unexpected admin table ${table}`)
         return queue.shift()
     })
+    mocks.createClient.mockResolvedValue(authClient(adminFrom))
 }
 
 afterEach(() => {
@@ -85,12 +82,10 @@ afterEach(() => {
     vi.resetModules()
     mocks.createClient.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
 })
 
 describe('role service safeguards', () => {
     it('strips owner-level permission and clamps hierarchy when creating custom roles', async () => {
-        mocks.createClient.mockResolvedValue(authClient())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const insert = insertSelectSingleQuery({
             data: { id: 'role-1', name: 'Custom Admin' },
@@ -127,7 +122,6 @@ describe('role service safeguards', () => {
     })
 
     it('blocks editing system roles through the custom role upsert path', async () => {
-        mocks.createClient.mockResolvedValue(authClient())
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const existingRole = selectEqSingleQuery({
             data: { is_system_role: true },

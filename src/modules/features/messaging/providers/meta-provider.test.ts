@@ -9,13 +9,13 @@ vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
     decryptObject: mocks.decryptObject,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.supabaseFrom,
         storage: {
             from: vi.fn(),
         },
-    },
+    }))
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {

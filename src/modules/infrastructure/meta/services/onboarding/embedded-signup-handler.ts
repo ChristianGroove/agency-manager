@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const GRAPH_URL = 'https://graph.facebook.com/v24.0';
 
@@ -283,7 +283,7 @@ export class EmbeddedSignupHandler {
     }): Promise<string> {
 
         // Check for existing connection (including deleted/disconnected)
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await (await createClient())
             .from('integration_connections')
             .select('id, status')
             .eq('organization_id', orgId)
@@ -297,7 +297,7 @@ export class EmbeddedSignupHandler {
             if (existingChannel.status === 'active') {
                 logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Channel already active', { channelId: existingChannel.id });
                 // Update credentials with fresh token
-                await supabaseAdmin
+                await (await createClient())
                     .from('integration_connections')
                     .update({
                         credentials: { access_token: data.accessToken },
@@ -309,7 +309,7 @@ export class EmbeddedSignupHandler {
 
             // Reactivate deleted/disconnected channel
             logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Reactivating channel', { channelId: existingChannel.id });
-            await supabaseAdmin
+            await (await createClient())
                 .from('integration_connections')
                 .update({
                     status: 'active',
@@ -354,7 +354,7 @@ export class EmbeddedSignupHandler {
             is_primary: false,
         };
 
-        const { data: conn, error } = await supabaseAdmin
+        const { data: conn, error } = await (await createClient())
             .from('integration_connections')
             .insert(channelData)
             .select()

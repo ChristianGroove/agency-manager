@@ -130,13 +130,26 @@ describe('smart replies AI actions', () => {
     it('does not expose suggestion logging failures in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const insert = vi.fn(async () => ({
             error: {
                 message: 'database password secret-value failed for conv-secret-id',
                 code: '42501',
             },
         }))
-        const from = vi.fn(() => ({ insert }))
+        const from = vi.fn((table: string) => {
+            if (table === 'conversations' || table === 'messages') {
+                const q: any = {}
+                q.select = vi.fn(() => q)
+                q.eq = vi.fn(() => q)
+                q.single = vi.fn(async () => ({ data: { id: 'test' }, error: null }))
+                return q
+            }
+            if (table === 'ai_suggestions') {
+                return { insert }
+            }
+            throw new Error(`Unexpected table ${table}`)
+        })
         mocks.createClient.mockResolvedValue({ from })
 
         const { logSuggestion } = await import('./smart-replies')

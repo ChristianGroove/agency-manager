@@ -2,10 +2,10 @@
 
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { MetaGraphAPI } from "@/modules/infrastructure/meta/services/graph-api"
 import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
@@ -146,7 +146,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         assetName = input.assetName;
         wabaId = input.wabaId;
 
-        const { data: parentConnection, error: parentError } = await supabaseAdmin
+        const { data: parentConnection, error: parentError } = await (await createClient())
             .from('integration_connections')
             .select('credentials')
             .eq('id', input.parentConnectionId)
@@ -219,7 +219,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         }
 
         // Check if channel already exists (including deleted ones)
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await (await createClient())
             .from('integration_connections')
             .select('id, status')
             .eq('organization_id', orgId)
@@ -238,7 +238,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             }
 
             // Reactivate deleted/disconnected channel
-            const { error } = await supabaseAdmin
+            const { error } = await (await createClient())
                 .from('integration_connections')
                 .update({
                     status: 'active',
@@ -287,7 +287,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             is_primary: false
         };
 
-        const { data: channel, error } = await supabaseAdmin
+        const { data: channel, error } = await (await createClient())
             .from('integration_connections')
             .insert(channelData)
             .select()
@@ -326,7 +326,7 @@ export async function deactivateMetaChannel(channelId: string): Promise<{ succes
     await requireOrgRole("admin")
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('integration_connections')
             .update({ status: 'deleted' })
             .eq('id', channelId)

@@ -2,7 +2,6 @@
 
 import { createClient } from '@/modules/core/database/supabase-server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { revalidatePath } from 'next/cache'
 
 export interface Campaign {
@@ -61,7 +60,7 @@ export interface MarketingStep {
 
 // Helper to ensure Org exists (Self-healing for dev/seed issues)
 async function getOrInitializeOrg(userId: string) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
 
     // 1. Get ALL memberships
     const { data: members } = await adminClient
@@ -290,7 +289,7 @@ export async function deleteCampaign(id: string) {
 
 export async function getAudiences() {
     // Use Admin Client to bypass RLS/Cache issues temporarily
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
     const { data, error } = await adminClient
         .from('marketing_audiences')
         .select('*')
@@ -370,7 +369,7 @@ export async function deleteAudience(id: string) {
 }
 
 export async function updateAudience(id: string, data: { name?: string, description?: string, filter_config?: any }) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
 
     // If filter_config changed, recalculate count
     let updates: any = { ...data }
@@ -393,7 +392,7 @@ export async function updateAudience(id: string, data: { name?: string, descript
 }
 
 export async function getAudienceById(id: string) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
     const { data, error } = await adminClient
         .from('marketing_audiences')
         .select('*')
@@ -405,7 +404,7 @@ export async function getAudienceById(id: string) {
 }
 
 export async function linkAudienceToCampaign(campaignId: string, audienceId: string | null) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
     const { error } = await adminClient
         .from('marketing_campaigns')
         .update({ audience_id: audienceId })
@@ -417,7 +416,7 @@ export async function linkAudienceToCampaign(campaignId: string, audienceId: str
 }
 
 export async function enrollAudienceInCampaign(campaignId: string) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
 
     // 1. Get campaign with linked audience
     const { data: campaign, error: cErr } = await adminClient
@@ -531,7 +530,7 @@ export async function enrollAudienceInCampaign(campaignId: string) {
 }
 
 export async function optOutLead(leadId: string) {
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
     const { error } = await adminClient
         .from('leads')
         .update({
@@ -563,7 +562,7 @@ export async function previewAudienceCount(filters: any) {
     const member = { organization_id: orgResult.organization_id }
 
     // Use Admin Client to bypass RLS/Cache issues
-    const adminClient = supabaseAdmin
+    const adminClient = (await createClient())
     let query = adminClient
         .from('leads')
         .select('id', { count: 'exact', head: true })

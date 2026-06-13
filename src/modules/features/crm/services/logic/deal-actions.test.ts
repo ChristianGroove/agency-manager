@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
-    supabaseAdmin: { from: vi.fn() },
     getCurrentOrganizationId: vi.fn(),
     revalidatePath: vi.fn(),
     dealService: {
@@ -18,10 +17,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -45,7 +40,6 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.DealService.mockReset()
@@ -112,7 +106,7 @@ describe('CRM logic deal actions', () => {
         const result = await sendInteractiveQuote('cart-secret-id', 'conversation-secret-id')
 
         expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de deals CRM' })
-        expect(mocks.DealService).toHaveBeenCalledWith(mocks.supabaseAdmin)
+        expect(mocks.DealService).toHaveBeenCalledWith(expect.anything())
         expect(mocks.dealService.sendInteractiveQuote).toHaveBeenCalledWith('cart-secret-id', 'conversation-secret-id')
         expect(consoleError).toHaveBeenCalledWith('Send Quote Error', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')

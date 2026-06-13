@@ -4,7 +4,6 @@ import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { PERMISSIONS, PermissionString } from '../actions/permissions';
 import { cache } from 'react';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 
 export interface Role {
     id: string;
@@ -152,7 +151,7 @@ export async function upsertRole(role: Partial<Role>) {
     };
 
     if (role.id) {
-        const { data: existingRole, error: existingRoleError } = await supabaseAdmin
+        const { data: existingRole, error: existingRoleError } = await (await createClient())
             .from('organization_roles')
             .select('is_system_role')
             .eq('id', role.id)
@@ -165,7 +164,7 @@ export async function upsertRole(role: Partial<Role>) {
         // Update
         // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
         // Security is maintained because we explicitly checked hasPermission above.
-        const { data: updatedRole, error } = await supabaseAdmin
+        const { data: updatedRole, error } = await (await createClient())
             .from('organization_roles')
             .update(payload)
             .eq('id', role.id)
@@ -181,7 +180,7 @@ export async function upsertRole(role: Partial<Role>) {
     } else {
         // Create
         // Use supabaseAdmin to bypass RLS recursion limits.
-        const { data: newRole, error } = await supabaseAdmin
+        const { data: newRole, error } = await (await createClient())
             .from('organization_roles')
             .insert(payload)
             .select()
@@ -208,7 +207,7 @@ export async function deleteRole(roleId: string) {
 
     // Delete
     // Use supabaseAdmin to bypass RLS recursion limits.
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('organization_roles')
         .delete()
         .eq('id', roleId)

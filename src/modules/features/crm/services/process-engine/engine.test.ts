@@ -10,12 +10,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
-}))
-
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
@@ -104,7 +98,7 @@ afterEach(() => {
 
 describe('ProcessEngine', () => {
     it('starts processes without changing the success contract', async () => {
-        mocks.createClient.mockResolvedValue({})
+        mocks.createClient.mockResolvedValue({ from: mocks.supabaseFrom })
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         useAdminQueues({
             process_states: [
@@ -125,7 +119,7 @@ describe('ProcessEngine', () => {
     it('does not expose process start insert failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.createClient.mockResolvedValue({})
+        mocks.createClient.mockResolvedValue({ from: mocks.supabaseFrom })
         mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         useAdminQueues({
             process_states: [
@@ -158,7 +152,7 @@ describe('ProcessEngine', () => {
     it('does not expose process transition update failures in deployed runtimes', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.createClient.mockResolvedValue({})
+        mocks.createClient.mockResolvedValue({ from: mocks.supabaseFrom })
         useAdminQueues({
             process_instances: [
                 selectEqSingle({ data: processInstance, error: null }),

@@ -10,12 +10,6 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseFrom,
-    },
-}))
-
 vi.mock('next/cache', () => ({
     unstable_cache: (fn: any) => fn,
     revalidatePath: mocks.revalidatePath,
@@ -47,11 +41,13 @@ function mockAuthenticatedClient(memberships: any[], user: any = { id: 'user-1' 
             getUser: vi.fn(async () => ({ data: { user } })),
         },
         from: vi.fn((table: string) => {
-            if (table !== 'organization_members') {
-                throw new Error(`Unexpected table ${table}`)
+            if (table === 'organization_members') {
+                return membershipQuery
             }
-
-            return membershipQuery
+            if (table === 'organizations') {
+                return mocks.supabaseFrom()
+            }
+            throw new Error(`Unexpected table ${table}`)
         }),
     }
 

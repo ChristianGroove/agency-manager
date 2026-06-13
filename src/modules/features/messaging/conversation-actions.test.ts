@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     deleteConversationMedia: vi.fn(),
-    getCurrentOrganizationId: vi.fn(),
+    getCurrentOrganizationId: vi.fn(async () => 'mock-org-id'),
     revalidatePath: vi.fn(),
 }))
 

@@ -1,8 +1,7 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 const PUBLIC_CONNECTION_HEALTH_ERROR = 'Connection health check failed'
 
@@ -50,7 +49,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
     status: 'active' | 'disconnected' | 'error' | 'unknown'
     message?: string
 }> {
-    const { data: connection, error } = await supabaseAdmin
+    const { data: connection, error } = await (await createClient())
         .from('integration_connections')
         .select('id, provider_key, credentials, status')
         .eq('id', connectionId)
@@ -72,7 +71,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
         const newStatus = result.status === 'active' ? 'active' : 'disconnected'
 
         // Update status in DB
-        await supabaseAdmin
+        await (await createClient())
             .from('integration_connections')
             .update({
                 status: newStatus,
@@ -88,7 +87,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
         logConnectionHealthError(`[HealthCheck] Error checking connection ${connectionId}:`, error)
 
         // Mark as error
-        await supabaseAdmin
+        await (await createClient())
             .from('integration_connections')
             .update({ status: 'error' })
             .eq('id', connectionId)
@@ -106,7 +105,7 @@ export async function checkAllConnectionsHealth(organizationId: string): Promise
     issues: number
     results: { id: string; name: string; status: string; message?: string }[]
 }> {
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await (await createClient())
         .from('integration_connections')
         .select('id, connection_name, provider_key')
         .eq('organization_id', organizationId)
@@ -153,7 +152,7 @@ export async function getUnhealthyConnections(organizationId: string): Promise<{
     status: string
     provider_key: string
 }[]> {
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('integration_connections')
         .select('id, connection_name, status, provider_key')
         .eq('organization_id', organizationId)

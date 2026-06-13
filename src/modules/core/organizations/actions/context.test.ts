@@ -5,17 +5,10 @@ const mocks = vi.hoisted(() => ({
     isSuperAdmin: vi.fn(),
     revalidatePath: vi.fn(),
     cookieSet: vi.fn(),
-    supabaseAdmin: {
-        from: vi.fn(),
-    },
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({
@@ -65,14 +58,6 @@ function authClient(userId: string | null, queues: Record<string, any[]> = {}) {
     }
 }
 
-function createQueuedAdmin(queues: Record<string, any[]>) {
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
-        const queue = queues[table]
-        if (!queue?.length) throw new Error(`Unexpected admin table ${table}`)
-        return queue.shift()
-    })
-}
-
 afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
@@ -80,7 +65,6 @@ afterEach(() => {
     mocks.isSuperAdmin.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.cookieSet.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
 })
 
 describe('organization context actions', () => {
@@ -97,11 +81,9 @@ describe('organization context actions', () => {
     it('rejects root organization limit updates when the user is not owner, admin, or super admin', async () => {
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [singleQuery({ role: 'member' })],
+            organizations: [singleQuery({ parent_organization_id: null })],
         }))
         mocks.isSuperAdmin.mockResolvedValue(false)
-        createQueuedAdmin({
-            organizations: [singleQuery({ parent_organization_id: null })],
-        })
 
         const { updateOrganizationLimits } = await import('./context')
         const result = await updateOrganizationLimits('org-root', [
@@ -112,21 +94,17 @@ describe('organization context actions', () => {
             success: false,
             error: 'No tienes permiso para gestionar limites de esta organizacion.',
         })
-        expect(mocks.supabaseAdmin.from).toHaveBeenCalledWith('organizations')
-        expect(mocks.supabaseAdmin.from).not.toHaveBeenCalledWith('usage_limits')
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 
     it('allows root organization owners to update limits', async () => {
+        const upsert = upsertQuery(null)
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [singleQuery({ role: 'owner' })],
-        }))
-        mocks.isSuperAdmin.mockResolvedValue(false)
-        const upsert = upsertQuery(null)
-        createQueuedAdmin({
             organizations: [singleQuery({ parent_organization_id: null })],
             usage_limits: [upsert],
-        })
+        }))
+        mocks.isSuperAdmin.mockResolvedValue(false)
 
         const { updateOrganizationLimits } = await import('./context')
         const result = await updateOrganizationLimits('org-root', [
@@ -146,15 +124,13 @@ describe('organization context actions', () => {
     })
 
     it('allows parent organization admins to update child organization limits', async () => {
+        const upsert = upsertQuery(null)
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [singleQuery({ role: 'admin' })],
-        }))
-        mocks.isSuperAdmin.mockResolvedValue(false)
-        const upsert = upsertQuery(null)
-        createQueuedAdmin({
             organizations: [singleQuery({ parent_organization_id: 'parent-org' })],
             usage_limits: [upsert],
-        })
+        }))
+        mocks.isSuperAdmin.mockResolvedValue(false)
 
         const { updateOrganizationLimits } = await import('./context')
         const result = await updateOrganizationLimits('child-org', [
@@ -176,15 +152,13 @@ describe('organization context actions', () => {
         const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mocks.createClient.mockResolvedValue(authClient('user-1', {
             organization_members: [singleQuery({ role: 'owner' })],
-        }))
-        mocks.isSuperAdmin.mockResolvedValue(false)
-        createQueuedAdmin({
             organizations: [singleQuery({ parent_organization_id: null })],
             usage_limits: [upsertQuery({
                 message: 'usage limit secret-value failed',
                 code: '42501',
             })],
-        })
+        }))
+        mocks.isSuperAdmin.mockResolvedValue(false)
 
         const { updateOrganizationLimits } = await import('./context')
         const result = await updateOrganizationLimits('org-root', [

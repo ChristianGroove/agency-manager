@@ -2,16 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
-    supabaseAdmin: { from: vi.fn() },
     revalidatePath: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('next/cache', () => ({
@@ -29,14 +24,6 @@ function sessionClient(queues: Record<string, any[]>, user: { id: string } | nul
             return queue.shift()
         }),
     }
-}
-
-function createAdminClient(queues: Record<string, any[]>) {
-    mocks.supabaseAdmin.from.mockImplementation((table: string) => {
-        const queue = queues[table]
-        if (!queue?.length) throw new Error(`Unexpected admin table ${table}`)
-        return queue.shift()
-    })
 }
 
 function selectEqLimit(result: { data?: unknown; error?: unknown }) {
@@ -106,7 +93,6 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
     mocks.revalidatePath.mockReset()
 })
 
@@ -139,11 +125,8 @@ describe('quote settings actions', () => {
         })
         mocks.createClient.mockResolvedValue(sessionClient({
             organization_members: [members],
-            quote_settings: [missingSettings],
+            quote_settings: [missingSettings, insert],
         }))
-        createAdminClient({
-            quote_settings: [insert],
-        })
 
         const { getQuoteSettings } = await import('./quote-settings')
         const result = await getQuoteSettings()
@@ -163,10 +146,8 @@ describe('quote settings actions', () => {
         const update = updateEq({ error: secretError('quote settings secret-value update failed') })
         mocks.createClient.mockResolvedValue(sessionClient({
             organization_members: [member],
-        }))
-        createAdminClient({
             quote_settings: [update],
-        })
+        }))
 
         const { updateQuoteSettings } = await import('./quote-settings')
         const result = await updateQuoteSettings({ approve_label: 'Approve now' })
@@ -187,10 +168,8 @@ describe('quote settings actions', () => {
         const update = updateEq({ error: null })
         mocks.createClient.mockResolvedValue(sessionClient({
             organization_members: [member],
-        }))
-        createAdminClient({
             quote_settings: [update],
-        })
+        }))
 
         const { updateQuoteSettings } = await import('./quote-settings')
         const result = await updateQuoteSettings({ reject_label: 'Not now' })

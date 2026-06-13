@@ -36,42 +36,36 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 }
 
 function selectEqEqSingleQuery(result: unknown) {
-  const query: any = {
-    select: vi.fn(() => query),
-    eq: vi.fn(() => query),
-    single: vi.fn(async () => result),
-  }
-
+  const query: any = {}
+  query.select = vi.fn(() => query)
+  query.eq = vi.fn(() => query)
+  query.single = vi.fn(async () => result)
   return query
 }
 
 function selectEqIsSingleQuery(result: unknown) {
-  const query: any = {
-    select: vi.fn(() => query),
-    eq: vi.fn(() => query),
-    is: vi.fn(() => query),
-    single: vi.fn(async () => result),
-  }
-
+  const query: any = {}
+  query.select = vi.fn(() => query)
+  query.eq = vi.fn(() => query)
+  query.is = vi.fn(() => query)
+  query.single = vi.fn(async () => result)
   return query
 }
 
 function insertSelectSingleQuery(result: unknown) {
-  const query: any = {
-    insert: vi.fn(() => query),
-    select: vi.fn(() => query),
-    single: vi.fn(async () => result),
-  }
-
+  const query: any = {}
+  query.insert = vi.fn(() => query)
+  query.select = vi.fn(() => query)
+  query.single = vi.fn(async () => result)
   return query
 }
 
 function updateEqQuery(result: unknown) {
-  const query: any = {
-    update: vi.fn(() => query),
-    eq: vi.fn(async () => result),
-  }
-
+  const query: any = {}
+  query.update = vi.fn(() => query)
+  query.eq = vi.fn(() => query)
+  query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+    Promise.resolve(result).then(resolve, reject)
   return query
 }
 

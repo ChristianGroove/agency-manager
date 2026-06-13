@@ -1,5 +1,5 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Global Trash Purge Engine (Phase 2.2)
@@ -19,7 +19,7 @@ export const trashCleanup = inngest.createFunction(
 
         for (const table of TABLES_TO_PURGE) {
             const result = await step.run(`purge-${table}`, async () => {
-                const { count, error } = await supabaseAdmin
+                const { count, error } = await (await createClient())
                     .from(table)
                     .delete({ count: 'exact' })
                     .lt('deleted_at', purgeDateIso)

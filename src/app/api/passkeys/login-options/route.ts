@@ -2,9 +2,9 @@
 // Generates WebAuthn authentication options
 
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { logPasskeyRouteError, normalizePasskeyEmail, passkeyLoginUnavailableResponse, requirePasskeyPublicRateLimit } from '../_utils'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export async function POST(request: NextRequest) {
     const rateLimited = requirePasskeyPublicRateLimit(request)
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Find user by email
-        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers()
+        const { data: userData, error: userError } = await (await createClient()).auth.admin.listUsers()
 
         if (userError) {
             logPasskeyRouteError('Failed to list users for passkey login:', userError)
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get user's passkeys
-        const { data: passkeys, error: passkeysError } = await supabaseAdmin
+        const { data: passkeys, error: passkeysError } = await (await createClient())
             .from('user_passkeys')
             .select('credential_id, transports')
             .eq('user_id', user.id)
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Store challenge
-        const { error: challengeError } = await supabaseAdmin
+        const { error: challengeError } = await (await createClient())
             .from('passkey_challenges')
             .insert({
                 challenge: options.challenge,

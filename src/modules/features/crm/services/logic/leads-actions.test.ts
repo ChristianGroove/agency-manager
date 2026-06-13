@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
-    supabaseAdmin: { from: vi.fn() },
     getCurrentOrganizationId: vi.fn(),
     revalidatePath: vi.fn(),
     leadsService: {
@@ -25,10 +24,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
-}))
-
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -60,7 +55,6 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.createClient.mockReset()
-    mocks.supabaseAdmin.from.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.LeadsService.mockReset()
@@ -120,7 +114,7 @@ describe('CRM leads actions', () => {
         const result = await updateLeadStatus('lead-1', 'won')
 
         expect(result).toEqual({ success: false, error: businessRule })
-        expect(mocks.LeadsService).toHaveBeenCalledWith(mocks.supabaseAdmin, 'org-current', 'user-1')
+        expect(mocks.LeadsService).toHaveBeenCalledWith(expect.anything(), 'org-current', 'user-1')
         expect(consoleError).toHaveBeenCalledWith('Error updating lead status:', { name: 'Error' })
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
@@ -134,7 +128,7 @@ describe('CRM leads actions', () => {
         const result = await updateLeadStatusSystem('lead-secret-id', 'qualified', 'org-current')
 
         expect(result).toEqual({ success: false, error: 'No se pudo completar la accion de leads' })
-        expect(mocks.LeadsRepository).toHaveBeenCalledWith(mocks.supabaseAdmin)
+        expect(mocks.LeadsRepository).toHaveBeenCalledWith(expect.anything())
         expect(mocks.leadsRepository.update).toHaveBeenCalledWith('lead-secret-id', { status: 'qualified' }, 'org-current')
         expect(consoleError).toHaveBeenCalledWith('Error updating lead status (system):', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')
@@ -149,7 +143,7 @@ describe('CRM leads actions', () => {
         const result = await getPaginatedLeads({ page: 2, pageSize: 10, search: 'ada' })
 
         expect(result).toEqual({ leads: [], totalCount: 0, stageCounts: {} })
-        expect(mocks.LeadsService).toHaveBeenCalledWith(mocks.supabaseAdmin, 'org-current')
+        expect(mocks.LeadsService).toHaveBeenCalledWith(expect.anything(), 'org-current')
         expect(mocks.leadsService.getPaginated).toHaveBeenCalledWith({ page: 2, pageSize: 10, search: 'ada' })
         expect(consoleError).toHaveBeenCalledWith('Error in getPaginatedLeads:', { name: 'Error' })
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain('secret-value')

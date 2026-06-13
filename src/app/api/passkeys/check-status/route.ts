@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { logPasskeyRouteError, normalizePasskeyEmail, requirePasskeyPublicRateLimit } from '../_utils'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export async function POST(request: NextRequest) {
     const rateLimited = requirePasskeyPublicRateLimit(request)
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Find user by email using Admin Client (auth.users is protected)
-        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers()
+        const { data: userData, error: userError } = await (await createClient()).auth.admin.listUsers()
 
         // Note: listUsers isn't efficient for high scale but works for specific lookups if we filter poorly.
         // Better approach for scale: supabaseAdmin.rpc('get_user_id_by_email', { email }) if available.
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Check if user has passkeys
-        const { count, error: countError } = await supabaseAdmin
+        const { count, error: countError } = await (await createClient())
             .from('user_passkeys')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)

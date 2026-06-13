@@ -4,10 +4,10 @@ const mocks = vi.hoisted(() => ({
     supabaseFrom: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.supabaseFrom,
-    },
+    }))
 }))
 
 function updateQuery(result: unknown = { data: null, error: null }) {

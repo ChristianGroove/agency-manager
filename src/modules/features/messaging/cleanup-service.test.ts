@@ -6,13 +6,13 @@ const mocks = vi.hoisted(() => ({
     storageFrom: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.from,
         storage: {
             from: mocks.storageFrom,
         },
-    },
+    }))
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {

@@ -13,11 +13,7 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
-        from: mocks.supabaseAdminFrom,
-    },
-}))
+
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
@@ -60,7 +56,7 @@ function authClient(userId = 'user-secret-id') {
                 })
             }
 
-            throw new Error(`Unexpected table ${table}`)
+            return mocks.supabaseAdminFrom(table)
         }),
     }
 }

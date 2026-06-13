@@ -1,6 +1,4 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { SaasSubscription, SubscriptionStatus } from "./types"
@@ -69,7 +67,7 @@ export async function getSaasSubscription(organizationId: string): Promise<SaasS
  */
 export async function initializeManualSubscription(organizationId: string, planId: string) {
     // Only SuperAdmin or System can do this
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('saas_subscriptions')
         .upsert({
             organization_id: organizationId,
@@ -99,7 +97,7 @@ export async function updateSubscriptionPaymentMethod(
     paymentMethodId: string,
     gateway: 'wompi' | 'stripe' = 'wompi'
 ) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_subscriptions')
         .update({
             payment_method_id: paymentMethodId,

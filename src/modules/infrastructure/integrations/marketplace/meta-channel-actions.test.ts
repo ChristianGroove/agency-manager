@@ -10,10 +10,10 @@ const mocks = vi.hoisted(() => ({
     subscribeWABA: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.supabaseFrom,
-    },
+    }))
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({

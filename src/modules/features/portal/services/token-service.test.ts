@@ -6,11 +6,11 @@ const mocks = vi.hoisted(() => ({
     getCurrentOrganizationId: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: {
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
         from: mocks.from,
         rpc: mocks.rpc,
-    },
+    }))
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({

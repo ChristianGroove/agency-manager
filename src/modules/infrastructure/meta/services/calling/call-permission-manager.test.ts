@@ -19,14 +19,14 @@ describe('CallPermissionManager', () => {
         vi.unstubAllEnvs()
         vi.restoreAllMocks()
         vi.resetModules()
-        vi.doUnmock('@/modules/core/database/supabase-admin')
+        vi.doUnmock('@/modules/core/database/supabase-server')
     })
 
     it('does not expose conversation IDs derived from phone numbers in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        vi.doMock('@/modules/core/database/supabase-admin', () => ({
-            supabaseAdmin: {
+        vi.doMock('@/modules/core/database/supabase-server', () => ({
+            createClient: vi.fn(async () => ({
                 from: vi.fn(() => ({
                     select: vi.fn(() => ({
                         eq: vi.fn(() => ({
@@ -37,7 +37,7 @@ describe('CallPermissionManager', () => {
                         eq: vi.fn(async () => ({ error: null })),
                     })),
                 })),
-            },
+            })),
         }))
 
         const { CallPermissionManager } = await import('./call-permission-manager')
@@ -52,8 +52,8 @@ describe('CallPermissionManager', () => {
     it('does not expose Supabase failure details in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        vi.doMock('@/modules/core/database/supabase-admin', () => ({
-            supabaseAdmin: {
+        vi.doMock('@/modules/core/database/supabase-server', () => ({
+            createClient: vi.fn(async () => ({
                 from: vi.fn(() => ({
                     select: vi.fn(() => ({
                         eq: vi.fn(() => ({
@@ -63,7 +63,7 @@ describe('CallPermissionManager', () => {
                         })),
                     })),
                 })),
-            },
+            })),
         }))
 
         const { CallPermissionManager } = await import('./call-permission-manager')
