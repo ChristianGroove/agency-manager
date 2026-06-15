@@ -36,6 +36,10 @@ interface InboxContextType {
     refreshAgents: () => Promise<void>;
     pipelineStages: any[];
     refreshStages: () => Promise<void>;
+    isAgentMonitorVisible: boolean;
+    setIsAgentMonitorVisible: (v: boolean | ((prev: boolean) => boolean)) => void;
+    currentUserRole: string | null;
+    setCurrentUserRole: (role: string | null) => void;
 }
 
 const InboxContext = createContext<InboxContextType | undefined>(undefined)
@@ -55,6 +59,8 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     const [isTagsLoading, setIsTagsLoading] = useState(false)
     const [pipelineStages, setPipelineStages] = useState<any[]>([])
     const [tick, setTick] = React.useState(0)
+    const [isAgentMonitorVisible, setIsAgentMonitorVisible] = useState(false)
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
 
     // Master Ticker: Pulse every 60s to force re-calculation of relative times (like online status)
     React.useEffect(() => {
@@ -181,6 +187,10 @@ export function InboxProvider({ children }: { children: ReactNode }) {
             refreshAgents,
             pipelineStages,
             refreshStages,
+            isAgentMonitorVisible,
+            setIsAgentMonitorVisible,
+            currentUserRole,
+            setCurrentUserRole,
             tick
         }}>
             {children}

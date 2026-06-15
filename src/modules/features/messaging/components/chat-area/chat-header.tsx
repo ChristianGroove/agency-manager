@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { CheckCircle2, Clock, Archive, Trash2, Phone, Sidebar, X, Check } from "lucide-react"
+import { CheckCircle2, Clock, Archive, Trash2, Phone, Sidebar, X, Check, Activity } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { Conversation } from "@/modules/features/messaging/hooks/use-chat-logic"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { completeConversation, snoozeConversation, archiveConversation, deleteConversation } from "@/modules/features/messaging/conversation-actions"
 import { LeadStageStepper } from "./lead-stage-stepper"
+import { useInboxContext } from "../../context/inbox-context"
 
 
 interface ChatHeaderProps {
@@ -36,6 +37,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
     const { t } = useTranslation()
     const router = useRouter()
+    const { currentUserRole, isAgentMonitorVisible, setIsAgentMonitorVisible } = useInboxContext()
 
     const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || t('crm.inbox.chat.unknown_user')
 
@@ -177,9 +179,25 @@ export function ChatHeader({
                             </TooltipContent>
                         </Tooltip>
 
+                        {['admin', 'owner', 'administrador'].includes(currentUserRole?.toLowerCase() || '') && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn("h-8 w-8 transition-colors", isAgentMonitorVisible ? "text-brand-cyan bg-brand-cyan/10" : "text-muted-foreground")}
+                                        onClick={() => setIsAgentMonitorVisible((v: boolean) => !v)}
+                                    >
+                                        <Activity className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Monitor de Agentes</TooltipContent>
+                            </Tooltip>
+                        )}
+
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground h-8 w-8", isContextOpen && "bg-muted")}>
+                                <Button variant="ghost" size="icon" className={cn("h-8 w-8", isContextOpen ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={onToggleContext}>
                                     <Sidebar className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>

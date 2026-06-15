@@ -6,6 +6,7 @@ import { assignConversation as autoAssignConversation, logAssignment } from "./a
 import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "./assignment-constants"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 
 const PUBLIC_ASSIGNMENT_ACTION_ERROR = 'Assignment action failed'
 
@@ -888,5 +889,33 @@ export async function getUnassignedDistributionStats() {
 
     const data = Object.values(statsMap).sort((a, b) => b.count - a.count)
     return { success: true, data }
+}
+
+export async function getInboxAgentMonitorStats() {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) return { success: false, error: 'No org found' }
+
+        const perms = await getCurrentUserPermissions()
+        const normalizedRole = perms?.role?.toLowerCase() || ''
+        const canMonitor = ['admin', 'owner', 'administrador'].includes(normalizedRole)
+
+        if (!canMonitor) return { success: false, error: 'Unauthorized', data: [] }
+
+        let query = supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
+
+        if (normalizedRole !== 'owner' && normalizedRole !== 'dueño' && perms?.permissions?.inbox_access) {
+            query = query.overlaps('channels', perms.permissions.inbox_access)
+        }
+
+        const { data, error } = await query
+        if (error) throw error
+
+        return { success: true, data: data || [] }
+    } catch (e: any) {
+        console.error("Error in getInboxAgentMonitorStats:", e)
+        return { success: false, error: e.message }
+    }
 }
 
