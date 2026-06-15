@@ -116,8 +116,8 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
     if (!activeAgents || activeAgents.length === 0) return <div className="p-4 bg-muted/50 text-muted-foreground rounded-lg text-sm mb-4">No agents found or offline.</div>
 
     const handleAgentClick = (agentId: string) => {
-        if (agentId === UNASSIGNED_ID) return
-        window.dispatchEvent(new CustomEvent('pixy:inbox:select-agent', { detail: { agentId } }))
+        const idToDispatch = agentId === UNASSIGNED_ID ? 'unassigned' : agentId
+        window.dispatchEvent(new CustomEvent('pixy:inbox:select-agent', { detail: { agentId: idToDispatch } }))
     }
 
     return (
@@ -138,10 +138,7 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
                                 <motion.div 
                                     key={agent.user_id} 
                                     layout 
-                                    className={cn(
-                                        "relative group flex-shrink-0 snap-start",
-                                        agent.user_id !== UNASSIGNED_ID ? "cursor-pointer" : "cursor-default"
-                                    )}
+                                    className="relative group flex-shrink-0 snap-start cursor-pointer"
                                     onClick={() => handleAgentClick(agent.user_id)}
                                 >
                                     <Tooltip>

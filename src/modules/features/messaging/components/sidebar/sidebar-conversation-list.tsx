@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useDebouncedCallback } from "use-debounce"
 import { supabase } from "@/modules/core/database/supabase"
-import { Search, MessageSquare, Clock, Filter, Archive, Users, Settings as SettingsIcon, MessageCircle, User } from "lucide-react"
+import { Search, MessageSquare, Clock, Filter, Archive, Users, Settings as SettingsIcon, MessageCircle, User, Activity } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -33,6 +33,7 @@ import { Check as CheckIcon } from "lucide-react"
 import { getSidebarAgents } from "@/modules/features/messaging/assignment-actions"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { evaluateInboxPermissions } from "@/modules/core/iam/utils/inbox-permissions"
+import { useInboxContext } from "../../context/inbox-context"
 import { useConversations } from "@/hooks/queries/useConversations"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -78,6 +79,7 @@ export function SidebarConversationList({
     userPermissions: propPermissions 
 }: SidebarConversationListProps) {
     const { t } = useTranslation()
+    const { currentUserRole, isAgentMonitorVisible, setIsAgentMonitorVisible } = useInboxContext()
     const { updateLeadCache } = useSafeInboxContext() as any
     const queryClient = useQueryClient()
     const [channels, setChannels] = useState<ChannelType[]>([])
@@ -363,8 +365,8 @@ export function SidebarConversationList({
         const handleAgentSelect = (e: Event) => {
             const { agentId } = (e as CustomEvent).detail;
             if (agentId) {
-                setSelectedAgentId(agentId);
-                setActiveFilter('assigned');
+                setSelectedAgentId(prev => prev === agentId ? null : agentId);
+                setActiveFilter('all');
             }
         };
 
@@ -464,55 +466,24 @@ export function SidebarConversationList({
                             </PopoverContent>
                         </Popover>
 
-                        {hasTeamView && (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none",
-                                        selectedAgentId && "text-brand-pink"
-                                    )}
-                                >
-                                    <Users className="h-4 w-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0" align="end">
-                                <Command>
-                                    <CommandInput placeholder={t('crm.inbox.sidebar.filters.agent_filter_placeholder')} />
-                                    <CommandList>
-                                        <CommandEmpty>{t('crm.inbox.sidebar.no_contacts')}</CommandEmpty>
-                                        <CommandGroup>
-                                            <CommandItem
-                                                onSelect={() => setSelectedAgentId(null)}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <span>{t('crm.inbox.sidebar.filters.all_agents')}</span>
-                                                {!selectedAgentId && <CheckIcon className="h-4 w-4" />}
-                                            </CommandItem>
-                                            <CommandItem
-                                                onSelect={() => setSelectedAgentId('unassigned')}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <span>{t('crm.inbox.sidebar.filters.unassigned')}</span>
-                                                {selectedAgentId === 'unassigned' && <CheckIcon className="h-4 w-4" />}
-                                            </CommandItem>
-                                            {filteredAgents.map((agent) => (
-                                                <CommandItem
-                                                    key={agent.id}
-                                                    onSelect={() => setSelectedAgentId(agent.id)}
-                                                    className="flex items-center justify-between"
-                                                >
-                                                    <span className="truncate">{agent.name}</span>
-                                                    {selectedAgentId === agent.id && <CheckIcon className="h-4 w-4" />}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                        {['admin', 'owner', 'administrador'].includes(currentUserRole?.toLowerCase() || '') && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={cn(
+                                            "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none transition-colors",
+                                            isAgentMonitorVisible ? "text-brand-cyan bg-brand-cyan/10" : "text-muted-foreground",
+                                            selectedAgentId && "text-brand-pink"
+                                        )}
+                                        onClick={() => setIsAgentMonitorVisible((v: boolean) => !v)}
+                                    >
+                                        <Activity className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Monitor de Agentes</TooltipContent>
+                            </Tooltip>
                         )}
 
                         <Tooltip>
