@@ -1,5 +1,6 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import crypto from "crypto"
 
 const PUBLIC_REGISTER_PAYMENT_ERROR = "No se pudo registrar el pago"
@@ -115,7 +116,7 @@ export async function registerPayment(invoiceId: string, amount: number, notes?:
             created_at: new Date().toISOString()
         }
 
-        const { error: txError } = await (await createClient()).from('payment_transactions').insert(payload)
+        const { error: txError } = await supabaseAdmin.from('payment_transactions').insert(payload)
         if (txError) throw txError
 
         // 4. Update Invoice
@@ -189,11 +190,11 @@ async function handleProcessEngineTransition(invoiceId: string, orgId: string) {
             if (instance) {
                 const result = await ProcessEngine.transition(instance.id, 'won', 'system', 'Invoice Paid')
                 if (result.success) {
-                    const { data: mapping } = await (await createClient()).from('pipeline_process_map').select('pipeline_stage_id').eq('process_type', 'sale').eq('process_state_key', 'won').eq('organization_id', orgId).maybeSingle()
+                    const { data: mapping } = await supabaseAdmin.from('pipeline_process_map').select('pipeline_stage_id').eq('process_type', 'sale').eq('process_state_key', 'won').eq('organization_id', orgId).maybeSingle()
                     if (mapping) {
-                        const { data: stage } = await (await createClient()).from('pipeline_stages').select('status_key').eq('id', mapping.pipeline_stage_id).single()
+                        const { data: stage } = await supabaseAdmin.from('pipeline_stages').select('status_key').eq('id', mapping.pipeline_stage_id).single()
                         if (stage) {
-                            await (await createClient()).from('leads').update({ status: stage.status_key }).eq('id', leadId).eq('organization_id', orgId)
+                            await supabaseAdmin.from('leads').update({ status: stage.status_key }).eq('id', leadId).eq('organization_id', orgId)
                         }
                     }
                 }
@@ -213,7 +214,7 @@ export async function getPaymentGateways(): Promise<PaymentGatewayConfig[]> {
 }
 
 export async function updatePaymentGateway(gatewayName: string, updates: Partial<PaymentGatewayConfig>) {
-    const { error } = await (await createClient()).from('payment_gateway_config').update({ ...updates, updated_at: new Date().toISOString() }).eq('gateway_name', gatewayName)
+    const { error } = await supabaseAdmin.from('payment_gateway_config').update({ ...updates, updated_at: new Date().toISOString() }).eq('gateway_name', gatewayName)
     if (error) {
         logPaymentServiceError("[PaymentService.updatePaymentGateway] Error:", error)
         return { success: false, error: paymentServiceErrorMessage(error, PUBLIC_GATEWAY_UPDATE_ERROR) }
@@ -263,7 +264,7 @@ export async function createSubscriptionPaymentTransaction() {
     const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || ''
 
     // 3. Create Transaction in DB
-    const { data: tx, error } = await (await createClient())
+    const { data: tx, error } = await supabaseAdmin
         .from('payment_transactions')
         .insert({
             organization_id: orgId,
@@ -323,7 +324,7 @@ export async function getOrganizationSubscription() {
 
     if (!orgId) return null
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('saas_subscriptions')
         .select(`
             *,
