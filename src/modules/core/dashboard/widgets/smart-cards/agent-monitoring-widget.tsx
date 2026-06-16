@@ -42,8 +42,20 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
     const [isLoading, setIsLoading] = useState(!initialAgents)
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
     const [agentChannels, setAgentChannels] = useState<Record<string, string[]>>({})
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
     const UNASSIGNED_ID = '00000000-0000-0000-0000-000000000000'
+
+    useEffect(() => {
+        const handleAgentSelect = (e: Event) => {
+            const { agentId } = (e as CustomEvent).detail;
+            if (agentId) {
+                setSelectedAgentId(prev => prev === agentId ? null : agentId);
+            }
+        };
+        window.addEventListener('pixy:inbox:select-agent', handleAgentSelect)
+        return () => window.removeEventListener('pixy:inbox:select-agent', handleAgentSelect)
+    }, [])
 
     // Fetch stats if not provided (e.g., when used in Inbox)
     useEffect(() => {
@@ -172,22 +184,23 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
     return (
         <div className={cn("w-full mb-4 px-2", className)}>
             <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-brand-cyan animate-pulse" />
-                        Monitoreo en tiempo real
-                    </div>
-                </div>
-
                 {/* HORIZONTAL SCROLL LAYOUT */}
                 <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[20px] p-4 shadow-xl relative flex flex-nowrap overflow-x-auto snap-x scrollbar-hide items-center gap-4">
                     <TooltipProvider delayDuration={0}>
                         <AnimatePresence mode="popLayout">
-                            {sortedAgents.map((agent) => (
+                            {sortedAgents.map((agent) => {
+                                const agentCompareId = agent.user_id === UNASSIGNED_ID ? 'unassigned' : agent.user_id;
+                                const isSelected = selectedAgentId === agentCompareId;
+                                const isOtherSelected = selectedAgentId !== null && !isSelected;
+
+                                return (
                                 <motion.div 
                                     key={agent.user_id} 
                                     layout 
-                                    className="relative group flex-shrink-0 snap-start cursor-pointer"
+                                    className={cn(
+                                        "relative group flex-shrink-0 snap-start cursor-pointer transition-all duration-300",
+                                        isOtherSelected && "opacity-40 grayscale"
+                                    )}
                                     onClick={() => handleAgentClick(agent.user_id)}
                                 >
                                     <Tooltip>
@@ -195,6 +208,7 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
                                             <div className="relative">
                                                 <Avatar className={cn(
                                                     "h-12 w-12 border-2 transition-all duration-300 group-hover:scale-110",
+                                                    isSelected && "ring-4 ring-brand-cyan/50 ring-offset-2 dark:ring-offset-[#1a1b1e] scale-110",
                                                     agent.user_id === UNASSIGNED_ID ? "border-brand-pink border-dashed" :
                                                     agent.online ? "border-brand-cyan shadow-[0_0_15px_rgba(34,211,238,0.3)]" : "border-gray-200 dark:border-white/10 grayscale"
                                                 )}>
@@ -215,21 +229,25 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
                                                 {agent.unread_count > 0 && (
                                                     <div className={cn(
                                                         "absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-lg",
-                                                        agent.unread_count > 5 ? "bg-red-500 animate-bounce" : "bg-brand-pink"
+                                                        agent.user_id === UNASSIGNED_ID ? "bg-brand-pink" : "bg-red-500",
+                                                        isSelected && "scale-110"
                                                     )}>
-                                                        {agent.unread_count}
+                                                        {agent.unread_count > 99 ? '99+' : agent.unread_count}
                                                     </div>
                                                 )}
                                             </div>
                                         </TooltipTrigger>
-                                        <TooltipContent side="bottom" className="bg-zinc-900/90 text-white p-3 rounded-2xl border-white/10">
+                                        <TooltipContent side="bottom" className="bg-zinc-900/90 text-white p-3 rounded-2xl border-white/10 z-50">
                                             <p className="font-bold text-sm">{agent.name}</p>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase">{agent.online ? 'Conectado' : 'Fuera de lnea'}</p>
-                                            <p className="text-[9px] text-gray-500">Carga: {agent.current_load}/{agent.max_capacity} chats</p>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase">{agent.online ? 'Conectado' : 'Fuera de línea'}</p>
+                                            {agent.user_id !== UNASSIGNED_ID && (
+                                                <p className="text-[9px] text-gray-500">Carga: {agent.current_load}/{agent.max_capacity} chats</p>
+                                            )}
+                                            {isSelected && <p className="text-[10px] text-brand-cyan mt-1 font-bold">Filtro activo (click para quitar)</p>}
                                         </TooltipContent>
                                     </Tooltip>
                                 </motion.div>
-                            ))}
+                            )})}
                         </AnimatePresence>
                     </TooltipProvider>
                 </div>
