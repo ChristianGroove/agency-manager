@@ -17,9 +17,8 @@ import { InboxProvider, useInboxContext } from "../context/inbox-context"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getAgentsWorkload } from "../assignment-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { supabase } from "@/modules/core/database/supabase"
-import { GlobalMessageListener } from "./floating-inbox/global-message-listener"
-import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { AgentMonitoringWidget } from "@/modules/core/dashboard/widgets/smart-cards/agent-monitoring-widget"
 
 interface InboxLayoutProps {
@@ -128,7 +127,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         getActiveModules(orgId),
                         supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
                         getAgentsWorkload(),
-                        import('@/modules/core/settings/actions/team').then(m => m.getCurrentUserPermissions())
+                        getCurrentUserPermissions()
                     ])
                     
                     setActiveModules(modules)
@@ -218,7 +217,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <GlobalMessageListener />
+            {/* GlobalMessageListener is mounted globally in b2b-agency-layout — no duplicate needed here */}
             <div className="flex flex-col h-full w-full">
                 {isAgentMonitorVisible && (
                     <div className="flex-none animate-in slide-in-from-top-4 duration-300">

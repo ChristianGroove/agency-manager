@@ -3,6 +3,7 @@ import { supabase } from "@/modules/core/database/supabase"
 import { Database } from "@/types/supabase"
 import { Message as MessagingMessage } from "@/types/messaging"
 import { markConversationAsRead } from "../actions/messages"
+import { getCallStatus } from "../actions/calls"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
@@ -94,13 +95,13 @@ export function useChatLogic(conversationId: string) {
             
             // Fetch Call Status
             try {
-                import('../actions').then(m => m.getCallStatus(conversationId)).then(res => {
+                getCallStatus(conversationId).then(res => {
                     if (res && res.success) setCallStatus(res as any)
                 }).catch(e => {
                     console.warn('[useChatLogic] Call status fetch failed:', e);
                 })
             } catch (e) {
-                 console.error('[useChatLogic] Dynamic import failed:', e);
+                 console.error('[useChatLogic] fetch failed:', e);
             }
         }
     }

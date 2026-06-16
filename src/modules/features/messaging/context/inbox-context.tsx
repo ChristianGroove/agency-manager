@@ -3,6 +3,10 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react"
 import { getCategories } from "@/modules/features/catalog/categories-actions"
 import { searchCatalog } from "@/modules/features/crm/services/logic/deal-actions"
+import { getAgentsWorkload } from "../assignment-actions"
+import { getTags } from "@/modules/features/crm/services/logic/tags-actions"
+import { getTemplates } from "../actions/templates"
+import { getPipelineStagesAction } from "@/modules/features/crm/crm-actions"
 
 interface InboxContextType {
     leadsCache: Record<string, any>;
@@ -101,7 +105,6 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const refreshAgents = useCallback(async () => {
-        const { getAgentsWorkload } = await import("../assignment-actions")
         const result = await getAgentsWorkload()
         if (result.success) {
             setAgents(result.data)
@@ -112,7 +115,6 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         if (isTagsLoading) return;
         setIsTagsLoading(true)
         try {
-            const { getTags } = await import("@/modules/features/crm/services/logic/tags-actions")
             const tags = await getTags()
             setAllTags(tags)
         } finally {
@@ -124,7 +126,6 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         if (isTemplatesLoading) return;
         setIsTemplatesLoading(true)
         try {
-            const { getTemplates } = await import("../actions/templates")
             const all = await getTemplates()
             setTemplates(all)
         } finally {
@@ -148,7 +149,6 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     }, [isCatalogLoading])
     
     const refreshStages = useCallback(async () => {
-        const { getPipelineStagesAction } = await import("@/modules/features/crm/crm-actions")
         const stages = await getPipelineStagesAction()
         setPipelineStages(stages || [])
     }, [])
