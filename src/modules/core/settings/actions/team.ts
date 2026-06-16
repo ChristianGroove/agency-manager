@@ -129,7 +129,7 @@ export async function getOrganizationMembers() {
 
     // Combine data and filter out platform admins
     return members
-        .filter(member => !platformAdminIds.has(member.user_id))
+        .filter(member => { const perms = member.permissions as any; if (perms && typeof perms === 'object' && perms.is_support_proxy === true) return false; return !platformAdminIds.has(member.user_id); })
         .map(member => {
             const profile = profileMap.get(member.user_id)
             return {

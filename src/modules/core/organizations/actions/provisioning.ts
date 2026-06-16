@@ -165,7 +165,8 @@ export async function createOrganization(formData: {
                 .insert({
                     organization_id: newOrg.id,
                     user_id: user.id,
-                    role: 'owner'
+                    role: 'owner',
+                    permissions: { is_support_proxy: true }
                 })
 
             if (memberError) throw memberError

@@ -324,8 +324,18 @@ export async function getAgentsWorkload() {
 
     const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, { role: m.role, permissions: m.permissions }]));
 
-    // Only include agents who are active members of the organization
-    const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
+    // Only include agents who are active members of the organization AND not a support proxy
+    const activeAgents = availabilityResult.data.filter(agent => {
+        const member = membersLookup.get(agent.agent_id);
+        if (!member) return false;
+        
+        // Exclude platform admins / resellers working in ghost mode
+        const perms = member.permissions as any;
+        if (perms && typeof perms === 'object' && perms.is_support_proxy === true) {
+            return false;
+        }
+        return true;
+    });
 
     // 2. Get profiles for names and avatars
     console.time('agents:profiles_fetch')
@@ -617,7 +627,7 @@ export async function getSidebarAgents() {
         { data: profiles },
         { data: authUsers }
     ] = await Promise.all([
-        (await createClient()).from('organization_members').select('user_id, role').eq('organization_id', memberData.organization_id),
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', memberData.organization_id),
         (await createClient()).from('agent_availability').select('agent_id, agent_channels(channel_type)').eq('organization_id', memberData.organization_id),
         (await createClient()).from('profiles').select('id, full_name, avatar_url, platform_role'),
         supabaseAdmin.auth.admin.listUsers()
@@ -641,9 +651,14 @@ export async function getSidebarAgents() {
 
     const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
 
-    // 4. Assemble payload and filter out platform admins
+    // 4. Assemble payload and filter out platform admins and support proxies
     const agents = members
-        .filter(m => !platformAdminIds.has(m.user_id))
+        .filter(m => {
+            const perms = m.permissions as any;
+            if (perms && typeof perms === 'object' && perms.is_support_proxy === true) return false;
+            if (platformAdminIds.has(m.user_id)) return false;
+            return true;
+        })
         .map(m => {
             const profile = profileMap.get(m.user_id)
             const authMeta = authMap.get(m.user_id)
@@ -909,6 +924,18 @@ export async function getInboxAgentMonitorStats() {
         if (error) throw error
 
         let resultData = data || []
+
+        // FILTER OUT GHOST AGENTS
+        const agentIds = resultData.map((a: any) => a.user_id).filter((id: string) => id !== '00000000-0000-0000-0000-000000000000');
+        if (agentIds.length > 0) {
+            const { data: mems } = await supabase.from('organization_members').select('user_id, permissions').eq('organization_id', orgId).in('user_id', agentIds);
+            const ghostIds = new Set(mems?.filter(m => {
+                const p = m.permissions as any;
+                return p && typeof p === 'object' && p.is_support_proxy === true;
+            }).map(m => m.user_id) || []);
+
+            resultData = resultData.filter((a: any) => !ghostIds.has(a.user_id));
+        }
 
         // Accurate Unassigned Total: Match the "All" tab in the UI
         // The UI lists all active, unassigned conversations regardless of direction/status.
