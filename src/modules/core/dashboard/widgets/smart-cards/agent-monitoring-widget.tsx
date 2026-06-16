@@ -14,7 +14,7 @@ import {
 import { Inbox } from "lucide-react"
 import { supabase } from "@/modules/core/database/supabase"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
-import { getInboxAgentMonitorStats } from "@/modules/features/messaging/assignment-actions"
+import { getInboxAgentMonitorStats, getSidebarAgents } from "@/modules/features/messaging/assignment-actions"
 
 interface AgentStat {
     user_id: string
@@ -26,6 +26,7 @@ interface AgentStat {
     current_load: number
     max_capacity: number
     offline_hours_24h: number
+    unread_count_by_channel?: Record<string, number>
 }
 
 interface AgentMonitoringWidgetProps {
@@ -39,6 +40,8 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
     const [realtimeOnlineIds, setRealtimeOnlineIds] = useState<Set<string>>(new Set())
     const [fetchedAgents, setFetchedAgents] = useState<AgentStat[]>([])
     const [isLoading, setIsLoading] = useState(!initialAgents)
+    const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
+    const [agentChannels, setAgentChannels] = useState<Record<string, string[]>>({})
 
     const UNASSIGNED_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -53,6 +56,13 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
             const res = await getInboxAgentMonitorStats()
             if (res.success && res.data) {
                 setFetchedAgents(res.data)
+                
+                // Initialize presence immediately from fetched data
+                setRealtimeOnlineIds(prev => {
+                    const next = new Set(prev)
+                    res.data.forEach((a: AgentStat) => { if (a.online) next.add(a.user_id) })
+                    return next
+                })
             }
             setIsLoading(false)
         }
@@ -97,20 +107,59 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
             )
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
-    }, [organizationId, activeAgents])
+        // Also fetch agent channels for frontend filtering
+        const fetchChannels = async () => {
+            const res = await getSidebarAgents()
+            if (res.data) {
+                const map: Record<string, string[]> = {}
+                res.data.forEach((a: any) => {
+                    map[a.id] = a.channels || []
+                })
+                setAgentChannels(map)
+            }
+        }
+        fetchChannels()
+        
+        // Listen to channel filter
+        const handleChannelFilter = (e: Event) => {
+            const { channelId } = (e as CustomEvent).detail
+            setActiveChannelId(channelId)
+        }
+        window.addEventListener('pixy:inbox:filter-monitor-by-channel', handleChannelFilter)
+
+        return () => { 
+            supabase.removeChannel(channel)
+            window.removeEventListener('pixy:inbox:filter-monitor-by-channel', handleChannelFilter)
+        }
+    }, [organizationId, initialAgents])
+
+
 
     const sortedAgents = useMemo(() => {
-        return [...activeAgents].map(agent => ({
-            ...agent,
-            online: agent.user_id === UNASSIGNED_ID ? true : realtimeOnlineIds.has(agent.user_id)
-        })).sort((a, b) => {
+        return [...activeAgents]
+            .filter(agent => {
+                if (!activeChannelId) return true
+                if (agent.user_id === UNASSIGNED_ID) return true // Unassigned bubble always shown if it has counts
+                const channels = agentChannels[agent.user_id] || []
+                return channels.includes(activeChannelId)
+            })
+            .map(agent => {
+                let unread = agent.unread_count;
+                if (agent.user_id === UNASSIGNED_ID && activeChannelId && agent.unread_count_by_channel) {
+                    unread = agent.unread_count_by_channel[activeChannelId] || 0;
+                }
+                return {
+                    ...agent,
+                    unread_count: unread,
+                    online: agent.user_id === UNASSIGNED_ID ? true : realtimeOnlineIds.has(agent.user_id)
+                }
+            }).sort((a, b) => {
             if (a.user_id === UNASSIGNED_ID) return -1
             if (b.user_id === UNASSIGNED_ID) return 1
             if (a.online !== b.online) return a.online ? -1 : 1
             return (b.unread_count || 0) - (a.unread_count || 0)
         })
-    }, [activeAgents, realtimeOnlineIds])
+    }, [activeAgents, realtimeOnlineIds, agentChannels, activeChannelId])
 
     if (isLoading) return <div className="animate-pulse h-24 bg-white/10 rounded-[30px] mb-4"></div>
     if (!activeAgents || activeAgents.length === 0) return <div className="p-4 bg-muted/50 text-muted-foreground rounded-lg text-sm mb-4">No agents found or offline.</div>

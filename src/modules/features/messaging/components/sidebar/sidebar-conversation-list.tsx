@@ -150,7 +150,10 @@ export function SidebarConversationList({
     }, [data])
 
     // Sincronizar refs para uso en handler Realtime sin stale closures
-    useEffect(() => { selectedChannelIdRef.current = selectedChannelId }, [selectedChannelId])
+    useEffect(() => { 
+        selectedChannelIdRef.current = selectedChannelId 
+        window.dispatchEvent(new CustomEvent('pixy:inbox:filter-monitor-by-channel', { detail: { channelId: selectedChannelId } }))
+    }, [selectedChannelId])
     useEffect(() => { selectedAgentIdRef.current = selectedAgentId }, [selectedAgentId])
     useEffect(() => { activeFilterRef.current = activeFilter }, [activeFilter])
     useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
@@ -466,7 +469,7 @@ export function SidebarConversationList({
                             </PopoverContent>
                         </Popover>
 
-                        {['admin', 'owner', 'administrador'].includes(currentUserRole?.toLowerCase() || '') && (
+                        {hasTeamView && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button

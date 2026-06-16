@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { PERMISSIONS, PermissionString } from '../actions/permissions';
 import { cache } from 'react';
@@ -153,18 +154,24 @@ export async function upsertRole(role: Partial<Role>) {
     if (role.id) {
         const { data: existingRole, error: existingRoleError } = await (await createClient())
             .from('organization_roles')
-            .select('is_system_role')
+            .select('name, description, is_system_role, hierarchy_level')
             .eq('id', role.id)
             .eq('organization_id', orgId)
             .single();
 
         if (existingRoleError || !existingRole) throw new Error('Role not found');
-        if (existingRole.is_system_role) throw new Error('Cannot modify a System Role');
+        
+        // Allow modifying permissions of System Roles, but protect their core attributes
+        if (existingRole.is_system_role) {
+            payload.name = existingRole.name;
+            payload.description = existingRole.description;
+            payload.hierarchy_level = existingRole.hierarchy_level;
+        }
 
         // Update
         // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
         // Security is maintained because we explicitly checked hasPermission above.
-        const { data: updatedRole, error } = await (await createClient())
+        const { data: updatedRole, error } = await supabaseAdmin
             .from('organization_roles')
             .update(payload)
             .eq('id', role.id)
@@ -180,7 +187,7 @@ export async function upsertRole(role: Partial<Role>) {
     } else {
         // Create
         // Use supabaseAdmin to bypass RLS recursion limits.
-        const { data: newRole, error } = await (await createClient())
+        const { data: newRole, error } = await supabaseAdmin
             .from('organization_roles')
             .insert(payload)
             .select()

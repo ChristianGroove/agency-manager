@@ -7,6 +7,7 @@ import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
+import { evaluateInboxPermissions } from '@/modules/core/iam/utils/inbox-permissions'
 
 const PUBLIC_ASSIGNMENT_ACTION_ERROR = 'Assignment action failed'
 
@@ -879,7 +880,7 @@ export async function getUnassignedDistributionStats() {
             const typeKey = conn?.provider_key || c.channel || 'chat'
             statsMap[id] = {
                 id,
-                name: conn?.connection_name || 'General',
+                name: conn?.connection_name || 'Otros',
                 type: getFriendlyType(typeKey),
                 count: 0
             }
@@ -898,21 +899,93 @@ export async function getInboxAgentMonitorStats() {
         if (!orgId) return { success: false, error: 'No org found' }
 
         const perms = await getCurrentUserPermissions()
-        const normalizedRole = perms?.role?.toLowerCase() || ''
-        const canMonitor = ['admin', 'owner', 'administrador'].includes(normalizedRole)
+        const { hasTeamView, hasViewAll, hasGlobalView } = evaluateInboxPermissions(perms || {})
 
-        if (!canMonitor) return { success: false, error: 'Unauthorized', data: [] }
+        if (!hasTeamView) return { success: false, error: 'Unauthorized', data: [] }
 
         let query = supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
-
-        if (normalizedRole !== 'owner' && normalizedRole !== 'dueño' && perms?.permissions?.inbox_access) {
-            query = query.overlaps('channels', perms.permissions.inbox_access)
-        }
 
         const { data, error } = await query
         if (error) throw error
 
-        return { success: true, data: data || [] }
+        let resultData = data || []
+
+        // Accurate Unassigned Total: Match the "All" tab in the UI
+        // The UI lists all active, unassigned conversations regardless of direction/status.
+        // We override the unassigned bubble so it matches reality.
+        let unassignedQuery = supabase
+            .from('conversations')
+            .select('connection_id')
+            .eq('organization_id', orgId)
+            .is('assigned_to', null)
+            .neq('status', 'snoozed')
+            .neq('state', 'archived');
+            
+        // Apply RBAC: Isolate "Sin asignar" tray for Admins with restricted channel access
+        const authorizedChannels = perms?.permissions?.inbox_access || [];
+        if (!hasGlobalView && authorizedChannels.length > 0) {
+            unassignedQuery = unassignedQuery.in('connection_id', authorizedChannels);
+        } else if (!hasGlobalView) {
+            unassignedQuery = unassignedQuery.in('connection_id', ['none']); // Block entirely
+        }
+
+        const { data: unassignedList } = await unassignedQuery;
+        
+        const unread_count_by_channel: Record<string, number> = {};
+        let accurateUnassignedCount = 0;
+        
+        if (unassignedList) {
+            accurateUnassignedCount = unassignedList.length;
+            unassignedList.forEach((c: any) => {
+                const cid = c.connection_id;
+                if (cid) {
+                    unread_count_by_channel[cid] = (unread_count_by_channel[cid] || 0) + 1;
+                }
+            });
+        }
+            
+        if (accurateUnassignedCount !== null) {
+            const unassignedIndex = resultData.findIndex((a: any) => a.user_id === '00000000-0000-0000-0000-000000000000');
+            if (unassignedIndex !== -1) {
+                resultData[unassignedIndex].unread_count = accurateUnassignedCount;
+                resultData[unassignedIndex].current_load = accurateUnassignedCount;
+                resultData[unassignedIndex].unread_count_by_channel = unread_count_by_channel;
+            } else if (accurateUnassignedCount > 0) {
+                resultData.unshift({
+                    user_id: '00000000-0000-0000-0000-000000000000',
+                    name: 'Sin asignar',
+                    avatar_url: null,
+                    online: true,
+                    unread_count: accurateUnassignedCount,
+                    unread_count_by_channel,
+                    last_interaction_at: new Date().toISOString(),
+                    current_load: accurateUnassignedCount,
+                    max_capacity: 0,
+                    offline_hours_24h: 0
+                });
+            }
+        }
+
+        if (!hasGlobalView && authorizedChannels.length > 0) {
+            const { data: availability } = await supabase
+                .from('agent_availability')
+                .select('agent_id, agent_channels(channel_type)')
+                .eq('organization_id', orgId)
+            
+            const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
+            const allowedChannels = authorizedChannels
+
+            resultData = resultData.filter((agent: any) => {
+                if (agent.user_id === '00000000-0000-0000-0000-000000000000') return true
+                const agentChannels = channelsMap.get(agent.user_id) || []
+                return agentChannels.some((c: string) => allowedChannels.includes(c))
+            })
+        } else if (!hasGlobalView) {
+            // Block all agents except unassigned if no authorized channels
+            resultData = resultData.filter((agent: any) => agent.user_id === '00000000-0000-0000-0000-000000000000')
+        }
+
+        return { success: true, data: resultData }
     } catch (e: any) {
         console.error("Error in getInboxAgentMonitorStats:", e)
         return { success: false, error: e.message }
