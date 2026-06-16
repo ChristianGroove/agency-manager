@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
     workflowEngineCtor: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-server', () => ({
-    createClient: vi.fn(async () => ({
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: {
         from: mocks.supabaseFrom,
     }))
 }))

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-    createClient: vi.fn(),
+    supabaseAdmin: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
     revalidatePath: vi.fn(),
     sendInngest: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-server', () => ({
-    createClient: mocks.createClient,
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -54,7 +54,7 @@ function updateQuery(result: unknown = { data: null, error: null }) {
 afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
-    mocks.createClient.mockReset()
+    mocks.supabaseAdmin.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.sendInngest.mockReset()
@@ -70,7 +70,7 @@ describe('automation actions tenant scope', () => {
         const workflowUpdate = updateQuery({ data: [{ id: 'workflow-current' }], error: null })
         let workflowCalls = 0
 
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'workflows') {
                     workflowCalls += 1
@@ -106,7 +106,7 @@ describe('automation actions tenant scope', () => {
             data: { id: 'workflow-current', organization_id: 'org-current' },
             error: null,
         })
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'workflows') return workflowRead
                 throw new Error(`Unexpected table ${table}`)
@@ -134,7 +134,7 @@ describe('automation actions tenant scope', () => {
         })
         const workflowUpdate = updateQuery({ data: null, error: null })
         let workflowCalls = 0
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'workflows') {
                     workflowCalls += 1

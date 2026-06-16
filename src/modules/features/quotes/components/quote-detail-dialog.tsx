@@ -8,7 +8,7 @@ import { Quote } from "@/types"
 import { QuoteTemplate } from "./quote-template"
 import { getSettings } from "@/modules/core/settings/actions/crud" // Server Action
 import { convertQuoteAction as convertQuote } from "../quotes-actions"
-import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
+import { convertLeadToClientAction } from "@/modules/features/crm/crm-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { QuoteShareSheet } from "./quote-share-sheet"
@@ -52,7 +52,7 @@ export function QuoteDetailDialog({ quote: initialQuote, open, onOpenChange, onQ
 
         setActionLoading(true)
         try {
-            const res = await convertLeadToClient(quote.lead_id)
+            const res = await convertLeadToClientAction(quote.lead_id)
             if (!res.success || !res.data) throw new Error(res.error)
 
             toast.success(`Prospecto convertido: ${res.data.name}`)

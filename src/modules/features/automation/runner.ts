@@ -1,7 +1,7 @@
 import { WorkflowEngine, WorkflowDefinition } from "./engine"
 import { WaitInputNode } from "./nodes/wait-input-node"
 import { IncomingMessage } from "@/modules/features/messaging/providers/types"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 export async function resumeSuspendedWorkflow(
     executionId: string,
@@ -11,7 +11,7 @@ export async function resumeSuspendedWorkflow(
     let engine: WorkflowEngine | null = null;
     let resumeOrganizationId: string | null = null;
     try {
-        const supabase = (await createClient())
+        const supabase = supabaseAdmin
 
         // 1. Fetch Pending Input Record
         // (We might have passed it, but good to re-fetch/verify lock)
@@ -130,7 +130,7 @@ export async function resumeSuspendedWorkflow(
 
             // We need to persist the context even if suspended
             if (engine && resumeOrganizationId) {
-                const supabase = (await createClient())
+                const supabase = supabaseAdmin
                 await supabase
                     .from('workflow_executions')
                     .update({
@@ -147,7 +147,7 @@ export async function resumeSuspendedWorkflow(
 
         // Update Execution to Failed
         if (resumeOrganizationId) {
-            const supabase = (await createClient())
+            const supabase = supabaseAdmin
             await supabase
                 .from('workflow_executions')
                 .update({

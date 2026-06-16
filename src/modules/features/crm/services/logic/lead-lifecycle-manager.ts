@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { LeadsRepository } from './repositories/leads.repository';
+import { ContactRepository } from '../contact-repository';
 import { calculateLeadScore } from './scoring';
 
 /**
@@ -8,10 +8,10 @@ import { calculateLeadScore } from './scoring';
  * Designed for high scalability and zero infrastructure cost.
  */
 export class LeadLifecycleManager {
-    private repo: LeadsRepository;
+    private repo: ContactRepository;
 
     constructor(private supabase: SupabaseClient) {
-        this.repo = new LeadsRepository(supabase);
+        this.repo = new ContactRepository(supabase);
     }
 
     /**

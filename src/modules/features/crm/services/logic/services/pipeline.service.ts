@@ -58,7 +58,7 @@ export class PipelineService {
 
     async getPipelineViewData(connectionId?: string | null, userId?: string): Promise<any> {
         // Aggregated data for Kanban
-        const { getLeads } = await import('../leads-actions')
+        const { ContactService } = await import('../../contact-service')
         const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
         const { getLeadsCount } = await import('../lead-management-actions')
         const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team')
@@ -74,7 +74,13 @@ export class PipelineService {
 
         const [stages, leadsResponse, emitters] = await Promise.all([
             this.getCachedStages(),
-            getLeads(100, connectionId, allowedChannels, userId),
+            new ContactService(this.supabase, this.orgId).getPaginated({ 
+                pageSize: 100, 
+                connectionId, 
+                allowedChannels, 
+                userId, 
+                contactType: 'lead' 
+            }),
             getEmitters()
         ])
 

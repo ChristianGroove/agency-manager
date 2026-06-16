@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-    createClient: vi.fn(),
+    supabaseAdmin: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-server', () => ({
-    createClient: mocks.createClient,
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -41,7 +41,7 @@ function scheduledJobsQuery(result: unknown) {
 afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
-    mocks.createClient.mockReset()
+    mocks.supabaseAdmin.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
 })
 
@@ -49,7 +49,7 @@ describe('workflow scheduler service', () => {
     it('scopes job completion updates to the active organization', async () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const completeUpdate = updateQuery()
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'scheduled_workflow_jobs') return completeUpdate
                 throw new Error(`Unexpected table ${table}`)
@@ -70,7 +70,7 @@ describe('workflow scheduler service', () => {
             data: [{ id: 'job-current', organization_id: 'org-current' }],
             error: null,
         })
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'scheduled_workflow_jobs') return jobRead
                 throw new Error(`Unexpected table ${table}`)
@@ -88,7 +88,7 @@ describe('workflow scheduler service', () => {
     it('fails closed without an active organization', async () => {
         const from = vi.fn()
         mocks.getCurrentOrganizationId.mockResolvedValue(null)
-        mocks.createClient.mockResolvedValue({ from })
+        Object.assign(mocks.supabaseAdmin, { from })
 
         const { completeJob, getWorkflowScheduledJobs } = await import('./scheduler')
 

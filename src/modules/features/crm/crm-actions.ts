@@ -170,8 +170,18 @@ export async function createLeadSystemAction(input: any, orgId: string): Promise
 
 export async function getLeadsAction(params: any = {}): Promise<ActionResponse<any>> {
     try {
-        const { contacts } = await getCrmServices()
-        const data = await contacts.getPaginated({ ...params, contactType: 'lead' })
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+
+        const safeParams = { ...params, contactType: 'lead' }
+        if (!hasGlobalView) {
+            safeParams.allowedChannels = authorizedChannels
+            safeParams.userId = user?.id
+        }
+
+        const data = await contacts.getPaginated(safeParams)
         return { success: true, data }
     } catch (e: any) {
         return crmContactActionFailure("[getLeadsAction] Error:", e)
@@ -246,6 +256,62 @@ export async function deleteContactsAction(ids: string[]): Promise<ActionRespons
     }
 }
 
+export async function exportContactsAction(): Promise<ActionResponse<string>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const data = await contacts.generateExportCSV(allowedChannels)
+        return { success: true, data }
+    } catch (e: any) {
+        return crmContactActionFailure("[exportContactsAction] Error:", e)
+    }
+}
+
+export async function previewPurgeColdContactsAction(criteria: { inactiveDays: number, minScore?: number }): Promise<ActionResponse<number>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const count = await contacts.previewPurgeColdAccounts({ ...criteria, allowedChannels })
+        return { success: true, data: count }
+    } catch (e: any) {
+        return crmContactActionFailure("[previewPurgeColdContactsAction] Error:", e)
+    }
+}
+
+export async function purgeColdContactsAction(criteria: { inactiveDays: number, minScore?: number }): Promise<ActionResponse<number>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const deleted = await contacts.purgeColdAccounts({ ...criteria, allowedChannels })
+        revalidatePath('/crm')
+        return { success: true, data: deleted }
+    } catch (e: any) {
+        return crmContactActionFailure("[purgeColdContactsAction] Error:", e)
+    }
+}
+
 export async function deleteClientsAction(ids: string[]): Promise<ActionResponse<void>> {
     try {
         const { supabase, orgId } = await getCrmServices()
@@ -277,15 +343,15 @@ export async function getPipelineViewDataAction(connectionId?: string | null) {
     try {
         const { pipelines, user } = await getCrmServices()
         const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
         
-        const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
+        const { hasGlobalView } = evaluateInboxPermissions(perms)
         
         // Convert UI 'all' to null for backend logic
         const cid = connectionId === 'all' ? null : connectionId
         
         // If not a global role, restrict to current user's leads
-        const userId = isGlobalRole ? undefined : user?.id
+        const userId = hasGlobalView ? undefined : user?.id
         
         return await pipelines.getPipelineViewData(cid, userId)
     } catch (e) {

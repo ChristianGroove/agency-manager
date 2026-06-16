@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/modules/core/database/supabase"
 import { createQuoteAction as createQuote } from "@/modules/features/quotes/quotes-actions"
-import { createLead } from "@/modules/features/crm/services/logic/leads-actions"
+import { createLeadAction as createLead } from "@/modules/features/crm/crm-actions"
 import { Client } from "@/types"
 import { Loader2, Users, UserPlus } from "lucide-react"
 

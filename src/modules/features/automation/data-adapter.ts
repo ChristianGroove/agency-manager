@@ -1,6 +1,6 @@
 
 import { DataModule } from "@/modules/infrastructure/data-vault/types"
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 export const automationDataAdapter: DataModule = {
     key: 'automation',
     name: 'Workflows & Automations',
@@ -9,13 +9,13 @@ export const automationDataAdapter: DataModule = {
 
     exportData: async (organizationId: string) => {
         // 1. Workflows
-        const { data: workflows } = await (await createClient())
+        const { data: workflows } = await supabaseAdmin
             .from('workflows')
             .select('*')
             .eq('organization_id', organizationId)
 
         // 2. Versions
-        const { data: versions } = await (await createClient())
+        const { data: versions } = await supabaseAdmin
             .from('workflow_versions')
             .select('*')
         // Join via workflow_id if needed, but we can't easily filter by top-level org_id unless versions have it.
@@ -31,7 +31,7 @@ export const automationDataAdapter: DataModule = {
         let validVersions: any[] = []
         if (workflows && workflows.length > 0) {
             const wfIds = workflows.map((w: any) => w.id)
-            const { data: v } = await (await createClient())
+            const { data: v } = await supabaseAdmin
                 .from('workflow_versions')
                 .select('*')
                 .in('workflow_id', wfIds)
@@ -42,7 +42,7 @@ export const automationDataAdapter: DataModule = {
         // Optional? User might want to keep history.
         let logs: any[] = []
         if (workflows && workflows.length > 0) {
-            const { data: l } = await (await createClient())
+            const { data: l } = await supabaseAdmin
                 .from('workflow_executions')
                 .select('*')
                 .eq('organization_id', organizationId)
@@ -65,7 +65,7 @@ export const automationDataAdapter: DataModule = {
         if (data.workflows.length > 0) {
             const wfs = data.workflows.map((w: any) => ({ ...w, organization_id: organizationId }))
             // Must upsert workflows before versions
-            await (await createClient()).from('workflows').upsert(wfs)
+            await supabaseAdmin.from('workflows').upsert(wfs)
         }
 
         // 2. Import Versions
@@ -74,29 +74,29 @@ export const automationDataAdapter: DataModule = {
             // Ensure created_by users exist? If not, might fail FK. 
             // We set created_by to NULL or current admin if strict.
             // For now assume users exist or constraint is soft.
-            await (await createClient()).from('workflow_versions').upsert(data.versions)
+            await supabaseAdmin.from('workflow_versions').upsert(data.versions)
         }
 
         // 3. Import Logs
         if (data.executions?.length > 0) {
             const execs = data.executions.map((e: any) => ({ ...e, organization_id: organizationId }))
-            await (await createClient()).from('workflow_executions').upsert(execs)
+            await supabaseAdmin.from('workflow_executions').upsert(execs)
         }
     },
 
     clearData: async (organizationId: string) => {
         // Delete logs first
-        await (await createClient()).from('workflow_executions').delete().eq('organization_id', organizationId)
+        await supabaseAdmin.from('workflow_executions').delete().eq('organization_id', organizationId)
 
         // Delete versions via workflow cascade? Or manually.
         // If versions rely on workflow_id, deleting workflows might cascade.
         // But safer to find IDs.
-        const { data: workflows } = await (await createClient()).from('workflows').select('id').eq('organization_id', organizationId)
+        const { data: workflows } = await supabaseAdmin.from('workflows').select('id').eq('organization_id', organizationId)
         if (workflows && workflows.length > 0) {
             const ids = workflows.map((w: any) => w.id)
-            await (await createClient()).from('workflow_versions').delete().in('workflow_id', ids)
+            await supabaseAdmin.from('workflow_versions').delete().in('workflow_id', ids)
         }
 
-        await (await createClient()).from('workflows').delete().eq('organization_id', organizationId)
+        await supabaseAdmin.from('workflows').delete().eq('organization_id', organizationId)
     }
 }

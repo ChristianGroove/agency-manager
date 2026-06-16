@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-    createClient: vi.fn(),
+    supabaseAdmin: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
 }))
 
-vi.mock('@/modules/core/database/supabase-server', () => ({
-    createClient: mocks.createClient,
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: mocks.supabaseAdmin,
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -42,7 +42,7 @@ function deleteQuery(result: unknown = { error: null }) {
 afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
-    mocks.createClient.mockReset()
+    mocks.supabaseAdmin.mockReset()
     mocks.getCurrentOrganizationId.mockReset()
 })
 
@@ -62,7 +62,7 @@ describe('workflow permissions service', () => {
             }],
             error: null,
         })
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'workflow_permissions') return permissionRead
                 throw new Error(`Unexpected table ${table}`)
@@ -84,7 +84,7 @@ describe('workflow permissions service', () => {
     it('scopes permission deletes to the active organization', async () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
         const permissionDelete = deleteQuery()
-        mocks.createClient.mockResolvedValue({
+        Object.assign(mocks.supabaseAdmin, {
             from: vi.fn((table: string) => {
                 if (table === 'workflow_permissions') return permissionDelete
                 throw new Error(`Unexpected table ${table}`)
@@ -103,7 +103,7 @@ describe('workflow permissions service', () => {
     it('fails closed without an active organization', async () => {
         const from = vi.fn()
         mocks.getCurrentOrganizationId.mockResolvedValue(null)
-        mocks.createClient.mockResolvedValue({ from })
+        Object.assign(mocks.supabaseAdmin, { from })
 
         const { getWorkflowPermissions, removeWorkflowPermission } = await import('./permissions-service')
 

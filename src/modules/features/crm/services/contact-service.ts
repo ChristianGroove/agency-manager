@@ -157,17 +157,27 @@ export class ContactService {
         search?: string,
         stageId?: string,
         connectionId?: string | null,
+        allowedChannels?: string[],
+        userId?: string,
         dateFrom?: string,
         dateTo?: string,
         contactType?: 'lead' | 'client' | 'all'
     }): Promise<any> {
+        let effectiveConnectionIds: string[] | undefined = undefined
+
+        if (params.connectionId && params.connectionId !== 'all') {
+            effectiveConnectionIds = [params.connectionId]
+        }
+
         return this.repo.getPaginated({
             orgId: this.organizationId,
             page: params.page || 1,
             pageSize: params.pageSize || 50,
             search: params.search || '',
             stageId: params.stageId || 'all',
-            connectionId: params.connectionId || undefined,
+            connectionIds: effectiveConnectionIds,
+            allowedChannels: params.allowedChannels,
+            userId: params.userId,
             dateFrom: params.dateFrom,
             dateTo: params.dateTo,
             contactType: params.contactType
@@ -191,15 +201,67 @@ export class ContactService {
         
         const count = await this.repo.hardDelete(ids, this.organizationId)
 
-        if (this.userId) {
-            await SecurityLogger.log({
+        // Dispatch background cleanups
+        if (count > 0 && this.userId) {
+            SecurityLogger.log({
                 action: 'contact.delete_bulk',
                 resource_entity: 'leads',
                 organization_id: this.organizationId,
                 metadata: { count, ids }
-            })
+            }).catch(e => console.error("Error logging deletion", e))
         }
 
         return count
+    }
+
+    async generateExportCSV(allowedChannels?: string[]): Promise<string> {
+        const leads = await this.repo.getExportData(this.organizationId, allowedChannels)
+        if (!leads || leads.length === 0) return ""
+
+        const headers = ["Nombre", "Empresa", "Email", "Telefono", "Canal", "Estado", "Fecha Creacion"]
+        const csvRows = [headers.join(";")]
+
+        for (const lead of leads) {
+            const cleanPhone = (lead.phone || '').replace(/"/g, '""')
+            const cleanName = (lead.name || '').replace(/"/g, '""')
+            const cleanCompany = (lead.company_name || '').replace(/"/g, '""')
+            const cleanEmail = (lead.email || '').replace(/"/g, '""')
+            const connectionName = lead.integration_connections?.connection_name
+            const cleanSource = connectionName ? connectionName.replace(/"/g, '""') : (lead.source || '').replace(/"/g, '""')
+            const cleanStatus = (lead.status || '').replace(/"/g, '""')
+            const dateStr = lead.created_at ? new Date(lead.created_at).toLocaleDateString() : ''
+
+            const row = [
+                `"${cleanName}"`,
+                `"${cleanCompany}"`,
+                `"${cleanEmail}"`,
+                `="${cleanPhone}"`,
+                `"${cleanSource}"`,
+                `"${cleanStatus}"`,
+                `"${dateStr}"`
+            ]
+            csvRows.push(row.join(";"))
+        }
+
+        return "\ufeff" + csvRows.join("\r\n")
+    }
+
+    async previewPurgeColdAccounts(criteria: { inactiveDays: number, minScore?: number, allowedChannels?: string[] }): Promise<number> {
+        const thresholdDate = new Date()
+        thresholdDate.setDate(thresholdDate.getDate() - criteria.inactiveDays)
+        
+        return this.repo.previewInactive(this.organizationId, criteria.allowedChannels, thresholdDate.toISOString(), criteria.minScore)
+    }
+
+    async purgeColdAccounts(criteria: { inactiveDays: number, minScore?: number, allowedChannels?: string[] }): Promise<number> {
+        if (!this.organizationId) throw new Error("Missing orgId")
+        const thresholdDate = new Date()
+        thresholdDate.setDate(thresholdDate.getDate() - criteria.inactiveDays)
+        
+        return this.repo.purgeInactive(this.organizationId, criteria.allowedChannels, thresholdDate.toISOString(), criteria.minScore)
+    }
+
+    async getWithRelations(leadId: string): Promise<any> {
+        return this.repo.findWithRelations(leadId, this.organizationId)
     }
 }

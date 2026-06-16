@@ -7,7 +7,7 @@ import { Loader2, Download, Share2, Mail, ArrowLeft, UserPlus, Edit } from "luci
 
 import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
-import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
+import { convertLeadToClientAction } from "@/modules/features/crm/crm-actions"
 
 import { QuoteTemplate } from "@/modules/features/quotes/components/quote-template"
 import { QuoteShareSheet } from "@/modules/features/quotes/components/quote-share-sheet"
@@ -76,7 +76,7 @@ export default function QuoteDetailPage() {
 
         setConverting(true)
         try {
-            const res = await convertLeadToClient(quote.lead_id)
+            const res = await convertLeadToClientAction(quote.lead_id)
             if (!res.success || !res.data) throw new Error(res.error)
 
             alert(`¡Prospecto convertido exitosamente! Ahora es el cliente: ${res.data.name}`)

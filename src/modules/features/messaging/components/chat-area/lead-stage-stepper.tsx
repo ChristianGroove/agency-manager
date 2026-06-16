@@ -7,7 +7,7 @@ import { useInboxContext } from "../../context/inbox-context"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { ChevronDown, Check, Loader2 } from "lucide-react"
-import { updateLeadStatus } from "@/modules/features/crm/services/logic/leads-actions"
+import { updateContactStatusAction } from "@/modules/features/crm/crm-actions"
 import { toast } from "sonner"
 
 interface LeadStageStepperProps {
@@ -32,7 +32,7 @@ export function LeadStageStepper({ leadId, leadStatus, onStageChanged }: LeadSta
 
         setIsUpdating(true)
         try {
-            const res = await updateLeadStatus(leadId, stage.status_key)
+            const res = await updateContactStatusAction(leadId, stage.status_key)
             if (res.success) {
                 toast.success(`Lead movido a: ${stage.name}`)
                 onStageChanged?.(stage.id)

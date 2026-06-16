@@ -4,7 +4,7 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
-import { LeadsService } from "./services/leads.service"
+import { ContactService } from "../contact-service"
 import { CRMAdvancedService } from "./services/crm-advanced.service"
 
 import type {
@@ -83,7 +83,7 @@ export async function updateLead(leadId: string, input: UpdateLeadInput): Promis
         const { data: { user } } = await supabase.auth.getUser()
         if (!orgId || !user) throw new Error("Unauthorized")
 
-        const service = new LeadsService(supabase, orgId, user.id)
+        const service = new ContactService(supabase, orgId, user.id)
         const data = await service.updateProfile(leadId, input)
 
         revalidatePath('/crm')
@@ -99,7 +99,7 @@ export async function getLeadWithRelations(leadId: string) {
         const orgId = await getCurrentOrganizationId()
         if (!orgId) return null
 
-        const service = new LeadsService(supabase, orgId)
+        const service = new ContactService(supabase, orgId)
         return await service.getWithRelations(leadId)
     } catch (error) {
         logCrmAdvancedError('getLeadWithRelations error:', error)
@@ -290,7 +290,7 @@ export async function calculateLeadScore(leadId: string): Promise<CrmLeadScoreRe
         const orgId = await getCurrentOrganizationId()
         if (!orgId) throw new Error("Unauthorized")
 
-        const service = new LeadsService(supabase, orgId)
+        const service = new ContactService(supabase, orgId)
         const result = await service.calculateScore(leadId)
 
         revalidatePath('/crm')

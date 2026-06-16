@@ -7,7 +7,7 @@
  * Used by the delay node to pause and resume workflows.
  */
 
-import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 interface ScheduledJob {
@@ -43,7 +43,7 @@ interface ScheduleJobResult {
  * Schedule a workflow to resume after a delay
  */
 export async function scheduleWorkflowResume(params: ScheduleJobParams): Promise<ScheduleJobResult> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
 
     if (!organizationId) {
@@ -93,7 +93,7 @@ export async function scheduleWorkflowResume(params: ScheduleJobParams): Promise
  * Get pending jobs due for execution
  */
 export async function getPendingJobs(batchSize: number = 10): Promise<ScheduledJob[]> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
 
     try {
         // Use the database function for atomic job claiming
@@ -116,7 +116,7 @@ export async function getPendingJobs(batchSize: number = 10): Promise<ScheduledJ
  * Mark a job as completed
  */
 export async function completeJob(jobId: string): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
     if (!organizationId) return false;
 
@@ -141,7 +141,7 @@ export async function completeJob(jobId: string): Promise<boolean> {
  * Mark a job as failed
  */
 export async function failJob(jobId: string, errorMessage: string): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
     if (!organizationId) return false;
 
@@ -167,7 +167,7 @@ export async function failJob(jobId: string, errorMessage: string): Promise<bool
  * Retry a failed job (reset to pending)
  */
 export async function retryJob(jobId: string, delayMinutes: number = 5): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
     if (!organizationId) return false;
 
@@ -197,7 +197,7 @@ export async function retryJob(jobId: string, delayMinutes: number = 5): Promise
  * Cancel a pending job
  */
 export async function cancelJob(jobId: string): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
     if (!organizationId) return false;
 
@@ -223,7 +223,7 @@ export async function cancelJob(jobId: string): Promise<boolean> {
  * Get scheduled jobs for a workflow
  */
 export async function getWorkflowScheduledJobs(workflowId: string): Promise<ScheduledJob[]> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
     if (!organizationId) return [];
 
