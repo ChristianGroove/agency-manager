@@ -1,7 +1,7 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 import { registerBillableEvent } from "@/modules/billing/platform/revenue/actions"
 import type { BillableEventType } from "@/types/revenue"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Handle Stripe Webhook events asynchronously
@@ -77,7 +77,7 @@ export const processStripeWebhook = inngest.createFunction(
 
                 case 'account.updated': {
                     const account = stripeEvent.data.object
-                    await (await createClient())
+                    await supabaseAdmin
                         .from('payment_accounts')
                         .update({
                             charges_enabled: account.charges_enabled,
@@ -91,7 +91,7 @@ export const processStripeWebhook = inngest.createFunction(
 
                 case 'payout.failed': {
                     const payout = stripeEvent.data.object
-                    await (await createClient())
+                    await supabaseAdmin
                         .from('settlements')
                         .update({ status: 'failed' })
                         .eq('stripe_payout_id', payout.id)

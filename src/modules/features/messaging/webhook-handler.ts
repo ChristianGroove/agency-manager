@@ -1,6 +1,6 @@
 
 
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { ChannelType, MessageContentType } from "@/types/messaging"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
 import { MessagingProvider, IncomingMessage, IncomingCall } from "./providers/types"

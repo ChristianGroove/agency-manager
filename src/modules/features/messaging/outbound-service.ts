@@ -1,7 +1,7 @@
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
 
@@ -103,7 +103,7 @@ export class OutboundService {
         organizationId: string,
         context?: { connection?: any, conversation?: any }
     ) {
-        const supabase = (await createClient())
+        const supabase = supabaseAdmin
         
         // 1. Get Channel Connection (Check context first)
         let channel = context?.connection
@@ -224,7 +224,7 @@ export class OutboundService {
         connectionId?: string,
         sender: string = 'System'
     ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
-        const supabase = (await createClient());
+        const supabase = supabaseAdmin;
         
         try {
             // 1. Get Conversation securely via Admin

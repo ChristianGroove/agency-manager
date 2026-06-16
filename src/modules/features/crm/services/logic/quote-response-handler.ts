@@ -1,7 +1,7 @@
 "use server"
 import { MetaProvider } from "@/modules/features/messaging/providers/meta-provider"
 import { MessagingPersistence } from "@/modules/features/messaging/services/persistence"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Quote Response Handler
@@ -63,7 +63,7 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
 
     try {
         // 1. Resolve cart tenant before applying privileged writes
-        const { data: cart } = await (await createClient())
+        const { data: cart } = await supabaseAdmin
             .from('deal_carts')
             .select('lead_id, organization_id')
             .eq('id', context.cartId)
@@ -74,7 +74,7 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
         }
 
         // 2. Update cart status to approved
-        await (await createClient())
+        await supabaseAdmin
             .from('deal_carts')
             .update({ status: 'approved' })
             .eq('id', context.cartId)
@@ -83,7 +83,7 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
         // 3. Update associated lead's pipeline stage (if configured)
         if (cart?.lead_id) {
             // Find "won" stage
-            const { data: stage } = await (await createClient())
+            const { data: stage } = await supabaseAdmin
                 .from('pipeline_stages')
                 .select('id')
                 .eq('organization_id', cart.organization_id)
@@ -92,7 +92,7 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
                 .single()
 
             if (stage) {
-                await (await createClient())
+                await supabaseAdmin
                     .from('leads')
                     .update({ stage_id: stage.id })
                     .eq('id', cart.lead_id)
@@ -120,7 +120,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
     try {
         // 1. Get the organization's quote settings
-        const { data: conversation } = await (await createClient())
+        const { data: conversation } = await supabaseAdmin
             .from('conversations')
             .select('organization_id')
             .eq('id', context.conversationId)
@@ -135,7 +135,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         let settings = null
 
         // Try org-specific lookup first
-        const { data: orgSettings, error: settingsError } = await (await createClient())
+        const { data: orgSettings, error: settingsError } = await supabaseAdmin
             .from('quote_settings')
             .select('actions_config')
             .eq('organization_id', conversation.organization_id)
@@ -189,7 +189,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         // If connectionId is missing, try to get it from conversation
         let connectionId = context.connectionId
         if (!connectionId) {
-            const { data: convData } = await (await createClient())
+            const { data: convData } = await supabaseAdmin
                 .from('conversations')
                 .select('connection_id')
                 .eq('id', context.conversationId)
@@ -206,7 +206,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         let connection = null
 
         // Try direct lookup first
-        const { data: directConn } = await (await createClient())
+        const { data: directConn } = await supabaseAdmin
             .from('integration_connections')
             .select('*, credentials')
             .eq('id', connectionId)
@@ -218,7 +218,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         // Fallback: find any active meta_whatsapp connection
         if (!connection) {
 
-            const { data: fallbackConns, error: fallbackError } = await (await createClient())
+            const { data: fallbackConns, error: fallbackError } = await supabaseAdmin
                 .from('integration_connections')
                 .select('*, credentials')
                 .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
@@ -314,7 +314,7 @@ export async function handleRejectionReasonSelected(
 
     try {
         // 1. Get conversation info for tenant scoping and messaging
-        const { data: conv } = await (await createClient())
+        const { data: conv } = await supabaseAdmin
             .from('conversations')
             .select('phone, organization_id, connection_id')
             .eq('id', conversationId)
@@ -326,7 +326,7 @@ export async function handleRejectionReasonSelected(
         }
 
         // 2. Update cart with rejection reason and status
-        await (await createClient())
+        await supabaseAdmin
             .from('deal_carts')
             .update({
                 status: 'rejected'
@@ -337,7 +337,7 @@ export async function handleRejectionReasonSelected(
         // 3. Get quote settings for configurable message
         let settings = null
 
-        const { data: orgSettings } = await (await createClient())
+        const { data: orgSettings } = await supabaseAdmin
             .from('quote_settings')
             .select('actions_config')
             .eq('organization_id', conv.organization_id)
@@ -349,7 +349,7 @@ export async function handleRejectionReasonSelected(
             `Gracias por su respuesta. Hemos registrado: "${reason}". Un asesor se comunicará pronto.`
 
         // 4. Get connection to send via WhatsApp
-        const { data: connections } = await (await createClient())
+        const { data: connections } = await supabaseAdmin
             .from('integration_connections')
             .select('*, credentials')
             .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
