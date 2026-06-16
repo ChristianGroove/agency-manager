@@ -97,10 +97,11 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
             style={customStyles}
         >
             {/* Animated particles background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" suppressHydrationWarning>
                 {[...Array(15)].map((_, i) => (
                     <div
                         key={i}
+                        suppressHydrationWarning
                         className="absolute w-1 h-1 rounded-full opacity-30"
                         style={{
                             backgroundColor: config.theme === 'brand_primary' || config.theme === 'brand_secondary' ? 'rgba(255,255,255,0.4)' : 'var(--portal-primary, var(--primary))',

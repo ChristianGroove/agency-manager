@@ -99,7 +99,7 @@ export async function getDashboardPayload() {
             .from('saas_apps')
             .select('space_category')
             .eq('id', orgDetails.active_app_id)
-            .single()
+            .maybeSingle()
         spaceCategory = appData?.space_category || 'agency'
     }
 
