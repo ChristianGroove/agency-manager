@@ -1,5 +1,5 @@
 
-import { createClient } from '@/modules/core/database/supabase-server'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { ProcessInstance, ProcessState } from "@/types/process-engine"
 
 export interface AnalysisRecommendation {

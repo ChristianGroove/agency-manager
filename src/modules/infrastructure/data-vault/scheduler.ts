@@ -1,7 +1,7 @@
 
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
 import { createSnapshotInternal } from "./service"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 // 1. Weekly Trigger
 export const vaultSnapshotScheduler = inngest.createFunction(
@@ -10,7 +10,7 @@ export const vaultSnapshotScheduler = inngest.createFunction(
     async ({ step }) => {
         // Step A: Fetch eligible organizations
         const orgs = await step.run("fetch-eligible-orgs", async () => {
-            const { data, error } = await (await createClient())
+            const { data, error } = await (supabaseAdmin)
                 .from('organizations')
                 .select('id, vault_config, name')
                 .not('vault_config', 'is', null) // Optimisation

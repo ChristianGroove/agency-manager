@@ -1,6 +1,6 @@
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { StorageProvider } from "@/modules/infrastructure/integrations/adapters/types"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 const PUBLIC_BACKUP_ERROR = 'Backup failed'
 
@@ -46,7 +46,7 @@ export class BackupService {
         // 1. Find Active Backup Integration
         // Query 'integration_connections' joined with 'integrations'
         // We look for integrations with 'aws_s3' or 'google_drive' key
-        const { data: connections, error } = await (await createClient())
+        const { data: connections, error } = await (supabaseAdmin)
             .from('integration_connections')
             .select(`
                 *,
@@ -78,7 +78,7 @@ export class BackupService {
 
         // 3. Fetch Data to Backup (Example: Leads)
         // In a real system, we'd loop through tables: leads, clients, invoices, etc.
-        const { data: leads } = await (await createClient())
+        const { data: leads } = await (supabaseAdmin)
             .from('leads')
             .select('*')
             .eq('organization_id', organizationId)

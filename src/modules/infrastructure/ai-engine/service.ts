@@ -1,4 +1,4 @@
-import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 // import { getAICredentials } from './actions';
 import { AIRegistry } from './registry';
 import { AIEngineResponse } from './types';
@@ -205,7 +205,7 @@ function resolveModelForTier(tier: 'cheap' | 'standard' | 'premium', providerId:
 
 async function markCredentialExhausted(credId: string) {
     if (credId === 'platform-fallback') return;
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     await supabase.from('ai_credentials').update({ status: 'exhausted' }).eq('id', credId);
 }
 
@@ -215,7 +215,7 @@ async function markCredentialExhausted(credId: string) {
  */
 async function logUsageEvent(orgId: string, providerId: string, response: any, taskType: string) {
     try {
-        const supabase = await createClient();
+        const supabase = supabaseAdmin;
         const totalTokens = response.usage?.total_tokens || 0;
 
         await supabase.from('usage_events').insert({
@@ -239,7 +239,7 @@ async function logUsageEvent(orgId: string, providerId: string, response: any, t
  * Internal helper to fetch credentials without masking (System Use Only)
  */
 async function fetchInternalCredentials(organizationId: string) {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const { data, error } = await supabase
         .from('ai_credentials')
         .select('*')
