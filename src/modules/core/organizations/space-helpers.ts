@@ -29,7 +29,7 @@ export async function getOrgSpaceCategory(orgId?: string): Promise<SpaceCategory
             .from('saas_apps')
             .select('space_category')
             .eq('id', orgDetails.active_app_id)
-            .single()
+            .maybeSingle()
 
         return (appData?.space_category as SpaceCategory) || 'agency'
     } catch (error) {
