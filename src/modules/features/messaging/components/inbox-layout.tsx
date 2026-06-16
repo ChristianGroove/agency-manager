@@ -144,7 +144,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                             .from('saas_apps')
                             .select('space_category')
                             .eq('id', orgData.active_app_id)
-                            .single()
+                            .maybeSingle()
                         setSpaceCategory(appData?.space_category || null)
                     }
                 }

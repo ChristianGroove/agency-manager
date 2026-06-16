@@ -46,7 +46,7 @@ export const getCurrentOrganizationApp = cache(async () => {
                 is_active
             `)
             .eq('id', appId)
-            .single()
+            .maybeSingle()
 
         if (appData) {
             return {

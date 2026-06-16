@@ -292,7 +292,7 @@ export async function getPortalData(token: string) {
                 .from('saas_apps')
                 .select('portal_template')
                 .eq('id', org.active_app_id || '')
-                .single()
+                .maybeSingle()
 
             const portalTemplate = appData?.portal_template || 'b2b_dashboard'
             settings.portal_template = portalTemplate
