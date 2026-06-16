@@ -110,6 +110,11 @@ export function GlobalMessageListener() {
                     window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
                         detail: { conversationId: conv.id } 
                     }));
+                    
+                    // DISPATCH EVENT FOR USE-CONVERSATIONS CACHE (Replaces double-subscription)
+                    window.dispatchEvent(new CustomEvent('pixy:conversations-update', { 
+                        detail: payload 
+                    }));
 
                     toast.custom((t) => (
                         <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto items-center animate-in slide-in-from-top-2">
@@ -147,6 +152,7 @@ export function GlobalMessageListener() {
                     .eq('agent_id', user.id)
                     .eq('organization_id', organizationId)
                 
+                // Polling agents info efficiently instead of N*N Websocket broadcasts
                 if (!error && refreshAgents) {
                     refreshAgents()
                 }
@@ -156,38 +162,8 @@ export function GlobalMessageListener() {
         triggerHeartbeat()
         heartbeatInterval = setInterval(triggerHeartbeat, 60000)
 
-        let presenceChannel: any = null;
-        const connectPresence = async () => {
-            if (!organizationId) return
-
-            presenceChannel = supabase
-                .channel(`inbox-presence-${organizationId.slice(0, 8)}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'agent_availability',
-                        filter: `organization_id=eq.${organizationId}`
-                    },
-                    (payload) => {
-                        const newPresence = payload.new as any
-                        if (newPresence && newPresence.agent_id && updateAgent) {
-                            updateAgent(newPresence.agent_id, {
-                                status: newPresence.status,
-                                last_seen_at: newPresence.last_seen_at
-                            })
-                        }
-                    }
-                )
-                .subscribe()
-        }
-
-        connectPresence()
-
         return () => {
             supabase.removeChannel(channel)
-            if (presenceChannel) supabase.removeChannel(presenceChannel)
             if (heartbeatInterval) clearInterval(heartbeatInterval)
         }
     }, [organizationId, updateAgent, refreshAgents, openInbox])

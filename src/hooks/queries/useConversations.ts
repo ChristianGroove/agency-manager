@@ -125,83 +125,79 @@ export function useConversations({
         staleTime: 1000 * 60, // 1 minuto
     });
 
-    // "Ping-to-Refetch" effect
+    // "Ping-to-Refetch" effect (Listening to Global Event instead of opening duplicate WebSocket)
     useEffect(() => {
         if (!orgId || !identityLoaded) return;
-        const channelName = `inbox-org-${orgId}-ping`;
 
-        // Realtime Subscription (Híbrida: muta caché local y solo invalida si los filtros cambian)
-        const channel = supabase.channel(channelName)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations', filter: `organization_id=eq.${orgId}` },
-                (payload) => {
-                    let needsRefetch = true;
+        const handleConversationsUpdate = (e: Event) => {
+            const payload = (e as CustomEvent).detail;
+            let needsRefetch = true;
 
-                    if (payload.eventType === 'UPDATE') {
-                        let itemFound = false;
+            if (payload.eventType === 'UPDATE') {
+                let itemFound = false;
 
-                        queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
-                            if (!oldData || !oldData.pages) return oldData;
+                queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    
+                    let modified = false;
+                    const newPages = oldData.pages.map((page: any[]) => {
+                        const index = page.findIndex(c => c.id === payload.new.id);
+                        if (index !== -1) {
+                            itemFound = true;
+                            const cachedItem = page[index];
                             
-                            let modified = false;
-                            const newPages = oldData.pages.map((page: any[]) => {
-                                const index = page.findIndex(c => c.id === payload.new.id);
-                                if (index !== -1) {
-                                    itemFound = true;
-                                    const cachedItem = page[index];
-                                    
-                                    // Si cambia un estado clave que afecta a los filtros, requerimos un refetch
-                                    if (
-                                        cachedItem.state !== payload.new.state ||
-                                        cachedItem.status !== payload.new.status ||
-                                        cachedItem.assigned_to !== payload.new.assigned_to ||
-                                        // Validar si pasa a 0 o >0 (afecta la pestaña 'unread')
-                                        (cachedItem.unread_count > 0) !== (payload.new.unread_count > 0)
-                                    ) {
-                                        needsRefetch = true;
-                                    } else {
-                                        needsRefetch = false;
-                                    }
+                            // Si cambia un estado clave que afecta a los filtros, requerimos un refetch
+                            if (
+                                cachedItem.state !== payload.new.state ||
+                                cachedItem.status !== payload.new.status ||
+                                cachedItem.assigned_to !== payload.new.assigned_to ||
+                                // Validar si pasa a 0 o >0 (afecta la pestaña 'unread')
+                                (cachedItem.unread_count > 0) !== (payload.new.unread_count > 0)
+                            ) {
+                                needsRefetch = true;
+                            } else {
+                                needsRefetch = false;
+                            }
 
-                                    modified = true;
-                                    const updatedPage = [...page];
-                                    updatedPage[index] = { ...updatedPage[index], ...payload.new };
-                                    return updatedPage;
-                                }
-                                return page;
-                            });
-                            
-                            return modified ? { ...oldData, pages: newPages } : oldData;
-                        });
+                            modified = true;
+                            const updatedPage = [...page];
+                            updatedPage[index] = { ...updatedPage[index], ...payload.new };
+                            return updatedPage;
+                        }
+                        return page;
+                    });
+                    
+                    return modified ? { ...oldData, pages: newPages } : oldData;
+                });
 
-                        // Si no lo encontramos en caché, requerimos refetch para que entre a la lista
-                        if (!itemFound) needsRefetch = true;
-                    } else if (payload.eventType === 'DELETE') {
-                        queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
-                            if (!oldData || !oldData.pages) return oldData;
-                            let modified = false;
-                            const newPages = oldData.pages.map((page: any[]) => {
-                                const newPage = page.filter(c => c.id !== payload.old.id);
-                                if (newPage.length !== page.length) modified = true;
-                                return newPage;
-                            });
-                            return modified ? { ...oldData, pages: newPages } : oldData;
-                        });
-                        // Todavía requerimos refetch para asegurar paginación correcta a largo plazo
-                    }
-                    // Para INSERT, siempre requerimos refetch (el INSERT no trae JOINs como leads/clients)
+                // Si no lo encontramos en caché, requerimos refetch para que entre a la lista
+                if (!itemFound) needsRefetch = true;
+            } else if (payload.eventType === 'DELETE') {
+                queryClient.setQueriesData({ queryKey: ['conversations', orgId] }, (oldData: any) => {
+                    if (!oldData || !oldData.pages) return oldData;
+                    let modified = false;
+                    const newPages = oldData.pages.map((page: any[]) => {
+                        const newPage = page.filter(c => c.id !== payload.old.id);
+                        if (newPage.length !== page.length) modified = true;
+                        return newPage;
+                    });
+                    return modified ? { ...oldData, pages: newPages } : oldData;
+                });
+                // Todavía requerimos refetch para asegurar paginación correcta a largo plazo
+            }
+            // Para INSERT, siempre requerimos refetch (el INSERT no trae JOINs como leads/clients)
 
-                    if (needsRefetch) {
-                        queryClient.invalidateQueries({ queryKey: ['conversations', orgId] });
-                    }
-                }
-            )
-            .subscribe();
+            if (needsRefetch) {
+                queryClient.invalidateQueries({ queryKey: ['conversations', orgId] });
+            }
+        };
+
+        window.addEventListener('pixy:conversations-update', handleConversationsUpdate);
 
         return () => {
-            supabase.removeChannel(channel);
+            window.removeEventListener('pixy:conversations-update', handleConversationsUpdate);
         };
-    }, [orgId, identityLoaded, queryClient, supabase]);
+    }, [orgId, identityLoaded, queryClient]);
 
     return result;
 }

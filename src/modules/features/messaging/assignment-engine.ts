@@ -261,15 +261,9 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
                 return null
             }
             
-            let agentId: string | null = null
-            // If only one agent, assign directly
-            if (specificAgents.length === 1) {
-                agentId = specificAgents[0]
-            } else {
-                // If multiple agents, use Round Robin rotation among them
-                agentId = await roundRobinAssignment(orgId, specificAgents, conv.channel, conv.connection_id, 'specific-agent')
-            }
-            return agentId
+            // Assign via Round Robin to ensure availability checks (online, capacity)
+            // are strictly enforced even if there is only 1 specific agent.
+            return await roundRobinAssignment(orgId, specificAgents, conv.channel, conv.connection_id, 'specific-agent')
         default:
             return null
     }
@@ -342,8 +336,8 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     if (!agents || agents.length === 0) return null
 
-    // Heartbeat validation (3 minutes threshold)
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    // Heartbeat validation (5 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
 
     if (activeAgents.length === 0) return null;
@@ -369,7 +363,15 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     // Find next agent in rotation
     const lastIndex = qualifiedAgents.findIndex(a => a.agent_id === lastAssignment?.assigned_to)
-    const nextIndex = (lastIndex + 1) % qualifiedAgents.length
+    
+    if (lastIndex === -1 && lastAssignment?.assigned_to) {
+        // If last assigned agent went offline, find the next one alphabetically
+        // to prevent resetting rotation to index 0 unfairly
+        const nextAgentIndex = qualifiedAgents.findIndex(a => a.agent_id > lastAssignment.assigned_to)
+        return nextAgentIndex !== -1 ? qualifiedAgents[nextAgentIndex].agent_id : qualifiedAgents[0].agent_id
+    }
+
+    const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % qualifiedAgents.length
     return qualifiedAgents[nextIndex].agent_id
 }
 
@@ -423,8 +425,8 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
 
     if (error || !agents || agents.length === 0) return null
 
-    // Heartbeat validation (3 minutes threshold)
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    // Heartbeat validation (5 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
 
     if (activeAgents.length === 0) return null;
@@ -509,7 +511,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 
     const memberMap = new Map((members || []).map(m => [m.user_id, m]));
 
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
     for (const agentId of sortedAgents) {
         const member = memberMap.get(agentId);
@@ -517,7 +519,9 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 
         // Validation: Channel Access (Skip if Admin)
         if (channelType && !isAdmin) {
-            const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
+            const perms = member?.permissions as any || {};
+            const legacyInboxAccess = perms.inbox_access || perms.modules?.inbox?.inbox_access || perms.inbox?.inbox_access || [];
+            const hasExplicitAccess = legacyInboxAccess.includes(connectionId);
             
             if (!hasExplicitAccess) {
                 const { data: hasAccess } = await (await createClient())
