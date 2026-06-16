@@ -2,7 +2,7 @@
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 const PUBLIC_EXTRACT_ERROR = 'FAQ extraction failed'
 const PUBLIC_SAVE_ERROR = 'FAQ save failed'
@@ -88,7 +88,7 @@ export async function saveFAQ(faq: FAQEntry): Promise<{ success: boolean; id?: s
     if (!orgId) return { success: false, error: "Unauthorized" }
 
     try {
-        const supabase = await createClient()
+        const supabase = supabaseAdmin
 
         const { data, error } = await supabase.from('knowledge_base').insert({
             organization_id: orgId,

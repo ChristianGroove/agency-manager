@@ -2,6 +2,7 @@
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 const PUBLIC_GENERATION_ERROR = 'Smart replies could not be generated'
 const PUBLIC_REFINE_ERROR = 'Draft could not be refined'
@@ -69,7 +70,7 @@ export interface GenerateRepliesOptions {
     }
 }
 
-type SupabaseServerClient = Awaited<ReturnType<typeof import('@/modules/core/database/supabase-server').createClient>>
+type SupabaseServerClient = typeof supabaseAdmin
 
 async function verifySuggestionConversationAccess(
     supabase: SupabaseServerClient,
@@ -169,8 +170,8 @@ export async function logSuggestion(data: {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return
 
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     const hasAccess = await verifySuggestionConversationAccess(supabase, orgId, data.conversationId, data.messageId)
     if (!hasAccess) return
@@ -203,8 +204,8 @@ export async function markSuggestionUsed(
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return
 
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     const { data: suggestion } = await supabase
         .from('ai_suggestions')

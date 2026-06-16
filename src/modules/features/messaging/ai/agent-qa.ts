@@ -2,7 +2,7 @@
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 const PUBLIC_AGENT_QA_ERROR = 'Agent QA failed'
 
 function isDeployedRuntime() {
@@ -65,7 +65,7 @@ type AgentMessage = {
     created_at?: string | null
 }
 
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+type SupabaseServerClient = typeof supabaseAdmin
 
 async function fetchAgentMessages(
     supabase: SupabaseServerClient,
@@ -120,12 +120,12 @@ export async function analyzeAgentPerformance(
     if (!orgId) return { success: false, error: "Unauthorized" }
 
     try {
-        const supabase = await createClient() // Use standard client for cached data read (RLS applies)
+        const supabase = supabaseAdmin // Use standard client for cached data read (RLS applies)
 
         // 1. Check Cache (Recent report within last 24h?)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-        const { data: cached } = await (await createClient()) // Use admin for reliable lookup
+        const { data: cached } = await (supabaseAdmin) // Use admin for reliable lookup
             .from('agent_qa_reports')
             .select('*')
             .eq('organization_id', orgId)
@@ -181,7 +181,7 @@ export async function analyzeAgentPerformance(
         const report = result.data as AgentQAResult
 
         // 3. Save to Cache
-        await (await createClient()).from('agent_qa_reports').insert({
+        await (supabaseAdmin).from('agent_qa_reports').insert({
             organization_id: orgId,
             agent_id: agentId,
             report: report,

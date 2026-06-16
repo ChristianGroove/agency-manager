@@ -1,4 +1,4 @@
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
@@ -92,7 +92,7 @@ export class MessagingPersistence {
         // Use externalId or messageId
         const finalExternalId = externalId || messageId || null;
         
-        const supabase = (await createClient())
+        const supabase = (supabaseAdmin)
 
         const payload: Record<string, unknown> = {
             id: id || messageId || undefined, // Use provided ID to match optimistic UI
@@ -129,7 +129,7 @@ export class MessagingPersistence {
      * Check if a conversation has an active 24h session window (Meta policies)
      */
     static async hasActiveSessionWindow(conversationId: string): Promise<boolean> {
-        const { data: lastInbound, error } = await (await createClient())
+        const { data: lastInbound, error } = await (supabaseAdmin)
             .from('messages')
             .select('created_at')
             .eq('conversation_id', conversationId)

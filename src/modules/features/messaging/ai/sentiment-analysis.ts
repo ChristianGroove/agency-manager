@@ -152,8 +152,8 @@ export async function saveSentimentAnalysis(
     result: SentimentResult
 ) {
     "use server"
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     // Update message with sentiment
     await supabase
@@ -193,8 +193,8 @@ export async function autoEscalateIfNeeded(
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return
 
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     // Find supervisor or senior agent
     // For now, just mark conversation as urgent priority
