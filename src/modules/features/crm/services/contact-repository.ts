@@ -232,25 +232,47 @@ export class ContactRepository {
     }
 
     async purgeInactive(orgId: string, allowedChannels: string[] | undefined, thresholdIsoDate: string, minScore?: number): Promise<number> {
-        let query = this.supabase
-            .from('leads')
-            .delete({ count: 'exact' })
-            .eq('organization_id', orgId)
-            .lt('updated_at', thresholdIsoDate)
-            .not('status', 'in', '("converted","customer","active_deal")')
+        let totalDeleted = 0;
+        let hasMore = true;
 
-        if (allowedChannels !== undefined) {
-            if (allowedChannels.length === 0) return 0;
-            query = query.in('source_connection_id', allowedChannels)
+        while (hasMore) {
+            let query = this.supabase
+                .from('leads')
+                .select('id')
+                .eq('organization_id', orgId)
+                .lt('updated_at', thresholdIsoDate)
+                .not('status', 'in', '("converted","customer","active_deal")')
+                .limit(500);
+
+            if (allowedChannels !== undefined) {
+                if (allowedChannels.length === 0) return totalDeleted;
+                query = query.in('source_connection_id', allowedChannels)
+            }
+
+            if (minScore !== undefined) {
+                query = query.lt('score', minScore)
+            }
+
+            const { data, error: selectError } = await query;
+            if (selectError) throw selectError;
+
+            if (!data || data.length === 0) {
+                hasMore = false;
+                break;
+            }
+
+            const ids = data.map(l => l.id);
+            const { count, error: deleteError } = await this.supabase
+                .from('leads')
+                .delete({ count: 'exact' })
+                .eq('organization_id', orgId)
+                .in('id', ids);
+
+            if (deleteError) throw deleteError;
+            totalDeleted += (count || ids.length);
         }
 
-        if (minScore !== undefined) {
-            query = query.lt('score', minScore)
-        }
-
-        const { count, error } = await query
-        if (error) throw error
-        return count || 0
+        return totalDeleted;
     }
 
 
