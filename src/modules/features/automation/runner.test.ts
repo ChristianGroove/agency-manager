@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: {
         from: mocks.supabaseFrom,
-    }))
+    }
 }))
 
 vi.mock('./nodes/wait-input-node', () => ({
