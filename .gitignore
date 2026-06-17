@@ -53,3 +53,5 @@ key_check.json
 
 # backups
 supabase/backups/production/emergency_sync_*.sql
+
+env.production
