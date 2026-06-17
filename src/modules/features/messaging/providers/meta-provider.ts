@@ -699,8 +699,11 @@ export class MetaProvider implements MessagingProvider {
                     logMetaProviderError('[MetaProvider] Failed to transcode WebP:', e);
                 }
             }
-            
-            const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'bin');
+            // Sanitize MIME type (Meta strict validation rejects "audio/ogg; codecs=opus" or "audio/webm")
+            mimeType = mimeType.split(';')[0].trim();
+            if (mimeType === 'audio/webm') mimeType = 'audio/mp4'; // Fallback if somehow webm bypassed 
+
+            const ext = mimeType.split('/')[1] || (type === 'image' ? 'jpg' : 'bin');
             // Use native File instead of Blob so FormData preserves the filename and type perfectly in Node.js >= 20
             const file = new File([buffer], `media-file.${ext}`, { type: mimeType });
 

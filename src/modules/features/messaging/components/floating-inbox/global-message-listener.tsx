@@ -86,6 +86,21 @@ export function GlobalMessageListener() {
             processedConvs.current.add(dedupeKey)
             setTimeout(() => processedConvs.current.delete(dedupeKey), 5000)
 
+            // LOCAL HIDING REMOVED! We now fully trust the backend subscriptions.
+            // If the message made it here, it means the agent is assigned or has channel/global access.
+
+            // DISPATCH SYNC EVENT FOR CHATAREA AND OTHERS
+            window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
+                detail: { conversationId: conv.id } 
+            }));
+            
+            // DISPATCH EVENT FOR USE-CONVERSATIONS CACHE
+            window.dispatchEvent(new CustomEvent('pixy:conversations-update', { 
+                detail: payload 
+            }));
+
+            // AFTER dispatching the global events, if we are inside the Inbox, 
+            // DO NOT show the annoying toast notification nor play the global sound.
             if (pathnameRef.current?.includes('/inbox')) return
 
             const currentPrefs = preferencesRef.current
@@ -99,26 +114,11 @@ export function GlobalMessageListener() {
                 }
             }
 
-            if (conv.connection_id && !orgConnectionIdsRef.current.has(conv.connection_id)) return
-            
-            // LOCAL HIDING REMOVED! We now fully trust the backend subscriptions.
-            // If the message made it here, it means the agent is assigned or has channel/global access.
-
             let senderName = "Nuevo Mensaje"
             try {
                 const { data: leadData } = await supabase.from('leads').select('name, phone').eq('id', conv.lead_id).single()
                 senderName = leadData?.name || leadData?.phone || "Nuevo Mensaje"
             } catch (e) {}
-
-            // DISPATCH SYNC EVENT FOR CHATAREA AND OTHERS
-            window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
-                detail: { conversationId: conv.id } 
-            }));
-            
-            // DISPATCH EVENT FOR USE-CONVERSATIONS CACHE
-            window.dispatchEvent(new CustomEvent('pixy:conversations-update', { 
-                detail: payload 
-            }));
 
             toast.custom((t) => (
                 <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto items-center animate-in slide-in-from-top-2">

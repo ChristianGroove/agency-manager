@@ -147,9 +147,14 @@ export function useChatActions(params: {
             let mime = 'audio/webm';
 
             if (isWhatsApp) {
-                const { convertWebmToOgg } = await import("@/modules/infrastructure/audio/services/webm-to-ogg")
-                finalBlob = await convertWebmToOgg(blob)
-                ext = 'ogg'; mime = 'audio/ogg';
+                if (mimeType.includes('mp4') || mimeType.includes('m4a') || mimeType.includes('aac')) {
+                    // Safari typically records in mp4 natively, which Meta accepts. Do not transcode!
+                    ext = 'mp4'; mime = 'audio/mp4';
+                } else {
+                    const { convertWebmToOgg } = await import("@/modules/infrastructure/audio/services/webm-to-ogg")
+                    finalBlob = await convertWebmToOgg(blob)
+                    ext = 'ogg'; mime = 'audio/ogg';
+                }
             } else {
                 try {
                     const { convertWebmToWav } = await import("@/modules/infrastructure/audio/services/webm-to-wav")
