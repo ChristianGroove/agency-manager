@@ -365,7 +365,7 @@ function RuleEditor({ rule, agents, channels, onSave, onCancel, t }: any) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-3 border rounded-xl bg-gray-50/30">
                         {agents.map((agent: any) => {
-                            const agentName = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Agente'
+                            const agentName = agent.users?.raw_user_meta_data?.name || agent.users?.raw_user_meta_data?.full_name || agent.users?.email || 'Agente'
                             const isAuthorized = agent.role === 'admin' || agent.role === 'owner' || selectedChannel === 'all' || 
                                 (agent.permissions?.inbox_access || []).includes(selectedChannel) ||
                                 agent.agent_channels?.some((ac: any) => {

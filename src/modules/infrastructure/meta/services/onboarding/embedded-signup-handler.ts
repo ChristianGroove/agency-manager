@@ -112,9 +112,6 @@ export class EmbeddedSignupHandler {
 
             // 2. Resolve WABA ID
             const wabaId = await this.resolveWabaId(tokenData.access_token, tokenData.waba_id);
-            if (!wabaId) {
-                throw new Error('Could not resolve WABA ID from token response');
-            }
 
             // 3. Get Phone Numbers
             const phoneNumbers = await this.getPhoneNumbers(wabaId, tokenData.access_token);
@@ -217,7 +214,7 @@ export class EmbeddedSignupHandler {
             }
         }
 
-        return '';
+        throw new Error(`WABA ID not found. FB Shared: ${JSON.stringify(data)}. FB Owned: ${JSON.stringify(ownedData)}`);
     }
 
     /**

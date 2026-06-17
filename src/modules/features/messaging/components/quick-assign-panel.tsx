@@ -174,7 +174,7 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
                                     return true
                                 })
                                 .map(agent => {
-                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('crm.inbox.context.sections.unknown_agent')
+                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.raw_user_meta_data?.full_name || agent.users?.email || t('crm.inbox.context.sections.unknown_agent')
                                     const loadPercentage = (agent.current_load / agent.max_capacity) * 100
 
                                     // Re-calculate eligibility for the badge display
