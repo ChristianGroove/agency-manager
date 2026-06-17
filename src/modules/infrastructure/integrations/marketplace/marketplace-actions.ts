@@ -6,6 +6,7 @@ import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { IntegrationProvider, InstalledIntegration } from "./types"
 import { integrationRegistry } from "../registry"
+import { createMetaOAuthState } from "@/modules/infrastructure/meta/services/oauth-state"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
@@ -346,8 +347,8 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
     if (!orgId) throw new Error("No organization context")
 
     // State includes orgId and optional channelType for filtering in callback
-    // Format: "orgId" or "orgId:channelType"
-    const state = channelType ? `${orgId}:${channelType}` : orgId;
+    // Format: Base64 JSON
+    const state = createMetaOAuthState({ orgId, channelType });
 
     const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
