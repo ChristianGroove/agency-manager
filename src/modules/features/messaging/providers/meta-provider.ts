@@ -288,12 +288,17 @@ export class MetaProvider implements MessagingProvider {
             const mediaTypes = ['audio', 'image', 'video', 'document', 'sticker'];
             
             if (mediaTypes.includes(content.type) && content.mediaUrl && !content.mediaId) {
-                const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId);
-                if (mediaId) {
-                    content.mediaId = mediaId;
-                } else {
-                    console.error('[MetaProvider] Falló la auto-subida de medio. WhatsApp Cloud API rechazará silenciósamente los enlaces locales.');
-                    throw new Error("No se pudo subir la imagen del producto a servidores de Meta. Verifica la URL.");
+                const isLocalUrl = content.mediaUrl.includes('127.0.0.1') || content.mediaUrl.includes('localhost');
+                const shouldBypassUpload = !isLocalUrl && content.type === 'audio';
+
+                if (!shouldBypassUpload) {
+                    const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId);
+                    if (mediaId) {
+                        content.mediaId = mediaId;
+                    } else {
+                        console.error('[MetaProvider] Falló la auto-subida de medio. WhatsApp Cloud API rechazará silenciósamente los enlaces locales.');
+                        throw new Error("No se pudo subir la imagen del producto a servidores de Meta. Verifica la URL.");
+                    }
                 }
             }
             

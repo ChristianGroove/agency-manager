@@ -215,9 +215,10 @@ export class ContactRepository {
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .lt('updated_at', thresholdIsoDate)
-            .not('status', 'in', '("converted","customer","active_deal")')
+            .not('status', 'in', ['converted', 'customer', 'active_deal'])
             
         if (allowedChannels !== undefined) {
+            if (allowedChannels.length === 0) return 0;
             query = query.in('source_connection_id', allowedChannels)
         }
 
@@ -236,9 +237,10 @@ export class ContactRepository {
             .delete({ count: 'exact' })
             .eq('organization_id', orgId)
             .lt('updated_at', thresholdIsoDate)
-            .not('status', 'in', '("converted","customer","active_deal")')
+            .not('status', 'in', ['converted', 'customer', 'active_deal'])
 
         if (allowedChannels !== undefined) {
+            if (allowedChannels.length === 0) return 0;
             query = query.in('source_connection_id', allowedChannels)
         }
 

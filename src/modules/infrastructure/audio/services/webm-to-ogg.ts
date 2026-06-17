@@ -109,7 +109,17 @@ export async function convertWebmToOgg(webmBlob: Blob): Promise<Blob> {
         0x01, 0x01, 0x00, 0x00, 0x80, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00
     ]);
 
+    // OpusTags: Required by WhatsApp/Meta strict parsers
+    const tagsHeader = new Uint8Array([
+        0x4F, 0x70, 0x75, 0x73, 0x54, 0x61, 0x67, 0x73, // "OpusTags"
+        0x08, 0x00, 0x00, 0x00, // Vendor string length (8)
+        0x50, 0x69, 0x78, 0x79, 0x41, 0x70, 0x70, 0x00, // "PixyApp\0"
+        0x00, 0x00, 0x00, 0x00  // Comment count (0)
+    ]);
+
     oggPages.push(createOggPage([idHeader], 0x02, false)); // BOS
+    oggPages.push(createOggPage([tagsHeader], 0x00, false)); // OpusTags mandatory second page
+
 
     // Send packets (WhatsApp sometimes prefers 1-10 packets per page for better streaming)
     for (let i = 0; i < opusPackets.length; i += 20) {
