@@ -337,16 +337,26 @@ export async function getAgentsWorkload() {
         return true;
     });
 
-    // 2. Get profiles for names and avatars
+    // 2. Get profiles for names and avatars using admin client to bypass RLS
     console.time('agents:profiles_fetch')
-    const { data: profiles, error: profileError } = await (await createClient())
+    const { data: profiles, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', activeAgents.map(a => a.agent_id))
 
-    // Fallback to auth.users if profiles is missing/empty
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const userMap = new Map(authUsers?.users?.map(u => [u.id, u]) || [])
+    // Fallback: If any agents lack a profile, try to get their user info directly from auth admin
+    const userMap = new Map();
+    const missingProfileIds = activeAgents.map(a => a.agent_id).filter(id => !profiles?.some(p => p.id === id));
+    
+    if (missingProfileIds.length > 0) {
+        // Fetch missing users individually (listUsers only returns 50 max by default)
+        await Promise.all(missingProfileIds.map(async (id) => {
+            const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+            if (data?.user) {
+                userMap.set(id, data.user);
+            }
+        }));
+    }
     console.timeEnd('agents:profiles_fetch')
 
     if (profileError) {
@@ -620,17 +630,13 @@ export async function getSidebarAgents() {
         return { success: false, error: 'No organization found', data: [] }
     }
 
-    // 1. Concurrent Fetch for members, availability, profiles, and auth users
+    // 1. Fetch members and availability
     const [
         { data: members, error: membersError },
-        { data: availability },
-        { data: profiles },
-        { data: authUsers }
+        { data: availability }
     ] = await Promise.all([
         (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', memberData.organization_id),
-        (await createClient()).from('agent_availability').select('agent_id, agent_channels(channel_type)').eq('organization_id', memberData.organization_id),
-        (await createClient()).from('profiles').select('id, full_name, avatar_url, platform_role'),
-        supabaseAdmin.auth.admin.listUsers()
+        (await createClient()).from('agent_availability').select('agent_id, agent_channels(channel_type)').eq('organization_id', memberData.organization_id)
     ])
 
     if (membersError || !members) {
@@ -642,8 +648,26 @@ export async function getSidebarAgents() {
         return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
     }
 
+    // 2. Fetch profiles using admin client to bypass RLS
+    const memberIds = members.map(m => m.user_id);
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, avatar_url, platform_role')
+        .in('id', memberIds);
+
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
-    const authMap = new Map(authUsers?.users.map(u => [u.id, u.user_metadata]) || [])
+    
+    // 3. Fallback to auth API for missing profiles
+    const authMap = new Map();
+    const missingProfileIds = memberIds.filter(id => !profiles?.some(p => p.id === id));
+    if (missingProfileIds.length > 0) {
+        await Promise.all(missingProfileIds.map(async (id) => {
+            const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+            if (data?.user) {
+                authMap.set(id, data.user.user_metadata);
+            }
+        }));
+    }
     
     const platformAdminIds = new Set(
         profiles?.filter(p => p.platform_role === 'super_admin').map(p => p.id) || []
