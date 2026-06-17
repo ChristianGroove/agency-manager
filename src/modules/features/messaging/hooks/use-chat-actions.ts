@@ -162,7 +162,7 @@ export function useChatActions(params: {
             }
             
             const orgId = conversation?.organization_id
-            const fileName = `audio/${orgId}/${Date.now()}.${ext}`
+            const fileName = `${conversationId}/audio/${Date.now()}.${ext}`
             const { error: uploadError } = await supabase.storage.from(MESSAGING_STORAGE_BUCKET).upload(fileName, finalBlob, { contentType: mime })
             if (uploadError) throw uploadError
 

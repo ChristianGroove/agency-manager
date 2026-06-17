@@ -17,8 +17,8 @@ USING (
   (
     EXISTS (
         SELECT 1 
-        FROM conversations c
-        JOIN organization_members om ON c.organization_id = om.organization_id
+        FROM public.conversations c
+        JOIN public.organization_members om ON c.organization_id = om.organization_id
         WHERE 
             c.id::text = (storage.foldername(name))[1] 
             AND om.user_id = auth.uid()
@@ -40,8 +40,8 @@ WITH CHECK (
   auth.role() = 'authenticated' AND
   EXISTS (
       SELECT 1 
-      FROM conversations c
-      JOIN organization_members om ON c.organization_id = om.organization_id
+      FROM public.conversations c
+      JOIN public.organization_members om ON c.organization_id = om.organization_id
       WHERE 
           c.id::text = (storage.foldername(name))[1] 
           AND om.user_id = auth.uid()
@@ -57,8 +57,8 @@ USING (
   auth.role() = 'authenticated' AND
   EXISTS (
       SELECT 1 
-      FROM conversations c
-      JOIN organization_members om ON c.organization_id = om.organization_id
+      FROM public.conversations c
+      JOIN public.organization_members om ON c.organization_id = om.organization_id
       WHERE 
           c.id::text = (storage.foldername(name))[1] 
           AND om.user_id = auth.uid()

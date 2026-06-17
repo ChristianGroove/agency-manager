@@ -1003,6 +1003,7 @@ export const en = {
                     conversations: "Conversations",
                     contacts: "Contacts"
                 },
+                send_from: "Send from:",
                 search_placeholder: "Search conversations...",
                 search_contacts_placeholder: "Search or enter phone...",
                 inbox_settings: "Inbox Settings",
@@ -1033,6 +1034,8 @@ export const en = {
                 refine_ai: "Refine with AI",
                 ai_refined: "AI Refined",
                 note_mode: "Note Mode",
+                emojis: "Emojis",
+                stickers: "Stickers",
                 note: "Note",
                 unknown_user: "Unknown user",
                 quick_replies: {

@@ -191,7 +191,11 @@ export function useChatLogic(conversationId: string) {
                 (payload: any) => {
                     const updatedConv = payload.new as any
                     if (updatedConv.id === conversationId) {
-                        fetchConversation()
+                        setConversation((prev: any) => {
+                            if (!prev) return prev;
+                            // Only update fields that exist in payload.new to preserve joins (leads, clients, etc.)
+                            return { ...prev, ...updatedConv };
+                        });
                     }
                 }
             )

@@ -1003,10 +1003,10 @@ export const es = {
                     conversations: "Conversaciones",
                     contacts: "Contactos"
                 },
+                send_from: "Enviar desde:",
                 search_placeholder: "Buscar conversaciones...",
                 search_contacts_placeholder: "Buscar o ingresar teléfono...",
                 inbox_settings: "Ajustes del Inbox",
-                send_from: "Enviar desde:",
                 filters: {
                     all: "Todos",
                     unread: "No leídos",
@@ -1034,10 +1034,10 @@ export const es = {
                 refine_ai: "Refinar con IA",
                 ai_refined: "Refinado por IA",
                 note_mode: "Modo Nota",
-                note: "Nota",
-                unknown_user: "Usuario desconocido",
                 emojis: "Emojis",
                 stickers: "Stickers",
+                note: "Nota",
+                unknown_user: "Usuario desconocido",
                 quick_replies: {
                     title: "Respuestas Rápidas",
                     search: "Buscar respuestas...",

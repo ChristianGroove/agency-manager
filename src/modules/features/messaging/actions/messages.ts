@@ -99,7 +99,6 @@ export async function markConversationAsRead(id: string) {
         .eq("id", id)
 
     if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
-    revalidatePath("/inbox")
     return { success: !error }
 }
 
