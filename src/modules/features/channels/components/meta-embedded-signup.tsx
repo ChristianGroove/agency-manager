@@ -40,17 +40,18 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
     // Listen to the postMessage from the Facebook popup to capture waba_id
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
+            console.log('[EmbeddedSignup] Raw message received from:', event.origin);
             try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-                    console.log('[EmbeddedSignup] Received FINISH message from popup:', data.data);
-                    if (data.data && data.data.waba_id) {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (data && data.type === 'WA_EMBEDDED_SIGNUP') {
+                    console.log('[EmbeddedSignup] WA_EMBEDDED_SIGNUP event:', data);
+                    if (data.event === 'FINISH' && data.data && data.data.waba_id) {
+                        console.log('[EmbeddedSignup] Captured WABA ID:', data.data.waba_id);
                         wabaIdRef.current = data.data.waba_id;
                     }
                 }
             } catch (e) {
-                // Ignore parse errors
+                // Ignore parse errors for non-JSON messages
             }
         };
         window.addEventListener('message', handleMessage);
@@ -129,7 +130,11 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                         onError?.('No authorization code received');
                         return;
                     }
-                    processSignupCode(code, wabaIdRef.current);
+                    // Wait 500ms to ensure the 'message' event from the popup has time to be processed
+                    setTimeout(() => {
+                        console.log('[EmbeddedSignup] Sending code to backend. Captured WABA:', wabaIdRef.current);
+                        processSignupCode(code, wabaIdRef.current);
+                    }, 500);
                 } else {
                     console.log('[EmbeddedSignup] User cancelled or login failed');
                     setStatus('idle');

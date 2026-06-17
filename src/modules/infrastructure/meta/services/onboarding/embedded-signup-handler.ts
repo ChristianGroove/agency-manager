@@ -214,6 +214,16 @@ export class EmbeddedSignupHandler {
             }
         }
 
+        // 3. Fallback: query /me/whatsapp_business_accounts directly
+        // This endpoint requires whatsapp_business_management but NOT business_management!
+        const directUrl = `${GRAPH_URL}/me/whatsapp_business_accounts?access_token=${accessToken}`;
+        const directRes = await fetch(directUrl);
+        const directData = await directRes.json();
+        
+        if (directData.data && directData.data.length > 0) {
+            return directData.data[0].id;
+        }
+
         throw new Error(`WABA ID not found. FB Shared: ${JSON.stringify(data)}. FB Owned: ${JSON.stringify(ownedData)}`);
     }
 
