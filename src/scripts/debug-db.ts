@@ -4,8 +4,7 @@ import path from 'path';
 
 // Load .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-
-import { supabaseAdmin } from '../modules/core/database/supabase-admin';
+import { createClient } from "@/modules/core/database/supabase-server";
 
 async function main() {
     console.log('--- Checking DB Connection and Schema ---');
@@ -14,7 +13,7 @@ async function main() {
 
     // Check ai_credentials table
     console.log('Querying ai_credentials...');
-    const { data: creds, error: credError } = await supabaseAdmin
+    const { data: creds, error: credError } = await (await createClient())
         .from('ai_credentials')
         .select('*')
         .limit(1);
@@ -27,7 +26,7 @@ async function main() {
 
     // Check ai_providers table
     console.log('Querying ai_providers...');
-    const { data: provs, error: provError } = await supabaseAdmin
+    const { data: provs, error: provError } = await (await createClient())
         .from('ai_providers')
         .select('*')
         .limit(1);

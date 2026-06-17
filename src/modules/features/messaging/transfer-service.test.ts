@@ -1,0 +1,127 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({
+    getDictionary: vi.fn(),
+    resolveLanguage: vi.fn(),
+    revalidatePath: vi.fn(),
+    supabaseAdminFrom: vi.fn(),
+}))
+
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => ({
+        from: mocks.supabaseAdminFrom,
+    }))
+}))
+
+vi.mock('next/cache', () => ({
+    revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock('@/modules/core/i18n/dictionaries', () => ({
+    getDictionary: mocks.getDictionary,
+}))
+
+vi.mock('@/modules/core/i18n', () => ({
+    resolveLanguage: mocks.resolveLanguage,
+}))
+
+function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
+    return spies
+        .flatMap(spy => spy.mock.calls as unknown[][])
+        .map(call => call.map(value => {
+            if (typeof value === 'string') return value
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            try {
+                return JSON.stringify(value)
+            } catch {
+                return String(value)
+            }
+        }).join(' '))
+        .join('\n')
+}
+
+function singleQuery(result: unknown) {
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.select = vi.fn(() => query)
+    query.single = vi.fn(async () => result)
+    return query
+}
+
+function updateQuery(result: unknown) {
+    const query: any = {}
+    query.eq = vi.fn(() => query)
+    query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+        Promise.resolve(result).then(resolve, reject)
+    
+    return {
+        update: vi.fn(() => query),
+    }
+}
+
+afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+    vi.resetModules()
+    mocks.getDictionary.mockReset()
+    mocks.resolveLanguage.mockReset()
+    mocks.revalidatePath.mockReset()
+    mocks.supabaseAdminFrom.mockReset()
+})
+
+describe('transfer service logging', () => {
+    it('does not expose transfer update failures in production responses or logs', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        mocks.supabaseAdminFrom
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    assigned_to: 'from-agent-secret-id',
+                    channel: 'whatsapp',
+                    connection_id: 'connection-secret-id',
+                    organization_id: 'org-secret-id',
+                },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    current_load: 1,
+                    max_capacity: 10,
+                    status: 'online',
+                },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: { role: 'admin' },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: { role: 'agent' },
+                error: null,
+            }))
+            .mockReturnValueOnce(updateQuery({
+                error: {
+                    code: '42501',
+                    message: 'policy denied conversation-secret-id org-secret-id to-agent-secret-id',
+                },
+            }))
+
+        const { transferConversation } = await import('./transfer-service')
+        const result = await transferConversation('conversation-secret-id', 'from-agent-secret-id', 'to-agent-secret-id', 'manual reason')
+
+        expect(result).toEqual({ success: false, error: 'Conversation transfer failed' })
+        const logText = collectConsoleCalls(errorSpy)
+        expect(logText).not.toContain('conversation-secret-id')
+        expect(logText).not.toContain('from-agent-secret-id')
+        expect(logText).not.toContain('to-agent-secret-id')
+        expect(logText).not.toContain('org-secret-id')
+        expect(logText).not.toContain('connection-secret-id')
+        expect(logText).not.toContain('policy denied')
+        expect(logText).toContain('conversationIdPresent')
+        expect(logText).toContain('fromAgentIdPresent')
+        expect(logText).toContain('toAgentIdPresent')
+        expect(logText).toContain('organizationIdPresent')
+        expect(logText).toContain('connectionIdPresent')
+        expect(logText).toContain('42501')
+    })
+})

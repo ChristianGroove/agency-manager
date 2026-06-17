@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { Virtuoso } from "react-virtuoso"
 import { Lead } from "@/types"
 import { deleteLeads, deleteAllLeads } from "../services/logic/lead-management-actions"
-import { exportLeadsToCSV, purgeColdLeads } from "../services/logic/leads-actions"
+import { exportContactsAction, purgeColdContactsAction, previewPurgeColdContactsAction } from "../crm-actions"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface LeadManagementSheetProps {
@@ -65,7 +65,7 @@ export function LeadManagementSheet({ open, onOpenChange, leads, onSuccess }: Le
     const handleExport = async () => {
         setIsLoading(true)
         try {
-            const res = await exportLeadsToCSV()
+            const res = await exportContactsAction()
             if (res.success && res.data) {
                 const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
                 const link = document.createElement("a")
@@ -86,13 +86,25 @@ export function LeadManagementSheet({ open, onOpenChange, leads, onSuccess }: Le
     }
 
     const handleSmartPurge = async () => {
-        if (!confirm("¿Deseas purgar automáticamente leads fríos (+30 días inactivos y score bajo)?")) return
-
         setIsLoading(true)
         try {
-            const res = await purgeColdLeads({ inactiveDays: 30, minScore: 20 })
+            const previewRes = await previewPurgeColdContactsAction({ inactiveDays: 30, minScore: 20 })
+            if (!previewRes.success) {
+                toast.error(previewRes.error || "Error al calcular leads a purgar")
+                return
+            }
+
+            const count = previewRes.data || 0
+            if (count === 0) {
+                toast.info("No hay leads fríos para purgar actualmente.")
+                return
+            }
+
+            if (!confirm(`Se encontraron ${count} leads fríos inactivos (+30 días y score < 20). ¿Deseas eliminarlos permanentemente?`)) return
+
+            const res = await purgeColdContactsAction({ inactiveDays: 30, minScore: 20 })
             if (res.success) {
-                toast.success(`${res.data?.deleted} leads fríos eliminados`)
+                toast.success(`${res.data} leads fríos eliminados`)
                 onSuccess()
             } else {
                 toast.error(res.error)

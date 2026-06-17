@@ -30,6 +30,44 @@ export interface CallHoursConfig {
     callbackPermissionEnabled: boolean;
 }
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function logCallHoursInfo(label: string, details: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeCallHoursLogDetails(details));
+}
+
+function logCallHoursError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function sanitizeCallHoursLogDetails(details: Record<string, unknown>) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'callId') {
+                return ['callIdPresent', Boolean(value)];
+            }
+            if (key === 'fromPhoneNumber') {
+                return ['fromPhoneNumberPresent', Boolean(value)];
+            }
+            return [key, value];
+        })
+    );
+}
+
 /**
  * Call Hours Manager
  */
@@ -150,7 +188,7 @@ export class CallHoursManager {
     }> {
         const { callId, fromPhoneNumber } = params;
 
-        console.log('[CallHours] Out of hours call from:', fromPhoneNumber);
+        logCallHoursInfo('[CallHours] Out of hours call', { callId, fromPhoneNumber });
 
         switch (this.config.outOfHoursAction) {
             case 'message':
@@ -237,7 +275,7 @@ export class CallHoursManager {
 
             console.log('[CallHours] ✅ Synced to Meta');
         } catch (error) {
-            console.error('[CallHours] Failed to sync:', error);
+            logCallHoursError('[CallHours] Failed to sync:', error);
         }
     }
 

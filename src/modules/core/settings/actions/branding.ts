@@ -7,6 +7,46 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { type DocumentBrandingSettings } from "@/modules/features/billing/types"
 
+const PUBLIC_ORGANIZATION_BRANDING_UPDATE_ERROR = "No se pudo actualizar la marca"
+const PUBLIC_DOCUMENT_BRANDING_UPDATE_ERROR = "No se pudo actualizar la marca de documentos"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeBrandingActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logBrandingActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeBrandingActionError(error))
+}
+
+function brandingActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 /**
  * BRANDING ACTIONS
  */
@@ -34,7 +74,10 @@ export async function updateOrganizationBranding(data: {
             onConflict: 'organization_id'
         })
 
-    if (error) throw error
+    if (error) {
+        logBrandingActionError("[updateOrganizationBranding] Error:", error)
+        throw new Error(brandingActionErrorMessage(error, PUBLIC_ORGANIZATION_BRANDING_UPDATE_ERROR))
+    }
     revalidatePath('/platform/settings/branding')
     return { success: true }
 }
@@ -50,7 +93,10 @@ export async function getOrganizationBranding() {
         .eq('organization_id', orgId)
         .single()
 
-    if (error) return null
+    if (error) {
+        logBrandingActionError("[getOrganizationBranding] Error:", error)
+        return null
+    }
     return data
 }
 
@@ -76,7 +122,10 @@ export async function getDocumentBranding(orgId?: string): Promise<DocumentBrand
         .eq('organization_id', organizationId)
         .maybeSingle()
 
-    if (error) return null
+    if (error) {
+        logBrandingActionError("[getDocumentBranding] Error:", error)
+        return null
+    }
     return (data as DocumentBrandingSettings) || getDocumentBrandingDefaults()
 }
 
@@ -95,7 +144,10 @@ export async function updateDocumentBranding(settings: Partial<DocumentBrandingS
         })
         .eq('organization_id', orgId)
 
-    if (error) return { error: error.message }
+    if (error) {
+        logBrandingActionError("[updateDocumentBranding] Error:", error)
+        return { error: brandingActionErrorMessage(error, PUBLIC_DOCUMENT_BRANDING_UPDATE_ERROR) }
+    }
     revalidatePath('/settings')
     return { success: true }
 }

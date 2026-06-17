@@ -1,9 +1,45 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { SaasSubscription, SubscriptionStatus } from "./types"
+
+const PUBLIC_MANUAL_SUBSCRIPTION_ERROR = 'Manual subscription could not be initialized'
+const PUBLIC_PAYMENT_METHOD_ERROR = 'Payment method could not be updated'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeSaasActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logSaasActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeSaasActionError(error))
+}
+
+function publicSaasActionError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
 
 /**
  * Get organization's SaaS subscription status
@@ -18,7 +54,7 @@ export async function getSaasSubscription(organizationId: string): Promise<SaasS
         .maybeSingle()
 
     if (error) {
-        console.error('Error fetching SaaS subscription:', error)
+        logSaasActionError('Error fetching SaaS subscription:', error)
         return null
     }
 
@@ -31,7 +67,7 @@ export async function getSaasSubscription(organizationId: string): Promise<SaasS
  */
 export async function initializeManualSubscription(organizationId: string, planId: string) {
     // Only SuperAdmin or System can do this
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('saas_subscriptions')
         .upsert({
             organization_id: organizationId,
@@ -45,8 +81,8 @@ export async function initializeManualSubscription(organizationId: string, planI
         .single()
 
     if (error) {
-        console.error('Error initializing manual subscription:', error)
-        return { success: false, error: error.message }
+        logSaasActionError('Error initializing manual subscription:', error)
+        return { success: false, error: publicSaasActionError(PUBLIC_MANUAL_SUBSCRIPTION_ERROR, error) }
     }
 
     revalidatePath(`/platform/admin/organizations/${organizationId}`)
@@ -61,7 +97,7 @@ export async function updateSubscriptionPaymentMethod(
     paymentMethodId: string,
     gateway: 'wompi' | 'stripe' = 'wompi'
 ) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_subscriptions')
         .update({
             payment_method_id: paymentMethodId,
@@ -71,8 +107,8 @@ export async function updateSubscriptionPaymentMethod(
         .eq('organization_id', organizationId)
 
     if (error) {
-        console.error('Error updating payment method:', error)
-        return { success: false, error: error.message }
+        logSaasActionError('Error updating payment method:', error)
+        return { success: false, error: publicSaasActionError(PUBLIC_PAYMENT_METHOD_ERROR, error) }
     }
 
     return { success: true }

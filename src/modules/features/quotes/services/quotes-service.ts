@@ -3,6 +3,52 @@ import { Quote } from "@/types"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_QUOTE_LOAD_ERROR = "No se pudo cargar la cotizacion"
+const PUBLIC_QUOTE_CREATE_ERROR = "No se pudo crear la cotizacion"
+const PUBLIC_QUOTE_UPDATE_ERROR = "No se pudo actualizar la cotizacion"
+const PUBLIC_QUOTE_DELETE_ERROR = "No se pudo eliminar la cotizacion"
+const PUBLIC_QUOTE_LINK_ERROR = "No se pudo vincular la cotizacion"
+const PUBLIC_QUOTE_SEND_ERROR = "No se pudo enviar la cotizacion"
+
+type QuoteFailure = { success: false; error: string }
+type QuoteResult<T extends object = Record<never, never>> = ({ success: true; error?: never } & T) | QuoteFailure
+
+function isDeployedRuntime() {
+  return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeQuoteError(error: unknown) {
+  if (error instanceof Error) return { name: error.name }
+
+  if (error && typeof error === 'object') {
+    return {
+      code: (error as any).code,
+      status: (error as any).status,
+      statusCode: (error as any).statusCode,
+      hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+    }
+  }
+
+  return { type: typeof error }
+}
+
+function logQuoteError(label: string, error: unknown) {
+  console.error(label, isDeployedRuntime() ? summarizeQuoteError(error) : error)
+}
+
+function getQuoteErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+  return fallback
+}
+
+function quoteFailure(label: string, error: unknown, publicMessage: string): QuoteFailure {
+  logQuoteError(label, error)
+  return { success: false, error: isDeployedRuntime() ? publicMessage : getQuoteErrorMessage(error, publicMessage) }
+}
+
 /**
  * Service Layer for Quotes Module
  * 
@@ -31,7 +77,7 @@ export async function getQuotes() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('[QuotesService.getQuotes] Error:', error)
+    logQuoteError('[QuotesService.getQuotes] Error:', error)
     return []
   }
 
@@ -57,7 +103,7 @@ export async function getContactOptions() {
     .order('name')
 
   if (error) {
-    console.error('[QuotesService.getContactOptions] Error:', error)
+    logQuoteError('[QuotesService.getContactOptions] Error:', error)
     return []
   }
 
@@ -70,7 +116,7 @@ export async function getContactOptions() {
  * @param {string} id - The UUID of the quote.
  * @returns {Promise<{success: boolean, data?: Quote, error?: string}>} The quote data or an error message.
  */
-export async function getQuote(id: string) {
+export async function getQuote(id: string): Promise<QuoteResult<{ data: Quote }>> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -83,7 +129,7 @@ export async function getQuote(id: string) {
     .eq('organization_id', orgId)
     .single()
 
-  if (error) return { success: false, error: error.message }
+  if (error) return quoteFailure('[QuotesService.getQuote] Error:', error, PUBLIC_QUOTE_LOAD_ERROR)
   return { success: true, data: data as Quote }
 }
 
@@ -93,7 +139,7 @@ export async function getQuote(id: string) {
  * @param {Partial<Quote>} data - The initial quote data.
  * @returns {Promise<{success: boolean, data?: Quote, error?: string}>} The newly created quote.
  */
-export async function createQuote(data: Partial<Quote>) {
+export async function createQuote(data: Partial<Quote>): Promise<QuoteResult<{ data: Quote }>> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -106,7 +152,7 @@ export async function createQuote(data: Partial<Quote>) {
         entity_key: 'quote'
       })
 
-    if (seqError) throw new Error(`Failed to generate ID: ${seqError.message}`)
+    if (seqError) throw seqError
 
     const number = `COT-${seqNum.toString().padStart(5, '0')}`
 
@@ -127,8 +173,7 @@ export async function createQuote(data: Partial<Quote>) {
 
     return { success: true, data: newQuote as Quote }
   } catch (error: any) {
-    console.error("[QuotesService.createQuote] Error:", error)
-    return { success: false, error: error.message }
+    return quoteFailure("[QuotesService.createQuote] Error:", error, PUBLIC_QUOTE_CREATE_ERROR)
   }
 }
 
@@ -139,7 +184,7 @@ export async function createQuote(data: Partial<Quote>) {
  * @param {Partial<Quote>} updates - The fields to update.
  * @returns {Promise<{success: boolean, error?: string}>} Result of the operation.
  */
-export async function updateQuote(id: string, updates: Partial<Quote>) {
+export async function updateQuote(id: string, updates: Partial<Quote>): Promise<QuoteResult> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -151,7 +196,7 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
     .eq('id', id)
     .eq('organization_id', orgId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return quoteFailure("[QuotesService.updateQuote] Error:", error, PUBLIC_QUOTE_UPDATE_ERROR)
 
   return { success: true }
 }
@@ -162,7 +207,7 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
  * @param {string[]} ids - Array of quote UUIDs to delete.
  * @returns {Promise<{success: boolean, error?: string}>} Result of the operation.
  */
-export async function deleteQuotes(ids: string[]) {
+export async function deleteQuotes(ids: string[]): Promise<QuoteResult> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -174,7 +219,7 @@ export async function deleteQuotes(ids: string[]) {
     .in('id', ids)
     .eq('organization_id', orgId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return quoteFailure("[QuotesService.deleteQuotes] Error:", error, PUBLIC_QUOTE_DELETE_ERROR)
 
   return { success: true }
 }
@@ -185,9 +230,9 @@ export async function deleteQuotes(ids: string[]) {
  * @param {string} originalId - The UUID of the quote to duplicate.
  * @returns {Promise<{success: boolean, data?: Quote, error?: string}>} The new duplicated quote.
  */
-export async function duplicateQuote(originalId: string) {
+export async function duplicateQuote(originalId: string): Promise<QuoteResult<{ data: Quote }>> {
   const res = await getQuote(originalId)
-  if (!res.success || !res.data) return { success: false, error: res.error || "Not found" }
+  if (!res.success) return { success: false, error: res.error }
 
   const { id, created_at, number, ...rest } = res.data
 
@@ -205,7 +250,7 @@ export async function duplicateQuote(originalId: string) {
  * @param {string} id - The UUID of the quote.
  * @returns {Promise<{success: boolean, data?: any, error?: string}>} Quote with branding settings.
  */
-export async function getPublicQuote(id: string) {
+export async function getPublicQuote(id: string): Promise<QuoteResult<{ data: any }>> {
   const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
 
   try {
@@ -223,7 +268,7 @@ export async function getPublicQuote(id: string) {
       .single()
 
     if (error || !quote) {
-      console.error('[QuotesService.getPublicQuote] error:', error)
+      logQuoteError('[QuotesService.getPublicQuote] error:', error)
       return { success: false, error: "Cotización no encontrada o inválida" }
     }
 
@@ -240,7 +285,7 @@ export async function getPublicQuote(id: string) {
 
     return { success: true, data: enhancedQuote }
   } catch (error: any) {
-    console.error('[QuotesService.getPublicQuote] Exception:', error)
+    logQuoteError('[QuotesService.getPublicQuote] Exception:', error)
     return { success: false, error: "Error de servidor al cargar la cotización" }
   }
 }
@@ -252,7 +297,7 @@ export async function getPublicQuote(id: string) {
  * @param {string} leadId - The UUID of the CRM lead.
  * @returns {Promise<{success: boolean, quoteId?: string, error?: string}>} Result containing the quote ID.
  */
-export async function createQuoteFromLead(leadId: string) {
+export async function createQuoteFromLead(leadId: string): Promise<QuoteResult<{ quoteId: string }>> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -276,7 +321,7 @@ export async function createQuoteFromLead(leadId: string) {
       items: []
     } as Partial<Quote>)
 
-    if (!result.success || !result.data) return { success: false, error: result.error }
+    if (!result.success) return { success: false, error: result.error }
 
     const { error: linkError } = await supabase
       .from('leads')
@@ -285,21 +330,33 @@ export async function createQuoteFromLead(leadId: string) {
         quote_status: 'draft'
       })
       .eq('id', leadId)
+      .eq('organization_id', orgId)
 
-    if (linkError) console.error('Error linking quote to lead:', linkError)
+    if (linkError) logQuoteError('Error linking quote to lead:', linkError)
 
     return { success: true, quoteId: result.data.id }
   } catch (error: any) {
-    console.error('[QuotesService.createQuoteFromLead] error:', error)
-    return { success: false, error: error.message }
+    return quoteFailure('[QuotesService.createQuoteFromLead] error:', error, PUBLIC_QUOTE_CREATE_ERROR)
   }
 }
 
-export async function linkQuoteToLead(leadId: string, quoteId: string) {
+export async function linkQuoteToLead(leadId: string, quoteId: string): Promise<QuoteResult> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
   if (!orgId) return { success: false, error: "Unauthorized" }
+
+  const { data: quote, error: quoteError } = await supabase
+    .from('quotes')
+    .select('id')
+    .eq('id', quoteId)
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
+    .single()
+
+  if (quoteError || !quote) {
+    return quoteFailure("[QuotesService.linkQuoteToLead] Quote lookup error:", quoteError, PUBLIC_QUOTE_LINK_ERROR)
+  }
 
   const { error } = await supabase
     .from('leads')
@@ -310,7 +367,7 @@ export async function linkQuoteToLead(leadId: string, quoteId: string) {
     .eq('id', leadId)
     .eq('organization_id', orgId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return quoteFailure("[QuotesService.linkQuoteToLead] Error:", error, PUBLIC_QUOTE_LINK_ERROR)
   return { success: true }
 }
 
@@ -324,6 +381,7 @@ export async function getQuoteForLead(leadId: string) {
     .from('leads')
     .select('quote_id')
     .eq('id', leadId)
+    .eq('organization_id', orgId)
     .single()
 
   if (!lead?.quote_id) return null
@@ -332,6 +390,8 @@ export async function getQuoteForLead(leadId: string) {
     .from('quotes')
     .select('*')
     .eq('id', lead.quote_id)
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
     .single()
 
   return quote as Quote
@@ -345,7 +405,7 @@ export async function getQuoteForLead(leadId: string) {
  * @param {string} [targetPhone] - Optional phone override.
  * @returns {Promise<{success: boolean, message?: string, conversationId?: string, error?: string}>}
  */
-export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string) {
+export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string): Promise<QuoteResult<{ message: string, conversationId: string }>> {
   const supabase = await createClient()
   const orgId = await getCurrentOrganizationId()
 
@@ -441,8 +501,7 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
       return { success: false, error: "Fallo el envío del mensaje" }
     }
   } catch (error: any) {
-    console.error("[QuotesService.sendQuoteViaWhatsApp] Error:", error)
-    return { success: false, error: error.message }
+    return quoteFailure("[QuotesService.sendQuoteViaWhatsApp] Error:", error, PUBLIC_QUOTE_SEND_ERROR)
   }
 }
 

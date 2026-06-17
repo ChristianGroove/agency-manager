@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { sanitizePaymentMethodsForClient } from "../payment-methods-sanitizer"
 
 /**
  * PUBLIC SETTINGS & BRANDING (Safe for unauthenticated use)
@@ -34,7 +34,7 @@ export async function getPublicBranding(slug: string) {
 export async function getPublicInvoiceSettings(organizationId: string) {
     if (!organizationId) return {}
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from("organization_settings")
         .select(`
             agency_name,
@@ -52,7 +52,7 @@ export async function getPublicInvoiceSettings(organizationId: string) {
 
     if (error) return {}
 
-    const { data: paymentMethods } = await supabaseAdmin
+    const { data: paymentMethods } = await (await createClient())
         .from('organization_payment_methods')
         .select('*')
         .eq('organization_id', organizationId)
@@ -64,6 +64,6 @@ export async function getPublicInvoiceSettings(organizationId: string) {
         invoice_legal_text: s?.legal_text,
         agency_logo: s?.document_logo_url || s?.main_logo_url || s?.portal_logo_url,
         company_name: s?.agency_legal_name || s?.agency_name,
-        payment_methods: paymentMethods || []
+        payment_methods: sanitizePaymentMethodsForClient(paymentMethods || [])
     }
 }

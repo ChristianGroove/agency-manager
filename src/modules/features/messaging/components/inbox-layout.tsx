@@ -17,9 +17,9 @@ import { InboxProvider, useInboxContext } from "../context/inbox-context"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getAgentsWorkload } from "../assignment-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { supabase } from "@/modules/core/database/supabase"
-import { GlobalMessageListener } from "./floating-inbox/global-message-listener"
-import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
+import { AgentMonitoringWidget } from "@/modules/core/dashboard/widgets/smart-cards/agent-monitoring-widget"
 
 interface InboxLayoutProps {
     initialConversationId?: string | null
@@ -36,7 +36,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
 
 function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
     const { t } = useTranslation()
-    const { setActiveModules, setSpaceCategory, setAgents } = useInboxContext()
+    const { setActiveModules, setSpaceCategory, setAgents, setCurrentUserRole, isAgentMonitorVisible } = useInboxContext()
 
     const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(initialConversationId || null)
     const [organizationId, setOrganizationId] = React.useState<string | null>(null)
@@ -127,11 +127,14 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         getActiveModules(orgId),
                         supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
                         getAgentsWorkload(),
-                        import('@/modules/core/settings/actions/team').then(m => m.getCurrentUserPermissions())
+                        getCurrentUserPermissions()
                     ])
                     
                     setActiveModules(modules)
                     setUserPermissions(perms)
+                    if (perms?.role) {
+                        setCurrentUserRole(perms.role)
+                    }
                     
                     if (agentsResult.success) setAgents(agentsResult.data)
 
@@ -140,7 +143,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                             .from('saas_apps')
                             .select('space_category')
                             .eq('id', orgData.active_app_id)
-                            .single()
+                            .maybeSingle()
                         setSpaceCategory(appData?.space_category || null)
                     }
                 }
@@ -214,11 +217,17 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <GlobalMessageListener />
-            <div className="flex h-full w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
+            {/* GlobalMessageListener is mounted globally in b2b-agency-layout — no duplicate needed here */}
+            <div className="flex flex-col h-full w-full">
+                {isAgentMonitorVisible && (
+                    <div className="flex-none animate-in slide-in-from-top-4 duration-300">
+                        <AgentMonitoringWidget className="pt-2 px-2" />
+                    </div>
+                )}
+                <div className="flex flex-1 w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
 
-                {/* Left Pane */}
-                <div className="w-full md:w-[300px] lg:w-[320px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
+                    {/* Left Pane */}
+                    <div className="w-full md:w-[300px] lg:w-[320px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
                     <SidebarTabs
                         selectedConversationId={selectedConversationId}
                         onSelectConversation={setSelectedConversationId}
@@ -286,6 +295,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         </div>
                     ) : null}
                 </DragOverlay>
+            </div>
             </div>
         </DndContext>
     )

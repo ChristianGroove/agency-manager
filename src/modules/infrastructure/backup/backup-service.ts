@@ -1,6 +1,39 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { StorageProvider } from "@/modules/infrastructure/integrations/adapters/types"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+
+const PUBLIC_BACKUP_ERROR = 'Backup failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function logBackupError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function backupErrorMessage(error: unknown) {
+    if (isDeployedRuntime()) {
+        return PUBLIC_BACKUP_ERROR
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message
+    }
+
+    return PUBLIC_BACKUP_ERROR
+}
 
 export class BackupService {
 
@@ -13,7 +46,7 @@ export class BackupService {
         // 1. Find Active Backup Integration
         // Query 'integration_connections' joined with 'integrations'
         // We look for integrations with 'aws_s3' or 'google_drive' key
-        const { data: connections, error } = await supabaseAdmin
+        const { data: connections, error } = await (supabaseAdmin)
             .from('integration_connections')
             .select(`
                 *,
@@ -45,7 +78,7 @@ export class BackupService {
 
         // 3. Fetch Data to Backup (Example: Leads)
         // In a real system, we'd loop through tables: leads, clients, invoices, etc.
-        const { data: leads } = await supabaseAdmin
+        const { data: leads } = await (supabaseAdmin)
             .from('leads')
             .select('*')
             .eq('organization_id', organizationId)
@@ -71,8 +104,8 @@ export class BackupService {
             // 6. Log Success (could write to 'system_jobs_log')
             return { success: true, url: result.url }
         } catch (uploadError: any) {
-            console.error(`[BackupService] Upload FAILED:`, uploadError)
-            return { success: false, error: uploadError.message }
+            logBackupError(`[BackupService] Upload FAILED:`, uploadError)
+            return { success: false, error: backupErrorMessage(uploadError) }
         }
     }
 }

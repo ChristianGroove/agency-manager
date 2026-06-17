@@ -1,7 +1,42 @@
 import { createClient } from '@/modules/core/database/supabase-server'
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { ProcessInstance, ProcessState, ProcessContext } from "@/types/process-engine"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+
+const PUBLIC_PROCESS_START_ERROR = "No se pudo iniciar el proceso"
+const PUBLIC_PROCESS_TRANSITION_ERROR = "No se pudo cambiar el estado del proceso"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeProcessEngineError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logProcessEngineError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeProcessEngineError(error) : error)
+}
+
+function processEngineFailure(label: string, error: unknown, fallback: string) {
+    logProcessEngineError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: fallback }
+}
 
 export class ProcessEngine {
 
@@ -15,7 +50,7 @@ export class ProcessEngine {
         if (!orgId) return { success: false, error: "No organization context" }
 
         // 1. Get Initial State for this Type
-        const { data: initialState, error: stateError } = await supabaseAdmin
+        const { data: initialState, error: stateError } = await (await createClient())
             .from('process_states')
             .select('*')
             .eq('organization_id', orgId)
@@ -28,7 +63,7 @@ export class ProcessEngine {
         }
 
         // 2. Check for existing active process of this type
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await (await createClient())
             .from('process_instances')
             .select('*')
             .eq('organization_id', orgId)
@@ -43,7 +78,7 @@ export class ProcessEngine {
 
         // 3. Create Instance
         try {
-            const { data: newProcess, error: createError } = await supabaseAdmin
+            const { data: newProcess, error: createError } = await (await createClient())
                 .from('process_instances')
                 .insert({
                     organization_id: orgId,
@@ -67,8 +102,7 @@ export class ProcessEngine {
 
             return { success: true, process: newProcess as ProcessInstance }
         } catch (e: any) {
-            console.error("Process Start Error:", e)
-            return { success: false, error: e.message }
+            return processEngineFailure("Process Start Error:", e, PUBLIC_PROCESS_START_ERROR)
         }
     }
 
@@ -79,7 +113,7 @@ export class ProcessEngine {
         const orgId = await getCurrentOrganizationId()
         if (!orgId) return null
 
-        let query = supabaseAdmin
+        let query = (await createClient())
             .from('process_instances')
             .select('*')
             .eq('organization_id', orgId)
@@ -109,7 +143,7 @@ export class ProcessEngine {
         // We'll use Admin for the mechanics but rely on caller to verify user permission if needed (or RLS if direct update).
         // Since this is the Engine, checks rules first.
 
-        const { data: instance, error: fetchError } = await supabaseAdmin
+        const { data: instance, error: fetchError } = await (await createClient())
             .from('process_instances')
             .select('*')
             .eq('id', instanceId)
@@ -121,7 +155,7 @@ export class ProcessEngine {
         if (instance.locked) return { success: false, error: "Process is locked" }
 
         // 1. Get Current State Config
-        const { data: currentState } = await supabaseAdmin
+        const { data: currentState } = await (await createClient())
             .from('process_states')
             .select('*')
             .eq('organization_id', instance.organization_id)
@@ -139,7 +173,7 @@ export class ProcessEngine {
         }
 
         // 3. Get Target State (to check terminal/side-effects)
-        const { data: targetState } = await supabaseAdmin
+        const { data: targetState } = await (await createClient())
             .from('process_states')
             .select('*')
             .eq('organization_id', instance.organization_id)
@@ -168,34 +202,37 @@ export class ProcessEngine {
             updates.status = 'completed'
         }
 
-        const { data: updated, error: updateError } = await supabaseAdmin
+        const { data: updated, error: updateError } = await (await createClient())
             .from('process_instances')
             .update(updates)
             .eq('id', instanceId)
+            .eq('organization_id', instance.organization_id)
             .select()
             .single()
 
-        if (updateError) return { success: false, error: updateError.message }
+        if (updateError) return processEngineFailure("[ProcessEngine] Transition update error:", updateError, PUBLIC_PROCESS_TRANSITION_ERROR)
 
         // 5. Apply Auto-Tags (if any)
         if (targetState.auto_tags && targetState.auto_tags.length > 0) {
             console.log(`[ProcessEngine] Applying auto-tags: ${targetState.auto_tags.join(', ')}`)
 
             // Fetch current tags
-            const { data: lead } = await supabaseAdmin
+            const { data: lead } = await (await createClient())
                 .from('leads') // Assuming 'leads' table (or clients/contacts?)
                 .select('tags, id')
                 .eq('id', instance.lead_id)
+                .eq('organization_id', instance.organization_id)
                 .single()
 
             if (lead) {
                 const currentTags = (lead.tags || []) as string[]
                 const newTags = [...new Set([...currentTags, ...targetState.auto_tags])]
 
-                await supabaseAdmin
+                await (await createClient())
                     .from('leads')
                     .update({ tags: newTags })
                     .eq('id', lead.id)
+                    .eq('organization_id', instance.organization_id)
             }
         }
 
@@ -210,7 +247,7 @@ export class ProcessEngine {
         if (!orgId) return null
 
         // 1. Get Instance
-        const { data: instance } = await supabaseAdmin
+        const { data: instance } = await (await createClient())
             .from('process_instances')
             .select('*')
             .eq('organization_id', orgId)
@@ -222,7 +259,7 @@ export class ProcessEngine {
         if (!instance) return null
 
         // 2. Get State
-        const { data: state } = await supabaseAdmin
+        const { data: state } = await (await createClient())
             .from('process_states')
             .select('*')
             .eq('organization_id', orgId)

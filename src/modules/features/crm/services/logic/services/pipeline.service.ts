@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { PipelineRepository } from '../repositories/pipeline.repository'
-import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
 
 export class PipelineService {
     private repo: PipelineRepository
@@ -14,11 +14,9 @@ export class PipelineService {
     }
 
     async getCachedStages(): Promise<any[]> {
-        // Use unstable_cache for high-performance frontend data
-        return unstable_cache(
-            async () => this.repo.getStages(this.orgId),
-            ['pipeline-stages', this.orgId],
-            { revalidate: 3600 }
+        // Use cache for request-scoped memoization
+        return cache(
+            async () => this.repo.getStages(this.orgId)
         )()
     }
 
@@ -60,7 +58,7 @@ export class PipelineService {
 
     async getPipelineViewData(connectionId?: string | null, userId?: string): Promise<any> {
         // Aggregated data for Kanban
-        const { getLeads } = await import('../leads-actions')
+        const { ContactService } = await import('../../contact-service')
         const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
         const { getLeadsCount } = await import('../lead-management-actions')
         const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team')
@@ -76,7 +74,13 @@ export class PipelineService {
 
         const [stages, leadsResponse, emitters] = await Promise.all([
             this.getCachedStages(),
-            getLeads(100, connectionId, allowedChannels, userId),
+            new ContactService(this.supabase, this.orgId).getPaginated({ 
+                pageSize: 100, 
+                connectionId, 
+                allowedChannels, 
+                userId, 
+                contactType: 'lead' 
+            }),
             getEmitters()
         ])
 

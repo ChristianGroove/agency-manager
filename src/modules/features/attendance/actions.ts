@@ -2,7 +2,6 @@
 
 import { headers } from "next/headers"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -62,7 +61,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         const validated = AttendancePayloadSchema.parse(payload)
         // Usamos supabaseAdmin para el lookup del staff porque el portal funciona con tokens anónimos 
         // que el RLS del cliente estándar bloquea por defecto.
-        const supabase = supabaseAdmin
+        const supabase = (await createClient())
 
         // 1. Conseguir el Staff usando el Token
         const { data: staff, error: staffError } = await supabase
@@ -234,7 +233,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
 export async function uploadAttendancePhoto(base64Image: string, staffId: string): Promise<{ success: boolean, url?: string, error?: string }> {
     try {
         // Usamos supabaseAdmin para evadir RLS, ya que el personal entrando via token no tiene sesión de Auth tradicional.
-        const supabase = supabaseAdmin
+        const supabase = (await createClient())
 
         // Detect format or default to webp
         const mimeType = base64Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || 'image/webp'
@@ -536,7 +535,7 @@ export async function deleteStaff(id: string) {
 
 export async function getDailyAttendanceState(staffToken: string) {
     try {
-        const supabase = supabaseAdmin
+        const supabase = (await createClient())
 
         // 1. Conseguir el Staff, su configuración de turno y su sede para horarios
         const { data: staff, error: staffError } = await supabase
@@ -688,7 +687,7 @@ export async function getDailyAttendanceState(staffToken: string) {
  */
 async function processDailyShift(staffId: string, orgId: string, locationId: string | null, expectedHours: number) {
     try {
-        const supabase = supabaseAdmin
+        const supabase = (await createClient())
 
         // 1. Obtener los logs de validación de HOY de la Sede/Persona
         // (En producción global debería usar el timezone de la sede en vez de UTC)
@@ -806,7 +805,7 @@ export async function getAttendanceShifts(organizationId: string) {
  */
 export async function cleanupAttendancePhotos(days: number = 32) {
     try {
-        const supabase = supabaseAdmin
+        const supabase = (await createClient())
         const cutoffDate = new Date()
         cutoffDate.setDate(cutoffDate.getDate() - days)
         

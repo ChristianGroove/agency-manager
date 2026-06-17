@@ -4,14 +4,96 @@ import { AdsService } from './ads-service'
 import { SocialService } from './social-service'
 import { MetaConnector } from './connector'
 
-// Use service role for backend operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+let supabase: any = null
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeMetaSyncError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        const payload = error as Record<string, any>
+        return {
+            type: typeof error,
+            code: payload.code,
+            status: payload.status,
+            metaType: payload.type,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function detailMetaSyncError(error: unknown, fallback: string) {
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as Record<string, any>).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    return fallback
+}
+
+function publicMetaSyncError(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    return detailMetaSyncError(error, fallback)
+}
+
+function logMetaSyncError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeMetaSyncError(error))
+}
+
+function logMetaSyncPayload(label: string, data: unknown) {
+    if (!isDeployedRuntime()) {
+        console.log(label, data)
+        return
+    }
+
+    const payload = data && typeof data === 'object' ? data as Record<string, any> : {}
+    console.log(label, {
+        hasFacebook: !!payload.facebook,
+        hasInstagram: !!payload.instagram,
+        facebookPosts: Array.isArray(payload.facebook?.top_posts) ? payload.facebook.top_posts.length : undefined,
+        instagramPosts: Array.isArray(payload.instagram?.top_posts) ? payload.instagram.top_posts.length : undefined,
+    })
+}
+
+function getSupabaseAdminClient() {
+    if (supabase) return supabase
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Missing Supabase service role configuration for Meta sync')
+    }
+
+    supabase = createClient(supabaseUrl, supabaseServiceKey)
+    return supabase
+}
 
 export class MetaCacheManager {
 
     async syncAll(targetClientId?: string) {
+        const supabase = getSupabaseAdminClient()
+
         console.log(`[MetaSync] Starting sync. Target: ${targetClientId || 'ALL'}`)
 
         // 1. Get Active Configs
@@ -28,8 +110,12 @@ export class MetaCacheManager {
         const { data: configs, error } = await query
 
         if (error) {
-            console.error("[MetaSync] DB Error:", error)
-            return { success: false, processed: 0, errors: [{ type: 'db', error: error.message }] }
+            logMetaSyncError("[MetaSync] DB Error:", error)
+            return {
+                success: false,
+                processed: 0,
+                errors: [{ type: 'db', error: publicMetaSyncError(error, 'Database sync failed') }]
+            }
         }
 
         if (!configs || configs.length === 0) {
@@ -57,8 +143,12 @@ export class MetaCacheManager {
                         await this.syncAds(config.client_id, config.ad_account_id, adsService)
                         console.log(`[MetaSync] Ads synced for ${config.client_id}`)
                     } catch (e: any) {
-                        console.error(`[MetaSync] Ads error for ${config.client_id}:`, e)
-                        errors.push({ client: config.client_id, type: 'ads', error: e.message })
+                        logMetaSyncError(`[MetaSync] Ads error for ${config.client_id}:`, e)
+                        errors.push({
+                            client: config.client_id,
+                            type: 'ads',
+                            error: publicMetaSyncError(e, 'Ads sync failed')
+                        })
                     }
                 } else {
                     console.log(`[MetaSync] No Ad Account ID for ${config.client_id}`)
@@ -71,8 +161,12 @@ export class MetaCacheManager {
                         await this.syncSocial(config.client_id, config.page_id, socialService)
                         console.log(`[MetaSync] Social synced for ${config.client_id}`)
                     } catch (e: any) {
-                        console.error(`[MetaSync] Social error for ${config.client_id}:`, e)
-                        errors.push({ client: config.client_id, type: 'social', error: e.message })
+                        logMetaSyncError(`[MetaSync] Social error for ${config.client_id}:`, e)
+                        errors.push({
+                            client: config.client_id,
+                            type: 'social',
+                            error: publicMetaSyncError(e, 'Social sync failed')
+                        })
                     }
                 } else {
                     console.log(`[MetaSync] No Page ID for ${config.client_id}`)
@@ -80,8 +174,12 @@ export class MetaCacheManager {
 
                 processed++
             } catch (error: any) {
-                console.error(`Failed to sync client ${config.client_id}:`, error)
-                errors.push({ client: config.client_id, type: 'general', error: error.message })
+                logMetaSyncError(`Failed to sync client ${config.client_id}:`, error)
+                errors.push({
+                    client: config.client_id,
+                    type: 'general',
+                    error: publicMetaSyncError(error, 'Meta sync failed')
+                })
             }
         }
 
@@ -89,6 +187,7 @@ export class MetaCacheManager {
     }
 
     private async syncAds(clientId: string, adAccountId: string, service: AdsService) {
+        const supabase = getSupabaseAdminClient()
         // Check if sync needed (last updated < 15 mins) - omitted for brevity, logic goes here
 
         const data = await service.getMetrics(adAccountId)
@@ -107,16 +206,17 @@ export class MetaCacheManager {
         }, { onConflict: 'client_id, snapshot_date' })
 
         if (adsError) {
-            console.error("[MetaSync] Ads Upsert Failed:", adsError)
-            throw new Error("DB Error saving ads: " + adsError.message)
+            logMetaSyncError("[MetaSync] Ads Upsert Failed:", adsError)
+            throw new Error(publicMetaSyncError(adsError, "DB Error saving ads"))
         }
     }
 
     private async syncSocial(clientId: string, pageId: string, service: SocialService) {
+        const supabase = getSupabaseAdminClient()
         // Check if sync needed (last updated < 60 mins)
 
         const data = await service.getMetrics(pageId)
-        console.log(`[MetaSync] Social Data to Save for ${clientId}:`, data)
+        logMetaSyncPayload(`[MetaSync] Social Data to Save for ${clientId}:`, data)
 
         const { error: socialError } = await supabase.from('meta_social_metrics').upsert({
             client_id: clientId,
@@ -127,8 +227,8 @@ export class MetaCacheManager {
         }, { onConflict: 'client_id, snapshot_date' })
 
         if (socialError) {
-            console.error("[MetaSync] Social Upsert Failed:", socialError)
-            throw new Error("DB Error saving social: " + socialError.message)
+            logMetaSyncError("[MetaSync] Social Upsert Failed:", socialError)
+            throw new Error(publicMetaSyncError(socialError, "DB Error saving social"))
         }
     }
 }

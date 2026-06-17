@@ -1,7 +1,7 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { WorkflowEngine, WorkflowDefinition } from "./engine"
 import { WaitInputNode } from "./nodes/wait-input-node"
 import { IncomingMessage } from "@/modules/features/messaging/providers/types"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 export async function resumeSuspendedWorkflow(
     executionId: string,
@@ -9,6 +9,7 @@ export async function resumeSuspendedWorkflow(
     message: IncomingMessage
 ) {
     let engine: WorkflowEngine | null = null;
+    let resumeOrganizationId: string | null = null;
     try {
         const supabase = supabaseAdmin
 
@@ -18,10 +19,15 @@ export async function resumeSuspendedWorkflow(
             .from('workflow_pending_inputs')
             .select('*')
             .eq('id', pendingInputId)
+            .eq('execution_id', executionId)
             .single()
 
         if (pendingError || !pendingInput) {
             throw new Error(`Pending input not found: ${pendingError?.message}`)
+        }
+        resumeOrganizationId = pendingInput.organization_id
+        if (!resumeOrganizationId) {
+            throw new Error('Pending input missing organization')
         }
 
         if (pendingInput.status !== 'waiting') {
@@ -56,6 +62,7 @@ export async function resumeSuspendedWorkflow(
                 )
             `)
             .eq('id', executionId)
+            .eq('organization_id', resumeOrganizationId)
             .single()
 
         if (execError || !execution) {
@@ -83,6 +90,7 @@ export async function resumeSuspendedWorkflow(
                 completed_at: new Date().toISOString()
             })
             .eq('id', pendingInputId)
+            .eq('organization_id', resumeOrganizationId)
 
         // 5. Resume Engine
         console.log(`[Runner] Resuming execution ${executionId} at step ${pendingInput.node_id}`)
@@ -111,6 +119,7 @@ export async function resumeSuspendedWorkflow(
                 context: (engine as any).context
             })
             .eq('id', executionId)
+            .eq('organization_id', resumeOrganizationId)
 
         return { success: true }
 
@@ -120,7 +129,7 @@ export async function resumeSuspendedWorkflow(
             console.log(`[Runner] Workflow ${executionId} suspended again.`)
 
             // We need to persist the context even if suspended
-            if (engine) {
+            if (engine && resumeOrganizationId) {
                 const supabase = supabaseAdmin
                 await supabase
                     .from('workflow_executions')
@@ -129,6 +138,7 @@ export async function resumeSuspendedWorkflow(
                         context: (engine as any).context // Access the updated context from the engine instance
                     })
                     .eq('id', executionId)
+                    .eq('organization_id', resumeOrganizationId)
             }
             return { success: true, status: 'suspended' }
         }
@@ -136,15 +146,18 @@ export async function resumeSuspendedWorkflow(
         console.error(`[Runner] Error resuming workflow:`, error)
 
         // Update Execution to Failed
-        const supabase = supabaseAdmin
-        await supabase
-            .from('workflow_executions')
-            .update({
-                status: 'failed',
-                error_message: error.message,
-                completed_at: new Date().toISOString()
-            })
-            .eq('id', executionId)
+        if (resumeOrganizationId) {
+            const supabase = supabaseAdmin
+            await supabase
+                .from('workflow_executions')
+                .update({
+                    status: 'failed',
+                    error_message: error.message,
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', executionId)
+                .eq('organization_id', resumeOrganizationId)
+        }
 
         return { success: false, error: error.message }
     }

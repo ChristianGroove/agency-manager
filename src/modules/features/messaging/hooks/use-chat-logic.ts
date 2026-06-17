@@ -3,6 +3,7 @@ import { supabase } from "@/modules/core/database/supabase"
 import { Database } from "@/types/supabase"
 import { Message as MessagingMessage } from "@/types/messaging"
 import { markConversationAsRead } from "../actions/messages"
+import { getCallStatus } from "../actions/calls"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
@@ -36,6 +37,12 @@ export function useChatLogic(conversationId: string) {
     // Core State
     const [messages, setMessages] = useState<Message[]>([])
     const [conversation, setConversation] = useState<Conversation | null>(null)
+    const conversationRef = useRef<Conversation | null>(null)
+    
+    // Sincronizar ref para el listener
+    useEffect(() => {
+        conversationRef.current = conversation
+    }, [conversation])
     const [hasMoreMessages, setHasMoreMessages] = useState(false)
     const [loadingOlder, setLoadingOlder] = useState(false)
     const [callStatus, setCallStatus] = useState<any | null>(null)
@@ -78,19 +85,23 @@ export function useChatLogic(conversationId: string) {
 
         if (data) {
             setConversation(data as any)
+            
+            // Instantly hide the unread bubble in the sidebar UI regardless of backend sync state
+            window.dispatchEvent(new CustomEvent('pixy:conversation-read', { detail: { conversationId } }))
+            
             if (data.unread_count > 0) {
                 debouncedMarkAsRead(conversationId)
             }
             
             // Fetch Call Status
             try {
-                import('../actions').then(m => m.getCallStatus(conversationId)).then(res => {
+                getCallStatus(conversationId).then(res => {
                     if (res && res.success) setCallStatus(res as any)
                 }).catch(e => {
                     console.warn('[useChatLogic] Call status fetch failed:', e);
                 })
             } catch (e) {
-                 console.error('[useChatLogic] Dynamic import failed:', e);
+                 console.error('[useChatLogic] fetch failed:', e);
             }
         }
     }
@@ -171,19 +182,28 @@ export function useChatLogic(conversationId: string) {
                     if (newMsg.direction === 'inbound') debouncedMarkAsRead(conversationId)
                 }
             )
+            .on('broadcast', { event: 'system_message_inserted' }, (payload: any) => {
+                // Fetch the latest messages to catch the system message
+                fetchMessages(true)
+            })
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'conversations' },
                 (payload: any) => {
                     const updatedConv = payload.new as any
                     if (updatedConv.id === conversationId) {
-                        fetchConversation()
+                        setConversation((prev: any) => {
+                            if (!prev) return prev;
+                            // Only update fields that exist in payload.new to preserve joins (leads, clients, etc.)
+                            return { ...prev, ...updatedConv };
+                        });
                     }
                 }
             )
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'leads' },
                 (payload: any) => {
-                    if (payload.new.id === conversation?.leads?.id) {
+                    const currentConv = conversationRef.current;
+                    if (currentConv && payload.new.id === currentConv.lead_id) {
                         fetchConversation()
                     }
                 }
@@ -194,7 +214,6 @@ export function useChatLogic(conversationId: string) {
             })
         })
 
-        // Listen for External Sync
         const handleExternalSync = (e: Event) => {
             const { conversationId: syncConvId } = (e as CustomEvent).detail;
             if (syncConvId === conversationId) {
@@ -202,11 +221,21 @@ export function useChatLogic(conversationId: string) {
             }
         };
 
+        const handleLocalLeadUpdate = (e: Event) => {
+            const { leadId } = (e as CustomEvent).detail;
+            const currentConv = conversationRef.current;
+            if (currentConv && currentConv.lead_id === leadId) {
+                fetchConversation();
+            }
+        };
+
         window.addEventListener('pixy:sync-active-chat', handleExternalSync);
+        window.addEventListener('pixy:lead-status-changed', handleLocalLeadUpdate);
 
         return () => {
             realtimeManager.releaseChannel(channelName)
             window.removeEventListener('pixy:sync-active-chat', handleExternalSync);
+            window.removeEventListener('pixy:lead-status-changed', handleLocalLeadUpdate);
             if (markAsReadTimeout.current) clearTimeout(markAsReadTimeout.current)
         }
     }, [conversationId])

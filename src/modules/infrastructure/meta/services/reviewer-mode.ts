@@ -53,7 +53,7 @@ export class ReviewerModeManager {
     getReviewerCredentials(): ReviewerCredentials {
         return {
             email: 'meta_reviewer@pixy.test',
-            password: 'MetaReview2026!Secure',
+            password: process.env.META_REVIEWER_PASSWORD || '',
             phoneNumber: '+15550000001',
             wabaId: process.env.TEST_WABA_ID || 'test_waba_123456',
             phoneNumberId: process.env.TEST_PHONE_NUMBER_ID || 'test_phone_123456'

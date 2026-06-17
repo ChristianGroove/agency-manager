@@ -2,14 +2,17 @@
 // Generates WebAuthn authentication options
 
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
-import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logPasskeyRouteError, normalizePasskeyEmail, passkeyLoginUnavailableResponse, requirePasskeyPublicRateLimit } from '../_utils'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export async function POST(request: NextRequest) {
+    const rateLimited = requirePasskeyPublicRateLimit(request)
+    if (rateLimited) return rateLimited
+
     try {
-        const supabase = await createClient()
         const body = await request.json()
-        const email = body.email
+        const email = normalizePasskeyEmail(body.email)
 
         if (!email) {
             return NextResponse.json(
@@ -19,28 +22,30 @@ export async function POST(request: NextRequest) {
         }
 
         // Find user by email
-        const { data: userData, error: userError } = await supabase.auth.admin.listUsers()
+        const { data: userData, error: userError } = await (await createClient()).auth.admin.listUsers()
 
-        const user = userData?.users?.find((u: any) => u.email === email)
-
-        if (!user) {
+        if (userError) {
+            logPasskeyRouteError('Failed to list users for passkey login:', userError)
             return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
+                { error: 'Failed to generate authentication options' },
+                { status: 500 }
             )
         }
 
+        const user = userData?.users?.find((u: any) => u.email?.toLowerCase() === email)
+
+        if (!user) {
+            return passkeyLoginUnavailableResponse()
+        }
+
         // Get user's passkeys
-        const { data: passkeys, error: passkeysError } = await supabase
+        const { data: passkeys, error: passkeysError } = await (await createClient())
             .from('user_passkeys')
             .select('credential_id, transports')
             .eq('user_id', user.id)
 
         if (passkeysError || !passkeys || passkeys.length === 0) {
-            return NextResponse.json(
-                { error: 'No passkeys registered for this user' },
-                { status: 404 }
-            )
+            return passkeyLoginUnavailableResponse()
         }
 
         // Get RP configuration
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Store challenge
-        const { error: challengeError } = await supabase
+        const { error: challengeError } = await (await createClient())
             .from('passkey_challenges')
             .insert({
                 challenge: options.challenge,
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
             })
 
         if (challengeError) {
-            console.error('Failed to store challenge:', challengeError)
+            logPasskeyRouteError('Failed to store challenge:', challengeError)
             return NextResponse.json(
                 { error: 'Failed to generate authentication options' },
                 { status: 500 }
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(options)
     } catch (error) {
-        console.error('Authentication options error:', error)
+        logPasskeyRouteError('Authentication options error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

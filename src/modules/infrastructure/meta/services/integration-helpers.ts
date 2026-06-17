@@ -6,8 +6,54 @@
  */
 
 import { wabaSubscriptionManager } from '@/modules/infrastructure/meta/services/waba-subscription-manager';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { decryptObject } from '@/modules/infrastructure/integrations/encryption';
+import { createClient } from "@/modules/core/database/supabase-server";
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function sanitizeIntegrationHelperLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set(['connectionId', 'organizationId', 'wabaId']);
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function summarizeIntegrationHelperError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error };
+}
+
+function logIntegrationHelperInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeIntegrationHelperLogDetails(details));
+}
+
+function logIntegrationHelperError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.error(label, error, details);
+        else console.error(label, error);
+        return;
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeIntegrationHelperLogDetails(details) : {}),
+        detail: summarizeIntegrationHelperError(error),
+    });
+}
 
 /**
  * Auto-subscribe WABA after successful Meta Business integration
@@ -18,10 +64,10 @@ export async function autoSubscribeWABA(
     connectionId: string
 ): Promise<void> {
     try {
-        console.log(`[AutoSubscribe] Processing connection ${connectionId}...`);
+        logIntegrationHelperInfo('[AutoSubscribe] Processing connection', { connectionId });
 
         // Get connection details
-        const { data: connection, error } = await supabaseAdmin
+        const { data: connection, error } = await (await createClient())
             .from('integration_connections')
             .select('credentials, metadata')
             .eq('id', connectionId)
@@ -29,7 +75,7 @@ export async function autoSubscribeWABA(
             .single();
 
         if (error || !connection) {
-            console.error('[AutoSubscribe] Connection not found:', error);
+            logIntegrationHelperError('[AutoSubscribe] Connection not found:', error, { connectionId });
             return;
         }
 
@@ -38,7 +84,7 @@ export async function autoSubscribeWABA(
         const accessToken = creds.access_token || creds.accessToken;
 
         if (!accessToken) {
-            console.error('[AutoSubscribe] No access token found');
+            logIntegrationHelperError('[AutoSubscribe] No access token found', new Error('missing_access_token'), { connectionId });
             return;
         }
 
@@ -49,17 +95,17 @@ export async function autoSubscribeWABA(
         );
 
         if (wabas.length === 0) {
-            console.log('[AutoSubscribe] No WABAs found in connection');
+            logIntegrationHelperInfo('[AutoSubscribe] No WABAs found in connection', { connectionId });
             return;
         }
 
-        console.log(`[AutoSubscribe] Found ${wabas.length} WABA(s) to subscribe`);
+        logIntegrationHelperInfo('[AutoSubscribe] Found WABAs to subscribe', { count: wabas.length });
 
         // Subscribe all WABAs
         for (const waba of wabas) {
             const wabaId = waba.waba_id || waba.id;
 
-            console.log(`[AutoSubscribe] Subscribing WABA ${wabaId}...`);
+            logIntegrationHelperInfo('[AutoSubscribe] Subscribing WABA', { wabaId });
 
             const result = await wabaSubscriptionManager.subscribeWABA(
                 wabaId,
@@ -67,14 +113,14 @@ export async function autoSubscribeWABA(
             );
 
             if (result.success) {
-                console.log(`[AutoSubscribe] ✅ Successfully subscribed WABA ${wabaId}`);
+                logIntegrationHelperInfo('[AutoSubscribe] Successfully subscribed WABA', { wabaId });
             } else {
-                console.error(`[AutoSubscribe] ❌ Failed to subscribe WABA ${wabaId}:`, result.error);
+                logIntegrationHelperError('[AutoSubscribe] Failed to subscribe WABA', result.error, { wabaId });
             }
         }
 
     } catch (error) {
-        console.error('[AutoSubscribe] Exception:', error);
+        logIntegrationHelperError('[AutoSubscribe] Exception:', error, { connectionId });
     }
 }
 
@@ -92,7 +138,7 @@ export async function verifyAllWABASubscriptions(
 }> {
     try {
         // Get all Meta connections for organization
-        const { data: connections } = await supabaseAdmin
+        const { data: connections } = await (await createClient())
             .from('integration_connections')
             .select('credentials, metadata')
             .eq('organization_id', organizationId)
@@ -133,7 +179,7 @@ export async function verifyAllWABASubscriptions(
         return { total, subscribed, notSubscribed };
 
     } catch (error) {
-        console.error('[VerifySubscriptions] Exception:', error);
+        logIntegrationHelperError('[VerifySubscriptions] Exception:', error, { organizationId });
         return { total: 0, subscribed: 0, notSubscribed: [] };
     }
 }

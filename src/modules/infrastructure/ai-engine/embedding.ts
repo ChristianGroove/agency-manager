@@ -1,4 +1,3 @@
-import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getAICredentials } from "./actions"
 import { decrypt } from "./encryption"
@@ -83,7 +82,7 @@ export const EmbeddingService = {
         if (!embedding) return []
 
         // 2. Search DB (using v2 with category filtering)
-        const { data, error } = await supabaseAdmin.rpc('match_knowledge_v2', {
+        const { data, error } = await (supabaseAdmin).rpc('match_knowledge_v2', {
             query_embedding: embedding,
             match_threshold: 0.7,
             match_count: 5,

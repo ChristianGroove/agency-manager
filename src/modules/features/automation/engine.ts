@@ -487,26 +487,10 @@ export class WorkflowEngine {
                 }
                 break;
             }
-
-
-            case 'tag': {
-                const tagNode = new TagNode(this.contextManager)
-                const result = await tagNode.execute(node.data as unknown as TagNodeData)
-                if (!result.success) throw new Error(result.error || 'Failed to update tags')
-                break
-            }
-
             case 'stage': {
                 const stageNode = new StageNode(this.contextManager)
                 const result = await stageNode.execute(node.data as unknown as StageNodeData)
                 if (!result.success) throw new Error(result.error || 'Failed to update stage')
-                break
-            }
-
-            case 'conversation': {
-                const conversationNode = new ConversationNode(this.contextManager)
-                const result = await conversationNode.execute(node.data as unknown as ConversationNodeData)
-                if (!result.success) throw new Error(result.error || 'Failed to update conversation')
                 break
             }
         }

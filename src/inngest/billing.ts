@@ -1,6 +1,6 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client";
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { WompiSaasAdapter } from "@/modules/billing/saas/adapters/wompi";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Monthly Subscription Billing Job

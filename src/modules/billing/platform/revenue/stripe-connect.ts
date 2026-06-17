@@ -3,6 +3,18 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_CONNECT_ONBOARDING_ERROR = 'Stripe Connect onboarding could not be started'
+const PUBLIC_CONNECT_PAYOUT_ERROR = 'Stripe Connect payout could not be completed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function publicStripeConnectError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
 // ============================================
 // STRIPE CONNECT EXPRESS - PLACEHOLDER
 // ============================================
@@ -60,7 +72,7 @@ export async function initiateConnectOnboarding(): Promise<{
         })
 
     if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: publicStripeConnectError(PUBLIC_CONNECT_ONBOARDING_ERROR, error) }
     }
 
     // En producción, retornaríamos el accountLink.url
@@ -189,7 +201,7 @@ export async function executeConnectPayout(settlement_id: string): Promise<{
             .from('settlements')
             .update({ status: 'approved' })
             .eq('id', settlement_id)
-        return { success: false, error: updateError.message }
+        return { success: false, error: publicStripeConnectError(PUBLIC_CONNECT_PAYOUT_ERROR, updateError) }
     }
 
     return {

@@ -5,6 +5,41 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { revalidatePath } from "next/cache"
 import { PipelineService } from "./services/pipeline.service"
 
+const PUBLIC_PIPELINE_ERROR = "No se pudo completar la accion de pipeline"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePipelineError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPipelineError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizePipelineError(error) : error)
+}
+
+function pipelineActionFailure<T>(label: string, error: unknown): ActionResponse<T> {
+    logPipelineError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_PIPELINE_ERROR }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_PIPELINE_ERROR }
+}
+
 export type PipelineStage = {
     id: string
     organization_id: string
@@ -43,7 +78,7 @@ export async function getPipelineStages(): Promise<PipelineStage[]> {
         const service = await getService()
         return await service.getStages() as PipelineStage[]
     } catch (error) {
-        console.error("Error fetching pipeline stages:", error)
+        logPipelineError("Error fetching pipeline stages:", error)
         return []
     }
 }
@@ -65,8 +100,7 @@ export async function createPipelineStage(input: {
 
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
-        console.error("Error creating pipeline stage:", error)
-        return { success: false, error: error.message }
+        return pipelineActionFailure<PipelineStage>("Error creating pipeline stage:", error)
     }
 }
 
@@ -84,8 +118,7 @@ export async function updatePipelineStage(
 
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
-        console.error("Error updating pipeline stage:", error)
-        return { success: false, error: error.message }
+        return pipelineActionFailure<PipelineStage>("Error updating pipeline stage:", error)
     }
 }
 
@@ -103,8 +136,7 @@ export async function deletePipelineStage(stageId: string): Promise<ActionRespon
 
         return { success: true }
     } catch (error: any) {
-        console.error("Error deleting pipeline stage:", error)
-        return { success: false, error: error.message }
+        return pipelineActionFailure<null>("Error deleting pipeline stage:", error)
     }
 }
 
@@ -121,8 +153,7 @@ export async function reorderPipelineStages(
 
         return { success: true }
     } catch (error: any) {
-        console.error("Error reordering pipeline stages:", error)
-        return { success: false, error: error.message }
+        return pipelineActionFailure<null>("Error reordering pipeline stages:", error)
     }
 }
 
@@ -131,7 +162,7 @@ export async function getDefaultPipeline() {
         const service = await getService()
         return await service.getDefaultPipeline()
     } catch (error: any) {
-        console.error("Error fetching pipeline:", error)
+        logPipelineError("Error fetching pipeline:", error)
         return null
     }
 }
@@ -142,8 +173,7 @@ export async function togglePipelineStrictMode(pipelineId: string, enabled: bool
         const data = await service.toggleStrictMode(pipelineId, enabled)
         return { success: true, data }
     } catch (error: any) {
-        console.error("Error toggling strict mode:", error)
-        return { success: false, error: error.message }
+        return pipelineActionFailure<Pipeline>("Error toggling strict mode:", error)
     }
 }
 
@@ -157,7 +187,7 @@ export async function getPipelineData(connectionId?: string | null) {
         const service = await getService()
         return await service.getPipelineViewData(connectionId)
     } catch (error) {
-        console.error("Error fetching pipeline data:", error)
+        logPipelineError("Error fetching pipeline data:", error)
         return null
     }
 }

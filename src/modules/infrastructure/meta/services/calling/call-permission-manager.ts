@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 export interface PermissionRequest {
     id: string;
@@ -11,6 +11,41 @@ export interface PermissionRequest {
     expiresAt?: Date;
 }
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function logCallPermissionInfo(label: string, details: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        console.log(label, details);
+        return;
+    }
+
+    console.log(label, sanitizeCallPermissionLogDetails(details));
+}
+
+function logCallPermissionError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function sanitizeCallPermissionLogDetails(details: Record<string, unknown>) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'conversationId' || key === 'permissionId') {
+                return [`${key}Present`, Boolean(value)];
+            }
+            return [key, value];
+        })
+    );
+}
+
 /**
  * Call Permission Manager (Persistent version)
  */
@@ -21,7 +56,7 @@ export class CallPermissionManager {
      */
     private async getHistoryFromDb(conversationId: string): Promise<PermissionRequest[]> {
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (supabaseAdmin)
                 .from('conversations')
                 .select('metadata')
                 .eq('id', conversationId)
@@ -39,7 +74,7 @@ export class CallPermissionManager {
                 expiresAt: item.expiresAt ? new Date(item.expiresAt) : undefined
             }));
         } catch (e) {
-            console.error('[CallPermission] Error fetching history:', e);
+            logCallPermissionError('[CallPermission] Error fetching history:', e);
             return [];
         }
     }
@@ -50,7 +85,7 @@ export class CallPermissionManager {
     private async saveHistoryToDb(conversationId: string, history: PermissionRequest[]) {
         try {
             // First get existing metadata to preserve other fields
-            const { data: current } = await supabaseAdmin
+            const { data: current } = await (supabaseAdmin)
                 .from('conversations')
                 .select('metadata')
                 .eq('id', conversationId)
@@ -58,8 +93,8 @@ export class CallPermissionManager {
 
             const existingMeta = current?.metadata || {};
 
-            console.log(`[CallPermission] [DEBUG] Writing history for ${conversationId}. Items: ${history.length}`);
-            const { error } = await supabaseAdmin
+            logCallPermissionInfo('[CallPermission] Writing history', { conversationId, items: history.length });
+            const { error } = await (supabaseAdmin)
                 .from('conversations')
                 .update({
                     metadata: {
@@ -70,12 +105,12 @@ export class CallPermissionManager {
                 .eq('id', conversationId);
 
             if (error) {
-                console.error(`[CallPermission] [DEBUG] ❌ DB Update Error:`, error);
+                logCallPermissionError('[CallPermission] DB Update Error:', error);
                 throw error;
             }
-            console.log(`[CallPermission] [DEBUG] ✅ DB Update Success for ${conversationId}`);
+            logCallPermissionInfo('[CallPermission] DB Update Success', { conversationId });
         } catch (e) {
-            console.error('[CallPermission] Error saving history:', e);
+            logCallPermissionError('[CallPermission] Error saving history:', e);
             throw e;
         }
     }
@@ -156,7 +191,7 @@ export class CallPermissionManager {
             throw new Error(`Cannot request permission: ${check.reason}`);
         }
 
-        console.log('[CallPermission] Requesting permission for conversation:', conversationId);
+        logCallPermissionInfo('[CallPermission] Requesting permission for conversation', { conversationId });
 
         // Record permission request
         const permissionId = `perm_${Date.now()}_${conversationId.substring(0, 8)}`;
@@ -173,7 +208,7 @@ export class CallPermissionManager {
         history.push(request);
         await this.saveHistoryToDb(conversationId, history);
 
-        console.log('[CallPermission] Permission requested and saved:', permissionId);
+        logCallPermissionInfo('[CallPermission] Permission requested and saved', { permissionId });
 
         return { success: true, permissionId };
     }
@@ -206,7 +241,7 @@ export class CallPermissionManager {
 
         await this.saveHistoryToDb(conversationId, history);
 
-        console.log('[CallPermission] Permission approved:', {
+        logCallPermissionInfo('[CallPermission] Permission approved', {
             permissionId,
             expiresAt: expiresAt.toISOString()
         });
@@ -228,7 +263,7 @@ export class CallPermissionManager {
         request.status = 'denied';
         await this.saveHistoryToDb(conversationId, history);
 
-        console.log('[CallPermission] Permission denied:', permissionId);
+        logCallPermissionInfo('[CallPermission] Permission denied', { permissionId });
 
         return { success: true };
     }
@@ -282,7 +317,7 @@ export class CallPermissionManager {
      * (Meta 2026: Limits reset on connected call)
      */
     async resetLimitsAfterCall(conversationId: string): Promise<void> {
-        console.log('[CallPermission] Resetting limits for conversation:', conversationId);
+        logCallPermissionInfo('[CallPermission] Resetting limits for conversation', { conversationId });
 
         // Clear call_permissions in DB
         await this.saveHistoryToDb(conversationId, []);

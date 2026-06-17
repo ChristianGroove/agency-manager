@@ -17,6 +17,57 @@ interface SentimentResult {
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_SENTIMENT_ERROR = 'Sentiment analysis failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logSentimentError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiError(error))
+}
+
+function logSentimentInfo(label: string, details: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, {
+        conversationIdPresent: Boolean(details.conversationId),
+        messageIdPresent: Boolean(details.messageId),
+        escalated: Boolean(details.escalated),
+    })
+}
+
 /**
  * Analyze sentiment of a message using Central Engine
  */
@@ -39,8 +90,8 @@ export async function analyzeSentiment(messageContent: string): Promise<{
         return { success: true, result }
 
     } catch (error: any) {
-        console.error('[SentimentAnalysis] Failed:', error)
-        return { success: false, error: error.message }
+        logSentimentError('[SentimentAnalysis] Failed:', error)
+        return { success: false, error: publicAiError(PUBLIC_SENTIMENT_ERROR, error) }
     }
 }
 
@@ -101,8 +152,8 @@ export async function saveSentimentAnalysis(
     result: SentimentResult
 ) {
     "use server"
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     // Update message with sentiment
     await supabase
@@ -139,8 +190,11 @@ export async function autoEscalateIfNeeded(
     "use server"
     if (!result.needsEscalation) return
 
-    const { createClient } = await import('@/modules/core/database/supabase-server')
-    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return
+
+    const { supabaseAdmin: supabase } = await import('@/modules/core/database/supabase-admin')
+    
 
     // Find supervisor or senior agent
     // For now, just mark conversation as urgent priority
@@ -154,6 +208,10 @@ export async function autoEscalateIfNeeded(
             })
         })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
-    console.log(`[SentimentAnalysis] Auto-escalated conversation ${conversationId}`)
+    logSentimentInfo('[SentimentAnalysis] Auto-escalated conversation', {
+        conversationId,
+        escalated: true,
+    })
 }

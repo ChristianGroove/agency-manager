@@ -1,10 +1,44 @@
 "use server"
 
 import { createClient } from '@/modules/core/database/supabase-server'
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from 'next/cache'
 import { DealService as DealsService } from '../deal-service'
 export type { CartItem, DealCart } from '../../types'
+
+const PUBLIC_DEAL_ERROR = "No se pudo completar la accion de deals CRM"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeDealError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function dealActionFailure(label: string, error: unknown): { success: false; error: string } {
+    if (isDeployedRuntime()) {
+        console.error(label, summarizeDealError(error))
+        return { success: false, error: PUBLIC_DEAL_ERROR }
+    }
+
+    console.error(label, error)
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_DEAL_ERROR }
+}
 
 // 1. Get or Create Cart for Lead
 export async function getDealCart(leadId: string) {
@@ -13,10 +47,9 @@ export async function getDealCart(leadId: string) {
     try {
         const service = new DealsService(supabase)
         const cart = await service.getOrCreateDealCart(leadId)
-        return { success: true, cart: cart as any } // Cast needed to match prev return types
+        return { success: true as const, cart: cart as any } // Cast needed to match prev return types
     } catch (error: any) {
-        console.error('getDealCart Error:', error)
-        return { success: false, error: error.message }
+        return dealActionFailure('getDealCart Error:', error)
     }
 }
 
@@ -28,9 +61,9 @@ export async function addToCart(cartId: string, product: any, quantity: number =
         const service = new DealsService(supabase)
         await service.addToCart(cartId, product, quantity)
         revalidatePath('/platform/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        return dealActionFailure('addToCart Error:', error)
     }
 }
 
@@ -42,9 +75,9 @@ export async function removeCartItem(itemId: string) {
         const service = new DealsService(supabase)
         await service.removeCartItem(itemId)
         revalidatePath('/platform/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        return dealActionFailure('removeCartItem Error:', error)
     }
 }
 
@@ -56,9 +89,9 @@ export async function updateCartItem(itemId: string, quantity: number) {
         const service = new DealsService(supabase)
         await service.updateCartItem(itemId, quantity)
         revalidatePath('/platform/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        return dealActionFailure('updateCartItem Error:', error)
     }
 }
 
@@ -74,9 +107,9 @@ export async function searchCatalog(query: string = '', category?: string, page:
         const supabase = await createClient()
         const service = new DealsService(supabase)
         const result = await service.searchCatalog(orgId, query, category, page, pageSize)
-        return { success: true, ...result }
+        return { success: true as const, ...result }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        return dealActionFailure('searchCatalog Error:', error)
     }
 }
 
@@ -84,15 +117,14 @@ export async function searchCatalog(query: string = '', category?: string, page:
 export async function sendInteractiveQuote(cartId: string, conversationId: string) {
     try {
         // Must run with Admin permissions to route WhatsApp messages safely and bypass RLS reading connections
-        const service = new DealsService(supabaseAdmin)
+        const service = new DealsService((await createClient()))
         await service.sendInteractiveQuote(cartId, conversationId)
 
         revalidatePath('/inbox')
         revalidatePath('/platform/inbox')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        console.error("Send Quote Error", e)
-        return { success: false, error: e.message || 'Error al enviar cotización' }
+        return dealActionFailure("Send Quote Error", e)
     }
 }
 

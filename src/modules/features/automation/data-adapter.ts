@@ -1,8 +1,6 @@
 
 import { DataModule } from "@/modules/infrastructure/data-vault/types"
-import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 export const automationDataAdapter: DataModule = {
     key: 'automation',
     name: 'Workflows & Automations',

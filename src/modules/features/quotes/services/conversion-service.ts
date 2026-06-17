@@ -4,12 +4,64 @@ import { createInvoiceAction as createInvoice } from "@/modules/features/billing
 import { QuoteItem, InvoiceItem } from "@/types"
 import * as BillingUtils from "@/modules/features/billing/services/billing-utils"
 
+const PUBLIC_CONVERSION_ERROR = "No se pudo convertir la cotizacion"
+
+type ConversionResults = {
+    servicesCreated: number
+    invoicesCreated: number
+    unifiedInvoiceId: string | null
+}
+
+type ConversionResult =
+    | { success: true; results: ConversionResults; error?: never }
+    | { success: false; error: string }
+
+class PublicConversionError extends Error { }
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeConversionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logConversionError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeConversionError(error) : error)
+}
+
+function conversionFailure(label: string, error: unknown): ConversionResult {
+    if (error instanceof PublicConversionError) {
+        return { success: false, error: error.message }
+    }
+
+    logConversionError(label, error)
+
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_CONVERSION_ERROR }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_CONVERSION_ERROR }
+}
+
 /**
  * Service for converting Quotes to other entities (Invoices, Services).
  * Extracted from conversion-actions.ts
  */
 
-export async function convertQuote(quoteId: string) {
+export async function convertQuote(quoteId: string): Promise<ConversionResult> {
     const supabase = await supabaseServer()
 
     try {
@@ -20,14 +72,15 @@ export async function convertQuote(quoteId: string) {
             .eq('id', quoteId)
             .single()
 
-        if (quoteError || !quote) throw new Error("Quote not found")
+        if (quoteError) throw quoteError
+        if (!quote) throw new PublicConversionError("Cotizacion no encontrada")
 
         // Validation
         if (quote.status === 'converted') {
-            throw new Error("Esta cotización ya ha sido procesada anteriormente.")
+            throw new PublicConversionError("Esta cotizacion ya ha sido procesada anteriormente.")
         }
         if (quote.status !== 'accepted') {
-            throw new Error("Solo se pueden convertir cotizaciones aceptadas.")
+            throw new PublicConversionError("Solo se pueden convertir cotizaciones aceptadas.")
         }
 
         const items: QuoteItem[] = quote.items || []
@@ -178,7 +231,7 @@ export async function convertQuote(quoteId: string) {
                 results.invoicesCreated++
                 results.unifiedInvoiceId = invRes.data.id
             } else {
-                throw new Error("Error creando factura unificada: " + invRes.error)
+                throw new Error("Invoice creation failed")
             }
         }
 
@@ -197,7 +250,6 @@ export async function convertQuote(quoteId: string) {
 
         return { success: true, results }
     } catch (error: any) {
-        console.error("[ConversionService.convertQuote] Error:", error)
-        return { success: false, error: error.message }
+        return conversionFailure("[ConversionService.convertQuote] Error:", error)
     }
 }

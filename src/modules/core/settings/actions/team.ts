@@ -8,6 +8,57 @@ import { MemberPermissions } from "@/modules/core/iam/permissions/types"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
+const PUBLIC_TEAM_INVITE_ERROR = "No se pudo enviar la invitacion"
+const PUBLIC_TEAM_ASSIGN_ERROR = "Usuario creado pero no se pudo asignar al equipo"
+const PUBLIC_TEAM_REMOVE_ERROR = "No se pudo eliminar el miembro"
+const PUBLIC_TEAM_ROLE_ERROR = "No se pudo actualizar el rol"
+const PUBLIC_TEAM_PERMISSIONS_ERROR = "No se pudieron actualizar los permisos"
+const PUBLIC_TEAM_PROFILE_ERROR = "No se pudo crear el perfil"
+const PUBLIC_TEAM_CREATE_ERROR = "No se pudo crear el usuario"
+const PUBLIC_TEAM_LINK_ERROR = "Usuario creado pero no se pudo vincular al equipo"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeTeamActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logTeamActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeTeamActionError(error))
+}
+
+function teamActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
+function teamActionPrefixedErrorMessage(error: unknown, localPrefix: string, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    return `${localPrefix}: ${teamActionErrorMessage(error, publicMessage)}`
+}
+
 
 /**
  * Get members of the current active organization
@@ -33,7 +84,7 @@ export async function getOrganizationMembers() {
         .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Error fetching members:", error)
+        logTeamActionError("Error fetching members:", error)
         return []
     }
 
@@ -78,7 +129,7 @@ export async function getOrganizationMembers() {
 
     // Combine data and filter out platform admins
     return members
-        .filter(member => !platformAdminIds.has(member.user_id))
+        .filter(member => { const perms = member.permissions as any; if (perms && typeof perms === 'object' && perms.is_support_proxy === true) return false; return !platformAdminIds.has(member.user_id); })
         .map(member => {
             const profile = profileMap.get(member.user_id)
             return {
@@ -187,8 +238,15 @@ export async function inviteMember(email: string, roleId: string) {
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
-            console.error('[inviteMember] Membership Error:', memberError)
-            return { success: false, error: "Usuario creado pero fallÃ³ asignaciÃ³n: " + memberError.message }
+            logTeamActionError('[inviteMember] Membership Error:', memberError)
+            return {
+                success: false,
+                error: teamActionPrefixedErrorMessage(
+                    memberError,
+                    "Usuario creado pero fallo asignacion",
+                    PUBLIC_TEAM_ASSIGN_ERROR
+                )
+            }
         }
 
         // 4. Send Invite Email (Custom SMTP / Resend)
@@ -210,8 +268,8 @@ export async function inviteMember(email: string, roleId: string) {
         return { success: true, inviteLink }
 
     } catch (error: any) {
-        console.error("Invite Error:", error)
-        return { success: false, error: error.message }
+        logTeamActionError("Invite Error:", error)
+        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_INVITE_ERROR) }
     }
 }
 
@@ -236,7 +294,7 @@ export async function removeMember(userId: string) {
     }
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organization_members')
             .delete()
             .match({ organization_id: orgId, user_id: userId })
@@ -246,8 +304,8 @@ export async function removeMember(userId: string) {
         revalidatePath('/settings')
         return { success: true }
     } catch (error: any) {
-        console.error("Remove Error:", error)
-        return { success: false, error: error.message }
+        logTeamActionError("Remove Error:", error)
+        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_REMOVE_ERROR) }
     }
 }
 
@@ -268,7 +326,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
         // Fetch the target role's hierarchy to sync the legacy 'role' column.
         // This is critical: the assignment-engine and DB-level checks read
         // the legacy column, so it must reflect the actual access level.
-        const { data: roleData } = await supabaseAdmin
+        const { data: roleData } = await (await createClient())
             .from('organization_roles')
             .select('hierarchy_level')
             .eq('id', newRoleId)
@@ -279,7 +337,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
                          : hierarchyLevel >= 50 ? 'admin'
                          : 'member'
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organization_members')
             .update({
                 role_id: newRoleId,
@@ -292,8 +350,8 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
         revalidatePath('/platform/settings')
         return { success: true }
     } catch (error: any) {
-        console.error("Update Role Error:", error)
-        return { success: false, error: error.message }
+        logTeamActionError("Update Role Error:", error)
+        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_ROLE_ERROR) }
     }
 }
 
@@ -317,7 +375,7 @@ export async function updateMemberPermissions(
         return { success: false, error: "No tienes permisos para editar permisos" }
     }
 
-    const { data: member } = await supabaseAdmin
+    const { data: member } = await (await createClient())
         .from('organization_members')
         .select(`
             permissions, 
@@ -347,7 +405,7 @@ export async function updateMemberPermissions(
     }
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organization_members')
             .update({ permissions: newPermissions })
             .match({ organization_id: orgId, user_id: userId })
@@ -357,8 +415,8 @@ export async function updateMemberPermissions(
         revalidatePath('/platform/settings')
         return { success: true, permissions: newPermissions }
     } catch (error: any) {
-        console.error("Update Permissions Error:", error)
-        return { success: false, error: error.message }
+        logTeamActionError("Update Permissions Error:", error)
+        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_PERMISSIONS_ERROR) }
     }
 }
 
@@ -369,7 +427,7 @@ export async function getMemberPermissions(userId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return null
 
-    const { data: member } = await supabaseAdmin
+    const { data: member } = await (await createClient())
         .from('organization_members')
         .select(`
             role, 
@@ -406,7 +464,7 @@ export async function getMemberPermissions(userId: string) {
  * Internal: Fetch user permissions using admin client (Cacheable)
  */
 async function _getUserPermissionsInternal(userId: string, orgId: string) {
-    const { data: member } = await supabaseAdmin
+    const { data: member } = await (await createClient())
         .from('organization_members')
         .select(`
             role, 
@@ -487,7 +545,7 @@ export async function createUserManually(data: {
 
     try {
         // 1. Create User via Admin API
-        let { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        let { data: userData, error: createError } = await (await createClient()).auth.admin.createUser({
             email: data.email,
             password: data.password,
             email_confirm: true,
@@ -498,7 +556,7 @@ export async function createUserManually(data: {
 
         if (createError) {
             if (createError.message?.includes("already been registered")) {
-                const { data: profile } = await supabaseAdmin
+                const { data: profile } = await (await createClient())
                     .from('profiles')
                     .select('id')
                     .eq('email', data.email)
@@ -508,7 +566,7 @@ export async function createUserManually(data: {
                     return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario." }
                 }
 
-                const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                const { data: updatedUser, error: updateError } = await (await createClient()).auth.admin.updateUserById(
                     profile.id,
                     {
                         password: data.password,
@@ -531,7 +589,7 @@ export async function createUserManually(data: {
 
         // 2. Asegurar Perfil (Upsert)
         // Nota: Quitamos 'email' porque no existe en la tabla profiles (está en auth.users y organization_members)
-        const { error: profileError } = await supabaseAdmin
+        const { error: profileError } = await (await createClient())
             .from('profiles')
             .upsert({
                 id: userId,
@@ -541,13 +599,16 @@ export async function createUserManually(data: {
             }, { onConflict: 'id' })
 
         if (profileError) {
-            console.error('[createUserManually] Error al sincronizar perfil:', profileError)
-            return { success: false, error: "Error al crear perfil: " + profileError.message }
+            logTeamActionError('[createUserManually] Error al sincronizar perfil:', profileError)
+            return {
+                success: false,
+                error: teamActionPrefixedErrorMessage(profileError, "Error al crear perfil", PUBLIC_TEAM_PROFILE_ERROR)
+            }
         }
 
         // 3. Añadir a Miembros de la Organización
         // Obtenemos el nombre del rol para mapearlo a la columna legada 'role' y evitar fallos de constraint
-        const { data: roleData } = await supabaseAdmin
+        const { data: roleData } = await (await createClient())
             .from('organization_roles')
             .select('name')
             .eq('id', data.role)
@@ -557,7 +618,7 @@ export async function createUserManually(data: {
         const legacyRole = (roleName.includes('admin') || roleName.includes('administrador')) ? 'admin' : 
                           (roleName.includes('dueño') || roleName.includes('owner')) ? 'owner' : 'member'
 
-        const { error: memberError } = await supabaseAdmin
+        const { error: memberError } = await (await createClient())
             .from('organization_members')
             .insert({
                 organization_id: orgId,
@@ -567,9 +628,14 @@ export async function createUserManually(data: {
             })
 
         if (memberError) {
+            logTeamActionError('[createUserManually] Error al vincular miembro:', memberError)
             return {
                 success: false,
-                error: "Usuario creado pero falló vinculación: " + memberError.message
+                error: teamActionPrefixedErrorMessage(
+                    memberError,
+                    "Usuario creado pero fallo vinculacion",
+                    PUBLIC_TEAM_LINK_ERROR
+                )
             }
         }
 
@@ -577,7 +643,7 @@ export async function createUserManually(data: {
         return { success: true, userId: userId }
 
     } catch (error: any) {
-        console.error("Create User Error:", error)
-        return { success: false, error: error.message }
+        logTeamActionError("Create User Error:", error)
+        return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_CREATE_ERROR) }
     }
 }

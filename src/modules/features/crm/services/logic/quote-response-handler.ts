@@ -1,8 +1,7 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { MetaProvider } from "@/modules/features/messaging/providers/meta-provider"
 import { MessagingPersistence } from "@/modules/features/messaging/services/persistence"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Quote Response Handler
@@ -16,6 +15,43 @@ interface QuoteResponseContext {
     recipientPhone: string
 }
 
+const PUBLIC_QUOTE_APPROVAL_ERROR = "No se pudo aprobar la cotizacion"
+const PUBLIC_QUOTE_REJECTION_ERROR = "No se pudo procesar el rechazo de la cotizacion"
+const PUBLIC_REJECTION_REASON_ERROR = "No se pudo guardar la razon de rechazo"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeQuoteHandlerError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logQuoteHandlerError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeQuoteHandlerError(error) : error)
+}
+
+function quoteHandlerFailure(label: string, error: unknown, fallback: string) {
+    logQuoteHandlerError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: fallback }
+}
+
 /**
  * Handle Quote Approval
  * - Update deal/cart status to "won"
@@ -26,24 +62,31 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
 
 
     try {
-        // 1. Update cart status to approved
+        // 1. Resolve cart tenant before applying privileged writes
+        const { data: cart } = await supabaseAdmin
+            .from('deal_carts')
+            .select('lead_id, organization_id')
+            .eq('id', context.cartId)
+            .single()
+
+        if (!cart?.organization_id) {
+            throw new Error("Cart not found")
+        }
+
+        // 2. Update cart status to approved
         await supabaseAdmin
             .from('deal_carts')
             .update({ status: 'approved' })
             .eq('id', context.cartId)
+            .eq('organization_id', cart.organization_id)
 
-        // 2. Update associated lead's pipeline stage (if configured)
-        const { data: cart } = await supabaseAdmin
-            .from('deal_carts')
-            .select('lead_id')
-            .eq('id', context.cartId)
-            .single()
-
+        // 3. Update associated lead's pipeline stage (if configured)
         if (cart?.lead_id) {
             // Find "won" stage
             const { data: stage } = await supabaseAdmin
                 .from('pipeline_stages')
                 .select('id')
+                .eq('organization_id', cart.organization_id)
                 .eq('name', 'won')
                 .limit(1)
                 .single()
@@ -53,17 +96,17 @@ export async function handleQuoteApproval(context: QuoteResponseContext) {
                     .from('leads')
                     .update({ stage_id: stage.id })
                     .eq('id', cart.lead_id)
+                    .eq('organization_id', cart.organization_id)
             }
         }
 
-        // 3. Send confirmation message (optional)
+        // 4. Send confirmation message (optional)
         // await sendConfirmationMessage(context, "¡Gracias! Tu cotización ha sido aprobada. ✅")
 
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Approval error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Approval error:", error, PUBLIC_QUOTE_APPROVAL_ERROR)
     }
 }
 
@@ -100,20 +143,8 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
         settings = orgSettings
 
-        // Fallback: get any available quote_settings if org-specific not found
-        if (!settings) {
-
-            const { data: fallbackSettings } = await supabaseAdmin
-                .from('quote_settings')
-                .select('actions_config')
-                .limit(1)
-                .single()
-
-            settings = fallbackSettings
-        }
-
         if (settingsError && !settings) {
-            console.error(`[QuoteHandler] Settings fetch error:`, settingsError.message)
+            logQuoteHandlerError(`[QuoteHandler] Settings fetch error:`, settingsError)
         }
 
 
@@ -162,6 +193,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
                 .from('conversations')
                 .select('connection_id')
                 .eq('id', context.conversationId)
+                .eq('organization_id', conversation.organization_id)
                 .single()
             connectionId = convData?.connection_id || ''
 
@@ -178,6 +210,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
             .from('integration_connections')
             .select('*, credentials')
             .eq('id', connectionId)
+            .eq('organization_id', conversation.organization_id)
             .single()
 
         connection = directConn
@@ -189,11 +222,12 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
                 .from('integration_connections')
                 .select('*, credentials')
                 .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
+                .eq('organization_id', conversation.organization_id)
                 .eq('status', 'active')
                 .limit(1)
 
             if (fallbackError) {
-                console.error(`[QuoteHandler] Fallback query error:`, fallbackError.message)
+                logQuoteHandlerError(`[QuoteHandler] Fallback query error:`, fallbackError)
             }
 
 
@@ -261,8 +295,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Rejection error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Rejection error:", error, PUBLIC_QUOTE_REJECTION_ERROR)
     }
 }
 
@@ -280,15 +313,7 @@ export async function handleRejectionReasonSelected(
 
 
     try {
-        // 1. Update cart with rejection reason and status
-        await supabaseAdmin
-            .from('deal_carts')
-            .update({
-                status: 'rejected'
-            })
-            .eq('id', cartId)
-
-        // 2. Get conversation info for sending message
+        // 1. Get conversation info for tenant scoping and messaging
         const { data: conv } = await supabaseAdmin
             .from('conversations')
             .select('phone, organization_id, connection_id')
@@ -299,6 +324,15 @@ export async function handleRejectionReasonSelected(
             console.error("[QuoteHandler] No phone found for conversation")
             return { success: false, error: "No phone found" }
         }
+
+        // 2. Update cart with rejection reason and status
+        await supabaseAdmin
+            .from('deal_carts')
+            .update({
+                status: 'rejected'
+            })
+            .eq('id', cartId)
+            .eq('organization_id', conv.organization_id)
 
         // 3. Get quote settings for configurable message
         let settings = null
@@ -311,16 +345,6 @@ export async function handleRejectionReasonSelected(
 
         settings = orgSettings
 
-        // Fallback: get any available quote_settings
-        if (!settings) {
-            const { data: fallbackSettings } = await supabaseAdmin
-                .from('quote_settings')
-                .select('actions_config')
-                .limit(1)
-                .single()
-            settings = fallbackSettings
-        }
-
         const ackMessage = settings?.actions_config?.reject?.acknowledgment_message ||
             `Gracias por su respuesta. Hemos registrado: "${reason}". Un asesor se comunicará pronto.`
 
@@ -329,6 +353,7 @@ export async function handleRejectionReasonSelected(
             .from('integration_connections')
             .select('*, credentials')
             .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
+            .eq('organization_id', conv.organization_id)
             .eq('status', 'active')
             .limit(1)
 
@@ -370,7 +395,6 @@ export async function handleRejectionReasonSelected(
 
         return { success: true }
     } catch (error: any) {
-        console.error("[QuoteHandler] Rejection reason error:", error.message)
-        return { success: false, error: error.message }
+        return quoteHandlerFailure("[QuoteHandler] Rejection reason error:", error, PUBLIC_REJECTION_REASON_ERROR)
     }
 }

@@ -1,5 +1,65 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { parseMetaOAuthState } from "@/modules/infrastructure/meta/services/oauth-state";
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function sanitizeMetaCallbackContext(context: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set(['connectionId', 'userName', 'wabaId']);
+
+    return Object.fromEntries(
+        Object.entries(context).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)];
+            }
+
+            return [key, value];
+        })
+    );
+}
+
+function logMetaCallbackInfo(label: string, context: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, context);
+        return;
+    }
+
+    console.log(label, sanitizeMetaCallbackContext(context));
+}
+
+function logMetaCallbackError(label: string, error: unknown, context?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, context || '');
+        return;
+    }
+
+    console.error(label, {
+        ...sanitizeMetaCallbackContext(context),
+        detail: error instanceof Error ? { name: error.name } : { type: typeof error }
+    });
+}
+
+function sanitizeAssetsPreviewForMetadata(assets: any[]) {
+    return assets.map((asset) => {
+        const {
+            access_token: _accessToken,
+            page_access_token: _pageAccessToken,
+            token: _token,
+            ...safeAsset
+        } = asset;
+
+        return safeAsset;
+    });
+}
+
+function errorRedirectParams(error: string, publicDesc: string, detail?: string | null): Record<string, string> {
+    const desc = isDeployedRuntime() ? publicDesc : detail;
+    const params: Record<string, string> = { error };
+    if (desc) params.desc = desc;
+    return params;
+}
 
 /**
  * Create a client-side redirect response that goes through the meta-callback page.
@@ -55,7 +115,7 @@ function createClientRedirect(
         <h2>Procesando conexión</h2>
         <p>Un momento...</p>
     </div>
-    <script>window.location.replace("${redirectUrl}");</script>
+    <script>window.location.replace(${JSON.stringify(redirectUrl)});</script>
 </body>
 </html>`;
 
@@ -75,11 +135,12 @@ export async function GET(request: Request) {
     // 1. Handle Errors from Meta
     if (error) {
         const errorDesc = searchParams.get('error_description');
-        console.error("Meta OAuth Error:", error, errorDesc);
-        return createClientRedirect(appUrl, '/platform/integrations', {
-            error: 'meta_oauth_failed',
-            desc: errorDesc || ''
-        });
+        logMetaCallbackError("Meta OAuth Error:", errorDesc || error, { providerError: true });
+        return createClientRedirect(
+            appUrl,
+            '/platform/integrations',
+            errorRedirectParams('meta_oauth_failed', 'Meta authorization failed', errorDesc)
+        );
     }
 
     if (!code || !state) {
@@ -89,31 +150,30 @@ export async function GET(request: Request) {
         });
     }
 
-    // 2. Parse State - Format: "orgId" or "orgId:channelType" or "contact_connect:clientId"
-    const stateParts = state.split(':');
+    // 2. Verify State before exchanging code or mutating credentials.
+    const parsedState = parseMetaOAuthState(state);
+    if (!parsedState.ok) {
+        logMetaCallbackError("Meta OAuth Invalid State:", parsedState.error);
+        return createClientRedirect(
+            appUrl,
+            '/platform/integrations',
+            errorRedirectParams('invalid_state', 'Invalid Meta OAuth state', parsedState.error)
+        );
+    }
 
     // NEW: Contact Connectivity Flow
-    if (stateParts[0] === 'contact_connect') {
-        const clientId = stateParts[1];
+    if (parsedState.state.flow === 'contact_connect') {
+        const clientId = parsedState.state.clientId;
         if (!clientId) return createClientRedirect(appUrl, '/platform/integrations', { error: 'missing_client_id' });
 
         try {
             const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api');
-            const { saveMetaConfig } = await import('@/modules/core/admin/actions');
             const metaApi = new MetaGraphAPI(appUrl);
 
             // Exchange for Long Lived Token
             const longLivedToken = await metaApi.exchangeCodeForToken(code);
 
-            // Save Token (Partial Config)
-            const formData = new FormData();
-            formData.append('access_token', longLivedToken);
-            // We don't have ad_account/page yet, those will be selected in UI
-
-            // We use a specific function/logic to just save the token without validation
-            // Reuse saveMetaConfig but we need to bypass validation if we just have token
-            // For now, let's just update the token using Supabase Admin directly to avoid validation errors in action
-            const { createClient } = await import('@supabase/supabase-js');
+            // Store partial config directly; asset selection is completed in the UI.
             const supabaseAdmin = createClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -143,20 +203,24 @@ export async function GET(request: Request) {
             // Close Popup Script
             const html = `<!DOCTYPE html><html><body>
             <script>
-                window.opener.postMessage({ type: 'META_CONNECT_SUCCESS', clientId: '${clientId}' }, '*');
+                window.opener.postMessage({ type: 'META_CONNECT_SUCCESS', clientId: ${JSON.stringify(clientId)} }, ${JSON.stringify(appUrl)});
                 window.close();
             </script>
             </body></html>`;
             return new NextResponse(html, { headers: { 'Content-Type': 'text/html' } });
 
         } catch (e: any) {
-            console.error("Contact Connect Error:", e);
-            return createClientRedirect(appUrl, '/platform/integrations', { error: 'contact_connect_failed', desc: e.message });
+            logMetaCallbackError("Contact Connect Error:", e);
+            return createClientRedirect(
+                appUrl,
+                '/platform/integrations',
+                errorRedirectParams('contact_connect_failed', 'Meta contact connection failed', e.message)
+            );
         }
     }
 
-    const orgId = stateParts[0];
-    const channelType = stateParts[1] as 'whatsapp' | 'messenger' | 'instagram' | undefined;
+    const orgId = parsedState.state.orgId;
+    const channelType = parsedState.state.channelType;
     const isGranularConnection = !!channelType;
 
     // 3. Exchange Code for Token & Get Assets
@@ -183,7 +247,7 @@ export async function GET(request: Request) {
             // 3.1 Bulk Portfolio Sync (Meta 2026 Compliance)
             // Automatically subscribe ALL WABAs to webhooks to prevent "Shadow Delivery"
             if (wabas.length > 0) {
-                console.log(`[MetaCallback] Starting Bulk Sync for ${wabas.length} WABAs...`);
+                logMetaCallbackInfo('[MetaCallback] Starting Bulk Sync', { wabasCount: wabas.length });
 
                 try {
                     const { wabaSubscriptionManager } = await import('@/modules/infrastructure/meta/services/waba-subscription-manager');
@@ -196,22 +260,25 @@ export async function GET(request: Request) {
                     const results = await wabaSubscriptionManager.batchSubscribe(subscriptionPayload);
 
                     const successCount = results.filter(r => r.success).length;
-                    console.log(`[MetaCallback] Bulk Sync Complete. Success: ${successCount}/${wabas.length}`);
+                    logMetaCallbackInfo('[MetaCallback] Bulk Sync Complete', {
+                        successCount,
+                        wabasCount: wabas.length,
+                    });
 
                     // Log failures if any
                     results.filter(r => !r.success).forEach(r => {
-                        console.error(`[MetaCallback] Failed to subscribe WABA ${r.wabaId}:`, r.error);
+                        logMetaCallbackError('[MetaCallback] Failed to subscribe WABA:', r.error, { wabaId: r.wabaId });
                     });
 
                 } catch (syncError) {
-                    console.error('[MetaCallback] Bulk Sync Failed:', syncError);
+                    logMetaCallbackError('[MetaCallback] Bulk Sync Failed:', syncError);
                     // We don't block the flow, but we log the critical error
                 }
             }
         }
 
-        console.log("🚀 Meta Connected!", {
-            user: userProfile.name,
+        logMetaCallbackInfo('[MetaCallback] Meta Connected', {
+            userName: userProfile.name,
             channelType: channelType || 'all',
             pagesFound: pages.length,
             wabasFound: wabas.length
@@ -342,10 +409,11 @@ export async function GET(request: Request) {
                     count: String(successCount)
                 });
             } else {
-                return createClientRedirect(appUrl, '/crm/settings/channels', {
-                    error: 'no_channels_created',
-                    desc: errorMessages.join(', ')
-                });
+                return createClientRedirect(
+                    appUrl,
+                    '/crm/settings/channels',
+                    errorRedirectParams('no_channels_created', 'No Meta channels were created', errorMessages.join(', '))
+                );
             }
         }
 
@@ -373,7 +441,7 @@ export async function GET(request: Request) {
             },
             metadata: {
                 total_assets_available: filteredAssets.length,
-                assets_preview: filteredAssets,
+                assets_preview: sanitizeAssetsPreviewForMetadata(filteredAssets),
                 waba_debug_error: wabaError
             },
             is_primary: true,
@@ -382,14 +450,14 @@ export async function GET(request: Request) {
 
         let dbError: any = null;
         if (existingConnection?.id) {
-            console.log("Updating existing connection:", existingConnection.id);
+            logMetaCallbackInfo('[MetaCallback] Updating existing connection', { connectionId: existingConnection.id });
             const { error } = await supabase
                 .from('integration_connections')
                 .update(connectionPayload)
                 .eq('id', existingConnection.id);
             dbError = error;
         } else {
-            console.log("Inserting new connection");
+            logMetaCallbackInfo('[MetaCallback] Inserting new connection');
             const { error } = await supabase
                 .from('integration_connections')
                 .insert(connectionPayload);
@@ -397,11 +465,12 @@ export async function GET(request: Request) {
         }
 
         if (dbError) {
-            console.error("DB Save Error:", dbError);
-            return createClientRedirect(appUrl, '/platform/integrations', {
-                error: 'db_save_failed',
-                desc: dbError.message || ''
-            });
+            logMetaCallbackError("DB Save Error:", dbError);
+            return createClientRedirect(
+                appUrl,
+                '/platform/integrations',
+                errorRedirectParams('db_save_failed', 'Meta connection could not be saved', dbError.message)
+            );
         }
 
         return createClientRedirect(appUrl, '/platform/integrations', {
@@ -410,10 +479,11 @@ export async function GET(request: Request) {
         });
 
     } catch (err: any) {
-        console.error("Meta Exchange Failed:", err);
-        return createClientRedirect(appUrl, '/platform/integrations', {
-            error: 'exchange_failed',
-            desc: err.message
-        });
+        logMetaCallbackError("Meta Exchange Failed:", err);
+        return createClientRedirect(
+            appUrl,
+            '/platform/integrations',
+            errorRedirectParams('exchange_failed', 'Meta connection failed', err.message)
+        );
     }
 }

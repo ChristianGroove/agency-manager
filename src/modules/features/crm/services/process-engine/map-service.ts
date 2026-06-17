@@ -1,18 +1,23 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { PipelineProcessMap } from "@/types/process-engine"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export class ProcessMapper {
 
     /**
      * Get the Process State linked to a Pipeline Stage
      */
-    static async getProcessStateForStage(stageId: string): Promise<PipelineProcessMap | null> {
-        const { data, error } = await supabaseAdmin
+    static async getProcessStateForStage(stageId: string, organizationId?: string): Promise<PipelineProcessMap | null> {
+        let query = (await createClient())
             .from('pipeline_process_map')
             .select('*')
             .eq('pipeline_stage_id', stageId)
-            .single()
+
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId)
+        }
+
+        const { data, error } = await query.single()
 
         if (error) return null
         return data as PipelineProcessMap
@@ -27,7 +32,7 @@ export class ProcessMapper {
         if (!orgId) return { allowed: true } // No org context, permissive (or strict?) -> Permissive for legacy
 
         // 1. Does the target stage map to a Process State?
-        const mapping = await this.getProcessStateForStage(targetStageId)
+        const mapping = await this.getProcessStateForStage(targetStageId, orgId)
 
         if (!mapping) {
             // Target stage is "Unmapped" (Legacy/Free).
@@ -37,9 +42,10 @@ export class ProcessMapper {
         }
 
         // 2. Does the lead have an active process of this type?
-        const { data: processInstance } = await supabaseAdmin
+        const { data: processInstance } = await (await createClient())
             .from('process_instances')
             .select('*')
+            .eq('organization_id', orgId)
             .eq('lead_id', leadId)
             .eq('type', mapping.process_type)
             .eq('status', 'active')
@@ -63,7 +69,7 @@ export class ProcessMapper {
         }
 
         // Check rules
-        const { data: currentStateDef } = await supabaseAdmin
+        const { data: currentStateDef } = await (await createClient())
             .from('process_states')
             .select('allowed_next_states')
             .eq('organization_id', orgId)

@@ -179,7 +179,7 @@ export function ChatHeader({
 
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground h-8 w-8", isContextOpen && "bg-muted")}>
+                                <Button variant="ghost" size="icon" className={cn("h-8 w-8", isContextOpen ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={onToggleContext}>
                                     <Sidebar className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>

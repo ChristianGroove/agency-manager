@@ -177,7 +177,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 setLoading(false)
             }
         }
-    }, [conversationId, updateLeadCache, leadsCache])
+    }, [conversationId, updateLeadCache])
 
     // Initial Fetch - Triggered only by conversationId change
     useEffect(() => {

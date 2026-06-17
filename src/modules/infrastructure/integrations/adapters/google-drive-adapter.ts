@@ -2,6 +2,55 @@ import { IntegrationAdapter, ConnectionCredentials, VerificationResult, StorageP
 import { google } from "googleapis"
 import { Readable } from "stream"
 
+const PUBLIC_GDRIVE_VERIFICATION_ERROR = "Google Drive credentials could not be verified"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeGoogleDriveError(error: unknown) {
+    if (error instanceof Error) {
+        const detail = error as Error & { code?: unknown; status?: unknown; response?: { status?: unknown } }
+        return {
+            name: error.name,
+            code: detail.code,
+            status: detail.status || detail.response?.status,
+        }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status || (error as any).response?.status,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logGoogleDriveError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeGoogleDriveError(error) : error)
+}
+
+function googleDriveVerificationError(error: unknown) {
+    if (isDeployedRuntime()) return PUBLIC_GDRIVE_VERIFICATION_ERROR
+    if (error instanceof Error && error.message) return `Google Drive Access Denied: ${error.message}`
+    return PUBLIC_GDRIVE_VERIFICATION_ERROR
+}
+
+function logGoogleDriveUpload(credentials: ConnectionCredentials, path: string) {
+    if (!isDeployedRuntime()) {
+        console.log(`[GDrive] Uploading to folder ${credentials.folder_id}: ${path}`)
+        return
+    }
+
+    console.log('[GDrive] Uploading file', {
+        folderPresent: !!credentials.folder_id,
+        pathPresent: !!path,
+    })
+}
+
 /**
  * Google Drive Adapter for "Bring Your Own Storage" Backups
  * 
@@ -12,7 +61,7 @@ export class GoogleDriveAdapter implements IntegrationAdapter {
 
     storage: StorageProvider = {
         uploadFile: async (credentials, path, content, contentType) => {
-            console.log(`[GDrive] Uploading to folder ${credentials.folder_id}: ${path}`)
+            logGoogleDriveUpload(credentials, path)
 
             const auth = new google.auth.GoogleAuth({
                 credentials: {
@@ -85,9 +134,9 @@ export class GoogleDriveAdapter implements IntegrationAdapter {
                         account: credentials.client_email
                     }
                 }
-            } catch (error: any) {
-                console.error("GDrive Verification Failed:", error)
-                return { isValid: false, error: `Google Drive Access Denied: ${error.message}` }
+            } catch (error: unknown) {
+                logGoogleDriveError("GDrive Verification Failed:", error)
+                return { isValid: false, error: googleDriveVerificationError(error) }
             }
         });
     }

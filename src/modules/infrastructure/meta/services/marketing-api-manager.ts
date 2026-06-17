@@ -20,6 +20,61 @@ export interface MarketingEligibility {
     reason?: string;
 }
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function getMarketingErrorMessage(error: unknown, fallback = 'Unknown marketing error') {
+    if (error instanceof Error && error.message) return error.message;
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+        return (error as { message: string }).message;
+    }
+    if (typeof error === 'string' && error) return error;
+    return fallback;
+}
+
+function logMarketingPhoneId(label: string, phoneNumberId: string) {
+    if (isProductionRuntime()) {
+        console.log(label, { phoneNumberIdPresent: Boolean(phoneNumberId) });
+        return;
+    }
+
+    console.log(label, phoneNumberId);
+}
+
+function logMarketingError(label: string, error: unknown, productionMessage: string) {
+    if (isProductionRuntime()) {
+        console.error(label, { message: productionMessage });
+        return;
+    }
+
+    console.error(label, error);
+}
+
+function formatMarketingFailure(error: unknown, fallback: string) {
+    return isProductionRuntime() ? fallback : getMarketingErrorMessage(error, fallback);
+}
+
+function recordRecipientFailure(
+    results: { errors: string[] },
+    phoneNumber: string,
+    index: number,
+    total: number,
+    error: unknown
+) {
+    const fallback = 'Marketing message failed';
+    const errorMessage = formatMarketingFailure(error, fallback);
+
+    if (isProductionRuntime()) {
+        results.errors.push(`recipient ${index + 1}/${total}: ${errorMessage}`);
+        console.error(`[MM API] Failed recipient ${index + 1}/${total}:`, { message: errorMessage });
+        return;
+    }
+
+    results.errors.push(`${phoneNumber}: ${errorMessage}`);
+    console.error(`[MM API] ✗ Failed for ${phoneNumber}:`, errorMessage);
+}
+
 /**
  * Marketing Messages API Manager
  */
@@ -47,7 +102,7 @@ export class MarketingAPIManager {
         }
 
         try {
-            console.log('[MM API] Checking eligibility for:', phoneNumberId);
+            logMarketingPhoneId('[MM API] Checking eligibility for:', phoneNumberId);
 
             const response = await fetch(
                 `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}?fields=marketing_messages_onboarding_status`,
@@ -79,11 +134,11 @@ export class MarketingAPIManager {
             };
 
         } catch (error: any) {
-            console.error('[MM API] Eligibility check failed:', error);
+            logMarketingError('[MM API] Eligibility check failed:', error, 'Marketing eligibility check failed');
             return {
                 eligible: false,
                 status: 'ERROR',
-                reason: error.message
+                reason: formatMarketingFailure(error, 'Marketing eligibility check failed')
             };
         }
     }
@@ -176,8 +231,7 @@ export class MarketingAPIManager {
 
             } catch (error: any) {
                 results.failed++;
-                results.errors.push(`${phoneNumber}: ${error.message}`);
-                console.error(`[MM API] ✗ Failed for ${phoneNumber}:`, error.message);
+                recordRecipientFailure(results, phoneNumber, i, campaign.audience.length, error);
             }
         }
 
@@ -244,7 +298,10 @@ export class MarketingAPIManager {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(`Send failed: ${error.error?.message || JSON.stringify(error)}`);
+            throw new Error(formatMarketingFailure(
+                error.error?.message || JSON.stringify(error),
+                'Marketing message send failed'
+            ));
         }
 
         const data = await response.json();

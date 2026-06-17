@@ -27,6 +27,24 @@ export interface QualityAlert {
 
 export type QualityRating = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+}
+
+function logPhoneScopedHealthEvent(label: string, details: Record<string, unknown>) {
+    if (isProductionRuntime()) {
+        const { phoneNumberId, phone_number_id, ...rest } = details;
+
+        console.log(label, {
+            ...rest,
+            phoneNumberIdPresent: Boolean(phoneNumberId || phone_number_id)
+        });
+        return;
+    }
+
+    console.log(label, details);
+}
+
 /**
  * Account Health Monitor
  */
@@ -44,7 +62,7 @@ export class AccountHealthMonitor {
     async processAccountAlert(alertData: any): Promise<void> {
         const { alert_type, phone_number_id, data } = alertData;
 
-        console.log('[Health] 🔔 Account alert:', {
+        logPhoneScopedHealthEvent('[Health] 🔔 Account alert:', {
             type: alert_type,
             phone_number_id
         });
@@ -78,7 +96,7 @@ export class AccountHealthMonitor {
     ): Promise<void> {
         const { current_quality, previous_quality } = data;
 
-        console.log('[Health] Quality update:', {
+        logPhoneScopedHealthEvent('[Health] Quality update:', {
             phoneNumberId,
             previous: previous_quality,
             current: current_quality
@@ -163,7 +181,7 @@ export class AccountHealthMonitor {
     ): Promise<void> {
         const { new_limit, previous_limit, reason } = data;
 
-        console.log('[Health] Limit update:', {
+        logPhoneScopedHealthEvent('[Health] Limit update:', {
             phoneNumberId,
             previous: previous_limit,
             new: new_limit,
@@ -320,7 +338,9 @@ export class AccountHealthMonitor {
      * Called when quality reaches CRITICAL (LOW)
      */
     private async pauseMarketingCampaigns(phoneNumberId: string): Promise<void> {
-        console.log('[Health] 🛑 AUTO-PAUSING all marketing campaigns for:', phoneNumberId);
+        logPhoneScopedHealthEvent('[Health] 🛑 AUTO-PAUSING all marketing campaigns for:', {
+            phoneNumberId
+        });
 
         // TODO: Pause active marketing campaigns
         /*

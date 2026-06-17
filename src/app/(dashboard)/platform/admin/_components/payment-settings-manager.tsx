@@ -276,10 +276,10 @@ export function PaymentSettingsManager() {
                                                 <div className="flex items-center gap-2 mt-1.5 p-3 bg-muted rounded-md">
                                                     <Shield className="h-4 w-4 text-muted-foreground" />
                                                     <span className="text-sm text-muted-foreground font-mono">
-                                                        {gateway.secret_key_ref || 'No configurado'}
+                                                        {gateway.secret_key_ref_present ? 'Configurada' : 'No configurada'}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground ml-auto">
-                                                        (Variable de entorno en Vercel)
+                                                        (Referencia oculta; variable de entorno en Vercel)
                                                     </span>
                                                 </div>
                                             </div>

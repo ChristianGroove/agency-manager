@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isProductionRuntime, requireCronSecret } from '@/app/api/_guards/request-guards';
 
 /**
  * Cron Endpoint for Processing Scheduled Workflow Jobs
@@ -17,6 +18,37 @@ import { createClient } from '@supabase/supabase-js';
  */
 
 // Use service role client for cron jobs
+const PUBLIC_WORKFLOW_CRON_ERROR = 'Workflow cron failed';
+const PUBLIC_WORKFLOW_FETCH_ERROR = 'Failed to fetch scheduled workflows';
+const PUBLIC_WORKFLOW_JOB_ERROR = 'Workflow job failed';
+
+function logWorkflowCronError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+function workflowCronErrorMessage(error: unknown, fallback = PUBLIC_WORKFLOW_CRON_ERROR) {
+    if (isProductionRuntime()) {
+        return fallback;
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        return (error as any).message;
+    }
+
+    return fallback;
+}
+
 function getServiceClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -29,13 +61,8 @@ function getServiceClient() {
 }
 
 export async function GET(request: NextRequest) {
-    // Verify cron secret (optional but recommended)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const unauthorized = requireCronSecret(request);
+    if (unauthorized) return unauthorized;
 
     const startTime = Date.now();
     const results = {
@@ -53,10 +80,10 @@ export async function GET(request: NextRequest) {
             .rpc('get_pending_scheduled_jobs', { batch_size: 10 });
 
         if (fetchError) {
-            console.error('[Cron] Failed to fetch pending jobs:', fetchError);
+            logWorkflowCronError('[Cron] Failed to fetch pending jobs:', fetchError);
             return NextResponse.json({
                 success: false,
-                error: fetchError.message
+                error: workflowCronErrorMessage(fetchError, PUBLIC_WORKFLOW_FETCH_ERROR)
             }, { status: 500 });
         }
 
@@ -104,7 +131,11 @@ export async function GET(request: NextRequest) {
                 // Resume workflow execution from the saved node
                 // This is a simplified version - in production, you'd use the WorkflowEngine
                 console.log(`[Cron] Resuming workflow ${workflow.id} from node ${job.resume_from_node_id}`);
-                console.log(`[Cron] Context:`, JSON.stringify(job.context).substring(0, 200));
+                if (isProductionRuntime()) {
+                    console.log(`[Cron] Context omitted for workflow ${workflow.id}`);
+                } else {
+                    console.log(`[Cron] Context:`, JSON.stringify(job.context).substring(0, 200));
+                }
 
                 // Find the node to resume from
                 const definition = workflow.definition as { nodes: any[], edges: any[] };
@@ -148,7 +179,7 @@ export async function GET(request: NextRequest) {
                 console.log(`[Cron] Completed job ${job.id}`);
 
             } catch (jobError) {
-                const errorMessage = jobError instanceof Error ? jobError.message : 'Unknown error';
+                const errorMessage = workflowCronErrorMessage(jobError, PUBLIC_WORKFLOW_JOB_ERROR);
                 results.errors.push(`Job ${job.id}: ${errorMessage}`);
                 results.failed++;
 
@@ -179,7 +210,7 @@ export async function GET(request: NextRequest) {
                         })
                         .eq('id', job.id);
 
-                    console.error(`[Cron] Job ${job.id} failed permanently: ${errorMessage}`);
+                    logWorkflowCronError(`[Cron] Job ${job.id} failed permanently:`, jobError);
                 }
             }
         }
@@ -194,10 +225,10 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('[Cron] Critical error:', error);
+        logWorkflowCronError('[Cron] Critical error:', error);
         return NextResponse.json({
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: workflowCronErrorMessage(error),
             duration: Date.now() - startTime
         }, { status: 500 });
     }

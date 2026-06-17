@@ -66,6 +66,7 @@ export async function saveWorkflow(id: string, name: string, description: string
             .from('workflows')
             .select('id')
             .eq('id', id)
+            .eq('organization_id', orgId)
             .single()
 
         let result;
@@ -85,6 +86,7 @@ export async function saveWorkflow(id: string, name: string, description: string
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
+                .eq('organization_id', orgId)
                 .select()
         } else {
             // Create
@@ -117,10 +119,15 @@ export async function saveWorkflow(id: string, name: string, description: string
 
 export async function getWorkflow(id: string) {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
     const { data, error } = await supabase
         .from('workflows')
         .select('*')
         .eq('id', id)
+        .eq('organization_id', orgId)
         .single()
 
     if (error) return null
@@ -559,6 +566,7 @@ export async function updateWorkflowChannel(id: string, channelId: string | stri
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
+            .eq('organization_id', orgId)
 
         if (updateError) throw updateError
 

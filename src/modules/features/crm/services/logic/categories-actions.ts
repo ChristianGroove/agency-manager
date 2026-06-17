@@ -4,6 +4,41 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+const PUBLIC_CATEGORY_ERROR = "No se pudo completar la accion de categorias"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test" || !!process.env.VERCEL_ENV
+}
+
+function summarizeCategoryError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === "object") {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === "string" && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function categoryActionFailure(label: string, error: unknown): { success: false; error: string } {
+    if (isDeployedRuntime()) {
+        console.error(label, summarizeCategoryError(error))
+        return { success: false, error: PUBLIC_CATEGORY_ERROR }
+    }
+
+    console.error(label, error)
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_CATEGORY_ERROR }
+}
+
 export type ClientCategory = {
     id: string
     organization_id: string
@@ -28,8 +63,7 @@ export async function getClientCategories() {
 
         return { success: true, data: data as ClientCategory[] }
     } catch (error: any) {
-        console.error("Error fetching client categories:", error)
-        return { success: false, error: error.message }
+        return categoryActionFailure("Error fetching client categories:", error)
     }
 }
 
@@ -59,8 +93,7 @@ export async function createClientCategory(name: string, color: string = 'slate'
         revalidatePath("/dashboard/clients")
         return { success: true, data: data as ClientCategory }
     } catch (error: any) {
-        console.error("Error creating client category:", error)
-        return { success: false, error: error.message }
+        return categoryActionFailure("Error creating client category:", error)
     }
 }
 
@@ -91,8 +124,7 @@ export async function updateClientCategory(id: string, name: string, color: stri
         revalidatePath("/dashboard/clients")
         return { success: true, data: data as ClientCategory }
     } catch (error: any) {
-        console.error("Error updating client category:", error)
-        return { success: false, error: error.message }
+        return categoryActionFailure("Error updating client category:", error)
     }
 }
 
@@ -112,8 +144,7 @@ export async function deleteClientCategory(id: string) {
         revalidatePath("/dashboard/clients")
         return { success: true }
     } catch (error: any) {
-        console.error("Error deleting client category:", error)
-        return { success: false, error: error.message }
+        return categoryActionFailure("Error deleting client category:", error)
     }
 }
 

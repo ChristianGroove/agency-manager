@@ -7,6 +7,16 @@ export class MetaConnector {
         this.accessToken = accessToken
     }
 
+    private withAuth(accessToken: string = this.accessToken, init: RequestInit = {}): RequestInit {
+        return {
+            ...init,
+            headers: {
+                ...(init.headers as Record<string, string> | undefined),
+                Authorization: `Bearer ${accessToken}`,
+            },
+        }
+    }
+
     /**
      * Generic fetch method for Graph API
      */
@@ -19,15 +29,13 @@ export class MetaConnector {
             method,
             headers: {
                 'Content-Type': 'application/json',
+                Authorization: `Bearer ${this.accessToken}`,
             }
         }
 
         // Add params to URL for GET, or Body for POST
         // Note: For Graph API POST, params are often sent as query params OR form data. 
         // JSON body is cleaner for complex data, but simple params work in Query too.
-        // We'll attach token to URL always.
-        url.searchParams.append('access_token', this.accessToken)
-
         if (method === 'GET') {
             Object.entries(params).forEach(([key, value]) => {
                 url.searchParams.append(key, value)
@@ -118,12 +126,11 @@ export class MetaConnector {
 
         await Promise.all(metricsToFetch.map(async (metric) => {
             const url = new URL(`${this.baseUrl}/${pageId}/insights`)
-            url.searchParams.append('access_token', pageAccessToken)
             url.searchParams.append('period', 'days_28')
             url.searchParams.append('metric', metric)
 
             try {
-                const response = await fetch(url.toString())
+                const response = await fetch(url.toString(), this.withAuth(pageAccessToken))
                 const json = await response.json()
                 if (!response.ok) {
                     console.warn(`[MetaConnector] Failed to fetch ${metric}:`, json.error?.message)
@@ -177,11 +184,10 @@ export class MetaConnector {
         // Helper to fetch with period
         const fetchWithPeriod = async (period: string) => {
             const url = new URL(`${this.baseUrl}/${igUserId}/insights`)
-            url.searchParams.append('access_token', this.accessToken)
             url.searchParams.append('metric', metrics)
             url.searchParams.append('period', period)
 
-            const response = await fetch(url.toString())
+            const response = await fetch(url.toString(), this.withAuth())
             const json = await response.json()
 
             if (!response.ok) throw new Error(json.error?.message || 'IG API Error')
@@ -245,11 +251,10 @@ export class MetaConnector {
         // Helper to fetch with specific token
         const fetchWithToken = async (fields: string) => {
             const url = new URL(`${this.baseUrl}/${pageId}/posts`)
-            url.searchParams.append('access_token', token)
             url.searchParams.append('fields', fields)
             url.searchParams.append('limit', '5')
 
-            const response = await fetch(url.toString())
+            const response = await fetch(url.toString(), this.withAuth(token))
             const json = await response.json()
             if (!response.ok) throw new Error(json.error?.message || 'FB Posts API Error')
             return json

@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { ContactService } from "./services/contact-service"
@@ -13,6 +12,80 @@ import { DealService } from "./services/deal-service"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from "./types"
 import { Lead, Client } from "@/types"
+
+const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
+const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
+const PUBLIC_CRM_TAG_ACTION_ERROR = "No se pudo completar la accion de etiquetas"
+const PUBLIC_CRM_SETTINGS_ACTION_ERROR = "No se pudo completar la accion de configuracion CRM"
+const PUBLIC_CRM_TASK_ACTION_ERROR = "No se pudo completar la accion de tareas CRM"
+const PUBLIC_CRM_DEAL_ACTION_ERROR = "No se pudo completar la accion de deals CRM"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCrmActionError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logCrmActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeCrmActionError(error))
+}
+
+function crmActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
+function crmContactActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_CONTACT_ACTION_ERROR) }
+}
+
+function crmPipelineActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_PIPELINE_ACTION_ERROR) }
+}
+
+function crmTagActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TAG_ACTION_ERROR) }
+}
+
+function crmSettingsActionFailure(label: string, error: unknown): ActionResponse<any> {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_SETTINGS_ACTION_ERROR) }
+}
+
+function crmTaskActionFailure(label: string, error: unknown): { success: false; error: string } {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_TASK_ACTION_ERROR) }
+}
+
+function crmDealActionFailure(label: string, error: unknown): { success: false; error: string } {
+    logCrmActionError(label, error)
+    return { success: false, error: crmActionErrorMessage(error, PUBLIC_CRM_DEAL_ACTION_ERROR) }
+}
 
 export async function getLeadsCountAction(userId?: string): Promise<ActionResponse<number>> {
     const { supabase, orgId } = await getCrmServices()
@@ -32,7 +105,7 @@ export async function getLeadsCountAction(userId?: string): Promise<ActionRespon
         if (error) throw error
         return { success: true, data: count || 0 }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getLeadsCountAction] Error:", e)
     }
 }
 
@@ -70,7 +143,7 @@ export async function createContactAction(input: any): Promise<ActionResponse<Le
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[createContactAction] Error:", e)
     }
 }
 
@@ -79,11 +152,11 @@ export async function createContactAction(input: any): Promise<ActionResponse<Le
  */
 export async function createContactSystemAction(input: any, orgId: string): Promise<ActionResponse<Lead>> {
     try {
-        const contacts = new ContactService(supabaseAdmin, orgId)
+        const contacts = new ContactService((await createClient()), orgId)
         const data = await contacts.createContact(input)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[createContactSystemAction] Error:", e)
     }
 }
 
@@ -97,11 +170,21 @@ export async function createLeadSystemAction(input: any, orgId: string): Promise
 
 export async function getLeadsAction(params: any = {}): Promise<ActionResponse<any>> {
     try {
-        const { contacts } = await getCrmServices()
-        const data = await contacts.getPaginated({ ...params, contactType: 'lead' })
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+
+        const safeParams = { ...params, contactType: 'lead' }
+        if (!hasGlobalView) {
+            safeParams.allowedChannels = authorizedChannels
+            safeParams.userId = user?.id
+        }
+
+        const data = await contacts.getPaginated(safeParams)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getLeadsAction] Error:", e)
     }
 }
 
@@ -112,7 +195,7 @@ export async function getClientsAction(params: any = {}): Promise<ActionResponse
         const data = await clientService.getPaginated(params)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[getClientsAction] Error:", e)
     }
 }
 
@@ -123,17 +206,17 @@ export async function updateContactStatusAction(id: string, newStatus: string): 
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactStatusAction] Error:", e)
     }
 }
 
 export async function updateContactStatusSystemAction(id: string, newStatus: string, orgId: string): Promise<ActionResponse<Lead>> {
     try {
-        const contacts = new ContactService(supabaseAdmin, orgId)
+        const contacts = new ContactService((await createClient()), orgId)
         const data = await contacts.updateContactStatus(id, newStatus)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactStatusSystemAction] Error:", e)
     }
 }
 
@@ -145,7 +228,7 @@ export async function convertLeadToClientAction(id: string): Promise<ActionRespo
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[convertLeadToClientAction] Error:", e)
     }
 }
 
@@ -157,7 +240,7 @@ export async function updateContactProfileAction(id: string, updates: any): Prom
         revalidatePath('/clients')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[updateContactProfileAction] Error:", e)
     }
 }
 
@@ -169,7 +252,63 @@ export async function deleteContactsAction(ids: string[]): Promise<ActionRespons
         revalidatePath('/clients')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[deleteContactsAction] Error:", e)
+    }
+}
+
+export async function exportContactsAction(): Promise<ActionResponse<string>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const data = await contacts.generateExportCSV(allowedChannels)
+        return { success: true, data }
+    } catch (e: any) {
+        return crmContactActionFailure("[exportContactsAction] Error:", e)
+    }
+}
+
+export async function previewPurgeColdContactsAction(criteria: { inactiveDays: number, minScore?: number }): Promise<ActionResponse<number>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const count = await contacts.previewPurgeColdAccounts({ ...criteria, allowedChannels })
+        return { success: true, data: count }
+    } catch (e: any) {
+        return crmContactActionFailure("[previewPurgeColdContactsAction] Error:", e)
+    }
+}
+
+export async function purgeColdContactsAction(criteria: { inactiveDays: number, minScore?: number }): Promise<ActionResponse<number>> {
+    try {
+        const { contacts, user } = await getCrmServices()
+        const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
+        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
+        let allowedChannels: string[] | undefined = undefined
+        if (!hasGlobalView) {
+            allowedChannels = authorizedChannels
+        }
+
+        const deleted = await contacts.purgeColdAccounts({ ...criteria, allowedChannels })
+        revalidatePath('/crm')
+        return { success: true, data: deleted }
+    } catch (e: any) {
+        return crmContactActionFailure("[purgeColdContactsAction] Error:", e)
     }
 }
 
@@ -182,7 +321,7 @@ export async function deleteClientsAction(ids: string[]): Promise<ActionResponse
         revalidatePath('/clients')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmContactActionFailure("[deleteClientsAction] Error:", e)
     }
 }
 
@@ -195,7 +334,7 @@ export async function getPipelineStagesAction(): Promise<PipelineStage[]> {
         const { pipelines } = await getCrmServices()
         return await pipelines.getStages()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getPipelineStagesAction] Error:", e)
         return []
     }
 }
@@ -204,19 +343,19 @@ export async function getPipelineViewDataAction(connectionId?: string | null) {
     try {
         const { pipelines, user } = await getCrmServices()
         const perms = await getCurrentUserPermissions()
+        const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
         
-        const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
+        const { hasGlobalView } = evaluateInboxPermissions(perms)
         
         // Convert UI 'all' to null for backend logic
         const cid = connectionId === 'all' ? null : connectionId
         
         // If not a global role, restrict to current user's leads
-        const userId = isGlobalRole ? undefined : user?.id
+        const userId = hasGlobalView ? undefined : user?.id
         
         return await pipelines.getPipelineViewData(cid, userId)
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getPipelineViewDataAction] Error:", e)
         return null
     }
 }
@@ -228,7 +367,7 @@ export async function createPipelineStageAction(input: any): Promise<ActionRespo
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[createPipelineStageAction] Error:", e)
     }
 }
 
@@ -239,7 +378,7 @@ export async function updatePipelineStageAction(id: string, updates: any): Promi
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[updatePipelineStageAction] Error:", e)
     }
 }
 
@@ -250,7 +389,7 @@ export async function reorderPipelineStagesAction(ids: string[]): Promise<Action
         revalidatePath('/crm')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[reorderPipelineStagesAction] Error:", e)
     }
 }
 
@@ -261,7 +400,7 @@ export async function deletePipelineStageAction(id: string): Promise<ActionRespo
         revalidatePath('/crm')
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[deletePipelineStageAction] Error:", e)
     }
 }
 
@@ -270,7 +409,7 @@ export async function getDefaultPipelineAction(): Promise<Pipeline | null> {
         const { pipelines } = await getCrmServices()
         return await pipelines.getDefaultPipeline()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getDefaultPipelineAction] Error:", e)
         return null
     }
 }
@@ -282,7 +421,7 @@ export async function togglePipelineStrictModeAction(id: string, enabled: boolea
         revalidatePath('/crm')
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmPipelineActionFailure("[togglePipelineStrictModeAction] Error:", e)
     }
 }
 
@@ -295,7 +434,7 @@ export async function getTagsAction() {
         const { tags } = await getCrmServices()
         return await tags.getTags()
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getTagsAction] Error:", e)
         return []
     }
 }
@@ -306,7 +445,7 @@ export async function createTagAction(name: string, color?: string) {
         const data = await tags.createTag(name, color)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[createTagAction] Error:", e)
     }
 }
 
@@ -316,7 +455,7 @@ export async function updateTagAction(tagId: string, updates: { name?: string; c
         const data = await tags.updateTag(tagId, updates)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[updateTagAction] Error:", e)
     }
 }
 
@@ -326,7 +465,7 @@ export async function deleteTagAction(tagId: string) {
         await tags.deleteTag(tagId)
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[deleteTagAction] Error:", e)
     }
 }
 
@@ -335,11 +474,11 @@ export async function deleteTagAction(tagId: string) {
  */
 export async function addContactTagSystemAction(leadId: string, tagName: string, orgId: string) {
     try {
-        const tags = new TagService(supabaseAdmin, orgId)
+        const tags = new TagService((await createClient()), orgId)
         const data = await tags.addTagByName(leadId, tagName)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[addContactTagSystemAction] Error:", e)
     }
 }
 
@@ -349,7 +488,7 @@ export async function toggleLeadTagAction(leadId: string, tagId: string) {
         const data = await tags.toggleLeadTag(leadId, tagId)
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[toggleLeadTagAction] Error:", e)
     }
 }
 
@@ -358,7 +497,7 @@ export async function getLeadTagsAction(leadId: string) {
         const { tags } = await getCrmServices()
         return await tags.getLeadTags(leadId)
     } catch (e) {
-        console.error(e)
+        logCrmActionError("[getLeadTagsAction] Error:", e)
         return []
     }
 }
@@ -369,7 +508,7 @@ export async function clearContactTagsAction(leadId: string) {
         await tags.clearLeadTags(leadId)
         return { success: true }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTagActionFailure("[clearContactTagsAction] Error:", e)
     }
 }
 
@@ -379,7 +518,7 @@ export async function getSettingsAction(): Promise<ActionResponse<any>> {
         const data = await getSettings()
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmSettingsActionFailure("[getSettingsAction] Error:", e)
     }
 }
 
@@ -394,7 +533,7 @@ export async function getCategoriesAction(): Promise<ActionResponse<any[]>> {
         if (error) throw error
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmSettingsActionFailure("[getCategoriesAction] Error:", e)
     }
 }
 
@@ -407,9 +546,9 @@ export async function createContactTaskAction(data: any) {
         const { tasks } = await getCrmServices()
         const result = await tasks.createTask(data)
         revalidatePath('/crm')
-        return { success: true, data: result }
+        return { success: true as const, data: result }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[createContactTaskAction] Error:", e)
     }
 }
 
@@ -418,9 +557,9 @@ export async function updateContactTaskAction(id: string, data: any) {
         const { tasks } = await getCrmServices()
         await tasks.updateTask(id, data)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[updateContactTaskAction] Error:", e)
     }
 }
 
@@ -433,9 +572,9 @@ export async function deleteContactTaskAction(id: string) {
         const { tasks } = await getCrmServices()
         await tasks.deleteTask(id)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[deleteContactTaskAction] Error:", e)
     }
 }
 
@@ -443,9 +582,9 @@ export async function getContactTasksAction(leadId: string) {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getTasksForLead(leadId)
-        return { success: true, tasks: data }
+        return { success: true as const, tasks: data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getContactTasksAction] Error:", e)
     }
 }
 
@@ -453,9 +592,9 @@ export async function getMyTasksAction(filters: any = {}) {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getMyTasks(filters)
-        return { success: true, data }
+        return { success: true as const, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getMyTasksAction] Error:", e)
     }
 }
 
@@ -463,9 +602,9 @@ export async function getTaskStatsAction() {
     try {
         const { tasks } = await getCrmServices()
         const data = await tasks.getTaskStats()
-        return { success: true, data }
+        return { success: true as const, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmTaskActionFailure("[getTaskStatsAction] Error:", e)
     }
 }
 
@@ -477,9 +616,9 @@ export async function getDealCartAction(leadId: string) {
     try {
         const { deals } = await getCrmServices()
         const cart = await deals.getOrCreateDealCart(leadId)
-        return { success: true, data: cart }
+        return { success: true as const, data: cart }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[getDealCartAction] Error:", e)
     }
 }
 
@@ -488,9 +627,9 @@ export async function addToCartAction(cartId: string, product: any, quantity: nu
         const { deals } = await getCrmServices()
         await deals.addToCart(cartId, product, quantity)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[addToCartAction] Error:", e)
     }
 }
 
@@ -499,9 +638,9 @@ export async function updateCartItemAction(itemId: string, quantity: number) {
         const { deals } = await getCrmServices()
         await deals.updateCartItem(itemId, quantity)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[updateCartItemAction] Error:", e)
     }
 }
 
@@ -510,9 +649,9 @@ export async function removeCartItemAction(itemId: string) {
         const { deals } = await getCrmServices()
         await deals.removeCartItem(itemId)
         revalidatePath('/crm')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[removeCartItemAction] Error:", e)
     }
 }
 
@@ -520,9 +659,9 @@ export async function searchCatalogAction(query: string = '', category?: string,
     try {
         const { deals, orgId } = await getCrmServices()
         const result = await deals.searchCatalog(orgId, query, category, page, pageSize)
-        return { success: true, ...result }
+        return { success: true as const, ...result }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[searchCatalogAction] Error:", e)
     }
 }
 
@@ -531,9 +670,9 @@ export async function sendInteractiveQuoteAction(cartId: string, conversationId:
         const { deals } = await getCrmServices()
         await deals.sendInteractiveQuote(cartId, conversationId)
         revalidatePath('/inbox')
-        return { success: true }
+        return { success: true as const }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return crmDealActionFailure("[sendInteractiveQuoteAction] Error:", e)
     }
 }
 

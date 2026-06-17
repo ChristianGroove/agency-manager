@@ -3,7 +3,7 @@ import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { IdentityDashboard } from "@/modules/core/branding/components/identity-dashboard"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin" // For tier fetching optimization
+import { createClient } from "@/modules/core/database/supabase-server";
 
 export const metadata = {
     title: "ADN - Identidad del Negocio | Pixy Admin",
@@ -22,7 +22,7 @@ export default async function IdentityPage() {
     // (This logic is partly duplicated in getEffectiveBranding but we need the raw features object for the UI locks)
     let tierFeatures: any = {}
     if (orgId) {
-        const { data: org } = await supabaseAdmin
+        const { data: org } = await (await createClient())
             .from("organizations")
             .select(`
                 branding_tier_id,

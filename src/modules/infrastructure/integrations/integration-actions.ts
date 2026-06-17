@@ -30,6 +30,75 @@ import { encryptObject } from "./encryption"
 
 // --- HELPERS ---
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeIntegrationActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'organizationId',
+        'userId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeIntegrationActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logIntegrationActionInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeIntegrationActionLogDetails(details))
+}
+
+function logIntegrationActionWarning(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, details)
+        return
+    }
+
+    console.warn(label, sanitizeIntegrationActionLogDetails(details))
+}
+
+function logIntegrationActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeIntegrationActionLogDetails(details),
+        detail: summarizeIntegrationActionError(error),
+    })
+}
+
 // --- ACTIONS ---
 
 export async function getConnections() {
@@ -46,7 +115,7 @@ export async function getConnections() {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error("Error fetching connections full:", JSON.stringify(error, null, 2))
+        logIntegrationActionError("Error fetching connections full:", error, { userId: user.id })
         return { error: "Failed to fetch connections" }
     }
 
@@ -91,7 +160,7 @@ export async function createConnection(params: CreateConnectionParams) {
         // Optional: Block unknown integrations? For now, we allow them but log warning.
         // Or we can enforce strictly that an adapter must exist.
         // Let's fallback to allowing it for flexibility unless strict mode is desired.
-        console.warn(`No adapter found for provider: ${params.provider_key}. Skipping verification.`)
+        logIntegrationActionWarning("No adapter found. Skipping verification.", { providerKey: params.provider_key })
     }
 
     // Check if connection with same provider_key already exists for this org
@@ -114,11 +183,17 @@ export async function createConnection(params: CreateConnectionParams) {
             metadata: params.metadata || {},
             status: 'active',
             last_synced_at: new Date().toISOString()
-        }).eq('id', existingConn.id)
+        })
+            .eq('id', existingConn.id)
+            .eq('organization_id', orgMember.organization_id)
 
         error = result.error
         if (!error) {
-            console.log(`[Integrations] Updated existing connection: ${existingConn.id}`)
+            logIntegrationActionInfo("[Integrations] Updated existing connection", {
+                connectionId: existingConn.id,
+                organizationId: orgMember.organization_id,
+                providerKey: params.provider_key,
+            })
         }
     } else {
         // INSERT new connection
@@ -137,7 +212,10 @@ export async function createConnection(params: CreateConnectionParams) {
     }
 
     if (error) {
-        console.error("Error creating/updating connection:", error)
+        logIntegrationActionError("Error creating/updating connection:", error, {
+            organizationId: orgMember.organization_id,
+            providerKey: params.provider_key,
+        })
         return { error: "Failed to create/update connection" }
     }
 
@@ -147,10 +225,32 @@ export async function createConnection(params: CreateConnectionParams) {
 
 export async function deleteConnection(connectionId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Unauthorized" }
+
+    const { data: orgMemberships, error: membershipError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin'])
+
+    if (membershipError) {
+        console.error("Error validating connection deletion permissions:", membershipError, { userId: user.id })
+        return { error: "Failed to delete connection" }
+    }
+
+    const organizationIds = (orgMemberships || []).map(member => member.organization_id)
+
+    if (organizationIds.length === 0) {
+        return { error: "You must be an admin of an organization to delete integrations." }
+    }
+
     const { data: deletedConn, error } = await supabase
         .from('integration_connections')
         .delete()
         .eq('id', connectionId)
+        .in('organization_id', organizationIds)
         .select('organization_id, provider_key')
         .single()
 
@@ -159,7 +259,6 @@ export async function deleteConnection(connectionId: string) {
     }
 
     // Security Log
-    const { data: { user } } = await supabase.auth.getUser()
     if (user && deletedConn) {
         const { SecurityLogger, SecurityAction } = await import('@/modules/core/security/security-logger')
         await SecurityLogger.log({

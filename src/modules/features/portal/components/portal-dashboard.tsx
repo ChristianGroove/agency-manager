@@ -18,6 +18,7 @@ import { PortalBriefingView } from "./portal-briefing-view"
 import { PortalServiceCard } from "./portal-service-card"
 import { PortalServiceDetail } from "./portal-service-detail"
 import { Service } from "@/types"
+import { isPortalInvoicePayable } from "../utils/invoice-payability"
 
 
 function EmptyStateAnimation() {
@@ -79,6 +80,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
 
     // Calculate Stats
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
+    const payableInvoices = invoices.filter(isPortalInvoicePayable)
     const overdueInvoices = invoices.filter(i => i.status === 'overdue')
     const totalPending = pendingInvoices.reduce((acc, curr) => acc + Number(curr.total), 0)
 
@@ -101,7 +103,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
 
     const toggleAll = () => {
         if (settings.enable_multi_invoice_payment === false) return
-        const pendingIds = pendingInvoices.map(i => i.id)
+        const pendingIds = payableInvoices.map(i => i.id)
         if (selectedInvoices.length === pendingIds.length) {
             setSelectedInvoices([])
         } else {
@@ -150,7 +152,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
 
     const totalSelected = invoices
         .filter(i => selectedInvoices.includes(i.id))
-        .reduce((acc, curr) => acc + curr.total, 0)
+        .reduce((acc, curr) => acc + Number(curr.total), 0)
 
     const paymentsEnabled = settings.enable_portal_payments !== false && settings.portal_modules?.payments !== false
 

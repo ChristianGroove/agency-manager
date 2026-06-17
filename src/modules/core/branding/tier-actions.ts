@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -156,7 +155,7 @@ export async function performBrandingUpgrade(input: {
 }) {
     try {
         // Validate tier exists
-        const { data: tier } = await supabaseAdmin
+        const { data: tier } = await (await createClient())
             .from('branding_tiers')
             .select('*')
             .eq('id', input.new_tier_id)
@@ -171,7 +170,7 @@ export async function performBrandingUpgrade(input: {
         }
 
         // Call database function to upgrade
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .rpc('upgrade_branding_tier', {
                 p_organization_id: input.organization_id,
                 p_new_tier_id: input.new_tier_id
@@ -222,7 +221,7 @@ export async function downgradeToBasicTier(organizationId: string) {
 
     try {
         // Set to basic tier
-        const { error: orgError } = await supabaseAdmin
+        const { error: orgError } = await (await createClient())
             .from('organizations')
             .update({
                 branding_tier_id: 'basic',
@@ -234,7 +233,7 @@ export async function downgradeToBasicTier(organizationId: string) {
         if (orgError) throw orgError
 
         // Cancel branding add-on
-        const { error: addonError } = await supabaseAdmin
+        const { error: addonError } = await (await createClient())
             .from('organization_add_ons')
             .update({
                 status: 'cancelled',
@@ -270,7 +269,7 @@ export async function updateBrandingConfig(input: {
 
     try {
         // Get current tier to validate permissions
-        const { data: org } = await supabaseAdmin
+        const { data: org } = await (await createClient())
             .from('organizations')
             .select(`
                 branding_tier_id,
@@ -312,7 +311,7 @@ export async function updateBrandingConfig(input: {
         }
 
         // Update configuration
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('organizations')
             .update({
                 branding_custom_config: input.config,
@@ -342,7 +341,7 @@ export async function updateBrandingConfig(input: {
 export async function getOrganizationBrandingInfo(organizationId: string) {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organizations')
         .select(`
             id,
@@ -373,7 +372,7 @@ export async function getOrganizationBrandingInfo(organizationId: string) {
 export async function getAllOrganizationsBrandingStatus() {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organizations')
         .select(`
             id,
@@ -404,7 +403,7 @@ export async function getAllOrganizationsBrandingStatus() {
 export async function getBrandingRevenueMetrics() {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organization_add_ons')
         .select('price_monthly, status, tier_id')
         .eq('add_on_type', 'branding')

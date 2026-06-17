@@ -5,6 +5,43 @@ import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { messagingCleanupService } from "@/modules/features/messaging/cleanup-service"
 
+const PUBLIC_LEAD_MANAGEMENT_ERROR = "No se pudo completar la accion de gestion de leads"
+
+type LeadManagementResponse = { success: true } | { success: false; error: string }
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeLeadManagementError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logLeadManagementError(label: string, error: unknown) {
+    console.error(label, isDeployedRuntime() ? summarizeLeadManagementError(error) : error)
+}
+
+function leadManagementFailure(label: string, error: unknown): LeadManagementResponse {
+    logLeadManagementError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: PUBLIC_LEAD_MANAGEMENT_ERROR }
+    if (error instanceof Error) return { success: false, error: error.message }
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        return { success: false, error: error.message }
+    }
+    return { success: false, error: PUBLIC_LEAD_MANAGEMENT_ERROR }
+}
+
 async function getCrmServices() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -29,12 +66,12 @@ export async function getLeadsCount(userId?: string) {
         if (error) throw error
         return count || 0
     } catch (e) {
-        console.error("Error counting leads:", e)
+        logLeadManagementError("Error counting leads:", e)
         return 0
     }
 }
 
-export async function deleteLeads(leadIds: string[]) {
+export async function deleteLeads(leadIds: string[]): Promise<LeadManagementResponse> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
@@ -42,7 +79,7 @@ export async function deleteLeads(leadIds: string[]) {
     if (!leadIds.length) return { success: true }
 
     // 1. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
-    try { await messagingCleanupService.deleteLeadsMedia(leadIds); } catch (e) { console.error("[LeadActions] Media cleanup error:", e); }
+    try { await messagingCleanupService.deleteLeadsMedia(leadIds); } catch (e) { logLeadManagementError("[LeadActions] Media cleanup error:", e); }
 
     const { error } = await supabase
         .from('leads')
@@ -51,15 +88,14 @@ export async function deleteLeads(leadIds: string[]) {
         .in('id', leadIds)
 
     if (error) {
-        console.error("Error deleting leads:", error)
-        return { success: false, error: error.message }
+        return leadManagementFailure("Error deleting leads:", error)
     }
 
     revalidatePath('/crm')
     return { success: true }
 }
 
-export async function deleteLeadsByPipeline(pipelineId: string) {
+export async function deleteLeadsByPipeline(pipelineId: string): Promise<LeadManagementResponse> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
@@ -88,7 +124,7 @@ export async function deleteLeadsByPipeline(pipelineId: string) {
     // 1. CLEANUP PHYSICAL MEDIA (Find leads first by status)
     const { data: leadsToDelete } = await supabase.from('leads').select('id').eq('organization_id', orgId).in('status', statusKeys);
     if (leadsToDelete?.length) {
-        try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id)); } catch (e) { console.error("[LeadActions] Pipeline media cleanup error:", e); }
+        try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] Pipeline media cleanup error:", e); }
     }
 
     const { error } = await supabase
@@ -98,14 +134,14 @@ export async function deleteLeadsByPipeline(pipelineId: string) {
         .in('status', statusKeys)
 
     if (error) {
-        return { success: false, error: error.message }
+        return leadManagementFailure("Error deleting leads by pipeline:", error)
     }
 
     revalidatePath('/crm')
     return { success: true }
 }
 
-export async function deleteAllLeads() {
+export async function deleteAllLeads(): Promise<LeadManagementResponse> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
@@ -113,7 +149,7 @@ export async function deleteAllLeads() {
     // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG
     const { data: leads } = await supabase.from('leads').select('id').eq('organization_id', orgId);
     if (leads?.length) {
-        try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id)); } catch (e) { console.error("[LeadActions] All leads media cleanup error:", e); }
+        try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] All leads media cleanup error:", e); }
     }
 
     const { error } = await supabase
@@ -122,7 +158,7 @@ export async function deleteAllLeads() {
         .eq('organization_id', orgId)
 
     if (error) {
-        return { success: false, error: error.message }
+        return leadManagementFailure("Error deleting all leads:", error)
     }
 
     revalidatePath('/crm')

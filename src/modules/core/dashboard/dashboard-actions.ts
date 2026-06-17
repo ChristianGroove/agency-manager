@@ -99,7 +99,7 @@ export async function getDashboardPayload() {
             .from('saas_apps')
             .select('space_category')
             .eq('id', orgDetails.active_app_id)
-            .single()
+            .maybeSingle()
         spaceCategory = appData?.space_category || 'agency'
     }
 
@@ -142,7 +142,7 @@ export async function getDashboardPayload() {
         const today = new Date().toISOString().split('T')[0]
         const [settingsRes, locationsRes, logsRes, bannerRes] = await Promise.all([
             supabase.from('organization_settings').select('*').eq('organization_id', orgId).single(),
-            supabase.from('locations').select('id, name').eq('organization_id', orgId).is('deleted_at', null),
+            supabase.from('organization_locations').select('id, name').eq('organization_id', orgId).eq('is_active', true),
             supabase.from('attendance_logs').select('id, staff_id, location_id, type, is_valid').eq('organization_id', orgId).gte('timestamp', `${today}T00:00:00`).lte('timestamp', `${today}T23:59:59`),
             bannerPromise
         ])

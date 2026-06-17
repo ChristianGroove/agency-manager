@@ -29,7 +29,7 @@ export async function getCachedResponse(organizationId: string, taskType: string
     try {
         const payloadHash = hashPayload(payload);
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (supabaseAdmin)
             .from('ai_cache')
             .select('response_data, expires_at')
             .eq('organization_id', organizationId)
@@ -57,7 +57,7 @@ export async function setCachedResponse(organizationId: string, taskType: string
         const ttl = TASK_TTLS[taskType] || DEFAULT_TTL_MS;
         const expiresAt = new Date(Date.now() + ttl).toISOString();
 
-        await supabaseAdmin
+        await (supabaseAdmin)
             .from('ai_cache')
             .upsert({
                 organization_id: organizationId,
@@ -77,7 +77,7 @@ export async function setCachedResponse(organizationId: string, taskType: string
  * Clear cache for a specific task type (Admin only)
  */
 export async function clearCacheForTask(taskType: string): Promise<void> {
-    await supabaseAdmin
+    await (supabaseAdmin)
         .from('ai_cache')
         .delete()
         .eq('task_type', taskType);

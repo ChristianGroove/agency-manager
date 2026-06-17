@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "./actions/crud"
 import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
@@ -41,7 +40,7 @@ export async function getHierarchyStats(): Promise<{ data: HierarchyStats[] | nu
     const currentOrgId = await getCurrentOrganizationId()
 
     try {
-        let query = supabaseAdmin
+        let query = (await createClient())
             .from('organizations')
             .select('organization_type, status')
 
@@ -96,13 +95,13 @@ export async function getHierarchyMetrics(): Promise<{ data: HierarchyMetrics | 
 
         if (isAdmin) {
             // Super admin sees all
-            const { data: allOrgs } = await supabaseAdmin
+            const { data: allOrgs } = await (await createClient())
                 .from('organizations')
                 .select('id')
             orgIds = allOrgs?.map(o => o.id) || []
         } else if (currentOrgId) {
             // Reseller sees self + children
-            const { data: childOrgs } = await supabaseAdmin
+            const { data: childOrgs } = await (await createClient())
                 .from('organizations')
                 .select('id')
                 .or(`id.eq.${currentOrgId},parent_organization_id.eq.${currentOrgId}`)
@@ -111,15 +110,15 @@ export async function getHierarchyMetrics(): Promise<{ data: HierarchyMetrics | 
 
         // Fetch counts in parallel
         const [orgsResult, leadsResult, convsResult] = await Promise.all([
-            supabaseAdmin
+            (await createClient())
                 .from('organizations')
                 .select('id', { count: 'exact', head: true })
                 .in('id', orgIds),
-            supabaseAdmin
+            (await createClient())
                 .from('leads')
                 .select('id', { count: 'exact', head: true })
                 .in('organization_id', orgIds),
-            supabaseAdmin
+            (await createClient())
                 .from('conversations')
                 .select('id', { count: 'exact', head: true })
                 .in('organization_id', orgIds),
@@ -176,7 +175,7 @@ export async function getOrganizationGrowth(period: 'week' | 'month' | 'year' = 
                 startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
         }
 
-        const { data: orgs, error } = await supabaseAdmin
+        const { data: orgs, error } = await (await createClient())
             .from('organizations')
             .select('created_at')
             .gte('created_at', startDate.toISOString())

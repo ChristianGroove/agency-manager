@@ -1,10 +1,10 @@
 'use server';
 
 import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { PERMISSIONS, PermissionString } from '../actions/permissions';
 import { cache } from 'react';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 
 export interface Role {
     id: string;
@@ -15,6 +15,21 @@ export interface Role {
     hierarchy_level: number;
     permissions: Record<string, boolean>;
     member_count?: number;
+}
+
+function sanitizeRolePermissions(permissions: unknown): Record<string, boolean> {
+    if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) return {};
+
+    return Object.entries(permissions as Record<string, unknown>).reduce<Record<string, boolean>>((safePermissions, [key, value]) => {
+        if (key === 'all') return safePermissions;
+        if (typeof value === 'boolean') safePermissions[key] = value;
+        return safePermissions;
+    }, {});
+}
+
+function normalizeCustomRoleHierarchy(hierarchyLevel: unknown) {
+    if (typeof hierarchyLevel !== 'number' || !Number.isFinite(hierarchyLevel)) return 1;
+    return Math.max(1, Math.min(49, Math.floor(hierarchyLevel)));
 }
 
 /**
@@ -131,12 +146,28 @@ export async function upsertRole(role: Partial<Role>) {
         organization_id: orgId,
         name: role.name,
         description: role.description,
-        permissions: role.permissions || {},
-        hierarchy_level: role.hierarchy_level || 1, // Default to lowest
+        permissions: sanitizeRolePermissions(role.permissions),
+        hierarchy_level: normalizeCustomRoleHierarchy(role.hierarchy_level),
         // Prevent touching system flags or IDs if it's a new role
     };
 
     if (role.id) {
+        const { data: existingRole, error: existingRoleError } = await (await createClient())
+            .from('organization_roles')
+            .select('name, description, is_system_role, hierarchy_level')
+            .eq('id', role.id)
+            .eq('organization_id', orgId)
+            .single();
+
+        if (existingRoleError || !existingRole) throw new Error('Role not found');
+        
+        // Allow modifying permissions of System Roles, but protect their core attributes
+        if (existingRole.is_system_role) {
+            payload.name = existingRole.name;
+            payload.description = existingRole.description;
+            payload.hierarchy_level = existingRole.hierarchy_level;
+        }
+
         // Update
         // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
         // Security is maintained because we explicitly checked hasPermission above.
@@ -183,7 +214,7 @@ export async function deleteRole(roleId: string) {
 
     // Delete
     // Use supabaseAdmin to bypass RLS recursion limits.
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('organization_roles')
         .delete()
         .eq('id', roleId)

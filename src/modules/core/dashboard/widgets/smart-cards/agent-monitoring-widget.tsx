@@ -4,8 +4,6 @@ import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { formatDistanceToNow } from "date-fns"
-import { es, enUS } from "date-fns/locale"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { 
     Tooltip, 
@@ -16,6 +14,7 @@ import {
 import { Inbox } from "lucide-react"
 import { supabase } from "@/modules/core/database/supabase"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
+import { getInboxAgentMonitorStats, getSidebarAgents } from "@/modules/features/messaging/assignment-actions"
 
 interface AgentStat {
     user_id: string
@@ -27,29 +26,74 @@ interface AgentStat {
     current_load: number
     max_capacity: number
     offline_hours_24h: number
+    unread_count_by_channel?: Record<string, number>
 }
 
 interface AgentMonitoringWidgetProps {
-    agents: AgentStat[]
+    agents?: AgentStat[] // Keeping optional for backwards compatibility with dashboard
     className?: string
 }
 
-export function AgentMonitoringWidget({ agents, className }: AgentMonitoringWidgetProps) {
-    const { t, locale } = useTranslation()
+export function AgentMonitoringWidget({ agents: initialAgents, className }: AgentMonitoringWidgetProps) {
+    const { t } = useTranslation()
     const { organizationId } = useCurrentOrganization()
-    const currentLocale = locale === 'es' ? es : enUS
     const [realtimeOnlineIds, setRealtimeOnlineIds] = useState<Set<string>>(new Set())
+    const [fetchedAgents, setFetchedAgents] = useState<AgentStat[]>([])
+    const [isLoading, setIsLoading] = useState(!initialAgents)
+    const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
+    const [agentChannels, setAgentChannels] = useState<Record<string, string[]>>({})
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
     const UNASSIGNED_ID = '00000000-0000-0000-0000-000000000000'
 
+    useEffect(() => {
+        const handleAgentSelect = (e: Event) => {
+            const { agentId } = (e as CustomEvent).detail;
+            if (agentId) {
+                setSelectedAgentId(prev => prev === agentId ? null : agentId);
+            }
+        };
+        window.addEventListener('pixy:inbox:select-agent', handleAgentSelect)
+        return () => window.removeEventListener('pixy:inbox:select-agent', handleAgentSelect)
+    }, [])
+
+    // Fetch stats if not provided (e.g., when used in Inbox)
+    useEffect(() => {
+        if (initialAgents) {
+            setFetchedAgents(initialAgents)
+            return
+        }
+
+        const fetchStats = async () => {
+            const res = await getInboxAgentMonitorStats()
+            if (res.success && res.data) {
+                setFetchedAgents(res.data)
+                
+                // Initialize presence immediately from fetched data
+                setRealtimeOnlineIds(prev => {
+                    const next = new Set(prev)
+                    res.data.forEach((a: AgentStat) => { if (a.online) next.add(a.user_id) })
+                    return next
+                })
+            }
+            setIsLoading(false)
+        }
+        fetchStats()
+        
+        // Optional: polling every minute to keep counts fresh
+        const interval = setInterval(fetchStats, 60000)
+        return () => clearInterval(interval)
+    }, [initialAgents])
+
+    const activeAgents = initialAgents || fetchedAgents
+
     // --- RE-ENGINEERED PRESENCE (POSTGRES REALTIME + HEARTBEAT SYNC) ---
-    // Pure technical excellence: Bypasses flaky Webhook Sync and uses physical DB Heartbeats in Realtime.
     useEffect(() => {
         if (!organizationId) return
 
-        // Sync initial state from prop
+        // Sync initial state
         const initial = new Set<string>()
-        agents.forEach(a => { if (a.online) initial.add(a.user_id) })
+        activeAgents.forEach(a => { if (a.online) initial.add(a.user_id) })
         setRealtimeOnlineIds(initial)
 
         const channel = supabase
@@ -75,78 +119,135 @@ export function AgentMonitoringWidget({ agents, className }: AgentMonitoringWidg
             )
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
-    }, [organizationId, agents])
+        // Also fetch agent channels for frontend filtering
+        const fetchChannels = async () => {
+            const res = await getSidebarAgents()
+            if (res.data) {
+                const map: Record<string, string[]> = {}
+                res.data.forEach((a: any) => {
+                    map[a.id] = a.channels || []
+                })
+                setAgentChannels(map)
+            }
+        }
+        fetchChannels()
+        
+        // Listen to channel filter
+        const handleChannelFilter = (e: Event) => {
+            const { channelId } = (e as CustomEvent).detail
+            setActiveChannelId(channelId)
+        }
+        window.addEventListener('pixy:inbox:filter-monitor-by-channel', handleChannelFilter)
+
+        return () => { 
+            supabase.removeChannel(channel)
+            window.removeEventListener('pixy:inbox:filter-monitor-by-channel', handleChannelFilter)
+        }
+    }, [organizationId, initialAgents])
+
+
 
     const sortedAgents = useMemo(() => {
-        return [...agents].map(agent => ({
-            ...agent,
-            online: agent.user_id === UNASSIGNED_ID ? true : realtimeOnlineIds.has(agent.user_id)
-        })).sort((a, b) => {
+        return [...activeAgents]
+            .filter(agent => {
+                if (!activeChannelId) return true
+                if (agent.user_id === UNASSIGNED_ID) return true // Unassigned bubble always shown if it has counts
+                const channels = agentChannels[agent.user_id] || []
+                return channels.includes(activeChannelId)
+            })
+            .map(agent => {
+                let unread = agent.unread_count;
+                if (agent.user_id === UNASSIGNED_ID && activeChannelId && agent.unread_count_by_channel) {
+                    unread = agent.unread_count_by_channel[activeChannelId] || 0;
+                }
+                return {
+                    ...agent,
+                    unread_count: unread,
+                    online: agent.user_id === UNASSIGNED_ID ? true : realtimeOnlineIds.has(agent.user_id)
+                }
+            }).sort((a, b) => {
             if (a.user_id === UNASSIGNED_ID) return -1
             if (b.user_id === UNASSIGNED_ID) return 1
             if (a.online !== b.online) return a.online ? -1 : 1
             return (b.unread_count || 0) - (a.unread_count || 0)
         })
-    }, [agents, realtimeOnlineIds])
+    }, [activeAgents, realtimeOnlineIds, agentChannels, activeChannelId])
 
-    if (!agents || agents.length === 0) return null
+    if (isLoading) return <div className="animate-pulse h-24 bg-white/10 rounded-[30px] mb-4"></div>
+    if (!activeAgents || activeAgents.length === 0) return <div className="p-4 bg-muted/50 text-muted-foreground rounded-lg text-sm mb-4">No agents found or offline.</div>
+
+    const handleAgentClick = (agentId: string) => {
+        const idToDispatch = agentId === UNASSIGNED_ID ? 'unassigned' : agentId
+        window.dispatchEvent(new CustomEvent('pixy:inbox:select-agent', { detail: { agentId: idToDispatch } }))
+    }
 
     return (
-        <div className={cn("w-full mb-8", className)}>
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between px-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-brand-cyan animate-pulse" />
-                        Monitoreo en tiempo real
-                    </div>
-                </div>
-
-                <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[30px] p-6 shadow-xl relative overflow-hidden flex flex-wrap gap-6 items-center">
+        <div className={cn("w-full mb-4 px-2", className)}>
+            <div className="flex flex-col gap-2">
+                {/* HORIZONTAL SCROLL LAYOUT */}
+                <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[20px] p-4 shadow-xl relative flex flex-nowrap overflow-x-auto snap-x scrollbar-hide items-center gap-4">
                     <TooltipProvider delayDuration={0}>
                         <AnimatePresence mode="popLayout">
-                            {sortedAgents.map((agent) => (
-                                <motion.div key={agent.user_id} layout className="relative group cursor-default">
+                            {sortedAgents.map((agent) => {
+                                const agentCompareId = agent.user_id === UNASSIGNED_ID ? 'unassigned' : agent.user_id;
+                                const isSelected = selectedAgentId === agentCompareId;
+                                const isOtherSelected = selectedAgentId !== null && !isSelected;
+
+                                return (
+                                <motion.div 
+                                    key={agent.user_id} 
+                                    layout 
+                                    className={cn(
+                                        "relative group flex-shrink-0 snap-start cursor-pointer transition-all duration-300",
+                                        isOtherSelected && "opacity-40 grayscale"
+                                    )}
+                                    onClick={() => handleAgentClick(agent.user_id)}
+                                >
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <div className="relative">
                                                 <Avatar className={cn(
-                                                    "h-14 w-14 border-2 transition-all duration-300 group-hover:scale-110",
+                                                    "h-12 w-12 border-2 transition-all duration-300 group-hover:scale-110",
+                                                    isSelected && "ring-4 ring-brand-cyan/50 ring-offset-2 dark:ring-offset-[#1a1b1e] scale-110",
                                                     agent.user_id === UNASSIGNED_ID ? "border-brand-pink border-dashed" :
                                                     agent.online ? "border-brand-cyan shadow-[0_0_15px_rgba(34,211,238,0.3)]" : "border-gray-200 dark:border-white/10 grayscale"
                                                 )}>
                                                     {agent.user_id === UNASSIGNED_ID ? (
-                                                        <div className="flex items-center justify-center w-full h-full text-brand-pink"><Inbox className="h-6 w-6" /></div>
+                                                        <div className="flex items-center justify-center w-full h-full text-brand-pink"><Inbox className="h-5 w-5" /></div>
                                                     ) : (
                                                         <>
                                                             <AvatarImage src={agent.avatar_url} />
-                                                            <AvatarFallback className="bg-zinc-100 font-bold">{(agent.name || '??').substring(0, 2).toUpperCase()}</AvatarFallback>
+                                                            <AvatarFallback className="bg-zinc-100 font-bold text-xs">{(agent.name || '??').substring(0, 2).toUpperCase()}</AvatarFallback>
                                                         </>
                                                     )}
                                                 </Avatar>
                                                 <span className={cn(
-                                                    "absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white dark:border-zinc-900 transition-colors",
+                                                    "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-zinc-900 transition-colors",
                                                     agent.user_id === UNASSIGNED_ID ? "hidden" :
                                                     agent.online ? "bg-green-500" : "bg-gray-400"
                                                 )} />
                                                 {agent.unread_count > 0 && (
                                                     <div className={cn(
-                                                        "absolute -top-2 -right-2 h-6 min-w-[24px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg",
-                                                        agent.unread_count > 5 ? "bg-red-500 animate-bounce" : "bg-brand-pink"
+                                                        "absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-lg",
+                                                        agent.user_id === UNASSIGNED_ID ? "bg-brand-pink" : "bg-red-500",
+                                                        isSelected && "scale-110"
                                                     )}>
-                                                        {agent.unread_count}
+                                                        {agent.unread_count > 99 ? '99+' : agent.unread_count}
                                                     </div>
                                                 )}
                                             </div>
                                         </TooltipTrigger>
-                                        <TooltipContent side="top" className="bg-zinc-900/90 text-white p-3 rounded-2xl border-white/10">
+                                        <TooltipContent side="bottom" className="bg-zinc-900/90 text-white p-3 rounded-2xl border-white/10 z-50">
                                             <p className="font-bold text-sm">{agent.name}</p>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase">{agent.online ? 'Conectado' : 'Fuera de línea'}</p>
-                                            <p className="text-[9px] text-gray-500">Carga: {agent.current_load}/{agent.max_capacity} chats</p>
+                                            {agent.user_id !== UNASSIGNED_ID && (
+                                                <p className="text-[9px] text-gray-500">Carga: {agent.current_load}/{agent.max_capacity} chats</p>
+                                            )}
+                                            {isSelected && <p className="text-[10px] text-brand-cyan mt-1 font-bold">Filtro activo (click para quitar)</p>}
                                         </TooltipContent>
                                     </Tooltip>
                                 </motion.div>
-                            ))}
+                            )})}
                         </AnimatePresence>
                     </TooltipProvider>
                 </div>

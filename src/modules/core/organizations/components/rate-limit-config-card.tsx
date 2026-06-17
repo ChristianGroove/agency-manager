@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Gauge, Zap, Brain, Save, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 interface RateLimitConfigCardProps {
     organizationId: string
@@ -48,7 +48,7 @@ export function RateLimitConfigCard({
     const handleSave = async () => {
         setIsLoading(true)
         try {
-            const { error } = await supabaseAdmin
+            const { error } = await (await createClient())
                 .from('organizations')
                 .update({
                     rate_limit_config: {

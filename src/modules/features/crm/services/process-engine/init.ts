@@ -1,5 +1,5 @@
 
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Initialize Default CRM Settings for a new Organization.
@@ -22,7 +22,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
         // NOTE: This assumes no critical data needs preservation, or that this is a desired hard-reset.
 
         // 2.1 Delete all Pipelines (Cascade should handle stages, but let's be safe)
-        const { error: deletePipelineError } = await supabaseAdmin
+        const { error: deletePipelineError } = await (await createClient())
             .from('pipelines')
             .delete()
             .eq('organization_id', organizationId)
@@ -30,7 +30,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
         if (deletePipelineError) console.error("[CRM Init] Cleanup Pipelines Error:", deletePipelineError)
 
         // 2.2 Delete existing Process States (Engine) for 'sale' type
-        const { error: deleteStateError } = await supabaseAdmin
+        const { error: deleteStateError } = await (await createClient())
             .from('process_states')
             .delete()
             .eq('organization_id', organizationId)
@@ -47,7 +47,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
         const stateMap = new Map<string, string>() // key -> id
 
         for (const s of template.processStates) {
-            const { data: stateData, error: stateError } = await supabaseAdmin
+            const { data: stateData, error: stateError } = await (await createClient())
                 .from('process_states')
                 .upsert({
                     organization_id: organizationId,
@@ -73,7 +73,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
         // 4. Create NEW Default Pipeline
         let pipelineId: string | null = null
 
-        const { data: newPipeline, error: pipeError } = await supabaseAdmin
+        const { data: newPipeline, error: pipeError } = await (await createClient())
             .from('pipelines')
             .insert({
                 organization_id: organizationId,
@@ -96,7 +96,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
             const stage = template.pipelineStages[i]
 
             // Create Stage
-            const { data: stageData, error: stageError } = await supabaseAdmin
+            const { data: stageData, error: stageError } = await (await createClient())
                 .from('pipeline_stages')
                 .insert({
                     organization_id: organizationId,
@@ -113,7 +113,7 @@ export async function initializeOrganizationCRM(organizationId: string, template
 
             if (stageData && stage.mapToProcessKey && stateMap.has(stage.mapToProcessKey)) {
                 // Create Mapping
-                await supabaseAdmin
+                await (await createClient())
                     .from('pipeline_process_map')
                     .insert({
                         organization_id: organizationId,

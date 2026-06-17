@@ -1,13 +1,13 @@
 "use server"
 
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
 /**
  * Get portal configuration for an app
  */
 export async function getAppPortalConfig(appId: string) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('saas_apps_portal_config')
         .select('*')
         .eq('app_id', appId)
@@ -26,7 +26,7 @@ export async function getAppPortalConfig(appId: string) {
  * Update a portal module's enabled status
  */
 export async function updateAppPortalModule(moduleId: string, updates: { is_enabled?: boolean, display_order?: number, portal_tab_label?: string }) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_apps_portal_config')
         .update(updates)
         .eq('id', moduleId)
@@ -51,7 +51,7 @@ export async function addAppPortalModule(appId: string, module: {
     target_portal: 'client' | 'staff'
 }) {
     // Get max display order
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await (await createClient())
         .from('saas_apps_portal_config')
         .select('display_order')
         .eq('app_id', appId)
@@ -61,7 +61,7 @@ export async function addAppPortalModule(appId: string, module: {
 
     const nextOrder = (existing?.[0]?.display_order || 0) + 1
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_apps_portal_config')
         .insert({
             app_id: appId,
@@ -83,7 +83,7 @@ export async function addAppPortalModule(appId: string, module: {
  * Delete a portal module
  */
 export async function deleteAppPortalModule(moduleId: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_apps_portal_config')
         .delete()
         .eq('id', moduleId)
@@ -101,8 +101,9 @@ export async function deleteAppPortalModule(moduleId: string) {
  * Reorder portal modules
  */
 export async function reorderAppPortalModules(updates: { id: string, display_order: number }[]) {
+    const supabase = await createClient()
     const promises = updates.map(({ id, display_order }) =>
-        supabaseAdmin
+        supabase
             .from('saas_apps_portal_config')
             .update({ display_order })
             .eq('id', id)

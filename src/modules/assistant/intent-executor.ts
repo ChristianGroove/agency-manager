@@ -1,6 +1,7 @@
 
 import { AssistantContext } from "./types";
 import { createClient } from "@/modules/core/database/supabase-server";
+import { logAssistantError, logAssistantInfo } from "./safe-logging";
 
 /**
  * INTENT EXECUTOR SERVICE (Phase 2)
@@ -36,10 +37,11 @@ export class IntentExecutor {
     static async execute(
         logId: string,
         context: AssistantContext,
-        injectedClient?: any
+        injectedClient?: any,
+        injectedAdminClient?: any
     ): Promise<any> {
         const userSupabase = injectedClient || await createClient();
-        const adminSupabase = this.getAdminClient();
+        const adminSupabase = injectedAdminClient || this.getAdminClient();
 
         // 1. Get Log & Lock (Admin)
         const { data: log, error } = await adminSupabase
@@ -61,8 +63,17 @@ export class IntentExecutor {
 
         // 3. Idempotency Check
         if (log.status === 'executed') {
-            console.log(`[EXEC] Idempotency Hit: ${logId}`);
-            return log.metadata?.result || { message: "Optimistic Idempotency: Already Executed" };
+            logAssistantInfo("[EXEC] Idempotency Hit", {
+                logId,
+                userId: context.user_id,
+                spaceId: context.space_id,
+            });
+            return {
+                intent_id: log.intent_id,
+                status: 'executed',
+                result: log.metadata?.result || { message: "Optimistic Idempotency: Already Executed" },
+                cached: true
+            };
         }
 
         // 4. Strict Status Check
@@ -118,7 +129,11 @@ export class IntentExecutor {
                 .eq('id', logId);
 
             if (updateError) {
-                console.error("CRITICAL: Failed to update execution status", updateError);
+                logAssistantError("CRITICAL: Failed to update execution status", updateError, {
+                    logId,
+                    userId: context.user_id,
+                    spaceId: context.space_id,
+                });
             }
 
             return {
@@ -129,7 +144,11 @@ export class IntentExecutor {
 
         } catch (execError: any) {
             // 7. Failure -> Update Log (Admin)
-            console.error(`[EXEC] Failed: ${execError.message}`);
+            logAssistantError("[EXEC] Failed:", execError, {
+                logId,
+                userId: context.user_id,
+                spaceId: context.space_id,
+            });
             await adminSupabase.from('assistant_intent_logs')
                 .update({
                     status: 'failed',
@@ -147,10 +166,11 @@ export class IntentExecutor {
     static async confirm(
         logId: string,
         context: AssistantContext,
-        injectedClient?: any
+        injectedClient?: any,
+        injectedAdminClient?: any
     ): Promise<any> {
         const userSupabase = injectedClient || await createClient();
-        const adminSupabase = this.getAdminClient();
+        const adminSupabase = injectedAdminClient || this.getAdminClient();
 
         // 1. Get Log (Admin)
         const { data: log, error } = await adminSupabase
@@ -177,7 +197,7 @@ export class IntentExecutor {
         }
 
         // 4. Execute (Pass User Client)
-        return this.execute(logId, context, userSupabase);
+        return this.execute(logId, context, userSupabase, adminSupabase);
     }
 
     /**
@@ -186,9 +206,10 @@ export class IntentExecutor {
     static async cancel(
         logId: string,
         context: AssistantContext,
-        injectedClient?: any
+        injectedClient?: any,
+        injectedAdminClient?: any
     ) {
-        const adminSupabase = this.getAdminClient();
+        const adminSupabase = injectedAdminClient || this.getAdminClient();
 
         // 1. Get Log (Admin)
         const { data: log, error } = await adminSupabase

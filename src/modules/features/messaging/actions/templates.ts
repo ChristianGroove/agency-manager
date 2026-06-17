@@ -141,6 +141,81 @@ function extractBodyText(components: TemplateComponent[]): string {
 const META_API_VERSION = 'v24.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeTemplateActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'accessToken',
+        'channelId',
+        'connectionId',
+        'metadataAssetId',
+        'metadataWabaId',
+        'orgId',
+        'phoneNumberId',
+        'templateId',
+        'templateName',
+        'url',
+        'wabaId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'templateNames' && Array.isArray(value)) {
+                return ['templateNamesCount', value.length]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeTemplateActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        const graphError = 'error' in error ? (error as { error?: Record<string, unknown> }).error : error as Record<string, unknown>
+
+        return {
+            type: graphError?.type,
+            code: graphError?.code,
+            subcode: graphError?.error_subcode || graphError?.subcode,
+            hasMessage: typeof graphError?.message === 'string' && graphError.message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logTemplateActionInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeTemplateActionLogDetails(details))
+}
+
+function logTemplateActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeTemplateActionLogDetails(details),
+        detail: summarizeTemplateActionError(error),
+    })
+}
+
 /**
  * Resolves the WABA ID and Access Token for a specific connection or the primary one
  */
@@ -165,7 +240,7 @@ async function resolveMetaCredentials(orgId: string, channelId?: string): Promis
     const { data: connection, error: connError } = await query.limit(1).maybeSingle()
 
     if (connError || !connection) {
-        console.error('[resolveMetaCredentials] No connection found:', connError?.message)
+        logTemplateActionError('[resolveMetaCredentials] No connection found:', connError, { orgId, channelId })
         throw new Error("No active WhatsApp connection. Configure one in Settings > Integrations.")
     }
 
@@ -180,9 +255,9 @@ async function resolveMetaCredentials(orgId: string, channelId?: string): Promis
     // 3. Extract metadata (NOT encrypted â€” stored as plain jsonb)
     const metadata = connection.metadata as any || {}
 
-    console.log('[resolveMetaCredentials] Connection:', {
-        id: connection.id,
-        provider_key: connection.provider_key,
+    logTemplateActionInfo('[resolveMetaCredentials] Connection', {
+        connectionId: connection.id,
+        providerKey: connection.provider_key,
         hasCredentials: !!creds,
         credentialKeys: creds ? Object.keys(creds) : [],
         hasMetadata: !!metadata,
@@ -236,7 +311,7 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
     const { wabaId, accessToken, connectionId } = await resolveMetaCredentials(orgId, channelId)
 
     const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/message_templates?fields=name,status,category,language,components&limit=100`
-    console.log('[syncTemplatesFromMeta] Fetching from:', url.replace(accessToken, '***'))
+    logTemplateActionInfo('[syncTemplatesFromMeta] Fetching templates', { url, wabaId })
 
     const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -245,15 +320,16 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
 
     if (!response.ok) {
         const err = await response.json()
-        console.error('[syncTemplatesFromMeta] Meta API Error:', err)
+        logTemplateActionError('[syncTemplatesFromMeta] Meta API Error:', err, { wabaId })
         throw new Error(err?.error?.message || 'Failed to fetch templates from Meta')
     }
 
     const result = await response.json()
     const metaTemplates = result.data || []
-    console.log(`[syncTemplatesFromMeta] Got ${metaTemplates.length} templates from Meta:`,
-        metaTemplates.map((t: any) => `${t.name} (${t.language}) [${t.status}]`)
-    )
+    logTemplateActionInfo('[syncTemplatesFromMeta] Templates fetched from Meta', {
+        templateCount: metaTemplates.length,
+        templateNames: metaTemplates.map((t: any) => `${t.name} (${t.language}) [${t.status}]`),
+    })
 
     const supabase = await createClient()
     let synced = 0
@@ -397,11 +473,18 @@ export async function deleteTemplateFromMeta(templateId: string, channelId?: str
 
             if (!response.ok) {
                 const err = await response.json()
-                console.error('[deleteTemplateFromMeta] Meta API error:', err)
+                logTemplateActionError('[deleteTemplateFromMeta] Meta API error:', err, {
+                    templateId,
+                    templateName: template.name,
+                    wabaId,
+                })
                 // Continue with local deletion even if Meta fails
             }
         } catch (e: any) {
-            console.error('[deleteTemplateFromMeta] Meta deletion failed:', e.message)
+            logTemplateActionError('[deleteTemplateFromMeta] Meta deletion failed:', e, {
+                templateId,
+                templateName: template.name,
+            })
         }
     }
 

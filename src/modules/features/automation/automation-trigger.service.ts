@@ -1,9 +1,9 @@
 
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { fileLogger } from "@/modules/infrastructure/logging/services/file-logger"
 import { WorkflowEngine } from "./engine"
 import { WorkflowDefinition } from "./engine"
 import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Service to evaluate incoming events and trigger workflows.
@@ -21,7 +21,7 @@ export class AutomationTriggerService {
      * @param channel The channel (whatsapp, etc)
      * @param sender The phone number or sender ID
      */
-    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string, messageId?: string) {
+    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string, messageId?: string, expectedOrganizationId?: string) {
         console.log(`[AutomationTrigger] 🚀 evaluateInput STARTED for conv: ${conversationId}, Channel: ${channel}, Connection: ${connectionId}`)
         fileLogger.log(`[AutomationTrigger] Evaluating input: "${messageContent}" (ID: ${messageId}) for conv: ${conversationId}`)
 
@@ -33,11 +33,16 @@ export class AutomationTriggerService {
         // Wait, RLS would block if we used client, but we use admin. We should ideally filter by Org.
 
         // Let's first get the conversation to know the Org
-        const { data: conversation } = await supabaseAdmin
+        let conversationQuery = supabaseAdmin
             .from('conversations')
             .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to, is_bot_active, integration_connections(working_hours)') // Fetch connection hours
             .eq('id', conversationId)
-            .single()
+
+        if (expectedOrganizationId) {
+            conversationQuery = conversationQuery.eq('organization_id', expectedOrganizationId)
+        }
+
+        const { data: conversation } = await conversationQuery.single()
 
         if (!conversation) {
             console.error('[AutomationTrigger] Conversation not found')
@@ -171,6 +176,7 @@ export class AutomationTriggerService {
                 const { data: lastExecution } = await supabaseAdmin
                     .from('workflow_executions')
                     .select('started_at')
+                    .eq('organization_id', orgId)
                     .eq('workflow_id', wf.id)
                     .contains('context', { lead: { id: leadId } })
                     .order('started_at', { ascending: false })
@@ -327,6 +333,7 @@ export class AutomationTriggerService {
                 const { count: recentExecCount } = await supabaseAdmin
                     .from('workflow_executions')
                     .select('id', { count: 'exact', head: true })
+                    .eq('organization_id', orgId)
                     .eq('workflow_id', wf.id)
                     .gte('started_at', cutoffTime)
                     .contains('context', { lead: { id: leadId } })
@@ -345,6 +352,7 @@ export class AutomationTriggerService {
                     .from('leads')
                     .select('*')
                     .eq('id', leadId)
+                    .eq('organization_id', orgId)
                     .single()
 
                 // Enrich lead with ad data for easier variable access {{lead.ad_id}}
@@ -367,6 +375,7 @@ export class AutomationTriggerService {
                     const { count } = await supabaseAdmin
                         .from('workflow_executions')
                         .select('id', { count: 'exact', head: true })
+                        .eq('organization_id', orgId)
                         .contains('context', { message: { id: finalMessageId } })
                         .eq('workflow_id', wf.id) // Scope to flow
 
@@ -389,6 +398,7 @@ export class AutomationTriggerService {
                         updated_at: new Date().toISOString() 
                     })
                     .eq('id', conversationId)
+                    .eq('organization_id', orgId)
 
                 // MUST AWAIT in Serverless
                 await this.executeWorkflow(wf, {
@@ -447,6 +457,7 @@ export class AutomationTriggerService {
                     .from('workflow_executions')
                     .update({ status: 'completed', completed_at: new Date().toISOString() })
                     .eq('id', execution.id)
+                    .eq('organization_id', workflow.organization_id)
             } catch (err: any) {
                 const supabase = supabaseAdmin;
                 if (err.message === 'WORKFLOW_SUSPENDED') {
@@ -455,6 +466,7 @@ export class AutomationTriggerService {
                         .from('workflow_executions')
                         .update({ status: 'suspended' })
                         .eq('id', execution.id)
+                        .eq('organization_id', workflow.organization_id)
                 } else {
                     console.error(`[AutomationTrigger] Workflow ${workflow.id} failed:`, err)
                     await supabase
@@ -465,6 +477,7 @@ export class AutomationTriggerService {
                             completed_at: new Date().toISOString()
                         })
                         .eq('id', execution.id)
+                        .eq('organization_id', workflow.organization_id)
                 }
             }
 

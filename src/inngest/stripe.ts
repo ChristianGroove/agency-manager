@@ -1,7 +1,7 @@
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { registerBillableEvent } from "@/modules/billing/platform/revenue/actions"
 import type { BillableEventType } from "@/types/revenue"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Handle Stripe Webhook events asynchronously

@@ -2,10 +2,69 @@
 
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { MetaGraphAPI } from "@/modules/infrastructure/meta/services/graph-api"
 import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
+import { createClient } from "@/modules/core/database/supabase-server";
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function summarizeMetaChannelError(error: unknown) {
+    return error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error }
+}
+
+function sanitizeMetaChannelLogDetails(details: Record<string, unknown>) {
+    const sensitiveKeys = new Set([
+        'assetId',
+        'channelId',
+        'pageId',
+        'wabaId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function logMetaChannelInfo(label: string, details: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeMetaChannelLogDetails(details))
+}
+
+function logMetaChannelError(label: string, error: unknown, level: 'error' | 'warn' = 'error') {
+    const logger = level === 'warn' ? console.warn : console.error
+
+    if (!isDeployedRuntime()) {
+        logger(label, error)
+        return
+    }
+
+    logger(label, summarizeMetaChannelError(error))
+}
+
+function publicMetaChannelError(error: unknown, fallback: string) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    return error instanceof Error
+        ? error.message
+        : fallback
+}
 
 /**
  * Input from UI (IntegrationSetupSheet) - uses parentConnectionId
@@ -15,7 +74,6 @@ interface UIActivateInput {
     assetId: string
     assetType: "page" | "instagram" | "whatsapp"
     assetName: string
-    accessToken: string
     wabaId?: string
     pageId?: string
 }
@@ -84,10 +142,28 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             'whatsapp': 'whatsapp_cloud'
         };
         providerKey = providerKeyMap[input.assetType];
-        accessToken = input.accessToken;
         assetId = input.assetId;
         assetName = input.assetName;
         wabaId = input.wabaId;
+
+        const { data: parentConnection, error: parentError } = await (await createClient())
+            .from('integration_connections')
+            .select('credentials')
+            .eq('id', input.parentConnectionId)
+            .eq('organization_id', orgId)
+            .eq('provider_key', 'meta_business')
+            .maybeSingle();
+
+        const parentCredentials = parentConnection?.credentials as { access_token?: string } | undefined;
+        if (parentError || !parentCredentials?.access_token) {
+            logMetaChannelError(
+                '[activateMetaChannel] Parent Meta connection unavailable:',
+                parentError || new Error('missing_parent_access_token')
+            );
+            return { success: false, error: 'Meta parent connection is not available' };
+        }
+
+        accessToken = parentCredentials.access_token;
     }
 
     try {
@@ -111,9 +187,14 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
                 const webhookResult = await metaApi.subscribePageWebhooks(pageIdToSubscribe, finalAccessToken);
                 webhookStatus = webhookResult.success ? "active" : "failed";
-                console.log(`[activateMetaChannel] Webhook ${webhookStatus} for ${assetType} (${assetId}) via Page ${pageIdToSubscribe}`);
+                logMetaChannelInfo('[activateMetaChannel] Webhook setup finished', {
+                    webhookStatus,
+                    assetType,
+                    assetId,
+                    pageId: pageIdToSubscribe,
+                });
             } catch (e: any) {
-                console.warn(`[activateMetaChannel] Token/webhook setup warning: ${e.message}`);
+                logMetaChannelError('[activateMetaChannel] Token/webhook setup warning:', e, 'warn');
             }
         }
 
@@ -121,24 +202,24 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             try {
                 // Subscribe WABA to app webhooks (Critical for inbound messages)
                 if (wabaId) {
-                    console.log(`[activateMetaChannel] Subscribing WABA ${wabaId}...`);
+                    logMetaChannelInfo('[activateMetaChannel] Subscribing WABA', { wabaId });
                     const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, finalAccessToken);
                     webhookStatus = subResult.success ? "app_level" : "failed";
                     if (!subResult.success) {
-                        console.error('[activateMetaChannel] WABA Subscription Failed:', subResult.error);
+                        logMetaChannelError('[activateMetaChannel] WABA Subscription Failed:', subResult.error);
                     }
                 } else {
                     console.warn('[activateMetaChannel] No WABA ID available for subscription');
                     webhookStatus = "app_level_pending";
                 }
             } catch (e: any) {
-                console.error(`[activateMetaChannel] WABA subscription error: ${e.message}`);
+                logMetaChannelError('[activateMetaChannel] WABA subscription error:', e);
                 webhookStatus = "failed";
             }
         }
 
         // Check if channel already exists (including deleted ones)
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await (await createClient())
             .from('integration_connections')
             .select('id, status')
             .eq('organization_id', orgId)
@@ -157,17 +238,19 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             }
 
             // Reactivate deleted/disconnected channel
-            const { error } = await supabaseAdmin
+            const { error } = await (await createClient())
                 .from('integration_connections')
                 .update({
                     status: 'active',
                     credentials: { access_token: finalAccessToken },
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', existingChannel.id);
+                .eq('id', existingChannel.id)
+                .eq('organization_id', orgId);
 
             if (error) {
-                return { success: false, error: error.message };
+                logMetaChannelError("[activateMetaChannel] Reactivation DB error:", error);
+                return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
             }
 
             revalidatePath("/platform/integrations");
@@ -204,18 +287,18 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             is_primary: false
         };
 
-        const { data: channel, error } = await supabaseAdmin
+        const { data: channel, error } = await (await createClient())
             .from('integration_connections')
             .insert(channelData)
             .select()
             .single();
 
         if (error) {
-            console.error("[activateMetaChannel] DB error:", error);
-            return { success: false, error: error.message };
+            logMetaChannelError("[activateMetaChannel] DB error:", error);
+            return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
         }
 
-        console.log(`[activateMetaChannel] Channel created: ${channel.id}`);
+        logMetaChannelInfo('[activateMetaChannel] Channel created', { channelId: channel.id });
 
         revalidatePath("/platform/integrations");
         revalidatePath("/crm/settings/channels");
@@ -226,8 +309,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         };
 
     } catch (error: any) {
-        console.error("[activateMetaChannel] Error:", error);
-        return { success: false, error: error.message };
+        logMetaChannelError("[activateMetaChannel] Error:", error);
+        return { success: false, error: publicMetaChannelError(error, 'Meta channel activation failed') };
     }
 }
 
@@ -243,7 +326,7 @@ export async function deactivateMetaChannel(channelId: string): Promise<{ succes
     await requireOrgRole("admin")
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('integration_connections')
             .update({ status: 'deleted' })
             .eq('id', channelId)
@@ -256,7 +339,8 @@ export async function deactivateMetaChannel(channelId: string): Promise<{ succes
 
         return { success: true }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMetaChannelError("[deactivateMetaChannel] Error:", error)
+        return { success: false, error: publicMetaChannelError(error, 'Meta channel deactivation failed') }
     }
 }
 

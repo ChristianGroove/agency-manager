@@ -1,8 +1,116 @@
 'use server'
 
 import { createClient } from '@/modules/core/database/supabase-server'
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+
+const PUBLIC_ANALYTICS_ERROR = "No se pudieron cargar las metricas de CRM"
+const PUBLIC_REPORTS_ERROR = "No se pudo generar el reporte"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAnalyticsError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAnalyticsError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...details,
+        detail: summarizeAnalyticsError(error),
+    })
+}
+
+function logAnalyticsWarn(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.warn(label, error, details)
+        return
+    }
+
+    console.warn(label, {
+        ...details,
+        detail: summarizeAnalyticsError(error),
+    })
+}
+
+function analyticsFailure(label: string, error: unknown, fallback = PUBLIC_ANALYTICS_ERROR) {
+    logAnalyticsError(label, error)
+    if (isDeployedRuntime()) return { success: false, error: fallback }
+    return { success: false, error: String(error) }
+}
+
+function logBase64ImageFetch(url: string) {
+    if (!isDeployedRuntime()) {
+        console.log("[getBase64Image] Fetching logo from server:", url)
+        return
+    }
+
+    console.log("[getBase64Image] Fetching logo from server", {
+        urlPresent: !!url,
+        supabaseStorage: url.includes('/storage/v1/object/public/'),
+    })
+}
+
+function logSupabaseAsset(bucket: string, fileName: string) {
+    if (!isDeployedRuntime()) {
+        console.log(`[getBase64Image] Found Supabase asset: Bucket=${bucket}, Path=${fileName}`)
+        return
+    }
+
+    console.log("[getBase64Image] Found Supabase asset", {
+        bucketPresent: !!bucket,
+        pathPresent: !!fileName,
+    })
+}
+
+function logAdvancedReportsRequest(orgId: string | undefined, targetOrgId: string | null | undefined, startDate: string, endDate: string) {
+    if (!isDeployedRuntime()) {
+        console.log('**************************************************')
+        console.log('CRITICAL DEBUG: getAdvancedReports')
+        console.log('Received orgId from client:', orgId)
+        console.log('Derived targetOrgId:', targetOrgId)
+        console.log('Start:', startDate, 'End:', endDate)
+        console.log('**************************************************')
+        return
+    }
+
+    console.log('[REPORTS] getAdvancedReports request', {
+        orgIdProvided: !!orgId,
+        targetOrgIdPresent: !!targetOrgId,
+        startDatePresent: !!startDate,
+        endDatePresent: !!endDate,
+    })
+}
+
+function logAdvancedReportsResult(data: any) {
+    if (!isDeployedRuntime()) {
+        console.log('[REPORTS] Result Summary:', data?.summary)
+        console.log('[REPORTS] Agents returned:', data?.agent_performance?.length)
+        console.log('**************************************************')
+        return
+    }
+
+    console.log('[REPORTS] Result Summary', {
+        summaryPresent: !!data?.summary,
+        agentPerformanceCount: Array.isArray(data?.agent_performance) ? data.agent_performance.length : 0,
+    })
+}
 
 // Helper to get org
 async function getOrgId() {
@@ -72,7 +180,7 @@ export async function getBase64Image(url: string): Promise<string> {
     if (url.startsWith('data:')) return url;
 
     try {
-        console.log("[getBase64Image] Fetching logo from server:", url);
+        logBase64ImageFetch(url);
         
         // --- Special Case: Supabase Storage ---
         // If it's a supabase storage link, we can use the admin client to download it directly
@@ -84,9 +192,9 @@ export async function getBase64Image(url: string): Promise<string> {
                 const bucket = pathParts[0];
                 const fileName = pathParts.slice(1).join('/');
                 
-                console.log(`[getBase64Image] Found Supabase asset: Bucket=${bucket}, Path=${fileName}`);
+                logSupabaseAsset(bucket, fileName);
                 
-                const { data, error } = await supabaseAdmin.storage.from(bucket).download(fileName);
+                const { data, error } = await (await createClient()).storage.from(bucket).download(fileName);
                 if (data && !error) {
                     const arrayBuffer = await data.arrayBuffer();
                     const base64 = Buffer.from(arrayBuffer).toString('base64');
@@ -94,9 +202,9 @@ export async function getBase64Image(url: string): Promise<string> {
                     console.log(`[getBase64Image] Successfully downloaded via Admin SDK: ${contentType}`);
                     return `data:${contentType};base64,${base64}`;
                 }
-                console.warn("[getBase64Image] Admin download failed, trying regular fetch...", error);
+                logAnalyticsWarn("[getBase64Image] Admin download failed, trying regular fetch...", error);
             } catch (e) {
-                console.warn("[getBase64Image] Failed to parse Supabase URL, falling back to fetch");
+                logAnalyticsWarn("[getBase64Image] Failed to parse Supabase URL, falling back to fetch", e);
             }
         }
 
@@ -109,7 +217,10 @@ export async function getBase64Image(url: string): Promise<string> {
         });
         
         if (!response.ok) {
-            console.error(`[getBase64Image] HTTP error! status: ${response.status} for ${url}`);
+            logAnalyticsError("[getBase64Image] HTTP error", null, {
+                status: response.status,
+                urlPresent: !!url,
+            });
             return '';
         }
         
@@ -119,7 +230,7 @@ export async function getBase64Image(url: string): Promise<string> {
         
         return `data:${contentType};base64,${base64}`;
     } catch (error) {
-        console.error("[getBase64Image] Fatal Error:", error);
+        logAnalyticsError("[getBase64Image] Fatal Error:", error);
         return '';
     }
 }
@@ -134,20 +245,20 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
         const startDateStr = startDate.toISOString()
 
         // Total leads
-        const { count: totalLeads } = await supabaseAdmin
+        const { count: totalLeads } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
 
         // New leads this period
-        const { count: newLeads } = await supabaseAdmin
+        const { count: newLeads } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .gte('created_at', startDateStr)
 
         // Pipeline value (sum of all open deals)
-        const { data: dealsData } = await supabaseAdmin
+        const { data: dealsData } = await (await createClient())
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
@@ -156,14 +267,14 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
         const pipelineValue = dealsData?.reduce((sum, d) => sum + (d.value || 0), 0) || 0
 
         // Won deals for conversion rate
-        const { count: wonDeals } = await supabaseAdmin
+        const { count: wonDeals } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .eq('status', 'won')
 
         // All closed deals (won + lost)
-        const { count: closedDeals } = await supabaseAdmin
+        const { count: closedDeals } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
@@ -174,7 +285,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             : 0
 
         // Average deal size (won deals)
-        const { data: wonDealsData } = await supabaseAdmin
+        const { data: wonDealsData } = await (await createClient())
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
@@ -185,7 +296,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             : 0
 
         // Open conversations
-        const { data: convMetrics } = await supabaseAdmin
+        const { data: convMetrics } = await (await createClient())
             .from('conversations')
             .select('average_response_time_seconds')
             .eq('organization_id', orgId)
@@ -195,7 +306,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             ? Math.round(convMetrics.reduce((sum, c) => sum + (c.average_response_time_seconds || 0), 0) / convMetrics.length)
             : 0
 
-        const { count: openConversations } = await supabaseAdmin
+        const { count: openConversations } = await (await createClient())
             .from('conversations')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
@@ -214,8 +325,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             }
         }
     } catch (error) {
-        console.error('getCRMStats error:', error)
-        return { success: false, error: String(error) }
+        return analyticsFailure('getCRMStats error:', error)
     }
 }
 
@@ -233,7 +343,7 @@ export async function getLeadsBySource(days: number = 30): Promise<{ success: bo
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('leads')
             .select('source')
             .eq('organization_id', orgId)
@@ -259,7 +369,7 @@ export async function getLeadsBySource(days: number = 30): Promise<{ success: bo
 
         return { success: true, data: result }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getLeadsBySource error:', error)
     }
 }
 
@@ -274,7 +384,7 @@ export async function getLeadsByStatus(): Promise<{ success: boolean, data?: Lea
         const orgId = await getOrgId()
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('leads')
             .select('status, value')
             .eq('organization_id', orgId)
@@ -301,7 +411,7 @@ export async function getLeadsByStatus(): Promise<{ success: boolean, data?: Lea
 
         return { success: true, data: result }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getLeadsByStatus error:', error)
     }
 }
 
@@ -320,7 +430,7 @@ export async function getRecentActivity(limit: number = 10): Promise<{ success: 
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
         // Get recently created leads
-        const { data: recentLeads } = await supabaseAdmin
+        const { data: recentLeads } = await (await createClient())
             .from('leads')
             .select('id, name, status, created_at, updated_at')
             .eq('organization_id', orgId)
@@ -340,7 +450,7 @@ export async function getRecentActivity(limit: number = 10): Promise<{ success: 
 
         return { success: true, data: activities }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getRecentActivity error:', error)
     }
 }
 
@@ -360,7 +470,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
         if (!orgId) return { success: false, error: 'Unauthorized' }
 
         // Get all team members (without auth.users join)
-        const { data: members } = await supabaseAdmin
+        const { data: members } = await (await createClient())
             .from('organization_members')
             .select('user_id')
             .eq('organization_id', orgId)
@@ -371,14 +481,14 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
         for (const member of members) {
             // Count assigned leads
-            const { count: assigned } = await supabaseAdmin
+            const { count: assigned } = await (await createClient())
                 .from('leads')
                 .select('id', { count: 'exact', head: true })
                 .eq('organization_id', orgId)
                 .eq('user_id', member.user_id)
 
             // Count won deals and calculate avg response time
-            const { data: convData } = await supabaseAdmin
+            const { data: convData } = await (await createClient())
                 .from('conversations')
                 .select('average_response_time_seconds, state, last_message_direction, waiting_since')
                 .eq('organization_id', orgId)
@@ -386,7 +496,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
             const wonDeals = convData?.filter(c => c.state === 'closed').length || 0 // Simplified won check if we use state
             // Let's stick to leads table for value but use conversations for speed/response metrics
-            const { data: leadsData } = await supabaseAdmin
+            const { data: leadsData } = await (await createClient())
                 .from('leads')
                 .select('value, status')
                 .eq('organization_id', orgId)
@@ -415,7 +525,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
         return { success: true, data: performance.sort((a, b) => b.totalValue - a.totalValue) }
     } catch (error) {
-        return { success: false, error: String(error) }
+        return analyticsFailure('getAgentPerformance error:', error)
     }
 }
 
@@ -423,37 +533,29 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
     try {
         const targetOrgId = orgId || await getOrgId()
         
-        console.log('**************************************************')
-        console.log('CRITICAL DEBUG: getAdvancedReports')
-        console.log('Received orgId from client:', orgId)
-        console.log('Derived targetOrgId:', targetOrgId)
-        console.log('Start:', startDate, 'End:', endDate)
-        console.log('**************************************************')
+        logAdvancedReportsRequest(orgId, targetOrgId, startDate, endDate)
 
         if (!targetOrgId) {
             console.error('[REPORTS] No organization ID provided or found')
             return { success: false, error: 'No se pudo determinar la organización activa' }
         }
 
-        const { data, error } = await supabaseAdmin.rpc('get_advanced_crm_reports', {
+        const { data, error } = await (await createClient()).rpc('get_advanced_crm_reports', {
             p_org_id: targetOrgId,
             p_start_date: startDate,
             p_end_date: endDate
         })
 
         if (error) {
-            console.error('[REPORTS] RPC Error:', error)
+            logAnalyticsError('[REPORTS] RPC Error:', error)
             throw error
         }
 
-        console.log('[REPORTS] Result Summary:', data?.summary)
-        console.log('[REPORTS] Agents returned:', data?.agent_performance?.length)
-        console.log('**************************************************')
+        logAdvancedReportsResult(data)
 
         return { success: true, data: data as AdvancedReportData }
     } catch (error) {
-        console.error('[REPORTS] Catch:', error)
-        return { success: false, error: String(error) }
+        return analyticsFailure('[REPORTS] Catch:', error, PUBLIC_REPORTS_ERROR)
     }
 }
 

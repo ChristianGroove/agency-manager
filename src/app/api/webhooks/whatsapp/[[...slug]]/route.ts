@@ -1,7 +1,54 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { inngest } from "@/modules/infrastructure/automation/inngest/client"
+import { isProductionRuntime } from "@/app/api/_guards/request-guards"
 
+function logEvolutionWebhookError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
+function logEvolutionInfo(label: string, details?: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        if (details) console.log(label, details)
+        else console.log(label)
+        return
+    }
+
+    if (details) console.log(label, sanitizeEvolutionLogDetails(details))
+    else console.log(label)
+}
+
+function logEvolutionWarning(label: string, details?: Record<string, unknown>) {
+    if (!isProductionRuntime()) {
+        if (details) console.warn(label, details)
+        else console.warn(label)
+        return
+    }
+
+    if (details) console.warn(label, sanitizeEvolutionLogDetails(details))
+    else console.warn(label)
+}
+
+function sanitizeEvolutionLogDetails(details: Record<string, unknown>) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'instanceName' || key === 'senderPhone') {
+                return [`${key}Present`, Boolean(value)]
+            }
+            if (key === 'content') {
+                return ['contentLength', typeof value === 'string' ? value.length : 0]
+            }
+            return [key, value]
+        })
+    )
+}
 
 /**
  * Evolution API Webhook Handler (Catch-all)
@@ -34,12 +81,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
             // Map slug (e.g. "messages-upsert") to standard event name if needed
             const slugEvent = slug[0].replace(/-/g, '.').toUpperCase()
             eventType = slugEvent
-            console.log(`[Webhook:Evolution] Derived event type from slug: ${slug[0]} -> ${eventType}`)
+            logEvolutionInfo('[Webhook:Evolution] Derived event type from slug', { slug: slug[0], eventType })
         }
 
         const instanceName = instance || body.instance?.instanceName
 
-        console.log(`[Webhook:Evolution] Received: ${eventType} from ${instanceName} (Slug: ${slug?.join('/') || 'none'})`)
+        logEvolutionInfo('[Webhook:Evolution] Received event', {
+            eventType,
+            instanceName,
+            slug: slug?.join('/') || 'none'
+        })
 
         if (!instanceName) {
             console.warn('[Webhook:Evolution] No instance name in payload')
@@ -54,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
             .single()
 
         if (channelError || !channel) {
-            console.warn(`[Webhook:Evolution] Channel not found for instance: ${instanceName}`)
+            logEvolutionWarning('[Webhook:Evolution] Channel not found for instance', { instanceName })
             return NextResponse.json({ status: 'ignored', reason: 'channel_not_found' })
         }
 
@@ -76,8 +127,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                     last_synced_at: new Date().toISOString()
                 })
                 .eq('id', channel.id)
+                .eq('organization_id', channel.organization_id)
 
-            console.log(`[Webhook:Evolution] Connection update: ${instanceName} -> ${channelStatus}`)
+            logEvolutionInfo('[Webhook:Evolution] Connection update', { instanceName, channelStatus })
             return NextResponse.json({ status: 'ok', event: 'connection_processed' })
         }
 
@@ -142,7 +194,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                 // Get push name (sender's name in WhatsApp)
                 const pushName = message.pushName || message.verifiedBizName || ''
 
-                console.log(`[Webhook:Evolution] Processing message from ${senderPhone}: ${content.substring(0, 50)}...`)
+                logEvolutionInfo('[Webhook:Evolution] Processing message', {
+                    senderPhone,
+                    content,
+                    contentType
+                })
 
                 // Build correct content structure for IncomingMessage
                 const messageContent: any = {
@@ -199,8 +255,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
         return NextResponse.json({ status: 'ok', event: 'unknown_ack' })
 
     } catch (error: any) {
-        console.error('[Webhook:Evolution] Error:', error)
-        return NextResponse.json({ status: 'error', message: error.message }, { status: 500 })
+        logEvolutionWebhookError('[Webhook:Evolution] Error:', error)
+        return NextResponse.json({ status: 'error', message: 'Internal Server Error' }, { status: 500 })
     }
 }
 

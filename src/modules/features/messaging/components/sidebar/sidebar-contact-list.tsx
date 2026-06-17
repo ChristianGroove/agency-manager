@@ -52,17 +52,22 @@ export function SidebarContactList({
     useEffect(() => {
         const fetchUserDataAndChannels = async () => {
             try {
+                let currentPerms = propPermissions;
+                
                 // If perms aren't provided, fetch them once here
-                if (!propPermissions && !localPermissions) {
-                    const perms = await getCurrentUserPermissions()
-                    setLocalPermissions(perms)
+                if (!currentPerms && !localPermissions) {
+                    currentPerms = await getCurrentUserPermissions()
+                    setLocalPermissions(currentPerms)
+                } else if (!currentPerms) {
+                    currentPerms = localPermissions;
                 }
 
                 const allChannels = await getChannels()
                 let availableChannels = allChannels
                 
-                const isRestricted = !hasGlobalView
-                const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
+                const evalPerms = evaluateInboxPermissions(currentPerms);
+                const isRestricted = !evalPerms.hasGlobalView
+                const authorizedChannels = currentPerms?.permissions?.inbox_access || []
 
                 if (isRestricted) {
                     availableChannels = allChannels.filter(c => authorizedChannels.includes(c.id))
@@ -80,7 +85,7 @@ export function SidebarContactList({
             }
         }
         fetchUserDataAndChannels()
-    }, [propPermissions, hasGlobalView]) // Broken circular dependency with effectivePermissions
+    }, [propPermissions]) // Removed hasGlobalView to break the circular dependency
 
     // Debounced search
     const performSearch = async (query: string) => {

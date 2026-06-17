@@ -5,6 +5,7 @@ import { verifyRegistrationResponse } from '@simplewebauthn/server'
 import type { RegistrationResponseJSON } from '@simplewebauthn/types'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logPasskeyRouteError } from '../_utils'
 
 export async function POST(request: NextRequest) {
     try {
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
             })
 
         if (insertError) {
-            console.error('Failed to store credential:', insertError)
+            logPasskeyRouteError('Failed to store credential:', insertError)
             return NextResponse.json(
                 { error: 'Failed to store credential' },
                 { status: 500 }
@@ -94,13 +95,15 @@ export async function POST(request: NextRequest) {
             .from('passkey_challenges')
             .delete()
             .eq('id', challengeData.id)
+            .eq('user_id', user.id)
+            .eq('type', 'registration')
 
         return NextResponse.json({
             verified: true,
             message: 'Passkey registered successfully',
         })
     } catch (error) {
-        console.error('Registration verification error:', error)
+        logPasskeyRouteError('Registration verification error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

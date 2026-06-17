@@ -2,8 +2,44 @@
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+const PUBLIC_AGENT_QA_ERROR = 'Agent QA failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logAgentQaError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiError(error))
+}
 
 export interface AgentQAResult {
     empathy: number
@@ -23,6 +59,54 @@ export interface QAAnalysisResult {
     error?: string
 }
 
+type AgentMessage = {
+    id?: string | null
+    content: string | null
+    created_at?: string | null
+}
+
+type SupabaseServerClient = typeof supabaseAdmin
+
+async function fetchAgentMessages(
+    supabase: SupabaseServerClient,
+    orgId: string,
+    agentId: string,
+    messageLimit: number
+): Promise<AgentMessage[]> {
+    const [senderResult, metadataResult] = await Promise.all([
+        supabase
+            .from('messages')
+            .select('id, content, created_at')
+            .eq('direction', 'outbound' as any)
+            .eq('organization_id', orgId)
+            .eq('sender', agentId)
+            .limit(messageLimit)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('messages')
+            .select('id, content, created_at')
+            .eq('direction', 'outbound' as any)
+            .eq('organization_id', orgId)
+            .eq('metadata->>agent_id', agentId)
+            .limit(messageLimit)
+            .order('created_at', { ascending: false }),
+    ])
+
+    if (senderResult.error) throw senderResult.error
+    if (metadataResult.error) throw metadataResult.error
+
+    const seenIds = new Set<string>()
+    return ([...(senderResult.data || []), ...(metadataResult.data || [])] as AgentMessage[])
+        .filter(message => {
+            if (!message.id) return true
+            if (seenIds.has(message.id)) return false
+            seenIds.add(message.id)
+            return true
+        })
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, messageLimit)
+}
+
 /**
  * Generate a QA performance report for an agent based on their recent messages
  */
@@ -35,13 +119,13 @@ export async function analyzeAgentPerformance(
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "Unauthorized" }
 
-    const supabase = await createClient() // Use standard client for cached data read (RLS applies)
-
     try {
+        const supabase = supabaseAdmin // Use standard client for cached data read (RLS applies)
+
         // 1. Check Cache (Recent report within last 24h?)
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-        const { data: cached } = await supabaseAdmin // Use admin for reliable lookup
+        const { data: cached } = await (supabaseAdmin) // Use admin for reliable lookup
             .from('agent_qa_reports')
             .select('*')
             .eq('organization_id', orgId)
@@ -62,20 +146,9 @@ export async function analyzeAgentPerformance(
 
         // 2. No Cache? Generate New.
         // Fetch agent's recent outgoing messages
-        const { data: messages, error: fetchError } = await supabase
-            .from('messages')
-            .select('content, created_at')
-            .eq('direction', 'outbound' as any) // Cast if type mismatch
-            .or(`sender.eq.${agentId},metadata->>agent_id.eq.${agentId}`) // Try to match broadly
-            // Note: In real app, 'sender' might be 'Agent', need robust agent mapping. 
-            // For now assuming filtering by direction outbound is enough distinct for demo
-            .limit(messageLimit)
-            .order('created_at', { ascending: false })
+        const messages = await fetchAgentMessages(supabase, orgId, agentId, messageLimit)
 
-        // Fallback for demo if no agentId specific messages:
         // In a real scenario, we'd strict filter. For this demo, we'll take last 50 outbound.
-
-        if (fetchError) throw fetchError
 
         if (!messages || messages.length < 5) {
             // Try fetching *any* outbound messages if the specific filter failed
@@ -84,6 +157,7 @@ export async function analyzeAgentPerformance(
                 .from('messages')
                 .select('content')
                 .eq('direction', 'outbound')
+                .eq('organization_id', orgId)
                 .limit(messageLimit)
 
             if (!genericMessages || genericMessages.length < 5) {
@@ -107,7 +181,7 @@ export async function analyzeAgentPerformance(
         const report = result.data as AgentQAResult
 
         // 3. Save to Cache
-        await supabaseAdmin.from('agent_qa_reports').insert({
+        await (supabaseAdmin).from('agent_qa_reports').insert({
             organization_id: orgId,
             agent_id: agentId,
             report: report,
@@ -122,7 +196,7 @@ export async function analyzeAgentPerformance(
         }
 
     } catch (error: any) {
-        console.error('[AgentQA] Error:', error)
-        return { success: false, error: error.message }
+        logAgentQaError('[AgentQA] Error:', error)
+        return { success: false, error: publicAiError(PUBLIC_AGENT_QA_ERROR, error) }
     }
 }

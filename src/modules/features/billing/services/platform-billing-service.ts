@@ -1,11 +1,53 @@
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { EmailService } from "@/modules/features/notifications/email.service"
+import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import crypto from "crypto"
+
+const PUBLIC_PLATFORM_INVOICE_CREATE_ERROR = "No se pudo crear la factura de plataforma"
+const PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR = "No se pudo enviar la factura de plataforma"
+const PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR = "No se pudo activar la suscripcion"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizePlatformBillingError(error: unknown) {
+    if (error instanceof Error) return { name: error.name }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logPlatformBillingError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizePlatformBillingError(error))
+}
+
+function platformBillingErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    if (typeof error === 'string' && error) return error
+    return publicMessage
+}
 
 /**
  * PlatformBillingService handles management-level billing operations
@@ -44,7 +86,7 @@ export class PlatformBillingService {
         // 1.5. Upsert Billing Profile for persistence (Safe)
         if (data.clientTaxId || data.clientAddress || data.clientLegalName) {
             try {
-                await supabaseAdmin
+                await (await createClient())
                     .from('organization_billing_profiles')
                     .upsert({
                         organization_id: data.organizationId,
@@ -54,12 +96,12 @@ export class PlatformBillingService {
                         updated_at: new Date().toISOString()
                     });
             } catch (e) {
-                console.error("Warning: Profile upsert failed (continuing invoice creation):", e);
+                logPlatformBillingError("Warning: Profile upsert failed (continuing invoice creation):", e);
             }
         }
 
         // 2. Insert into saas_platform_invoices
-        const { data: invoice, error } = await supabaseAdmin
+        const { data: invoice, error } = await (await createClient())
             .from('saas_platform_invoices')
             .insert({
                 organization_id: data.organizationId,
@@ -85,8 +127,8 @@ export class PlatformBillingService {
             .single()
 
         if (error) {
-            console.error("Full error creating platform invoice:", error)
-            return { success: false, error: `Error DB: ${error.message}` }
+            logPlatformBillingError("Full error creating platform invoice:", error)
+            return { success: false, error: platformBillingErrorMessage(error, PUBLIC_PLATFORM_INVOICE_CREATE_ERROR) }
         }
 
         return { 
@@ -96,10 +138,11 @@ export class PlatformBillingService {
     }
 
     static async sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Fetch Invoice
-        const { data: invoice, error } = await supabaseAdmin
+        const { data: invoice, error } = await (await createClient())
             .from('saas_platform_invoices')
             .select(`
                 *,
@@ -123,7 +166,7 @@ export class PlatformBillingService {
         }
 
         // 3. Fetch Platform Payment Methods
-        const { data: platformOrg } = await supabaseAdmin
+        const { data: platformOrg } = await (await createClient())
             .from('organizations')
             .select('id')
             .eq('organization_type', 'platform')
@@ -133,20 +176,21 @@ export class PlatformBillingService {
         let pdfPaymentMethods = [];
 
         if (platformOrg) {
-            const { data: methods } = await supabaseAdmin
+            const { data: methods } = await (await createClient())
                 .from('organization_payment_methods')
                 .select('*')
                 .eq('organization_id', platformOrg.id)
                 .eq('is_active', true)
                 .order('display_order', { ascending: true });
             
-            if (methods && methods.length > 0) {
-                pdfPaymentMethods = methods;
+            const safeMethods = sanitizePaymentMethodsForClient(methods || []);
+            if (safeMethods.length > 0) {
+                pdfPaymentMethods = safeMethods;
                 paymentMethodsHtml = `
                     <div style="margin-top: 30px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #fcfcfd;">
                         <h3 style="margin-top: 0; color: #0F172A; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px;">Instrucciones de Pago Manual</h3>
                         <div style="space-y: 12px;">
-                            ${methods.map(m => `
+                            ${safeMethods.map(m => `
                                 <div style="margin-bottom: 15px;">
                                     <div style="font-weight: bold; color: #0F172A; font-size: 14px; margin-bottom: 4px;">${m.title}</div>
                                     <div style="color: #475569; font-size: 13px;">${m.instructions || ''}</div>
@@ -203,7 +247,7 @@ export class PlatformBillingService {
             const signatureRaw = `${reference}${amountInCents}${currency}${integritySecret}`;
             const signature = crypto.createHash('sha256').update(signatureRaw).digest('hex');
             
-            await supabaseAdmin.from('payment_transactions').insert({
+            await (await createClient()).from('payment_transactions').insert({
                 organization_id: invoice.organization_id,
                 reference,
                 amount_in_cents: amountInCents,
@@ -280,7 +324,8 @@ export class PlatformBillingService {
         })
 
         if (!result.success) {
-            return { success: false, error: `Fallo de envío: ${result.error}` }
+            logPlatformBillingError("[PlatformBilling] Email send failed:", result.error)
+            return { success: false, error: platformBillingErrorMessage(result.error, PUBLIC_PLATFORM_INVOICE_EMAIL_ERROR) }
         }
 
         return { success: true }
@@ -291,7 +336,7 @@ export class PlatformBillingService {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        const { data, error, count } = await supabaseAdmin
+        const { data, error, count } = await (await createClient())
             .from('saas_platform_invoices')
             .select(`
                 *,
@@ -310,10 +355,11 @@ export class PlatformBillingService {
     }
 
     static async getPlatformPaymentMethods() {
+        await requireSuperAdmin();
         const supabase = await createClient()
         
         // 1. Find Platform Organization
-        const { data: platformOrg } = await supabaseAdmin
+        const { data: platformOrg } = await (await createClient())
             .from('organizations')
             .select('id')
             .eq('organization_type', 'platform')
@@ -322,19 +368,19 @@ export class PlatformBillingService {
         if (!platformOrg) return [];
 
         // 2. Fetch Active Methods
-        const { data: methods } = await supabaseAdmin
+        const { data: methods } = await (await createClient())
             .from('organization_payment_methods')
             .select('*')
             .eq('organization_id', platformOrg.id)
             .eq('is_active', true)
             .order('display_order', { ascending: true });
         
-        return methods || [];
+        return sanitizePaymentMethodsForClient(methods || []);
     }
 
     static async deletePlatformInvoice(invoiceId: string) {
         await requireSuperAdmin();
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_platform_invoices')
             .delete()
             .eq('id', invoiceId);
@@ -344,6 +390,7 @@ export class PlatformBillingService {
     }
 
     static async manualActivateSubscription(organizationId: string, options?: { expiryDate?: string, monthsToAdd?: number }) {
+        await requireSuperAdmin();
         const supabase = await createClient()
 
         // 1. Security Check
@@ -351,7 +398,7 @@ export class PlatformBillingService {
         if (!user) return { success: false, error: "No autorizado" }
 
         // 2. Fetch Organization Data
-        const { data: org, error: orgFetchError } = await supabaseAdmin
+        const { data: org, error: orgFetchError } = await (await createClient())
             .from('organizations')
             .select('name, subscription_product_id, active_app_id')
             .eq('id', organizationId)
@@ -364,7 +411,7 @@ export class PlatformBillingService {
         // 3. PRODUCT & APP RESOLUTION
         let finalProduct: { id: string, slug: string } | null = null;
         const productRef = org.subscription_product_id;
-        const { data: foundProduct } = await supabaseAdmin
+        const { data: foundProduct } = await (await createClient())
             .from('saas_products')
             .select('id, slug')
             .or(`id.eq.${productRef || '00000000-0000-0000-0000-000000000000'},slug.eq.${productRef || 'none'}`)
@@ -373,7 +420,7 @@ export class PlatformBillingService {
         if (foundProduct) {
             finalProduct = foundProduct;
         } else {
-            const { data: fallback } = await supabaseAdmin
+            const { data: fallback } = await (await createClient())
                 .from('saas_products')
                 .select('id, slug')
                 .order('status', { ascending: false })
@@ -383,7 +430,7 @@ export class PlatformBillingService {
         }
 
         let dialect: 'uuid' | 'slug' | 'app' = 'uuid';
-        const { data: sampleSub } = await supabaseAdmin
+        const { data: sampleSub } = await (await createClient())
             .from('saas_subscriptions')
             .select('plan_id')
             .limit(1)
@@ -418,7 +465,7 @@ export class PlatformBillingService {
 
         // 5. DB Sync
         try {
-            const { error: subError } = await supabaseAdmin
+            const { error: subError } = await (await createClient())
                 .from('saas_subscriptions')
                 .upsert({
                     organization_id: organizationId,
@@ -431,28 +478,29 @@ export class PlatformBillingService {
 
             if (subError) throw subError;
 
-            await supabaseAdmin
+            await (await createClient())
                 .from('organizations')
                 .update({ subscription_status: 'active' })
                 .eq('id', organizationId);
 
             return { success: true };
         } catch (dbError: any) {
-            return { success: false, error: dbError.message };
+            logPlatformBillingError("[PlatformBilling.manualActivateSubscription] Error:", dbError)
+            return { success: false, error: platformBillingErrorMessage(dbError, PUBLIC_SUBSCRIPTION_ACTIVATION_ERROR) };
         }
     }
 
     static async suspendOrganizationSubscription(organizationId: string) {
         await requireSuperAdmin();
         
-        const { error: subError } = await supabaseAdmin
+        const { error: subError } = await (await createClient())
             .from('saas_subscriptions')
             .update({ status: 'suspended', updated_at: new Date().toISOString() })
             .eq('organization_id', organizationId)
 
         if (subError) throw subError;
 
-        const { error: orgError } = await supabaseAdmin
+        const { error: orgError } = await (await createClient())
             .from('organizations')
             .update({ status: 'suspended', updated_at: new Date().toISOString() })
             .eq('id', organizationId)

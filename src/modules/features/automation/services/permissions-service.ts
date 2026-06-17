@@ -6,7 +6,7 @@
  * Manages access control for individual workflows.
  */
 
-import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 export type WorkflowRole = 'viewer' | 'editor' | 'approver' | 'admin';
@@ -27,7 +27,9 @@ export interface WorkflowPermission {
  * Get permissions for a workflow
  */
 export async function getWorkflowPermissions(workflowId: string): Promise<WorkflowPermission[]> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return [];
 
     const { data, error } = await supabase
         .from('workflow_permissions')
@@ -38,7 +40,8 @@ export async function getWorkflowPermissions(workflowId: string): Promise<Workfl
                 raw_user_meta_data
             )
         `)
-        .eq('workflow_id', workflowId);
+        .eq('workflow_id', workflowId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Permissions] Failed to get permissions:', error);
@@ -66,7 +69,7 @@ export async function setWorkflowPermission(
     userId: string,
     role: WorkflowRole
 ): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const organizationId = await getCurrentOrganizationId();
 
     if (!organizationId) return false;
@@ -98,13 +101,16 @@ export async function setWorkflowPermission(
  * Remove permission for a user
  */
 export async function removeWorkflowPermission(workflowId: string, userId: string): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) return false;
 
     const { error } = await supabase
         .from('workflow_permissions')
         .delete()
         .eq('workflow_id', workflowId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
 
     if (error) {
         console.error('[Permissions] Failed to remove permission:', error);
@@ -118,7 +124,7 @@ export async function removeWorkflowPermission(workflowId: string, userId: strin
  * Check if current user has required role
  */
 export async function checkPermission(workflowId: string, requiredRole: WorkflowRole): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;

@@ -4,22 +4,101 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { MetaProvider } from "../providers/meta-provider"
 import { MessagingPersistence } from "../services/persistence"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
+
+const PUBLIC_MESSAGE_SEND_ERROR = "Message could not be sent"
+const PUBLIC_MESSAGE_SIMULATION_ERROR = "Failed to handle message"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeMessageActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'connectionId',
+        'conversationId',
+        'from',
+        'messageId',
+        'organizationId',
+        'recipientPhone',
+        'sender',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeMessageActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logMessageActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeMessageActionLogDetails(details),
+        detail: summarizeMessageActionError(error),
+    })
+}
+
+function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
 
 /**
  * FunciÃ³n para marcar una conversaciÃ³n como leÃ­da.
  */
 export async function markConversationAsRead(id: string) {
     const supabase = await createClient()
+    
+    // First, fetch the org_id so we can include it in the update payload for Realtime RLS
+    const { data: conv } = await supabase.from('conversations').select('organization_id').eq('id', id).single()
+    
     const { error } = await supabase
         .from("conversations")
-        .update({ unread_count: 0 })
+        .update({ 
+            unread_count: 0,
+            ...(conv?.organization_id ? { organization_id: conv.organization_id } : {})
+        })
         .eq("id", id)
 
-    if (error) console.error("[markConversationAsRead] Error:", error)
-    revalidatePath("/inbox")
+    if (error) logMessageActionError("[markConversationAsRead] Error:", error, { conversationId: id })
     return { success: !error }
 }
 
@@ -35,7 +114,7 @@ export async function getMessages(conversationId: string) {
         .order("created_at", { ascending: true })
 
     if (error) {
-        console.error("[getMessages] Error:", error)
+        logMessageActionError("[getMessages] Error:", error, { conversationId })
         return []
     }
     return data as any[]
@@ -71,7 +150,7 @@ async function internalSend({
         if (convError || !conversation) throw new Error("Conversation not found")
 
         const connId = connectionIdOverride || conversation.connection_id
-        const { data: connection } = await supabaseAdmin
+        const { data: connection } = await (await createClient())
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
@@ -93,13 +172,6 @@ async function internalSend({
                 assetId,
                 credentials.verifyToken || 'pixy_webhook_2026'
             )
-        } else if (providerKey === 'evolution_api') {
-            const { EvolutionProvider } = await import("../providers/evolution-provider")
-            provider = new EvolutionProvider({
-                baseUrl: credentials.baseUrl,
-                apiKey: credentials.apiKey,
-                instanceName: credentials.instanceName
-            })
         }
 
         if (!provider) throw new Error(`Unsupported provider type: ${providerKey}`)
@@ -109,9 +181,7 @@ async function internalSend({
             'meta_whatsapp': 'whatsapp',
             'meta_business': 'whatsapp',
             'facebook_page': 'messenger',
-            'instagram_dm': 'instagram',
-            'instagram_dme': 'instagram',
-            'evolution_api': 'evolution'
+            'instagram_dme': 'instagram'
         }
         const dbChannel = channelMap[providerKey] || 'whatsapp'
         const messageId = msgId || crypto.randomUUID()
@@ -124,6 +194,15 @@ async function internalSend({
                 messageId,
                 channel: dbChannel
             })
+
+            // If a human agent replies, automatically disable the bot mode
+            if (sender !== 'System' && conversation.is_bot_active) {
+                const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+                await supabaseAdmin.from('conversations').update({ 
+                    is_bot_active: false,
+                    organization_id: conversation.organization_id // Crucial for Realtime RLS filter!
+                }).eq('id', conversationId)
+            }
         }
 
         const recipientPhone = conversation.metadata?.phone || conversation.metadata?.external_id || (conversation as any).phone
@@ -142,19 +221,30 @@ async function internalSend({
             try {
                 const result = await provider.sendMessage(providerOptions)
                 if (result.success && result.messageId) {
-                    await supabaseAdmin.from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
+                    await (await createClient()).from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
                 } else {
-                    await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: result.error } } as any).eq('id', messageId)
+                    await (await createClient()).from('messages').update({
+                        status: 'failed',
+                        metadata: { error: publicMessageActionError(result.error) }
+                    } as any).eq('id', messageId)
                 }
             } catch (bgError: any) {
-                await supabaseAdmin.from('messages').update({ status: 'failed', metadata: { error: bgError.message } } as any).eq('id', messageId)
+                await (await createClient()).from('messages').update({
+                    status: 'failed',
+                    metadata: { error: publicMessageActionError(bgError) }
+                } as any).eq('id', messageId)
             }
         })
 
         return { success: true, messageId }
     } catch (error: any) {
-        console.error("[internalSend] Error:", error)
-        return { success: false, error: error.message }
+        logMessageActionError("[internalSend] Error:", error, {
+            connectionId: connectionIdOverride,
+            conversationId,
+            messageId: msgId,
+            sender,
+        })
+        return { success: false, error: publicMessageActionError(error) }
     }
 }
 
@@ -232,6 +322,7 @@ export async function simulateInboundMessage(from: string, text: string = "Mensa
         })
         return { success: !!result, error: result ? undefined : "Failed to handle message" }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logMessageActionError('[simulateInboundMessage] Failed:', error, { from })
+        return { success: false, error: publicMessageActionError(error, PUBLIC_MESSAGE_SIMULATION_ERROR) }
     }
 }

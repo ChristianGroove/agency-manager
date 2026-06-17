@@ -3,8 +3,48 @@
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import crypto from "crypto"
+
+const PUBLIC_REFINE_ERROR = 'Draft could not be refined'
+const PUBLIC_SMART_REPLIES_ERROR = 'Smart replies could not be generated'
+const PUBLIC_SENTIMENT_ERROR = 'Sentiment analysis failed'
+const PUBLIC_INTENT_ERROR = 'Intent detection failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeAiActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: (error as any).type,
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function publicAiActionError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function logAiActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeAiActionError(error))
+}
 
 /**
  * TEXT REFINEMENT
@@ -24,8 +64,8 @@ export async function refineDraftContent(content: string): Promise<{ success: bo
         if (refined.startsWith('"') && refined.endsWith('"')) refined = refined.slice(1, -1)
         return { success: true, refined: refined || content }
     } catch (error: any) {
-        console.error('[AI] Refine failed:', error)
-        return { success: false, error: error.message }
+        logAiActionError('[AI] Refine failed:', error)
+        return { success: false, error: publicAiActionError(PUBLIC_REFINE_ERROR, error) }
     }
 }
 
@@ -69,7 +109,8 @@ export async function generateSmartReplies(options: any): Promise<SmartRepliesRe
             usedKnowledge: result.context // RAG Context
         }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logAiActionError('[AI] Smart replies failed:', error)
+        return { success: false, error: publicAiActionError(PUBLIC_SMART_REPLIES_ERROR, error) }
     }
 }
 
@@ -87,7 +128,8 @@ export async function analyzeSentiment(messageContent: string) {
         })
         return { success: true, result: response.data }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logAiActionError('[AI] Sentiment failed:', error)
+        return { success: false, error: publicAiActionError(PUBLIC_SENTIMENT_ERROR, error) }
     }
 }
 
@@ -100,7 +142,7 @@ export async function saveSentimentAnalysis(messageId: string, conversationId: s
     }).eq('id', messageId)
 
     if (result.needsEscalation) {
-        await supabaseAdmin.from('sentiment_alerts').insert({
+        await (await createClient()).from('sentiment_alerts').insert({
             conversation_id: conversationId,
             message_id: messageId,
             alert_type: result.sentiment === 'urgent' ? 'urgent_keywords' : 'negative_spike',
@@ -119,12 +161,13 @@ export async function detectIntent(messageContent: string) {
         const response = await AIEngine.executeTask({ organizationId: orgId, taskType: 'inbox.intent_v1', payload: { message: messageContent } })
         return { success: true, result: response.data }
     } catch (error: any) {
-        return { success: false, error: error.message }
+        logAiActionError('[AI] Intent failed:', error)
+        return { success: false, error: publicAiActionError(PUBLIC_INTENT_ERROR, error) }
     }
 }
 
 export async function saveIntent(conversationId: string, messageId: string, result: any) {
-    await supabaseAdmin.from('conversation_intents').insert({
+    await (await createClient()).from('conversation_intents').insert({
         conversation_id: conversationId,
         message_id: messageId,
         intent: result.intent,
@@ -134,12 +177,12 @@ export async function saveIntent(conversationId: string, messageId: string, resu
 }
 
 export async function applyIntentRouting(conversationId: string, organizationId: string, intent: string, confidence: number) {
-    const { data: rule } = await supabaseAdmin.from('intent_routing_rules').select('*').eq('organization_id', organizationId).eq('intent', intent).eq('is_active', true).single()
+    const { data: rule } = await (await createClient()).from('intent_routing_rules').select('*').eq('organization_id', organizationId).eq('intent', intent).eq('is_active', true).single()
     if (!rule) return
     const updates: any = {}
     if (rule.set_priority) updates.priority = rule.set_priority
     if (Object.keys(updates).length > 0) {
-        await supabaseAdmin.from('conversations').update(updates).eq('id', conversationId)
+        await (await createClient()).from('conversations').update(updates).eq('id', conversationId)
     }
 }
 

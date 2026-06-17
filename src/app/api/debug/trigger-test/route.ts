@@ -1,9 +1,13 @@
+import { requireProductionInternalAccess } from "@/app/api/_guards/request-guards"
 
 import { NextRequest, NextResponse } from "next/server";
 import { automationTrigger } from "@/modules/features/automation/automation-trigger.service";
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 export async function POST(req: NextRequest) {
+    const guard = requireProductionInternalAccess(req)
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { message, conversationId, sender, channel, leadId } = body;

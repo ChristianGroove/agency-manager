@@ -1,6 +1,24 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 
+const PUBLIC_REVENUE_RULE_ERROR = "No se pudo guardar la regla de revenue share"
+const PUBLIC_BILLABLE_EVENT_ERROR = "No se pudo registrar el evento facturable"
+const PUBLIC_SETTLEMENT_CALCULATION_ERROR = "No se pudo calcular la liquidacion"
+const PUBLIC_SETTLEMENT_APPROVAL_ERROR = "No se pudo aprobar la liquidacion"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function revenueServiceErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 /**
  * Service Layer for Billing Module - Revenue Share & Settlements
  * Contains pure business logic and DB interactions.
@@ -25,7 +43,7 @@ export async function getRevenueShareRules() {
 export async function upsertRevenueShareRule(rule: any) {
     const supabase = await createClient()
     const { data, error } = await supabase.from('revenue_share_rules').upsert({ ...rule, updated_at: new Date().toISOString() }).select().single()
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: revenueServiceErrorMessage(error, PUBLIC_REVENUE_RULE_ERROR) }
     return { success: true, data }
 }
 
@@ -69,7 +87,7 @@ export async function registerBillableEvent(params: {
         event_date: new Date().toISOString()
     }).select('id').single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: revenueServiceErrorMessage(error, PUBLIC_BILLABLE_EVENT_ERROR) }
     return { success: true, event_id: data.id }
 }
 
@@ -85,7 +103,7 @@ export async function calculateSettlement(params: { reseller_org_id: string, per
         .lte('event_date', params.period_end + 'T23:59:59Z')
         .contains('reseller_chain', [{ org_id: params.reseller_org_id }])
 
-    if (eventsError) return { success: false, error: eventsError.message }
+    if (eventsError) return { success: false, error: revenueServiceErrorMessage(eventsError, PUBLIC_SETTLEMENT_CALCULATION_ERROR) }
     if (!events?.length) return { success: false, error: 'No hay eventos para liquidar' }
 
     // 2. Process comissions
@@ -114,7 +132,7 @@ export async function calculateSettlement(params: { reseller_org_id: string, per
         breakdown, event_count: events.length, status: 'pending'
     }).select('id').single()
 
-    if (sError) return { success: false, error: sError.message }
+    if (sError) return { success: false, error: revenueServiceErrorMessage(sError, PUBLIC_SETTLEMENT_CALCULATION_ERROR) }
 
     // 4. Update events
     for (const u of eventUpdates) {
@@ -127,7 +145,7 @@ export async function calculateSettlement(params: { reseller_org_id: string, per
 export async function approveSettlement(settlement_id: string, userId: string) {
     const supabase = await createClient()
     const { error } = await supabase.from('settlements').update({ status: 'approved', approved_at: new Date().toISOString(), approved_by: userId }).eq('id', settlement_id).eq('status', 'pending')
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: revenueServiceErrorMessage(error, PUBLIC_SETTLEMENT_APPROVAL_ERROR) }
     return { success: true }
 }
 

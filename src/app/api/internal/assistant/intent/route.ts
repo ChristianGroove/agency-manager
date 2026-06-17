@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAssistantContext } from '@/modules/assistant/context-resolver';
 import { IntentService } from '@/modules/assistant/intent-service';
+import { assistantIntentFailureBody, logAssistantIntentError } from './error-utils';
 
 /**
  * 🔒 INTERNAL GOVERNANCE API
@@ -52,9 +53,9 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error("[Assistant API] Error proposing intent:", error);
+        logAssistantIntentError("[Assistant API] Error proposing intent:", error);
         return NextResponse.json(
-            { error: 'Internal Governance Error', details: error.message },
+            assistantIntentFailureBody('Internal Governance Error', error),
             { status: 500 }
         );
     }

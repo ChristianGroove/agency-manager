@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server';
 import { MetaConnector } from '@/modules/infrastructure/meta/services/connector';
+import { isProductionRuntime, requirePlatformAdminOrInternalSecret } from '@/app/api/_guards/request-guards';
 
 const ACCESS_TOKEN = process.env.META_PERMANENT_ACCESS_TOKEN || '';
 const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '';
 
-export async function POST() {
+function logMetaWebhookSubscribeError(label: string, error: unknown) {
+    if (!isProductionRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
+
+export async function POST(request: Request) {
+    const guard = await requirePlatformAdminOrInternalSecret(request)
+    if (guard) return guard;
+
+    const unauthorized = await requirePlatformAdminOrInternalSecret(request);
+    if (unauthorized) return unauthorized;
+
     if (!ACCESS_TOKEN || !WABA_ID) {
         return NextResponse.json(
             { error: 'Missing Meta Config for Webhooks' },
@@ -25,9 +43,9 @@ export async function POST() {
         });
 
     } catch (error: any) {
-        console.error('[API] Webhook Subscription Error:', error);
+        logMetaWebhookSubscribeError('[API] Webhook Subscription Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Failed to subscribe to webhooks' },
+            { error: 'Failed to subscribe to webhooks' },
             { status: 500 }
         );
     }

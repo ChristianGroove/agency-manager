@@ -6,6 +6,100 @@ import { assignConversation as autoAssignConversation, logAssignment } from "./a
 import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY, DEFAULT_AGENT_CAPACITY } from "./assignment-constants"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
+import { evaluateInboxPermissions } from '@/modules/core/iam/utils/inbox-permissions'
+
+const PUBLIC_ASSIGNMENT_ACTION_ERROR = 'Assignment action failed'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeAssignmentActionLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'agentId',
+        'connectionId',
+        'conversationId',
+        'organizationId',
+        'ruleId',
+        'userId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'targetConnectionIds' && Array.isArray(value)) {
+                return ['targetConnectionIdsCount', value.length]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeAssignmentActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAssignmentActionError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeAssignmentActionLogDetails(details),
+        detail: summarizeAssignmentActionError(error),
+    })
+}
+
+function logAssignmentActionInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeAssignmentActionLogDetails(details))
+}
+
+function publicAssignmentActionError(error: unknown, fallback = PUBLIC_ASSIGNMENT_ACTION_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
 
 /**
  * Update agent's online status and availability
@@ -33,7 +127,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
 
     // Update if exists, insert if new agent
     // IMPORTANT: Use update first to avoid overwriting auto_assign_enabled and max_capacity
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await (await createClient())
         .from('agent_availability')
         .select('agent_id')
         .eq('organization_id', memberData.organization_id)
@@ -42,7 +136,7 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
 
     if (existing) {
         // Update only the status field (preserve other settings)
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('agent_availability')
             .update({
                 status,
@@ -52,12 +146,16 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
             .eq('organization_id', memberData.organization_id)
 
         if (error) {
-            console.error('Failed to update agent status:', error)
-            return { success: false, error: error.message }
+            logAssignmentActionError('Failed to update agent status:', error, {
+                userId: user.id,
+                organizationId: memberData.organization_id,
+                status,
+            })
+            return { success: false, error: publicAssignmentActionError(error) }
         }
     } else {
         // Insert new agent with sensible defaults
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('agent_availability')
             .insert({
                 organization_id: memberData.organization_id,
@@ -70,8 +168,12 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
             })
 
         if (error) {
-            console.error('Failed to insert agent availability:', error)
-            return { success: false, error: error.message }
+            logAssignmentActionError('Failed to insert agent availability:', error, {
+                userId: user.id,
+                organizationId: memberData.organization_id,
+                status,
+            })
+            return { success: false, error: publicAssignmentActionError(error) }
         }
     }
 
@@ -115,7 +217,7 @@ export async function toggleAutoAssign(enabled: boolean) {
         })
 
     if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -170,7 +272,7 @@ export async function updateAgentCapacity(maxCapacity: number) {
         })
 
     if (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox')
@@ -202,37 +304,56 @@ export async function getAgentsWorkload() {
 
     // Fetch availability with channels, and members separately to avoid complex joins across schemas
     const [availabilityResult, membersResult] = await Promise.all([
-        supabaseAdmin
+        (await createClient())
             .from('agent_availability')
             .select('*, agent_channels(channel_type)')
             .eq('organization_id', memberData.organization_id)
             .order('status', { ascending: false }),
-        supabaseAdmin
+        (await createClient())
             .from('organization_members')
             .select('user_id, role, permissions')
             .eq('organization_id', memberData.organization_id)
     ])
 
     if (availabilityResult.error) {
-        console.error('Failed to fetch agents workload:', availabilityResult.error)
-        return { success: false, error: availabilityResult.error.message, data: [] }
+        logAssignmentActionError('Failed to fetch agents workload:', availabilityResult.error, {
+            organizationId: memberData.organization_id,
+        })
+        return { success: false, error: publicAssignmentActionError(availabilityResult.error), data: [] }
     }
 
     const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, { role: m.role, permissions: m.permissions }]));
 
-    // Only include agents who are active members of the organization
-    const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
+    // Only include agents who are active members of the organization AND not a support proxy
+    const activeAgents = availabilityResult.data.filter(agent => {
+        const member = membersLookup.get(agent.agent_id);
+        if (!member) return false;
+        
+        // Exclude platform admins / resellers working in ghost mode
+        const perms = member.permissions as any;
+        if (perms && typeof perms === 'object' && perms.is_support_proxy === true) {
+            return false;
+        }
+        return true;
+    });
 
     // 2. Get profiles for names and avatars
     console.time('agents:profiles_fetch')
-    const { data: profiles, error: profileError } = await supabaseAdmin
+    const { data: profiles, error: profileError } = await (await createClient())
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', activeAgents.map(a => a.agent_id))
+
+    // Fallback to auth.users if profiles is missing/empty
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const userMap = new Map(authUsers?.users?.map(u => [u.id, u]) || [])
     console.timeEnd('agents:profiles_fetch')
 
     if (profileError) {
-        console.error('Error fetching agent profiles:', profileError)
+        logAssignmentActionError('Error fetching agent profiles:', profileError, {
+            organizationId: memberData.organization_id,
+            agentsCount: activeAgents.length,
+        })
     }
 
     const profileMap = new Map((profiles || []).map(p => [p.id, p]))
@@ -240,12 +361,13 @@ export async function getAgentsWorkload() {
     // Debug log
     console.log(`[Inbox] Agentes activos: ${activeAgents.length}, Perfiles encontrados: ${profiles?.length || 0}`)
     if (activeAgents.length > 0 && (!profiles || profiles.length === 0)) {
-        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles.')
+        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles. Usando fallback de auth.users.')
     }
 
     // Assemble agents with their loaded data
     const agentsWithUsers = activeAgents.map((agent) => {
         const profile = profileMap.get(agent.agent_id)
+        const authUser = userMap.get(agent.agent_id)
         const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} }
         
         return {
@@ -253,10 +375,10 @@ export async function getAgentsWorkload() {
             role: memberInfo.role,
             permissions: memberInfo.permissions,
             users: {
-                email: 'N/A', // Email usually in auth.users, keeping N/A to avoid Auth API waterfalls
+                email: authUser?.email || 'N/A',
                 raw_user_meta_data: {
-                    name: profile?.full_name || 'Agente',
-                    avatar_url: profile?.avatar_url
+                    name: profile?.full_name || authUser?.user_metadata?.name || authUser?.user_metadata?.full_name || 'Agente',
+                    avatar_url: profile?.avatar_url || authUser?.user_metadata?.avatar_url
                 }
             }
         }
@@ -322,18 +444,26 @@ export async function upsertAssignmentRule(rule: {
         ruleData.id = rule.id
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('assignment_rules')
         .upsert(ruleData)
         .select()
         .single()
 
     if (error) {
-        console.error('[upsertAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[upsertAssignmentRule] Failed:', error, {
+            organizationId: orgId,
+            ruleId: rule.id,
+            userId: user.id,
+            strategy: rule.strategy,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
-    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
+    logAssignmentActionInfo('[upsertAssignmentRule] Saved rule', {
+        ruleId: data.id,
+        strategy: data.strategy,
+    })
     revalidatePath('/inbox/settings')
     revalidatePath('/crm/settings/channels')
     return { success: true, data }
@@ -343,14 +473,14 @@ export async function upsertAssignmentRule(rule: {
  * Delete an assignment rule
  */
 export async function deleteAssignmentRule(ruleId: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('assignment_rules')
         .delete()
         .eq('id', ruleId)
 
     if (error) {
-        console.error('[deleteAssignmentRule] Failed:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('[deleteAssignmentRule] Failed:', error, { ruleId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -370,7 +500,8 @@ export async function toggleAssignmentRule(ruleId: string, isActive: boolean) {
         .eq('id', ruleId)
 
     if (error) {
-        return { success: false, error: error.message }
+        logAssignmentActionError('[toggleAssignmentRule] Failed:', error, { ruleId })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     revalidatePath('/inbox/settings')
@@ -406,8 +537,11 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
         .insert(skillsData)
 
     if (error) {
-        console.error('Failed to update agent skills:', error)
-        return { success: false, error: error.message }
+        logAssignmentActionError('Failed to update agent skills:', error, {
+            userId: user.id,
+            skillsCount: skills.length,
+        })
+        return { success: false, error: publicAssignmentActionError(error) }
     }
 
     return { success: true }
@@ -433,7 +567,7 @@ export async function getChannelAssignmentRule(connectionId: string) {
 
     if (error) {
         if (error.code !== 'PGRST116') { // Not found code
-            console.error('Error fetching channel rule:', error)
+            logAssignmentActionError('Error fetching channel rule:', error, { connectionId, organizationId: orgId })
         }
         return null
     }
@@ -456,7 +590,8 @@ export async function getAssignmentRules() {
         .order('priority', { ascending: true })
 
     if (error) {
-        return { success: false, error: error.message, data: [] }
+        logAssignmentActionError('[getAssignmentRules] Failed:', error, { organizationId: orgId })
+        return { success: false, error: publicAssignmentActionError(error), data: [] }
     }
 
     return { success: true, data }
@@ -485,47 +620,52 @@ export async function getSidebarAgents() {
         return { success: false, error: 'No organization found', data: [] }
     }
 
-    // 1. Get all members of the organization
-    const { data: members, error: membersError } = await supabaseAdmin
-        .from('organization_members')
-        .select('user_id, role')
-        .eq('organization_id', memberData.organization_id)
+    // 1. Concurrent Fetch for members, availability, profiles, and auth users
+    const [
+        { data: members, error: membersError },
+        { data: availability },
+        { data: profiles },
+        { data: authUsers }
+    ] = await Promise.all([
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', memberData.organization_id),
+        (await createClient()).from('agent_availability').select('agent_id, agent_channels(channel_type)').eq('organization_id', memberData.organization_id),
+        (await createClient()).from('profiles').select('id, full_name, avatar_url, platform_role'),
+        supabaseAdmin.auth.admin.listUsers()
+    ])
 
     if (membersError || !members) {
-        return { success: false, error: membersError?.message || 'Error fetching members', data: [] }
+        if (membersError) {
+            logAssignmentActionError('[getSidebarAgents] Failed to fetch members:', membersError, {
+                organizationId: memberData.organization_id,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(membersError, 'Error fetching members'), data: [] }
     }
 
-    const userIds = members.map(m => m.user_id)
-
-    // 2. Get profiles for names, avatars, and platform roles (to filter super_admins)
-    const { data: profiles } = await supabaseAdmin
-        .from('profiles')
-        .select('id, full_name, avatar_url, platform_role')
-        .in('id', userIds)
-
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+    const authMap = new Map(authUsers?.users.map(u => [u.id, u.user_metadata]) || [])
+    
     const platformAdminIds = new Set(
         profiles?.filter(p => p.platform_role === 'super_admin').map(p => p.id) || []
     )
 
-    // 3. Get channel access from agent_availability
-    const { data: availability } = await supabaseAdmin
-        .from('agent_availability')
-        .select('agent_id, agent_channels(channel_type)')
-        .eq('organization_id', memberData.organization_id)
-        .in('agent_id', userIds)
-
     const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
 
-    // 4. Assemble payload and filter out platform admins
+    // 4. Assemble payload and filter out platform admins and support proxies
     const agents = members
-        .filter(m => !platformAdminIds.has(m.user_id))
+        .filter(m => {
+            const perms = m.permissions as any;
+            if (perms && typeof perms === 'object' && perms.is_support_proxy === true) return false;
+            if (platformAdminIds.has(m.user_id)) return false;
+            return true;
+        })
         .map(m => {
             const profile = profileMap.get(m.user_id)
+            const authMeta = authMap.get(m.user_id)
             return {
                 id: m.user_id,
-                name: profile?.full_name || 'Agente', // Fast local fallback instead of auth fetch
-                avatar_url: profile?.avatar_url || null,
+                name: authMeta?.full_name || authMeta?.name || profile?.full_name || 'Agente', // Fast auth fallback
+                avatar_url: authMeta?.avatar_url || profile?.avatar_url || null,
                 role: m.role,
                 channels: channelsMap.get(m.user_id) || []
             }
@@ -547,7 +687,7 @@ export async function reconcileAllAgentLoads() {
 
     const { reconcileAgentLoad } = await import('./assignment-engine')
 
-    const { data: agents } = await supabaseAdmin
+    const { data: agents } = await (await createClient())
         .from('agent_availability')
         .select('agent_id')
         .eq('organization_id', orgId)
@@ -579,7 +719,7 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
     if (!orgId) return { success: false, error: 'No organization found' }
 
     // 1. Fetch unassigned conversations
-    let convQuery = supabaseAdmin
+    let convQuery = (await createClient())
         .from('conversations')
         .select('id, channel, connection_id')
         .eq('organization_id', orgId)
@@ -593,12 +733,18 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
 
     const { data: unassigned, error: convError } = await convQuery
 
-    if (convError) return { success: false, error: convError.message }
+    if (convError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch conversations:', convError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(convError) }
+    }
     if (!unassigned || unassigned.length === 0) return { success: true, count: 0, message: 'No unassigned conversations' }
 
     // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
     const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString()
-    const { data: agents, error: agentError } = await supabaseAdmin
+    const { data: agents, error: agentError } = await (await createClient())
         .from('agent_availability')
         .select('agent_id, organization_id, last_seen_at')
         .eq('organization_id', orgId)
@@ -606,15 +752,21 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
         .eq('auto_assign_enabled', true)
         .gt('last_seen_at', heartbeatThreshold)
 
-    if (agentError) return { success: false, error: agentError.message }
+    if (agentError) {
+        logAssignmentActionError('[distributeUnassignedConversations] Failed to fetch agents:', agentError, {
+            organizationId: orgId,
+            targetConnectionIds,
+        })
+        return { success: false, error: publicAssignmentActionError(agentError) }
+    }
     if (!agents || agents.length === 0) return { success: false, error: 'No online agents available' }
 
     const agentIds = agents.map(a => a.agent_id)
 
     // 3. Get roles and channel access for these agents
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
-        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
+        (await createClient()).from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
     ])
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]))
@@ -654,13 +806,19 @@ export async function distributeUnassignedConversations(targetConnectionIds?: st
             
             // Push update promise - Wrapped in async to ensure correct Promise type
             assignmentPromises.push((async () => {
-                const { error: updateError } = await supabaseAdmin
+                const { error: updateError } = await (await createClient())
                     .from('conversations')
                     .update({ assigned_to: agent.agent_id, updated_at: new Date().toISOString() })
                     .eq('id', chat.id)
                 
                 if (!updateError) {
                     await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)
+                } else {
+                    logAssignmentActionError('[distributeUnassignedConversations] Failed to assign conversation:', updateError, {
+                        agentId: agent.agent_id,
+                        conversationId: chat.id,
+                        organizationId: orgId,
+                    })
                 }
             })())
             totalDistributed++
@@ -687,7 +845,7 @@ export async function getUnassignedDistributionStats() {
     if (!orgId) return { success: false, data: [] }
 
     // 1. Fetch unassigned conversations summary
-    const { data: convs, error: convError } = await supabaseAdmin
+    const { data: convs, error: convError } = await (await createClient())
         .from('conversations')
         .select('connection_id, channel')
         .eq('organization_id', orgId)
@@ -696,16 +854,24 @@ export async function getUnassignedDistributionStats() {
         .eq('status', 'open')
 
     if (convError || !convs) {
-        return { success: false, error: convError?.message, data: [] }
+        if (convError) {
+            logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch conversations:', convError, {
+                organizationId: orgId,
+            })
+        }
+        return { success: false, error: publicAssignmentActionError(convError), data: [] }
     }
 
-    const { data: connections, error: connError } = await supabaseAdmin
+    const { data: connections, error: connError } = await (await createClient())
         .from('integration_connections')
         .select('id, connection_name, provider_key')
         .eq('organization_id', orgId)
 
     if (connError) {
-        return { success: false, error: connError.message, data: [] }
+        logAssignmentActionError('[getUnassignedDistributionStats] Failed to fetch connections:', connError, {
+            organizationId: orgId,
+        })
+        return { success: false, error: publicAssignmentActionError(connError), data: [] }
     }
 
     const connMap = new Map(connections?.map(c => [c.id, c]) || [])
@@ -729,7 +895,7 @@ export async function getUnassignedDistributionStats() {
             const typeKey = conn?.provider_key || c.channel || 'chat'
             statsMap[id] = {
                 id,
-                name: conn?.connection_name || 'General',
+                name: conn?.connection_name || 'Otros',
                 type: getFriendlyType(typeKey),
                 count: 0
             }
@@ -739,5 +905,117 @@ export async function getUnassignedDistributionStats() {
 
     const data = Object.values(statsMap).sort((a, b) => b.count - a.count)
     return { success: true, data }
+}
+
+export async function getInboxAgentMonitorStats() {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) return { success: false, error: 'No org found' }
+
+        const perms = await getCurrentUserPermissions()
+        const { hasTeamView, hasViewAll, hasGlobalView } = evaluateInboxPermissions(perms || {})
+
+        if (!hasTeamView) return { success: false, error: 'Unauthorized', data: [] }
+
+        let query = supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
+
+        const { data, error } = await query
+        if (error) throw error
+
+        let resultData = data || []
+
+        // FILTER OUT GHOST AGENTS
+        const agentIds = resultData.map((a: any) => a.user_id).filter((id: string) => id !== '00000000-0000-0000-0000-000000000000');
+        if (agentIds.length > 0) {
+            const { data: mems } = await supabase.from('organization_members').select('user_id, permissions').eq('organization_id', orgId).in('user_id', agentIds);
+            const ghostIds = new Set(mems?.filter(m => {
+                const p = m.permissions as any;
+                return p && typeof p === 'object' && p.is_support_proxy === true;
+            }).map(m => m.user_id) || []);
+
+            resultData = resultData.filter((a: any) => !ghostIds.has(a.user_id));
+        }
+
+        // Accurate Unassigned Total: Match the "All" tab in the UI
+        // The UI lists all active, unassigned conversations regardless of direction/status.
+        // We override the unassigned bubble so it matches reality.
+        let unassignedQuery = supabase
+            .from('conversations')
+            .select('connection_id')
+            .eq('organization_id', orgId)
+            .is('assigned_to', null)
+            .neq('status', 'snoozed')
+            .neq('state', 'archived');
+            
+        // Apply RBAC: Isolate "Sin asignar" tray for Admins with restricted channel access
+        const authorizedChannels = perms?.permissions?.inbox_access || [];
+        if (!hasGlobalView && authorizedChannels.length > 0) {
+            unassignedQuery = unassignedQuery.in('connection_id', authorizedChannels);
+        } else if (!hasGlobalView) {
+            unassignedQuery = unassignedQuery.in('connection_id', ['none']); // Block entirely
+        }
+
+        const { data: unassignedList } = await unassignedQuery;
+        
+        const unread_count_by_channel: Record<string, number> = {};
+        let accurateUnassignedCount = 0;
+        
+        if (unassignedList) {
+            accurateUnassignedCount = unassignedList.length;
+            unassignedList.forEach((c: any) => {
+                const cid = c.connection_id;
+                if (cid) {
+                    unread_count_by_channel[cid] = (unread_count_by_channel[cid] || 0) + 1;
+                }
+            });
+        }
+            
+        if (accurateUnassignedCount !== null) {
+            const unassignedIndex = resultData.findIndex((a: any) => a.user_id === '00000000-0000-0000-0000-000000000000');
+            if (unassignedIndex !== -1) {
+                resultData[unassignedIndex].unread_count = accurateUnassignedCount;
+                resultData[unassignedIndex].current_load = accurateUnassignedCount;
+                resultData[unassignedIndex].unread_count_by_channel = unread_count_by_channel;
+            } else if (accurateUnassignedCount > 0) {
+                resultData.unshift({
+                    user_id: '00000000-0000-0000-0000-000000000000',
+                    name: 'Sin asignar',
+                    avatar_url: null,
+                    online: true,
+                    unread_count: accurateUnassignedCount,
+                    unread_count_by_channel,
+                    last_interaction_at: new Date().toISOString(),
+                    current_load: accurateUnassignedCount,
+                    max_capacity: 0,
+                    offline_hours_24h: 0
+                });
+            }
+        }
+
+        if (!hasGlobalView && authorizedChannels.length > 0) {
+            const { data: availability } = await supabase
+                .from('agent_availability')
+                .select('agent_id, agent_channels(channel_type)')
+                .eq('organization_id', orgId)
+            
+            const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
+            const allowedChannels = authorizedChannels
+
+            resultData = resultData.filter((agent: any) => {
+                if (agent.user_id === '00000000-0000-0000-0000-000000000000') return true
+                const agentChannels = channelsMap.get(agent.user_id) || []
+                return agentChannels.some((c: string) => allowedChannels.includes(c))
+            })
+        } else if (!hasGlobalView) {
+            // Block all agents except unassigned if no authorized channels
+            resultData = resultData.filter((agent: any) => agent.user_id === '00000000-0000-0000-0000-000000000000')
+        }
+
+        return { success: true, data: resultData }
+    } catch (e: any) {
+        console.error("Error in getInboxAgentMonitorStats:", e)
+        return { success: false, error: e.message }
+    }
 }
 

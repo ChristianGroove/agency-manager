@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { CreditCard } from "lucide-react"
 import { SplitText } from "@/components/ui/split-text"
 import { PortalHeader } from "./portal-header"
+import { isPortalInvoicePayable } from "../utils/invoice-payability"
 
 interface PortalBillingTabProps {
     invoices: Invoice[]
@@ -23,7 +24,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
     // Calculate Stats
-    const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
+    const payableInvoices = invoices.filter(isPortalInvoicePayable)
 
     const toggleInvoice = (invoiceId: string) => {
         if (settings.enable_multi_invoice_payment === false) {
@@ -37,7 +38,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
 
     const toggleAll = () => {
         if (settings.enable_multi_invoice_payment === false) return
-        const pendingIds = pendingInvoices.map(i => i.id)
+        const pendingIds = payableInvoices.map(i => i.id)
         if (selectedInvoices.length === pendingIds.length) {
             setSelectedInvoices([])
         } else {
@@ -47,7 +48,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
 
     const totalSelected = invoices
         .filter(i => selectedInvoices.includes(i.id))
-        .reduce((acc, curr) => acc + curr.total, 0)
+        .reduce((acc, curr) => acc + Number(curr.total), 0)
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)

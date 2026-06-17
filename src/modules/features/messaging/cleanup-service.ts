@@ -1,18 +1,77 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { MESSAGING_STORAGE_BUCKET } from "./constants";
+import { createClient } from "@/modules/core/database/supabase-server";
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeCleanupError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            statusCode: (error as { statusCode?: unknown }).statusCode,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function sanitizeCleanupLogDetails(details: Record<string, unknown> = {}) {
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'conversationId') {
+                return ['conversationIdPresent', Boolean(value)]
+            }
+
+            if (key === 'pathsToDelete' && Array.isArray(value)) {
+                return ['pathsToDeleteCount', value.length]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function logCleanupInfo(label: string, details: Record<string, unknown> = {}) {
+    console.log(label, sanitizeCleanupLogDetails(details))
+}
+
+function logCleanupError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error, details)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeCleanupLogDetails(details),
+        detail: summarizeCleanupError(error),
+    })
+}
 
 export class MessagingCleanupService {
     /**
      * Identifies and deletes all physical media files associated with a conversation
      */
-    async deleteConversationMedia(conversationId: string) {
-        const supabase = supabaseAdmin;
+    async deleteConversationMedia(conversationId: string, organizationId?: string) {
+        const supabase = (await createClient());
 
         // 1. Fetch all messages with media
-        const { data: messages, error } = await supabase
+        let query = supabase
             .from('messages')
             .select('content, metadata')
             .eq('conversation_id', conversationId);
+
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId);
+        }
+
+        const { data: messages, error } = await query;
 
         if (error || !messages) return;
 
@@ -37,13 +96,13 @@ export class MessagingCleanupService {
 
         // 3. Perform storage deletion
         if (pathsToDelete.length > 0) {
-            console.log(`[MessagingCleanup] Deleting ${pathsToDelete.length} files from storage for conversation ${conversationId}`);
+            logCleanupInfo('[MessagingCleanup] Deleting files from storage', { conversationId, pathsToDelete });
             const { error: storageError } = await supabase.storage
                 .from(MESSAGING_STORAGE_BUCKET)
                 .remove(pathsToDelete);
 
             if (storageError) {
-                console.error(`[MessagingCleanup] Failed to delete files from storage:`, storageError);
+                logCleanupError('[MessagingCleanup] Failed to delete files from storage', storageError, { conversationId, pathsToDelete });
             }
         }
     }
@@ -51,19 +110,25 @@ export class MessagingCleanupService {
     /**
      * Cleans up media for multiple leads
      */
-    async deleteLeadsMedia(leadIds: string[]) {
-        const supabase = supabaseAdmin;
+    async deleteLeadsMedia(leadIds: string[], organizationId?: string) {
+        const supabase = (await createClient());
 
         // Find all conversations for these leads
-        const { data: conversations } = await supabase
+        let query = supabase
             .from('conversations')
             .select('id')
             .in('lead_id', leadIds);
 
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId);
+        }
+
+        const { data: conversations } = await query;
+
         if (!conversations || conversations.length === 0) return;
 
         for (const conv of conversations) {
-            await this.deleteConversationMedia(conv.id);
+            await this.deleteConversationMedia(conv.id, organizationId);
         }
     }
 }

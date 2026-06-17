@@ -1,5 +1,18 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
+const PUBLIC_OPENAI_VERIFICATION_ERROR = "OpenAI credentials could not be verified"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function publicOpenAIError(error: unknown, fallback = PUBLIC_OPENAI_VERIFICATION_ERROR) {
+    if (isDeployedRuntime()) return fallback
+    if (error instanceof Error && error.message) return error.message
+    if (typeof error === 'string' && error) return error
+    return fallback
+}
+
 export class OpenAIAdapter implements IntegrationAdapter {
     key = "openai"
 
@@ -26,12 +39,14 @@ export class OpenAIAdapter implements IntegrationAdapter {
                     const errorData = await response.json().catch(() => ({}))
                     return {
                         isValid: false,
-                        error: errorData.error?.message || `OpenAI Verification Failed: ${response.statusText}`
+                        error: publicOpenAIError(
+                            errorData.error?.message || `OpenAI Verification Failed: ${response.statusText}`
+                        )
                     }
                 }
             });
-        } catch (err: any) {
-            return { isValid: false, error: err.message || "Circuit Breaker: Service unavailable" }
+        } catch (err: unknown) {
+            return { isValid: false, error: publicOpenAIError(err) }
         }
     }
 }

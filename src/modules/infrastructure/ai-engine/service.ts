@@ -1,10 +1,25 @@
-import { createClient } from '@/modules/core/database/supabase-server';
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 // import { getAICredentials } from './actions';
 import { AIRegistry } from './registry';
 import { AIEngineResponse } from './types';
 import { getTaskDefinition } from './tasks/registry';
 import { decrypt } from './encryption';
 import { getCachedResponse, setCachedResponse } from './cache';
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
+}
+
+function logAIEngineError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error);
+        return;
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error });
+}
 
 interface TaskExecutionOptions {
     organizationId: string;
@@ -190,7 +205,7 @@ function resolveModelForTier(tier: 'cheap' | 'standard' | 'premium', providerId:
 
 async function markCredentialExhausted(credId: string) {
     if (credId === 'platform-fallback') return;
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     await supabase.from('ai_credentials').update({ status: 'exhausted' }).eq('id', credId);
 }
 
@@ -200,7 +215,7 @@ async function markCredentialExhausted(credId: string) {
  */
 async function logUsageEvent(orgId: string, providerId: string, response: any, taskType: string) {
     try {
-        const supabase = await createClient();
+        const supabase = supabaseAdmin;
         const totalTokens = response.usage?.total_tokens || 0;
 
         await supabase.from('usage_events').insert({
@@ -224,7 +239,7 @@ async function logUsageEvent(orgId: string, providerId: string, response: any, t
  * Internal helper to fetch credentials without masking (System Use Only)
  */
 async function fetchInternalCredentials(organizationId: string) {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     const { data, error } = await supabase
         .from('ai_credentials')
         .select('*')
@@ -233,7 +248,7 @@ async function fetchInternalCredentials(organizationId: string) {
         .order('priority', { ascending: true });
 
     if (error) {
-        console.error('[AIEngine] Error fetching internal credentials:', error);
+        logAIEngineError('[AIEngine] Error fetching internal credentials:', error);
         return [];
     }
     return data || [];

@@ -3,9 +3,9 @@
 import { OrganizationMember } from "@/types/organization"
 import { cookies } from "next/headers"
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+
 import { cache } from "react"
-import { unstable_cache } from "next/cache"
+
 
 /**
  * Fetch organizations with Server-Side Pagination & Search
@@ -24,7 +24,7 @@ export async function getOrganizationsPaginated(params: {
     if (!currentOrgId) return { data: [], count: 0 }
 
     // Check Role (Must be Reseller or Platform to list orgs generally)
-    const { data: currentOrg } = await supabaseAdmin
+    const { data: currentOrg } = await (await createClient())
         .from('organizations')
         .select('organization_type')
         .eq('id', currentOrgId)
@@ -43,7 +43,7 @@ export async function getOrganizationsPaginated(params: {
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    let query = supabaseAdmin
+    let query = (await createClient())
         .from('organizations')
         .select(`
             *,
@@ -119,7 +119,7 @@ export const getCurrentOrganizationId = cache(async () => {
     const orgCookie = cookieStore.get('pixy_org_id')
 
     if (orgCookie?.value) {
-        const { data: membership } = await supabaseAdmin
+        const { data: membership } = await (await createClient())
             .from('organization_members')
             .select('organization_id')
             .eq('organization_id', orgCookie.value)
@@ -168,7 +168,7 @@ export async function getCurrentOrgName() {
  * Internal: Fetch org details using admin client (Cacheable)
  */
 async function _getOrgDetailsInternal(orgId: string) {
-    const { data } = await supabaseAdmin
+    const { data } = await (await createClient())
         .from('organizations')
         .select(`
             *,
@@ -182,13 +182,8 @@ async function _getOrgDetailsInternal(orgId: string) {
 /**
  * PERF: Cached version of Org Details (5 minutes TTL)
  */
-export const getCachedOrgDetails = unstable_cache(
-    async (orgId: string) => _getOrgDetailsInternal(orgId),
-    ['org-details'],
-    {
-        revalidate: 300,
-        tags: ['organization']
-    }
+export const getCachedOrgDetails = cache(
+    async (orgId: string) => _getOrgDetailsInternal(orgId)
 )
 
 /**
@@ -205,7 +200,7 @@ export async function getCurrentOrgDetails(orgId?: string) {
  * Get the billing profile for an organization
  */
 export async function getOrganizationBillingProfile(orgId: string) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organization_billing_profiles')
         .select('*')
         .eq('organization_id', orgId)
@@ -227,7 +222,7 @@ export async function getOrganizationCardDetails(orgId: string | null) {
 
     const [branding, orgResult, saasSubResult] = await Promise.all([
         import("@/modules/core/branding/actions").then(m => m.getEffectiveBranding(orgId)),
-        supabaseAdmin
+        (await createClient())
             .from('organizations')
             .select(`
                 organization_type,
@@ -238,11 +233,11 @@ export async function getOrganizationCardDetails(orgId: string | null) {
             `)
             .eq('id', orgId)
             .single(),
-        supabaseAdmin
+        (await createClient())
             .from('saas_subscriptions')
             .select(`
                 status,
-                plan:saas_products(name)
+                plan:saas_apps(name)
             `)
             .eq('organization_id', orgId)
             .maybeSingle()
@@ -292,20 +287,53 @@ export async function deleteOrganizations(ids: string[]) {
 
     if (!user) return { success: false, error: "Unauthorized" }
 
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)))
+    if (uniqueIds.length === 0) return { success: true }
+
     const memberships = await getUserOrganizations()
-    const isPrivileged = memberships.some(m =>
+    const privilegedMemberships = memberships.filter(m =>
         ['platform', 'reseller'].includes(m.organization?.organization_type || '') &&
         ['owner', 'admin'].includes(m.role)
     )
+    const hasPlatformAccess = privilegedMemberships.some(m => m.organization?.organization_type === 'platform')
+    const resellerOrgIds = privilegedMemberships
+        .filter(m => m.organization?.organization_type === 'reseller')
+        .map(m => m.organization_id)
 
-    if (!isPrivileged) {
+    if (!hasPlatformAccess && resellerOrgIds.length === 0) {
         return { success: false, error: "No tienes permisos suficientes para eliminar organizaciones." }
     }
 
-    const { error } = await supabaseAdmin
+    if (!hasPlatformAccess) {
+        const { data: targetOrganizations, error: targetError } = await (await createClient())
+            .from('organizations')
+            .select('id, parent_organization_id')
+            .in('id', uniqueIds)
+
+        if (targetError) {
+            console.error("Error validating organizations for deletion:", targetError)
+            return { success: false, error: targetError.message }
+        }
+
+        const targetIds = new Set((targetOrganizations || []).map(org => org.id))
+        const hasOutsideScope = uniqueIds.some(id => !targetIds.has(id)) ||
+            (targetOrganizations || []).some(org => !resellerOrgIds.includes(org.parent_organization_id))
+
+        if (hasOutsideScope) {
+            return { success: false, error: "No tienes permisos suficientes para eliminar organizaciones." }
+        }
+    }
+
+    let deleteQuery = (await createClient())
         .from('organizations')
         .delete()
-        .in('id', ids)
+        .in('id', uniqueIds)
+
+    if (!hasPlatformAccess) {
+        deleteQuery = deleteQuery.in('parent_organization_id', resellerOrgIds)
+    }
+
+    const { error } = await deleteQuery
 
     if (error) {
         console.error("Error deleting organizations:", error)

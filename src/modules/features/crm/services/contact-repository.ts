@@ -140,22 +140,26 @@ export class ContactRepository {
         pageSize: number,
         search: string,
         stageId: string,
-        connectionId?: string,
+        connectionIds?: string[],
+        userId?: string,
         dateFrom?: string,
         dateTo?: string,
-        contactType?: 'lead' | 'client' | 'all'
+        contactType?: 'lead' | 'client' | 'all',
+        allowedChannels?: string[]
     }): Promise<any> {
         // Use the unified RPC
         const { data, error } = await this.supabase.rpc('get_paginated_leads', {
             p_org_id: params.orgId,
             p_search: params.search,
             p_stage_id: params.stageId,
-            p_connection_id: params.connectionId,
+            p_connection_ids: params.connectionIds || null,
+            p_user_id: params.userId || null,
             p_page: params.page,
             p_page_size: params.pageSize,
             p_date_from: params.dateFrom,
             p_date_to: params.dateTo,
-            p_contact_type: params.contactType === 'all' ? null : (params.contactType || 'client')
+            p_contact_type: params.contactType === 'all' ? null : (params.contactType || 'client'),
+            p_allowed_channels: params.allowedChannels || null
         })
 
         if (error) throw error
@@ -173,25 +177,49 @@ export class ContactRepository {
         return (data || []).map(d => d.id)
     }
 
-    async getExportData(orgId: string, limit: number = 10000): Promise<any[]> {
+    async getBasicInfoForOrganization(orgId: string): Promise<any[]> {
         const { data, error } = await this.supabase
             .from('leads')
             .select('name, phone')
             .eq('organization_id', orgId)
             .order('name', { ascending: true })
+
+        if (error) throw error
+        return data || []
+    }
+
+    async getExportData(orgId: string, allowedChannels?: string[], limit: number = 10000): Promise<any[]> {
+        let query = this.supabase
+            .from('leads')
+            .select(`
+                name, phone, email, company_name, status, source, created_at,
+                integration_connections(connection_name)
+            `)
+            .eq('organization_id', orgId)
+            
+        if (allowedChannels !== undefined) {
+            query = query.in('source_connection_id', allowedChannels)
+        }
+
+        const { data, error } = await query
+            .order('created_at', { ascending: false })
             .limit(limit)
 
         if (error) throw error
         return data || []
     }
 
-    async purgeInactive(orgId: string, thresholdIsoDate: string, minScore?: number): Promise<number> {
+    async previewInactive(orgId: string, allowedChannels: string[] | undefined, thresholdIsoDate: string, minScore?: number): Promise<number> {
         let query = this.supabase
             .from('leads')
-            .delete({ count: 'exact' })
+            .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
             .lt('updated_at', thresholdIsoDate)
             .not('status', 'in', '("converted","customer","active_deal")')
+            
+        if (allowedChannels !== undefined) {
+            query = query.in('source_connection_id', allowedChannels)
+        }
 
         if (minScore !== undefined) {
             query = query.lt('score', minScore)
@@ -201,6 +229,28 @@ export class ContactRepository {
         if (error) throw error
         return count || 0
     }
+
+    async purgeInactive(orgId: string, allowedChannels: string[] | undefined, thresholdIsoDate: string, minScore?: number): Promise<number> {
+        let query = this.supabase
+            .from('leads')
+            .delete({ count: 'exact' })
+            .eq('organization_id', orgId)
+            .lt('updated_at', thresholdIsoDate)
+            .not('status', 'in', '("converted","customer","active_deal")')
+
+        if (allowedChannels !== undefined) {
+            query = query.in('source_connection_id', allowedChannels)
+        }
+
+        if (minScore !== undefined) {
+            query = query.lt('score', minScore)
+        }
+
+        const { count, error } = await query
+        if (error) throw error
+        return count || 0
+    }
+
 
     async hardDelete(ids: string[], organizationId: string): Promise<number> {
         const { count, error } = await this.supabase

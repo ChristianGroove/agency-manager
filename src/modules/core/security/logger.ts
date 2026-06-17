@@ -1,4 +1,3 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { headers } from "next/headers"
 import { createClient } from "@/modules/core/database/supabase-server"
 
@@ -34,7 +33,7 @@ export class SecurityLogger {
             const user_agent = headersList.get('user-agent') || 'unknown'
 
             // 3. Write to DB (Using Admin to bypass "No Client Insert" policy)
-            const { error } = await supabaseAdmin.from('security_audit_logs').insert({
+            const { error } = await (await createClient()).from('security_audit_logs').insert({
                 organization_id,
                 actor_id,
                 action,

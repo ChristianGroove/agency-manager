@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { addMinutes, addHours, addDays, isBefore } from "date-fns"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * MARKETING RUNNER (Execution Engine)
@@ -10,7 +10,7 @@ import { addMinutes, addHours, addDays, isBefore } from "date-fns"
  */
 
 export async function runMarketingCycle() {
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
     const now = new Date().toISOString()
     const logs: string[] = []
 

@@ -7,6 +7,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DollarSign, ChevronRight, ChevronDown, FileText, Printer, Calendar, AlertTriangle } from "lucide-react"
 import { useState, Fragment } from "react"
+import { isPortalInvoicePayable } from "../utils/invoice-payability"
 
 interface PortalInvoiceListProps {
     invoices: Invoice[]
@@ -27,7 +28,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
     const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null)
 
     const paymentsEnabled = settings?.enable_portal_payments !== false && settings?.portal_modules?.payments !== false
-    const pendingInvoices = invoices.filter(i => i.status !== 'paid')
+    const payableInvoices = invoices.filter(isPortalInvoicePayable)
 
     // Filter out paid invoices for display as per requirement
     const displayInvoices = invoices.filter(i => i.status !== 'paid')
@@ -62,9 +63,9 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             <input
                                                 type="checkbox"
                                                 className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
-                                                checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
+                                                checked={payableInvoices.length > 0 && selectedInvoices.length === payableInvoices.length}
                                                 onChange={onToggleAll}
-                                                disabled={pendingInvoices.length === 0}
+                                                disabled={payableInvoices.length === 0}
                                                 style={{ color: settings?.portal_primary_color }}
                                             />
                                         )}
@@ -80,6 +81,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                 {displayInvoices.map((invoice, index) => {
                                     const status = getInvoiceStatus(invoice)
                                     const isExpanded = expandedInvoiceId === invoice.id
+                                    const isPayable = isPortalInvoicePayable(invoice)
 
                                     return (
                                         <Fragment key={invoice.id}>
@@ -92,7 +94,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                 onClick={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                                             >
                                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                                    {status !== 'paid' && !compact && paymentsEnabled && onToggle && (
+                                                    {isPayable && !compact && paymentsEnabled && onToggle && (
                                                         <input
                                                             type="checkbox"
                                                             className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
@@ -196,7 +198,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                     {/* Mobile List */}
                     <div className="md:hidden divide-y divide-gray-100">
                         {/* Mobile Select All Header */}
-                        {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && pendingInvoices.length > 0 && (
+                        {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && payableInvoices.length > 0 && (
                             <div
                                 className="p-4 bg-gray-50/50 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
                                 onClick={onToggleAll}
@@ -204,7 +206,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                 <input
                                     type="checkbox"
                                     className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
-                                    checked={selectedInvoices.length === pendingInvoices.length}
+                                    checked={selectedInvoices.length === payableInvoices.length}
                                     onChange={(e) => {
                                         e.stopPropagation()
                                         onToggleAll()
@@ -212,13 +214,14 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     style={{ color: settings?.portal_primary_color }}
                                 />
                                 <span className="text-sm font-medium text-gray-600">
-                                    {selectedInvoices.length === pendingInvoices.length ? "Desmarcar todos" : "Seleccionar todos"}
+                                    {selectedInvoices.length === payableInvoices.length ? "Desmarcar todos" : "Seleccionar todos"}
                                 </span>
                             </div>
                         )}
                         {displayInvoices.map((invoice, index) => {
                             const status = getInvoiceStatus(invoice)
                             const isExpanded = expandedInvoiceId === invoice.id
+                            const isPayable = isPortalInvoicePayable(invoice)
 
                             return (
                                 <div key={invoice.id}>
@@ -230,7 +233,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                         style={{ animationDelay: `${index * 50}ms` }}
                                         onClick={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                                     >
-                                        {status !== 'paid' && paymentsEnabled && onToggle && (
+                                        {isPayable && paymentsEnabled && onToggle && (
                                             <div
                                                 className="p-1 -ml-1 flex items-center justify-center"
                                                 onClick={(e) => e.stopPropagation()}

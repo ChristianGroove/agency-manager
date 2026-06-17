@@ -7,7 +7,7 @@ import { Loader2, Download, Share2, Mail, ArrowLeft, UserPlus, Edit } from "luci
 
 import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
-import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
+import { convertLeadToClientAction } from "@/modules/features/crm/crm-actions"
 
 import { QuoteTemplate } from "@/modules/features/quotes/components/quote-template"
 import { QuoteShareSheet } from "@/modules/features/quotes/components/quote-share-sheet"
@@ -46,7 +46,7 @@ export default function QuoteDetailPage() {
             const { getQuote } = await import("@/modules/features/quotes/quotes-actions")
             const res = await getQuote(id)
 
-            if (res.error || !res.data) {
+            if (!res.success) {
                 console.error("Error fetching quote:", res.error)
                 return
             }
@@ -76,7 +76,7 @@ export default function QuoteDetailPage() {
 
         setConverting(true)
         try {
-            const res = await convertLeadToClient(quote.lead_id)
+            const res = await convertLeadToClientAction(quote.lead_id)
             if (!res.success || !res.data) throw new Error(res.error)
 
             alert(`¡Prospecto convertido exitosamente! Ahora es el cliente: ${res.data.name}`)
@@ -174,11 +174,8 @@ export default function QuoteDetailPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    quoteId: quote.id,
                     email,
-                    quoteNumber: quote.number,
-                    clientName: quote.client?.name || quote.lead?.name,
-                    total: `$${quote.total.toLocaleString()}`,
-                    date: new Date(quote.date).toLocaleDateString(),
                     pdfBase64,
                     organizationId: quote.organization_id
                 }),

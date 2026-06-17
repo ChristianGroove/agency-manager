@@ -15,7 +15,10 @@ export class ConversationNode {
         const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger');
 
         const executionId = this.contextManager.get('executionId') as string;
-        const orgId = this.contextManager.get('organization_id') as string;
+        const orgId = (
+            this.contextManager.get('organization_id') ||
+            this.contextManager.get('organizationId')
+        ) as string | undefined;
 
         const logToDb = async (level: string, message: string, details?: any) => {
             if (!executionId || !orgId) return;
@@ -54,11 +57,16 @@ export class ConversationNode {
             console.error(`[ConversationNode] 🚀 Executing ${action} for ${conversationId}`);
 
             // Fetch latest metadata to avoid stale overrides
-            const { data: latestConv } = await supabaseAdmin
+            let latestConversationQuery = supabaseAdmin
                 .from('conversations')
                 .select('metadata, is_bot_active, status, lead_id')
-                .eq('id', conversationId)
-                .single();
+                .eq('id', conversationId);
+
+            if (orgId) {
+                latestConversationQuery = latestConversationQuery.eq('organization_id', orgId);
+            }
+
+            const { data: latestConv } = await latestConversationQuery.single();
 
             const updates: any = {
                 updated_at: new Date().toISOString()
@@ -96,11 +104,16 @@ export class ConversationNode {
                 }
             }
 
-            const { error, data: updatedData } = await supabaseAdmin
+            let updateConversationQuery = supabaseAdmin
                 .from('conversations')
                 .update(updates)
-                .eq('id', conversationId)
-                .select();
+                .eq('id', conversationId);
+
+            if (orgId) {
+                updateConversationQuery = updateConversationQuery.eq('organization_id', orgId);
+            }
+
+            const { error, data: updatedData } = await updateConversationQuery.select();
 
             if (error) {
                 console.error(`[ConversationNode] ❌ Update Error:`, error);

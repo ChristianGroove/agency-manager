@@ -53,6 +53,8 @@ export class TagService {
     }
 
     async getLeadTags(leadId: string): Promise<any[]> {
+        await this.ensureLeadInOrganization(leadId)
+
         const { data, error } = await this.supabase
             .from('crm_lead_tags')
             .select(`
@@ -71,6 +73,9 @@ export class TagService {
     }
 
     async toggleLeadTag(leadId: string, tagId: string): Promise<{ action: 'added' | 'removed' }> {
+        await this.ensureLeadInOrganization(leadId)
+        await this.ensureTagInOrganization(tagId)
+
         // Check if exists
         const { data: existing } = await this.supabase
             .from('crm_lead_tags')
@@ -97,6 +102,8 @@ export class TagService {
     // --- SYSTEM HELPERS ---
 
     async addTagByName(leadId: string, tagName: string): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
+
         // Find or create tag
         let { data: tag } = await this.supabase
             .from('crm_tags')
@@ -119,6 +126,8 @@ export class TagService {
     }
 
     async removeTagByName(leadId: string, tagName: string): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
+
         const { data: tag } = await this.supabase
             .from('crm_tags')
             .select('id')
@@ -136,9 +145,35 @@ export class TagService {
     }
 
     async clearLeadTags(leadId: string): Promise<void> {
+        await this.ensureLeadInOrganization(leadId)
+
         await this.supabase
             .from('crm_lead_tags')
             .delete()
             .eq('lead_id', leadId)
+    }
+
+    private async ensureLeadInOrganization(leadId: string): Promise<void> {
+        const { data, error } = await this.supabase
+            .from('leads')
+            .select('id')
+            .eq('id', leadId)
+            .eq('organization_id', this.orgId)
+            .maybeSingle()
+
+        if (error) throw error
+        if (!data) throw new Error('Lead not found')
+    }
+
+    private async ensureTagInOrganization(tagId: string): Promise<void> {
+        const { data, error } = await this.supabase
+            .from('crm_tags')
+            .select('id')
+            .eq('id', tagId)
+            .eq('organization_id', this.orgId)
+            .maybeSingle()
+
+        if (error) throw error
+        if (!data) throw new Error('Tag not found')
     }
 }

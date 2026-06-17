@@ -1,7 +1,6 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { RestoOrderHistoryItem } from "./resto-orders-actions"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Función para que la PWA del cliente pueda recuperar sus pedidos
@@ -11,7 +10,7 @@ import { RestoOrderHistoryItem } from "./resto-orders-actions"
 export async function getRestoGuestOrders(messageIds: string[], orgId: string): Promise<RestoOrderHistoryItem[]> {
     if (!messageIds || messageIds.length === 0) return []
 
-    const supabase = supabaseAdmin
+    const supabase = (await createClient())
 
     try {
         const { data: messages, error } = await supabase

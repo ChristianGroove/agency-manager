@@ -1,8 +1,7 @@
 "use server"
-
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Get all organizations with their SaaS subscription data
@@ -10,7 +9,7 @@ import { revalidatePath } from "next/cache"
 export async function getAllPlatformSubscriptions() {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (await createClient())
         .from('organizations')
         .select(`
             id,
@@ -52,7 +51,7 @@ export async function adminUpdateSubscription(subscriptionId: string, updates: {
 }) {
     await requireSuperAdmin()
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_subscriptions')
         .update({
             ...updates,
@@ -75,7 +74,7 @@ export async function adminUpdateSpaceDetails(appId: string, updates: {
 }) {
     await requireSuperAdmin()
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_apps')
         .update({
             ...updates,
@@ -95,7 +94,7 @@ export async function adminUpdateSpaceDetails(appId: string, updates: {
 export async function updateSubscriptionStatusAdmin(subscriptionId: string, status: any) {
     await requireSuperAdmin()
 
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('saas_subscriptions')
         .update({
             status,
@@ -116,7 +115,7 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
     await requireSuperAdmin()
 
     // 1. Verify organization exists and has no active subscription
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await (await createClient())
         .from('saas_subscriptions')
         .select('id')
         .eq('organization_id', orgId)
@@ -125,7 +124,7 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
     if (existing) throw new Error('Esta organización ya tiene una suscripción activa.')
 
     // 2. Create the subscription
-    const { data: sub, error } = await supabaseAdmin
+    const { data: sub, error } = await (await createClient())
         .from('saas_subscriptions')
         .insert({
             organization_id: orgId,
@@ -142,7 +141,7 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
     if (error) throw error
 
     // 3. Ensure the organization has the correct active_app_id
-    await supabaseAdmin
+    await (await createClient())
         .from('organizations')
         .update({ active_app_id: appId })
         .eq('id', orgId)

@@ -75,7 +75,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
             setMetaConfig(config)
 
             // If we have a token, fetch assets
-            if (config.access_token) {
+            if (config.has_access_token) {
                 const assets = await getMetaAssets(client.id)
                 if (assets.success && assets.data) {
                     setAvailableAssets(assets.data)
@@ -146,7 +146,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
     }
 
     const isEffectiveEnabled = controlMode === 'auto' ? true : isForceEnabled
-    const isMetaConnected = !!metaConfig?.access_token
+    const isMetaConnected = !!metaConfig?.has_access_token
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
@@ -233,9 +233,6 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                                                 </div>
                                                             ) : (
                                                                 <form action={handleSaveMetaConnection} className="space-y-4">
-                                                                    {/* Hidden Token Field (Preserve existing or set new) */}
-                                                                    <input type="hidden" name="access_token" value={metaConfig?.access_token || ''} />
-
                                                                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 flex items-center gap-3">
                                                                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                                                                             <CheckCircle2 className="w-4 h-4" />

@@ -1,8 +1,93 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
+
+const PUBLIC_CONVERSATION_MANAGEMENT_ERROR = "Conversation management action failed"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeConversationManagementLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'clientId',
+        'conversationId',
+        'leadId',
+        'organizationId',
+        'phone',
+        'userId',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (key === 'conversationIds' && Array.isArray(value)) {
+                return ['conversationIdsCount', value.length]
+            }
+
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeConversationManagementError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logConversationManagementError(label: string, error: unknown, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        if (Object.keys(details).length > 0) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...sanitizeConversationManagementLogDetails(details),
+        detail: summarizeConversationManagementError(error),
+    })
+}
+
+function publicConversationManagementError(error: unknown, fallback = PUBLIC_CONVERSATION_MANAGEMENT_ERROR) {
+    if (isDeployedRuntime()) {
+        return fallback
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+
+    if (error && typeof error === 'object') {
+        const message = (error as { message?: unknown }).message
+        if (typeof message === 'string' && message.length > 0) {
+            return message
+        }
+    }
+
+    if (typeof error === 'string' && error.length > 0) {
+        return error
+    }
+
+    return fallback
+}
 
 /**
  * Assign a conversation to a specific user/agent
@@ -10,12 +95,39 @@ import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 export async function assignConversation(conversationId: string, userId: string | null) {
     if (!userId) {
         const supabase = await createClient()
-        const { error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: "Unauthorized" }
+
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { data: current, error: currentError } = await supabaseAdmin
+            .from('conversations')
+            .select('organization_id')
+            .eq('id', conversationId)
+            .single()
+
+        if (currentError || !current) {
+            if (currentError) console.error("[assignConversation] Read failed:", currentError, { conversationId })
+            return { success: false, error: "Conversation not found" }
+        }
+
+        const { data: membership } = await supabase
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', current.organization_id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+        if (!membership && !(await isSuperAdmin(user.id))) {
+            return { success: false, error: "Unauthorized" }
+        }
+
+        const { error } = await supabaseAdmin
             .from('conversations')
             .update({ assigned_to: null, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
+            .eq('organization_id', current.organization_id)
 
-        if (error) return { success: false, error: error.message }
+        if (error) return { success: false, error: publicConversationManagementError(error) }
         revalidatePath('/inbox')
         return { success: true }
     }
@@ -25,8 +137,9 @@ export async function assignConversation(conversationId: string, userId: string 
     // Get current sender if possible (authenticated user)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
 
-    const result = await transferConversation(conversationId, user?.id || null, userId, "Manual assignment")
+    const result = await transferConversation(conversationId, user.id, userId, "Manual assignment")
 
     if (!result.success) {
         return { success: false, error: result.error }
@@ -43,19 +156,39 @@ export async function updateConversationState(
     conversationId: string,
     updates: { state?: string; status?: string }
 ) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
     const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+
+    const { data: current, error: currentError } = await supabaseAdmin
+        .from('conversations')
+        .select('organization_id, metadata')
+        .eq('id', conversationId)
+        .single()
+
+    if (currentError || !current) {
+        if (currentError) console.error("[updateConversationState] Read failed:", currentError, { conversationId })
+        return { success: false, error: "Conversation not found" }
+    }
+
+    const { data: membership } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('organization_id', current.organization_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+    if (!membership && !(await isSuperAdmin(user.id))) {
+        return { success: false, error: "Unauthorized" }
+    }
 
     const safeUpdates: any = { updated_at: new Date().toISOString() }
     if (updates.state) safeUpdates.state = updates.state
     if (updates.status) safeUpdates.status = updates.status
 
     if (updates.status === 'closed' || updates.state === 'archived') {
-        const { data: current } = await supabaseAdmin
-            .from('conversations')
-            .select('metadata')
-            .eq('id', conversationId)
-            .single()
-
         safeUpdates.metadata = {
             ...(current?.metadata || {}),
             resolved_at: new Date().toISOString()
@@ -68,11 +201,12 @@ export async function updateConversationState(
         .from('conversations')
         .update(safeUpdates)
         .eq('id', conversationId)
+        .eq('organization_id', current.organization_id)
         .select()
 
     if (error) {
-        console.error("[updateConversationState] FAILED:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("[updateConversationState] FAILED:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/crm/inbox')
@@ -85,11 +219,16 @@ export async function updateConversationState(
  */
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { data: current } = await supabase
         .from('conversations')
         .select('metadata')
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
         .single()
 
     const { error } = await supabase
@@ -106,10 +245,11 @@ export async function archiveConversation(conversationId: string) {
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to archive conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to archive conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -121,15 +261,20 @@ export async function archiveConversation(conversationId: string) {
  */
 export async function unarchiveConversation(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'active', updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to unarchive conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to unarchive conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -141,15 +286,20 @@ export async function unarchiveConversation(conversationId: string) {
  */
 export async function markAsSpam(conversationId: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'spam', updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to mark as spam:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to mark as spam:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -161,15 +311,20 @@ export async function markAsSpam(conversationId: string) {
  */
 export async function setConversationPriority(conversationId: string, priority: 'urgent' | 'high' | 'normal' | 'low') {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ priority, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to set priority:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to set priority:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -181,15 +336,20 @@ export async function setConversationPriority(conversationId: string, priority: 
  */
 export async function tagConversation(conversationId: string, tags: string[]) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ tags, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to tag conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to tag conversation:", error, { conversationId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -206,10 +366,15 @@ export async function searchConversations(query: string, filters?: {
     tags?: string[]
 }) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized", data: [] }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized", data: [] }
 
     let queryBuilder = supabase
         .from('conversations')
         .select('*, leads(name, phone)')
+        .eq('organization_id', orgId)
         .order('last_message_at', { ascending: false })
 
     if (query) {
@@ -235,8 +400,12 @@ export async function searchConversations(query: string, filters?: {
     const { data, error } = await queryBuilder
 
     if (error) {
-        console.error("Failed to search conversations:", error)
-        return { success: false, error: error.message, data: [] }
+        logConversationManagementError("Failed to search conversations:", error, {
+            queryPresent: Boolean(query),
+            assignedToPresent: Boolean(filters?.assignedTo),
+            tagsCount: filters?.tags?.length || 0,
+        })
+        return { success: false, error: publicConversationManagementError(error), data: [] }
     }
 
     return { success: true, data }
@@ -247,15 +416,20 @@ export async function searchConversations(query: string, filters?: {
  */
 export async function bulkArchiveConversations(conversationIds: string[]) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     const { error } = await supabase
         .from('conversations')
         .update({ state: 'archived', updated_at: new Date().toISOString() })
         .in('id', conversationIds)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to bulk archive:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to bulk archive:", error, { conversationIds })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -267,15 +441,63 @@ export async function bulkArchiveConversations(conversationIds: string[]) {
  */
 export async function bulkAssignConversations(conversationIds: string[], userId: string | null) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    const uniqueConversationIds = Array.from(new Set(conversationIds))
+
+    if (userId && uniqueConversationIds.length > 0) {
+        const { data: conversations, error: conversationError } = await supabase
+            .from('conversations')
+            .select('id, organization_id')
+            .eq('organization_id', orgId)
+            .in('id', uniqueConversationIds)
+
+        if (conversationError) {
+            console.error("Failed to validate bulk assign conversations:", conversationError, { conversationIds, userId })
+            return { success: false, error: "Failed to validate conversations" }
+        }
+
+        if (!conversations || conversations.length !== uniqueConversationIds.length) {
+            return { success: false, error: "Unauthorized" }
+        }
+
+        const organizationIds = Array.from(new Set(
+            conversations
+                .map(conversation => conversation.organization_id)
+                .filter((organizationId): organizationId is string => typeof organizationId === 'string' && organizationId.length > 0)
+        ))
+
+        if (organizationIds.length === 0) return { success: false, error: "Unauthorized" }
+
+        const { data: memberships, error: membershipError } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', userId)
+            .in('organization_id', organizationIds)
+
+        if (membershipError) {
+            console.error("Failed to validate bulk assign target:", membershipError, { conversationIds, userId })
+            return { success: false, error: "Failed to validate target user" }
+        }
+
+        const membershipOrganizationIds = new Set(memberships?.map(membership => membership.organization_id) || [])
+        if (organizationIds.some(organizationId => !membershipOrganizationIds.has(organizationId))) {
+            return { success: false, error: "Target agent is not a member of every selected organization" }
+        }
+    }
 
     const { error } = await supabase
         .from('conversations')
         .update({ assigned_to: userId, updated_at: new Date().toISOString() })
-        .in('id', conversationIds)
+        .in('id', uniqueConversationIds)
+        .eq('organization_id', orgId)
 
     if (error) {
-        console.error("Failed to bulk assign:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to bulk assign:", error, { conversationIds, userId })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')
@@ -295,19 +517,22 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         return { success: false, error: 'Must provide either lead_id, client_id, or phone' }
     }
 
-    // Helper to get Org ID from authenticated user
-    const getOrgId = async () => {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) return null
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { success: false, error: "Unauthorized" }
 
-        const { data: member } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-            .limit(1)
-            .single()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found for user.' }
 
-        return member?.organization_id
+    if (connection_id) {
+        const { data: connection } = await supabase
+            .from('integration_connections')
+            .select('id')
+            .eq('id', connection_id)
+            .eq('organization_id', orgId)
+            .eq('status', 'active')
+            .maybeSingle()
+
+        if (!connection) return { success: false, error: 'Channel not found for organization' }
     }
 
     // Resolve Entity
@@ -322,6 +547,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
             .from('leads')
             .select('id, organization_id')
             .eq('phone', normalizedPhone)
+            .eq('organization_id', orgId)
             .single()
 
         if (existingClient) {
@@ -333,6 +559,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('id, organization_id')
                 .eq('phone', normalizedPhone)
+                .eq('organization_id', orgId)
                 .single()
 
             if (existingLead) {
@@ -340,9 +567,6 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 resolvedOrgId = existingLead.organization_id
             } else {
                 // C. Create new Lead (Quick Contact)
-                const orgId = await getOrgId()
-                if (!orgId) return { success: false, error: 'No organization found for user.' }
-
                 const { data: newLead, error: leadError } = await supabase
                     .from('leads')
                     .insert({
@@ -355,7 +579,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                     .select()
                     .single()
 
-                if (leadError) return { success: false, error: 'Failed to create lead: ' + leadError.message }
+                if (leadError) return { success: false, error: publicConversationManagementError(leadError, 'Failed to create lead') }
                 finalLeadId = newLead.id
                 resolvedOrgId = orgId
             }
@@ -367,6 +591,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         .from('conversations')
         .select('*')
         .neq('state', 'archived')
+        .eq('organization_id', orgId)
         .order('last_message_at', { ascending: false })
         .limit(1)
 
@@ -393,6 +618,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('organization_id')
                 .eq('id', finalClientId)
+                .eq('organization_id', orgId)
                 .single()
             organization_id = client?.organization_id || null
         } else if (finalLeadId) {
@@ -400,6 +626,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                 .from('leads')
                 .select('organization_id')
                 .eq('id', finalLeadId)
+                .eq('organization_id', orgId)
                 .single()
             organization_id = lead?.organization_id || null
         }
@@ -407,6 +634,10 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
 
     if (!organization_id) {
         return { success: false, error: 'Entity not found or missing organization context' }
+    }
+
+    if (organization_id !== orgId) {
+        return { success: false, error: 'Unauthorized' }
     }
 
     // 3. Create new conversation
@@ -428,8 +659,13 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         .single()
 
     if (error) {
-        console.error("Failed to create conversation:", error)
-        return { success: false, error: error.message }
+        logConversationManagementError("Failed to create conversation:", error, {
+            clientId: finalClientId,
+            leadId: finalLeadId,
+            organizationId: organization_id,
+            phone,
+        })
+        return { success: false, error: publicConversationManagementError(error) }
     }
 
     revalidatePath('/inbox')

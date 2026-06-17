@@ -34,6 +34,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('id', metadata.connectionId)
+                .in('status', ['active', 'connected'])
                 .single()
 
             if (data) return { connectionId: data.id, organizationId: data.organization_id, connection: data }
@@ -112,13 +113,22 @@ export class ChannelResolver {
             const igId = metadata?.instagramBusinessId || metadata?.instagram_business_id
             if (!igId) return null
 
-            const { data: direct } = await supabase
+            const { data: directConnections } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .in('provider_key', ['instagram_dm', 'instagram_dme'])
                 .in('status', ['active', 'connected'])
-                .or(`metadata->>asset_id.eq.${igId},metadata->>page_id.eq.${igId},metadata->>pageId.eq.${igId},metadata->>instagram_business_id.eq.${igId},metadata->>id.eq.${igId}`)
-                .maybeSingle()
+
+            const direct = Array.isArray(directConnections)
+                ? directConnections.find((c: any) => {
+                    const metadata = c.metadata || {}
+                    return metadata.asset_id === igId ||
+                        metadata.page_id === igId ||
+                        metadata.pageId === igId ||
+                        metadata.instagram_business_id === igId ||
+                        metadata.id === igId
+                })
+                : null
 
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
 
@@ -142,20 +152,6 @@ export class ChannelResolver {
                            assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram') ||
                            c.provider_key === 'instagram_dme' // Support for DME provider variants
                 })
-                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
-            }
-        }
-
-        // 5. Evolution API Matching
-        if (channel === 'evolution' && metadata?.instance) {
-            const { data: connections } = await supabase
-                .from('integration_connections')
-                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
-                .eq('provider_key', 'evolution_api')
-                .in('status', ['active', 'connected'])
-
-            if (connections) {
-                const matched = connections.find((c: any) => c.credentials?.instanceName === metadata.instance)
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
             }
         }

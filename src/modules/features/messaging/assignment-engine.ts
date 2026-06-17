@@ -1,6 +1,84 @@
 "use server"
+import { createClient } from "@/modules/core/database/supabase-server";
 
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function sanitizeAssignmentLogDetails(details: Record<string, unknown> = {}) {
+    const sensitiveKeys = new Set([
+        'agentId',
+        'agentPool',
+        'connectionId',
+        'conversationId',
+        'convId',
+        'organizationId',
+        'orgId',
+        'ruleId',
+        'ruleName',
+    ])
+
+    return Object.fromEntries(
+        Object.entries(details).map(([key, value]) => {
+            if (sensitiveKeys.has(key)) {
+                return [`${key}Present`, Boolean(value)]
+            }
+
+            return [key, value]
+        })
+    )
+}
+
+function summarizeAssignmentError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            type: 'object',
+            code: (error as { code?: unknown }).code,
+            hasMessage: typeof (error as { message?: unknown }).message === 'string',
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logAssignmentInfo(label: string, details: Record<string, unknown> = {}) {
+    if (!isDeployedRuntime()) {
+        console.log(label, details)
+        return
+    }
+
+    console.log(label, sanitizeAssignmentLogDetails(details))
+}
+
+function logAssignmentWarning(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.warn(label, error, details)
+        else console.warn(label, error)
+        return
+    }
+
+    console.warn(label, {
+        ...(details ? sanitizeAssignmentLogDetails(details) : {}),
+        detail: summarizeAssignmentError(error),
+    })
+}
+
+function logAssignmentError(label: string, error: unknown, details?: Record<string, unknown>) {
+    if (!isDeployedRuntime()) {
+        if (details) console.error(label, error, details)
+        else console.error(label, error)
+        return
+    }
+
+    console.error(label, {
+        ...(details ? sanitizeAssignmentLogDetails(details) : {}),
+        detail: summarizeAssignmentError(error),
+    })
+}
 
 /**
  * ASSIGNMENT ENGINE - High Level Architecture
@@ -34,14 +112,14 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 export async function assignConversation(conversationId: string): Promise<string | null> {
 
     // 1. Get conversation details
-    const { data: conv, error: convError } = await supabaseAdmin
+    const { data: conv, error: convError } = await (await createClient())
         .from('conversations')
         .select('*, leads(*)')
         .eq('id', conversationId)
         .single()
 
     if (convError || !conv) {
-        console.error('[AssignmentEngine] Failed to fetch conversation:', convError)
+        logAssignmentError('[AssignmentEngine] Failed to fetch conversation:', convError, { conversationId })
         return null
     }
 
@@ -72,20 +150,27 @@ export async function assignConversation(conversationId: string): Promise<string
     // NOTE: DB trigger `trigger_update_agent_load` handles incrementing/decrementing
     //       agent load automatically when `assigned_to` changes.
     if (agentId) {
-        await supabaseAdmin
+        await (await createClient())
             .from('conversations')
             .update({ assigned_to: agentId, updated_at: new Date().toISOString() })
             .eq('id', conversationId)
 
         await logAssignment(conversationId, agentId, ruleId, strategy, orgId)
-        console.log(`[AssignmentEngine] ✅ Assigned to agent: ${agentId} via ${rule ? 'rule: ' + rule.name : 'fallback balance'}`)
+        logAssignmentInfo('[AssignmentEngine] Assigned conversation', {
+            agentId,
+            conversationId,
+            organizationId: orgId,
+            ruleId,
+            ruleName: rule?.name,
+            strategy,
+        })
     }
 
     return agentId
 }
 
 async function findMatchingRule(conv: any) {
-    const { data: rules } = await supabaseAdmin
+    const { data: rules } = await (await createClient())
         .from('assignment_rules')
         .select('*')
         .eq('organization_id', conv.organization_id)
@@ -168,19 +253,17 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
         case 'specific-agent':
             const specificAgents = rule.assign_to
             if (!specificAgents || specificAgents.length === 0) {
-                console.warn('[AssignmentEngine] Specific agent rule has no agents in assign_to:', rule.name)
+                logAssignmentWarning(
+                    '[AssignmentEngine] Specific agent rule has no agents in assign_to:',
+                    new Error('specific_agent_rule_empty'),
+                    { ruleId: rule.id, ruleName: rule.name, organizationId: conv.organization_id }
+                )
                 return null
             }
             
-            let agentId: string | null = null
-            // If only one agent, assign directly
-            if (specificAgents.length === 1) {
-                agentId = specificAgents[0]
-            } else {
-                // If multiple agents, use Round Robin rotation among them
-                agentId = await roundRobinAssignment(orgId, specificAgents, conv.channel, conv.connection_id, 'specific-agent')
-            }
-            return agentId
+            // Assign via Round Robin to ensure availability checks (online, capacity)
+            // are strictly enforced even if there is only 1 specific agent.
+            return await roundRobinAssignment(orgId, specificAgents, conv.channel, conv.connection_id, 'specific-agent')
         default:
             return null
     }
@@ -189,7 +272,7 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
 async function roundRobinAssignment(orgId: string, agentPool?: string[], channelType?: string, connectionId?: string, method: string = 'round-robin'): Promise<string | null> {
     // 1. Try Atomic RPC first (prevents race conditions)
     try {
-        const { data: nextAgentId, error: rpcError } = await supabaseAdmin.rpc('fn_get_next_agent_atomic', {
+        const { data: nextAgentId, error: rpcError } = await (await createClient()).rpc('fn_get_next_agent_atomic', {
             p_org_id: orgId,
             p_strategy: method,
             p_agent_pool: agentPool && agentPool.length > 0 ? agentPool : null,
@@ -200,15 +283,29 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
         if (!rpcError && nextAgentId) {
             return nextAgentId;
         }
-        if (rpcError) console.warn('[AssignmentEngine] RPC Atomic Round Robin skipped/failed:', rpcError.message);
+        if (rpcError) {
+            logAssignmentWarning('[AssignmentEngine] RPC Atomic Round Robin skipped/failed:', rpcError, {
+                agentPool,
+                channelType,
+                connectionId,
+                organizationId: orgId,
+                strategy: method,
+            });
+        }
     } catch (e) {
-        console.error('[AssignmentEngine] RPC Error:', e);
+        logAssignmentError('[AssignmentEngine] RPC Error:', e, {
+            agentPool,
+            channelType,
+            connectionId,
+            organizationId: orgId,
+            strategy: method,
+        });
     }
 
     // 2. Manual Fallback Logic (Legacy/Non-Atomic)
     const methods = method === 'round-robin' ? ['round-robin', 'auto-rule'] : [method]
     
-    let lastQuery = supabaseAdmin
+    let lastQuery = (await createClient())
         .from('assignment_history')
         .select('assigned_to, conversations!inner(organization_id)')
         .eq('conversations.organization_id', orgId)
@@ -223,7 +320,7 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     const { data: lastAssignment } = await lastQuery.maybeSingle()
 
     // Get available agents (scoped to org)
-    let agentQuery = supabaseAdmin
+    let agentQuery = (await createClient())
         .from('agent_availability')
         .select('agent_id, organization_id, last_seen_at')
         .eq('status', 'online')
@@ -239,16 +336,16 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     if (!agents || agents.length === 0) return null
 
-    // Heartbeat validation (3 minutes threshold)
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    // Heartbeat validation (5 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
 
     if (activeAgents.length === 0) return null;
 
     // Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -266,14 +363,22 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     // Find next agent in rotation
     const lastIndex = qualifiedAgents.findIndex(a => a.agent_id === lastAssignment?.assigned_to)
-    const nextIndex = (lastIndex + 1) % qualifiedAgents.length
+    
+    if (lastIndex === -1 && lastAssignment?.assigned_to) {
+        // If last assigned agent went offline, find the next one alphabetically
+        // to prevent resetting rotation to index 0 unfairly
+        const nextAgentIndex = qualifiedAgents.findIndex(a => a.agent_id > lastAssignment.assigned_to)
+        return nextAgentIndex !== -1 ? qualifiedAgents[nextAgentIndex].agent_id : qualifiedAgents[0].agent_id
+    }
+
+    const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % qualifiedAgents.length
     return qualifiedAgents[nextIndex].agent_id
 }
 
 async function loadBalanceAssignment(orgId: string, agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
     // 1. Try Atomic RPC first
     try {
-        const { data: nextAgentId, error: rpcError } = await supabaseAdmin.rpc('fn_get_next_agent_atomic', {
+        const { data: nextAgentId, error: rpcError } = await (await createClient()).rpc('fn_get_next_agent_atomic', {
             p_org_id: orgId,
             p_strategy: 'load-balance',
             p_agent_pool: agentPool && agentPool.length > 0 ? agentPool : null,
@@ -284,13 +389,27 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
         if (!rpcError && nextAgentId) {
             return nextAgentId;
         }
-        if (rpcError) console.warn('[AssignmentEngine] RPC Atomic Load Balance skipped/failed:', rpcError.message);
+        if (rpcError) {
+            logAssignmentWarning('[AssignmentEngine] RPC Atomic Load Balance skipped/failed:', rpcError, {
+                agentPool,
+                channelType,
+                connectionId,
+                organizationId: orgId,
+                strategy: 'load-balance',
+            });
+        }
     } catch (e) {
-        console.error('[AssignmentEngine] RPC Error:', e);
+        logAssignmentError('[AssignmentEngine] RPC Error:', e, {
+            agentPool,
+            channelType,
+            connectionId,
+            organizationId: orgId,
+            strategy: 'load-balance',
+        });
     }
 
     // 2. Manual Fallback Logic
-    let query = supabaseAdmin
+    let query = (await createClient())
         .from('agent_availability')
         .select('agent_id, current_load, max_capacity, status, organization_id, last_seen_at')
         .eq('organization_id', orgId)
@@ -306,16 +425,16 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
 
     if (error || !agents || agents.length === 0) return null
 
-    // Heartbeat validation (3 minutes threshold)
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    // Heartbeat validation (5 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
 
     if (activeAgents.length === 0) return null;
 
     // 2. Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
     const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
@@ -355,7 +474,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     }
 
     // Find agents with matching skills
-    let query = supabaseAdmin
+    let query = (await createClient())
         .from('agent_skills')
         .select('agent_id, skill, proficiency')
         .in('skill', requiredSkills)
@@ -385,14 +504,14 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 
     // Check availability and CHANNEL ACCESS of top agents
     // Fetch roles for bypass
-    const { data: members } = await supabaseAdmin
+    const { data: members } = await (await createClient())
         .from('organization_members')
         .select('user_id, role, permissions')
         .in('user_id', sortedAgents)
 
     const memberMap = new Map((members || []).map(m => [m.user_id, m]));
 
-    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
     for (const agentId of sortedAgents) {
         const member = memberMap.get(agentId);
@@ -400,10 +519,12 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 
         // Validation: Channel Access (Skip if Admin)
         if (channelType && !isAdmin) {
-            const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
+            const perms = member?.permissions as any || {};
+            const legacyInboxAccess = perms.inbox_access || perms.modules?.inbox?.inbox_access || perms.inbox?.inbox_access || [];
+            const hasExplicitAccess = legacyInboxAccess.includes(connectionId);
             
             if (!hasExplicitAccess) {
-                const { data: hasAccess } = await supabaseAdmin
+                const { data: hasAccess } = await (await createClient())
                     .from('agent_channels')
                     .select('agent_id')
                     .eq('agent_id', agentId)
@@ -415,7 +536,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
             }
         }
 
-        const { data: availability } = await supabaseAdmin
+        const { data: availability } = await (await createClient())
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity, last_seen_at')
             .eq('agent_id', agentId)
@@ -436,7 +557,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
 }
 
 export async function logAssignment(convId: string, agentId: string, ruleId: string | null, method: string, orgId: string) {
-    const { error } = await supabaseAdmin
+    const { error } = await (await createClient())
         .from('assignment_history')
         .insert({
             organization_id: orgId,
@@ -448,7 +569,13 @@ export async function logAssignment(convId: string, agentId: string, ruleId: str
 
     if (error) {
         // CRITICAL: Ensure organization_id is logged. Missing this ID broke rotation in previous versions.
-        console.error('[AssignmentEngine] ❌ Failed to log assignment history (Required for rotation):', error.message, { convId, agentId, method, orgId })
+        logAssignmentError('[AssignmentEngine] Failed to log assignment history (Required for rotation):', error, {
+            agentId,
+            conversationId: convId,
+            method,
+            organizationId: orgId,
+            ruleId,
+        })
     }
 }
 
@@ -457,7 +584,7 @@ export async function logAssignment(convId: string, agentId: string, ruleId: str
  * Call this if load counts drift out of sync.
  */
 export async function reconcileAgentLoad(agentId: string): Promise<{ previous: number; actual: number }> {
-    const { count } = await supabaseAdmin
+    const { count } = await (await createClient())
         .from('conversations')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_to', agentId)
@@ -466,7 +593,7 @@ export async function reconcileAgentLoad(agentId: string): Promise<{ previous: n
 
     const actualLoad = count || 0
 
-    const { data: agent } = await supabaseAdmin
+    const { data: agent } = await (await createClient())
         .from('agent_availability')
         .select('current_load')
         .eq('agent_id', agentId)
@@ -475,11 +602,15 @@ export async function reconcileAgentLoad(agentId: string): Promise<{ previous: n
     const previousLoad = agent?.current_load || 0
 
     if (previousLoad !== actualLoad) {
-        await supabaseAdmin
+        await (await createClient())
             .from('agent_availability')
             .update({ current_load: actualLoad })
             .eq('agent_id', agentId)
-        console.log(`[AssignmentEngine] Reconciled load for ${agentId}: ${previousLoad} → ${actualLoad}`)
+        logAssignmentInfo('[AssignmentEngine] Reconciled agent load', {
+            agentId,
+            actualLoad,
+            previousLoad,
+        })
     }
 
     return { previous: previousLoad, actual: actualLoad }

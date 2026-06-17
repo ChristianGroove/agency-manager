@@ -1,6 +1,7 @@
 
 import { createClient } from "@/modules/core/database/supabase-server";
 import { AssistantContext } from "../types";
+import { logAssistantInfo } from "../safe-logging";
 
 /**
  * SEND PAYMENT REMINDER ACTION
@@ -19,7 +20,11 @@ export async function sendPaymentReminderAction(
     context: AssistantContext,
     injectedClient?: any
 ) {
-    console.log(`[ACTION] Send Payment Reminder | User: ${context.user_id} | Invoice: ${params.invoice_id}`);
+    logAssistantInfo("[ACTION] Send Payment Reminder", {
+        userId: context.user_id,
+        organizationId: context.tenant_id,
+        invoiceId: params.invoice_id,
+    });
 
     // 1. Validate Params
     if (!params.invoice_id) {
@@ -50,7 +55,11 @@ export async function sendPaymentReminderAction(
     // TODO: Integrate with real Email/WhatsApp provider (Wompi/Resend)
     // For now, we simulate success and return payload for the Assistant to confirm.
 
-    console.log(`[ACTION] SIMULATION: Sending reminder to Client ${invoice.client_id} for Amount ${invoice.total_amount}`);
+    logAssistantInfo("[ACTION] SIMULATION: Sending payment reminder", {
+        clientId: invoice.client_id,
+        invoiceId: invoice.id,
+        amountPresent: invoice.total_amount != null,
+    });
 
     return {
         success: true,

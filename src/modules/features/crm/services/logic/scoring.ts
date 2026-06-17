@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { ScoreFactors } from "@/types/crm-advanced";
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Unified Scoring Logic for CRM Leads
@@ -11,7 +11,7 @@ export async function calculateLeadScore(leadId: string): Promise<{
     breakdown: Record<string, number>;
 }> {
     // Get lead data
-    const { data: lead, error: leadError } = await supabaseAdmin
+    const { data: lead, error: leadError } = await (await createClient())
         .from('leads')
         .select('*')
         .eq('id', leadId)
@@ -27,11 +27,11 @@ export async function calculateLeadScore(leadId: string): Promise<{
         { count: emailsExchanged },
         { count: legacyCompletedTasks }
     ] = await Promise.all([
-        supabaseAdmin.from('messages').select('id, conversations!inner(lead_id)', { count: 'exact', head: true }).eq('conversations.lead_id', leadId),
-        supabaseAdmin.from('lead_activities').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
-        supabaseAdmin.from('lead_tasks').select('id', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed'),
-        supabaseAdmin.from('lead_emails').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
-        supabaseAdmin.from('crm_tasks').select('id', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed')
+        (await createClient()).from('messages').select('id, conversations!inner(lead_id)', { count: 'exact', head: true }).eq('conversations.lead_id', leadId),
+        (await createClient()).from('lead_activities').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
+        (await createClient()).from('lead_tasks').select('id', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed'),
+        (await createClient()).from('lead_emails').select('id', { count: 'exact', head: true }).eq('lead_id', leadId),
+        (await createClient()).from('crm_tasks').select('id', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed')
     ]);
 
     let score = 0;

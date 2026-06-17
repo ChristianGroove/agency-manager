@@ -1,7 +1,6 @@
 // AuditLog Service - Immutable audit trail for billing operations
 // PHASE 1: Core implementation
-
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { createClient } from "@/modules/core/database/supabase-server";
 
 /**
  * Audit Action Types
@@ -82,7 +81,7 @@ export class AuditLogService {
      * Log an audit entry (immutable - only inserts allowed)
      */
     async log(input: CreateAuditLogInput): Promise<AuditLogEntry> {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('billing_audit_log')
             .insert({
                 action: input.action,
@@ -112,7 +111,7 @@ export class AuditLogService {
      * Get audit history for a document
      */
     async getDocumentHistory(documentId: string): Promise<AuditLogEntry[]> {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('billing_audit_log')
             .select('*')
             .eq('document_id', documentId)
@@ -133,7 +132,7 @@ export class AuditLogService {
         organizationId: string,
         limit: number = 100
     ): Promise<AuditLogEntry[]> {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .from('billing_audit_log')
             .select('*')
             .eq('organization_id', organizationId)

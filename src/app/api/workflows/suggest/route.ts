@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AIWorkflowAnalyzer, WorkflowContext } from '@/modules/features/automation/ai-analyzer';
 import { WorkflowNode, WorkflowEdge } from '@/modules/features/automation/engine';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
+import { validateWorkflowGraph } from '../_workflow-validation';
+import { logWorkflowRouteError, workflowRouteErrorBody } from '../_error-utils';
+
+const PUBLIC_WORKFLOW_SUGGESTIONS_ERROR = 'Workflow suggestions failed';
 
 export async function POST(request: NextRequest) {
     try {
@@ -27,16 +31,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const graphValidation = validateWorkflowGraph(nodes, edges);
+        if ('error' in graphValidation) {
+            return NextResponse.json({ error: graphValidation.error }, { status: 400 });
+        }
+
         // Extract variables from nodes
-        const variables = extractVariables(nodes);
+        const variables = extractVariables(graphValidation.nodes);
 
         // Get last node
-        const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+        const lastNode = graphValidation.nodes.length > 0
+            ? graphValidation.nodes[graphValidation.nodes.length - 1]
+            : null;
 
         // Build context
         const context: WorkflowContext = {
-            nodes,
-            edges: edges || [],
+            nodes: graphValidation.nodes,
+            edges: graphValidation.edges,
             lastNode,
             variables
         };
@@ -48,15 +59,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             suggestions,
             context: {
-                nodeCount: nodes.length,
+                nodeCount: graphValidation.nodes.length,
                 variables: variables.slice(0, 5) // Limit to first 5
             }
         });
 
-    } catch (error) {
-        console.error('[Suggest API] Error:', error);
+    } catch (error: unknown) {
+        logWorkflowRouteError('[Suggest API] Error:', error);
         return NextResponse.json(
-            { error: (error as Error).message },
+            workflowRouteErrorBody(error, PUBLIC_WORKFLOW_SUGGESTIONS_ERROR),
             { status: 500 }
         );
     }

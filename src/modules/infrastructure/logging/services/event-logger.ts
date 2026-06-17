@@ -1,4 +1,5 @@
-import { supabase } from "@/modules/core/database/supabase"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { logger } from "@/modules/core/logging/logger"
 
 type EventTrigger = 'system' | 'user' | 'webhook'
 
@@ -17,7 +18,7 @@ interface LogEventParams {
  */
 export async function logDomainEvent(params: LogEventParams) {
     try {
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from('domain_events')
             .insert({
                 entity_type: params.entity_type,
@@ -29,9 +30,9 @@ export async function logDomainEvent(params: LogEventParams) {
             })
 
         if (error) {
-            console.error("Failed to log domain event:", error)
+            logger.error("Failed to log domain event to database", error, { event_type: params.event_type })
         }
     } catch (err) {
-        console.error("Exception logging domain event:", err)
+        logger.error("Exception logging domain event to database", err, { event_type: params.event_type })
     }
 }

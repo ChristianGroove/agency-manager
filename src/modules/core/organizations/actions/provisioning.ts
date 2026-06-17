@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getAuthRedirectBase } from "@/modules/core/iam/services/auth-utils"
 import { getSecureAuthLink } from "@/modules/core/iam/services/auth-link-utils"
@@ -76,7 +75,7 @@ export async function createOrganization(formData: {
         } else {
             let creatorType = null;
             if (creatorOrgId) {
-                const { data: creatorOrg } = await supabaseAdmin
+                const { data: creatorOrg } = await (await createClient())
                     .from('organizations')
                     .select('organization_type')
                     .eq('id', creatorOrgId)
@@ -91,7 +90,7 @@ export async function createOrganization(formData: {
             } else if (creatorType === 'reseller' && newOrgType === 'client') {
                 computedParentId = creatorOrgId
             } else if (!computedParentId && newOrgType === 'client') {
-                const { data: platformOrg } = await supabaseAdmin
+                const { data: platformOrg } = await (await createClient())
                     .from('organizations')
                     .select('id')
                     .eq('organization_type', 'platform')
@@ -110,7 +109,7 @@ export async function createOrganization(formData: {
         let orgError = null;
 
         let subscriptionProductId = null;
-        const { data: defaultProduct } = await supabaseAdmin
+        const { data: defaultProduct } = await (await createClient())
             .from('saas_products')
             .select('id')
             .order('is_active', { ascending: false })
@@ -120,7 +119,7 @@ export async function createOrganization(formData: {
         subscriptionProductId = defaultProduct?.id;
 
         while (attempts < maxAttempts) {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .from('organizations')
                 .insert({
                     name: formData.name,
@@ -161,16 +160,17 @@ export async function createOrganization(formData: {
         const shouldAddCreator = !formData.admin_email;
 
         if (shouldAddCreator) {
-            const { error: memberError } = await supabaseAdmin
+            const { error: memberError } = await (await createClient())
                 .from('organization_members')
                 .insert({
                     organization_id: newOrg.id,
                     user_id: user.id,
-                    role: 'owner'
+                    role: 'owner',
+                    permissions: { is_support_proxy: true }
                 })
 
             if (memberError) throw memberError
-            await supabaseAdmin.from('organizations').update({ owner_id: user.id }).eq('id', newOrg.id)
+            await (await createClient()).from('organizations').update({ owner_id: user.id }).eq('id', newOrg.id)
         }
 
         try {
@@ -189,7 +189,7 @@ export async function createOrganization(formData: {
                 if (!emailRegex.test(formData.admin_email)) {
                     invitationError = 'Formato de email inválido'
                 } else {
-                    const { data: linkData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
+                    const { data: linkData, error: inviteError } = await (await createClient()).auth.admin.generateLink({
                         type: 'invite',
                         email: formData.admin_email,
                         options: {
@@ -206,14 +206,14 @@ export async function createOrganization(formData: {
 
                     if (inviteError) {
                         if (inviteError.message.includes('already been registered') || inviteError.status === 422) {
-                            const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+                            const { data: { users } } = await (await createClient()).auth.admin.listUsers()
                             const adminEmailLower = (formData.admin_email || "").toLowerCase()
                             const existingUser = (users || []).find((u: any) => u.email?.toLowerCase() === adminEmailLower)
                             
                             if (existingUser) {
                                 invitedUser = existingUser
                                 if (!existingUser.email_confirmed_at) {
-                                    const { data: reLink, error: reError } = await supabaseAdmin.auth.admin.generateLink({
+                                    const { data: reLink, error: reError } = await (await createClient()).auth.admin.generateLink({
                                         type: 'magiclink',
                                         email: formData.admin_email as string,
                                         options: { redirectTo: `${getAuthRedirectBase()}/auth/confirm?next=/onboarding` }
@@ -239,13 +239,13 @@ export async function createOrganization(formData: {
                     }
 
                     if (invitedUser && inviteLink) {
-                        await supabaseAdmin.from('organization_members').insert({
+                        await (await createClient()).from('organization_members').insert({
                             organization_id: newOrg.id,
                             user_id: invitedUser.id,
                             role: 'owner'
                         })
-                        await supabaseAdmin.from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
-                        await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
+                        await (await createClient()).from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
+                        await (await createClient()).auth.admin.updateUserById(invitedUser.id, {
                             user_metadata: { 
                                 full_name: 'Admin',
                                 onboarding_completed: false 
@@ -286,7 +286,7 @@ export async function createOrganization(formData: {
             }
         }
 
-        await supabaseAdmin.rpc('assign_app_to_organization', {
+        await (await createClient()).rpc('assign_app_to_organization', {
             p_organization_id: newOrg.id,
             p_app_id: formData.app_id,
             p_enable_optional_modules: true
@@ -303,7 +303,7 @@ export async function createOrganization(formData: {
             await switchOrganization(newOrg.id)
         }
 
-        await supabaseAdmin.auth.admin.updateUserById(
+        await (await createClient()).auth.admin.updateUserById(
             user.id,
             { user_metadata: { onboarding_completed: true } }
         )

@@ -6,6 +6,21 @@ import { encrypt } from "./encryption"
 import { revalidatePath } from "next/cache"
 import { AICredential } from "./types"
 
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
+}
+
+function logAICredentialError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, error instanceof Error
+        ? { name: error.name }
+        : { type: typeof error })
+}
+
 /**
  * Get all credentials for the current org (Masked)
  */
@@ -26,7 +41,7 @@ export async function getAICredentials(organizationId?: string) {
         .order('priority', { ascending: true })
 
     if (error) {
-        console.error('Error fetching AI credentials:', error)
+        logAICredentialError('Error fetching AI credentials:', error)
         return []
     }
 
@@ -39,11 +54,6 @@ export async function getAICredentials(organizationId?: string) {
     }))
 }
 
-/**
- * Get available providers catalog
- */
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
-
 // ...
 
 /**
@@ -51,7 +61,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
  */
 export async function getAIProviders() {
     // Use Admin client to bypass RLS for public catalog
-    const { data } = await supabaseAdmin.from('ai_providers').select('*')
+    const { data } = await (await createClient()).from('ai_providers').select('*')
     return data || []
 }
 

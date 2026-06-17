@@ -49,6 +49,7 @@ import { BrandingProvider } from "@/components/providers/branding-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ViewContextProvider } from "@/modules/features/caa/context/view-context";
 import { ClientInit } from "@/modules/features/caa/client-init";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 export default async function RootLayout({
   children,
@@ -72,20 +73,22 @@ export default async function RootLayout({
       >
         <StyledJsxRegistry>
           <AuthRefresher />
-          <BrandingProvider initialBranding={branding}>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <ViewContextProvider>
-                <ClientInit />
-                {children}
-              </ViewContextProvider>
-              <Toaster />
-            </ThemeProvider>
-          </BrandingProvider>
+          <QueryProvider>
+            <BrandingProvider initialBranding={branding}>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                <ViewContextProvider>
+                  <ClientInit />
+                  {children}
+                </ViewContextProvider>
+                <Toaster />
+              </ThemeProvider>
+            </BrandingProvider>
+          </QueryProvider>
         </StyledJsxRegistry>
       </body>
     </html>

@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -139,7 +138,7 @@ export async function getAllAppsAdmin(): Promise<AppWithDetails[]> {
     await requireSuperAdmin()
 
     try {
-        const { data: apps } = await supabaseAdmin
+        const { data: apps } = await (await createClient())
             .from('saas_apps')
             .select('*')
             .order('sort_order', { ascending: true })
@@ -149,17 +148,17 @@ export async function getAllAppsAdmin(): Promise<AppWithDetails[]> {
         // Enrich with details
         const enriched = await Promise.all(
             apps.map(async (app) => {
-                const { data: modules } = await supabaseAdmin
+                const { data: modules } = await (await createClient())
                     .from('saas_app_modules')
                     .select('*')
                     .eq('app_id', app.id)
 
-                const { data: addOns } = await supabaseAdmin
+                const { data: addOns } = await (await createClient())
                     .from('saas_app_add_ons')
                     .select('*')
                     .eq('app_id', app.id)
 
-                const { count: orgCount } = await supabaseAdmin
+                const { count: orgCount } = await (await createClient())
                     .from('organizations')
                     .select('id', { count: 'exact', head: true })
                     .eq('active_app_id', app.id)
@@ -188,7 +187,7 @@ export async function getTemplatesForVertical(vertical: string) {
     await requireSuperAdmin()
 
     try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .rpc('get_recommended_templates_for_vertical', { p_vertical: vertical })
 
         if (error) throw error
@@ -217,7 +216,7 @@ export async function createApp(input: {
     await requireSuperAdmin()
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_apps')
             .insert({
                 id: `app_${input.slug.replace(/-/g, '_')}`,
@@ -255,7 +254,7 @@ export async function updateApp(appId: string, updates: Partial<SaasApp>) {
     await requireSuperAdmin()
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_apps')
             .update({
                 ...updates,
@@ -286,7 +285,7 @@ export async function deleteApp(appId: string) {
 
     try {
         // Check if any orgs are using this app
-        const { count } = await supabaseAdmin
+        const { count } = await (await createClient())
             .from('organizations')
             .select('id', { count: 'exact', head: true })
             .eq('active_app_id', appId)
@@ -298,7 +297,7 @@ export async function deleteApp(appId: string) {
             }
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_apps')
             .delete()
             .eq('id', appId)
@@ -331,7 +330,7 @@ export async function addModuleToApp(input: {
     await requireSuperAdmin()
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_app_modules')
             .insert({
                 app_id: input.app_id,
@@ -366,7 +365,7 @@ export async function removeModuleFromApp(appModuleId: string) {
 
     try {
         // 1. Get the module context
-        const { data: moduleToDelete } = await supabaseAdmin
+        const { data: moduleToDelete } = await (await createClient())
             .from('saas_app_modules')
             .select('app_id, module_key')
             .eq('id', appModuleId)
@@ -375,7 +374,7 @@ export async function removeModuleFromApp(appModuleId: string) {
         if (!moduleToDelete) throw new Error("MÃ³dulo de Space no encontrado")
 
         // 2. Get all modules currently in this app
-        const { data: appModules } = await supabaseAdmin
+        const { data: appModules } = await (await createClient())
             .from('saas_app_modules')
             .select('module_key')
             .eq('app_id', moduleToDelete.app_id)
@@ -397,7 +396,7 @@ export async function removeModuleFromApp(appModuleId: string) {
         }
 
         // 4. Proceed with deletion
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_app_modules')
             .delete()
             .eq('id', appModuleId)
@@ -430,7 +429,7 @@ export async function assignAppToOrganization(input: {
     await requireSuperAdmin()
 
     try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await (await createClient())
             .rpc('assign_app_to_organization', {
                 p_organization_id: input.organization_id,
                 p_app_id: input.app_id,
@@ -464,7 +463,7 @@ export async function assignAppToOrganization(input: {
 export async function getAppUsageStats() {
     await requireSuperAdmin()
 
-    const { data: apps } = await supabaseAdmin
+    const { data: apps } = await (await createClient())
         .from('saas_apps')
         .select('id, name')
 
@@ -473,7 +472,7 @@ export async function getAppUsageStats() {
     const stats: Record<string, { count: number, organizations: string[] }> = {}
 
     for (const app of apps) {
-        const { data: orgs } = await supabaseAdmin
+        const { data: orgs } = await (await createClient())
             .from('organizations')
             .select('id, name')
             .eq('active_app_id', app.id)
@@ -496,7 +495,7 @@ export async function updateAppUIConfig(appId: string, config: DynamicSpaceConfi
     await requireSuperAdmin()
 
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await (await createClient())
             .from('saas_apps')
             .update({
                 ui_config: config as any,

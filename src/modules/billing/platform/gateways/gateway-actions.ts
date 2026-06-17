@@ -1,7 +1,90 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
-import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
+
+const PUBLIC_GATEWAY_UPDATE_ERROR = 'No se pudo actualizar la pasarela de pago'
+const SENSITIVE_GATEWAY_CONFIG_KEY_PATTERN =
+    /(secret|private|password|token|api[_-]?key|access[_-]?key|client[_-]?secret|authorization|bearer|signature|integrity)/i
+const PUBLIC_STRIPE_TEST_ERROR = 'No se pudo probar la conexión de Stripe'
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function summarizeGatewayActionError(error: unknown) {
+    if (error instanceof Error) {
+        return { name: error.name }
+    }
+
+    if (error && typeof error === 'object') {
+        return {
+            code: (error as any).code,
+            status: (error as any).status,
+            statusCode: (error as any).statusCode,
+            hasMessage: typeof (error as any).message === 'string' && (error as any).message.length > 0,
+        }
+    }
+
+    return { type: typeof error }
+}
+
+function logGatewayActionError(label: string, error: unknown) {
+    if (!isDeployedRuntime()) {
+        console.error(label, error)
+        return
+    }
+
+    console.error(label, summarizeGatewayActionError(error))
+}
+
+function publicGatewayActionError(publicMessage: string, error: unknown) {
+    if (isDeployedRuntime()) return publicMessage
+    return error instanceof Error ? error.message : publicMessage
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function sanitizeGatewayConfig(config: unknown): Record<string, unknown> {
+    if (!isPlainObject(config)) return {}
+
+    return Object.entries(config).reduce<Record<string, unknown>>((safeConfig, [key, value]) => {
+        if (SENSITIVE_GATEWAY_CONFIG_KEY_PATTERN.test(key)) return safeConfig
+
+        if (Array.isArray(value)) {
+            safeConfig[key] = value.map((item) => (
+                isPlainObject(item) ? sanitizeGatewayConfig(item) : item
+            ))
+            return safeConfig
+        }
+
+        safeConfig[key] = isPlainObject(value) ? sanitizeGatewayConfig(value) : value
+        return safeConfig
+    }, {})
+}
+
+function sanitizeGatewayForClient(gateway: PaymentGatewayConfig): PaymentGatewayConfig {
+    return {
+        ...gateway,
+        secret_key_ref: null,
+        secret_key_ref_present: !!gateway.secret_key_ref,
+        config: sanitizeGatewayConfig(gateway.config),
+    }
+}
+
+function safeGatewayUpdates(updates: Partial<PaymentGatewayConfig>) {
+    const safeUpdates: Partial<PaymentGatewayConfig> = {}
+
+    if (typeof updates.is_enabled === 'boolean') safeUpdates.is_enabled = updates.is_enabled
+    if (typeof updates.is_live_mode === 'boolean') safeUpdates.is_live_mode = updates.is_live_mode
+    if (typeof updates.public_key === 'string' || updates.public_key === null) safeUpdates.public_key = updates.public_key
+    if (typeof updates.platform_fee_percent === 'number') safeUpdates.platform_fee_percent = updates.platform_fee_percent
+    if (typeof updates.platform_fee_fixed_cents === 'number') safeUpdates.platform_fee_fixed_cents = updates.platform_fee_fixed_cents
+
+    return safeUpdates
+}
 
 // ============================================
 // TYPES
@@ -15,6 +98,7 @@ export interface PaymentGatewayConfig {
     is_live_mode: boolean
     public_key: string | null
     secret_key_ref: string | null
+    secret_key_ref_present?: boolean
     config: Record<string, any>
     platform_fee_percent: number
     platform_fee_fixed_cents: number
@@ -30,6 +114,8 @@ export interface PaymentGatewayConfig {
 // ============================================
 
 export async function getPaymentGateways(): Promise<PaymentGatewayConfig[]> {
+    await requireSuperAdmin()
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -38,11 +124,11 @@ export async function getPaymentGateways(): Promise<PaymentGatewayConfig[]> {
         .order('gateway_name')
 
     if (error) {
-        console.error('Error fetching payment gateways:', error)
+        logGatewayActionError('Error fetching payment gateways:', error)
         return []
     }
 
-    return data as PaymentGatewayConfig[]
+    return (data as PaymentGatewayConfig[]).map(sanitizeGatewayForClient)
 }
 
 // ============================================
@@ -53,17 +139,24 @@ export async function updatePaymentGateway(
     gatewayName: string,
     updates: Partial<PaymentGatewayConfig>
 ): Promise<{ success: boolean; error?: string }> {
-    const { error } = await supabaseAdmin
+    await requireSuperAdmin()
+
+    const allowedUpdates = safeGatewayUpdates(updates)
+    if (Object.keys(allowedUpdates).length === 0) {
+        return { success: false, error: PUBLIC_GATEWAY_UPDATE_ERROR }
+    }
+
+    const { error } = await (await createClient())
         .from('payment_gateway_config')
         .update({
-            ...updates,
+            ...allowedUpdates,
             updated_at: new Date().toISOString()
         })
         .eq('gateway_name', gatewayName)
 
     if (error) {
-        console.error('Error updating gateway:', error)
-        return { success: false, error: error.message }
+        logGatewayActionError('Error updating gateway:', error)
+        return { success: false, error: publicGatewayActionError(PUBLIC_GATEWAY_UPDATE_ERROR, error) }
     }
 
     return { success: true }
@@ -126,6 +219,8 @@ export async function testStripeConnection(): Promise<{
     message: string
     accountId?: string
 }> {
+    await requireSuperAdmin()
+
     try {
         const stripeKey = process.env.STRIPE_SECRET_KEY
 
@@ -151,7 +246,7 @@ export async function testStripeConnection(): Promise<{
         const account = await response.json()
 
         // Update last tested
-        await supabaseAdmin
+        await (await createClient())
             .from('payment_gateway_config')
             .update({
                 last_tested_at: new Date().toISOString(),
@@ -165,18 +260,21 @@ export async function testStripeConnection(): Promise<{
             accountId: account.id
         }
     } catch (error: any) {
+        logGatewayActionError('Error testing Stripe connection:', error)
+        const publicError = publicGatewayActionError(PUBLIC_STRIPE_TEST_ERROR, error)
+
         // Update test result
-        await supabaseAdmin
+        await (await createClient())
             .from('payment_gateway_config')
             .update({
                 last_tested_at: new Date().toISOString(),
-                test_result: `error: ${error.message}`
+                test_result: `error: ${publicError}`
             })
             .eq('gateway_name', 'stripe')
 
         return {
             success: false,
-            message: `Error: ${error.message}`
+            message: `Error: ${publicError}`
         }
     }
 }
@@ -203,6 +301,6 @@ export async function getActivePaymentGateway(): Promise<{
     return {
         gateway: data.gateway_name,
         publicKey: data.public_key || '',
-        config: data.config || {}
+        config: sanitizeGatewayConfig(data.config)
     }
 }

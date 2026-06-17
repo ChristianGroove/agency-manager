@@ -69,7 +69,8 @@ export function CRMDashboard({
     // Initialize from Server Props
     const [leads, setLeads] = useState<Lead[]>(Array.isArray(initialLeads) ? initialLeads : [])
     const [stages, setStages] = useState<PipelineStage[]>(Array.isArray(initialStages) ? initialStages : [])
-    // const [isLoading, setIsLoading] = useState(true) // No longer needed
+    const [columnPages, setColumnPages] = useState<Record<string, number>>({})
+    const [loadingStage, setLoadingStage] = useState<string | null>(null)
 
     // Sync with Server Refresh (e.g. router.refresh())
     useEffect(() => {
@@ -157,6 +158,38 @@ export function CRMDashboard({
         console.log("Refetching via Router...")
         router.refresh()
     }, [router])
+
+    const handleLoadMore = useCallback(async (stageId: string) => {
+        setLoadingStage(stageId)
+        try {
+            const currentPage = columnPages[stageId] || 1
+            const nextPage = currentPage + 1
+            
+            const queryParams: any = { stageId, page: nextPage, pageSize: 50 }
+            
+            const res = await getLeads(queryParams)
+            
+            if (res.success && res.data?.leads) {
+                const newLeads = res.data.leads
+                if (newLeads.length === 0) {
+                    toast.info("No hay más leads en esta columna.")
+                } else {
+                    setLeads(prev => {
+                        const existingIds = new Set(prev.map(l => l.id))
+                        const uniqueNewLeads = newLeads.filter((l: Lead) => !existingIds.has(l.id))
+                        return [...prev, ...uniqueNewLeads]
+                    })
+                    setColumnPages(prev => ({ ...prev, [stageId]: nextPage }))
+                }
+            } else {
+                toast.error(res.error || "Error al cargar más leads")
+            }
+        } catch (error) {
+            toast.error("Error al cargar más leads")
+        } finally {
+            setLoadingStage(null)
+        }
+    }, [columnPages])
 
     const handleShareQuote = useCallback((lead: Lead) => {
         // Find the most recent active quote
@@ -311,17 +344,27 @@ export function CRMDashboard({
         }
     }, [leads, loadData])
 
-    const getLeadsByStage = useCallback((statusKey: string, isFirstStage: boolean) => {
+    const groupedLeads = useMemo(() => {
         const stageKeys = stages.map(s => s.status_key)
-        return filteredLeads.filter(lead => {
+        const groups: Record<string, Lead[]> = {}
+        stages.forEach(s => {
+            groups[s.status_key] = []
+        })
+
+        const firstStageKey = stages.length > 0 ? stages[0].status_key : null
+
+        filteredLeads.forEach(lead => {
             const status = lead.status || 'new'
-            if (isFirstStage) {
+            if (groups[status]) {
+                groups[status].push(lead)
+            } else if (firstStageKey) {
                 // If the lead's status is completely unrecognized by the current stages,
                 // fall back to dropping it in the first column so it doesn't vanish.
-                return status === statusKey || !stageKeys.includes(status)
+                groups[firstStageKey].push(lead)
             }
-            return status === statusKey
         })
+        
+        return groups
     }, [filteredLeads, stages])
 
     const stats = useMemo(() => ({
@@ -479,8 +522,7 @@ export function CRMDashboard({
                     {/* Columns Horizontal Container - h-full items-stretch */}
                     <div className="h-full flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-4 items-stretch">
                         {stages.map((stage, index) => {
-                            const isFirstStage = index === 0
-                            const stageLeads = getLeadsByStage(stage.status_key, isFirstStage)
+                            const stageLeads = groupedLeads[stage.status_key] || []
                             const columnWidth = Math.round(280 * (columnZoom / 100))
 
                             return (
@@ -542,6 +584,17 @@ export function CRMDashboard({
                                                             isDragging={lead.id === activeId}
                                                         />
                                                     ))
+                                                )}
+                                                {stageLeads.length > 0 && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => handleLoadMore(stage.status_key)}
+                                                        disabled={loadingStage === stage.status_key}
+                                                        className="w-full text-xs text-muted-foreground hover:text-foreground mt-2 border border-dashed border-slate-200 dark:border-white/5"
+                                                    >
+                                                        {loadingStage === stage.status_key ? "Cargando..." : "Cargar más"}
+                                                    </Button>
                                                 )}
                                             </div>
                                         </DroppableStage>

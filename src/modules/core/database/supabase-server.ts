@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createSupabaseFetchInterceptor } from '../logging/logger'
 
 // ⚠️ Environment variables are strictly enforced. NO HARDCODED FALLBACKS to prevent Production leaks.
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -44,6 +45,9 @@ export async function createClient() {
                     }
                 },
             },
+            global: {
+                fetch: createSupabaseFetchInterceptor('Server')
+            }
         }
     )
 }

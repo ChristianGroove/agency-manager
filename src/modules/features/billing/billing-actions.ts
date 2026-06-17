@@ -11,6 +11,25 @@ import { getAuditLogs as getAuditLogsService } from "./services/get-audit-logs"
 import { getFiscalDocuments } from "./services/get-fiscal-documents"
 import { Invoice, InvoiceItem } from "@/types"
 
+const PUBLIC_DELETE_INVOICES_ERROR = "No se pudieron eliminar las facturas"
+const PUBLIC_EMITTERS_ACTION_ERROR = "No se pudieron cargar los emisores"
+const PUBLIC_SETTINGS_ACTION_ERROR = "No se pudo cargar la configuracion"
+const PUBLIC_CONTACT_OPTIONS_ERROR = "No se pudieron cargar las opciones de contacto"
+const PUBLIC_DELETE_SERVICES_ERROR = "No se pudieron eliminar los servicios"
+
+function isDeployedRuntime() {
+    return process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test' || !!process.env.VERCEL_ENV
+}
+
+function billingActionErrorMessage(error: unknown, publicMessage: string) {
+    if (isDeployedRuntime()) return publicMessage
+    if (error instanceof Error) return error.message
+    if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+        return error.message
+    }
+    return publicMessage
+}
+
 /**
  * Server Actions for Billing Module
  * Centralized Entry Point for UI & External Modules
@@ -34,8 +53,9 @@ export async function deleteInvoicesAction(ids: string[]) {
     const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).in('id', ids)
-    if (!error) revalidatePath('/billing')
-    return { success: !error, error: error?.message }
+    if (error) return { success: false, error: billingActionErrorMessage(error, PUBLIC_DELETE_INVOICES_ERROR) }
+    revalidatePath('/billing')
+    return { success: true, error: undefined }
 }
 
 export async function getInvoiceById(id: string) {
@@ -60,7 +80,7 @@ export async function getEmittersAction() {
         const data = await getActiveEmitters()
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return { success: false, error: billingActionErrorMessage(e, PUBLIC_EMITTERS_ACTION_ERROR) }
     }
 }
 
@@ -70,7 +90,7 @@ export async function getSettingsAction() {
         const data = await getSettings()
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return { success: false, error: billingActionErrorMessage(e, PUBLIC_SETTINGS_ACTION_ERROR) }
     }
 }
 
@@ -79,7 +99,7 @@ export async function getContactOptionsAction() {
         const data = await BillingService.getContactOptions()
         return { success: true, data }
     } catch (e: any) {
-        return { success: false, error: e.message }
+        return { success: false, error: billingActionErrorMessage(e, PUBLIC_CONTACT_OPTIONS_ERROR) }
     }
 }
 
@@ -104,8 +124,9 @@ export async function deleteServicesAction(ids: string[]) {
     const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('services').delete().in('id', ids)
-    if (!error) revalidatePath('/billing')
-    return { success: !error, error: error?.message }
+    if (error) return { success: false, error: billingActionErrorMessage(error, PUBLIC_DELETE_SERVICES_ERROR) }
+    revalidatePath('/billing')
+    return { success: true, error: undefined }
 }
 
 // ============================================

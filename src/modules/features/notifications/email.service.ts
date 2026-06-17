@@ -1,12 +1,18 @@
 import { Resend } from 'resend';
-import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getEffectiveBranding } from '@/modules/core/branding/actions';
 import { EmailBranding } from '@/modules/infrastructure/notifications/services/email-templates';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/modules/core/security/encryption';
 import { EmailStyle } from '@/modules/infrastructure/notifications/services/email-templates';
+import { createClient } from "@/modules/core/database/supabase-server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+    if (!_resend) {
+        _resend = new Resend(process.env.RESEND_API_KEY);
+    }
+    return _resend;
+}
 
 export type EmailOptions = {
     to: string | string[];
@@ -91,7 +97,7 @@ export class EmailService {
                 console.log(`[EmailService] Sending via Resend from: ${from}`)
 
                 // Add Timeout to Resend Call (8 seconds)
-                const sendPromise = resend.emails.send({
+                const sendPromise = getResend().emails.send({
                     from,
                     to,
                     replyTo: replyTo || undefined,
@@ -116,7 +122,7 @@ export class EmailService {
                     // LOCAL DEV SMART FALLBACK: If domain not verified, try with onboarding@resend.dev
                     if (process.env.NODE_ENV === 'development' && fromEmail !== "onboarding@resend.dev") {
                         console.warn("[EmailService] Domain might not be verified. Retrying with onboarding@resend.dev for development...");
-                        const fallbackSend = await resend.emails.send({
+                        const fallbackSend = await getResend().emails.send({
                             from: `"Pixy Dev" <onboarding@resend.dev>`,
                             to,
                             replyTo: replyTo || undefined,
@@ -198,7 +204,7 @@ export class EmailService {
         if (!organizationId || organizationId === 'PLATFORM') return null;
         
         try {
-            const { data, error } = await supabaseAdmin
+            const { data, error } = await (await createClient())
                 .from('organization_smtp_configs')
                 .select('*')
                 .eq('organization_id', organizationId)
@@ -248,7 +254,7 @@ export class EmailService {
             const brandingData = await getEffectiveBranding(organizationId);
 
             // Fetch raw settings for reply-to (not part of visual branding usually)
-            const { data: settings } = await supabaseAdmin
+            const { data: settings } = await (await createClient())
                 .from('organization_settings')
                 .select('email_reply_to')
                 .eq('organization_id', organizationId)
@@ -301,7 +307,7 @@ export class EmailService {
         metadata?: any
     }) {
         try {
-            await supabaseAdmin.from('email_logs').insert({
+            await (await createClient()).from('email_logs').insert({
                 organization_id: data.organizationId,
                 user_id: data.userId || null,
                 recipient: data.recipient,

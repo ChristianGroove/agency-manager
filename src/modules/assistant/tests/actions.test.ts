@@ -9,13 +9,23 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env.local') });
 
-// Setup Admin Client for Test Setup
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const RUN_ASSISTANT_DB_TESTS = process.env.RUN_ASSISTANT_DB_TESTS === 'true';
+const describeAssistantDb = RUN_ASSISTANT_DB_TESTS ? describe : describe.skip;
 
-describe('Assistant Actions Verification', () => {
+// Setup Admin Client for Test Setup
+if (RUN_ASSISTANT_DB_TESTS && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+    throw new Error("Missing Env Vars for Assistant DB Tests");
+}
+
+const supabase = RUN_ASSISTANT_DB_TESTS
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    : null as any;
+
+// Opt-in only: this suite writes to the configured Supabase project and requires seeded organizations.
+describeAssistantDb('Assistant Actions Verification', () => {
     let context: any;
     let logId: string;
     let createdBriefId: string;
@@ -89,7 +99,7 @@ describe('Assistant Actions Verification', () => {
     });
 
     it('should be IDEMPOTENT (Second Execution returns cached result)', async () => {
-        console.log("   🔄 Testing Idempotency on Log:", logId);
+        console.log("   Testing idempotency on log:", { logIdPresent: !!logId });
 
         const result = await IntentExecutor.execute(logId, context, supabase);
 
