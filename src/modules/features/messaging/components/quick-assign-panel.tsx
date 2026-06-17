@@ -13,6 +13,7 @@ import {
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 
 interface Agent {
     agent_id: string
@@ -83,7 +84,6 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
 
     useEffect(() => {
         const fetchRole = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team")
             const perms = await getCurrentUserPermissions()
             setCurrentUserRole(perms?.role || null)
         }

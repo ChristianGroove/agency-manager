@@ -12,14 +12,11 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { getChannels } from "@/modules/features/channels/actions"
 import { Channel } from "@/modules/features/channels/types"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 
 interface ChannelAccessSelectorProps {
     selectedIds: string[]
@@ -34,7 +31,6 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
 
     useEffect(() => {
         const fetchChannels = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team")
             const [data, perms] = await Promise.all([
                 getChannels(),
                 getCurrentUserPermissions()

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload } from "../assignment-actions"
+import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload, reconcileAllAgentLoads } from "../assignment-actions"
 import { AGENT_MAX_CAPACITY, AGENT_MIN_CAPACITY } from "../assignment-constants"
 import { simulateInboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { Circle, User, Zap, Info, Loader2, MessageSquare } from "lucide-react"
@@ -69,7 +69,6 @@ export function AgentWorkloadDashboard({ isAdmin }: { isAdmin?: boolean }) {
     const handleReconcile = async () => {
         setLoading(true)
         try {
-            const { reconcileAllAgentLoads } = await import("../assignment-actions")
             const result = await reconcileAllAgentLoads()
             if (result.success) {
                 toast.success(t('crm.inbox.settings.sections.reconcile_success', { 

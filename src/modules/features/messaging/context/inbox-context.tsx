@@ -157,42 +157,52 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         refreshStages()
     }, [refreshStages])
 
+    const contextValue = React.useMemo(() => ({
+        leadsCache,
+        updateLeadCache,
+        cartsCache,
+        updateCartCache,
+        activeModules,
+        setActiveModules,
+        spaceCategory,
+        setSpaceCategory,
+        agents,
+        setAgents,
+        templates,
+        setTemplates,
+        refreshTemplates,
+        isTemplatesLoading,
+        catalogCategories,
+        setCatalogCategories,
+        initialProducts,
+        setInitialProducts,
+        refreshCatalog,
+        isCatalogLoading,
+        allTags,
+        setAllTags,
+        refreshTags,
+        isTagsLoading,
+        updateAgent,
+        refreshAgents,
+        pipelineStages,
+        refreshStages,
+        isAgentMonitorVisible,
+        setIsAgentMonitorVisible,
+        currentUserRole,
+        setCurrentUserRole,
+        tick
+    }), [
+        leadsCache, updateLeadCache, cartsCache, updateCartCache,
+        activeModules, spaceCategory, agents, templates,
+        isTemplatesLoading, catalogCategories, initialProducts,
+        isCatalogLoading, allTags, isTagsLoading, updateAgent,
+        refreshAgents, refreshTemplates, refreshCatalog, refreshTags,
+        pipelineStages, refreshStages, isAgentMonitorVisible,
+        currentUserRole, tick
+    ])
+
     return (
-        <InboxContext.Provider value={{
-            leadsCache,
-            updateLeadCache,
-            cartsCache,
-            updateCartCache,
-            activeModules,
-            setActiveModules,
-            spaceCategory,
-            setSpaceCategory,
-            agents,
-            setAgents,
-            templates,
-            setTemplates,
-            refreshTemplates,
-            isTemplatesLoading,
-            catalogCategories,
-            setCatalogCategories,
-            initialProducts,
-            setInitialProducts,
-            refreshCatalog,
-            isCatalogLoading,
-            allTags,
-            setAllTags,
-            refreshTags,
-            isTagsLoading,
-            updateAgent,
-            refreshAgents,
-            pipelineStages,
-            refreshStages,
-            isAgentMonitorVisible,
-            setIsAgentMonitorVisible,
-            currentUserRole,
-            setCurrentUserRole,
-            tick
-        }}>
+        <InboxContext.Provider value={contextValue}>
             {children}
         </InboxContext.Provider>
     )
