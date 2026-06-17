@@ -1,7 +1,7 @@
 -- Atomic Chat Assignment logic to prevent race conditions (V2)
 -- Fixes: RoundRobin fair skip, Legacy Permissions, 5m Heartbeat
 
-BEGIN;
+
 
 CREATE OR REPLACE FUNCTION public.fn_get_next_agent_atomic(
     p_org_id UUID,
@@ -92,5 +92,3 @@ BEGIN
     RETURN v_agent_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMIT;
