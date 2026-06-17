@@ -395,7 +395,7 @@ export default function ReportsPage() {
                             </Badge>
                         )}
                     </div>
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-white/5 max-h-[350px] overflow-y-auto">
                         {reportData?.abandoned_leads_list?.map((lead) => (
                             <div key={lead.id} className="p-4 hover:bg-red-500/5 transition-colors flex items-center justify-between group">
                                 <div className="space-y-1">
@@ -432,16 +432,32 @@ export default function ReportsPage() {
                         </div>
                         <h3 className="text-xl font-bold mb-2">Insights de Optimización</h3>
                         <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                            Basado en el desempeño actual, mejorar el tiempo de respuesta en un **15%** podría incrementar la tasa de conversión en aproximadamente un **4.2%** proyectado para el próximo mes.
+                            {(() => {
+                                if (loading || !reportData) return "Analizando patrones de rendimiento...";
+                                const { abandoned_leads, avg_response_time, conversion_rate } = reportData.summary;
+                                if (abandoned_leads > 0) {
+                                    return `Atención Prioritaria: Hay ${abandoned_leads} leads en riesgo de abandono. Reducir la cola de espera de forma proactiva previene fugas de prospectos valiosos.`;
+                                } else if (avg_response_time > 300) {
+                                    return `Oportunidad: El tiempo promedio de respuesta actual es de ${Math.round(avg_response_time / 60)}m. Reducirlo a menos de 5m aumentaría exponencialmente la retención.`;
+                                } else if (conversion_rate < 15) {
+                                    return `Área de Mejora: La tasa de conversión del ${conversion_rate}% está por debajo del estándar. Considere automatizar y optimizar la calificación inicial de leads.`;
+                                } else {
+                                    return `¡Excelente trabajo! Sus tiempos de respuesta son ágiles y no hay leads críticos abandonados. Mantenga esta consistencia operativa.`;
+                                }
+                            })()}
                         </p>
                         <ul className="space-y-3">
                             <li className="flex items-center gap-3 text-sm font-medium">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                Reforzar turno de 2PM - 5PM (Alta demanda)
+                                <div className={cn("w-1.5 h-1.5 rounded-full", reportData?.summary?.abandoned_leads && reportData.summary.abandoned_leads > 0 ? "bg-red-500" : "bg-indigo-500")} />
+                                {reportData?.summary?.abandoned_leads && reportData.summary.abandoned_leads > 0 
+                                    ? "Asignar urgencia a leads rezagados"
+                                    : "Reforzar calificación de prospectos"}
                             </li>
                             <li className="flex items-center gap-3 text-sm font-medium">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                Automatizar calificación inicial de leads
+                                <div className={cn("w-1.5 h-1.5 rounded-full", (reportData?.summary?.avg_response_time || 0) > 300 ? "bg-orange-500" : "bg-indigo-500")} />
+                                {(reportData?.summary?.avg_response_time || 0) > 300 
+                                    ? "Optimizar distribución y carga de agentes"
+                                    : "Automatizar respuestas iniciales"}
                             </li>
                         </ul>
                     </div>
