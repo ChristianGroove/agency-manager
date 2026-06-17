@@ -189,7 +189,7 @@ export class EmbeddedSignupHandler {
     private async resolveWabaId(accessToken: string, hintWabaId?: string): Promise<string> {
         if (hintWabaId) return hintWabaId;
 
-        // For System User token from Embedded Signup, fetch shared WABAs
+        // 1. Try fetching shared WABAs (if token belongs to a System User of a BSP)
         const url = `${GRAPH_URL}/me/client_whatsapp_business_accounts?access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -198,13 +198,23 @@ export class EmbeddedSignupHandler {
             return data.data[0].id;
         }
 
-        // Fallback: try owned WABAs
-        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts&access_token=${accessToken}`;
+        // 2. Fallback: try owned and client WABAs of all businesses the user is part of
+        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts,client_whatsapp_business_accounts&access_token=${accessToken}`;
         const ownedRes = await fetch(ownedUrl);
         const ownedData = await ownedRes.json();
 
-        if (ownedData.data?.[0]?.owned_whatsapp_business_accounts?.data?.[0]?.id) {
-            return ownedData.data[0].owned_whatsapp_business_accounts.data[0].id;
+        if (ownedData.data && Array.isArray(ownedData.data)) {
+            // Iterate over all businesses the user belongs to
+            for (const business of ownedData.data) {
+                // Check owned WABAs
+                if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
+                    return business.owned_whatsapp_business_accounts.data[0].id;
+                }
+                // Check client WABAs
+                if (business.client_whatsapp_business_accounts?.data?.length > 0) {
+                    return business.client_whatsapp_business_accounts.data[0].id;
+                }
+            }
         }
 
         return '';
