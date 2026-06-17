@@ -99,7 +99,7 @@ export class EmbeddedSignupHandler {
      * 4. Register in DB (with deduplication)
      * 5. Subscribe webhooks + smb_message_echoes for Coexistence
      */
-    async completeOnboarding(orgId: string, code: string): Promise<OnboardingResult> {
+    async completeOnboarding(orgId: string, code: string, hintWabaId?: string): Promise<OnboardingResult> {
         try {
             logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Starting onboarding', { orgId });
 
@@ -111,7 +111,7 @@ export class EmbeddedSignupHandler {
             logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Access token obtained');
 
             // 2. Resolve WABA ID
-            const wabaId = await this.resolveWabaId(tokenData.access_token, tokenData.waba_id);
+            const wabaId = await this.resolveWabaId(tokenData.access_token, hintWabaId || tokenData.waba_id);
 
             // 3. Get Phone Numbers
             const phoneNumbers = await this.getPhoneNumbers(wabaId, tokenData.access_token);

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
@@ -35,6 +35,27 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
     const { organizationId: orgIdHook, loading: orgLoading } = useCurrentOrganization();
     const organizationId = orgIdProp || orgIdHook;
     const router = useRouter();
+    const wabaIdRef = useRef<string>('');
+
+    // Listen to the postMessage from the Facebook popup to capture waba_id
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+                    console.log('[EmbeddedSignup] Received FINISH message from popup:', data.data);
+                    if (data.data && data.data.waba_id) {
+                        wabaIdRef.current = data.data.waba_id;
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     // Load Facebook SDK
     useEffect(() => {
@@ -94,6 +115,9 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
         setStatus('authenticating');
         console.log('[EmbeddedSignup] Opening Login Popup with Config:', EMBEDDED_SIGNUP_CONFIG_ID);
 
+        // Reset the ref before starting
+        wabaIdRef.current = '';
+
         window.FB.login(
             function (response: any) {
                 console.log('[EmbeddedSignup] Login response received:', response);
@@ -105,7 +129,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                         onError?.('No authorization code received');
                         return;
                     }
-                    processSignupCode(code);
+                    processSignupCode(code, wabaIdRef.current);
                 } else {
                     console.log('[EmbeddedSignup] User cancelled or login failed');
                     setStatus('idle');
@@ -125,7 +149,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
         );
     }, [organizationId, t, onError, status]);
 
-    const processSignupCode = async (code: string) => {
+    const processSignupCode = async (code: string, capturedWabaId: string) => {
         setStatus('processing');
 
         try {
@@ -135,6 +159,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 body: JSON.stringify({
                     orgId: organizationId,
                     code,
+                    wabaId: capturedWabaId,
                 }),
             });
 

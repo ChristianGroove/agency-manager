@@ -72,7 +72,7 @@ async function requireMetaOnboardingAccess(orgId: string) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { orgId, code } = body;
+        const { orgId, code, wabaId } = body;
 
         if (!orgId || !code) {
             return NextResponse.json(
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         logEmbeddedSignupInfo("[EmbeddedSignup API] Processing request", { orgId });
 
-        const result = await embeddedSignupHandler.completeOnboarding(orgId, code);
+        const result = await embeddedSignupHandler.completeOnboarding(orgId, code, wabaId);
 
         if (!result.success) {
             logEmbeddedSignupError("[EmbeddedSignup API] Onboarding failed:", result.error);
