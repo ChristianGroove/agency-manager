@@ -3,9 +3,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CreditCard, Calendar, Check, Package, Zap, History, Download, ExternalLink } from "lucide-react"
+import { CreditCard, Calendar, Check, Package, Zap, History, Download, ExternalLink, AlertTriangle, AlertCircle, Clock } from "lucide-react"
 import { SaasApp } from "@/types/saas"
-import { createSubscriptionPaymentTransactionAction as createSubscriptionPaymentTransaction, getSubscriptionHistory } from "@/modules/features/billing/billing-actions"
+import { 
+    createSubscriptionPaymentTransactionAction as createSubscriptionPaymentTransaction, 
+    getSubscriptionHistory,
+    getOrganizationSubscription,
+    getCurrentOrgPendingPlatformInvoicesAction,
+    createManualInvoicePaymentTransactionAction
+} from "@/modules/features/billing/billing-actions"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
@@ -27,11 +33,15 @@ declare global {
 export function SubscriptionSettingsTab({ app, allowDirectBilling }: SubscriptionSettingsTabProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [history, setHistory] = useState<any[]>([])
+    const [sub, setSub] = useState<any>(null)
+    const [pendingInvoices, setPendingInvoices] = useState<any[]>([])
 
     // Load history on mount
     useEffect(() => {
         if (app && allowDirectBilling) {
             getSubscriptionHistory().then(setHistory)
+            getOrganizationSubscription().then(setSub)
+            getCurrentOrgPendingPlatformInvoicesAction().then(setPendingInvoices)
         }
     }, [app, allowDirectBilling])
 
@@ -82,6 +92,53 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
         }
     }
 
+    const handlePayInvoice = async (invoiceId: string) => {
+        setIsLoading(true)
+        try {
+            const result = await createManualInvoicePaymentTransactionAction(invoiceId) as any
+            if (!result.success) {
+                toast.error("Error al iniciar transacción de factura")
+                setIsLoading(false)
+                return
+            }
+
+            if (!window.WidgetCheckout) {
+                toast.error("El sistema de pagos está cargando. Intenta de nuevo en unos segundos.")
+                setIsLoading(false)
+                return
+            }
+
+            const checkout = new window.WidgetCheckout({
+                currency: result.currency,
+                amountInCents: result.amountInCents,
+                reference: result.reference,
+                publicKey: result.publicKey,
+                ...(result.signature ? { signature: { integrity: result.signature } } : {})
+            })
+
+            checkout.open((res: any) => {
+                const transaction = res.transaction
+                if (transaction.status === 'APPROVED') {
+                    toast.success("¡Factura pagada correctamente!")
+                    getCurrentOrgPendingPlatformInvoicesAction().then(setPendingInvoices)
+                    getSubscriptionHistory().then(setHistory)
+                    getOrganizationSubscription().then(setSub)
+                    setTimeout(() => {
+                        getCurrentOrgPendingPlatformInvoicesAction().then(setPendingInvoices)
+                        getSubscriptionHistory().then(setHistory)
+                        getOrganizationSubscription().then(setSub)
+                    }, 2000)
+                } else if (transaction.status === 'ERROR') {
+                    toast.error("Error en la transacción: " + transaction.status_message)
+                }
+                setIsLoading(false)
+            })
+        } catch (error: any) {
+            toast.error("Error inesperado: " + error.message)
+            setIsLoading(false)
+        }
+    }
+
     if (!app) {
         return (
             <Card>
@@ -112,6 +169,24 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
         currency: 'USD',
         minimumFractionDigits: 0
     }).format(isNaN(priceValue) ? 0 : priceValue)
+
+    const getStatusInfo = (status: string) => {
+        switch (status) {
+            case 'active':
+                return { label: 'Al día', desc: 'Suscripción activa', color: 'green', icon: CreditCard }
+            case 'past_due':
+                return { label: 'Pago Atrasado', desc: 'Factura vencida', color: 'amber', icon: AlertTriangle }
+            case 'suspended':
+                return { label: 'Suspendido', desc: 'Servicio bloqueado', color: 'red', icon: AlertCircle }
+            case 'legacy_manual':
+                return { label: 'Renovación Manual', desc: 'Pago por transferencia/link', color: 'blue', icon: Clock }
+            default:
+                return { label: 'Desconocido', desc: 'Contacte a soporte', color: 'gray', icon: AlertCircle }
+        }
+    }
+
+    const statusInfo = getStatusInfo(sub?.status || 'active')
+    const bypassActive = sub?.bypass_until && new Date(sub.bypass_until) > new Date()
 
     return (
         <div className="space-y-8">
@@ -168,24 +243,43 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
                             </ul>
                         </div>
                         <div className="space-y-4">
-                            <div className="rounded-lg bg-background p-4 border shadow-sm">
-                                <h4 className="text-sm font-medium mb-2 text-muted-foreground">Estado de Facturación</h4>
+                            <div className="rounded-lg bg-background p-4 border shadow-sm relative overflow-hidden">
+                                {bypassActive && (
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-brand-pink" />
+                                )}
+                                <h4 className="text-sm font-medium mb-2 text-muted-foreground flex items-center justify-between">
+                                    Estado de Facturación
+                                </h4>
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                                        <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                    <div className={`p-2 rounded-full bg-${statusInfo.color}-100 dark:bg-${statusInfo.color}-900/30`}>
+                                        <statusInfo.icon className={`h-5 w-5 text-${statusInfo.color}-600 dark:text-${statusInfo.color}-400`} />
                                     </div>
                                     <div>
-                                        <div className="font-medium text-green-700 dark:text-green-400">Al día</div>
-                                        <div className="text-xs text-muted-foreground">Suscripción activa</div>
+                                        <div className={`font-medium text-${statusInfo.color}-700 dark:text-${statusInfo.color}-400`}>
+                                            {statusInfo.label}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">{statusInfo.desc}</div>
                                     </div>
                                 </div>
+                                {sub?.current_period_end && (
+                                    <div className="mt-3 pt-3 border-t text-xs flex justify-between text-muted-foreground">
+                                        <span>Próximo corte:</span>
+                                        <span className="font-medium text-foreground">{format(new Date(sub.current_period_end), 'PPP', { locale: es })}</span>
+                                    </div>
+                                )}
+                                {bypassActive && (
+                                    <div className="mt-2 bg-brand-pink/10 text-brand-pink text-xs p-2 rounded flex items-center gap-2">
+                                        <Zap className="h-3 w-3" />
+                                        <span>Periodo de gracia hasta el {format(new Date(sub.bypass_until), 'd MMM', { locale: es })}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-3">
                                 {allowDirectBilling ? (
                                     <Button className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md transition-all hover:scale-[1.02]" onClick={handlePay} disabled={isLoading}>
                                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-                                        Pagar Suscripción
+                                        Renovar Suscripción Mensual
                                     </Button>
                                 ) : (
                                     <Button className="w-full" variant="secondary" disabled title="Gestionado por tu agencia">
@@ -202,6 +296,50 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Pending Invoices */}
+            {allowDirectBilling && pendingInvoices && pendingInvoices.length > 0 && (
+                <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="h-5 w-5" />
+                        Facturas Pendientes
+                    </h3>
+                    <div className="grid gap-4">
+                        {pendingInvoices.map(invoice => (
+                            <Card key={invoice.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+                                <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
+                                            <AlertTriangle className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-red-900 dark:text-red-300">
+                                                {invoice.concept || 'Pago Pendiente'}
+                                            </div>
+                                            <div className="text-sm text-red-700/80 dark:text-red-400/80">
+                                                Emitida el {format(new Date(invoice.created_at), 'PPP', { locale: es })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 w-full md:w-auto">
+                                        <div className="text-xl font-bold text-red-700 dark:text-red-400">
+                                            ${invoice.amount?.toLocaleString()} {invoice.currency || 'USD'}
+                                        </div>
+                                        <Button 
+                                            onClick={() => handlePayInvoice(invoice.id)} 
+                                            disabled={isLoading}
+                                            className="bg-red-600 hover:bg-red-700 text-white w-full md:w-auto shadow-md"
+                                        >
+                                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                                            Pagar Factura
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Payment History Table */}
             {allowDirectBilling && (

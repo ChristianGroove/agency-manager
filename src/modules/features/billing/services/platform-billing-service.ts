@@ -354,6 +354,26 @@ export class PlatformBillingService {
         return { invoices: data || [], totalCount: count || 0 };
     }
 
+    static async getOrganizationInvoices(organizationId: string) {
+        await requireSuperAdmin();
+        const { data, error } = await (await createClient())
+            .from('saas_platform_invoices')
+            .select(`
+                *,
+                organization:organizations(name),
+                payment_transaction:payment_transactions(*)
+            `)
+            .eq('organization_id', organizationId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching org invoices:', error);
+            return [];
+        }
+
+        return data || [];
+    }
+
     static async getPlatformPaymentMethods() {
         await requireSuperAdmin();
         const supabase = await createClient()
@@ -502,7 +522,12 @@ export class PlatformBillingService {
 
         const { error: orgError } = await (await createClient())
             .from('organizations')
-            .update({ status: 'suspended', updated_at: new Date().toISOString() })
+            .update({ 
+                status: 'suspended', 
+                subscription_status: 'suspended',
+                suspended_at: new Date().toISOString(),
+                updated_at: new Date().toISOString() 
+            })
             .eq('id', organizationId)
 
         if (orgError) throw new Error("No se pudo suspender la organización")

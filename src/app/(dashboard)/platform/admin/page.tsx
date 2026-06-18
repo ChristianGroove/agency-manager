@@ -50,7 +50,7 @@ export default async function AdminDashboardPage() {
 
             {/* Main Command Center Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full max-w-full grid-cols-4 bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-lg h-auto">
+                <TabsList className="grid w-full max-w-full grid-cols-5 bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-lg h-auto">
                     <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Visión Global

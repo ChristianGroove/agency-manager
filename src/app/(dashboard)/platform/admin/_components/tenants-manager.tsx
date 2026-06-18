@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt } from "lucide-react"
+import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt, Clock, AlertCircle, Shield } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
@@ -147,7 +147,7 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                             <TableHead className="font-semibold h-11">Tipo</TableHead>
                             <TableHead className="font-semibold h-11">Estado</TableHead>
                             <TableHead className="font-semibold h-11">Membresía</TableHead>
-                            <TableHead className="font-semibold h-11">Creada</TableHead>
+                            <TableHead className="font-semibold h-11">Ciclo / Expiración</TableHead>
                             <TableHead className="text-right font-semibold h-11 pr-6">Acciones Rápidas</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -200,11 +200,35 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                     <TableCell>
                                         <span className="text-sm text-muted-foreground">{org.base_app_slug || 'Free Tier'}</span>
                                     </TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">
-                                        {format(new Date(org.created_at), 'dd MMM yyyy', { locale: es })}
+                                    <TableCell className="text-sm">
+                                        {org.saas_subscriptions?.bypass_until && new Date(org.saas_subscriptions.bypass_until) > new Date() ? (
+                                            <span className="text-orange-600 dark:text-orange-400 font-bold flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded w-max text-xs">
+                                                <Shield className="h-3 w-3" />
+                                                Bypass (hasta {format(new Date(org.saas_subscriptions.bypass_until), 'dd MMM', { locale: es })})
+                                            </span>
+                                        ) : org.saas_subscriptions?.status === 'active' || org.saas_subscriptions?.status === 'legacy_manual' ? (
+                                            <span className="text-emerald-600 font-medium">
+                                                {org.saas_subscriptions.status === 'legacy_manual' ? 'Manual: ' : 'Renueva: '}
+                                                {org.saas_subscriptions.current_period_end ? format(new Date(org.saas_subscriptions.current_period_end), 'dd MMM yyyy', { locale: es }) : '-'}
+                                            </span>
+                                        ) : org.saas_subscriptions?.status === 'past_due' ? (
+                                            <span className="text-red-600 font-medium flex items-center gap-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                En Mora ({org.saas_subscriptions.current_period_end ? format(new Date(org.saas_subscriptions.current_period_end), 'dd MMM', { locale: es }) : '-'})
+                                            </span>
+                                        ) : org.status === 'suspended' ? (
+                                            <span className="text-red-600 font-medium">Bloqueado</span>
+                                        ) : org.trial_ends_at && new Date(org.trial_ends_at) > new Date() ? (
+                                            <span className="text-amber-600 font-medium flex items-center gap-1">
+                                                <Clock className="h-3 w-3" />
+                                                Expira: {format(new Date(org.trial_ends_at), 'dd MMM yyyy', { locale: es })}
+                                            </span>
+                                        ) : (
+                                            <span className="text-muted-foreground">Expirado / Sin Plan</span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
-                                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <div className="flex justify-end gap-1.5">
 
                                             {/* 1. Settings Action - Opens Sheet */}
                                             <Button
@@ -228,49 +252,6 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
 
-                                            {/* 3. Suspend / Reactivate (if not protected) */}
-                                            {!PROTECTED_ORG_SLUGS.includes(org.slug) && (
-                                                org.status === 'active' ? (
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 text-orange-600 bg-orange-50 hover:bg-orange-100 hover:text-orange-700 shrink-0 dark:bg-orange-900/30 dark:text-orange-400"
-                                                        title="Suspender Tenant (Ban)"
-                                                        onClick={async () => {
-                                                            const result = confirm('¿Confirmas que deseas SUSPENDER esta organización? Los usuarios perderán acceso instantáneamente.')
-                                                            if (!result) return
-                                                            try {
-                                                                await updateOrganizationStatus(org.id, 'suspended', 'Admin Action')
-                                                                toast.success('Organización suspendida')
-                                                                router.refresh()
-                                                            } catch (error: any) {
-                                                                toast.error(error.message || 'Error al suspender org')
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Ban className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 shrink-0 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                                        title="Reactivar Tenant"
-                                                        onClick={async () => {
-                                                            try {
-                                                                 await updateOrganizationStatus(org.id, 'active')
-                                                                 toast.success('Organización reactivada con éxito')
-                                                                 router.refresh()
-                                                             } catch (error: any) {
-                                                                toast.error(error.message || 'Error al reactivar')
-                                                            }
-                                                        }}
-                                                    >
-                                                        <CheckCircle className="h-4 w-4" />
-                                                    </Button>
-                                                )
-                                            )}
-
                                             {/* 3.5 Manual Billing Action */}
                                             <Button
                                                 size="icon"
@@ -282,13 +263,13 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                                 <Receipt className="h-4 w-4" />
                                             </Button>
 
-                                            {/* 4. Delete Action (if not protected) */}
+                                            {/* 4. Delete Action */}
                                             {!PROTECTED_ORG_SLUGS.includes(org.slug) && (
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-8 w-8 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 shrink-0 dark:bg-rose-900/30 dark:text-rose-400"
-                                                    title="Eliminar Estructuralmente"
+                                                    className="h-8 w-8 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 shrink-0 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                                                    title="Eliminar Definitivamente"
                                                     onClick={() => handleDelete(org.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4" />

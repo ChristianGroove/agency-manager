@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
-import { Package, Users, Settings, Shield, LayoutGrid, AlertCircle, Building2, Key, Calendar, MapPin, Database, Loader2, Clock, ShieldCheck } from "lucide-react"
+import { Package, Users, Settings, Shield, LayoutGrid, AlertCircle, Building2, Key, Calendar, MapPin, Database, Loader2, Clock, ShieldCheck, CreditCard } from "lucide-react"
 import { getOrgManagerData, getOrganizationAuditLogs } from "@/modules/core/admin/actions"
 import { getOrganizationActiveModules, getAllSystemModules } from "@/modules/core/saas/module-management-actions"
 import { UserActionsDialog } from "./user-actions-dialog"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { TenantBillingSettings } from "./tenant-billing-settings"
 
 interface OrgDetailsSheetProps {
     orgId: string | null
@@ -155,17 +156,21 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
 
                             <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
                                 <div className="px-8 pt-6 pb-2">
-                                    <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-muted/50 p-1 rounded-xl">
-                                        <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                            Visión General
+                                    <TabsList className="flex flex-row w-full h-auto overflow-x-auto items-center justify-start bg-muted/50 p-1 rounded-xl">
+                                        <TabsTrigger value="overview" className="flex-1 whitespace-nowrap rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            General
                                         </TabsTrigger>
-                                        <TabsTrigger value="modules" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                        <TabsTrigger value="billing" className="flex-1 whitespace-nowrap rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            <CreditCard className="h-4 w-4 mr-1.5" />
+                                            Facturación
+                                        </TabsTrigger>
+                                        <TabsTrigger value="modules" className="flex-1 whitespace-nowrap rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                             <Database className="h-4 w-4 mr-1.5" />
-                                            Accesos y Módulos
+                                            Módulos
                                         </TabsTrigger>
-                                        <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                        <TabsTrigger value="security" className="flex-1 whitespace-nowrap rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                             <Shield className="h-4 w-4 mr-1.5" />
-                                            Equipo & Seguridad
+                                            Seguridad
                                         </TabsTrigger>
                                     </TabsList>
                                 </div>
@@ -258,6 +263,11 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                     <p className="text-sm text-gray-500 mt-1">Configuración de marca blanca disponible desde la pestaña de Configuración Superior.</p>
                                                 </div>
                                             </div>
+                                        </TabsContent>
+
+                                        {/* BILLING TAB */}
+                                        <TabsContent value="billing" className="space-y-8 mt-0 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
+                                            <TenantBillingSettings orgData={orgData} onRefresh={() => loadOrgData(orgId)} />
                                         </TabsContent>
 
                                         {/* MODULES TAB */}

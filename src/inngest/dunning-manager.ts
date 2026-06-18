@@ -37,6 +37,18 @@ export const platformDunningManager = inngest.createFunction(
                 try {
                     // CASE 1: Suspensions (T+10 or past period end)
                     if (daysSinceCreation >= 10 || now > billingEnd) {
+                        // Check if the organization has an active bypass
+                        const { data: subData } = await supabaseAdmin
+                            .from('saas_subscriptions')
+                            .select('bypass_until')
+                            .eq('organization_id', invoice.organization_id)
+                            .single();
+
+                        if (subData?.bypass_until && new Date(subData.bypass_until) > new Date()) {
+                            // Bypass is active, skip suspension
+                            return;
+                        }
+
                         // Suspend subscription and organization
                         await Promise.all([
                             supabaseAdmin

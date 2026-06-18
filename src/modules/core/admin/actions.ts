@@ -293,6 +293,15 @@ export interface AdminOrganization {
     branding_tier_id: string | null
     active_app_id: string | null
     app_activated_at: string | null
+    trial_ends_at: string | null
+    saas_subscriptions?: {
+        status: string
+        current_period_end: string
+        bypass_until?: string | null
+        saas_apps?: {
+            name: string
+        }
+    }
 }
 
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
@@ -307,7 +316,8 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
             use_custom_domains,
             branding_tier_id,
             active_app_id,
-            app_activated_at
+            app_activated_at,
+            saas_subscriptions(status, current_period_end, bypass_until, saas_apps(name))
         `)
         .order('created_at', { ascending: false })
 
@@ -316,7 +326,13 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
         return []
     }
 
-    return data as AdminOrganization[]
+    // Unpack single subscription if array is returned
+    const parsedData = (data || []).map((org: any) => ({
+        ...org,
+        saas_subscriptions: Array.isArray(org.saas_subscriptions) ? org.saas_subscriptions[0] : org.saas_subscriptions
+    }))
+
+    return parsedData as AdminOrganization[]
 }
 
 /**
@@ -349,8 +365,17 @@ export async function getAdminOrganizationById(organizationId: string): Promise<
 
 export async function getOrganizationDetails(orgId: string) {
     await requireSuperAdmin()
-    const { data: org, error: orgError } = await (await createClient()).from('organizations').select('*').eq('id', orgId).single()
+    const { data: org, error: orgError } = await (await createClient())
+        .from('organizations')
+        .select(`*, saas_subscriptions(*)`)
+        .eq('id', orgId)
+        .single()
     if (orgError) throw orgError
+
+    if (org && Array.isArray(org.saas_subscriptions)) {
+        org.saas_subscriptions = org.saas_subscriptions[0]
+    }
+
     const { count: userCount } = await (await createClient()).from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
     const { count: clientCount } = await (await createClient()).from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
     return { organization: org, stats: { users: userCount || 0, clients: clientCount || 0 } }
@@ -358,10 +383,28 @@ export async function getOrganizationDetails(orgId: string) {
 
 export async function updateOrganizationStatus(orgId: string, status: 'active' | 'suspended' | 'past_due' | 'archived', reason?: string) {
     await requireSuperAdmin()
-    const { data: orgCheck } = await (await createClient()).from('organizations').select('slug').eq('id', orgId).single()
+    const supabase = await createClient()
+
+    const { data: orgCheck } = await supabase.from('organizations').select('slug').eq('id', orgId).single()
     if (!orgCheck || PROTECTED_ORG_SLUGS.includes(orgCheck.slug)) throw new Error(`Cannot modify protected organization`)
-    const { error } = await (await createClient()).from('organizations').update({ status, suspended_at: status === 'suspended' ? new Date().toISOString() : null, suspended_reason: status === 'suspended' ? reason : null }).eq('id', orgId)
+    
+    const updatePayload: any = {
+        status,
+        suspended_at: status === 'suspended' ? new Date().toISOString() : null,
+        suspended_reason: status === 'suspended' ? reason : null
+    }
+
+    if (status === 'active') {
+        // Sync subscription status so cron doesn't suspend it on Saturday
+        updatePayload.subscription_status = 'active'
+        // Optionally extend trial 10 years or clear it if they are marked active
+        // But the cron checks `trial_ends_at < NOW() AND subscription_status IS DISTINCT FROM 'active'`
+        // Since we set subscription_status = 'active', the cron will skip it!
+    }
+
+    const { error } = await supabase.from('organizations').update(updatePayload).eq('id', orgId)
     if (error) throw error
+
     revalidatePath('/platform/admin')
     return { success: true }
 }

@@ -256,6 +256,17 @@ export async function POST(request: Request) {
                         })
                     }
 
+                    // 1.2. Unsuspend organization if it was suspended
+                    const { error: unsuspendError } = await (await createClient())
+                        .from('organizations')
+                        .update({ status: 'active', updated_at: new Date().toISOString() })
+                        .eq('id', paymentTx.organization_id)
+                        .eq('status', 'suspended')
+                    
+                    if (unsuspendError) {
+                        logWompiWebhookError('[Webhook] ❌ Error unsuspending organization:', unsuspendError);
+                    }
+
                     // 1.5. If this is a Platform Manual Invoice, mark it as PAID
                     if (paymentTx.metadata?.platform_invoice && paymentTx.metadata?.invoice_id) {
                         try {

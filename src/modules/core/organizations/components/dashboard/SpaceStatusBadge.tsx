@@ -125,82 +125,82 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                     />
                 ) : (
                     <>
-                        <div className="relative h-40 w-full overflow-hidden flex items-center px-10" style={{
+                        <div className="relative h-28 w-full overflow-hidden flex items-center px-8" style={{
                             background: `linear-gradient(135deg, ${finalBtnColor}20 0%, ${finalBtnColor}05 100%)`
                         }}>
                             {/* Decorative Background Element */}
                             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl opacity-20" style={{ backgroundColor: finalBtnColor }}></div>
 
-                            <div className="relative flex items-center gap-6 z-10">
-                                <div className="p-4 bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl text-primary border border-white/20" style={{ color: finalBtnColor }}>
-                                    <Package className="h-10 w-10" />
+                            <div className="relative flex items-center gap-5 z-10">
+                                <div className="p-3 bg-white dark:bg-white/10 rounded-[1.2rem] shadow-xl text-primary border border-white/20" style={{ color: finalBtnColor }}>
+                                    <Package className="h-8 w-8" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{displayApp.name}</h2>
+                                        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{displayApp.name}</h2>
                                         {isActive && <Crown className="h-5 w-5 text-amber-400 fill-amber-400" />}
                                     </div>
                                     <p className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
                                         <span className="p-1 bg-slate-100 dark:bg-white/5 rounded-md text-[10px] uppercase tracking-widest">{orgName}</span>
-                                        <span className="h-1 w-1 rounded-full bg-slate-300"></span>
-                                        <span className="text-xs uppercase tracking-widest opacity-70">Portal de Gestión</span>
+                                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                                        <span className="text-[10px] uppercase tracking-widest opacity-70">Portal de Gestión</span>
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-2">
+                        <div className="p-1">
                             <Tabs defaultValue="plan" className="w-full">
-                                <div className="px-8 pt-2">
-                                    <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl h-12">
-                                        <TabsTrigger value="plan" className="rounded-xl font-bold text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                <div className="px-6 pt-0">
+                                    <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl h-10">
+                                        <TabsTrigger value="plan" className="rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
                                             <Package className="h-3.5 w-3.5 mr-2" />
                                             Mi Plan
                                         </TabsTrigger>
-                                        <TabsTrigger value="billing" className="rounded-xl font-bold text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                        <TabsTrigger value="billing" className="rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
                                             <History className="h-3.5 w-3.5 mr-2" />
                                             Facturación
                                         </TabsTrigger>
                                     </TabsList>
                                 </div>
 
-                                <TabsContent value="plan" className="p-6 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-3 gap-4">
+                                <TabsContent value="plan" className="p-4 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-3 gap-3">
                                             <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-5 flex flex-col items-center gap-2">
+                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
                                                     <div className={cn(
-                                                        "p-2 rounded-xl mb-1",
-                                                        isActive ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"
+                                                        "p-1.5 rounded-xl mb-0.5",
+                                                        isActive ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
                                                     )}>
-                                                        <CheckCircle2 className="h-5 w-5" />
+                                                        <CheckCircle2 className="h-4 w-4" />
                                                     </div>
-                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Estatus</span>
-                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase">
+                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Estatus</span>
+                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
                                                         {isBypass ? 'PRO CORTESÍA' : (isActive ? 'ACTIVO' : 'SUSPENDIDO')}
                                                     </span>
                                                 </CardContent>
                                             </Card>
 
                                             <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-5 flex flex-col items-center gap-2">
-                                                    <div className="p-2 rounded-xl mb-1 bg-blue-100 text-blue-600">
-                                                        <Clock className="h-5 w-5" />
+                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
+                                                    <div className="p-1.5 rounded-xl mb-0.5 bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                                        <Clock className="h-4 w-4" />
                                                     </div>
-                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Renovación</span>
-                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase">
+                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Renovación</span>
+                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
                                                         {daysRemaining !== null ? `${daysRemaining} días` : 'Ilimitado'}
                                                     </span>
                                                 </CardContent>
                                             </Card>
 
                                             <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-5 flex flex-col items-center gap-2">
-                                                    <div className="p-2 rounded-xl mb-1 bg-amber-100 text-amber-600">
-                                                        <Receipt className="h-5 w-5" />
+                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
+                                                    <div className="p-1.5 rounded-xl mb-0.5 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                                                        <Receipt className="h-4 w-4" />
                                                     </div>
-                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Valor Space</span>
-                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
+                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Valor Space</span>
+                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
                                                         {subscription?.saas_apps?.price_monthly
                                                             ? (subscription.saas_apps.price_monthly / 100).toLocaleString('es-CO', {
                                                                 style: 'currency',
@@ -213,26 +213,26 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                                             </Card>
                                         </div>
 
-                                        <div className="bg-slate-50/50 dark:bg-white/5 p-6 rounded-3xl border border-slate-100 dark:border-white/5">
-                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Beneficios del Plan</h3>
-                                            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                                        <div className="bg-slate-50/50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-white/5">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Beneficios del Plan</h3>
+                                            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
                                                 {(displayApp.features || ["Gestión Completa", "Soporte Prioritario", "Multi-Agente", "Personalización"]).map((feature: string, i: number) => (
-                                                    <div key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
-                                                        <div className="h-5 w-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                                    <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                                        <div className="h-4 w-4 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
                                                         </div>
-                                                        {feature}
+                                                        <span className="truncate" title={feature}>{feature}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {isBypass && (
-                                            <div className="p-4 rounded-[1.5rem] bg-amber-500/10 border border-amber-200/50 text-amber-800 dark:text-amber-200 text-xs flex gap-4 items-center">
-                                                <div className="p-2 bg-amber-500 rounded-lg text-white">
+                                            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex gap-3 items-center">
+                                                <div className="p-1.5 bg-amber-500 rounded-md text-white shrink-0">
                                                     <AlertCircle className="h-4 w-4" />
                                                 </div>
-                                                <p className="font-medium">Tu organización tiene un beneficio de **Cortesía**. Sin cobros automáticos activos.</p>
+                                                <p className="font-medium leading-relaxed">Tu organización tiene un beneficio de **Cortesía**. Sin cobros automáticos activos.</p>
                                             </div>
                                         )}
                                     </div>
@@ -304,16 +304,16 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                             </Tabs>
                         </div>
 
-                        <div className="p-6 pt-2 pb-8 border-t border-slate-50 dark:border-white/10 bg-slate-50/30 dark:bg-transparent flex gap-4">
+                        <div className="p-4 pt-3 pb-4 border-t border-slate-50 dark:border-white/10 bg-slate-50/30 dark:bg-transparent flex gap-3">
                             <Button
                                 variant="ghost"
-                                className="flex-1 rounded-2xl font-bold uppercase tracking-widest text-xs h-12 hover:bg-slate-100"
+                                className="flex-1 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs h-10 hover:bg-slate-100 dark:hover:bg-white/5"
                                 onClick={() => setIsOpen(false)}
                             >
                                 Volver
                             </Button>
                             <Button
-                                className="flex-1 rounded-2xl font-black uppercase tracking-widest text-xs h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-white"
+                                className="flex-1 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs h-10 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-white"
                                 style={{ backgroundColor: finalBtnColor }}
                             >
                                 {isActive ? 'Mejorar Plan' : 'Reactivar Ahora'}

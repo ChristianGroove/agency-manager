@@ -25,6 +25,21 @@ export const processStripeWebhook = inngest.createFunction(
 
                     if (!orgId) break
 
+                    // Unsuspend org
+                    await supabaseAdmin
+                        .from('organizations')
+                        .update({ status: 'active', updated_at: new Date().toISOString() })
+                        .eq('id', orgId)
+                        .eq('status', 'suspended')
+
+                    // Mark platform invoice as paid if present
+                    if (session.metadata?.invoice_id) {
+                        await supabaseAdmin
+                            .from('saas_platform_invoices')
+                            .update({ status: 'PAID', payment_transaction_id: session.payment_intent, updated_at: new Date().toISOString() })
+                            .eq('id', session.metadata.invoice_id)
+                    }
+
                     await registerBillableEvent({
                         organization_id: orgId,
                         event_type: eventType,
@@ -41,6 +56,22 @@ export const processStripeWebhook = inngest.createFunction(
                         invoice.subscription_details?.metadata?.organization_id
 
                     if (!orgId) break
+
+                    // Unsuspend org
+                    await supabaseAdmin
+                        .from('organizations')
+                        .update({ status: 'active', updated_at: new Date().toISOString() })
+                        .eq('id', orgId)
+                        .eq('status', 'suspended')
+
+                    // Mark platform invoice as paid if present
+                    const invoiceId = invoice.metadata?.invoice_id || invoice.subscription_details?.metadata?.invoice_id;
+                    if (invoiceId) {
+                        await supabaseAdmin
+                            .from('saas_platform_invoices')
+                            .update({ status: 'PAID', payment_transaction_id: invoice.payment_intent, updated_at: new Date().toISOString() })
+                            .eq('id', invoiceId)
+                    }
 
                     let eventType: BillableEventType = 'subscription_base'
                     if (invoice.lines?.data?.some((l: any) => l.metadata?.is_addon)) {

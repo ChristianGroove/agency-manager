@@ -151,6 +151,14 @@ export async function getPaymentTransactions() {
     return await PaymentService.getPaymentTransactions()
 }
 
+export async function getCurrentOrgPendingPlatformInvoicesAction() {
+    return await PaymentService.getCurrentOrgPendingPlatformInvoices()
+}
+
+export async function createManualInvoicePaymentTransactionAction(invoiceId: string) {
+    return await PaymentService.createManualInvoicePaymentTransaction(invoiceId)
+}
+
 // ============================================
 // SUBSCRIPTION ACTIONS
 // ============================================
@@ -206,6 +214,10 @@ export async function createManualPlatformInvoiceAction(data: any) {
 
 export async function getPlatformInvoicesAction(page: number = 1, pageSize: number = 50) {
     return await PlatformBillingService.getPlatformInvoices(page, pageSize)
+}
+
+export async function getOrganizationInvoicesAction(organizationId: string) {
+    return await PlatformBillingService.getOrganizationInvoices(organizationId)
 }
 
 export async function deletePlatformInvoiceAction(invoiceId: string) {

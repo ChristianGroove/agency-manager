@@ -341,3 +341,72 @@ export async function getOrganizationSubscription() {
     return data
 }
 
+export async function getCurrentOrgPendingPlatformInvoices() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
+
+    const { data, error } = await supabase
+        .from('saas_platform_invoices')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        logPaymentServiceError("[PaymentService.getCurrentOrgPendingPlatformInvoices] Error:", error)
+        return []
+    }
+    return data
+}
+
+export async function createManualInvoicePaymentTransaction(invoiceId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No organization context")
+
+    const supabase = await createClient()
+    const { data: invoice, error: invoiceError } = await supabase
+        .from('saas_platform_invoices')
+        .select('*')
+        .eq('id', invoiceId)
+        .eq('organization_id', orgId)
+        .single()
+    
+    if (invoiceError || !invoice) {
+        throw new Error("Factura no encontrada o no pertenece a tu organizacion")
+    }
+
+    const amount = invoice.amount || 0
+    const currency = 'USD'
+    const reference = `MANUAL-PAY-${invoiceId.slice(0, 8)}-${Date.now()}`
+
+    // 2. Generate Integrity Signature (Wompi)
+    const integritySecret = process.env.WOMPI_INTEGRITY_SECRET || ''
+    const amountInCents = amount * 100
+    const signatureRaw = `${reference}${amountInCents}${currency}${integritySecret}`
+    const signature = crypto.createHash('sha256').update(signatureRaw).digest('hex')
+
+    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || ''
+
+    // Insert pending transaction log
+    const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+    await supabaseAdmin.from('payment_transactions').insert({
+        reference,
+        amount_in_cents: amountInCents,
+        currency,
+        status: 'PENDING',
+        organization_id: orgId,
+        metadata: { concept: invoice.concept || 'Pago Factura Manual', type: 'manual_invoice', invoice_id: invoiceId },
+        created_at: new Date().toISOString()
+    })
+
+    return {
+        success: true,
+        reference,
+        amountInCents,
+        currency,
+        publicKey,
+        signature,
+    }
+}
+

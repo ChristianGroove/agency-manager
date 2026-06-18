@@ -50,16 +50,36 @@ export async function adminUpdateSubscription(subscriptionId: string, updates: {
     admin_notes?: string
 }) {
     await requireSuperAdmin()
+    const supabase = await createClient()
 
-    const { error } = await (await createClient())
+    // 1. Update the subscription
+    const { data: sub, error } = await supabase
         .from('saas_subscriptions')
         .update({
             ...updates,
             updated_at: new Date().toISOString()
         })
         .eq('id', subscriptionId)
+        .select('organization_id')
+        .single()
 
     if (error) throw error
+
+    // 2. Cascade status to organizations table to prevent CRON block
+    if (updates.status && sub?.organization_id) {
+        let orgStatus = 'active'
+        if (updates.status === 'canceled') orgStatus = 'suspended'
+        // If past_due, we might leave it active but warning, or suspended depending on rules. 
+        // Let's set orgStatus to suspended if it's past_due, or keep it active if bypass is used.
+        // Actually, if canceled or past_due we can map to suspended for hard block.
+        // Or better yet, just sync the `subscription_status` field.
+        await supabase.from('organizations').update({
+            status: updates.status === 'canceled' ? 'suspended' : 'active',
+            subscription_status: updates.status,
+            suspended_at: updates.status === 'canceled' ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+        }).eq('id', sub.organization_id)
+    }
 
     revalidatePath('/platform/admin')
     return { success: true }
