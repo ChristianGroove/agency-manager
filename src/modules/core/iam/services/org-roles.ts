@@ -34,6 +34,7 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
         .select(`
             role,
             role_id,
+            status,
             role_data:organization_roles (
                 name
             )
@@ -42,6 +43,7 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
         .maybeSingle()
 
     if (!data) return null;
+    if (data.status === 'blocked') return null;
 
     // Mapping Logic:
     // 1. If it's explicitly 'owner' or 'admin' in the legacy column, use it.

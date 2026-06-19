@@ -11,7 +11,7 @@ import { CreateOrganizationSheet } from "@/modules/core/organizations/components
 import { OrganizationCard } from "@/modules/core/organizations/components/organization-card"
 import { TenantConfigurationSheet } from "@/modules/core/organizations/components/tenant-configuration-sheet"
 import { EditLimitsModal } from "@/modules/core/organizations/components/edit-limits-modal"
-import { Plus, Building2, Settings2, BarChart3, Shield, Trash, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Building2, Settings2, BarChart3, Shield, Trash, ChevronLeft, ChevronRight, CornerDownRight, Mail } from "lucide-react"
 import { HierarchyAnalytics } from "@/modules/core/organizations/components/hierarchy-analytics"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -247,10 +247,14 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                                 </Avatar>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-gray-900 dark:text-gray-100">{org.name}</span>
-                                                    <span className="text-xs text-gray-400">{org.slug}</span>
-                                                    {org.parent_organization && (
-                                                        <span className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
-                                                            â†³ {org.parent_organization.name}
+                                                    <span className="text-xs text-gray-400 mb-1">{org.slug}</span>
+                                                    
+
+
+                                                    {/* Parent Organization */}
+                                                    {org.parent_organization?.name && (
+                                                        <span className="text-[11px] text-blue-600/80 dark:text-blue-400/80 flex items-center gap-1 mt-1 font-medium bg-blue-50 dark:bg-blue-900/20 w-fit px-1.5 py-0.5 rounded">
+                                                            <CornerDownRight className="h-3 w-3" /> Padre: {org.parent_organization.name}
                                                         </span>
                                                     )}
                                                 </div>
@@ -275,7 +279,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                             {format(new Date(org.created_at), "d MMM, yyyy", { locale: es })}
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
-                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

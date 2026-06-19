@@ -26,6 +26,7 @@ export async function switchOrganization(organizationId: string) {
         .select('organization_id')
         .eq('organization_id', organizationId)
         .eq('user_id', user.id)
+        .neq('status', 'blocked')
         .single()
 
     if (!member) {

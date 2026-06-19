@@ -138,6 +138,7 @@ export async function getOrganizationMembers() {
                 role_id: member.role_id,
                 // If they have a dynamic role, use its name, otherwise fallback to legacy enum
                 role_name: (member as any).organization_roles?.name || member.role,
+                status: member.status || 'active',
                 agent_channels: channelsByAgent.get(member.user_id) || [], // Attach manually mapped channels
                 user: {
                     id: member.user_id,
@@ -646,4 +647,34 @@ export async function createUserManually(data: {
         logTeamActionError("Create User Error:", error)
         return { success: false, error: teamActionErrorMessage(error, PUBLIC_TEAM_CREATE_ERROR) }
     }
+}
+
+/**
+ * Toggle member status (active/blocked)
+ */
+export async function toggleMemberStatus(userId: string, currentStatus: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No active organization" }
+
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { success: false, error: "No tienes permisos para modificar miembros" }
+    }
+
+    const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked'
+
+    const { error } = await supabaseAdmin
+        .from('organization_members')
+        .update({ status: newStatus })
+        .eq('organization_id', orgId)
+        .eq('user_id', userId)
+
+    if (error) {
+        logTeamActionError("Error toggling member status:", error)
+        return { success: false, error: "No se pudo actualizar el estado" }
+    }
+
+    revalidatePath('/platform/settings')
+    return { success: true, status: newStatus }
 }

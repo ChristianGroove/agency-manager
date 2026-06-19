@@ -77,6 +77,26 @@ export async function GET(request: Request) {
         const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!sessionError) {
+            // Check blocked status
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+                const { data: memberships } = await supabaseAdmin
+                    .from('organization_members')
+                    .select('status')
+                    .eq('user_id', user.id)
+                
+                if (memberships && memberships.length > 0) {
+                    const activeMemberships = memberships.filter(m => m.status !== 'blocked')
+                    if (activeMemberships.length === 0) {
+                        await supabase.auth.signOut()
+                        return authErrorRedirect(origin, {
+                            error: 'AccessDenied',
+                            errorDescription: 'Tu usuario ha sido bloqueado. Contacta a soporte para recuperar el acceso.'
+                        })
+                    }
+                }
+            }
             return NextResponse.redirect(`${origin}${next}`)
         } else {
             logAuthCallbackError('Auth Code Exchange Error:', sessionError)

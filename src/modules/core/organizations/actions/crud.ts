@@ -97,6 +97,7 @@ export async function getUserOrganizations() {
             )
         `)
         .eq('user_id', user.id)
+        .neq('status', 'blocked')
 
     if (error) {
         console.error("Error fetching user organizations:", error)
@@ -124,6 +125,7 @@ export const getCurrentOrganizationId = cache(async () => {
             .select('organization_id')
             .eq('organization_id', orgCookie.value)
             .eq('user_id', user.id)
+            .neq('status', 'blocked')
             .maybeSingle()
 
         if (membership) {

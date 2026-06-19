@@ -33,6 +33,22 @@ export async function login(formData: FormData) {
         return { error: "Por favor confirma tu correo electrónico antes de ingresar." }
     }
 
+    if (user) {
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+        const { data: memberships } = await supabaseAdmin
+            .from('organization_members')
+            .select('status')
+            .eq('user_id', user.id)
+
+        if (memberships && memberships.length > 0) {
+            const activeMemberships = memberships.filter(m => m.status !== 'blocked')
+            if (activeMemberships.length === 0) {
+                await supabase.auth.signOut()
+                return { error: "Tu usuario ha sido bloqueado. Contacta a soporte para recuperar el acceso." }
+            }
+        }
+    }
+
     revalidatePath('/', 'layout')
     redirect('/dashboard')
 }

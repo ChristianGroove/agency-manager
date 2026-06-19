@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, UserPlus, Trash2, Mail, Shield, User, Settings, Eye, EyeOff, Lock, CheckCircle } from "lucide-react"
+import { Loader2, UserPlus, Trash2, Mail, Shield, User, Settings, Eye, EyeOff, Lock, CheckCircle, Ban } from "lucide-react"
 import { toast } from "sonner"
-import { getOrganizationMembers, inviteMember, removeMember } from "./actions/team"
+import { getOrganizationMembers, inviteMember, removeMember, toggleMemberStatus } from "./actions/team"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { MemberEditSheet } from "./member-edit-sheet"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
 import { createUserManually } from "./actions/team"
@@ -87,6 +89,23 @@ export function TeamSettingsTab() {
             }
         } catch (error) {
             toast.error("Error inesperado")
+        }
+    }
+
+    const handleToggleStatus = async (userId: string, currentStatus: string) => {
+        setIsLoading(true)
+        try {
+            const result = await toggleMemberStatus(userId, currentStatus)
+            if (result.success) {
+                toast.success(result.status === 'blocked' ? "Acceso bloqueado" : "Acceso restaurado")
+                loadMembers()
+            } else {
+                toast.error("Error: " + result.error)
+                setIsLoading(false)
+            }
+        } catch (error) {
+            toast.error("Error inesperado")
+            setIsLoading(false)
         }
     }
 
@@ -168,6 +187,7 @@ export function TeamSettingsTab() {
                             <TableRow>
                                 <TableHead>Usuario</TableHead>
                                 <TableHead>Rol</TableHead>
+                                <TableHead>Ingreso</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
@@ -175,13 +195,13 @@ export function TeamSettingsTab() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-8">
+                                    <TableCell colSpan={5} className="text-center py-8">
                                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
                                     </TableCell>
                                 </TableRow>
                             ) : members.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                                         No se encontraron miembros.
                                     </TableCell>
                                 </TableRow>
@@ -204,14 +224,30 @@ export function TeamSettingsTab() {
                                                 {member.role_name || (member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : member.role)}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell className="text-gray-500 text-sm">
+                                            {member.created_at ? format(new Date(member.created_at), "d MMM, yyyy", { locale: es }) : 'N/A'}
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                                                <span className="text-sm text-gray-600">Activo</span>
+                                                <div className={`h-2 w-2 rounded-full ${member.status === 'blocked' ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                                                <span className="text-sm text-gray-600">
+                                                    {member.status === 'blocked' ? 'Bloqueado' : 'Acceso Permitido'}
+                                                </span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
+                                                {member.role !== 'owner' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={member.status === 'blocked' ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
+                                                        onClick={() => handleToggleStatus(member.user_id, member.status)}
+                                                        title={member.status === 'blocked' ? "Desbloquear acceso" : "Bloquear acceso"}
+                                                    >
+                                                        {member.status === 'blocked' ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
