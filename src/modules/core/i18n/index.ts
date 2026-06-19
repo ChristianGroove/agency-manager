@@ -86,7 +86,7 @@ export async function resolveLanguage(): Promise<Language> {
             .from('profiles')
             .select('language_preference')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (profile?.language_preference) {
             return profile.language_preference as Language
@@ -100,7 +100,7 @@ export async function resolveLanguage(): Promise<Language> {
             .from('organization_settings')
             .select('default_language')
             .eq('organization_id', orgId)
-            .single()
+            .maybeSingle()
 
         if (settings?.default_language) {
             return settings.default_language as Language

@@ -8,7 +8,7 @@ export async function getDashboardData(supabase: any, orgId: string) {
     // RPC + Settings in parallel (was sequential)
     const [metricsRes, settingsRes] = await Promise.all([
         supabase.rpc('get_agency_dashboard_metrics', { p_org_id: orgId }),
-        supabase.from('organization_settings').select('*').eq('organization_id', orgId).single()
+        supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle()
     ])
 
     if (metricsRes.error) {
@@ -133,7 +133,7 @@ export async function getDashboardPayload() {
 
     if (orgType === 'resto') {
         const [settingsRes, bannerRes] = await Promise.all([
-            supabase.from('organization_settings').select('*').eq('organization_id', orgId).single(),
+            supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
             bannerPromise
         ])
         dashboardData = { settings: settingsRes.data, bannerConfig: bannerRes.data || null }
@@ -141,7 +141,7 @@ export async function getDashboardPayload() {
     } else if (orgType === 'retail') {
         const today = new Date().toISOString().split('T')[0]
         const [settingsRes, locationsRes, logsRes, bannerRes] = await Promise.all([
-            supabase.from('organization_settings').select('*').eq('organization_id', orgId).single(),
+            supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
             supabase.from('organization_locations').select('id, name').eq('organization_id', orgId).eq('is_active', true),
             supabase.from('attendance_logs').select('id, staff_id, location_id, type, is_valid').eq('organization_id', orgId).gte('timestamp', `${today}T00:00:00`).lte('timestamp', `${today}T23:59:59`),
             bannerPromise

@@ -7,6 +7,7 @@ import { EmailService } from "@/modules/features/notifications/email.service"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * =======================
@@ -474,7 +475,10 @@ export async function deleteOrganization(orgId: string) {
     await requireSuperAdmin()
     const { data: orgCheck } = await (await createClient()).from('organizations').select('slug').eq('id', orgId).single()
     if (!orgCheck || PROTECTED_ORG_SLUGS.includes(orgCheck.slug)) throw new Error(`Cannot delete protected organization`)
-    const { error } = await (await createClient()).from('organizations').delete().eq('id', orgId)
+    
+    // We use supabaseAdmin because RLS doesn't allow deleting organizations by default
+    const { error } = await supabaseAdmin.from('organizations').delete().eq('id', orgId)
+    
     if (error) throw error
     revalidatePath('/platform/admin/organizations')
     return { success: true }

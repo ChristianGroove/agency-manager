@@ -80,7 +80,7 @@ export default function LoginPage() {
                         backgroundColor: bgColor || '#111827'
                     }}
                 >
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
                 </div>
             ) : (
                 <div className="absolute inset-0 z-0">
@@ -97,7 +97,7 @@ export default function LoginPage() {
                     />
                 </div>
 
-                <Card className="w-full bg-black/20 backdrop-blur-xl border-white/10 text-white shadow-2xl ring-1 ring-white/10">
+                <Card className="w-full bg-black/10 backdrop-blur-md border-white/10 text-white shadow-2xl ring-1 ring-white/10">
                     <CardHeader className="space-y-1 text-center pb-8">
                         <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
                         <CardDescription className="text-gray-300">
@@ -167,37 +167,18 @@ export default function LoginPage() {
                             <Button
                                 type="submit"
                                 className="w-full bg-white text-black hover:bg-gray-200 h-11 font-medium transition-all mt-2"
-                                disabled={isLoading || (successMessage !== null)}
+                                disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {loginMethod === 'magic_link' ? 'Enviando...' : 'Verificando...'}
+                                        Verificando...
                                     </>
                                 ) : (
-                                    loginMethod === 'magic_link' ? 'Enviar Enlace de Acceso' : "Iniciar Sesión"
+                                    "Iniciar Sesión"
                                 )}
                             </Button>
                         </form>
-
-                        <div className="flex justify-center pt-2">
-                            <Button
-                                variant="link"
-                                type="button"
-                                onClick={() => {
-                                    setLoginMethod(prev => prev === 'password' ? 'magic_link' : 'password')
-                                    setError(null)
-                                    setSuccessMessage(null)
-                                }}
-                                className="text-white/60 hover:text-white text-xs"
-                            >
-                                {loginMethod === 'password' ? (
-                                    <><Wand2 className="mr-2 h-3 w-3" /> Usar Magic Link (Sin Contraseña)</>
-                                ) : (
-                                    <><KeyRound className="mr-2 h-3 w-3" /> Usar Contraseña</>
-                                )}
-                            </Button>
-                        </div>
 
                         <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <BiometricButton iconOnly email={email} />
