@@ -21,7 +21,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             return
         }
         if (password.length < 6) {
-            toast.error("La contraseÃ±a debe tener al menos 6 caracteres")
+            toast.error("La contraseña debe tener al menos 6 caracteres")
             return
         }
 

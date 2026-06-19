@@ -137,9 +137,9 @@ export async function seedSystemModules() {
         { key: 'module_briefings', name: 'Briefing System', description: 'Advanced forms and data collection wizard.', category: 'addon', is_active: true },
         { key: 'module_catalog', name: 'Product Catalog', description: 'Public facing catalog for services and products.', category: 'addon', is_active: true },
         { key: 'module_whitelabel', name: 'White Labeling', description: 'Custom branding, logos, and domain settings.', category: 'addon', is_active: true },
-        { key: 'core_locations', name: 'Sedes y Ubicaciones', description: 'GestiÃ³n fÃ­sica de sucursales y puntos de venta.', category: 'core', is_active: true },
+        { key: 'core_locations', name: 'Sedes y Ubicaciones', description: 'Gestión física de sucursales y puntos de venta.', category: 'core', is_active: true },
         { key: 'module_attendance', name: 'Control de Asistencia', description: 'Registro de entrada y salida de personal.', category: 'addon', is_active: true },
-        { key: 'module_resto_tables', name: 'GestiÃ³n de Mesas', description: 'Layout interactivo para restaurantes y servicios.', category: 'addon', is_active: true }
+        { key: 'module_resto_tables', name: 'Gestión de Mesas', description: 'Layout interactivo para restaurantes y servicios.', category: 'addon', is_active: true }
     ]
 
     const { error } = await supabaseAdmin

@@ -34,7 +34,7 @@ export async function orchestrateWorkflow(
     if (!organizationId) {
         return {
             success: false,
-            error: 'No se pudo identificar tu organizaciÃ³n. Por favor recarga la pÃ¡gina.'
+            error: 'No se pudo identificar tu organización. Por favor recarga la página.'
         };
     }
 
@@ -43,7 +43,7 @@ export async function orchestrateWorkflow(
     if (!rateLimit.allowed) {
         return {
             success: false,
-            error: `Has alcanzado el lÃ­mite de generaciones. Intenta de nuevo en ${Math.ceil(rateLimit.resetInSeconds / 60)} minutos.`,
+            error: `Has alcanzado el límite de generaciones. Intenta de nuevo en ${Math.ceil(rateLimit.resetInSeconds / 60)} minutos.`,
             rateLimitInfo: { remaining: 0, resetInSeconds: rateLimit.resetInSeconds }
         };
     }
@@ -77,7 +77,7 @@ export async function orchestrateWorkflow(
             console.error('[Orchestrator] Schema validation failed:', parsed.error.issues);
             return {
                 success: false,
-                error: 'La IA generÃ³ una respuesta invÃ¡lida. Intenta reformular tu descripciÃ³n de forma mÃ¡s clara.',
+                error: 'La IA generó una respuesta inválida. Intenta reformular tu descripción de forma más clara.',
                 rateLimitInfo: { remaining: rateLimit.remaining, resetInSeconds: rateLimit.resetInSeconds }
             };
         }
@@ -154,10 +154,10 @@ function validateWorkflowLogic(workflow: { nodes: GeneratedNode[]; edges: Genera
     const nodeIds = new Set(workflow.nodes.map(n => n.id));
     for (const edge of workflow.edges) {
         if (!nodeIds.has(edge.source)) {
-            errors.push(`ConexiÃ³n invÃ¡lida: origen '${edge.source}' no existe`);
+            errors.push(`Conexión inválida: origen '${edge.source}' no existe`);
         }
         if (!nodeIds.has(edge.target)) {
-            errors.push(`ConexiÃ³n invÃ¡lida: destino '${edge.target}' no existe`);
+            errors.push(`Conexión inválida: destino '${edge.target}' no existe`);
         }
     }
 
@@ -170,7 +170,7 @@ function validateWorkflowLogic(workflow: { nodes: GeneratedNode[]; edges: Genera
 
     for (const node of workflow.nodes) {
         if (node.type !== 'trigger' && !connectedNodes.has(node.id)) {
-            errors.push(`Nodo '${node.label}' no estÃ¡ conectado al flujo`);
+            errors.push(`Nodo '${node.label}' no está conectado al flujo`);
         }
     }
 

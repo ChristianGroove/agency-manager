@@ -48,12 +48,12 @@ export default async function DashboardLayout({
 
     const uiConfig = currentOrgId ? await resolveOrgCapabilities(currentOrgId) : null
 
-    // LÃ³gica de SuspensiÃ³n (Canceled / Unpaid)
+    // Lógica de Suspensión (Canceled / Unpaid)
     // El SuperAdmin siempre tiene bypass
     const isSuspended = !isAdmin && (subscription?.status === 'canceled' || subscription?.status === 'unpaid')
 
     // Determinamos el Portal Template de forma eficiente
-    // Si orgDetails tiene portal_template (vÃ­a join o precarga), lo usamos. 
+    // Si orgDetails tiene portal_template (vía join o precarga), lo usamos. 
     // Si no, b2b_dashboard es el default.
     const portalTemplateKey = orgDetails?.active_app?.portal_template || 'b2b_dashboard'
 

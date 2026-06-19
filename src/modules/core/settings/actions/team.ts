@@ -157,7 +157,7 @@ export async function getOrganizationMembers() {
 export async function inviteMember(email: string, roleId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
-    if (!roleId || roleId.length < 30) return { success: false, error: "Rol invÃ¡lido (UUID requerido)" }
+    if (!roleId || roleId.length < 30) return { success: false, error: "Rol inválido (UUID requerido)" }
 
     // Verify Admin/Owner permissions
     try {
@@ -254,10 +254,10 @@ export async function inviteMember(email: string, roleId: string) {
 
         await EmailService.send({
             to: email,
-            subject: 'InvitaciÃ³n a unirse al equipo',
+            subject: 'Invitación a unirse al equipo',
             html: `
                 <h1>Has sido invitado</h1>
-                <p>Te han invitado a unirte a una organizaciÃ³n en Pixy.</p>
+                <p>Te han invitado a unirte a una organización en Pixy.</p>
                 <p>Haz clic abajo para aceptar:</p>
                 <p><a href="${inviteLink}" style="padding: 10px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px;">Unirse Ahora</a></p>
             `,
@@ -393,7 +393,7 @@ export async function updateMemberPermissions(
 
     const hierarchy = (member.role_data as any)?.hierarchy_level
     if (hierarchy === 100 || member.role === 'owner') {
-        return { success: false, error: "No se pueden editar los permisos de un DueÃ±o de sistema" }
+        return { success: false, error: "No se pueden editar los permisos de un Dueño de sistema" }
     }
 
     const currentPermissions = (member.permissions as any) || {}
@@ -563,7 +563,7 @@ export async function createUserManually(data: {
                     .single()
 
                 if (!profile) {
-                    return { success: false, error: "El correo estÃ¡ registrado pero no pudimos recuperar el usuario." }
+                    return { success: false, error: "El correo está registrado pero no pudimos recuperar el usuario." }
                 }
 
                 const { data: updatedUser, error: updateError } = await (await createClient()).auth.admin.updateUserById(

@@ -8,7 +8,7 @@ import { redirect } from "next/navigation"
 
 export const metadata = {
     title: "Motor de Correos",
-    description: "Gestiona las plantillas de correo electrÃ³nico y la conexiÃ³n SMTP",
+    description: "Gestiona las plantillas de correo electrónico y la conexión SMTP",
 }
 
 export default async function Page() {

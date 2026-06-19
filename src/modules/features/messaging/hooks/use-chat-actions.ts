@@ -75,7 +75,7 @@ export function useChatActions(params: {
             const features = currentPendingProduct.metadata?.portal_card?.features || []
             if (Array.isArray(features) && features.length > 0) {
                 const featureList = features.map((f: string) => f?.trim() ? `âœ… ${f.trim()}` : '').filter(Boolean).join('\n')
-                if (featureList) parts.push(`\n*CARACTERÃSTICAS*\n${featureList}`)
+                if (featureList) parts.push(`\n*CARACTERÍSTICAS*\n${featureList}`)
             }
             parts.push(`\n*Precio:* $${currentPendingProduct.base_price?.toLocaleString() || 'N/A'}`)
             if (textContent && textContent.trim()) parts.push(`\n---\n_${textContent.trim()}_`)

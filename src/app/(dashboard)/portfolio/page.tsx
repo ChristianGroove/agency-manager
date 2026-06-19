@@ -1,10 +1,10 @@
 "use client"
 
 /**
- * NOMENCLATURA: Este mÃ³dulo muestra "CatÃ¡logo" en la UI.
- * Backend usa tabla 'service_catalog' (NO cambiar nombres tÃ©cnicos).
- * "CatÃ¡logo" = Plantillas/oferta de servicios que el negocio ofrece.
- * Ver: /NOMENCLATURE.md para mÃ¡s info.
+ * NOMENCLATURA: Este módulo muestra "Catálogo" en la UI.
+ * Backend usa tabla 'service_catalog' (NO cambiar nombres técnicos).
+ * "Catálogo" = Plantillas/oferta de servicios que el negocio ofrece.
+ * Ver: /NOMENCLATURE.md para más info.
  */
 
 import { useState, useEffect } from "react"
@@ -104,7 +104,7 @@ export default function PortfolioPage() {
     }
 
     const handleDeleteService = async (id: string) => {
-        if (!confirm("Â¿EstÃ¡s seguro de eliminar este servicio? Esta acciÃ³n no se puede deshacer.")) return
+        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
         try {
             await deleteCatalogItem(id)
             toast.success("Servicio eliminado")
@@ -119,7 +119,7 @@ export default function PortfolioPage() {
             {/* Title Row with Actions */}
             {/* Standardized Header */}
             <SectionHeader
-                title={isAgency ? 'CatÃ¡logo' : 'MenÃº'}
+                title={isAgency ? 'Catálogo' : 'Menú'}
                 subtitle={isAgency ? 'Servicios y productos que ofrece tu negocio.' : 'Platos y productos de tu establecimiento.'}
                 icon={Store}
                 action={
@@ -142,11 +142,11 @@ export default function PortfolioPage() {
                     <SearchFilterBar
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
-                        searchPlaceholder={isAgency ? 'Buscar por nombre...' : 'Â¿QuÃ© buscas?'}
+                        searchPlaceholder={isAgency ? 'Buscar por nombre...' : '¿Qué buscas?'}
                         filters={isAgency ? [
                             { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
                             { id: 'one_off', label: 'Pago Ãšnico', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
-                            { id: 'recurring', label: 'SuscripciÃ³n', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
+                            { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
                         ] : [
                             { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
                         ]}

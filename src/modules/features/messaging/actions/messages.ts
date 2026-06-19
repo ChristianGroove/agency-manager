@@ -82,7 +82,7 @@ function publicMessageActionError(error: unknown, fallback = PUBLIC_MESSAGE_SEND
 }
 
 /**
- * FunciÃ³n para marcar una conversaciÃ³n como leÃ­da.
+ * Función para marcar una conversación como leída.
  */
 export async function markConversationAsRead(id: string) {
     const supabase = await createClient()
@@ -103,7 +103,7 @@ export async function markConversationAsRead(id: string) {
 }
 
 /**
- * Obtiene los mensajes de una conversaciÃ³n.
+ * Obtiene los mensajes de una conversación.
  */
 export async function getMessages(conversationId: string) {
     const supabase = await createClient()
@@ -121,7 +121,7 @@ export async function getMessages(conversationId: string) {
 }
 
 /**
- * FunciÃ³n unificada para el envÃ­o de mensajes a travÃ©s de proveedores
+ * Función unificada para el envío de mensajes a través de proveedores
  */
 async function internalSend({
     conversationId,
@@ -277,7 +277,7 @@ export async function sendImageMessage(conversationId: string, imageUrl: string,
 
 export async function sendLocationMessage(conversationId: string, lat: number, lon: number, address: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
-    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'UbicaciÃ³n' }, sender, supabase, messageId })
+    const result = await internalSend({ conversationId, content: { type: 'location', latitude: lat, longitude: lon, address, name: address || 'Ubicación' }, sender, supabase, messageId })
     revalidatePath(`/inbox/${conversationId}`)
     return result
 }
@@ -296,7 +296,7 @@ export async function sendProductCardMessage(conversationId: string, product: an
     const parts = [`*${product.name.toUpperCase()}*`];
     if (product.description) parts.push(`\n${product.description}`);
     const features = product.metadata?.portal_card?.features || [];
-    if (features.length > 0) parts.push(`\n*CARACTERÃSTICAS*\n` + features.map((f: any) => `âœ… ${f}`).join('\n'));
+    if (features.length > 0) parts.push(`\n*CARACTERÍSTICAS*\n` + features.map((f: any) => `âœ… ${f}`).join('\n'));
     parts.push(`\n*Precio:* $${product.base_price?.toLocaleString() || 'N/A'}`);
     if (extraText) parts.push(`\n---\n_${extraText}_`);
     

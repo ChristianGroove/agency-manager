@@ -62,20 +62,20 @@ const OFF_TOPIC_PATTERNS = [
     /escribe.*cuento/i,
     /escribe.*historia/i,
     /hazme.*chiste/i,
-    /cuÃ©ntame.*chiste/i,
-    /quiÃ©n.*presidente/i,
-    /polÃ­tica/i,
-    /religiÃ³n/i,
+    /cuéntame.*chiste/i,
+    /quién.*presidente/i,
+    /política/i,
+    /religión/i,
     /criptomoneda/i,
     /bitcoin/i,
     /hackear/i,
-    /contraseÃ±a.*otra/i,
-    /inyecciÃ³n.*sql/i,
-    /cÃ³digo.*malicioso/i,
+    /contraseña.*otra/i,
+    /inyección.*sql/i,
+    /código.*malicioso/i,
     /ignore.*instrucciones/i,
     /ignora.*sistema/i,
     /olvida.*eres/i,
-    /actÃºa.*como/i,
+    /actúa.*como/i,
     /finge.*ser/i,
     /roleplay/i,
     /juego.*de.*rol/i,
@@ -104,9 +104,9 @@ function sanitizeInput(input: string): string {
  * Contexto: Sistema de Ayuda Pixy (Knowledge Hub)
  * 
  * Protocolos de seguridad:
- * - Rate limiting (10 req/min por organizaciÃ³n)
- * - ValidaciÃ³n de longitud (max 500 chars)
- * - DetecciÃ³n de off-topic
+ * - Rate limiting (10 req/min por organización)
+ * - Validación de longitud (max 500 chars)
+ * - Detección de off-topic
  * - Prompt con guardrails estrictos
  */
 export async function askHelpAssistant(
@@ -119,7 +119,7 @@ export async function askHelpAssistant(
         if (!organizationId) {
             return {
                 success: false,
-                error: "No se pudo identificar tu organizaciÃ³n. Por favor, inicia sesiÃ³n nuevamente."
+                error: "No se pudo identificar tu organización. Por favor, inicia sesión nuevamente."
             }
         }
 
@@ -128,7 +128,7 @@ export async function askHelpAssistant(
             return {
                 success: false,
                 blocked: true,
-                error: "Has alcanzado el lÃ­mite de preguntas. Espera un momento antes de continuar."
+                error: "Has alcanzado el límite de preguntas. Espera un momento antes de continuar."
             }
         }
 
@@ -138,7 +138,7 @@ export async function askHelpAssistant(
         if (sanitizedQuestion.length < 3) {
             return {
                 success: false,
-                error: "Tu pregunta es muy corta. Por favor, sÃ© mÃ¡s especÃ­fico."
+                error: "Tu pregunta es muy corta. Por favor, sé más específico."
             }
         }
 
@@ -147,7 +147,7 @@ export async function askHelpAssistant(
             return {
                 success: false,
                 blocked: true,
-                message: "Solo puedo ayudarte con preguntas sobre cÃ³mo usar Pixy. Â¿Tienes alguna duda sobre la plataforma?"
+                message: "Solo puedo ayudarte con preguntas sobre cómo usar Pixy. ¿Tienes alguna duda sobre la plataforma?"
             }
         }
 
@@ -188,7 +188,7 @@ export async function askHelpAssistant(
         console.error("Error en askHelpAssistant:", error)
         return {
             success: false,
-            error: "OcurriÃ³ un error inesperado. Por favor, intenta mÃ¡s tarde."
+            error: "Ocurrió un error inesperado. Por favor, intenta más tarde."
         }
     }
 }

@@ -127,7 +127,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
     }
 
     const handleBulkDelete = async () => {
-        if (!confirm(`Â¿EstÃ¡s seguro de eliminar ${selectedIds.size} organizaciones?`)) return
+        if (!confirm(`¿Estás seguro de eliminar ${selectedIds.size} organizaciones?`)) return
 
         setIsDeleting(true)
         try {
@@ -162,7 +162,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
         <div className="space-y-6 bg-gray-50/50 dark:bg-transparent min-h-screen">
             <SectionHeader
                 title="Organizaciones"
-                subtitle="GestiÃ³n global de organizaciones."
+                subtitle="Gestión global de organizaciones."
                 icon={Building2}
                 action={
                     <div className="flex items-center gap-3 w-full md:w-auto">
@@ -175,7 +175,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                             {showAnalytics ? "Ocultar Analytics" : "Ver Analytics"}
                         </Button>
                         <Button onClick={() => setIsCreateOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
-                            <Plus className="mr-2 h-4 w-4" /> Nueva OrganizaciÃ³n
+                            <Plus className="mr-2 h-4 w-4" /> Nueva Organización
                         </Button>
                     </div>
                 }
@@ -185,7 +185,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                 <SearchFilterBar
                     searchTerm={searchTerm}
                     onSearchChange={onSearchChange}
-                    searchPlaceholder="Buscar organizaciÃ³n..."
+                    searchPlaceholder="Buscar organización..."
                     filters={filterOptions}
                     activeFilter={activeFilter}
                     onFilterChange={onFilterChange}
@@ -216,7 +216,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                         onCheckedChange={toggleAll}
                                     />
                                 </TableHead>
-                                <TableHead className="pl-6 w-[400px]">Identidad / JerarquÃ­a</TableHead>
+                                <TableHead className="pl-6 w-[400px]">Identidad / Jerarquía</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead>Creada</TableHead>
@@ -280,7 +280,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleOpenConfig(org)}
-                                                    title="ConfiguraciÃ³n Avanzada"
+                                                    title="Configuración Avanzada"
                                                     className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                 >
                                                     <Shield className="h-4 w-4" />
@@ -289,7 +289,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleOpenLimits(org)}
-                                                    title="Gestionar LÃ­mites"
+                                                    title="Gestionar Límites"
                                                     className="h-8 w-8 p-0"
                                                 >
                                                     <Settings2 className="h-4 w-4" />
@@ -298,12 +298,12 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={async () => {
-                                                        if (confirm('Â¿Eliminar esta organizaciÃ³n?')) {
+                                                        if (confirm('¿Eliminar esta organización?')) {
                                                             setIsDeleting(true)
                                                             try {
                                                                 const { deleteOrganizations } = await import("@/modules/core/organizations/organization-actions")
                                                                 await deleteOrganizations([org.id])
-                                                                toast.success("OrganizaciÃ³n eliminada")
+                                                                toast.success("Organización eliminada")
                                                                 handleRefresh()
                                                             } finally {
                                                                 setIsDeleting(false)

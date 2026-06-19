@@ -55,7 +55,7 @@ export function TeamSettingsTab() {
         try {
             const result = await inviteMember(inviteEmail, inviteRole)
             if (result.success) {
-                toast.success("InvitaciÃ³n enviada", {
+                toast.success("Invitación enviada", {
                     description: result.inviteLink ? "Enlace generado (copia manual)" : "Correo enviado"
                 })
                 if (result.inviteLink) {
@@ -76,7 +76,7 @@ export function TeamSettingsTab() {
     }
 
     const handleRemove = async (userId: string) => {
-        if (!confirm("Â¿Seguro de remover este miembro?")) return
+        if (!confirm("¿Seguro de remover este miembro?")) return
         try {
             const result = await removeMember(userId)
             if (result.success) {
@@ -95,21 +95,21 @@ export function TeamSettingsTab() {
             <div className="flex justify-between items-center">
                 <div>
                     <h3 className="text-lg font-medium">Equipo y Permisos</h3>
-                    <p className="text-sm text-gray-500">Administra quiÃ©n tiene acceso a esta organizaciÃ³n.</p>
+                    <p className="text-sm text-gray-500">Administra quién tiene acceso a esta organización.</p>
                 </div>
                 <div className="flex gap-2">
                     <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
                         <DialogTrigger asChild>
                             <Button>
                                 <UserPlus className="h-4 w-4 mr-2" />
-                                AÃ±adir Miembro
+                                Añadir Miembro
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[500px]">
                             <DialogHeader>
-                                <DialogTitle>AÃ±adir Nuevo Miembro</DialogTitle>
+                                <DialogTitle>Añadir Nuevo Miembro</DialogTitle>
                                 <DialogDescription>
-                                    Elige cÃ³mo deseas agregar al usuario a tu organizaciÃ³n.
+                                    Elige cómo deseas agregar al usuario a tu organización.
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -122,7 +122,7 @@ export function TeamSettingsTab() {
                                 {/* TAB: INVITE */}
                                 <TabsContent value="invite" className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="email">Correo ElectrÃ³nico</Label>
+                                        <Label htmlFor="email">Correo Electrónico</Label>
                                         <Input
                                             id="email"
                                             placeholder="usuario@ejemplo.com"
@@ -138,11 +138,11 @@ export function TeamSettingsTab() {
                                         />
                                     </div>
                                     <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
-                                        <p>El usuario recibirÃ¡ un correo con un enlace de acceso Ãºnico.</p>
+                                        <p>El usuario recibirá un correo con un enlace de acceso único.</p>
                                     </div>
                                     <Button onClick={handleInvite} disabled={isInviting || !inviteEmail} className="w-full">
                                         {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Enviar InvitaciÃ³n
+                                        Enviar Invitación
                                     </Button>
                                 </TabsContent>
 
@@ -201,7 +201,7 @@ export function TeamSettingsTab() {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={member.role === 'owner' ? 'default' : member.role === 'admin' ? 'secondary' : 'outline'}>
-                                                {member.role_name || (member.role === 'owner' ? 'DueÃ±o' : member.role === 'admin' ? 'Admin' : member.role)}
+                                                {member.role_name || (member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : member.role)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
@@ -246,9 +246,9 @@ export function TeamSettingsTab() {
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
                 <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
-                    <h4 className="font-medium text-blue-900 text-sm">GestiÃ³n de Roles Integrada</h4>
+                    <h4 className="font-medium text-blue-900 text-sm">Gestión de Roles Integrada</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                        Para administrar roles avanzados o crear nuevos, haz clic en el icono de <Settings className="h-3 w-3 inline mx-1" /> configuraciÃ³n de cualquier usuario.
+                        Para administrar roles avanzados o crear nuevos, haz clic en el icono de <Settings className="h-3 w-3 inline mx-1" /> configuración de cualquier usuario.
                     </p>
                 </div>
             </div>

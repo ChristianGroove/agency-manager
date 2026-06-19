@@ -137,7 +137,7 @@ export function MemberEditSheet({
                                             </SheetTitle>
                                             <Badge variant="outline" className="bg-white/20 text-white border-none py-0.5 h-6 text-[10px] items-center gap-1">
                                                 {isOwner ? (
-                                                    <><Crown className="h-3 w-3" /> DueÃ±o</>
+                                                    <><Crown className="h-3 w-3" /> Dueño</>
                                                 ) : (member as any)?.role_name?.toLowerCase().includes('admin') || role === 'admin' ? (
                                                     <><Shield className="h-3 w-3" /> {(member as any)?.role_name || "Administrador"}</>
                                                 ) : (
@@ -156,9 +156,9 @@ export function MemberEditSheet({
                                 {isOwner ? (
                                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
                                         <Crown className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-                                        <h3 className="font-medium text-amber-900">Permisos de DueÃ±o</h3>
+                                        <h3 className="font-medium text-amber-900">Permisos de Dueño</h3>
                                         <p className="text-sm text-amber-700 mt-1">
-                                            El dueÃ±o tiene acceso completo a todos los recursos.
+                                            El dueño tiene acceso completo a todos los recursos.
                                         </p>
                                     </div>
                                 ) : (
@@ -180,7 +180,7 @@ export function MemberEditSheet({
                                                 onValueChange={(val) => setRole(val)}
                                             />
                                             <p className="text-xs text-gray-500">
-                                                El usuario heredarÃ¡ todos los permisos definidos para este rol.
+                                                El usuario heredará todos los permisos definidos para este rol.
                                             </p>
                                         </div>
 
@@ -195,7 +195,7 @@ export function MemberEditSheet({
                                                 disabled={isOwner}
                                             />
                                             <p className="text-xs text-gray-400">
-                                                Determina quÃ© lÃ­neas de WhatsApp podrÃ¡ ver este agente en su inbox.
+                                                Determina qué líneas de WhatsApp podrá ver este agente en su inbox.
                                             </p>
                                         </div>
 
@@ -204,7 +204,7 @@ export function MemberEditSheet({
                                                 <Shield className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                                 <div className="text-xs text-blue-700">
                                                     <span className="font-medium">Modelo de Seguridad Unificado:</span><br />
-                                                    Ya no es necesario configurar permisos individuales. Simplemente asigna el rol correcto o crea uno nuevo en "Configurar Roles" si necesitas un set de permisos especÃ­fico.
+                                                    Ya no es necesario configurar permisos individuales. Simplemente asigna el rol correcto o crea uno nuevo en "Configurar Roles" si necesitas un set de permisos específico.
                                                 </div>
                                             </div>
                                         </div>
@@ -222,7 +222,7 @@ export function MemberEditSheet({
                                     className="bg-brand-pink hover:bg-brand-pink/90"
                                 >
                                     {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Guardar AsignaciÃ³n
+                                    Guardar Asignación
                                 </Button>
                             </div>
                         </>

@@ -185,7 +185,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                         {selectedTemplate ? selectedTemplate.name : "Plantillas WhatsApp"}
                                     </SheetTitle>
                                     <SheetDescription className="text-xs text-muted-foreground mt-0">
-                                        {selectedTemplate ? "Completa las variables y envÃ­a" : "Selecciona una plantilla aprobada"}
+                                        {selectedTemplate ? "Completa las variables y envía" : "Selecciona una plantilla aprobada"}
                                     </SheetDescription>
                                 </div>
                             </div>
@@ -227,12 +227,12 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                                     onClick={loadTemplates}
                                                     className="text-xs gap-1"
                                                 >
-                                                    <RefreshCw className="h-3 w-3" /> Reintentar sincronizaciÃ³n
+                                                    <RefreshCw className="h-3 w-3" /> Reintentar sincronización
                                                 </Button>
                                             </div>
                                         ) : (
                                             <p className="text-xs mt-1 text-center max-w-[260px]">
-                                                Sincroniza desde Meta en Settings â†’ Plantillas, o crea una nueva y envÃ­ala a aprobaciÃ³n.
+                                                Sincroniza desde Meta en Settings â†’ Plantillas, o crea una nueva y envíala a aprobación.
                                             </p>
                                         )}
                                     </div>

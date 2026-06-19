@@ -371,7 +371,7 @@ export async function removeModuleFromApp(appModuleId: string) {
             .eq('id', appModuleId)
             .single()
 
-        if (!moduleToDelete) throw new Error("MÃ³dulo de Space no encontrado")
+        if (!moduleToDelete) throw new Error("Módulo de Space no encontrado")
 
         // 2. Get all modules currently in this app
         const { data: appModules } = await (await createClient())
@@ -391,7 +391,7 @@ export async function removeModuleFromApp(appModuleId: string) {
             const dependents = plan.modules_to_disable.filter(m => m !== moduleToDelete.module_key)
             return {
                 success: false,
-                error: `No puedes desactivar este mÃ³dulo. Otros mÃ³dulos activos de este Space dependen de Ã©l: ${dependents.join(', ')}. DesactÃ­valos primero.`
+                error: `No puedes desactivar este módulo. Otros módulos activos de este Space dependen de él: ${dependents.join(', ')}. Desactívalos primero.`
             }
         }
 

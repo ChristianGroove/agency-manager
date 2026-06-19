@@ -22,7 +22,7 @@ export async function exportContractAsPdf(payload: {
     // 2. Prepare PDF Metadata (De-Pixification)
     const pdfMetadata = {
         title: `Contrato - ${payload.metadata.clientName}`,
-        subject: isWhiteLabel ? "Acuerdo de PrestaciÃ³n de Servicios" : "Generado por Pixy Agency Manager",
+        subject: isWhiteLabel ? "Acuerdo de Prestación de Servicios" : "Generado por Pixy Agency Manager",
         author: payload.metadata.agencyName,
         creator: isWhiteLabel ? payload.metadata.agencyName : "Pixy Platform",
         producer: isWhiteLabel ? payload.metadata.agencyName : "Pixy PDF Engine"
@@ -80,7 +80,7 @@ export async function generateContractWithAi({
         orgId,
         clientId,
         serviceIds,
-        prompt: prompt || "Generar contrato de prestaciÃ³n de servicios estÃ¡ndar.",
+        prompt: prompt || "Generar contrato de prestación de servicios estándar.",
         hasTenantData: !!data.tenant,
         hasClientData: !!data.client,
         servicesCount: data.services?.length
@@ -91,7 +91,7 @@ export async function generateContractWithAi({
         taskType: 'contract.generate_v1',
         payload: {
             ...data,
-            prompt: prompt || "Generar contrato de prestaciÃ³n de servicios estÃ¡ndar.",
+            prompt: prompt || "Generar contrato de prestación de servicios estándar.",
             tone: "formal"
         }
     })

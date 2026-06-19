@@ -108,7 +108,7 @@ export function WhatsAppPreview({ components = [] }: WhatsAppPreviewProps) {
                                 >
                                     {btn.type === 'URL' && <ExternalLink className="h-3.5 w-3.5" />}
                                     {btn.type === 'PHONE_NUMBER' && <Phone className="h-3.5 w-3.5" />}
-                                    <span className="truncate">{btn.text || "BotÃ³n"}</span>
+                                    <span className="truncate">{btn.text || "Botón"}</span>
                                 </div>
                             ))}
                         </div>

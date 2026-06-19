@@ -233,8 +233,8 @@ export async function seedDefaultRoles(orgId: string) {
     const roles = [
         {
             organization_id: orgId,
-            name: 'DueÃ±o',
-            description: 'Acceso total y administrativo a la organizaciÃ³n',
+            name: 'Dueño',
+            description: 'Acceso total y administrativo a la organización',
             is_system_role: true,
             hierarchy_level: 100,
             permissions: { all: true }
