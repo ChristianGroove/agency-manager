@@ -24,6 +24,19 @@ export function useCurrentOrganization() {
                 const orgCookie = getCookie('pixy_org_id')
 
                 if (orgCookie) {
+                    // Check if superadmin first
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('is_super_admin')
+                        .eq('id', user.id)
+                        .maybeSingle()
+
+                    if (profile?.is_super_admin) {
+                        setOrganizationId(orgCookie)
+                        setLoading(false)
+                        return
+                    }
+
                     // Validate membership for safety
                     const { data: membership } = await supabase
                         .from('organization_members')
