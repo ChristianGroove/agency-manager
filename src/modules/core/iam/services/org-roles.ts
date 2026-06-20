@@ -29,12 +29,11 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
     const isAdmin = await isSuperAdmin(user.id)
     if (isAdmin) return 'owner'
 
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('organization_members')
         .select(`
             role,
             role_id,
-            status,
             role_data:organization_roles (
                 name
             )
@@ -42,8 +41,12 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
         .match({ organization_id: orgId, user_id: user.id })
         .maybeSingle()
 
+    if (error) {
+        console.error("Error fetching org role:", error)
+        return null;
+    }
+
     if (!data) return null;
-    if (data.status === 'blocked') return null;
 
     // Mapping Logic:
     // 1. If it's explicitly 'owner' or 'admin' in the legacy column, use it.
