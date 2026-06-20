@@ -22,6 +22,7 @@ export type OrganizationMember = {
     organization_id: string
     user_id: string
     role: 'owner' | 'admin' | 'member'
+    status?: 'active' | 'blocked'
     created_at: string
     organization?: Organization
     user?: {

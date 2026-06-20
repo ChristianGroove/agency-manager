@@ -92,8 +92,10 @@ export async function getUserOrganizations() {
         .from('organization_members')
         .select(`
             id,
+            user_id,
             role,
             status,
+            created_at,
             organization_id,
             organization:organizations (
                 id,
@@ -113,7 +115,7 @@ export async function getUserOrganizations() {
     // Filter in JS to avoid SQL crash if 'status' column is not yet pushed to production DB
     const validMembers = (data || []).filter(member => member.status !== 'blocked')
 
-    return validMembers as OrganizationMember[]
+    return validMembers as unknown as OrganizationMember[]
 }
 
 /**
