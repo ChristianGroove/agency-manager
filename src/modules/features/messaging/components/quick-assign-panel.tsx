@@ -116,33 +116,41 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" role="combobox" aria-expanded={open} className="w-full justify-between px-0 hover:bg-transparent h-auto group">
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
+                <button
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 rounded-xl transition-all duration-200 group text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="relative shrink-0">
                             {currentAssignee ? (
-                                <Avatar className="h-8 w-8 border border-border">
-                                    <AvatarFallback className="text-xs font-medium bg-zinc-100 dark:bg-zinc-800">
+                                <Avatar className="h-9 w-9 border-2 border-white dark:border-zinc-950 shadow-sm">
+                                    <AvatarFallback className="text-xs font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
                                         {currentInitials}
                                     </AvatarFallback>
                                 </Avatar>
                             ) : (
-                                <div className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                                    <User className="h-4 w-4 text-muted-foreground/50" />
+                                <div className="h-9 w-9 rounded-full bg-zinc-200/50 dark:bg-zinc-800/50 border border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                                    <User className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
                                 </div>
                             )}
                             {currentAgent && (
-                                <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", getStatusColor(currentAgent.status, currentAgent.last_seen_at))} />
+                                <span className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-[2.5px] border-white dark:border-zinc-900", getStatusColor(currentAgent.status, currentAgent.last_seen_at))} />
                             )}
                         </div>
-                        <div className="text-left">
-                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">{t('crm.inbox.context.sections.assignee_label')}</div>
-                            <div className="text-sm font-medium leading-none mt-0.5 group-hover:underline decoration-muted-foreground/50 underline-offset-2">
+                        <div className="flex flex-col overflow-hidden">
+                            <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase mb-0.5">
+                                {t('crm.inbox.context.sections.assignee_label')}
+                            </span>
+                            <span className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
                                 {currentAssignee ? currentName : t('crm.inbox.context.sections.unassigned_click_to_assign')}
-                            </div>
+                            </span>
                         </div>
                     </div>
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
-                </Button>
+                    <div className="shrink-0 h-7 w-7 rounded-full bg-white dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-700 flex items-center justify-center group-hover:border-primary/30 transition-colors">
+                        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+                    </div>
+                </button>
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-0" align="start">
                 <Command>
