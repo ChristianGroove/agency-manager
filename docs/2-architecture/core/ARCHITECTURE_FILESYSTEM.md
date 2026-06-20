@@ -40,9 +40,16 @@ Capa de comunicación con el exterior y utilidades de bajo nivel.
 #### **C. Features (`/src/modules/features`)**
 El valor de negocio modular cargado según el "Space" del tenant.
 - **CRM**: Gestión dinámica de Leads, Clientes y Pipeline Avanzado.
-- **Billing**: Facturación recurrente, Proyectos y Pasarelas de Pago.
 - **Attendance**: Control de atención y flujos de trabajo operativos.
 - **Quotes**: Sistema de cotizaciones interactivas con branding dinámico.
+
+#### **D. Módulos de Dominio Independientes**
+Dominios extraídos a la raíz por su complejidad masiva o necesidades de seguridad.
+- **`/src/modules/billing`**: Facturación recurrente, Proyectos y Pasarelas de Pago.
+- **`/src/modules/auth`**: Sistemas avanzados de login (ej. Passkeys).
+- **`/src/modules/assistant` & `/src/modules/flows`**: Agentes IA y flujos.
+- **`/src/modules/admin`**: Panel de superadministrador.
+- **`/src/modules/custom`**: Scripts e integraciones específicas experimentales.
 
 ---
 

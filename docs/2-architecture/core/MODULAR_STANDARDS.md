@@ -29,6 +29,12 @@ Servicios técnicos transversales que dan soporte tanto al Motor como a las Feat
 - **Ejemplos**: `logging`, `storage`, `data-vault`, `ai-engine`, `integrations`.
 - **Regla**: Deben ser agnósticos a la lógica de negocio.
 
+### D. MÓDULOS DE DOMINIO INDEPENDIENTES
+Existen dominios tan grandes o aislados que justifican un directorio de nivel raíz en `src/modules/` para evitar saturar el Core o las Features.
+- **Propósito**: Encapsular lógicas masivas que actúan como sub-sistemas completos.
+- **Ubicación**: `src/modules/billing/`, `src/modules/auth/`, `src/modules/flows/`, etc.
+- **Regla**: Se tratan como módulos Core extendidos, con reglas de dependencia estrictas (no pueden depender de Features).
+
 ---
 
 ## 2. Definición de Conceptos Operativos

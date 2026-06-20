@@ -96,7 +96,7 @@ Hemos eliminado la fragmentación de páginas de administración, moviendo todo 
 ---
 
 ## 5. Ruteo Dinámico y Seguridad
-El archivo `src/lib/module-config.ts` actúa como el "Traffic Controller". La función `filterRoutesByModules` evalúa:
+El archivo `src/modules/core/saas/module-config.ts` actúa como el "Traffic Controller". La función `filterRoutesByModules` evalúa:
 1. ¿El Space tiene contratado el módulo técnico?
 2. ¿El usuario tiene el rol adecuado?
 3. ¿La capacidad específica (`requiredCapabilities`) está activa en el `ui_config`?

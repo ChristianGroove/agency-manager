@@ -3,9 +3,9 @@
 > **Última actualización:** 2026-04-04  
 > **Estado:** Refactorización Completa  
 > **Principales Componentes:**  
-> - `src/modules/core/automation/components/properties-sheet.tsx` (Shell)
-> - `src/modules/core/automation/components/properties/PropertyDispatcher.tsx` (Router)
-> - `src/modules/core/automation/components/properties/` (Colección Atómica)
+> - `src/modules/features/automation/components/properties-sheet.tsx` (Shell)
+> - `src/modules/features/automation/components/properties/PropertyDispatcher.tsx` (Router)
+> - `src/modules/features/automation/components/properties/` (Colección Atómica)
 
 ## Contexto de la Refactorización
 

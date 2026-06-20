@@ -3,9 +3,9 @@
 > **Última actualización:** 2026-03-03  
 > **Estado:** Producción estable  
 > **Archivos principales:**  
-> - `src/modules/core/automation/automation-trigger.service.ts`  
-> - `src/modules/core/messaging/inbox-service.ts`  
-> - `src/modules/core/messaging/webhook-handler.ts`  
+> - `src/modules/features/automation/automation-trigger.service.ts`  
+> - `src/modules/features/messaging/inbox-service.ts`  
+> - `src/modules/features/messaging/webhook-handler.ts`  
 
 ---
 

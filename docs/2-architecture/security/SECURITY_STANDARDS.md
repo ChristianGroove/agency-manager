@@ -24,7 +24,7 @@ La plataforma utiliza un modelo de **Control de Acceso Basado en Roles (RBAC)** 
 
 ### A. Definición del Permiso
 1.  Identificar si la funcionalidad requiere control de acceso.
-2.  Agregar la definición del permiso en `src/modules/core/iam/permissions.ts`.
+2.  Agregar la definición del permiso en `src/modules/core/iam/actions/permissions.ts`.
     ```typescript
     export const PERMISSIONS = {
         // ...

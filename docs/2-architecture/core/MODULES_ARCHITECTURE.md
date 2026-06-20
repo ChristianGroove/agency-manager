@@ -4,23 +4,26 @@ Este documento describe la estructura de módulos implementada para garantizar l
 
 ## 1. División de Capas
 
-El sistema se divide en dos grandes categorías de módulos ubicados en `src/modules/`:
+El ecosistema de módulos en `src/modules/` ha evolucionado y actualmente se organiza en varias áreas de dominio de alto nivel para separar responsabilidades de forma estricta:
 
 ### Core (`@/modules/core/*`)
 Contiene los "motores" esenciales que permiten que el SaaS funcione independientemente de la industria del cliente.
-- **Identidad e IAM:** Auth, Roles, Permisos.
-- **SaaS Engine:** Planes, Suscripciones, Organizaciones.
-- **Motores Transversales:** CRM base, Messaging, Notificaciones, Billing.
-- **Infraestructura:** API Layout, Dashboard dinámico, Logging.
+- **SaaS Engine & IAM:** Auth base, Roles, Permisos, Organizaciones.
+- **Infraestructura Core:** Layout, Dashboard dinámico, Logging, Routing.
 
 ### Features (`@/modules/features/*`)
-Contiene las funcionalidades verticales y específicas de cada nicho o industria. No son esenciales para que el sistema arranque, pero aportan el valor de negocio final.
-- **Resto:** Gestión de mesas y comandas.
-- **Attendance:** Marcación y nómina.
-- **Work-Orders:** Mantenimiento y limpieza.
-- **Hosting:** Gestión de servidores.
-- **Catalog:** Catálogos interactivos.
-- **Forms:** Generador de formularios.
+Contiene las funcionalidades verticales (ej. CRM, Messaging, Automation, Quotes) que componen la propuesta de valor para el usuario final.
+
+### Infrastructure (`@/modules/infrastructure/*`)
+Servicios técnicos transversales que dan soporte al sistema (ej. conectores de Meta/WhatsApp API, AI engine).
+
+### Módulos de Dominio Independientes
+Además de la triada principal (Core/Features/Infrastructure), existen módulos extraídos por su alta complejidad o aislamiento de dominio:
+- **`@/modules/billing/*`**: Todo el sistema financiero, suscripciones SaaS, pasarelas de pago y facturación.
+- **`@/modules/auth/*`**: Sistemas de autenticación avanzados (ej. Passkeys).
+- **`@/modules/assistant/*` & `@/modules/flows/*`**: Motores especializados de agentes conversacionales e IA.
+- **`@/modules/admin/*`**: Funciones exclusivas para el Super Admin de la plataforma.
+- **`@/modules/custom/*`**: Integraciones o scripts específicos y experimentales.
 
 ---
 
