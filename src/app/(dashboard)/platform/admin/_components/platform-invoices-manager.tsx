@@ -16,7 +16,8 @@ import {
     getPlatformInvoicesAction as getPlatformInvoices, 
     sendPlatformInvoiceEmailAction as sendPlatformInvoiceEmail,
     suspendOrganizationSubscriptionAction as suspendOrganizationSubscription,
-    deletePlatformInvoiceAction as deletePlatformInvoice
+    deletePlatformInvoiceAction as deletePlatformInvoice,
+    markPlatformInvoiceAsPaidAction
 } from "@/modules/features/billing/billing-actions"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -93,6 +94,22 @@ export function PlatformInvoicesManager() {
             fetchInvoices()
         } catch (error) {
             toast.error("Error al suspender")
+        }
+    }
+
+    const handleMarkPaid = async (invoice: any) => {
+        if (!confirm(`¿Estás seguro de marcar la factura ${invoice.invoice_number} como PAGADA?`)) return
+        
+        try {
+            const result = await markPlatformInvoiceAsPaidAction(invoice.id)
+            if (result.success) {
+                toast.success("Factura marcada como pagada")
+                fetchInvoices()
+            } else {
+                toast.error("Error: " + result.error)
+            }
+        } catch (error) {
+            toast.error("Error al actualizar la factura")
         }
     }
 
@@ -283,18 +300,29 @@ export function PlatformInvoicesManager() {
                                                     <RefreshCcw className="h-4 w-4" />
                                                 </Button>
                                                 {invoice.status === 'PENDING' && (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8 text-amber-600 hover:bg-amber-50"
-                                                        onClick={() => handleSuspend(invoice)}
-                                                        title="Suspender por Mora"
-                                                    >
-                                                        <ShieldAlert className="h-4 w-4" />
-                                                    </Button>
+                                                    <>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                                            onClick={() => handleMarkPaid(invoice)}
+                                                            title="Marcar como Pagada (Transferencia/Efectivo)"
+                                                        >
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-amber-600 hover:bg-amber-50"
+                                                            onClick={() => handleSuspend(invoice)}
+                                                            title="Suspender por Mora"
+                                                        >
+                                                            <ShieldAlert className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
                                                 )}
                                                 <Button 
-                                                    variant="ghost" 
+                                                    variant="ghost"  
                                                     size="icon" 
                                                     className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                     title="Ver Detalles"

@@ -534,4 +534,39 @@ export class PlatformBillingService {
 
         return { success: true }
     }
+
+    static async markPlatformInvoiceAsPaid(invoiceId: string) {
+        await requireSuperAdmin();
+        
+        const supabase = await createClient()
+        
+        // 1. Update invoice status
+        const { error: invoiceError } = await supabase
+            .from('platform_invoices')
+            .update({ 
+                status: 'paid', 
+                paid_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', invoiceId)
+
+        if (invoiceError) {
+            logPlatformBillingError("[PlatformBilling.markPlatformInvoiceAsPaid] Invoice error:", invoiceError)
+            return { success: false, error: "No se pudo actualizar el estado de la factura." }
+        }
+
+        // 2. Fetch the invoice to get org info
+        const { data: invoice } = await supabase
+            .from('platform_invoices')
+            .select('organization_id')
+            .eq('id', invoiceId)
+            .single()
+
+        // 3. Reactivate subscription if it was pending
+        if (invoice?.organization_id) {
+            await this.manualActivateSubscription(invoice.organization_id, { monthsToAdd: 1 })
+        }
+
+        return { success: true }
+    }
 }

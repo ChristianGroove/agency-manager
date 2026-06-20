@@ -252,3 +252,10 @@ export async function getPlatformPaymentMethodsAction() {
     return await PlatformBillingService.getPlatformPaymentMethods()
 }
 
+export async function markPlatformInvoiceAsPaidAction(invoiceId: string) {
+    const result = await PlatformBillingService.markPlatformInvoiceAsPaid(invoiceId)
+    if (result.success) {
+        revalidatePath('/platform/admin')
+    }
+    return result
+}
