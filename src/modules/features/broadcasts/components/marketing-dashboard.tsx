@@ -130,7 +130,7 @@ export function MarketingDashboard() {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl group-hover:scale-110 transition-transform">
                             <Megaphone className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -142,7 +142,7 @@ export function MarketingDashboard() {
                     </div>
                 </Card>
 
-                <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-50 dark:bg-purple-500/10 rounded-xl group-hover:scale-110 transition-transform">
                             <Send className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -154,7 +154,7 @@ export function MarketingDashboard() {
                     </div>
                 </Card>
 
-                <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl group-hover:scale-110 transition-transform">
                             <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
@@ -166,7 +166,7 @@ export function MarketingDashboard() {
                     </div>
                 </Card>
 
-                <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group opacity-60">
+                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all opacity-60">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl group-hover:scale-110 transition-transform">
                             <BarChart3 className="h-6 w-6 text-amber-600 dark:text-amber-400" />

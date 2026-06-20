@@ -249,13 +249,13 @@ export default function ServicesPage() {
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="glass-card rounded-2xl p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                        <Search className="h-4 w-4 text-zinc-400 shrink-0" />
                         <Input
                             placeholder="Buscar por contrato o cliente..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-zinc-700 dark:text-white placeholder:text-zinc-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -267,11 +267,11 @@ export default function ServicesPage() {
                         showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
                     )}>
                         <div className="flex items-center gap-4 min-w-max">
-                            <div className="h-4 w-px bg-gray-300 mx-1 hidden md:block" />
+                            <div className="h-4 w-px bg-zinc-300 mx-1 hidden md:block" />
 
                             {/* Status Filters */}
                             <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
                                 {[
                                     { id: 'all', label: 'Todos', count: counts.status.all, color: 'gray' },
                                     { id: 'active', label: 'Activos', count: counts.status.active, color: 'emerald' },
@@ -285,8 +285,8 @@ export default function ServicesPage() {
                                             statusFilter === filter.id
                                                 ? filter.id === 'active' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/20 shadow-sm"
                                                     : filter.id === 'paused' ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/20 shadow-sm"
-                                                        : "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
-                                                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                                                        : "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm"
+                                                : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                                         )}
                                     >
                                         <span>{filter.label}</span>
@@ -294,7 +294,7 @@ export default function ServicesPage() {
                                             "px-1.5 py-0.5 rounded-md text-[10px]",
                                             statusFilter === filter.id
                                                 ? "bg-white/20 text-current"
-                                                : "bg-gray-100 text-gray-500"
+                                                : "bg-zinc-100 text-zinc-500"
                                         )}>
                                             {filter.count}
                                         </span>
@@ -303,11 +303,11 @@ export default function ServicesPage() {
                             </div>
 
                             {/* Divider */}
-                            <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+                            <div className="h-4 w-px bg-zinc-200 hidden sm:block" />
 
                             {/* Type Filters */}
                             <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Tipo</span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden lg:block">Tipo</span>
                                 {[
                                     { id: 'all', label: 'Todos', count: counts.type.all },
                                     { id: 'recurring', label: 'Recurrentes', count: counts.type.recurring },
@@ -321,8 +321,8 @@ export default function ServicesPage() {
                                             typeFilter === filter.id
                                                 ? filter.id === 'recurring' ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-600/20 dark:ring-indigo-500/20 shadow-sm"
                                                     : filter.id === 'one_off' ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 ring-1 ring-inset ring-violet-600/20 dark:ring-violet-500/20 shadow-sm"
-                                                        : "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
-                                                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                                                        : "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm"
+                                                : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                                         )}
                                     >
                                         <span>{filter.label}</span>
@@ -330,7 +330,7 @@ export default function ServicesPage() {
                                             "px-1.5 py-0.5 rounded-md text-[10px]",
                                             typeFilter === filter.id
                                                 ? "bg-white/20 text-current"
-                                                : "bg-gray-100 text-gray-500"
+                                                : "bg-zinc-100 text-zinc-500"
                                         )}>
                                             {filter.count}
                                         </span>
@@ -341,7 +341,7 @@ export default function ServicesPage() {
                     </div>
 
                     {/* Divider */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+                    <div className="h-6 w-px bg-zinc-200 mx-1 hidden md:block" />
 
                     {/* Toggle Filters Button (Fixed Right) */}
                     <button
@@ -349,8 +349,8 @@ export default function ServicesPage() {
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-gray-200 dark:border-white/10 shadow-inner"
-                                : "bg-white dark:bg-transparent text-gray-500 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                                ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white border-zinc-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                         )}
                         title="Filtrar Contratos"
                     >
@@ -360,7 +360,7 @@ export default function ServicesPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
+            <div className="glass-card rounded-2xl overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -369,7 +369,7 @@ export default function ServicesPage() {
                 />
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 dark:bg-white/5 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
+                        <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50 dark:bg-white/5 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
                             <TableHead className="w-[50px]">
                                 <Checkbox
                                     checked={filteredServices.length > 0 && selectedIds.size === filteredServices.length}
@@ -402,7 +402,7 @@ export default function ServicesPage() {
                             </TableRow>
                         ) : (
                             filteredServices.map((service) => (
-                                <TableRow key={service.id} className="group hover:bg-gray-50/30 dark:hover:bg-white/5 transition-colors border-gray-100 dark:border-white/10">
+                                <TableRow key={service.id} className="group hover:bg-zinc-50/30 dark:hover:bg-white/5 transition-colors border-zinc-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(service.id)}
@@ -411,11 +411,11 @@ export default function ServicesPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">{service.name}</p>
-                                            <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                                            <p className="font-medium text-zinc-900 dark:text-white">{service.name}</p>
+                                            <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
                                                 <span className="truncate max-w-[200px]">{service.client?.name || 'Sin Cliente'}</span>
                                                 {service.client?.company_name && (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300">
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">
                                                         {service.client.company_name}
                                                     </span>
                                                 )}
@@ -435,16 +435,16 @@ export default function ServicesPage() {
                                     </TableCell>
                                     <TableCell>
                                         {service.type === 'recurring' ? (
-                                            <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                <CalendarClock className="h-4 w-4 text-gray-400" />
+                                            <div className="flex items-center gap-1 text-sm text-zinc-600">
+                                                <CalendarClock className="h-4 w-4 text-zinc-400" />
                                                 {getFrequencyLabel(service.frequency)}
                                             </div>
                                         ) : (
-                                            <span className="text-gray-400 text-sm">-</span>
+                                            <span className="text-zinc-400 text-sm">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="font-medium text-gray-900 dark:text-white">
+                                        <div className="font-medium text-zinc-900 dark:text-white">
                                             ${service.amount?.toLocaleString()}
                                         </div>
                                     </TableCell>
@@ -453,7 +453,7 @@ export default function ServicesPage() {
                                             "capitalize",
                                             service.status === 'active' ? "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100" :
                                                 service.status === 'paused' ? "bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100" :
-                                                    "bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-400 hover:bg-gray-100"
+                                                    "bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-400 hover:bg-zinc-100"
                                         )}>
                                             {service.status === 'active' ? 'Activo' :
                                                 service.status === 'paused' ? 'Pausado' : 'Cancelado'}

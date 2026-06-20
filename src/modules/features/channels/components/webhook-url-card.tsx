@@ -84,8 +84,8 @@ export function WebhookUrlCard({ providerKey }: WebhookUrlCardProps) {
     const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')
 
     return (
-        <Card className="border-emerald-100 shadow-sm mt-6">
-            <CardHeader className="bg-emerald-50/50 pb-4">
+        <Card className="glass-card mt-6">
+            <CardHeader className="bg-emerald-50/50 dark:bg-emerald-500/10 pb-4">
                 <CardTitle className="flex items-center gap-2 text-emerald-700 text-base">
                     <ExternalLink className="h-5 w-5" /> URL de Webhook
                 </CardTitle>

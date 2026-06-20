@@ -58,8 +58,7 @@ export function TemplateSelector() {
                 {templates.map(template => (
                     <Card
                         key={template.id}
-                        className={`flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border-muted/60 dark:border-white/10 ${template.industry === 'agency' ? 'border-primary/40 dark:border-primary/40 ring-1 ring-primary/20' : ''
-                            }`}
+                        className="glass-card flex flex-col relative transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group"
                     >
                         {/* Gradient Background Decoration */}
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

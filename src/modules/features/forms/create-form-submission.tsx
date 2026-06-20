@@ -112,7 +112,7 @@ export function CreateFormSubmission({ templates, clients, onSuccess, onCancel }
                     </SelectContent>
                 </Select>
                 {selectedTemplate && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-zinc-500">
                         {templates.find(t => t.id === selectedTemplate)?.description}
                     </p>
                 )}
@@ -181,7 +181,7 @@ export function CreateFormSubmission({ templates, clients, onSuccess, onCancel }
                 </Popover>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
+            <div className="pt-4 border-t border-zinc-100 flex justify-end gap-2">
                 <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
                 <Button
                     type="submit"

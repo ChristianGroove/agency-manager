@@ -32,7 +32,7 @@ const INPUT_CONFIG = {
     any: {
         icon: MessageCircle,
         label: 'Cualquier',
-        color: 'from-slate-500 to-gray-600 text-white'
+        color: 'from-zinc-500 to-gray-600 text-white'
     },
     image: {
         icon: Image,
@@ -70,14 +70,14 @@ export function WaitInputNode({ data, selected }: WaitInputNodeProps) {
 
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
-            selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-slate-200 dark:border-slate-800"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
+            selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-zinc-200 dark:border-zinc-800"
         )}>
             {/* Input Handle */}
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -113,21 +113,21 @@ export function WaitInputNode({ data, selected }: WaitInputNodeProps) {
 
                 {/* Store Variable */}
                 {data.storeAs && (
-                    <div className="text-[10px] text-slate-500 text-center bg-slate-50 dark:bg-slate-800/50 py-1 rounded border border-slate-100 dark:border-slate-800">
-                        Guardar en <code className="bg-white dark:bg-black/20 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-amber-600 dark:text-amber-400">{`{{${data.storeAs}}}`}</code>
+                    <div className="text-[10px] text-zinc-500 text-center bg-zinc-50 dark:bg-zinc-800/50 py-1 rounded border border-zinc-100 dark:border-zinc-800">
+                        Guardar en <code className="bg-white dark:bg-black/20 px-1 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-amber-600 dark:text-amber-400">{`{{${data.storeAs}}}`}</code>
                     </div>
                 )}
 
                 {/* Keyword branches */}
                 {data.keywordBranches && data.keywordBranches.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider pl-1">
+                        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider pl-1">
                             Palabras Clave
                         </p>
                         {data.keywordBranches.map((kb: any, i: number) => (
                             <div
                                 key={kb.branchId || i}
-                                className="relative text-xs bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-900/40 rounded-md px-2.5 py-1.5 font-medium text-amber-700 dark:text-amber-400 flex justify-between items-center group shadow-sm"
+                                className="relative text-xs bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-900/40 rounded-md px-2.5 py-1.5 font-medium text-amber-700 dark:text-amber-400 flex justify-between items-center group shadow-sm"
                             >
                                 <span className="truncate pr-2">
                                     {kb.matchType === 'exact' ? '"' : '*'}{kb.keyword}{kb.matchType === 'exact' ? '"' : '*'}

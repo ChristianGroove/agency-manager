@@ -40,18 +40,17 @@ export function SidebarTabs({
     }
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
+        <div className="flex flex-col h-full bg-transparent">
             {/* Top Navigation Tabs - High-end Button Switcher */}
-            <div className="px-4 py-3 border-b border-border/40">
-                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg relative">
-                    {/* Sliding Background - Simplified for now with simple class conditional */}
+            <div className="px-4 py-3 shrink-0 border-b border-border/10 bg-white dark:bg-zinc-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] z-10">
+                <div className="flex p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl">
                     <button
                         onClick={() => setActiveTab('conversations')}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold rounded-md transition-all z-10",
+                            "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all z-10",
                             activeTab === 'conversations'
-                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                         )}
                     >
                         <MessageSquare className="h-3.5 w-3.5" />
@@ -60,10 +59,10 @@ export function SidebarTabs({
                     <button
                         onClick={() => setActiveTab('contacts')}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold rounded-md transition-all z-10",
+                            "flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-lg transition-all z-10",
                             activeTab === 'contacts'
-                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                         )}
                     >
                         <Users2 className="h-3.5 w-3.5" />

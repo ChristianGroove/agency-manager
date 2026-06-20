@@ -240,17 +240,17 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const leadInitials = (lead?.title || 'UN').slice(0, 2).toUpperCase()
 
     return (
-        <div className="flex flex-col h-full bg-background/60 dark:bg-zinc-950/60 backdrop-blur-xl border-l border-white/10 dark:border-white/5 shadow-2xl z-20">
+        <div className="flex flex-col h-full min-h-0 w-full">
             {/* 1. Pill-Style Tabs Navigation */}
-            <div className="px-4 py-3 border-b border-border/40 shrink-0">
-                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+            <div className="px-4 py-3 shrink-0 border-b border-border/10 bg-white dark:bg-zinc-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] z-10">
+                <div className="flex p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl">
                     <button
                         onClick={() => setActiveTab('management')}
                         className={cn(
-                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-lg transition-all",
                             activeTab === 'management'
-                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                         )}
                     >
                         {t('crm.inbox.context.tabs.management')}
@@ -258,10 +258,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     <button
                         onClick={() => setActiveTab('replies')}
                         className={cn(
-                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-lg transition-all",
                             activeTab === 'replies'
-                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                         )}
                     >
                         {t('crm.inbox.context.tabs.replies')}
@@ -270,10 +270,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         <button
                             onClick={() => setActiveTab('sales')}
                             className={cn(
-                                "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                                "flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-lg transition-all",
                                 activeTab === 'sales'
-                                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground"
+                                    ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                    : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                             )}
                         >
                             {t('crm.inbox.context.tabs.sales')}
@@ -283,7 +283,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
             </div>
 
             {/* 2. Tab Content Area */}
-            <div className="flex-1 overflow-hidden flex flex-col bg-background/30 relative">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative bg-transparent">
 
                 {/* TAB 1: GESTIÓN */}
                 {activeTab === 'management' && (
@@ -374,21 +374,19 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             {/* Assignment Panel - Reordered to bottom */}
                             <div className="space-y-2">
                                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.assignment')}</h4>
-                                <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
-                                    <QuickAssignPanel
-                                        conversationId={conversationId}
-                                        channel={conversation?.channel}
-                                        connectionId={conversation?.connection_id}
-                                        currentAssignee={conversation?.assigned_to}
-                                        agents={globalAgents}
-                                        tick={tick}
-                                        onAssigned={(agentId) => {
-                                            if (conversation) {
-                                                setConversation({ ...conversation, assigned_to: agentId })
-                                            }
-                                        }}
-                                    />
-                                </div>
+                                <QuickAssignPanel
+                                    conversationId={conversationId}
+                                    channel={conversation?.channel}
+                                    connectionId={conversation?.connection_id}
+                                    currentAssignee={conversation?.assigned_to}
+                                    agents={globalAgents}
+                                    tick={tick}
+                                    onAssigned={(agentId) => {
+                                        if (conversation) {
+                                            setConversation({ ...conversation, assigned_to: agentId })
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
                     </ScrollArea>
@@ -396,7 +394,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                 {/* TAB 2: RESPUESTAS */}
                 {activeTab === 'replies' && (
-                    <div className="h-full flex flex-col animate-in fade-in duration-300 slide-in-from-right-2">
+                    <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-300 slide-in-from-right-2">
                         <RepliesTab
                             conversationId={conversationId}
                             lastIncomingMessage={lastMessage}

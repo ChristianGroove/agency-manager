@@ -539,13 +539,13 @@ function WorkflowEditorContent({ id }: { id: string }) {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-900"></div>
             </div>
         );
     }
 
     return (
-        <div className="dnd-flow relative w-full h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-slate-950 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm my-2 mr-2">
+        <div className="dnd-flow glass-card relative w-full h-[calc(100vh-4rem)] flex flex-col rounded-3xl overflow-hidden my-2 mr-2">
 
             {/* ReactFlow Canvas Area */}
             <div className="flex-1 w-full h-full relative cursor-default" style={{ cursor: 'default' }}>
@@ -564,16 +564,16 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         nodeTypes={nodeTypes}
                         fitView
                         proOptions={{ hideAttribution: true }}
-                        className="bg-slate-50 dark:bg-slate-950"
+                        className="bg-transparent"
                         edgeTypes={edgeTypes}
                         defaultEdgeOptions={{ type: 'default', animated: true }}
                     >
-                        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+                        <Background variant={BackgroundVariant.Dots} gap={12} size={1} className="opacity-20" />
                         <Panel position="bottom-right" className="flex flex-col items-center gap-4 !pointer-events-auto !m-6 !p-0">
                             <MiniMap
                                 zoomable
                                 pannable
-                                className="!relative !w-[240px] !h-[160px] !m-0 !block shadow-xl rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
+                                className="!relative !w-[240px] !h-[160px] !m-0 !block shadow-xl rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900"
                                 nodeColor={(node) => {
                                     switch (node.type) {
                                         case 'trigger': return '#0891b2';
@@ -595,20 +595,20 @@ function WorkflowEditorContent({ id }: { id: string }) {
                             <Controls
                                 orientation="horizontal"
                                 showInteractive={false}
-                                className="!static !m-0 !p-1 !flex !gap-1 border border-slate-200 dark:border-slate-800 shadow-sm rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-100 dark:ring-slate-700 scale-75 origin-top"
+                                className="!static !m-0 !p-1 !flex !gap-1 border border-zinc-200 dark:border-zinc-800 shadow-sm rounded-full bg-white dark:bg-zinc-800 ring-1 ring-zinc-100 dark:ring-zinc-700 scale-75 origin-top"
                             />
                         </Panel>
 
                         {/* Node Sidebar */}
-                        <Panel position="top-left" className="ml-2 !top-1/2 !-translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col">
+                        <Panel position="top-left" className="ml-2 !top-1/2 !-translate-y-1/2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col">
                             <div className="space-y-3">
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Trigger</h3>
+                                    <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-1">Trigger</h3>
                                     <div className="space-y-1.5">
                                         <div
                                             draggable
                                             onDragStart={(event) => onDragStart(event, 'trigger')}
-                                            className="flex items-center p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 cursor-grab transition-all group bg-white dark:bg-slate-800"
+                                            className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 cursor-grab transition-all group bg-white dark:bg-zinc-800"
                                         >
                                             <Zap className="h-4 w-4 text-cyan-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Trigger</span>
@@ -617,92 +617,92 @@ function WorkflowEditorContent({ id }: { id: string }) {
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Acciones</h3>
+                                    <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-1">Acciones</h3>
                                     <div className="space-y-1.5">
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'action')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-blue-50 cursor-grab transition-all">
-                                            <Box className="h-4 w-4 text-blue-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'action')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-grab transition-all group">
+                                            <Box className="h-4 w-4 text-blue-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Acción</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'crm')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-orange-500 hover:bg-orange-50 cursor-grab transition-all">
-                                            <Database className="h-4 w-4 text-orange-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'crm')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 cursor-grab transition-all group">
+                                            <Database className="h-4 w-4 text-orange-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">CRM</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'http')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-green-500 hover:bg-green-50 cursor-grab transition-all">
-                                            <Globe className="h-4 w-4 text-green-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'http')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/30 cursor-grab transition-all group">
+                                            <Globe className="h-4 w-4 text-green-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">HTTP</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'condition')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-purple-500 hover:bg-purple-50 cursor-grab transition-all">
-                                            <GitBranch className="h-4 w-4 text-purple-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'condition')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30 cursor-grab transition-all group">
+                                            <GitBranch className="h-4 w-4 text-purple-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Condición</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'email')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-yellow-500 hover:bg-yellow-50 cursor-grab transition-all">
-                                            <Mail className="h-4 w-4 text-yellow-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'email')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30 cursor-grab transition-all group">
+                                            <Mail className="h-4 w-4 text-yellow-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Email</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'sms')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-pink-500 hover:bg-pink-50 cursor-grab transition-all">
-                                            <MessageSquare className="h-4 w-4 text-pink-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'sms')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/30 cursor-grab transition-all group">
+                                            <MessageSquare className="h-4 w-4 text-pink-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">SMS</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'buttons')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 cursor-grab transition-all">
-                                            <MousePointer className="h-4 w-4 text-indigo-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'buttons')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-grab transition-all group">
+                                            <MousePointer className="h-4 w-4 text-indigo-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Botones</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-slate-500 hover:bg-slate-50 cursor-grab transition-all">
-                                            <Clock className="h-4 w-4 text-slate-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950/30 cursor-grab transition-all group">
+                                            <Clock className="h-4 w-4 text-zinc-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Espera</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait_input')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-slate-500 hover:bg-slate-50 cursor-grab transition-all">
-                                            <Clock className="h-4 w-4 text-slate-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait_input')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-950/30 cursor-grab transition-all group">
+                                            <Clock className="h-4 w-4 text-zinc-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Esperar Input</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Lógica</h3>
+                                    <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-1">Lógica</h3>
                                     <div className="space-y-1.5">
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'ab_test')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-red-500 hover:bg-red-50 cursor-grab transition-all">
-                                            <Split className="h-4 w-4 text-red-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'ab_test')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-grab transition-all group">
+                                            <Split className="h-4 w-4 text-red-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">A/B Test</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'ai_agent')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-violet-500 hover:bg-violet-50 cursor-grab transition-all">
-                                            <Sparkles className="h-4 w-4 text-violet-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'ai_agent')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30 cursor-grab transition-all group">
+                                            <Sparkles className="h-4 w-4 text-violet-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Agente AI</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'tag')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-teal-500 hover:bg-teal-50 cursor-grab transition-all">
-                                            <Tag className="h-4 w-4 text-teal-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'tag')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-950/30 cursor-grab transition-all group">
+                                            <Tag className="h-4 w-4 text-teal-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Etiqueta</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'stage')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-rose-500 hover:bg-rose-50 cursor-grab transition-all">
-                                            <ArrowRightCircle className="h-4 w-4 text-rose-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'stage')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-grab transition-all group">
+                                            <ArrowRightCircle className="h-4 w-4 text-rose-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Etapa</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'conversation')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-sky-500 hover:bg-sky-50 cursor-grab transition-all">
-                                            <MessageSquare className="h-4 w-4 text-sky-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'conversation')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-sky-500 hover:bg-sky-50 dark:hover:bg-sky-950/30 cursor-grab transition-all group">
+                                            <MessageSquare className="h-4 w-4 text-sky-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Conversación</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Negocio</h3>
+                                    <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-1">Negocio</h3>
                                     <div className="space-y-1.5">
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'billing')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-amber-500 hover:bg-amber-50 cursor-grab transition-all">
-                                            <Box className="h-4 w-4 text-amber-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'billing')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 cursor-grab transition-all group">
+                                            <Box className="h-4 w-4 text-amber-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Facturación</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Sistema</h3>
+                                    <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 px-1">Sistema</h3>
                                     <div className="space-y-1.5">
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'variable')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-fuchsia-500 hover:bg-fuchsia-50 cursor-grab transition-all">
-                                            <Box className="h-4 w-4 text-fuchsia-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'variable')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-fuchsia-500 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30 cursor-grab transition-all group">
+                                            <Box className="h-4 w-4 text-fuchsia-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Variable</span>
                                         </div>
-                                        <div draggable onDragStart={(e) => onDragStart(e, 'notification')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-sky-500 hover:bg-sky-50 cursor-grab transition-all">
-                                            <Box className="h-4 w-4 text-sky-600 mr-1.5" />
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'notification')} className="flex items-center p-1.5 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 hover:border-sky-500 hover:bg-sky-50 dark:hover:bg-sky-950/30 cursor-grab transition-all group">
+                                            <Box className="h-4 w-4 text-sky-600 mr-1.5 group-hover:scale-110 transition-transform" />
                                             <span className="text-xs font-medium">Notificación</span>
                                         </div>
                                     </div>
@@ -775,14 +775,14 @@ function WorkflowEditorContent({ id }: { id: string }) {
 
             {/* Floating Toolbar (Unified Single Pill) */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center pointer-events-none w-full max-w-5xl">
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 pointer-events-auto h-14">
+                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-white/20 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 pointer-events-auto h-14">
 
                     {/* Left: Nav & Name */}
                     <div className="flex items-center gap-2 mr-2">
                         <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={() => router.push('/crm/automations')}>
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
-                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1" />
                         <Input
                             value={workflowName}
                             onChange={(e) => setWorkflowName(e.target.value)}
@@ -790,22 +790,22 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         />
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                    <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 mx-1" />
 
                     {/* Center: Tools & Actions */}
                     <div className="flex items-center gap-1">
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleUndo} disabled={historyIndex <= 0}>
-                            <Undo2 className="h-4 w-4 text-slate-500" />
+                            <Undo2 className="h-4 w-4 text-zinc-500" />
                         </Button>
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
-                            <Redo2 className="h-4 w-4 text-slate-500" />
+                            <Redo2 className="h-4 w-4 text-zinc-500" />
                         </Button>
 
-                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-2" />
 
                         {/* Unified Config Tools */}
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={() => { setConfigTab("settings"); setConfigSheetOpen(true); }} title="Configuración">
-                            <Settings2 className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <Settings2 className="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
                         </Button>
 
 
@@ -818,15 +818,15 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         </Button>
 
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleAutoLayout} title="Auto-Organizar">
-                            <LayoutGrid className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <LayoutGrid className="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
                         </Button>
 
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleSaveVersion} title="Crear Snapshot">
-                            <Save className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <Save className="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
                         </Button>
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+                    <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 mx-2" />
 
                     {/* Right: Primary Actions */}
                     <div className="flex items-center gap-3">
@@ -909,7 +909,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
                             disabled={isOrchestrating}
                         />
                         {orchestratorRemaining !== null && (
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-zinc-500">
                                 Generaciones restantes esta hora: <span className="font-semibold">{orchestratorRemaining}</span>
                             </p>
                         )}
@@ -952,3 +952,5 @@ export default function WorkflowEditorPage() {
         </ReactFlowProvider>
     );
 }
+
+

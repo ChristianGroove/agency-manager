@@ -45,12 +45,12 @@ export function MetaAdsCenter() {
                             size="sm" 
                             onClick={loadData} 
                             disabled={loading}
-                            className="rounded-xl border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+                            className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl"
                         >
                             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                             Sincronizar
                         </Button>
-                        <Button className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 px-6">
+                        <Button className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 px-6">
                             <Zap className="h-4 w-4 mr-2 fill-current" />
                             Optimizar
                         </Button>
@@ -60,9 +60,9 @@ export function MetaAdsCenter() {
 
             {!adsData && !loading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <Card className="lg:col-span-2 p-12 flex flex-col items-center justify-center text-center border-dashed border-2 bg-slate-50/50 dark:bg-zinc-900/50 min-h-[400px] rounded-3xl">
-                        <div className="p-6 bg-white dark:bg-zinc-800 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none mb-6 border border-slate-100 dark:border-white/5 animate-bounce-slow">
-                            <BarChart3 className="h-12 w-12 text-indigo-600" />
+                    <Card className="glass-card lg:col-span-2 p-12 flex flex-col items-center justify-center text-center border-dashed border-2 border-gray-200 dark:border-white/10 min-h-[400px] rounded-3xl">
+                        <div className="glass-card p-6 mb-6 animate-bounce-slow">
+                            <BarChart3 className="h-12 w-12 text-primary" />
                         </div>
                         <h3 className="text-2xl font-bold mb-3">Conexión Requerida</h3>
                         <p className="text-muted-foreground max-w-md text-lg">
@@ -71,9 +71,9 @@ export function MetaAdsCenter() {
                     </Card>
                     
                     <div className="lg:col-span-1">
-                        <Card className="p-8 rounded-3xl border-none shadow-xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5">
+                        <Card className="glass-card p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none">
                             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <Settings2 className="h-5 w-5 text-indigo-600" />
+                                <Settings2 className="h-5 w-5 text-primary" />
                                 Configuración Global
                             </h3>
                             <TenantAdsSettings onSuccess={loadData} />
@@ -102,7 +102,7 @@ export function MetaAdsCenter() {
 
                         <TabsContent value="settings" className="mt-0 focus-visible:outline-none animate-in slide-in-from-bottom-4 duration-500">
                             <div className="max-w-2xl mx-auto">
-                                <Card className="p-10 rounded-3xl border-none shadow-2xl shadow-slate-200/60 dark:shadow-none bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10">
+                                <Card className="glass-card p-10 rounded-3xl shadow-2xl shadow-slate-200/60 dark:shadow-none">
                                     <div className="mb-8">
                                         <h3 className="text-2xl font-bold mb-2">Configuración de Meta</h3>
                                         <p className="text-muted-foreground">

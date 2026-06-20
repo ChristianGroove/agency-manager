@@ -35,9 +35,10 @@ import {
 interface StaffManagementProps {
     staff: (Staff & { location: { name: string } | null })[]
     locations: any[]
+    registerNewAction?: (fn: () => void) => void
 }
 
-export function StaffManagement({ staff: initialStaff, locations }: StaffManagementProps) {
+export function StaffManagement({ staff: initialStaff, locations, registerNewAction }: StaffManagementProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [staff, setStaff] = useState(initialStaff)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -99,6 +100,12 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
         }
         setIsDialogOpen(true)
     }
+
+    React.useEffect(() => {
+        if (registerNewAction) {
+            registerNewAction(() => openDialogForStaff())
+        }
+    }, [registerNewAction])
 
     const filteredStaff = staff.filter(s => {
         const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
@@ -234,37 +241,28 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">Gestión de Personal</h3>
-                <Button
-                    onClick={() => openDialogForStaff()}
-                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl"
-                >
-                    <UserPlus className="w-4 h-4 mr-2" /> Nuevo Colaborador
-                </Button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Listado de Personal</h3>
+                    <p className="text-sm text-slate-500">Administra los accesos y sedes de tu equipo.</p>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Buscar colaborador..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="pl-9 bg-white dark:bg-zinc-900/50"
+                        />
+                    </div>
+                </div>
             </div>
 
-            <Card className="border-gray-100 dark:border-white/5 overflow-hidden">
-                <CardHeader className="border-b bg-slate-50/30 dark:bg-zinc-900/30 p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Listado de Personal</CardTitle>
-                            <CardDescription>Administra los accesos y sedes de tu equipo.</CardDescription>
-                        </div>
-                        <div className="relative w-64">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                            <Input
-                                placeholder="Buscar colaborador..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white dark:bg-zinc-900/50"
-                            />
-                        </div>
-                    </div>
-                </CardHeader>
+            <Card className="glass-card rounded-2xl overflow-hidden relative border-none shadow-xl">
                 <CardContent className="p-0">
                     <Table>
-                        <TableHeader className="bg-slate-50">
+                        <TableHeader>
                             <TableRow>
                                 <TableHead>Nombre</TableHead>
                                 <TableHead>Sede Asignada</TableHead>
@@ -283,16 +281,16 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
                                 </TableRow>
                             ) : (
                                 filteredStaff.map((person) => (
-                                    <TableRow key={person.id}>
+                                    <TableRow key={person.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-slate-900">{person.first_name} {person.last_name}</span>
-                                                <span className="text-xs text-slate-500">{person.email || person.document_id || 'Sin documento'}</span>
+                                                <span className="font-medium text-slate-900 dark:text-white">{person.first_name} {person.last_name}</span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">{person.email || person.document_id || 'Sin documento'}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                            <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                                                <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                                 {person.location?.name || 'No asignada'}
                                             </div>
                                         </TableCell>
@@ -304,9 +302,9 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
                                         </TableCell>
                                         <TableCell>
                                             {person.is_active ? (
-                                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">Activo</Badge>
+                                                <Badge className="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-transparent hover:bg-emerald-200 dark:hover:bg-emerald-500/20">Activo</Badge>
                                             ) : (
-                                                <Badge className="bg-slate-100 text-slate-500 hover:bg-slate-100 border-none">Inactivo</Badge>
+                                                <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-200 dark:hover:bg-slate-700">Inactivo</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell>
@@ -636,3 +634,4 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
         </div>
     )
 }
+

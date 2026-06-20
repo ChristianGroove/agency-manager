@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { SplitText } from "@/components/ui/split-text"
+import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 
 interface PaymentTransaction {
     id: string
@@ -93,6 +94,20 @@ export default function PaymentsPage() {
         return matchesSearch && matchesStatus
     })
 
+    const counts = {
+        all: transactions.length,
+        approved: transactions.filter(t => t.status === 'APPROVED').length,
+        declined: transactions.filter(t => t.status === 'DECLINED').length,
+        error: transactions.filter(t => t.status === 'ERROR').length
+    }
+
+    const filterOptions: FilterOption[] = [
+        { id: 'all', label: 'Todos', count: counts.all, color: 'zinc' },
+        { id: 'APPROVED', label: 'Aprobadas', count: counts.approved, color: 'emerald' },
+        { id: 'DECLINED', label: 'Rechazadas', count: counts.declined, color: 'red' },
+        { id: 'ERROR', label: 'Error', count: counts.error, color: 'red' },
+    ]
+
     return (
         <div className="space-y-8">
             {/* Standardized Header */}
@@ -102,75 +117,18 @@ export default function PaymentsPage() {
                 icon={CreditCard}
             />
 
-            {/* Unified Control Block */}
-            <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
-                    {/* Integrated Search */}
-                    <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
-                        <Input
-                            placeholder="Buscar por referencia..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-gray-200 placeholder:text-gray-400 h-9 p-0 shadow-none"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+            <SearchFilterBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                searchPlaceholder="Buscar por referencia..."
+                activeFilter={statusFilter}
+                onFilterChange={setStatusFilter}
+                filters={filterOptions}
+            />
 
-                    {/* Vertical Divider (Desktop) */}
-                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
-
-                    {/* Collapsible Filter Pills (Middle) */}
-                    <div className={cn(
-                        "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-in-out",
-                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
-                    )}>
-                        <div className="flex items-center gap-1.5 min-w-max">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
-                            {[
-                                { id: 'all', label: 'Todos', color: 'gray' },
-                                { id: 'APPROVED', label: 'Aprobadas', color: 'green' },
-                                { id: 'DECLINED', label: 'Rechazadas', color: 'red' },
-                                { id: 'ERROR', label: 'Error', color: 'red' },
-                            ].map(filter => (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setStatusFilter(filter.id)}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
-                                        statusFilter === filter.id
-                                            ? filter.id === 'APPROVED' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
-                                                : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <span>{filter.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
-
-                    {/* Toggle Filters Button (Fixed Right) */}
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
-                            showFilters
-                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
-                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
-                        )}
-                        title="Filtrar Pagos"
-                    >
-                        <ListFilter className="h-4 w-4" />
-                    </button>
-                </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="glass-card rounded-2xl overflow-hidden relative">
                 <Table>
-                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                    <TableHeader>
                         <TableRow>
                             <TableHead>Fecha</TableHead>
                             <TableHead>Referencia</TableHead>
@@ -183,7 +141,7 @@ export default function PaymentsPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={6} className="text-center py-8 text-zinc-500">
                                     <div className="flex justify-center items-center gap-2">
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                         Cargando transacciones...
@@ -192,37 +150,37 @@ export default function PaymentsPage() {
                             </TableRow>
                         ) : filteredTransactions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={6} className="text-center py-8 text-zinc-500">
                                     No se encontraron transacciones.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredTransactions.map((tx) => (
-                                <TableRow key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
-                                    <TableCell className="text-gray-500">
+                                <TableRow key={tx.id} className="hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/5">
+                                    <TableCell className="text-zinc-500">
                                         {new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs text-gray-600">{tx.reference}</TableCell>
-                                    <TableCell className="font-medium text-gray-900 dark:text-white">
+                                    <TableCell className="font-mono text-xs text-zinc-600">{tx.reference}</TableCell>
+                                    <TableCell className="font-medium text-zinc-900 dark:text-white">
                                         ${(tx.amount_in_cents / 100).toLocaleString()} {tx.currency}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={cn(
-                                            "font-normal",
+                                            "font-normal border-transparent",
                                             tx.status === 'APPROVED'
-                                                ? "bg-green-100 text-green-700 border-green-200"
-                                                : "bg-red-100 text-red-700 border-red-200"
+                                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                                : "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400"
                                         )}>
                                             {tx.status === 'APPROVED' ? 'Aprobada' : tx.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                                        <Badge variant="secondary" className="bg-zinc-100 text-zinc-700">
                                             {tx.invoice_ids?.length || 0}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(tx)} className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50">
+                                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(tx)} className="text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50">
                                             <Eye className="h-4 w-4 mr-2" />
                                             Ver Detalle
                                         </Button>
@@ -237,29 +195,29 @@ export default function PaymentsPage() {
             {/* Transaction Detail Modal */}
             {selectedTransaction && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedTransaction(null)}>
-                    <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Detalle de Transacción</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedTransaction(null)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">✕</Button>
+                    <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-zinc-100 dark:border-white/10 flex justify-between items-center bg-zinc-50/50 dark:bg-white/5">
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Detalle de Transacción</h3>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedTransaction(null)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">✕</Button>
                         </div>
                         <div className="p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p className="text-gray-500 mb-1">Referencia</p>
-                                    <p className="font-mono text-gray-900 dark:text-gray-100 text-xs">{selectedTransaction.reference}</p>
+                                    <p className="text-zinc-500 mb-1">Referencia</p>
+                                    <p className="font-mono text-zinc-900 dark:text-zinc-100 text-xs">{selectedTransaction.reference}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 mb-1">Fecha</p>
-                                    <p className="font-medium text-gray-900 dark:text-white">{new Date(selectedTransaction.created_at).toLocaleString()}</p>
+                                    <p className="text-zinc-500 mb-1">Fecha</p>
+                                    <p className="font-medium text-zinc-900 dark:text-white">{new Date(selectedTransaction.created_at).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 mb-1">Monto Total</p>
+                                    <p className="text-zinc-500 mb-1">Monto Total</p>
                                     <p className="font-bold text-indigo-600 text-lg">
                                         ${(selectedTransaction.amount_in_cents / 100).toLocaleString()} {selectedTransaction.currency}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500 mb-1">Estado</p>
+                                    <p className="text-zinc-500 mb-1">Estado</p>
                                     <Badge variant="outline" className={cn(
                                         "font-normal",
                                         selectedTransaction.status === 'APPROVED'
@@ -272,33 +230,33 @@ export default function PaymentsPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Facturas Asociadas</h4>
+                                <h4 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">Facturas Asociadas</h4>
                                 {loadingDetails ? (
                                     <div className="flex justify-center py-4">
                                         <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
                                     </div>
                                 ) : (
-                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="border border-zinc-200 rounded-lg overflow-hidden">
                                         {linkedInvoices.length > 0 ? (
-                                            <div className="divide-y divide-gray-100">
+                                            <div className="divide-y divide-zinc-100">
                                                 {linkedInvoices.map((inv) => (
-                                                    <div key={inv.id} className="p-3 bg-gray-50/50 flex justify-between items-center text-sm">
+                                                    <div key={inv.id} className="p-3 bg-zinc-50/50 flex justify-between items-center text-sm">
                                                         <div>
-                                                            <p className="font-bold text-gray-900">#{inv.number}</p>
-                                                            <p className="text-xs text-gray-500">{new Date(inv.date).toLocaleDateString()}</p>
+                                                            <p className="font-bold text-zinc-900">#{inv.number}</p>
+                                                            <p className="text-xs text-zinc-500">{new Date(inv.date).toLocaleDateString()}</p>
                                                         </div>
-                                                        <p className="font-medium text-gray-700">${inv.total.toLocaleString()}</p>
+                                                        <p className="font-medium text-zinc-700">${inv.total.toLocaleString()}</p>
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <p className="p-4 text-center text-gray-500 text-sm">No se encontró información de las facturas.</p>
+                                            <p className="p-4 text-center text-zinc-500 text-sm">No se encontró información de las facturas.</p>
                                         )}
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="p-6 border-t border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-end">
+                        <div className="p-6 border-t border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-white/5 flex justify-end">
                             <Button onClick={() => setSelectedTransaction(null)} variant="outline">Cerrar</Button>
                         </div>
                     </div>
@@ -307,3 +265,4 @@ export default function PaymentsPage() {
         </div>
     )
 }
+

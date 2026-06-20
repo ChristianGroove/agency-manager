@@ -13,6 +13,7 @@ import { CreateOrganizationSheet } from "@/modules/core/organizations/components
 import { User } from "@supabase/supabase-js"
 
 import { SidebarProvider, useSidebar } from "./sidebar-provider"
+import { GlobalParticles } from "./global-particles"
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -38,7 +39,7 @@ function DashboardContent({ children, sidebarSlot, currentOrgId }: { children: R
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0 relative",
+                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0 relative z-10",
                     isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]"
                 )}
             >
@@ -71,8 +72,12 @@ export function DashboardShell({ children, sidebarSlot, user, currentOrgId, isSu
     // For this refactor, we wrap content.
     return (
         <SidebarProvider>
-            <div className="h-full relative bg-gray-50/50 dark:bg-transparent min-h-screen">
-
+            <div className="h-full relative bg-gray-100 dark:bg-[#0a0a0a] min-h-screen">
+                {/* Experimental Global Particles (Upward floating) */}
+                <div className="fixed inset-0 z-0 opacity-100 pointer-events-none overflow-hidden">
+                    <GlobalParticles orgId={currentOrgId} />
+                </div>
+                
                 <DashboardContent sidebarSlot={sidebarSlot} currentOrgId={currentOrgId}>
                     {/* Mobile header rendering logic duplicated or extracted? 
                          Let's keep Mobile Header here for now, passing props.

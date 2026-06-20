@@ -357,7 +357,7 @@ export function CreateInvoiceSheet({
                     <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
                         <div className="flex items-center gap-4">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+                                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
                                     {invoiceToEdit ? t('invoicing.form.edit_title') : t('invoicing.form.create_title')}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
@@ -368,7 +368,7 @@ export function CreateInvoiceSheet({
                     </div>
 
                     <div className="flex-1 overflow-hidden">
-                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-gray-100/50">
+                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-zinc-100/50">
 
                             {/* LEFT: FORM */}
                             <div className="lg:col-span-7 overflow-y-auto p-8 h-full relative scrollbar-thin">
@@ -392,7 +392,7 @@ export function CreateInvoiceSheet({
                                                             <CommandList>
                                                                 <CommandEmpty>
                                                                     <div className="p-2 text-center text-sm">
-                                                                        <p className="text-gray-500 mb-2">{t('invoicing.form.not_found')}</p>
+                                                                        <p className="text-zinc-500 mb-2">{t('invoicing.form.not_found')}</p>
                                                                         <Button
                                                                             variant="outline"
                                                                             size="sm"
@@ -413,7 +413,7 @@ export function CreateInvoiceSheet({
                                                                     ))}
                                                                 </CommandGroup>
                                                             </CommandList>
-                                                            <div className="p-2 border-t border-gray-100 bg-gray-50">
+                                                            <div className="p-2 border-t border-zinc-100 bg-zinc-50">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
@@ -451,13 +451,13 @@ export function CreateInvoiceSheet({
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.number_label')}</Label>
-                                                <Input value={invoiceNumber} readOnly className="bg-gray-100 font-mono text-sm" />
+                                                <Input value={invoiceNumber} readOnly className="bg-zinc-100 font-mono text-sm" />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.date_label')}</Label>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-start text-left font-normal bg-white border-gray-200">
+                                                        <Button variant="outline" className="w-full justify-start text-left font-normal bg-white border-zinc-200">
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                                             {dueDate ? format(new Date(dueDate), "PPP") : "Seleccionar"}
                                                         </Button>
@@ -478,7 +478,7 @@ export function CreateInvoiceSheet({
                                     {/* Items Section */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="font-semibold text-gray-900">{t('invoicing.form.concepts')}</h3>
+                                            <h3 className="font-semibold text-zinc-900">{t('invoicing.form.concepts')}</h3>
                                             <Button variant="ghost" size="sm" onClick={addItem} className="text-brand-pink hover:text-brand-pink/80 hover:bg-brand-pink/10">
                                                 <Plus className="h-4 w-4 mr-1" />
                                                 {t('invoicing.form.add_item')}
@@ -487,13 +487,13 @@ export function CreateInvoiceSheet({
 
                                         <div className="space-y-3">
                                             {items.map((item, index) => (
-                                                <div key={item.ui_id} className="group relative flex gap-3 items-start bg-white p-3 rounded-xl border border-gray-100 hover:border-gray-200 shadow-sm transition-all">
+                                                <div key={item.ui_id} className="group relative flex gap-3 items-start bg-white p-3 rounded-xl border border-zinc-100 hover:border-zinc-200 shadow-sm transition-all">
                                                     <div className="grid gap-1.5 flex-1">
                                                         <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('invoicing.form.description')}</Label>
                                                         <Input
                                                             value={item.description}
                                                             onChange={(e) => updateItem(item.ui_id, 'description', e.target.value)}
-                                                            className="border-0 bg-gray-50 focus-visible:ring-0 focus-visible:bg-white transition-all font-medium"
+                                                            className="border-0 bg-zinc-50 focus-visible:ring-0 focus-visible:bg-white transition-all font-medium"
                                                             placeholder="Descripción del servicio..."
                                                         />
                                                     </div>
@@ -504,7 +504,7 @@ export function CreateInvoiceSheet({
                                                             min="1"
                                                             value={item.quantity}
                                                             onChange={(e) => updateItem(item.ui_id, 'quantity', parseInt(e.target.value) || 0)}
-                                                            className="border-0 bg-gray-50 focus-visible:ring-0 focus-visible:bg-white transition-all text-center"
+                                                            className="border-0 bg-zinc-50 focus-visible:ring-0 focus-visible:bg-white transition-all text-center"
                                                         />
                                                     </div>
                                                     <div className="grid gap-1.5 w-32">
@@ -513,14 +513,14 @@ export function CreateInvoiceSheet({
                                                             type="number"
                                                             value={item.price}
                                                             onChange={(e) => updateItem(item.ui_id, 'price', parseFloat(e.target.value) || 0)}
-                                                            className="border-0 bg-gray-50 focus-visible:ring-0 focus-visible:bg-white transition-all text-right"
+                                                            className="border-0 bg-zinc-50 focus-visible:ring-0 focus-visible:bg-white transition-all text-right"
                                                         />
                                                     </div>
 
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-white shadow-sm border border-gray-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-white shadow-sm border border-zinc-100 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                                         onClick={() => removeItem(item.ui_id)}
                                                         disabled={items.length === 1}
                                                     >
@@ -550,41 +550,41 @@ export function CreateInvoiceSheet({
                                         <div className="p-6 space-y-6 flex-1">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <div className="h-8 w-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold text-xs mb-2">
+                                                    <div className="h-8 w-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white font-bold text-xs mb-2">
                                                         LOGO
                                                     </div>
-                                                    <p className="font-bold text-gray-900 text-sm">EMPRESA EJEMPLO</p>
-                                                    <p className="text-gray-400">NIT: 800.000.000-1</p>
+                                                    <p className="font-bold text-zinc-900 text-sm">EMPRESA EJEMPLO</p>
+                                                    <p className="text-zinc-400">NIT: 800.000.000-1</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-bold text-gray-900 text-sm">{invoiceNumber || "BORRADOR"}</p>
-                                                    <p className="text-gray-400 capitalize">{getDocumentTypeLabel(derivedDocType)}</p>
+                                                    <p className="font-bold text-zinc-900 text-sm">{invoiceNumber || "BORRADOR"}</p>
+                                                    <p className="text-zinc-400 capitalize">{getDocumentTypeLabel(derivedDocType)}</p>
                                                     {dueDate && <p className="text-red-400 mt-1 font-medium">Vence: {dueDate}</p>}
                                                 </div>
                                             </div>
 
                                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">{t('invoicing.form.client_label')}</p>
-                                                <p className="font-bold text-gray-900 text-sm">{displayClientName || "Por definir..."}</p>
-                                                {displayClient?.company_name && <p className="text-gray-500">{displayClient.company_name}</p>}
+                                                <p className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">{t('invoicing.form.client_label')}</p>
+                                                <p className="font-bold text-zinc-900 text-sm">{displayClientName || "Por definir..."}</p>
+                                                {displayClient?.company_name && <p className="text-zinc-500">{displayClient.company_name}</p>}
                                             </div>
 
                                             <div className="space-y-4">
                                                 <table className="w-full text-left">
                                                     <thead>
-                                                        <tr className="border-b border-gray-100 text-gray-400">
+                                                        <tr className="border-b border-zinc-100 text-zinc-400">
                                                             <th className="pb-2 font-medium">Concepto</th>
                                                             <th className="pb-2 text-right font-medium">Total</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-gray-50">
+                                                    <tbody className="divide-y divide-zinc-50">
                                                         {items.map((item) => (
                                                             <tr key={item.ui_id}>
                                                                 <td className="py-2 pr-2">
-                                                                    <p className="font-medium text-gray-900">{item.description || "Sin descripción"}</p>
-                                                                    <p className="text-gray-400">{item.quantity} x ${item.price.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</p>
+                                                                    <p className="font-medium text-zinc-900">{item.description || "Sin descripción"}</p>
+                                                                    <p className="text-zinc-400">{item.quantity} x ${item.price.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</p>
                                                                 </td>
-                                                                <td className="py-2 text-right font-medium text-gray-900">
+                                                                <td className="py-2 text-right font-medium text-zinc-900">
                                                                     ${(item.quantity * item.price).toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}
                                                                 </td>
                                                             </tr>
@@ -597,8 +597,8 @@ export function CreateInvoiceSheet({
                                         {/* Footer Totals */}
                                         <div className="bg-slate-50 p-6 border-t border-slate-100">
                                             <div className="flex justify-between items-center mb-2">
-                                                <span className="text-gray-500">{t('invoicing.form.subtotal')}</span>
-                                                <span className="font-medium text-gray-900">${displayValues.subtotal.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</span>
+                                                <span className="text-zinc-500">{t('invoicing.form.subtotal')}</span>
+                                                <span className="font-medium text-zinc-900">${displayValues.subtotal.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-lg font-bold text-brand-pink pt-2 border-t border-slate-200">
                                                 <span>{t('invoicing.form.total')}</span>
@@ -614,7 +614,7 @@ export function CreateInvoiceSheet({
 
                     </div>
 
-                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
+                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-zinc-100 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => setOpen(false)}>{t('invoicing.form.cancel')}</Button>
                         <Button
                             onClick={handleSave}
@@ -622,8 +622,8 @@ export function CreateInvoiceSheet({
                             className={cn(
                                 "px-8 rounded-xl transition-all",
                                 validationResult?.riskLevel === 'CRITICAL'
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-black text-white hover:bg-gray-800"
+                                    ? "bg-zinc-400 cursor-not-allowed"
+                                    : "bg-black text-white hover:bg-zinc-800"
                             )}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

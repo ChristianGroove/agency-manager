@@ -59,9 +59,9 @@ export function ActivitySheet({ open, onOpenChange, executions }: ActivitySheetP
 
                     {/* Content */}
                     <ScrollArea className="flex-1 px-6 py-4">
-                        <div className="relative border-l border-slate-200 dark:border-slate-800 ml-3 space-y-4">
+                        <div className="relative border-l border-zinc-200 dark:border-zinc-800 ml-3 space-y-4">
                             {executions.length === 0 ? (
-                                <div className="text-center py-16 pl-6 text-slate-400 text-sm">
+                                <div className="text-center py-16 pl-6 text-zinc-400 text-sm">
                                     <History className="h-10 w-10 mx-auto mb-3 opacity-30" />
                                     <p>No hay actividad reciente</p>
                                 </div>
@@ -76,9 +76,9 @@ export function ActivitySheet({ open, onOpenChange, executions }: ActivitySheetP
                                                     "bg-blue-500 animate-pulse"
                                         )} />
 
-                                        <div className="flex flex-col gap-1 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="flex flex-col gap-1 p-3 rounded-xl hover:bg-zinc-50 transition-colors">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs font-mono text-slate-400" suppressHydrationWarning>
+                                                <span className="text-xs font-mono text-zinc-400" suppressHydrationWarning>
                                                     {new Date(exec.started_at).toLocaleTimeString()}
                                                 </span>
                                                 <Badge variant="outline" className={cn(
@@ -90,14 +90,14 @@ export function ActivitySheet({ open, onOpenChange, executions }: ActivitySheetP
                                                     {exec.status === 'success' ? 'Éxito' : exec.status === 'failed' ? 'Error' : 'En curso'}
                                                 </Badge>
                                             </div>
-                                            <p className="text-sm font-medium text-slate-800 line-clamp-1">
+                                            <p className="text-sm font-medium text-zinc-800 line-clamp-1">
                                                 {exec.workflow?.name || "Workflow Desconocido"}
                                             </p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <Avatar className="h-4 w-4">
-                                                    <AvatarFallback className="text-[8px] bg-slate-200">SYS</AvatarFallback>
+                                                    <AvatarFallback className="text-[8px] bg-zinc-200">SYS</AvatarFallback>
                                                 </Avatar>
-                                                <span className="text-[10px] text-slate-400">Sistema</span>
+                                                <span className="text-[10px] text-zinc-400">Sistema</span>
                                             </div>
                                         </div>
                                     </div>

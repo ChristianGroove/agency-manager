@@ -110,17 +110,17 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
             <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-white border-0 shadow-2xl rounded-2xl max-h-[90vh] flex flex-col">
 
                 {/* Header with Status Pattern */}
-                <div className={`p-6 border-b border-gray-100 ${statusColor.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
+                <div className={`p-6 border-b border-zinc-100 ${statusColor.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
                     <div className="flex justify-between items-start mb-4">
                         <div className={`p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${statusColor}`}>
                             <Activity className="h-6 w-6" />
                         </div>
                         <StatusBadge status={service.status || 'draft'} type="service" className="text-sm px-3 py-1 font-semibold" entity={service} />
                     </div>
-                    <DialogTitle className="text-2xl font-bold text-gray-900 leading-tight">
+                    <DialogTitle className="text-2xl font-bold text-zinc-900 leading-tight">
                         {service.name}
                     </DialogTitle>
-                    <p className="text-gray-500 mt-1 flex items-center gap-2 text-sm">
+                    <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm">
                         <Clock className="h-3.5 w-3.5" />
                         Creado el {format(new Date(service.created_at), "d 'de' MMMM, yyyy", { locale: es })}
                     </p>
@@ -140,20 +140,20 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                             <div className="grid grid-cols-2 gap-6">
                                 {/* Financials */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                         <CreditCard className="h-4 w-4" /> Financiero
                                     </h4>
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
+                                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 space-y-3">
                                         <div>
-                                            <p className="text-sm text-gray-500 mb-1">Monto Recurrente</p>
-                                            <p className="text-xl font-bold text-gray-900">
+                                            <p className="text-sm text-zinc-500 mb-1">Monto Recurrente</p>
+                                            <p className="text-xl font-bold text-zinc-900">
                                                 ${service.amount?.toLocaleString()}
                                             </p>
                                         </div>
-                                        <Separator className="bg-gray-200" />
+                                        <Separator className="bg-zinc-200" />
                                         <div>
-                                            <p className="text-sm text-gray-500 mb-1">Frecuencia</p>
-                                            <p className="font-medium text-gray-900">
+                                            <p className="text-sm text-zinc-500 mb-1">Frecuencia</p>
+                                            <p className="font-medium text-zinc-900">
                                                 {frequencyLabels[service.frequency || 'monthly'] || service.frequency}
                                             </p>
                                         </div>
@@ -162,12 +162,12 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
 
                                 {/* Dates */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                         <Calendar className="h-4 w-4" /> Fechas Clave
                                     </h4>
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
+                                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 space-y-3">
                                         <div>
-                                            <p className="text-sm text-gray-500 mb-1">Facturación Programada</p>
+                                            <p className="text-sm text-zinc-500 mb-1">Facturación Programada</p>
                                             <p className="font-medium text-indigo-600">
                                                 {/* @ts-ignore */}
                                                 {service.next_billing_date
@@ -176,10 +176,10 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                                     : "No programada"}
                                             </p>
                                         </div>
-                                        <Separator className="bg-gray-200" />
+                                        <Separator className="bg-zinc-200" />
                                         <div>
-                                            <p className="text-sm text-gray-500 mb-1">Inicio de Servicio</p>
-                                            <p className="font-medium text-gray-900">
+                                            <p className="text-sm text-zinc-500 mb-1">Inicio de Servicio</p>
+                                            <p className="font-medium text-zinc-900">
                                                 {/* @ts-ignore */}
                                                 {service.service_start_date
                                                     /* @ts-ignore */
@@ -195,10 +195,10 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                             {/* Description */}
                             {service.description && (
                                 <div className="space-y-3">
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                         <FileText className="h-4 w-4" /> Detalles Adicionales
                                     </h4>
-                                    <div className="bg-white p-4 rounded-xl border border-gray-200 text-gray-600 text-sm leading-relaxed">
+                                    <div className="bg-white p-4 rounded-xl border border-zinc-200 text-zinc-600 text-sm leading-relaxed">
                                         {service.description}
                                     </div>
                                 </div>
@@ -213,9 +213,9 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                 </Badge>
                             </div>
 
-                            <div className="rounded-md border border-gray-100 overflow-hidden">
+                            <div className="rounded-md border border-zinc-100 overflow-hidden">
                                 <Table>
-                                    <TableHeader className="bg-gray-50">
+                                    <TableHeader>
                                         <TableRow>
                                             <TableHead>Estado</TableHead>
                                             <TableHead>Periodo</TableHead>
@@ -299,7 +299,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                     </Tabs>
                 </div>
 
-                <DialogFooter className="bg-gray-50 p-4 border-t border-gray-100 flex-none">
+                <DialogFooter className="bg-zinc-50 p-4 border-t border-zinc-100 flex-none">
                     <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
                         Cerrar Detalle
                     </Button>
@@ -309,3 +309,4 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
         </Dialog>
     )
 }
+

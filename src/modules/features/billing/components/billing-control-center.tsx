@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoicesView } from "./invoices-view"
 import { FiscalStatusView } from "./fiscal-status-view"
@@ -14,9 +16,11 @@ interface BillingControlCenterProps {
 }
 
 import { SectionHeader } from "@/components/layout/section-header"
+import { CreateInvoiceSheet } from "./create-invoice-sheet"
 
 export function BillingControlCenter({ initialInvoices }: BillingControlCenterProps) {
     const { t } = useTranslation()
+    const router = useRouter()
 
     return (
         <div className="space-y-6">
@@ -24,10 +28,13 @@ export function BillingControlCenter({ initialInvoices }: BillingControlCenterPr
                 title={t('invoicing.title')}
                 subtitle={t('invoicing.description')}
                 icon={FileText}
+                action={
+                    <CreateInvoiceSheet onSuccess={() => router.refresh()} />
+                }
             />
 
             <Tabs defaultValue="documents" className="w-full space-y-6">
-                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] h-auto p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl">
+                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] h-auto p-1 bg-zinc-100/50 dark:bg-white/5 backdrop-blur-sm border border-zinc-200/50 dark:border-white/10 rounded-xl">
                     <TabsTrigger
                         value="documents"
                         className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg py-2.5 transition-all"
@@ -60,7 +67,7 @@ export function BillingControlCenter({ initialInvoices }: BillingControlCenterPr
 
                 {/* TAB 1: DOCUMENTOS (Vista Clásica Vitaminada) */}
                 <TabsContent value="documents" className="space-y-4 outline-none focus-visible:ring-0">
-                    <div className="bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-white/10 p-1">
+                    <div className="p-1">
                         <InvoicesView initialInvoices={initialInvoices} />
                     </div>
                 </TabsContent>
@@ -81,7 +88,7 @@ export function BillingControlCenter({ initialInvoices }: BillingControlCenterPr
                     </div>
                 </TabsContent>
                 <TabsContent value="audit" className="outline-none focus-visible:ring-0">
-                    <div className="bg-gray-100/50 dark:bg-white/5 p-1 rounded-2xl border border-gray-200/50 dark:border-white/10">
+                    <div className="bg-zinc-100/50 dark:bg-white/5 p-1 rounded-2xl border border-zinc-200/50 dark:border-white/10">
                         <div className="bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/50 dark:border-white/10 shadow-sm">
                             <AuditView />
                         </div>

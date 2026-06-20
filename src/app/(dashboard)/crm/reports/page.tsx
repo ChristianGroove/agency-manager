@@ -32,6 +32,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { FileText, Download } from 'lucide-react'
 import type { BrandingConfig } from '@/types/branding'
+import { SectionHeader } from '@/components/layout/section-header'
 
 export default function ReportsPage() {
     const { t } = useTranslation()
@@ -109,88 +110,72 @@ export default function ReportsPage() {
     const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4']
 
     return (
-        <div className="h-full space-y-6 overflow-auto pb-8">
-            {/* Header / Control Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Activity className="w-6 h-6 text-brand-pink" />
-                        Command Center <span className="text-sm font-normal text-gray-400">Analytics</span>
-                    </h1>
-                    <p className="text-xs text-muted-foreground">Monitoreo granular de efectividad y eficiencia operativa</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {/* Header Controls */}
-                    <div className="flex items-center gap-2 mr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-modern px-6 pt-6 pb-6 -mx-6 -mt-6">
+            <SectionHeader
+                title="Command Center"
+                subtitle="Monitoreo granular de efectividad y eficiencia operativa"
+                icon={Activity}
+                action={
+                    <div className="flex flex-wrap items-center gap-3">
                         <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={handleExportPdf}
                             disabled={loading || exporting || !reportData}
-                            className="hidden md:flex gap-2 bg-zinc-900 border-white/5 text-white hover:bg-zinc-800"
+                            className="hidden md:flex gap-2 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl"
                         >
                             {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             Exportar PDF
                         </Button>
+
+                        <Select defaultValue="today" onValueChange={(val) => {
+                            const now = new Date()
+                            if (val === 'today') setDateRange({ from: startOfDay(now), to: endOfDay(now) })
+                            if (val === '7d') setDateRange({ from: subDays(now, 7), to: now })
+                            if (val === '15d') setDateRange({ from: subDays(now, 15), to: now })
+                            if (val === '30d') setDateRange({ from: subDays(now, 30), to: now })
+                        }}>
+                            <SelectTrigger className="w-[160px] bg-white dark:bg-transparent border-slate-200 dark:border-white/10 rounded-xl">
+                                <SelectValue placeholder="Rápido: Hoy" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="today">Hoy</SelectItem>
+                                <SelectItem value="7d">Últimos 7 días</SelectItem>
+                                <SelectItem value="15d">Últimos 15 días</SelectItem>
+                                <SelectItem value="30d">Últimos 30 días</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="gap-2 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl">
+                                    <CalendarIcon className="w-4 h-4" />
+                                    {format(dateRange.from, 'dd MMM', { locale: es })} - {format(dateRange.to, 'dd MMM', { locale: es })}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    selected={{ from: dateRange.from, to: dateRange.to }}
+                                    onSelect={(range: any) => range?.from && range?.to && setDateRange({ from: range.from, to: range.to })}
+                                    numberOfMonths={2}
+                                />
+                            </PopoverContent>
+                        </Popover>
+
+                        <Button variant="outline" size="icon" onClick={loadData} disabled={loading} className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl">
+                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                        </Button>
                     </div>
-                    {/* Diagnostic Tool */}
-                    <div className="hidden md:flex flex-col items-end gap-0.5 mr-2">
-                        <div className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono text-gray-500">
-                            ORG: {organizationId?.slice(0, 8) || '...'}
-                        </div>
-                        {reportData && (
-                            <div className="px-2 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 text-[10px] font-mono text-blue-600">
-                                L:{reportData?.summary?.total_leads ?? 0} | A:{reportData?.agent_performance?.length ?? 0}
-                            </div>
-                        )}
-                    </div>
+                }
+            />
 
-                    <Select defaultValue="today" onValueChange={(val) => {
-                        const now = new Date()
-                        if (val === 'today') setDateRange({ from: startOfDay(now), to: endOfDay(now) })
-                        if (val === '7d') setDateRange({ from: subDays(now, 7), to: now })
-                        if (val === '15d') setDateRange({ from: subDays(now, 15), to: now })
-                        if (val === '30d') setDateRange({ from: subDays(now, 30), to: now })
-                    }}>
-                        <SelectTrigger className="w-[160px] bg-white dark:bg-zinc-900 border-white/10">
-                            <SelectValue placeholder="Rápido: Hoy" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="today">Hoy</SelectItem>
-                            <SelectItem value="7d">Últimos 7 días</SelectItem>
-                            <SelectItem value="15d">Últimos 15 días</SelectItem>
-                            <SelectItem value="30d">Últimos 30 días</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" className="gap-2 bg-white dark:bg-zinc-900 border-white/10">
-                                <CalendarIcon className="w-4 h-4" />
-                                {format(dateRange.from, 'dd MMM', { locale: es })} - {format(dateRange.to, 'dd MMM', { locale: es })}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar
-                                initialFocus
-                                mode="range"
-                                selected={{ from: dateRange.from, to: dateRange.to }}
-                                onSelect={(range: any) => range?.from && range?.to && setDateRange({ from: range.from, to: range.to })}
-                                numberOfMonths={2}
-                            />
-                        </PopoverContent>
-                    </Popover>
-
-                    <Button variant="outline" size="icon" onClick={loadData} disabled={loading} className="border-white/10">
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </Button>
-                </div>
-            </div>
+            <div className="space-y-6 pt-6">
 
             {/* KPI Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 px-1">
-                <Card className="p-5 border-none bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-transparent relative overflow-hidden group">
+                <Card className="p-5 glass-card bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Total Leads</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary?.total_leads ?? 0)}</h3>
@@ -198,7 +183,7 @@ export default function ReportsPage() {
                     <Users className="absolute right-4 bottom-4 w-6 h-6 text-blue-500/20" />
                 </Card>
 
-                <Card className="p-5 border-none bg-gradient-to-br from-purple-500/10 to-purple-600/5 dark:from-purple-500/20 dark:to-transparent relative overflow-hidden group">
+                <Card className="p-5 glass-card bg-gradient-to-br from-purple-500/10 to-purple-600/5 dark:from-purple-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Conversión</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black">{loading ? '...' : `${reportData?.summary?.conversion_rate ?? 0}%`}</h3>
@@ -206,7 +191,7 @@ export default function ReportsPage() {
                     <Target className="absolute right-4 bottom-4 w-6 h-6 text-purple-500/20" />
                 </Card>
 
-                <Card className="p-5 border-none bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:to-transparent relative overflow-hidden group">
+                <Card className="p-5 glass-card bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">Valor Pipeline</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black">{loading ? '...' : formatCurrency(reportData?.summary?.pipeline_value || 0)}</h3>
@@ -214,7 +199,7 @@ export default function ReportsPage() {
                     <DollarSign className="absolute right-4 bottom-4 w-6 h-6 text-emerald-500/20" />
                 </Card>
 
-                <Card className="p-5 border-none bg-gradient-to-br from-orange-500/10 to-orange-600/5 dark:from-orange-500/20 dark:to-transparent relative overflow-hidden group">
+                <Card className="p-5 glass-card bg-gradient-to-br from-orange-500/10 to-orange-600/5 dark:from-orange-500/20 dark:to-transparent relative overflow-hidden group">
                     <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-1">Tiempo Respuesta</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black">{loading ? '...' : `${Math.round((reportData?.summary?.avg_response_time || 0) / 60)}m`}</h3>
@@ -223,7 +208,7 @@ export default function ReportsPage() {
                     <Clock className="absolute right-4 bottom-4 w-6 h-6 text-orange-500/20" />
                 </Card>
 
-                <Card className="p-5 border-none bg-gradient-to-br from-red-500/10 to-red-600/5 dark:from-red-500/20 dark:to-transparent relative overflow-hidden group border-l-4 border-red-500">
+                <Card className="p-5 glass-card bg-gradient-to-br from-red-500/10 to-red-600/5 dark:from-red-500/20 dark:to-transparent relative overflow-hidden group border-l-4 border-red-500">
                     <p className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Abandono {'>24h'}</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black text-red-600">{loading ? '...' : (reportData?.summary?.abandoned_leads ?? 0)}</h3>
@@ -234,7 +219,7 @@ export default function ReportsPage() {
 
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="p-6 lg:col-span-2 bg-white dark:bg-zinc-900/50 border-white/5">
+                <Card className="p-6 lg:col-span-2 glass-card">
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="font-bold text-lg">Tendencia de Actividad</h3>
@@ -269,7 +254,7 @@ export default function ReportsPage() {
                     </div>
                 </Card>
 
-                <Card className="p-6 bg-white dark:bg-zinc-900/50 border-white/5">
+                <Card className="p-6 glass-card">
                     <h3 className="font-bold text-lg mb-6">Fuentes de Leads</h3>
                     <div className="h-[250px] w-full relative text-center flex flex-col items-center justify-center">
                         {(!reportData || !reportData.lead_sources || reportData.lead_sources.length === 0) ? (
@@ -306,7 +291,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Team Performance Table */}
-            <Card className="bg-white dark:bg-zinc-900/50 border-white/5 overflow-hidden">
+            <Card className="glass-card overflow-hidden">
                 <div className="p-6 border-b border-white/5">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5 text-green-500" />
@@ -380,7 +365,7 @@ export default function ReportsPage() {
 
             {/* Abandoned Leads Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-white dark:bg-zinc-900/50 border-white/5 overflow-hidden">
+                <Card className="glass-card overflow-hidden">
                     <div className="p-6 border-b border-white/5 flex items-center justify-between">
                         <div>
                             <h3 className="font-bold text-lg flex items-center gap-2">
@@ -425,7 +410,7 @@ export default function ReportsPage() {
                 </Card>
 
                 {/* Optional: Growth Insights or something else */}
-                <Card className="p-6 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border-indigo-500/20 relative overflow-hidden flex flex-col justify-center">
+                <Card className="glass-card p-6 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 relative overflow-hidden flex flex-col justify-center">
                     <div className="relative z-10">
                         <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
                             <Sparkles className="w-6 h-6 text-white" />
@@ -463,6 +448,7 @@ export default function ReportsPage() {
                     </div>
                 </Card>
             </div>
+        </div>
         </div>
     )
 }

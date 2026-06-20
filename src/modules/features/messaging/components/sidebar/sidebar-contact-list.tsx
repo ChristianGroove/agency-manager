@@ -173,7 +173,7 @@ export function SidebarContactList({
     }
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
+        <div className="flex flex-col h-full bg-transparent">
             <div className="px-4 pb-2 pt-2 space-y-3">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -181,12 +181,12 @@ export function SidebarContactList({
                         placeholder={t('crm.inbox.sidebar.search_contacts_placeholder')}
                         value={searchQuery}
                         onChange={handleSearch}
-                        className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
+                        className="pl-9 bg-muted/40 dark:bg-white/5 border-transparent hover:bg-muted/60 dark:hover:bg-white/10 focus-visible:bg-background dark:focus-visible:bg-zinc-900 shadow-none h-9 text-sm transition-all"
                     />
                 </div>
 
                 {channels.length > 0 && (
-                    <div className="flex items-center gap-2 mt-2 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-md border border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mt-2 bg-muted/40 dark:bg-white/5 p-1.5 rounded-xl border border-transparent dark:border-white/5 backdrop-blur-sm">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap pl-1">
                             {t('crm.inbox.sidebar.send_from' as any) || 'Enviar desde:'}
                         </span>
@@ -221,6 +221,7 @@ export function SidebarContactList({
                     </div>
                 ) : (
                     <Virtuoso
+                        className="scrollbar-thin"
                         style={{ height: '100%' }}
                         totalCount={displayContacts.length}
                         data={displayContacts}
@@ -228,8 +229,8 @@ export function SidebarContactList({
                             <div
                                 onClick={() => handleStartChat(contact)}
                                 className={cn(
-                                    "border-b border-border/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group cursor-pointer",
-                                    contact.id === 'new-direct-dial' && "bg-indigo-50/50 dark:bg-indigo-900/10"
+                                    "border-b border-border/50 hover:bg-black/5 dark:hover:bg-white/5 transition-colors group cursor-pointer",
+                                    contact.id === 'new-direct-dial' && "bg-indigo-50/50 dark:bg-indigo-500/10"
                                 )}>
                                 <div className="p-3 flex items-center gap-3">
                                     <Avatar className="h-10 w-10 border border-border/50">

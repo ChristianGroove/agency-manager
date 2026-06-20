@@ -34,15 +34,15 @@ export function SearchFilterBar({
 
     return (
         <div className={cn(
-            "bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md",
+            "glass-card rounded-2xl p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md",
             className
         )}>
             {/* Integrated Search */}
             <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                <Search className="h-4 w-4 text-zinc-400 shrink-0" />
                 <input
                     placeholder={searchPlaceholder}
-                    className="bg-transparent border-0 focus:ring-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9"
+                    className="bg-transparent border-0 focus:ring-0 text-sm w-full outline-none text-zinc-700 dark:text-white placeholder:text-zinc-400 h-9"
                     value={searchTerm}
                     onChange={(e) => onSearchChange(e.target.value)}
                 />
@@ -62,7 +62,7 @@ export function SearchFilterBar({
                                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
                                 activeFilter === filter.id
                                     ? getActiveFilterStyles(filter.color || 'gray')
-                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                             )}
                         >
                             <span>{filter.label}</span>
@@ -71,7 +71,7 @@ export function SearchFilterBar({
                                     "px-1.5 py-0.5 rounded-md text-[10px]",
                                     activeFilter === filter.id
                                         ? "bg-white/20 text-current"
-                                        : "bg-gray-100 text-gray-600"
+                                        : "bg-zinc-100 text-zinc-600"
                                 )}>
                                     {filter.count}
                                 </span>
@@ -82,7 +82,7 @@ export function SearchFilterBar({
             </div>
 
             {/* Divider */}
-            <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+            <div className="h-6 w-px bg-zinc-200 mx-1 hidden md:block" />
 
             {/* Toggle Filters Button */}
             <button
@@ -90,8 +90,8 @@ export function SearchFilterBar({
                 className={cn(
                     "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                     showFilters
-                        ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-white/10 shadow-inner"
-                        : "bg-white dark:bg-transparent text-gray-500 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                        ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-white/10 shadow-inner"
+                        : "bg-white dark:bg-transparent text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                 )}
                 title="Filtrar"
             >
@@ -113,6 +113,6 @@ function getActiveFilterStyles(color: string) {
         case 'indigo': return "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-600/20 dark:ring-indigo-500/20 shadow-sm"
         case 'orange': return "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 ring-1 ring-inset ring-orange-600/20 dark:ring-orange-500/20 shadow-sm"
         case 'cyan': return "bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 ring-1 ring-inset ring-cyan-600/20 dark:ring-cyan-500/20 shadow-sm"
-        default: return "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
+        default: return "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm"
     }
 }

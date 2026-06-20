@@ -4,22 +4,15 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 
-const LOADING_TEXTS = [
-    "Cargando recursos...",
-    "Conectando base de datos...",
-    "Sincronizando assets...",
-    "Iniciando Pixy CRM...",
-    "Optimizando experiencia..."
-]
-
 import { useBranding } from "@/components/providers/branding-provider"
+
+
 
 // Wave SVG Path (Sine Wave, Fill Bottom)
 // M0,50 Q250,100 500,50 Q750,0 1000,50 V100 H0 Z
 const WAVE_PATH = "M0,50 Q250,100 500,50 Q750,0 1000,50 V100 H0 Z"
 
 export function GlobalLoader() {
-    const [textIndex, setTextIndex] = useState(0)
     const branding = useBranding()
 
     // Dynamic Isotype Logic
@@ -32,13 +25,6 @@ export function GlobalLoader() {
 
     const logoSrc = branding?.logos?.favicon || '/pixy-isotipo.png'
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTextIndex((prev) => (prev + 1) % LOADING_TEXTS.length)
-        }, 2000)
-        return () => clearInterval(interval)
-    }, [])
-
     return (
         <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl transition-colors duration-500">
             {/* Background: Pure Canvas (Clean) */}
@@ -49,7 +35,10 @@ export function GlobalLoader() {
                 {isSvg ? (
                     /* OPTION A: SVG ISOTYPE -> LIQUID WAVE EFFECT */
                     /* Mask Container */
-                    <div
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
                         className="absolute inset-0 z-10 w-full h-full"
                         style={{
                             maskImage: `url(${logoSrc})`,
@@ -97,7 +86,7 @@ export function GlobalLoader() {
                                 </div>
                             </motion.div>
                         </div>
-                    </div>
+                    </motion.div>
                 ) : (
                     /* OPTION B: BITMAP IMAGE (PNG/JPG) -> SIMPLE PULSE */
                     <motion.div
@@ -133,38 +122,6 @@ export function GlobalLoader() {
                 )}
             </div>
 
-            {/* Loading Bar */}
-            <div className="w-48 h-1.5 bg-zinc-200 dark:bg-muted rounded-full overflow-hidden mb-4 relative shadow-sm">
-                <motion.div
-                    className="absolute inset-0"
-                    style={{ backgroundColor: 'var(--brand-pink)' }}
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "100%" }}
-                    transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "linear",
-                        repeatType: "loop"
-                    }}
-                />
-
-            </div>
-
-            {/* Dynamic Text */}
-            <div className="h-6 overflow-hidden relative">
-                <AnimatePresence mode="wait">
-                    <motion.p
-                        key={textIndex}
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -20, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-sm font-semibold text-zinc-600 dark:text-muted-foreground tracking-widest uppercase"
-                    >
-                        {LOADING_TEXTS[textIndex]}
-                    </motion.p>
-                </AnimatePresence>
-            </div>
 
             {/* Global Styles for Keyframes */}
             <style jsx global>{`

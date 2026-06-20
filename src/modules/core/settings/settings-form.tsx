@@ -225,13 +225,7 @@ export function SettingsForm({
             requiredModule: null,
             customCheck: (modules: string[]) => modules.some(m => m.startsWith('module_') || m.startsWith('core_'))
         },
-        {
-            id: 'communication',
-            label: 'Comms',
-            icon: MessageSquare,
-            requiredModules: ['module_communications', 'module_invoicing'],
-            matchAny: true
-        },
+
         {
             id: 'revenue',
             label: 'Comisiones',
@@ -288,7 +282,7 @@ export function SettingsForm({
 
             <Tabs defaultValue={visibleTabs[0]?.id || 'team'} className="w-full" suppressHydrationWarning>
                 <TabsList
-                    className="flex w-full overflow-x-auto bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 no-scrollbar"
+                    className="flex w-full overflow-x-auto bg-zinc-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-zinc-200/50 dark:border-white/10 no-scrollbar rounded-xl"
                     suppressHydrationWarning
                 >
                     {visibleTabs.map(tab => {
@@ -297,7 +291,7 @@ export function SettingsForm({
                             <TabsTrigger
                                 key={tab.id}
                                 value={tab.id}
-                                className="flex items-center justify-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all flex-1 whitespace-nowrap px-4"
+                                className="flex items-center justify-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-[var(--brand-pink)] dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all flex-1 whitespace-nowrap px-4 rounded-lg"
                                 suppressHydrationWarning
                             >
                                 <Icon className="h-4 w-4" />
@@ -316,7 +310,7 @@ export function SettingsForm({
                 </TabsContent>
 
                 <TabsContent value="audit" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
+                    <Card className="glass-card rounded-2xl relative overflow-hidden">
                         <CardHeader>
                             <CardTitle>Registro de Auditoría</CardTitle>
                             <CardDescription>
@@ -335,14 +329,14 @@ export function SettingsForm({
 
 
                 <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
+                    <Card className="glass-card rounded-2xl relative overflow-hidden">
                         <CardHeader>
                             <CardTitle>{t('settings.notifications.title')}</CardTitle>
                             <CardDescription>{t('settings.notifications.description')}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-4 border border-dashed border-gray-200 dark:border-white/10 rounded-lg flex flex-col justify-center items-center text-center gap-2 bg-gray-50/50 dark:bg-white/5">
+                                <div className="p-4 border border-dashed border-zinc-200 dark:border-white/10 rounded-xl flex flex-col justify-center items-center text-center gap-2 bg-zinc-50/50 dark:bg-white/5">
                                     <div className="h-10 w-10 rounded-full bg-brand-pink/10 flex items-center justify-center text-brand-pink">
                                         <Palette className="w-5 h-5" />
                                     </div>
@@ -376,7 +370,7 @@ export function SettingsForm({
                             </div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="glass-card rounded-2xl relative overflow-hidden mt-6">
                         <CardHeader>
                             <CardTitle>{t('settings.notifications.activity_log')}</CardTitle>
                             <CardDescription>{t('settings.notifications.activity_log_desc')}</CardDescription>
@@ -393,7 +387,7 @@ export function SettingsForm({
                         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                         <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">{t('settings.billing.general_docs')}</span></div>
                     </div>
-                    <Card>
+                    <Card className="glass-card rounded-2xl relative overflow-hidden mt-6">
                         <CardHeader>
                             <CardTitle>{t('settings.billing.title')}</CardTitle>
                             <CardDescription>{t('settings.billing.description')}</CardDescription>
@@ -429,7 +423,7 @@ export function SettingsForm({
 
                 <TabsContent value="payments" className="space-y-4 mt-4" suppressHydrationWarning>
                     <PaymentMethodsManager />
-                    <Card>
+                    <Card className="glass-card rounded-2xl relative overflow-hidden mt-6">
                         <CardHeader>
                             <CardTitle>{t('settings.payments.title')}</CardTitle>
                             <CardDescription>{t('settings.payments.description')}</CardDescription>
@@ -467,7 +461,7 @@ export function SettingsForm({
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
+                    <Card className="glass-card rounded-2xl relative overflow-hidden mt-6 border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">Integración Wompi (API)</CardTitle>
                             <CardDescription>Configura tus llaves de API.</CardDescription>
@@ -505,7 +499,7 @@ export function SettingsForm({
                 <TabsContent value="portal" className="space-y-4 mt-4" suppressHydrationWarning>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card>
+                            <Card className="glass-card rounded-2xl relative overflow-hidden">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</CardTitle>
                                     <CardDescription>Configuración básica del portal.</CardDescription>
@@ -524,7 +518,7 @@ export function SettingsForm({
                                     </div>
                                 </CardContent>
                             </Card>
-                            <div className="rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-6 text-center">
+                            <div className="glass-card rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-6 text-center mt-6">
                                 <div className="mx-auto bg-blue-100 dark:bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mb-3">
                                     <Palette className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
@@ -538,7 +532,7 @@ export function SettingsForm({
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <Card>
+                            <Card className="glass-card rounded-2xl relative overflow-hidden">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Visibilidad</CardTitle>
                                     <CardDescription>Controla qué módulos ven tus clientes.</CardDescription>
@@ -571,35 +565,7 @@ export function SettingsForm({
                     </div>
                 </TabsContent>
 
-                <TabsContent value="communication" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Plantillas de Mensajes</CardTitle>
-                                <CardDescription>Personaliza los mensajes de WhatsApp/Email.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label>Envío de Factura</Label>
-                                    <Textarea
-                                        value={formData.comm_templates?.invoice_send || DEFAULT_TEMPLATES.invoice_sent}
-                                        onChange={(e) => handleTemplateChange('invoice_send', e.target.value)}
-                                        className="min-h-[100px]"
-                                    />
-                                    <p className="text-xs text-muted-foreground">Variables: {COMMUNICATION_VARIABLES.invoice_sent.join(', ')}</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Recordatorio de Pago</Label>
-                                    <Textarea
-                                        value={formData.comm_templates?.payment_reminder || DEFAULT_TEMPLATES.payment_reminder}
-                                        onChange={(e) => handleTemplateChange('payment_reminder', e.target.value)}
-                                        className="min-h-[100px]"
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
+
 
 
                 {isReseller && (
