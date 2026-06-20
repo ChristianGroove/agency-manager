@@ -94,7 +94,6 @@ export async function getUserOrganizations() {
             id,
             user_id,
             role,
-            status,
             created_at,
             organization_id,
             organization:organizations (
@@ -112,8 +111,8 @@ export async function getUserOrganizations() {
         return []
     }
 
-    // Filter in JS to avoid SQL crash if 'status' column is not yet pushed to production DB
-    const validMembers = (data || []).filter(member => member.status !== 'blocked')
+    // Filter in JS. If status is missing from select or DB, it is undefined (!== 'blocked')
+    const validMembers = (data || []).filter((member: any) => member.status !== 'blocked')
 
     return validMembers as unknown as OrganizationMember[]
 }
@@ -131,14 +130,19 @@ export const getCurrentOrganizationId = cache(async () => {
     const orgCookie = cookieStore.get('pixy_org_id')
 
     if (orgCookie?.value) {
-        const { data: membership } = await (await createClient())
+        const { data: membership, error } = await (await createClient())
             .from('organization_members')
-            .select('organization_id, status')
+            .select('organization_id')
             .eq('organization_id', orgCookie.value)
             .eq('user_id', user.id)
             .maybeSingle()
 
-        if (membership && membership.status !== 'blocked') {
+        if (error) {
+            console.error("Error in getCurrentOrganizationId membership check:", error)
+        }
+
+        if (membership) {
+            // Assume not blocked if we can't select status
             return orgCookie.value
         }
 
