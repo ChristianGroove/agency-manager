@@ -42,6 +42,11 @@ export default function ReportsPage() {
         from: startOfDay(new Date()),
         to: endOfDay(new Date())
     })
+    const [tempDateRange, setTempDateRange] = useState<{ from?: Date, to?: Date }>({
+        from: startOfDay(new Date()),
+        to: endOfDay(new Date())
+    })
+    const [calendarOpen, setCalendarOpen] = useState(false)
     const { organizationId, loading: orgLoading } = useCurrentOrganization()
     const [reportData, setReportData] = useState<AdvancedReportData | null>(null)
     const [branding, setBranding] = useState<BrandingConfig | null>(null)
@@ -57,15 +62,20 @@ export default function ReportsPage() {
     async function loadData() {
         if (!organizationId) return
         setLoading(true)
-        const res = await getAdvancedReports(
-            dateRange.from.toISOString(),
-            dateRange.to.toISOString(),
-            organizationId
-        )
-        if (res.success && res.data) {
-            setReportData(res.data)
+        try {
+            const res = await getAdvancedReports(
+                dateRange.from.toISOString(),
+                dateRange.to.toISOString(),
+                organizationId
+            )
+            if (res.success && res.data) {
+                setReportData(res.data)
+            }
+        } catch (error) {
+            console.error("Error loading reports data:", error)
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     async function loadBranding() {
@@ -146,21 +156,35 @@ export default function ReportsPage() {
                             </SelectContent>
                         </Select>
 
-                        <Popover>
+                        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" className="gap-2 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl">
                                     <CalendarIcon className="w-4 h-4" />
                                     {format(dateRange.from, 'dd MMM', { locale: es })} - {format(dateRange.to, 'dd MMM', { locale: es })}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
+                            <PopoverContent className="w-auto p-0 rounded-2xl border-none shadow-2xl bg-white/80 dark:bg-black/60 backdrop-blur-xl" align="end">
                                 <Calendar
                                     initialFocus
                                     mode="range"
-                                    selected={{ from: dateRange.from, to: dateRange.to }}
-                                    onSelect={(range: any) => range?.from && range?.to && setDateRange({ from: range.from, to: range.to })}
+                                    selected={{ from: tempDateRange.from, to: tempDateRange.to }}
+                                    onSelect={(range: any) => setTempDateRange({ from: range?.from, to: range?.to })}
                                     numberOfMonths={2}
                                 />
+                                <div className="p-4 border-t border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 flex justify-end gap-2 rounded-b-2xl">
+                                    <Button variant="ghost" onClick={() => {
+                                        setTempDateRange({ from: dateRange.from, to: dateRange.to })
+                                        setCalendarOpen(false)
+                                    }} className="rounded-xl">Cancelar</Button>
+                                    <Button onClick={() => {
+                                        if (tempDateRange.from && tempDateRange.to) {
+                                            setDateRange({ from: tempDateRange.from, to: tempDateRange.to })
+                                            setCalendarOpen(false)
+                                        }
+                                    }} disabled={!tempDateRange.from || !tempDateRange.to} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20">
+                                        Aplicar Rango
+                                    </Button>
+                                </div>
                             </PopoverContent>
                         </Popover>
 
