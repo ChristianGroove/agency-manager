@@ -167,7 +167,6 @@ export default function ReportsPage() {
                                 <Calendar
                                     initialFocus
                                     mode="range"
-                                    className="rounded-b-none border-b-0 shadow-none pb-4"
                                     selected={{ from: tempDateRange.from, to: tempDateRange.to }}
                                     onSelect={(range: any) => setTempDateRange({ from: range?.from, to: range?.to })}
                                     numberOfMonths={2}
@@ -179,7 +178,10 @@ export default function ReportsPage() {
                                     }} className="rounded-xl">Cancelar</Button>
                                     <Button onClick={() => {
                                         if (tempDateRange.from && tempDateRange.to) {
-                                            setDateRange({ from: tempDateRange.from, to: tempDateRange.to })
+                                            setDateRange({ 
+                                                from: startOfDay(tempDateRange.from), 
+                                                to: endOfDay(tempDateRange.to) 
+                                            })
                                             setCalendarOpen(false)
                                         }
                                     }} disabled={!tempDateRange.from || !tempDateRange.to} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20">
