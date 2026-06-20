@@ -91,20 +91,29 @@ export async function getUserOrganizations() {
     const { data, error } = await supabase
         .from('organization_members')
         .select(`
-            *,
+            id,
+            role,
+            status,
+            organization_id,
             organization:organizations (
-                *
+                id,
+                name,
+                slug,
+                organization_type,
+                logo_url
             )
         `)
         .eq('user_id', user.id)
-        .neq('status', 'blocked')
 
     if (error) {
         console.error("Error fetching user organizations:", error)
         return []
     }
 
-    return data as OrganizationMember[]
+    // Filter in JS to avoid SQL crash if 'status' column is not yet pushed to production DB
+    const validMembers = (data || []).filter(member => member.status !== 'blocked')
+
+    return validMembers as OrganizationMember[]
 }
 
 /**
@@ -122,13 +131,12 @@ export const getCurrentOrganizationId = cache(async () => {
     if (orgCookie?.value) {
         const { data: membership } = await (await createClient())
             .from('organization_members')
-            .select('organization_id')
+            .select('organization_id, status')
             .eq('organization_id', orgCookie.value)
             .eq('user_id', user.id)
-            .neq('status', 'blocked')
             .maybeSingle()
 
-        if (membership) {
+        if (membership && membership.status !== 'blocked') {
             return orgCookie.value
         }
 
