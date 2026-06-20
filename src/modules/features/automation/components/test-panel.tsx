@@ -102,16 +102,16 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px] p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
+            <SheetContent className="w-full sm:w-[500px] sm:max-w-[500px] p-0 border-none bg-white dark:bg-zinc-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
                 {/* Header */}
-                <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20">
+                <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-900 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20">
                     <SheetHeader className="p-0">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
                                 <Beaker size={20} />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white">Testing Sandbox</SheetTitle>
+                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-white">Testing Sandbox</SheetTitle>
                                 <SheetDescription className="text-sm font-medium">
                                     Modo Dry Run - sin modificar datos
                                 </SheetDescription>
@@ -146,8 +146,8 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
 
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Header for Debug Mode */}
-                    <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/50">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Configuración de Prueba</span>
+                    <div className="px-6 py-2 border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/50">
+                        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Configuración de Prueba</span>
                     </div>
 
                     <ScrollArea className="flex-1 px-6 py-6">
@@ -155,7 +155,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                             {/* Test Data Configuration */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-sm font-semibold text-slate-900 dark:text-white">Variables de Prueba</Label>
+                                    <Label className="text-sm font-semibold text-zinc-900 dark:text-white">Variables de Prueba</Label>
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -178,7 +178,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                                                     newVars[index].key = e.target.value;
                                                     setTestVariables(newVars);
                                                 }}
-                                                className="flex-1 h-10 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+                                                className="flex-1 h-10 bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
                                             />
                                             <Input
                                                 placeholder="John Doe"
@@ -188,7 +188,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                                                     newVars[index].value = e.target.value;
                                                     setTestVariables(newVars);
                                                 }}
-                                                className="flex-1 h-10 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+                                                className="flex-1 h-10 bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
                                             />
                                             <Button
                                                 variant="ghost"
@@ -207,7 +207,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                             {testResult && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-semibold text-slate-900 dark:text-white">Resultado</Label>
+                                        <Label className="text-sm font-semibold text-zinc-900 dark:text-white">Resultado</Label>
                                         <Badge
                                             variant={testResult.success ? 'default' : 'destructive'}
                                             className={testResult.success ? 'bg-green-500' : ''}
@@ -230,9 +230,9 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                                         </div>
                                     )}
 
-                                    <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl">
+                                    <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                                         <div className="text-xs text-muted-foreground">
-                                            Duración total: <span className="font-semibold text-slate-700 dark:text-slate-300">{testResult.totalDuration}ms</span>
+                                            Duración total: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{testResult.totalDuration}ms</span>
                                         </div>
                                     </div>
                                 </div>
@@ -241,7 +241,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                     </ScrollArea>
 
                     {/* Footer - Only for Debug Mode */}
-                    <div className="p-6 border-t border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-sm mt-auto flex justify-between items-center gap-3">
+                    <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/50 backdrop-blur-sm mt-auto flex justify-between items-center gap-3">
                         <Button
                             variant="outline"
                             onClick={handleReset}
@@ -314,7 +314,7 @@ function NodeResultCard({ node }: { node: TestNodeResult }) {
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm text-slate-900 dark:text-white">{node.nodeLabel}</span>
+                            <span className="font-semibold text-sm text-zinc-900 dark:text-white">{node.nodeLabel}</span>
                             <Badge variant="outline" className="text-xs h-5">
                                 {node.nodeType}
                             </Badge>

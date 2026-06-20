@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -24,12 +25,21 @@ interface KnowledgeListProps {
 
 export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
     const [filter, setFilter] = useState("")
+    const [activeFilter, setActiveFilter] = useState("all")
 
-    const filtered = data.filter(item =>
-        item.question.toLowerCase().includes(filter.toLowerCase()) ||
-        item.answer.toLowerCase().includes(filter.toLowerCase()) ||
-        item.category.toLowerCase().includes(filter.toLowerCase())
-    )
+    const categories = Array.from(new Set(data.map(item => item.category)))
+    const filterOptions = [
+        { id: 'all', label: 'Todas', count: data.length, color: 'zinc' },
+        ...categories.map(c => ({ id: c, label: c, count: data.filter(i => i.category === c).length, color: 'pink' }))
+    ]
+
+    const filtered = data.filter(item => {
+        const matchesSearch = item.question.toLowerCase().includes(filter.toLowerCase()) ||
+            item.answer.toLowerCase().includes(filter.toLowerCase()) ||
+            item.category.toLowerCase().includes(filter.toLowerCase())
+        const matchesFilter = activeFilter === 'all' || item.category === activeFilter
+        return matchesSearch && matchesFilter
+    })
 
     if (data.length === 0) {
         return (
@@ -47,21 +57,20 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Buscar preguntas o respuestas..."
-                        className="pl-9"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                    />
-                </div>
+            <div className="sticky top-4 z-30">
+                <SearchFilterBar
+                    searchTerm={filter}
+                    onSearchChange={setFilter}
+                    searchPlaceholder="Buscar preguntas o respuestas..."
+                    activeFilter={activeFilter}
+                    onFilterChange={setActiveFilter}
+                    filters={filterOptions}
+                />
             </div>
 
-            <div className="rounded-md border bg-white dark:bg-zinc-900 overflow-hidden">
+            <div className="glass-card rounded-2xl overflow-hidden relative">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader>
                         <TableRow>
                             <TableHead>Pregunta / Respuesta</TableHead>
                             <TableHead>Categoría</TableHead>
@@ -86,7 +95,7 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="font-normal">
+                                        <Badge variant="outline" className="font-normal border-transparent bg-zinc-100 text-zinc-700 dark:bg-white/5 dark:text-zinc-300">
                                             {item.category}
                                         </Badge>
                                     </TableCell>
@@ -138,3 +147,4 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
         </div>
     )
 }
+

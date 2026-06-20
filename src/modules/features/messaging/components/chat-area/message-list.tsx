@@ -28,6 +28,7 @@ export const MessageList = forwardRef((
     return (
         <Virtuoso
             ref={ref}
+            className="scrollbar-thin"
             style={{ height: '100%' }}
             totalCount={messages.length}
             data={messages}

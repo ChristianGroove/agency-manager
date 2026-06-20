@@ -171,7 +171,7 @@ export function AutomationsView({
     };
 
     return (
-        <div className="space-y-6 h-[calc(100vh-2rem)] flex flex-col bg-slate-50/50 dark:bg-transparent">
+        <div className="space-y-6 h-[calc(100vh-2rem)] flex flex-col">
             <TemplatesSheet open={templatesOpen} onOpenChange={setTemplatesOpen} />
             <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} executions={recentExecutions} />
 
@@ -184,19 +184,19 @@ export function AutomationsView({
                     action={
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                                 <Input
                                     placeholder="Buscar workflow..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full sm:w-[250px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
+                                    className="pl-9 w-full sm:w-[250px] rounded-xl bg-white dark:bg-transparent border-zinc-200 dark:border-white/10 focus:ring-purple-500/20"
                                 />
                             </div>
                             <div className="flex gap-2">
                                 <Button
                                     variant="outline"
                                     onClick={() => setTemplatesOpen(true)}
-                                    className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    className="rounded-xl bg-white dark:bg-transparent hover:bg-zinc-50 dark:hover:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-gray-300"
                                 >
                                     <Sparkles className="h-4 w-4 text-purple-500 mr-2" />
                                     Plantillas
@@ -205,13 +205,13 @@ export function AutomationsView({
                                     variant="outline"
                                     size="icon"
                                     onClick={() => setActivityOpen(true)}
-                                    className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    className="rounded-xl bg-white dark:bg-transparent hover:bg-zinc-50 dark:hover:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-gray-300"
                                     title="Actividad reciente"
                                 >
-                                    <History className="h-4 w-4 text-slate-500" />
+                                    <History className="h-4 w-4 text-zinc-500" />
                                 </Button>
                                 <Link href="/crm/automations/new">
-                                    <Button className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/20">
+                                    <Button className="rounded-xl bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20">
                                         <Plus className="h-4 w-4 mr-2" />
                                         Crear
                                     </Button>
@@ -222,79 +222,87 @@ export function AutomationsView({
                 />
 
                 {/* Main Scrollable Content Area */}
-                <div className="flex-1 overflow-y-auto min-h-0 scrollbar-modern">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-modern -mx-4 px-4 -mt-4 pt-4">
                     <div className="space-y-6 pb-20">
                         {/* Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="p-3 flex flex-row items-center gap-4 hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
-                                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex-none h-9 w-9 flex items-center justify-center">
-                                    <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Ejecuciones</p>
-                                        <Badge variant="outline" className="text-[10px] h-4 px-1 text-green-600 border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900">
-                                            +12%
-                                        </Badge>
+                            <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Zap className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{displayStats.todayExecutions}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-3xl font-bold text-zinc-900 dark:text-white">{displayStats.todayExecutions}</p>
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1 text-green-600 border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900">
+                                                +12%
+                                            </Badge>
+                                        </div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ejecuciones</p>
+                                    </div>
                                 </div>
                             </Card>
 
-                            <Card className="p-3 flex flex-row items-center gap-4 hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex-none h-9 w-9 flex items-center justify-center">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Éxito</p>
-                                        <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">Estable</span>
+                            <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                        <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{displayStats.successRate}%</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-3xl font-bold text-zinc-900 dark:text-white">{displayStats.successRate}%</p>
+                                            <span className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">Estable</span>
+                                        </div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Éxito</p>
+                                    </div>
                                 </div>
                             </Card>
 
-                            <Card className="p-3 flex flex-row items-center gap-4 hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-none h-9 w-9 flex items-center justify-center">
-                                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Latencia</p>
-                                        <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-full">-5ms</span>
+                            <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{displayStats.avgExecutionTime}ms</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-3xl font-bold text-zinc-900 dark:text-white">{displayStats.avgExecutionTime}ms</p>
+                                            <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-full">-5ms</span>
+                                        </div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Latencia</p>
+                                    </div>
                                 </div>
                             </Card>
 
-                            <Card className="p-3 flex flex-row items-center gap-4 hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-800">
-                                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex-none h-9 w-9 flex items-center justify-center">
-                                    <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Activos</p>
-                                        <span className="text-[10px] text-slate-400">Saludable</span>
+                            <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-purple-50 dark:bg-purple-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">{displayStats.activeWorkflows}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-3xl font-bold text-zinc-900 dark:text-white">{displayStats.activeWorkflows}</p>
+                                            <span className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">Saludable</span>
+                                        </div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Activos</p>
+                                    </div>
                                 </div>
                             </Card>
                         </div>
 
                         {/* View Toggle & Count */}
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                                 Tus Workflows
-                                <Badge variant="secondary" className="rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                <Badge variant="secondary" className="rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                                     {filteredWorkflows.length}
                                 </Badge>
                             </h2>
-                            <div className="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
                                 <button
                                     onClick={() => setViewMode('grid')}
                                     className={cn(
-                                        "p-2 rounded-md transition-all",
-                                        viewMode === 'grid' ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                        "p-2 rounded-lg transition-all",
+                                        viewMode === 'grid' ? "bg-white dark:bg-zinc-800 shadow-sm text-indigo-600" : "text-zinc-500 hover:text-zinc-700"
                                     )}
                                 >
                                     <LayoutGrid className="h-4 w-4" />
@@ -302,8 +310,8 @@ export function AutomationsView({
                                 <button
                                     onClick={() => setViewMode('list')}
                                     className={cn(
-                                        "p-2 rounded-md transition-all",
-                                        viewMode === 'list' ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                        "p-2 rounded-lg transition-all",
+                                        viewMode === 'list' ? "bg-white dark:bg-zinc-800 shadow-sm text-indigo-600" : "text-zinc-500 hover:text-zinc-700"
                                     )}
                                 >
                                     <List className="h-4 w-4" />
@@ -313,12 +321,12 @@ export function AutomationsView({
 
                         {/* Workflow Grid/List */}
                         {filteredWorkflows.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800">
-                                <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                                    <Zap className="h-8 w-8 text-slate-400" />
+                            <div className="glass-card flex flex-col items-center justify-center py-20 border-2 border-dashed border-gray-200 dark:border-white/10">
+                                <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+                                    <Zap className="h-8 w-8 text-zinc-400" />
                                 </div>
-                                <h3 className="text-xl font-medium text-slate-900 dark:text-white">Comienza a Automatizar</h3>
-                                <p className="text-slate-500 mt-2 text-center max-w-sm">
+                                <h3 className="text-xl font-medium text-zinc-900 dark:text-white">Comienza a Automatizar</h3>
+                                <p className="text-zinc-500 mt-2 text-center max-w-sm">
                                     Crea workflows para automatizar tareas repetitivas. Empieza desde cero o usa una plantilla.
                                 </p>
                                 <Button onClick={() => setTemplatesOpen(true)} className="mt-6 rounded-full" variant="secondary">
@@ -327,10 +335,10 @@ export function AutomationsView({
                             </div>
                         ) : (
                             viewMode === 'list' ? (
-                                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+                                <div className="glass-card rounded-xl border-none shadow-xl overflow-hidden">
                                     <Table className="w-full">
                                         <TableHeader>
-                                            <TableRow className="hover:bg-transparent border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
+                                            <TableRow className="hover:bg-transparent border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-white/5">
                                                 <TableHead className="w-[300px]">Workflow</TableHead>
                                                 <TableHead className="w-[150px]">Estado</TableHead>
                                                 <TableHead className="w-[200px]">Canal</TableHead>
@@ -343,11 +351,11 @@ export function AutomationsView({
                                             {filteredWorkflows.map(workflow => {
                                                 const channelId = workflow.trigger_config?.channel || workflow.definition?.nodes?.find((n: any) => n.type === 'trigger')?.data?.channel;
                                                 return (
-                                                    <TableRow key={workflow.id} className="group hover:bg-slate-50 dark:hover:bg-white/5 border-slate-100 dark:border-white/10">
+                                                    <TableRow key={workflow.id} className="group hover:bg-zinc-50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
                                                         <TableCell>
                                                             <div className="flex flex-col">
-                                                                <span className="font-medium text-slate-900 dark:text-white">{workflow.name}</span>
-                                                                <span className="text-xs text-slate-500 truncate max-w-[250px]">{workflow.description || "Sin descripción"}</span>
+                                                                <span className="font-medium text-zinc-900 dark:text-white">{workflow.name}</span>
+                                                                <span className="text-xs text-zinc-500 truncate max-w-[250px]">{workflow.description || "Sin descripción"}</span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
@@ -365,7 +373,7 @@ export function AutomationsView({
                                                                         {channelId}
                                                                     </Badge>
                                                                 ) : (
-                                                                    <span className="text-xs text-slate-400 italic">Sin canal</span>
+                                                                    <span className="text-xs text-zinc-400 italic">Sin canal</span>
                                                                 )}
                                                                 {conflictedWorkflowIds.has(workflow.id) && workflow.is_active && (
                                                                     <TooltipProvider>
@@ -380,12 +388,12 @@ export function AutomationsView({
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-slate-100 text-slate-500 border-0">
+                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-zinc-100 text-zinc-500 border-0">
                                                                 {workflow.definition?.nodes?.length || 0} nodos
                                                             </Badge>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <span className="text-xs text-slate-500">
+                                                            <span className="text-xs text-zinc-500">
                                                                 {workflow.updated_at ? new Date(workflow.updated_at).toLocaleDateString() : '-'}
                                                             </span>
                                                         </TableCell>
@@ -393,13 +401,13 @@ export function AutomationsView({
                                                             <div className="flex justify-end items-center gap-2">
                                                                 <Link href={`/crm/automations/${workflow.id}`} className="opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                                                        <Edit className="h-3.5 w-3.5 text-slate-500" />
+                                                                        <Edit className="h-3.5 w-3.5 text-zinc-500" />
                                                                     </Button>
                                                                 </Link>
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                                                                            <MoreVertical className="h-3.5 w-3.5 text-slate-500" />
+                                                                            <MoreVertical className="h-3.5 w-3.5 text-zinc-500" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">

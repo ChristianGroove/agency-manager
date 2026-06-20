@@ -154,7 +154,7 @@ export function PipelineStagesManager() {
             />
 
             {/* Strict Mode Toggle Card */}
-            <Card className="p-6 border-l-4 border-l-primary bg-background shadow-sm">
+            <Card className="glass-card p-6 border-l-4 border-l-primary shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export function PipelineStagesManager() {
             {/* Stages List */}
             <div className="space-y-2">
                 {stages.map((stage, index) => (
-                    <Card key={stage.id} className="p-4 bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 hover:shadow-md transition-shadow">
+                    <Card key={stage.id} className="glass-card p-4 transition-all">
                         <div className="flex items-center gap-3">
                             <div className="cursor-grab">
                                 <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -321,7 +321,7 @@ export function PipelineStagesManager() {
             </div>
 
             {stages.length === 0 && (
-                <Card className="p-8 text-center bg-white dark:bg-white/5 border-gray-100 dark:border-white/10">
+                <Card className="glass-card border-dashed p-8 text-center border-gray-200 dark:border-white/10">
                     <p className="text-muted-foreground mb-4">No hay etapas configuradas</p>
                     <p className="text-sm text-muted-foreground">
                         Crea tu primera etapa para comenzar a gestionar tu pipeline

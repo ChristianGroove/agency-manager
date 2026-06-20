@@ -132,11 +132,11 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                     sm:max-w-[600px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-white dark:bg-gray-900 flex flex-col
+                    bg-white dark:bg-zinc-900 flex flex-col
                 "
             >
                 {/* Header */}
-                <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 p-6 flex-none">
+                <div className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 p-6 flex-none">
                     <SheetHeader>
                         <SheetTitle className="text-2xl font-bold flex items-center gap-2">
                             <Share2 className="h-6 w-6 text-indigo-600" />
@@ -149,10 +149,10 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50 dark:bg-gray-950/50">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-zinc-50/50 dark:bg-zinc-950/50">
                     {loadingQuote ? (
                         <div className="flex h-full items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
                         </div>
                     ) : quote ? (
                         sentSuccess ? (
@@ -160,8 +160,8 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                 <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
                                     <CheckCircle2 className="h-10 w-10 text-green-600" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">¡Mensaje Enviado!</h3>
-                                <p className="text-gray-500 max-w-sm">
+                                <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">¡Mensaje Enviado!</h3>
+                                <p className="text-zinc-500 max-w-sm">
                                     La cotización ha sido enviada correctamente. Se ha creado/actualizado la conversación en el Inbox.
                                 </p>
                                 <div className="flex flex-col w-full max-w-xs gap-3 pt-4">
@@ -177,10 +177,10 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                         ) : (
                             <>
                                 {/* Quote Summary Card */}
-                                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center justify-between">
+                                <div className="bg-white dark:bg-zinc-800 p-4 rounded-xl border border-zinc-100 dark:border-zinc-700 shadow-sm flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-muted-foreground font-medium">Cotización</p>
-                                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">#{quote.number}</p>
+                                        <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">#{quote.number}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm text-muted-foreground font-medium">Total</p>
@@ -191,13 +191,13 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                 {/* Message Editor */}
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center">
-                                        <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Mensaje Personalizado</Label>
+                                        <Label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Mensaje Personalizado</Label>
                                         <span className="text-xs text-muted-foreground">{message.length} caracteres</span>
                                     </div>
                                     <Textarea
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
-                                        className="min-h-[200px] p-4 text-base leading-relaxed resize-none rounded-xl border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500/20 bg-white dark:bg-gray-800 shadow-sm"
+                                        className="min-h-[200px] p-4 text-base leading-relaxed resize-none rounded-xl border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-indigo-500/20 bg-white dark:bg-zinc-800 shadow-sm"
                                         placeholder="Escribe tu mensaje aquí..."
                                     />
                                     <p className="text-xs text-muted-foreground pl-1">
@@ -220,7 +220,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
 
                 {/* Footer Buttons */}
                 {!sentSuccess && !loadingQuote && (
-                    <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 space-y-3 flex-none">
+                    <div className="p-6 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 space-y-3 flex-none">
                         <Button
                             onClick={handleSendViaBot}
                             disabled={sending || !quote}

@@ -9,7 +9,7 @@ export const DynamicFormList = dynamic(
         ssr: false,
         loading: () => (
             <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
             </div>
         )
     }

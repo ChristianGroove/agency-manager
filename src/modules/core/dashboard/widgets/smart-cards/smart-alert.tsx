@@ -22,7 +22,7 @@ export function SmartAlert({ title, message, itemsHeading, items }: SmartAlertPr
     if (items.length === 0) return null
 
     return (
-        <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm rounded-[30px] overflow-hidden">
+        <Card className="glass-card">
             <div className="flex flex-col md:flex-row items-center justify-between p-6 md:p-8 gap-6">
                 <div className="flex-1">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">

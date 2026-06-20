@@ -72,9 +72,8 @@ export function AuditLogsTable() {
                 </div>
             </div>
 
-            <div className="rounded-xl border bg-white dark:bg-white/5 overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                    <TableHeader>
                         <TableRow>
                             <TableHead className="w-[180px]">Fecha</TableHead>
                             <TableHead>Actor</TableHead>
@@ -131,7 +130,6 @@ export function AuditLogsTable() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
 
             <div className="flex items-center justify-end gap-2 mt-4">
                 <Button

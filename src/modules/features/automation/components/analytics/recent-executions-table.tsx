@@ -19,14 +19,14 @@ interface RecentExecutionsTableProps {
 export function RecentExecutionsTable({ executions }: RecentExecutionsTableProps) {
     if (executions.length === 0) {
         return (
-            <div className="text-center py-8 text-muted-foreground border rounded-lg bg-slate-50 dark:bg-slate-900/50">
+            <div className="glass-card text-center py-8 text-muted-foreground border-dashed">
                 No hay ejecuciones recientes.
             </div>
         )
     }
 
     return (
-        <div className="rounded-md border">
+        <div className="rounded-xl border border-gray-100 dark:border-white/10 overflow-hidden">
             <Table>
                 <TableHeader>
                     <TableRow>

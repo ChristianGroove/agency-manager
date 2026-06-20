@@ -11,7 +11,7 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined)
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-    // Initialize from local storage if available to prevent flicker
+    // Prevent hydration mismatch by initializing to false strictly
     const [isCollapsed, setIsCollapsedState] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
 

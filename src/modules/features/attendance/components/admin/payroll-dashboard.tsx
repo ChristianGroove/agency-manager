@@ -84,21 +84,21 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b pb-4">
+            <Card className="glass-card rounded-2xl overflow-hidden relative border-none shadow-xl">
+                <CardHeader className="p-6 pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-slate-500" /> Detalle de Turnos
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
-                        <TableHeader className="bg-slate-50 font-semibold">
+                        <TableHeader className="font-semibold">
                             <TableRow>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Colaborador</TableHead>
                                 <TableHead className="text-center">T. Break</TableHead>
-                                <TableHead className="text-center bg-emerald-50/50">Ordinarias</TableHead>
-                                <TableHead className="text-center bg-amber-50/50">Extras</TableHead>
+                                <TableHead className="text-center bg-emerald-50/50 dark:bg-emerald-500/10">Ordinarias</TableHead>
+                                <TableHead className="text-center bg-amber-50/50 dark:bg-amber-500/10">Extras</TableHead>
                                 <TableHead className="text-right">Aprobación</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -111,7 +111,7 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                                 </TableRow>
                             ) : (
                                 filteredShifts.map(shift => (
-                                    <TableRow key={shift.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <TableRow key={shift.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
                                         <TableCell>
                                             <div className="font-medium text-slate-900">
                                                 {format(new Date(shift.date), 'dd MMM yyyy', { locale: es })}
@@ -127,12 +127,12 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                                         <TableCell className="text-center font-mono text-slate-600">
                                             {formatHours(shift.total_break_minutes)}
                                         </TableCell>
-                                        <TableCell className="text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">
+                                        <TableCell className="text-center font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-500/5">
                                             {formatHours(shift.ordinary_minutes)}
                                         </TableCell>
-                                        <TableCell className="text-center bg-amber-50/20">
+                                        <TableCell className="text-center bg-amber-50/20 dark:bg-amber-500/5">
                                             {shift.extra_minutes_pending > 0 ? (
-                                                <Badge className="font-mono bg-amber-500 hover:bg-amber-600">
+                                                <Badge className="font-mono bg-amber-500 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-600 dark:hover:bg-amber-500/30 border-transparent">
                                                     +{formatHours(shift.extra_minutes_pending)}
                                                 </Badge>
                                             ) : (
@@ -141,7 +141,7 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {shift.extra_minutes_pending > 0 ? (
-                                                <Button size="sm" variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-8">
+                                                <Button size="sm" variant="outline" className="border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 h-8">
                                                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprobar Extra
                                                 </Button>
                                             ) : (
@@ -159,3 +159,4 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
         </div>
     )
 }
+

@@ -53,15 +53,15 @@ export function WorkflowSettingsSheet({
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="w-[400px] sm:w-[500px] p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
-                <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/20">
+            <SheetContent className="w-[400px] sm:w-[500px] p-0 border-none bg-white dark:bg-zinc-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
+                <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/20">
                     <SheetHeader className="p-0">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+                            <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300">
                                 <Settings2 size={20} />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white">Configuración del Workflow</SheetTitle>
+                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-white">Configuración del Workflow</SheetTitle>
                                 <SheetDescription className="text-sm font-medium">Configuración global</SheetDescription>
                             </div>
                         </div>
@@ -74,7 +74,7 @@ export function WorkflowSettingsSheet({
                         <Input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="h-10 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+                            className="h-10 bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
                         />
                     </div>
 
@@ -85,11 +85,11 @@ export function WorkflowSettingsSheet({
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Describe qué hace esta automatización..."
                             rows={4}
-                            className="resize-none bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+                            className="resize-none bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800"
                         />
                     </div>
 
-                    <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/30">
+                    <div className="flex items-center justify-between p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/30">
                         <div className="space-y-0.5">
                             <Label className="text-base font-medium">Estado Activo</Label>
                             <p className="text-xs text-muted-foreground">Turn this workflow on or off.</p>
@@ -98,9 +98,9 @@ export function WorkflowSettingsSheet({
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-sm mt-auto flex justify-between items-center">
-                    <Button variant="ghost" onClick={onClose} className="text-slate-500">Cancel</Button>
-                    <Button onClick={handleSave} disabled={isLoading} className="bg-slate-900 text-white min-w-[120px]">
+                <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/50 backdrop-blur-sm mt-auto flex justify-between items-center">
+                    <Button variant="ghost" onClick={onClose} className="text-zinc-500">Cancel</Button>
+                    <Button onClick={handleSave} disabled={isLoading} className="bg-zinc-900 text-white min-w-[120px]">
                         {isLoading ? 'Saving...' : (
                             <>
                                 <Check className="mr-2 h-4 w-4" /> Save Settings

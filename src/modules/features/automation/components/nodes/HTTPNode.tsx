@@ -20,13 +20,13 @@ export default function HTTPNode({ data, selected }: NodeProps) {
 
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
-            selected ? "border-cyan-500 shadow-xl scale-105 ring-1 ring-cyan-500" : "border-slate-200 dark:border-slate-800"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
+            selected ? "border-cyan-500 shadow-xl scale-105 ring-1 ring-cyan-500" : "border-zinc-200 dark:border-zinc-800"
         )}>
             <Handle
                 type="target"
                 position={Position.Top}
-                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -44,11 +44,11 @@ export default function HTTPNode({ data, selected }: NodeProps) {
                 <div className="flex items-center gap-2">
                     <span className={cn(
                         "text-[10px] font-bold px-1.5 py-0.5 rounded border",
-                        methodColors[method] || 'bg-slate-100 text-slate-700'
+                        methodColors[method] || 'bg-zinc-100 text-zinc-700'
                     )}>
                         {method}
                     </span>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 truncate flex-1 font-mono">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-300 truncate flex-1 font-mono">
                         {displayUrl}
                     </span>
                 </div>
@@ -57,7 +57,7 @@ export default function HTTPNode({ data, selected }: NodeProps) {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
             />
         </div>
     );

@@ -232,7 +232,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
     }
 
     return (
-        <div className="space-y-4 h-[calc(100vh-2rem)] flex flex-col bg-gray-50/50 dark:bg-transparent p-4 overflow-hidden">
+        <div className="space-y-4 h-[calc(100vh-2rem)] flex flex-col">
             <div className="flex-none space-y-4">
                 <SectionHeader
                     title="Contactos"
@@ -241,7 +241,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                         <div className="flex items-center gap-3 w-full md:w-auto">
                             {config.management.actions.showHosting && (
                                 <Link href="/debug/tokens">
-                                    <Button variant="outline" size="sm">
+                                    <Button variant="outline" size="sm" className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl">
                                         <AlertTriangle className="mr-2 h-4 w-4" />
                                         {t('clients.actions.tokens')}
                                     </Button>
@@ -250,7 +250,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="bg-white hover:bg-slate-50 border-slate-200 text-slate-600 rounded-xl"
+                                className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl"
                                 onClick={() => setCategoryManagerOpen(true)}
                             >
                                 <Tag className="mr-2 h-4 w-4" />
@@ -284,7 +284,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                     isDeleting={isDeleting}
                 />
                 
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-modern px-6 pb-12">
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-modern px-6 -mx-6 pt-6 pb-6 -mt-6">
                     {viewMode === 'list' ? (
                         <ClientsTable 
                             clients={filteredClients} 

@@ -183,7 +183,7 @@ export function PlatformInvoicesManager() {
             <CardContent className="px-0">
                 <div className="rounded-xl border bg-white dark:bg-black/20 overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                        <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[120px]">Factura</TableHead>
                                 <TableHead>Organización</TableHead>
@@ -338,3 +338,4 @@ export function PlatformInvoicesManager() {
         </Card>
     )
 }
+

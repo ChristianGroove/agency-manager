@@ -12,13 +12,13 @@ interface StageNodeProps {
 export function StageNode({ data, selected }: StageNodeProps) {
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
-            selected ? "border-blue-500 shadow-xl scale-105 ring-1 ring-blue-500" : "border-slate-200 dark:border-slate-800"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
+            selected ? "border-blue-500 shadow-xl scale-105 ring-1 ring-blue-500" : "border-zinc-200 dark:border-zinc-800"
         )}>
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -34,7 +34,7 @@ export function StageNode({ data, selected }: StageNodeProps) {
             {/* Content */}
             <div className="p-3">
                 <div className="flex items-center justify-center gap-2 mb-1.5">
-                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Mover a</span>
+                    <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wide">Mover a</span>
                     <ArrowRight className="h-3 w-3 text-blue-400" />
                 </div>
 

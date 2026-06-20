@@ -54,26 +54,21 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
         }
     }, [config.media_url, config.media_type, tips.length, hasMultipleTips])
 
-    // Lógica de Temas / Colores
-    let bgClasses = "bg-white dark:bg-white/5 border-0 shadow-[inset_0_0_24px_#00000033] dark:shadow-[inset_0_0_24px_#ffffff0D] text-gray-900 dark:text-white"
+    let bgClasses = "glass-panel bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-xl text-gray-900 dark:text-white"
     let titleClasses = "text-gray-900 dark:text-white"
-    let descClasses = "text-gray-500 dark:text-gray-400"
+    let descClasses = "text-gray-700 dark:text-gray-300"
     let customStyles = {}
 
     if (config.theme === 'dark') {
-        bgClasses = "bg-zinc-950 border border-white/10 text-white shadow-[inset_0_0_24px_#ffffff0D]"
+        bgClasses = "glass-panel bg-white/5 backdrop-blur-md text-white shadow-xl"
         titleClasses = "text-white"
-        descClasses = "text-gray-400"
-    } else if (config.theme === 'brand_primary') {
-        bgClasses = "text-white border-0 shadow-[inset_0_0_24px_#00000040]"
-        titleClasses = "text-white drop-shadow-sm"
-        descClasses = "text-white/80"
-        customStyles = { backgroundColor: 'var(--portal-primary, var(--primary))' }
-    } else if (config.theme === 'brand_secondary') {
-        bgClasses = "text-white border-0 shadow-[inset_0_0_24px_#00000066]"
-        titleClasses = "text-white drop-shadow-sm"
-        descClasses = "text-white/80"
-        customStyles = { backgroundColor: 'var(--portal-secondary, var(--secondary))' }
+        descClasses = "text-gray-300"
+    } else if (config.theme === 'brand_primary' || config.theme === 'brand_secondary') {
+        bgClasses = "glass-panel bg-white/20 dark:bg-white/10 backdrop-blur-md text-white shadow-xl"
+        titleClasses = "text-gray-900 dark:text-white drop-shadow-sm"
+        descClasses = "text-gray-800 dark:text-white/80"
+        // remove inline background to let glassmorphism work
+        customStyles = {}
     }
 
     // Lógica de Layout (Flex direction y alineaciones)
@@ -96,7 +91,8 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
             className={`w-full h-[250px] relative overflow-hidden rounded-[30px] flex flex-col transition-all duration-500 ${bgClasses}`}
             style={customStyles}
         >
-            {/* Animated particles background */}
+            {/* Animated particles background (Hidden for UI experiment) */}
+            {/* 
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" suppressHydrationWarning>
                 {[...Array(15)].map((_, i) => (
                     <div
@@ -113,6 +109,7 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
                     />
                 ))}
             </div>
+            */}
 
             <CardContent className={`flex-1 w-full h-full min-h-0 flex ${containerFlex} p-6 z-20 gap-6 overflow-hidden`}>
 

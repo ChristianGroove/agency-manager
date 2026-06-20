@@ -19,13 +19,13 @@ const ABTestNode = ({ data, selected }: ABTestNodeProps) => {
 
     return (
         <div className={cn(
-            "min-w-[220px] max-w-[280px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
-            selected ? "border-pink-500 shadow-xl scale-105 ring-1 ring-pink-500" : "border-slate-200 dark:border-slate-800"
+            "min-w-[220px] max-w-[280px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
+            selected ? "border-pink-500 shadow-xl scale-105 ring-1 ring-pink-500" : "border-zinc-200 dark:border-zinc-800"
         )}>
             <Handle
                 type="target"
                 position={Position.Top}
-                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -40,17 +40,17 @@ const ABTestNode = ({ data, selected }: ABTestNodeProps) => {
             </div>
 
             {/* Content / Paths */}
-            <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
                 {paths.map((path, index) => (
                     <div
                         key={path.id}
-                        className="relative flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                        className="relative flex items-center justify-between px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
                     >
                         <div className="flex items-center gap-2 min-w-0">
                             <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800 px-1.5 py-0 h-5 text-[10px]">
                                 {path.percentage}%
                             </Badge>
-                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">
                                 {path.label}
                             </span>
                         </div>
@@ -69,8 +69,8 @@ const ABTestNode = ({ data, selected }: ABTestNodeProps) => {
             </div>
 
             {/* Helper text footer */}
-            <div className="bg-slate-50 dark:bg-slate-950/30 px-3 py-1.5 rounded-b-lg border-t border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] text-slate-400 text-center font-medium">
+            <div className="bg-zinc-50 dark:bg-zinc-950/30 px-3 py-1.5 rounded-b-lg border-t border-zinc-100 dark:border-zinc-800">
+                <p className="text-[10px] text-zinc-400 text-center font-medium">
                     Distribución aleatoria
                 </p>
             </div>

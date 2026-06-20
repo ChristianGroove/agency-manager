@@ -49,7 +49,7 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
     }
 
     return (
-        <div className="flex flex-col h-full space-y-4">
+        <div className="flex flex-col h-full min-h-0 space-y-4">
             {/* Search */}
             <div className="px-4 pt-2">
                 <div className="relative">
@@ -78,10 +78,10 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                         {globalTemplates.length === 0 && isTemplatesLoading ? (
                             <div className="text-center py-8 text-muted-foreground text-xs animate-pulse italic">Cargando plantillas...</div>
                         ) : filteredTemplates.length === 0 ? (
-                            <div className="text-center py-6 border-2 border-dashed rounded-xl bg-muted/20">
+                            <div className="text-center py-6 border-2 border-dashed border-border/40 rounded-xl bg-muted/10">
                                 <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
                                 <p className="text-xs text-muted-foreground mb-2">No se encontraron plantillas</p>
-                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onManageReplies}>
+                                <Button variant="outline" size="sm" className="h-7 text-xs border-dashed border-border/50" onClick={onManageReplies}>
                                     <Plus className="h-3 w-3 mr-1" /> Crear Nueva
                                 </Button>
                             </div>
@@ -97,15 +97,16 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                                             key={template.id}
                                             onClick={() => handleSelectTemplate(template.content)}
                                             className={cn(
-                                                "text-left group relative p-3 pl-4 rounded-xl border hover:shadow-md transition-all overflow-hidden",
-                                                "border-gray-100 hover:border-indigo-200"
+                                                "text-left group relative p-3 pl-5 rounded-xl transition-all overflow-hidden",
+                                                "bg-white/40 dark:bg-white/5 border border-black/5 dark:border-white/5",
+                                                "hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:bg-white dark:hover:bg-white/10"
                                             )}
                                         >
-                                            <div className={cn("absolute left-0 top-0 bottom-0 w-1", colorDef.class.split(' ').find(c => c.startsWith('border-l-'))?.replace('border-l-', 'bg-') || 'bg-gray-400')} />
+                                            <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", colorDef.class.split(' ').find(c => c.startsWith('border-l-'))?.replace('border-l-', 'bg-') || 'bg-gray-400')} />
 
                                             <div className="flex items-center gap-2 mb-1">
                                                 <IconComponent className={cn("h-3.5 w-3.5 opacity-60", colorDef.text)} />
-                                                <span className="font-medium text-xs text-foreground/90 group-hover:text-indigo-700 transition-colors">
+                                                <span className="font-medium text-xs text-foreground/90 group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors">
                                                     {template.name}
                                                 </span>
                                             </div>

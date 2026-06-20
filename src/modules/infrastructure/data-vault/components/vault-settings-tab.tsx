@@ -120,7 +120,7 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
             {/* Unified Control Center */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 {/* Main Stats Card */}
-                <Card className="md:col-span-8 overflow-hidden relative border-emerald-100 dark:border-emerald-900/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-background dark:to-emerald-950/10">
+                <Card className="glass-card rounded-2xl relative overflow-hidden md:col-span-8 overflow-hidden relative border-emerald-100 dark:border-emerald-900/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-background dark:to-emerald-950/10">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
                         <Shield className="w-32 h-32 text-emerald-500" />
                     </div>
@@ -174,7 +174,7 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
                 </Card>
 
                 {/* Automation Card (Compact) */}
-                <Card className="md:col-span-4 border-blue-100 dark:border-blue-900/30 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/10 dark:to-background">
+                <Card className="glass-card rounded-2xl relative overflow-hidden md:col-span-4 border-blue-100 dark:border-blue-900/30 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/10 dark:to-background">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
                             <CalendarClock className="h-4 w-4" />
@@ -216,11 +216,11 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
             </div>
 
             {/* Snapshots List (Compact) */}
-            <Card>
-                <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="font-medium text-sm text-muted-foreground">Historial de Puntos de Restauración</h3>
-                </div>
-                <div className="relative overflow-x-auto">
+            <div className="space-y-3">
+                <h3 className="font-medium text-sm text-muted-foreground ml-1">Historial de Puntos de Restauración</h3>
+                <Card className="glass-card rounded-2xl relative overflow-hidden">
+                    <CardContent className="p-0">
+                        <div className="relative overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
@@ -289,7 +289,9 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
                         </TableBody>
                     </Table>
                 </div>
+                </CardContent>
             </Card>
+            </div>
         </div>
     )
 }
@@ -301,7 +303,7 @@ function StatusBadge({ status, compact }: { status: string, compact?: boolean })
         completed: "bg-green-50 text-green-700 border-green-200",
         failed: "bg-red-50 text-red-700 border-red-200",
         restoring: "bg-purple-50 text-purple-700 border-purple-200",
-        archived: "bg-gray-50 text-gray-700 border-gray-200",
+        archived: "bg-zinc-50 text-zinc-700 border-zinc-200",
     }
 
     const labels: Record<string, string> = {
@@ -319,4 +321,5 @@ function StatusBadge({ status, compact }: { status: string, compact?: boolean })
         </Badge>
     )
 }
+
 

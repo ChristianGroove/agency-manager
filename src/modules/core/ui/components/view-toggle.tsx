@@ -15,15 +15,15 @@ interface ViewToggleProps {
 export function ViewToggle({ view, onViewChange, className, showCompact = true }: ViewToggleProps) {
     return (
         <div className={cn(
-            "bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex items-center transition-all hover:shadow-md h-[52px]",
+            "glass-card rounded-2xl p-1.5 flex items-center transition-all hover:shadow-md",
             className
         )}>
-            <div className="flex bg-gray-50 rounded-xl p-0.5">
+            <div className="flex bg-zinc-100/50 dark:bg-white/5 rounded-xl p-0.5">
                 <button
                     onClick={() => onViewChange('list')}
                     className={cn(
                         "p-2 rounded-lg transition-all",
-                        view === 'list' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        view === 'list' ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                     )}
                     title="Vista Lista"
                 >
@@ -34,7 +34,7 @@ export function ViewToggle({ view, onViewChange, className, showCompact = true }
                         onClick={() => onViewChange('compact')}
                         className={cn(
                             "p-2 rounded-lg transition-all",
-                            view === 'compact' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                            view === 'compact' ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                         )}
                         title="Vista Compacta"
                     >
@@ -45,7 +45,7 @@ export function ViewToggle({ view, onViewChange, className, showCompact = true }
                     onClick={() => onViewChange('grid')}
                     className={cn(
                         "p-2 rounded-lg transition-all",
-                        view === 'grid' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        view === 'grid' ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                     )}
                     title="Vista Detallada"
                 >

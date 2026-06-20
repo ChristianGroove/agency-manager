@@ -171,7 +171,7 @@ export function CreateFormSheet({
                                 <Sparkles className="h-5 w-5" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nuevo Formulario</h2>
+                                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">Nuevo Formulario</h2>
                                 <p className="text-xs text-muted-foreground">Genera un enlace único para recopilar información.</p>
                             </div>
                         </div>
@@ -179,12 +179,12 @@ export function CreateFormSheet({
 
                     {/* Split View Grid */}
                     <div className="flex-1 overflow-hidden">
-                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-gray-100/50">
+                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-zinc-100/50">
 
                             {/* LEFT: Form (5/12) */}
-                            <div className="lg:col-span-5 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
+                            <div className="lg:col-span-5 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-zinc-200">
                                 {loading ? (
-                                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-gray-400">
+                                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-zinc-400">
                                         <Loader2 className="h-8 w-8 animate-spin" />
                                         <p className="text-sm">Cargando plantillas...</p>
                                     </div>
@@ -301,7 +301,7 @@ export function CreateFormSheet({
                                                     </Command>
                                                 </PopoverContent>
                                             </Popover>
-                                            <p className="text-[11px] text-gray-400 leading-tight">
+                                            <p className="text-[11px] text-zinc-400 leading-tight">
                                                 Si no seleccionas un cliente, podrás compartir el enlace púbicamente y asignar el cliente después.
                                             </p>
                                         </div>
@@ -317,12 +317,12 @@ export function CreateFormSheet({
 
                                 <div className="relative z-10 h-full flex flex-col">
                                     <div className="mb-6">
-                                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                             <FileText className="h-4 w-4" />Vista Previa del Formulario
                                         </h3>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+                                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-200">
                                         {activeTemplate ? (
                                             <div className="max-w-xl mx-auto space-y-8 pb-20">
                                                 {/* Mock Form Header */}
@@ -330,9 +330,9 @@ export function CreateFormSheet({
                                                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 mb-2">
                                                         <FileText className="h-6 w-6" />
                                                     </div>
-                                                    <h1 className="text-2xl font-bold text-gray-900">{activeTemplate.name}</h1>
+                                                    <h1 className="text-2xl font-bold text-zinc-900">{activeTemplate.name}</h1>
                                                     {activeTemplate.description && (
-                                                        <p className="text-gray-500 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
+                                                        <p className="text-zinc-500 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
                                                     )}
                                                 </div>
 
@@ -353,26 +353,26 @@ export function CreateFormSheet({
                                                     }, []);
 
                                                     return groupedSteps.map((step, index: number) => (
-                                                        <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden opacity-90">
-                                                            <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                                                        <div key={index} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden opacity-90">
+                                                            <div className="bg-zinc-50/80 px-4 py-3 border-b border-zinc-100 flex items-center gap-3">
                                                                 <Badge variant="outline" className="bg-white h-6 w-6 flex items-center justify-center p-0 rounded-full shrink-0">
                                                                     {index + 1}
                                                                 </Badge>
-                                                                <h4 className="font-semibold text-gray-900 text-sm">{step.title}</h4>
+                                                                <h4 className="font-semibold text-zinc-900 text-sm">{step.title}</h4>
                                                             </div>
                                                             <div className="p-4 space-y-4">
                                                                 {step.fields?.map((field: any) => (
                                                                     <div key={field.id} className="space-y-1.5 pointer-events-none select-none">
                                                                         <div className="flex items-center justify-between">
-                                                                            <Label className="text-xs text-gray-600">{field.label}</Label>
+                                                                            <Label className="text-xs text-zinc-600">{field.label}</Label>
                                                                             {field.required && <span className="text-red-400 text-[10px]">*</span>}
                                                                         </div>
                                                                         {/* Mock Input based on type */}
-                                                                        <div className="h-9 w-full bg-gray-50 rounded-md border border-gray-100" />
+                                                                        <div className="h-9 w-full bg-zinc-50 rounded-md border border-zinc-100" />
                                                                     </div>
                                                                 ))}
                                                                 {(!step.fields || step.fields.length === 0) && (
-                                                                    <p className="text-xs text-gray-400 italic text-center py-2">Sin campos en este paso</p>
+                                                                    <p className="text-xs text-zinc-400 italic text-center py-2">Sin campos en este paso</p>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -380,9 +380,9 @@ export function CreateFormSheet({
                                                 })()}
                                             </div>
                                         ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4 min-h-[400px]">
-                                                <div className="p-4 bg-gray-100 rounded-full">
-                                                    <LayoutTemplate className="h-8 w-8 text-gray-300" />
+                                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 space-y-4 min-h-[400px]">
+                                                <div className="p-4 bg-zinc-100 rounded-full">
+                                                    <LayoutTemplate className="h-8 w-8 text-zinc-300" />
                                                 </div>
                                                 <p className="max-w-xs text-center text-sm">
                                                     Selecciona una plantilla a la izquierda para ver su estructura y preguntas.
@@ -397,14 +397,14 @@ export function CreateFormSheet({
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-gray-500 hover:text-red-500">
+                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-zinc-100 flex items-center justify-between z-20">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-zinc-500 hover:text-red-500">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSubmit}
                             disabled={submitting || !selectedTemplateId || loading}
-                            className="bg-black text-white hover:bg-gray-800 shadow-xl shadow-black/10 px-8 rounded-xl h-11"
+                            className="bg-black text-white hover:bg-zinc-800 shadow-xl shadow-black/10 px-8 rounded-xl h-11"
                         >
                             {submitting ? (
                                 <>

@@ -146,7 +146,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
 
     return (
         <>
-            <Card className={`relative overflow-hidden cursor-pointer transition-all hover:shadow-md border-zinc-200 dark:border-zinc-800 ${channel.is_primary ? 'border-primary/50 shadow-sm bg-primary/[0.02]' : ''}`} onClick={handleCardClick}>
+            <Card className={`glass-card relative cursor-pointer group hover:-translate-y-1 transition-all ${channel.is_primary ? 'border-primary/50 bg-primary/[0.02]' : ''}`} onClick={handleCardClick}>
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                     <div className="flex items-center gap-3">
                         <div className={`p-2.5 rounded-2xl ${iconBg} shadow-sm border border-black/5`}>

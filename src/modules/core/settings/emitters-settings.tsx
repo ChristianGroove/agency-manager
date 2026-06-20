@@ -159,7 +159,7 @@ export function EmittersSettings() {
     if (loading) return <div className="p-4"><Loader2 className="animate-spin" /></div>
 
     return (
-        <Card>
+        <Card className="glass-card rounded-2xl relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Emisores de Facturación</CardTitle>
@@ -175,7 +175,7 @@ export function EmittersSettings() {
                         <div
                             key={emitter.id}
                             className={`relative flex items-start gap-3 p-3 border rounded-lg transition-all ${emitter.is_default
-                                ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-100'
+                                ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30 ring-1 ring-purple-100 dark:ring-purple-500/20'
                                 : 'bg-card hover:bg-accent/5'
                                 }`}
                         >
