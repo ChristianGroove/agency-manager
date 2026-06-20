@@ -541,14 +541,13 @@ export class PlatformBillingService {
     static async markPlatformInvoiceAsPaid(invoiceId: string) {
         await requireSuperAdmin();
         
-        const supabase = await createClient()
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
         
         // 1. Update invoice status
-        const { error: invoiceError } = await supabase
-            .from('platform_invoices')
+        const { error: invoiceError } = await supabaseAdmin
+            .from('saas_platform_invoices')
             .update({ 
-                status: 'paid', 
-                paid_at: new Date().toISOString(),
+                status: 'PAID', 
                 updated_at: new Date().toISOString()
             })
             .eq('id', invoiceId)
@@ -559,8 +558,8 @@ export class PlatformBillingService {
         }
 
         // 2. Fetch the invoice to get org info
-        const { data: invoice } = await supabase
-            .from('platform_invoices')
+        const { data: invoice } = await supabaseAdmin
+            .from('saas_platform_invoices')
             .select('organization_id')
             .eq('id', invoiceId)
             .single()
