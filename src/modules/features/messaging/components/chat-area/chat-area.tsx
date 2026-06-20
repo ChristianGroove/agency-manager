@@ -78,7 +78,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     }, [actions])
 
     return (
-        <div className="flex flex-col h-full bg-transparent overflow-hidden relative">
+        <div className="flex flex-col h-full bg-[#efeae2] dark:bg-zinc-950/30 overflow-hidden relative">
             <SavedRepliesSheet
                 open={isRepliesSheetOpen}
                 onOpenChange={setIsRepliesSheetOpen}
@@ -113,9 +113,9 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 })}
             />
 
-            <div className="flex-1 min-h-0 bg-transparent relative">
+            <div className="flex-1 min-h-0 bg-background/50 relative">
                 <div
-                    className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:invert dark:opacity-[0.02]"
+                    className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:invert dark:opacity-[0.05]"
                     style={{
                         backgroundImage: "url('/inbox-pattern.svg')",
                         backgroundSize: "auto 100%",
@@ -124,8 +124,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     }}
                 />
 
-                {/* Tactical Lead Stage Stepper - Top Left Positioning */}
-                <div className="absolute top-6 left-6 z-30">
+                {/* Tactical Lead Stage Stepper - Top Center Positioning */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
                     {logic.conversation?.leads && (
                         <LeadStageStepper 
                             leadId={logic.conversation.lead_id}

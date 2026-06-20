@@ -69,20 +69,20 @@ export function FlowsGallery() {
                         onClick={() => setSelectedTemplateId(template.id)}
                         className="group text-left h-[140px] w-full"
                     >
-                        <div className="glass-card h-full w-full rounded-2xl p-4 hover:border-brand-pink/50 dark:hover:border-brand-pink/50 hover:shadow-lg hover:shadow-brand-pink/5 dark:hover:shadow-brand-pink/10 transition-all duration-300 group-hover:-translate-y-1 flex flex-col">
+                        <div className="h-full w-full bg-white dark:bg-card/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 hover:border-brand-pink/50 dark:hover:border-brand-pink/50 hover:shadow-lg hover:shadow-brand-pink/5 dark:hover:shadow-brand-pink/10 transition-all duration-300 group-hover:-translate-y-1 flex flex-col">
 
                             {/* HEADER: INLINE ICON + TITLE */}
                             <div className="flex items-center gap-3 mb-2">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${template.bgColor} border border-white/5`}>
                                     <template.icon className={`w-4 h-4 ${template.color}`} />
                                 </div>
-                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white leading-tight group-hover:text-brand-pink transition-colors line-clamp-2">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight group-hover:text-brand-pink transition-colors line-clamp-2">
                                     {template.title}
                                 </h3>
                             </div>
 
                             {/* DESCRIPTION */}
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
                                 {template.description}
                             </p>
                         </div>

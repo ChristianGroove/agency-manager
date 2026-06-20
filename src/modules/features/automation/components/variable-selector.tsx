@@ -45,7 +45,7 @@ export const VariableSelector: React.FC<VariableSelectorProps> = ({ onSelect, cl
                     <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-8 w-8 text-zinc-400 hover:text-purple-600 ${className}`}
+                        className={`h-8 w-8 text-slate-400 hover:text-purple-600 ${className}`}
                         title="Insertar Variable"
                     >
                         <Braces size={16} />

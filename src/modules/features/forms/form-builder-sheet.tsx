@@ -155,13 +155,13 @@ export function FormBuilderSheet({
                     {/* LEFT PANEL: Configuration (40%) */}
                     <div className="col-span-12 md:col-span-5 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto">
                         {/* Header */}
-                        <div className="sticky top-0 z-20 bg-white border-b border-zinc-100 px-8 py-5">
+                        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-brand-pink/10 rounded-lg">
                                     <FileText className="h-5 w-5 text-brand-pink" />
                                 </div>
                                 <div>
-                                    <SheetTitle className="text-xl font-semibold text-zinc-900">
+                                    <SheetTitle className="text-xl font-semibold text-gray-900">
                                         {templateToEdit ? "Editar Formulario" : "Nuevo Formulario"}
                                     </SheetTitle>
                                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -234,7 +234,7 @@ export function FormBuilderSheet({
                         </div>
 
                         {/* Footer */}
-                        <div className="sticky bottom-0 bg-white border-t border-zinc-100 px-8 py-4 flex items-center justify-between mt-auto">
+                        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-8 py-4 flex items-center justify-between mt-auto">
                             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
                                 Cancelar
                             </Button>
@@ -252,7 +252,7 @@ export function FormBuilderSheet({
                     {/* RIGHT PANEL: Live Preview (60%) */}
                     <div className="hidden md:flex col-span-7 flex-col h-full bg-slate-50/50 p-10 overflow-y-auto items-center justify-start">
                         <div className="sticky top-0 mb-6 w-full max-w-2xl">
-                            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                                 Vista Previa (Usuario Final)
                             </p>
                         </div>
@@ -347,7 +347,7 @@ function FieldEditor({
                         <div className="space-y-4 pl-1 pt-2 border-l-2 border-indigo-100">
                             {/* Type Selector */}
                             <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-zinc-600">Tipo de Campo</Label>
+                                <Label className="text-xs font-semibold text-gray-600">Tipo de Campo</Label>
                                 <Select
                                     value={field.type}
                                     onValueChange={(value) => onUpdate({ type: value as FormFieldType })}
@@ -370,7 +370,7 @@ function FieldEditor({
                             {/* Options Management (for select/multiselect) */}
                             {(field.type === 'select' || field.type === 'multiselect') && (
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-semibold text-zinc-600">Opciones</Label>
+                                    <Label className="text-xs font-semibold text-gray-600">Opciones</Label>
                                     <div className="space-y-2">
                                         {field.options && field.options.length > 0 ? (
                                             field.options.map((option, optIndex) => (
@@ -464,9 +464,9 @@ function LivePreview({ template }: { template: { name: string; description: stri
     return (
         <Card className="p-8 shadow-lg">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-zinc-900 mb-2">{template.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{template.name}</h2>
                 {template.description && (
-                    <p className="text-zinc-600">{template.description}</p>
+                    <p className="text-gray-600">{template.description}</p>
                 )}
             </div>
 

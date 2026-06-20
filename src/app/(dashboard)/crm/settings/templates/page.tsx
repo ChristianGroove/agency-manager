@@ -174,7 +174,7 @@ export default function TemplatesPage() {
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full rounded-xl" />)}
                 </div>
             ) : filteredTemplates.length === 0 ? (
-                <div className="glass-card flex flex-col items-center justify-center flex-1 min-h-[400px] border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
+                <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] border-2 border-dashed rounded-3xl bg-slate-50/50">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                         <MessageSquare className="h-8 w-8 text-green-600" />
                     </div>
@@ -201,9 +201,9 @@ export default function TemplatesPage() {
                         <Card
                             key={template.id}
                             onClick={() => handleEdit(template)}
-                            className="glass-card group cursor-pointer hover:-translate-y-1 transition-all duration-300"
+                            className="group cursor-pointer hover:shadow-lg hover:border-green-400 transition-all duration-300 overflow-hidden border-slate-200"
                         >
-                            <CardHeader className="pb-3 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-white/5">
+                            <CardHeader className="pb-3 border-b bg-slate-50/50">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <CardTitle className="font-mono text-sm text-slate-700 truncate w-48" title={template.name}>

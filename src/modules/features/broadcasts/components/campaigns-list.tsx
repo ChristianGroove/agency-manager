@@ -154,7 +154,7 @@ export function CampaignsList() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {campaigns.map(campaign => (
-                    <Card key={campaign.id} className="glass-card group hover:-translate-y-1 transition-all">
+                    <Card key={campaign.id} className="group hover:shadow-lg transition-all border-gray-100 dark:border-white/10 overflow-hidden bg-white dark:bg-white/5">
                         <div className="p-5">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">

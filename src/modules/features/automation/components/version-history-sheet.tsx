@@ -71,8 +71,8 @@ export function VersionHistorySheet({ workflowId, isOpen, onClose, onVersionRest
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="w-[400px] sm:w-[540px] p-0 flex flex-col bg-white dark:bg-zinc-950">
-                <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/50">
+            <SheetContent className="w-[400px] sm:w-[540px] p-0 flex flex-col bg-white dark:bg-slate-950">
+                <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/50">
                     <SheetHeader className="p-0">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 flex items-center justify-center">
@@ -103,14 +103,14 @@ export function VersionHistorySheet({ workflowId, isOpen, onClose, onVersionRest
                             {versions.map((version) => (
                                 <div
                                     key={version.id}
-                                    className="group relative border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 hover:border-orange-300 dark:hover:border-orange-800 transition-all bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md"
+                                    className="group relative border border-slate-200 dark:border-slate-800 rounded-xl p-4 hover:border-orange-300 dark:hover:border-orange-800 transition-all bg-white dark:bg-slate-900 shadow-sm hover:shadow-md"
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center gap-2">
                                             <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-xs font-bold px-2 py-1 rounded-md">
                                                 v{version.version_number}
                                             </span>
-                                            <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                                            <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                                                 {version.name || `Version ${version.version_number}`}
                                             </h4>
                                         </div>
@@ -149,7 +149,7 @@ export function VersionHistorySheet({ workflowId, isOpen, onClose, onVersionRest
                     )}
                 </ScrollArea>
 
-                <div className="p-4 border-t border-zinc-100 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-900 text-center text-xs text-muted-foreground">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-900 bg-slate-50 dark:bg-slate-900 text-center text-xs text-muted-foreground">
                     Restoring a version will overwrite your current draft.
                 </div>
             </SheetContent>

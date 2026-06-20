@@ -15,11 +15,11 @@ interface PortalBriefingListProps {
 export function PortalBriefingList({ briefings, onView }: PortalBriefingListProps) {
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'draft': return <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-transparent hover:bg-zinc-200">Borrador</Badge>
-            case 'sent': return <Badge className="bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-transparent hover:bg-blue-200 dark:hover:bg-blue-500/20">Enviado</Badge>
-            case 'in_progress': return <Badge className="bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-transparent hover:bg-amber-200 dark:hover:bg-amber-500/20">En Progreso</Badge>
-            case 'submitted': return <Badge className="bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-transparent hover:bg-green-200 dark:hover:bg-green-500/20">Completado</Badge>
-            default: return <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-transparent">{status}</Badge>
+            case 'draft': return <Badge variant="outline">Borrador</Badge>
+            case 'sent': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Enviado</Badge>
+            case 'in_progress': return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">En Progreso</Badge>
+            case 'submitted': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Completado</Badge>
+            default: return <Badge variant="secondary">{status}</Badge>
         }
     }
 

@@ -71,10 +71,10 @@ export function RegisterPaymentSheet({
                 </SheetHeader>
                 <div className="mt-6 space-y-6">
                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                        <p className="text-sm text-zinc-500">Factura</p>
+                        <p className="text-sm text-gray-500">Factura</p>
                         <p className="font-bold text-lg">{invoice.number}</p>
                         <div className="flex justify-between mt-2">
-                            <span className="text-zinc-500">Total:</span>
+                            <span className="text-gray-500">Total:</span>
                             <span className="font-medium">${invoice.total.toLocaleString()}</span>
                         </div>
                     </div>
@@ -83,7 +83,7 @@ export function RegisterPaymentSheet({
                         <div className="space-y-2">
                             <Label>Monto Recibido</Label>
                             <div className="relative">
-                                <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                                <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                                 <Input
                                     type="number"
                                     value={amount}

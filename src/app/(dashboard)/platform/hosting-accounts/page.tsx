@@ -124,10 +124,10 @@ export default function HostingPage() {
                 filters={filterOptions}
             />
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-zinc-50/50 dark:bg-white/5">
+                        <TableRow className="bg-gray-50/50 dark:bg-white/5">
                             <TableHead>Dominio / Cliente</TableHead>
                             <TableHead>Proveedor / Plan</TableHead>
                             <TableHead>IP Servidor</TableHead>
@@ -147,35 +147,35 @@ export default function HostingPage() {
                             </TableRow>
                         ) : (
                             filtered.map((acc) => (
-                                <TableRow key={acc.id} className="hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/5">
+                                <TableRow key={acc.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <a href={`https://${acc.domain_url}`} target="_blank" rel="noreferrer" className="font-medium text-indigo-600 hover:underline flex items-center gap-1">
                                                 {acc.domain_url}
                                                 <ExternalLink className="h-3 w-3" />
                                             </a>
-                                            <span className="text-xs text-zinc-500">{acc.client?.name || '---'}</span>
+                                            <span className="text-xs text-gray-500">{acc.client?.name || '---'}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm">
-                                            <div className="font-medium text-zinc-900 dark:text-white">{acc.provider_name || 'N/A'}</div>
-                                            <div className="text-xs text-zinc-500">{acc.plan_name}</div>
+                                            <div className="font-medium text-gray-900 dark:text-white">{acc.provider_name || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500">{acc.plan_name}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/10 px-2 py-1 rounded w-fit">
+                                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 font-mono bg-gray-100 dark:bg-white/10 px-2 py-1 rounded w-fit">
                                             <Server className="h-3 w-3" />
                                             {acc.server_ip || '---'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className={acc.status === 'active' ? 'bg-emerald-100 text-emerald-700 border-transparent dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20' : 'border-transparent'}>
+                                        <Badge variant={acc.status === 'active' ? 'default' : 'secondary'} className={acc.status === 'active' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}>
                                             {acc.status === 'active' ? 'Activo' : acc.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm text-zinc-600">
+                                        <div className="text-sm text-gray-600">
                                             {acc.renewal_date ? format(new Date(acc.renewal_date), "dd MMM yyyy") : '-'}
                                         </div>
                                     </TableCell>

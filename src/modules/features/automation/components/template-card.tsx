@@ -19,7 +19,7 @@ const CATEGORY_COLORS: Record<string, string> = {
     sales: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
     support: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
     analytics: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-    internal: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+    internal: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -45,7 +45,7 @@ export function TemplateCard({ template, onPreview, onImport }: TemplateCardProp
 
             {/* Title & Description */}
             <div className="flex-1 mb-4">
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {template.name}
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
@@ -71,7 +71,7 @@ export function TemplateCard({ template, onPreview, onImport }: TemplateCardProp
                     {template.tags.slice(0, 3).map((tag, idx) => (
                         <span
                             key={idx}
-                            className="text-[10px] px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full"
+                            className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full"
                         >
                             #{tag}
                         </span>
@@ -80,7 +80,7 @@ export function TemplateCard({ template, onPreview, onImport }: TemplateCardProp
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button
                     variant="outline"
                     size="sm"

@@ -6,14 +6,14 @@ import { cn } from '@/modules/infrastructure/utils/utils';
 export default memo(({ data, selected }: { data: any, selected?: boolean }) => {
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[260px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
-            selected ? "border-violet-500 shadow-xl scale-105 ring-1 ring-violet-500" : "border-zinc-200 dark:border-zinc-800"
+            "min-w-[200px] max-w-[260px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
+            selected ? "border-violet-500 shadow-xl scale-105 ring-1 ring-violet-500" : "border-slate-200 dark:border-slate-800"
         )}>
             {/* Input Handles */}
             <Handle
                 type="target"
                 position={Position.Top}
-                className="!bg-zinc-400 !w-3 !h-3 !border-2 !border-white transition-all hover:scale-125"
+                className="!bg-slate-400 !w-3 !h-3 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -46,7 +46,7 @@ export default memo(({ data, selected }: { data: any, selected?: boolean }) => {
                 <div className="bg-violet-50 dark:bg-violet-950/20 rounded p-2 text-xs border border-violet-100 dark:border-violet-900/30">
                     <div className="flex items-start gap-1.5">
                         <Sparkles size={10} className="text-violet-500 mt-0.5 shrink-0" />
-                        <p className="text-zinc-600 dark:text-zinc-300 italic line-clamp-3 leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-300 italic line-clamp-3 leading-relaxed">
                             "{data.userPrompt || 'Configurar prompt...'}"
                         </p>
                     </div>
@@ -57,7 +57,7 @@ export default memo(({ data, selected }: { data: any, selected?: boolean }) => {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                className="!bg-zinc-400 !w-3 !h-3 !border-2 !border-white transition-all hover:scale-125"
+                className="!bg-slate-400 !w-3 !h-3 !border-2 !border-white transition-all hover:scale-125"
             />
         </div>
     );

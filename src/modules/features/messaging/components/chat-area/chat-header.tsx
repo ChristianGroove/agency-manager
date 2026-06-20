@@ -78,7 +78,7 @@ export function ChatHeader({
 
     return (
         <>
-            <div className="h-16 border-b border-border/10 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] z-10 w-full shrink-0">
+            <div className="h-16 border-b flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shadow-sm z-10 w-full shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="shrink-0">
                         {(() => {

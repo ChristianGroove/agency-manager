@@ -111,7 +111,7 @@ export function PaymentMethodsManager() {
     }
 
     return (
-        <Card className="glass-card rounded-2xl relative overflow-hidden">
+        <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Métodos de Pago Manuales</CardTitle>
@@ -202,12 +202,12 @@ export function PaymentMethodsManager() {
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="text-center py-8 text-zinc-500">Cargando métodos...</div>
+                    <div className="text-center py-8 text-gray-500">Cargando métodos...</div>
                 ) : methods.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed rounded-xl dark:border-zinc-800">
-                        <Banknote className="h-10 w-10 text-zinc-300 mx-auto mb-3" />
-                        <h3 className="font-medium text-zinc-900 dark:text-zinc-100">No hay métodos configurados</h3>
-                        <p className="text-sm text-zinc-500 mb-4">Agrega tu primera cuenta bancaria para recibir pagos.</p>
+                    <div className="text-center py-8 border-2 border-dashed rounded-xl">
+                        <Banknote className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                        <h3 className="font-medium text-gray-900">No hay métodos configurados</h3>
+                        <p className="text-sm text-gray-500 mb-4">Agrega tu primera cuenta bancaria para recibir pagos.</p>
                         <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
                             Crear Método
                         </Button>
@@ -215,21 +215,21 @@ export function PaymentMethodsManager() {
                 ) : (
                     <div className="space-y-3">
                         {methods.map((method) => (
-                            <div key={method.id} className="flex items-center justify-between p-3 border dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors group">
+                            <div key={method.id} className="flex items-center justify-between p-3 border rounded-lg bg-white hover:border-gray-300 transition-colors group">
                                 <div className="flex items-center gap-3">
-                                    <div className="cursor-move text-zinc-300 hover:text-zinc-600">
+                                    <div className="cursor-move text-gray-300 hover:text-gray-600">
                                         <GripVertical className="h-5 w-5" />
                                     </div>
-                                    <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                        {method.type === 'GATEWAY' ? <CreditCard className="h-5 w-5 text-zinc-600" /> : <Banknote className="h-5 w-5 text-zinc-600" />}
+                                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                        {method.type === 'GATEWAY' ? <CreditCard className="h-5 w-5 text-gray-600" /> : <Banknote className="h-5 w-5 text-gray-600" />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h4 className="font-medium text-zinc-900 dark:text-zinc-100">{method.title}</h4>
+                                            <h4 className="font-medium text-gray-900">{method.title}</h4>
                                             {!method.is_active && <Badge variant="secondary" className="text-[10px]">Inactivo</Badge>}
                                         </div>
                                         {method.type === 'MANUAL' && method.details.account_number && (
-                                            <p className="text-xs text-zinc-500 font-mono">{method.details.account_number}</p>
+                                            <p className="text-xs text-gray-500 font-mono">{method.details.account_number}</p>
                                         )}
                                         {method.type === 'GATEWAY' && (
                                             <p className="text-xs text-blue-500 truncate max-w-[200px]">{method.details.payment_link}</p>
@@ -242,7 +242,7 @@ export function PaymentMethodsManager() {
                                         onCheckedChange={() => handleToggleActive(method.id, method.is_active)}
                                     />
                                     <Button variant="ghost" size="icon" onClick={() => openEdit(method)}>
-                                        <Edit2 className="h-4 w-4 text-zinc-500" />
+                                        <Edit2 className="h-4 w-4 text-gray-500" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(method.id)}>
                                         <Trash2 className="h-4 w-4" />

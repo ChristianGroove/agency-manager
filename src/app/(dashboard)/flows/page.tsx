@@ -22,8 +22,8 @@ export default function FlowsPage() {
 
             {/* ACTIVE ROUTINES (If any) - Placeholder for MVP */}
             <section>
-                <h2 className="text-xl font-semibold mb-4 text-zinc-900 dark:text-white">Tus Rutinas Activas</h2>
-                <div className="glass-card p-12 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-center text-zinc-500 dark:text-zinc-400">
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tus Rutinas Activas</h2>
+                <div className="p-12 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center text-gray-500 dark:text-zinc-500">
                     Aún no tienes rutinas activas. Empieza seleccionando una arriba.
                 </div>
             </section>

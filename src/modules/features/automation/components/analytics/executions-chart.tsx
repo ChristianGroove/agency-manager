@@ -32,14 +32,14 @@ export function ExecutionsChart({ data }: ExecutionsChartProps) {
 
     if (data.length === 0) {
         return (
-            <Card className="glass-card col-span-4 h-[350px] flex items-center justify-center">
+            <Card className="col-span-4 h-[350px] flex items-center justify-center">
                 <p className="text-muted-foreground">No hay datos suficientes para mostrar el gráfico</p>
             </Card>
         )
     }
 
     return (
-        <Card className="glass-card col-span-4">
+        <Card className="col-span-4">
             <CardHeader>
                 <CardTitle>Resumen de Ejecuciones</CardTitle>
             </CardHeader>

@@ -105,7 +105,7 @@ export function BroadcastsView() {
                     ))}
                 </div>
             ) : broadcasts.length === 0 ? (
-                <Card className="glass-card p-12 text-center">
+                <Card className="p-12 text-center bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <Radio className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No hay campañas</h3>
                     <p className="text-muted-foreground mb-4">
@@ -123,7 +123,7 @@ export function BroadcastsView() {
                         const StatusIcon = statusConfig.icon
 
                         return (
-                            <Card key={broadcast.id} className="glass-card p-4 group hover:-translate-y-1 transition-all">
+                            <Card key={broadcast.id} className="p-4 hover:shadow-md transition-shadow bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg">

@@ -53,21 +53,6 @@ export function ChatInput({
     const [isRecordingAudio, setIsRecordingAudio] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const emojiPickerRef = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-                setShowEmojiPicker(false)
-            }
-        }
-        if (showEmojiPicker) {
-            document.addEventListener('mousedown', handleClickOutside)
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside)
-        }
-    }, [showEmojiPicker])
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -107,36 +92,25 @@ export function ChatInput({
     }
 
     return (
-        <div className={cn("p-3 bg-white dark:bg-zinc-900 border-t border-border/10 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] relative z-20 flex", isRecordingAudio ? "items-center" : "items-end gap-2")}>
+        <div className={cn("p-3 bg-white dark:bg-zinc-900 border-t relative z-20 min-h-[80px] flex", isRecordingAudio ? "items-center" : "items-end gap-2")}>
             {isRecordingAudio ? (
                 <AudioRecorder onSend={(b, d, m) => { onAudioSend(b, d, m); setIsRecordingAudio(false); }} onCancel={() => setIsRecordingAudio(false)} />
             ) : (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center">
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setIsInternal(!isInternal)} 
-                            className={cn(
-                                "rounded-full shadow-sm border h-7 text-xs font-semibold px-4 transition-all duration-300", 
-                                isInternal 
-                                    ? "bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800/50 dark:hover:bg-amber-900/50 transform scale-105" 
-                                    : "bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 backdrop-blur-md"
-                            )}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setIsInternal(!isInternal)} className={cn("rounded-full shadow-sm border h-7 text-xs font-semibold px-4 transition-all", isInternal ? "bg-zinc-900 text-white transform scale-105" : "bg-white/80 text-muted-foreground")}>
                             {isInternal ? t('crm.inbox.chat.note_mode') : t('crm.inbox.chat.note')}
                         </Button>
                     </div>
 
+                    {showEmojiPicker && (
+                        <EmojiStickerPicker onClose={() => setShowEmojiPicker(false)} onEmojiClick={(e) => setInputValue(inputValue + e.emoji)} onStickerSelect={(url) => { onSend('Sticker', 'sticker', url); setShowEmojiPicker(false); }} />
+                    )}
+
                     <div className="flex gap-1">
-                        <div className="relative" ref={emojiPickerRef}>
-                            {showEmojiPicker && (
-                                <EmojiStickerPicker onClose={() => setShowEmojiPicker(false)} onEmojiClick={(e) => setInputValue(inputValue + e.emoji)} onStickerSelect={(url) => { onSend('Sticker', 'sticker', url); setShowEmojiPicker(false); }} />
-                            )}
-                            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 text-muted-foreground" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
-                                <Smile className="h-6 w-6" />
-                            </Button>
-                        </div>
+                        <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 text-muted-foreground" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+                            <Smile className="h-6 w-6" />
+                        </Button>
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -148,6 +122,7 @@ export function ChatInput({
                                 <DropdownMenuItem className="gap-3" onClick={() => fileInputRef.current?.click()}><FileText className="h-4 w-4 text-orange-500" /><span>Documento</span></DropdownMenuItem>
                                 <DropdownMenuItem className="gap-3" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*,video/*"; fileInputRef.current.click(); } }}><Image className="h-4 w-4 text-blue-500" /><span>Fotos y videos</span></DropdownMenuItem>
                                 <DropdownMenuItem className="gap-3" onClick={onSendLocation}><MapPin className="h-4 w-4 text-green-500" /><span>Ubicación</span></DropdownMenuItem>
+                                <DropdownMenuItem className="gap-3" onClick={() => setIsRecordingAudio(true)}><Mic className="h-4 w-4 text-red-500" /><span>Voz</span></DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
 
@@ -207,26 +182,11 @@ export function ChatInput({
 
                     <Button
                         size="icon"
-                        className={cn(
-                            "h-10 w-10 shrink-0 rounded-full shadow-md transition-all", 
-                            (inputValue.trim() || uploading || pendingAttachment || pendingProduct) 
-                                ? "bg-emerald-600 text-white scale-105" 
-                                : "bg-emerald-600 text-white"
-                        )}
-                        onClick={() => {
-                            if (inputValue.trim() || uploading || pendingAttachment || pendingProduct) {
-                                onSend()
-                            } else {
-                                setIsRecordingAudio(true)
-                            }
-                        }}
-                        disabled={sending}
+                        className={cn("h-10 w-10 shrink-0 rounded-full shadow-md transition-all", (inputValue.trim() || uploading || pendingAttachment || pendingProduct) ? "bg-emerald-600 text-white scale-105" : "bg-zinc-100 text-muted-foreground")}
+                        onClick={() => onSend()}
+                        disabled={sending || (!inputValue.trim() && !uploading && !pendingAttachment && !pendingProduct)}
                     >
-                        {(inputValue.trim() || uploading || pendingAttachment || pendingProduct) ? (
-                            <Send className="h-5 w-5 ml-0.5" />
-                        ) : (
-                            <Mic className="h-5 w-5" />
-                        )}
+                        <Send className="h-5 w-5 ml-0.5" />
                     </Button>
                 </>
             )}

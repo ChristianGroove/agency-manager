@@ -196,7 +196,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                     ) : (
                         <div className="rounded-md border overflow-hidden">
                             <Table>
-                                <TableHeader>
+                                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                                     <TableRow>
                                         <TableHead>Factura</TableHead>
                                         <TableHead>Estado</TableHead>
@@ -288,4 +288,3 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
         </div>
     )
 }
-

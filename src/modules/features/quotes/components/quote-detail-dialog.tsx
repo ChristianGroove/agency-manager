@@ -100,16 +100,16 @@ export function QuoteDetailDialog({ quote: initialQuote, open, onOpenChange, onQ
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 bg-zinc-50/50 dark:bg-zinc-900 border-none overflow-hidden aria-describedby-description">
+            <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 bg-gray-50/50 dark:bg-zinc-900 border-none overflow-hidden aria-describedby-description">
                 <DialogTitle className="sr-only">Detalle de Cotización {quote.number}</DialogTitle>
 
                 {/* Header Toolbar */}
-                <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 z-10 shrink-0">
+                <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col">
-                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                 Cotización {quote.number}
-                                {quote.status === 'draft' && <span className="text-xs bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-full">Borrador</span>}
+                                {quote.status === 'draft' && <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">Borrador</span>}
                                 {quote.status === 'sent' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Enviada</span>}
                             </h2>
                             <p className="text-xs text-muted-foreground">
@@ -149,7 +149,7 @@ export function QuoteDetailDialog({ quote: initialQuote, open, onOpenChange, onQ
                             Compartir
                         </Button>
 
-                        <div className="h-6 w-px bg-zinc-200 mx-2" />
+                        <div className="h-6 w-px bg-gray-200 mx-2" />
 
                         <Button size="icon" variant="ghost" onClick={handlePrint} title="Imprimir" className="print:hidden">
                             <Printer className="h-4 w-4" />
@@ -158,10 +158,10 @@ export function QuoteDetailDialog({ quote: initialQuote, open, onOpenChange, onQ
                 </div>
 
                 {/* Content - Scrollable */}
-                <div className="flex-1 overflow-y-auto bg-zinc-100/50 p-6 flex justify-center">
+                <div className="flex-1 overflow-y-auto bg-gray-100/50 p-6 flex justify-center">
                     {loadingSettings ? (
                         <div className="flex items-center justify-center h-full">
-                            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                         </div>
                     ) : (
                         <div className="w-full max-w-[800px] shadow-2xl rounded-xl overflow-hidden print-content">

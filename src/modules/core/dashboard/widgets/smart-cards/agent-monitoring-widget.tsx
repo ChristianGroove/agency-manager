@@ -185,7 +185,7 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
         <div className={cn("w-full mb-4 px-2", className)}>
             <div className="flex flex-col gap-2">
                 {/* HORIZONTAL SCROLL LAYOUT */}
-                <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[20px] p-4 shadow-xl relative flex flex-nowrap overflow-x-auto snap-x scrollbar-thin items-center gap-4">
+                <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[20px] p-4 shadow-xl relative flex flex-nowrap overflow-x-auto snap-x scrollbar-hide items-center gap-4">
                     <TooltipProvider delayDuration={0}>
                         <AnimatePresence mode="popLayout">
                             {sortedAgents.map((agent) => {
@@ -197,10 +197,6 @@ export function AgentMonitoringWidget({ agents: initialAgents, className }: Agen
                                 <motion.div 
                                     key={agent.user_id} 
                                     layout 
-                                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.5, y: -10 }}
-                                    transition={{ duration: 0.3, type: 'spring', bounce: 0.3 }} 
                                     className={cn(
                                         "relative group flex-shrink-0 snap-start cursor-pointer transition-all duration-300",
                                         isOtherSelected && "opacity-40 grayscale"

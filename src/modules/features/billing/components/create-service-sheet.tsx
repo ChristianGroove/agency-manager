@@ -383,7 +383,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                 </Button>
                             )}
                             <div>
-                                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
+                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">
                                     {serviceToEdit ? t('services.sheet_title_edit') : t('services.sheet_title_new')}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
@@ -395,7 +395,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                     <div className="flex-1 overflow-hidden">
                         <div className={cn(
-                            "h-full grid divide-x divide-zinc-100/50",
+                            "h-full grid divide-x divide-gray-100/50",
                             step === 'catalog' ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-12"
                         )}>
 
@@ -457,7 +457,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                                         {/* Service Details */}
                                         <div className="space-y-2">
-                                            <Label className="font-semibold text-zinc-700">{t('services.form.name_label')}</Label>
+                                            <Label className="font-semibold text-gray-700">{t('services.form.name_label')}</Label>
                                             <Input
                                                 value={formData.name}
                                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -504,7 +504,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                         <SelectItem value="ALL">{t('services.form.access_all')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                <p className="text-[10px] text-zinc-500">
+                                                <p className="text-[10px] text-gray-500">
                                                     {t('services.form.insights_desc')}
                                                 </p>
                                             </div>
@@ -517,14 +517,14 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                             <div className="col-span-5 space-y-1">
                                                 <Label>{t('services.form.unit_price')}</Label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-zinc-400">$</span>
+                                                    <span className="absolute left-3 top-2.5 text-gray-400">$</span>
                                                     <Input type="number" value={unitPrice || ''} onChange={e => setUnitPrice(parseFloat(e.target.value) || 0)} className="pl-7 bg-white" />
                                                 </div>
                                             </div>
-                                            <div className="col-span-2 text-center pb-2 text-zinc-400 font-bold">×</div>
+                                            <div className="col-span-2 text-center pb-2 text-gray-400 font-bold">×</div>
                                             <div className="col-span-5 space-y-1">
                                                 <Label>{t('services.form.total')}</Label>
-                                                <div className="h-10 px-3 flex items-center justify-end font-bold text-zinc-900 bg-zinc-100 rounded-md">
+                                                <div className="h-10 px-3 flex items-center justify-end font-bold text-gray-900 bg-gray-100 rounded-md">
                                                     ${(formData.amount).toLocaleString()}
                                                 </div>
                                             </div>
@@ -534,7 +534,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                             <Label>{t('services.form.contract_start')}</Label>
                                             <Popover>
                                                 <PopoverTrigger asChild>
-                                                    <Button variant="outline" className="w-full justify-start text-left font-normal border-zinc-200">
+                                                    <Button variant="outline" className="w-full justify-start text-left font-normal border-gray-200">
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                                         {format(new Date(formData.service_start_date), "PPP")}
                                                     </Button>
@@ -546,14 +546,14 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                         </div>
 
                                         {/* Portal Card Metadata Section */}
-                                        <div className="space-y-4 pt-6 border-t border-zinc-200">
+                                        <div className="space-y-4 pt-6 border-t border-gray-200">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
                                                     <Info className="h-4 w-4 text-purple-600" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-sm font-bold text-zinc-900">{t('services.form.portal_info_title')}</h4>
-                                                    <p className="text-xs text-zinc-500">{t('services.form.portal_info_desc')}</p>
+                                                    <h4 className="text-sm font-bold text-gray-900">{t('services.form.portal_info_title')}</h4>
+                                                    <p className="text-xs text-gray-500">{t('services.form.portal_info_desc')}</p>
                                                 </div>
                                             </div>
 
@@ -563,9 +563,9 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                     value={formData.portal_detailed_description}
                                                     onChange={(e) => setFormData({ ...formData, portal_detailed_description: e.target.value })}
                                                     placeholder={t('services.form.portal_detailed_placeholder')}
-                                                    className="w-full min-h-[100px] px-3 py-2 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
+                                                    className="w-full min-h-[100px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
                                                 />
-                                                <p className="text-xs text-zinc-500">Se mostrará en el reverso de la card del portal</p>
+                                                <p className="text-xs text-gray-500">Se mostrará en el reverso de la card del portal</p>
                                             </div>
 
                                             <div className="space-y-2">
@@ -668,25 +668,25 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                 <p className="text-xs font-semibold text-brand-pink uppercase tracking-wide mb-2">
                                                     {formData.type === 'recurring' ? t('services.summary.active_subscription') : t('services.summary.one_time_payment')}
                                                 </p>
-                                                <h2 className="text-3xl font-bold text-zinc-900 mb-1">
+                                                <h2 className="text-3xl font-bold text-gray-900 mb-1">
                                                     ${formData.amount.toLocaleString()}
                                                 </h2>
-                                                <p className="text-sm text-zinc-500 mb-6">
+                                                <p className="text-sm text-gray-500 mb-6">
                                                     {formData.type === 'recurring' ? `/ ${t(('quotes.builder.frequency.' + formData.frequency) as any) || formData.frequency}` : t('services.summary.one_time_charge')}
                                                 </p>
 
-                                                <div className="space-y-3 pt-4 border-t border-zinc-100">
+                                                <div className="space-y-3 pt-4 border-t border-gray-100">
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-zinc-500">{t('services.form.client_label')}</span>
-                                                        <span className="font-medium text-zinc-900 truncate max-w-[150px]">{displayClientName || "---"}</span>
+                                                        <span className="text-gray-500">{t('services.form.client_label')}</span>
+                                                        <span className="font-medium text-gray-900 truncate max-w-[150px]">{displayClientName || "---"}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-zinc-500">{t('services.form.contract_start')}</span>
-                                                        <span className="font-medium text-zinc-900">{format(new Date(formData.service_start_date), "dd MMM yyyy")}</span>
+                                                        <span className="text-gray-500">{t('services.form.contract_start')}</span>
+                                                        <span className="font-medium text-gray-900">{format(new Date(formData.service_start_date), "dd MMM yyyy")}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-zinc-500">{t('services.summary.billing_label')}</span>
-                                                        <span className="font-medium text-zinc-900">{derivedDocType === 'FACTURA_ELECTRONICA' ? t('services.summary.billing_electronic') : t('services.summary.billing_account')}</span>
+                                                        <span className="text-gray-500">{t('services.summary.billing_label')}</span>
+                                                        <span className="font-medium text-gray-900">{derivedDocType === 'FACTURA_ELECTRONICA' ? t('services.summary.billing_electronic') : t('services.summary.billing_account')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -708,10 +708,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                         </div>
                     </div>
 
-                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-zinc-100 flex items-center justify-between z-20">
+                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => setOpen(false)}>{t('services.buttons.cancel')}</Button>
                         {step === 'form' && (
-                            <Button onClick={() => handleSave(null)} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-zinc-800">
+                            <Button onClick={() => handleSave(null)} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-gray-800">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {serviceToEdit ? t('services.buttons.save_edit') : t('services.buttons.save_new')}
                             </Button>

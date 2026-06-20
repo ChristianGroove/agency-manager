@@ -43,7 +43,7 @@ export function ClientInvoicesList({ invoices, onMarkPaid, onShare }: ClientInvo
     return (
         <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-white/5 shadow-sm">
             <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                     <TableRow className="dark:border-white/10 hover:bg-transparent">
                         <TableHead className="w-[100px] dark:text-gray-400 font-bold">N°</TableHead>
                         <TableHead className="dark:text-gray-400 font-bold">Fecha</TableHead>
@@ -110,4 +110,3 @@ export function ClientInvoicesList({ invoices, onMarkPaid, onShare }: ClientInvo
         </div>
     )
 }
-

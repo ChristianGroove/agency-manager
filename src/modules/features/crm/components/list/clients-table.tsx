@@ -56,7 +56,7 @@ export function ClientsTable({
     const config = VERTICAL_REGISTRY[spaceType as VerticalType]
 
     return (
-        <div className="glass-card rounded-lg overflow-hidden flex flex-col flex-1 h-full relative">
+        <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden flex flex-col flex-1 h-full relative">
             <div className="flex-none border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md z-20">
                 <Table className="w-full">
                     <TableHeader>

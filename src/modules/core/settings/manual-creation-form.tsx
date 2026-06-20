@@ -54,7 +54,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="space-y-2">
                 <Label htmlFor="create-name">Nombre Completo</Label>
                 <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                         id="create-name"
                         placeholder="Nombre del miembro"
@@ -69,7 +69,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="space-y-2">
                 <Label htmlFor="create-email">Correo Electrónico</Label>
                 <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                         id="create-email"
                         type="email"
@@ -85,7 +85,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="space-y-2">
                 <Label htmlFor="create-password">Contraseña</Label>
                 <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                         id="create-password"
                         type={showPassword ? "text" : "password"}
@@ -103,13 +103,13 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                         onClick={() => setShowPassword(!showPassword)}
                     >
                         {showPassword ? (
-                            <EyeOff className="h-4 w-4 text-zinc-400" />
+                            <EyeOff className="h-4 w-4 text-gray-400" />
                         ) : (
-                            <Eye className="h-4 w-4 text-zinc-400" />
+                            <Eye className="h-4 w-4 text-gray-400" />
                         )}
                     </Button>
                 </div>
-                <p className="text-xs text-zinc-500">Mínimo 6 caracteres.</p>
+                <p className="text-xs text-gray-500">Mínimo 6 caracteres.</p>
             </div>
 
             <div className="space-y-2">

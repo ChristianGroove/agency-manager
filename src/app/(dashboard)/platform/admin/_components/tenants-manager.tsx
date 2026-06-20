@@ -141,7 +141,7 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
             {/* Table */}
             <div className="rounded-md border bg-white dark:bg-zinc-900/50 overflow-hidden shadow-sm">
                 <Table>
-                    <TableHeader className="border-b">
+                    <TableHeader className="bg-slate-50 border-b dark:bg-zinc-800/50">
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="font-semibold h-11">Organización</TableHead>
                             <TableHead className="font-semibold h-11">Tipo</TableHead>
@@ -297,4 +297,3 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
         </Card>
     )
 }
-

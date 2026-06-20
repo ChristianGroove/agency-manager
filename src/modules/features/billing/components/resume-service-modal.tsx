@@ -88,7 +88,7 @@ export function ResumeServiceModal({ service, isOpen, onClose, onSuccess }: Resu
                     </div>
 
                     {/* Date Reset Switch */}
-                    <div className="flex items-center justify-between space-x-2 border p-3 rounded-lg bg-zinc-50/50">
+                    <div className="flex items-center justify-between space-x-2 border p-3 rounded-lg bg-gray-50/50">
                         <div className="space-y-0.5">
                             <Label className="text-base">Reiniciar ciclo de cobro</Label>
                             <p className="text-xs text-muted-foreground">

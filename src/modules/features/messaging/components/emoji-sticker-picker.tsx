@@ -10,7 +10,6 @@ import { convertToWhatsAppSticker } from "@/modules/infrastructure/meta/services
 import { uploadSticker, getStickersGallery, deleteSticker } from "../sticker-actions"
 import { toast } from "sonner"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
-import { useTheme } from "next-themes"
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
@@ -22,9 +21,6 @@ interface EmojiStickerPickerProps {
 
 export function EmojiStickerPicker({ onClose, onEmojiClick, onStickerSelect }: EmojiStickerPickerProps) {
     const { t } = useTranslation()
-    const { theme, systemTheme } = useTheme()
-    const currentTheme = theme === 'system' ? systemTheme : theme
-
     const [activeTab, setActiveTab] = useState('emoji')
     const [stickers, setStickers] = useState<string[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -128,10 +124,8 @@ export function EmojiStickerPicker({ onClose, onEmojiClick, onStickerSelect }: E
                         onEmojiClick={onEmojiClick}
                         width="100%"
                         height="400px"
-                        searchDisabled={true}
+                        searchDisabled={false}
                         skinTonesDisabled={true}
-                        theme={(currentTheme === 'dark' ? 'dark' : 'light') as any}
-                        style={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}
                     />
                 </div>
 

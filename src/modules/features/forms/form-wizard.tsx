@@ -133,8 +133,8 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                     <LottieAnimation animationData={manWorkingAnimation} />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-3xl font-bold text-zinc-900">¡Todo Listo!</h2>
-                    <p className="text-lg text-zinc-500 max-w-md mx-auto">
+                    <h2 className="text-3xl font-bold text-gray-900">¡Todo Listo!</h2>
+                    <p className="text-lg text-gray-500 max-w-md mx-auto">
                         Hemos recibido tu información correctamente.
                     </p>
                 </div>
@@ -157,10 +157,10 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                         <Badge variant="secondary" className="px-4 py-1 text-sm bg-indigo-50 text-indigo-700 border-indigo-100">
                             Requerido
                         </Badge>
-                        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+                        <h1 className="text-4xl font-bold tracking-tight text-gray-900">
                             {template.name}
                         </h1>
-                        <p className="text-xl text-zinc-600 leading-relaxed">
+                        <p className="text-xl text-gray-600 leading-relaxed">
                             {submission.client ? (
                                 <>Hola <span className="font-semibold text-indigo-600">{submission.client.name}</span>. </>
                             ) : "Hola. "}
@@ -171,7 +171,7 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                     <Button
                         size="lg"
                         onClick={() => setStatus('filling')}
-                        className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full px-10 h-14 text-lg shadow-xl shadow-zinc-900/10 transition-all hover:scale-105"
+                        className="bg-gray-900 text-white hover:bg-gray-800 rounded-full px-10 h-14 text-lg shadow-xl shadow-gray-900/10 transition-all hover:scale-105"
                     >
                         Comenzar <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -189,19 +189,19 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
             {/* FORM CONTAINER */}
             <div className="flex flex-col h-full bg-white/50 relative">
                 {/* Header */}
-                <div className="p-6 border-b border-zinc-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
                     <div>
                         <p className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-1">Paso {currentStepIndex + 1} de {steps.length}</p>
-                        <h2 className="text-2xl font-bold text-zinc-900">{currentStep?.title}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{currentStep?.title}</h2>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-medium text-zinc-400 bg-zinc-50 px-3 py-1.5 rounded-full">
+                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full">
                         {isSaving ? <Loader2 className="h-3 w-3 animate-spin text-indigo-500" /> : <Save className="h-3 w-3" />}
                         {isSaving ? "Guardando..." : "Guardado"}
                     </div>
                 </div>
 
                 {/* Progress Bar (Thin) */}
-                <Progress value={progress} className="h-1 rounded-none bg-zinc-100" indicatorClassName="bg-gradient-to-r from-pink-500 to-purple-600" />
+                <Progress value={progress} className="h-1 rounded-none bg-gray-100" indicatorClassName="bg-gradient-to-r from-pink-500 to-purple-600" />
 
                 {/* Form Fields Area */}
                 <ScrollArea className="flex-1 p-6 md:p-10">
@@ -215,7 +215,7 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                         {currentStep?.fields.map(field => (
                             <div key={field.id} className="space-y-3 group animate-in slide-in-from-bottom-4 duration-500 fill-mode-both" style={{ animationDelay: `${currentStep.fields.indexOf(field) * 100}ms` }}>
                                 <div className="flex items-baseline justify-between">
-                                    <Label className="text-lg font-medium text-zinc-800 group-focus-within:text-indigo-600 transition-colors">
+                                    <Label className="text-lg font-medium text-gray-800 group-focus-within:text-indigo-600 transition-colors">
                                         {field.label}
                                         {field.required && <span className="text-brand-pink ml-1">*</span>}
                                     </Label>
@@ -228,7 +228,7 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                                 />
 
                                 {field.help_text && (
-                                    <p className="text-sm text-zinc-400 pl-1">{field.help_text}</p>
+                                    <p className="text-sm text-gray-400 pl-1">{field.help_text}</p>
                                 )}
                             </div>
                         ))}
@@ -236,19 +236,19 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                 </ScrollArea>
 
                 {/* Footer Navigation */}
-                <div className="p-6 border-t border-zinc-100 bg-white/80 backdrop-blur-md sticky bottom-0 z-10 flex justify-between items-center">
+                <div className="p-6 border-t border-gray-100 bg-white/80 backdrop-blur-md sticky bottom-0 z-10 flex justify-between items-center">
                     <Button
                         variant="ghost"
                         onClick={handleBack}
                         disabled={currentStepIndex === 0}
-                        className="text-zinc-500 hover:text-zinc-900"
+                        className="text-gray-500 hover:text-gray-900"
                     >
                         <ChevronLeft className="mr-2 h-4 w-4" /> Atrás
                     </Button>
 
                     <Button
                         onClick={handleNext}
-                        className="bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-zinc-900/10 px-8 rounded-xl"
+                        className="bg-gray-900 text-white hover:bg-gray-800 shadow-lg shadow-gray-900/10 px-8 rounded-xl"
                     >
                         {currentStepIndex === steps.length - 1 ? (
                             <>Enviar Todo <CheckCircle2 className="ml-2 h-4 w-4" /></>
@@ -303,10 +303,10 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
                                 }}
                                 className={cn(
                                     "cursor-pointer border rounded-xl p-3 text-sm font-medium transition-all select-none flex items-center gap-2",
-                                    checked ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-zinc-200 bg-white hover:border-zinc-300"
+                                    checked ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 bg-white hover:border-gray-300"
                                 )}
                             >
-                                <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center", checked ? "border-indigo-500 bg-indigo-500" : "border-zinc-300")}>
+                                <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center", checked ? "border-indigo-500 bg-indigo-500" : "border-gray-300")}>
                                     {checked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                 </div>
                                 {opt}

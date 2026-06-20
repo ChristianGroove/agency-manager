@@ -144,22 +144,22 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         stage: { icon: ArrowRightCircle, color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30", label: "Stage" },
         conversation: { icon: MessageSquare, color: "bg-sky-100 text-sky-600 dark:bg-sky-900/30", label: "Chat" },
         wait: { icon: Clock, color: "bg-amber-100 text-amber-600 dark:bg-amber-900/30", label: "Delay" },
-    }[node.type as string] || { icon: Box, color: "bg-zinc-100 text-zinc-600", label: "Action" };
+    }[node.type as string] || { icon: Box, color: "bg-slate-100 text-slate-600", label: "Action" };
 
     const HeaderIcon = config.icon;
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="p-0 border-none bg-white dark:bg-zinc-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0 w-[400px] sm:w-[500px]">
+            <SheetContent className="p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0 w-[400px] sm:w-[500px]">
                 {/* Header */}
-                <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-900">
+                <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900">
                     <SheetHeader className="p-0">
                         <div className="flex items-center gap-4 mb-2">
                             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${config.color} shadow-sm`}>
                                 <HeaderIcon size={20} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-white leading-none">
+                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white leading-none">
                                     {formData.label as string || config.label}
                                 </SheetTitle>
                                 <p className="text-sm font-medium text-muted-foreground mt-1">
@@ -180,13 +180,13 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                 value={(formData.label as string) || ''}
                                 onChange={(e) => handleChange('label', e.target.value)}
                                 placeholder="ej. Mensaje de Bienvenida"
-                                className={`h-10 bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 ${errors.label ? 'border-red-500' : ''}`}
+                                className={`h-10 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${errors.label ? 'border-red-500' : ''}`}
                             />
                             {errors.label && <p className="text-xs text-red-500 mt-1">{errors.label}</p>}
                         </div>
                     </div>
 
-                    <Separator className="bg-zinc-100 dark:bg-zinc-800" />
+                    <Separator className="bg-slate-100 dark:bg-slate-800" />
 
                     <PropertyDispatcher 
                         node={node}
@@ -199,22 +199,22 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-900 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex items-center gap-2">
                         {onDelete && (
-                            <Button variant="ghost" size="sm" onClick={onDelete} className="text-zinc-400 hover:text-red-500 hover:bg-red-50">
+                            <Button variant="ghost" size="sm" onClick={onDelete} className="text-slate-400 hover:text-red-500 hover:bg-red-50">
                                 <Trash2 size={16} />
                             </Button>
                         )}
                         {onDuplicate && (
-                            <Button variant="ghost" size="sm" onClick={onDuplicate} className="text-zinc-400 hover:text-blue-500 hover:bg-blue-50">
+                            <Button variant="ghost" size="sm" onClick={onDuplicate} className="text-slate-400 hover:text-blue-500 hover:bg-blue-50">
                                 <Copy size={16} />
                             </Button>
                         )}
                     </div>
                     
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={onClose} className="text-zinc-500">Cancelar</Button>
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-slate-500">Cancelar</Button>
                         <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-6 rounded-xl transition-all active:scale-95">
                             Guardar Cambios
                             <Check size={16} className="ml-2" />

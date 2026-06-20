@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core"
-import { AnimatePresence, motion } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
 // import { ConversationList } from "./conversation-list" // Deprecated
 import { SidebarTabs } from "./sidebar/sidebar-tabs"
@@ -220,23 +219,15 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
         >
             {/* GlobalMessageListener is mounted globally in b2b-agency-layout — no duplicate needed here */}
             <div className="flex flex-col h-full w-full">
-                <AnimatePresence>
-                    {isAgentMonitorVisible && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0, y: -20 }}
-                            animate={{ height: 'auto', opacity: 1, y: 0 }}
-                            exit={{ height: 0, opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="flex-none relative z-10"
-                        >
-                            <AgentMonitoringWidget className="pt-2 px-2" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-                <div className="flex flex-1 min-h-0 w-full gap-3 relative">
+                {isAgentMonitorVisible && (
+                    <div className="flex-none animate-in slide-in-from-top-4 duration-300">
+                        <AgentMonitoringWidget className="pt-2 px-2" />
+                    </div>
+                )}
+                <div className="flex flex-1 w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
 
                     {/* Left Pane */}
-                    <div className="w-full md:w-[300px] lg:w-[320px] flex-none flex flex-col relative glass-card rounded-2xl overflow-hidden border-none shadow-xl">
+                    <div className="w-full md:w-[300px] lg:w-[320px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
                     <SidebarTabs
                         selectedConversationId={selectedConversationId}
                         onSelectConversation={setSelectedConversationId}
@@ -247,7 +238,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                 </div>
 
                 {/* Center Pane */}
-                <div className="flex-1 flex flex-col min-w-0 relative glass-card rounded-2xl overflow-hidden border-none shadow-xl">
+                <div className="flex-1 flex flex-col min-w-0 bg-muted/5 dark:bg-zinc-950 relative">
                     {selectedConversationId ? (
                         <ChatArea
                             key={selectedConversationId} // Force remount to ensure clean subscription
@@ -269,27 +260,17 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                 </div>
 
                 {/* Right Pane */}
-                <AnimatePresence>
-                    {isContextOpen && (
-                        <motion.div 
-                            initial={{ width: 0, opacity: 0, x: 20 }}
-                            animate={{ width: 320, opacity: 1, x: 0 }}
-                            exit={{ width: 0, opacity: 0, x: 20 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="hidden lg:flex flex-none flex-col relative glass-card rounded-2xl overflow-hidden border-none shadow-xl"
-                        >
-                            <div className="w-[320px] h-full flex flex-col">
-                                {selectedConversationId ? (
-                                    <ContextDeck conversationId={selectedConversationId} />
-                                ) : (
-                                    <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground text-center">
-                                        <p>{t('crm.inbox.layout.select_chat')}</p>
-                                    </div>
-                                )}
+                {isContextOpen && (
+                    <div className="hidden lg:flex w-[320px] flex-none border-l border-border flex-col bg-background dark:bg-zinc-900">
+                        {selectedConversationId ? (
+                            <ContextDeck conversationId={selectedConversationId} />
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground text-center">
+                                <p>{t('crm.inbox.layout.select_chat')}</p>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </div>
+                )}
 
                 {/* Drag Overlay - Mini card centered on cursor */}
                 <DragOverlay dropAnimation={null}>

@@ -9,7 +9,7 @@ export default async function AnalyticsPage() {
     const history = await getExecutionHistory(100) // Get last 100 for chart
 
     return (
-        <div className="flex-1 space-y-4 min-h-screen">
+        <div className="flex-1 space-y-4 bg-slate-50 dark:bg-slate-900 min-h-screen">
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
             </div>
@@ -21,7 +21,7 @@ export default async function AnalyticsPage() {
                     <ExecutionsChart data={history} />
 
                     <div className="col-span-3">
-                        <div className="glass-card flex flex-col h-full">
+                        <div className="rounded-xl border bg-card text-card-foreground shadow">
                             <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
                                 <h3 className="tracking-tight text-sm font-medium">Ejecuciones Recientes</h3>
                             </div>

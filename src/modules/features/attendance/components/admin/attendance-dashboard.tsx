@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertTriangle, Clock, MapPin, Search, User, CheckCircle2, XCircle, Camera, Download, UserPlus } from 'lucide-react'
+import { AlertTriangle, Clock, MapPin, Search, User, CheckCircle2, XCircle, Camera, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { cn } from '@/modules/infrastructure/utils/utils'
@@ -39,17 +39,11 @@ interface AttendanceDashboardProps {
 }
 
 export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, locations, shifts: initialShifts }: AttendanceDashboardProps) {
-    const [activeTab, setActiveTab] = useState("lifecycles")
     const [searchTerm, setSearchTerm] = useState('')
     const [logs, setLogs] = useState(initialLogs)
     const [filterLocationId, setFilterLocationId] = useState<string>('all')
     const [filterDate, setFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
     const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
-    const [onNewStaffClick, setOnNewStaffClick] = useState<(() => void) | null>(null)
-
-    const handleRegisterAction = React.useCallback((fn: () => void) => {
-        setOnNewStaffClick(() => fn)
-    }, [])
 
     const filteredLogs = logs.filter(log => {
         // Search Term
@@ -147,37 +141,32 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                         <Button variant="outline" className="hidden md:flex rounded-xl px-6 border-dashed border-slate-300 dark:border-zinc-700">
                             <Download className="w-4 h-4 mr-2" /> Exportar CSV
                         </Button>
-                        {activeTab === 'staff' && onNewStaffClick && (
-                            <Button onClick={onNewStaffClick} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl">
-                                <UserPlus className="w-4 h-4 mr-2" /> Nuevo Colaborador
-                            </Button>
-                        )}
                     </div>
                 }
             />
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
-                <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-[800px] gap-2 p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl h-auto">
-                    <TabsTrigger value="lifecycles" className="flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:dark:bg-white/10 data-[state=active]:text-primary data-[state=active]:dark:text-white data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground">
+            <Tabs defaultValue="lifecycles" className="w-full space-y-8">
+                <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
+                    <TabsTrigger value="lifecycles" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <Activity className="w-4 h-4 mr-2" /> Turnos (Monitor)
                     </TabsTrigger>
 
-                    <TabsTrigger value="staff" className="flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:dark:bg-white/10 data-[state=active]:text-primary data-[state=active]:dark:text-white data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground">
+                    <TabsTrigger value="staff" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <User className="w-4 h-4 mr-2" /> Colaboradores
                     </TabsTrigger>
 
-                    <TabsTrigger value="payroll" className="flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all data-[state=active]:bg-emerald-50 data-[state=active]:dark:bg-emerald-500/10 data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400 data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground">
+                    <TabsTrigger value="payroll" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 font-bold transition-all">
                         <DollarSign className="w-4 h-4 mr-2" /> Nómina y Extras
                     </TabsTrigger>
 
-                    <TabsTrigger value="reports" className="flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:dark:bg-white/10 data-[state=active]:text-primary data-[state=active]:dark:text-white data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground">
+                    <TabsTrigger value="reports" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <AlertTriangle className="w-4 h-4 mr-2" /> Anomalías
                     </TabsTrigger>
                 </TabsList>
 
 
                 <TabsContent value="lifecycles" className="space-y-6 mt-0">
-                    <div className="flex flex-col md:flex-row gap-4 glass-card p-4 rounded-xl border-none shadow-sm">
+                    <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
                         <div className="flex-1 relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                             <Input
@@ -332,7 +321,7 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                         </Card>
                     ))}
                     {lifecycles.length === 0 && (
-                        <div className="p-12 text-center text-slate-500 glass-card rounded-2xl shadow-sm border-none">
+                        <div className="p-12 text-center text-slate-500 bg-white dark:bg-slate-900 border rounded-2xl">
                             <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
                             <h3 className="text-lg font-medium">No hay turnos registrados</h3>
                             <p className="text-sm">Las marcaciones aparecerán aquí organizadas por colaborador.</p>
@@ -341,11 +330,7 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                 </TabsContent>
 
                 <TabsContent value="staff">
-                    <StaffManagement 
-                        staff={initialStaff} 
-                        locations={locations} 
-                        registerNewAction={handleRegisterAction} 
-                    />
+                    <StaffManagement staff={initialStaff} locations={locations} />
                 </TabsContent>
 
                 <TabsContent value="payroll" className="space-y-6 mt-0">

@@ -93,16 +93,16 @@ export function AISuggestionsPanel({ open, onOpenChange, nodes, edges, onAddNode
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:w-[450px] sm:max-w-[450px] p-0 border-none bg-white dark:bg-zinc-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
+            <SheetContent className="w-full sm:w-[450px] sm:max-w-[450px] p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
                 {/* Header */}
-                <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-900 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
+                <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
                     <SheetHeader className="p-0">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white">
                                 <Sparkles size={20} />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-white">
+                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white">
                                     ✨ Sugerencias IA
                                 </SheetTitle>
                                 <SheetDescription className="text-sm font-medium">
@@ -142,11 +142,11 @@ export function AISuggestionsPanel({ open, onOpenChange, nodes, edges, onAddNode
 
                     {!isLoading && !error && suggestions.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                            <div className="h-16 w-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                <Sparkles size={32} className="text-zinc-400" />
+                            <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                <Sparkles size={32} className="text-slate-400" />
                             </div>
                             <div className="text-center">
-                                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">
                                     No hay sugerencias aún
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -172,7 +172,7 @@ export function AISuggestionsPanel({ open, onOpenChange, nodes, edges, onAddNode
                 </ScrollArea>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/50 backdrop-blur-sm mt-auto">
+                <div className="p-6 border-t border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-sm mt-auto">
                     <Button
                         variant="outline"
                         onClick={fetchSuggestions}
@@ -204,12 +204,12 @@ function SuggestionCard({
     const confidence = Math.round(suggestion.confidence * 100);
 
     return (
-        <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900/50 hover:shadow-lg transition-all hover:border-purple-200 dark:hover:border-purple-900 group">
+        <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900/50 hover:shadow-lg transition-all hover:border-purple-200 dark:hover:border-purple-900 group">
             <div className="flex items-start gap-3">
                 <div className="text-3xl flex-shrink-0">{icon}</div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-sm text-zinc-900 dark:text-white">
+                        <span className="font-semibold text-sm text-slate-900 dark:text-white">
                             {label}
                         </span>
                         <Badge
@@ -223,8 +223,8 @@ function SuggestionCard({
                         {suggestion.reasoning}
                     </p>
                     {suggestion.suggestedConfig && Object.keys(suggestion.suggestedConfig).length > 0 && (
-                        <div className="mt-2 p-2 bg-zinc-50 dark:bg-zinc-950/50 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                            <p className="text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <p className="text-xs font-mono text-slate-600 dark:text-slate-400">
                                 {JSON.stringify(suggestion.suggestedConfig, null, 2).slice(0, 80)}...
                             </p>
                         </div>

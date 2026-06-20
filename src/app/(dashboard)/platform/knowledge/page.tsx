@@ -8,7 +8,7 @@ import { KnowledgeSheet } from "@/modules/features/knowledge/components/knowledg
 import { Button } from "@/components/ui/button"
 import { Plus, BrainCircuit, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { SectionHeader } from "@/components/layout/section-header"
+import { SplitText } from "@/components/ui/split-text"
 
 export default function KnowledgePage() {
     const [data, setData] = useState<KnowledgeEntry[]>([])
@@ -78,16 +78,20 @@ export default function KnowledgePage() {
 
     return (
         <div className="flex flex-col h-full space-y-6">
-            <SectionHeader
-                title="Base de Conocimiento"
-                subtitle="Administra la información que tus agentes de IA utilizan para responder a los clientes."
-                icon={BrainCircuit}
-                action={
-                    <Button onClick={openCreate} className="bg-[var(--brand-pink)] hover:bg-[var(--brand-pink)]/90 text-white shadow-lg shadow-[var(--brand-pink)]/20">
-                        <Plus className="mr-2 h-4 w-4" /> Agregar Entrada
-                    </Button>
-                }
-            />
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
+                        <BrainCircuit className="h-8 w-8 text-[var(--brand-pink)]" />
+                        <SplitText>Base de Conocimiento</SplitText>
+                    </h2>
+                    <p className="text-muted-foreground mt-1">
+                        Administra la información que tus agentes de IA utilizan para responder a los clientes.
+                    </p>
+                </div>
+                <Button onClick={openCreate} className="bg-[var(--brand-pink)] hover:bg-[var(--brand-pink)]/90 text-white shadow-lg shadow-[var(--brand-pink)]/20">
+                    <Plus className="mr-2 h-4 w-4" /> Agregar Entrada
+                </Button>
+            </div>
 
             {/* Stats Overview */}
             <KnowledgeStats data={data} />

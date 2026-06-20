@@ -128,7 +128,7 @@ export default function PortfolioPage() {
                         <CategoryManager />
                         <Button
                             onClick={handleCreateService}
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-zinc-200"
+                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
                         >
                             <Plus className="mr-2 h-4 w-4" /> {isAgency ? t('catalog.buttons.new_service') : 'Nuevo Plato'}
                         </Button>
@@ -137,7 +137,7 @@ export default function PortfolioPage() {
             />
 
             {/* Filter & View Bar */}
-            <div className="space-y-4 sticky top-4 z-30">
+            <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 dark:bg-black/40 backdrop-blur-sm py-2">
                 <div className="flex flex-col md:flex-row gap-3">
                     <SearchFilterBar
                         searchTerm={searchTerm}
@@ -156,7 +156,6 @@ export default function PortfolioPage() {
                     <ViewToggle
                         view={viewMode}
                         onViewChange={setViewMode}
-                        showCompact={false}
                     />
                 </div>
 
@@ -174,7 +173,7 @@ export default function PortfolioPage() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="h-48 bg-zinc-100 rounded-xl animate-pulse" />
+                            <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
                         ))}
                     </div>
                 ) : (

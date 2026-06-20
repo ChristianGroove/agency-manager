@@ -59,8 +59,8 @@ export function StatusBadge({ status, type, className, entity }: StatusBadgeProp
 
     return (
         <Badge
-            variant="secondary"
-            className={cn("px-2 py-0.5 text-xs font-medium border-transparent", colorClass.replace('border-0', ''), className)}
+            variant="outline"
+            className={cn("px-2 py-0.5 text-xs font-medium border dark:border-opacity-50", colorClass.replace('border-0', ''), className)}
         >
             {label}
         </Badge>

@@ -36,8 +36,8 @@ export default function ContractGeneratorPage() {
 
 function ContractGeneratorLayout() {
     return (
-        <div className="flex flex-col h-[calc(100vh-2rem)] overflow-hidden px-6">
-            <div className="pb-6 z-10">
+        <div className="flex flex-col h-[calc(100vh-2rem)] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-white/10 bg-white/50 dark:bg-brand-dark/50 backdrop-blur-sm shadow-sm z-10 flex items-center justify-between">
                 <SectionHeader
                     title="Generador de Contratos"
                     subtitle="Crea contratos profesionales en segundos usando IA."
@@ -47,10 +47,10 @@ function ContractGeneratorLayout() {
                 />
             </div>
 
-            <div className="flex-1 flex overflow-hidden lg:flex-row flex-col relative gap-6 pb-6">
+            <div className="flex-1 flex overflow-hidden lg:flex-row flex-col relative">
 
                 {/* Panel Principal: Live Preview (Más grande) */}
-                <div className="flex-1 flex flex-col bg-gray-100/30 dark:bg-black/40 overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10">
+                <div className="flex-1 flex flex-col bg-gray-100/30 dark:bg-black/40 overflow-hidden">
                     <div className="p-3 border-b border-gray-200 dark:border-white/10 flex items-center justify-between text-[11px] font-bold bg-white/5 backdrop-blur-sm uppercase tracking-tight">
                         <div className="flex items-center gap-2 text-gray-500">
                             <FileText className="w-3.5 h-3.5 text-brand-pink" />
@@ -72,9 +72,9 @@ function ContractGeneratorLayout() {
                 </div>
 
                 {/* Panel de Control: Tabs (Sidebar Derecha) */}
-                <div className="w-full lg:w-[400px] border border-gray-200 dark:border-white/10 flex flex-col glass-card shadow-xl z-20 rounded-2xl">
+                <div className="w-full lg:w-[400px] border-l border-gray-200 dark:border-white/10 flex flex-col bg-white dark:bg-brand-dark shadow-xl z-20">
                     <Tabs defaultValue="config" className="flex flex-col h-full">
-                        <div className="px-4 py-2 border-b border-gray-200 dark:border-white/10">
+                        <div className="px-4 py-2 border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5">
                             <TabsList className="grid w-full grid-cols-2 bg-gray-200/50 dark:bg-white/5">
                                 <TabsTrigger value="config" className="flex items-center gap-2 data-[state=active]:bg-brand-pink data-[state=active]:text-white">
                                     <Settings2 className="w-4 h-4" />

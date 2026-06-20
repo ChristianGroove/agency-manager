@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ArrowLeft, Check, Layout, Sparkles, Mail, Eye, Info } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { SectionHeader } from "@/components/layout/section-header"
 // Import Template Generators directly for real-time preview (since DB might have empty HTML for hybrid styles)
 import { getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getPortalInviteEmailHtml, EmailStyle, EmailBranding } from "@/modules/infrastructure/notifications/services/email-templates"
 import { SmtpConnectionTab } from "./smtp-connection-tab"
@@ -202,23 +201,21 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Header */}
-            <div className="pb-4 z-10 px-1">
-                <SectionHeader
-                    title="Motor de Correos"
-                    subtitle="Diseña la experiencia de comunicación de tu agencia"
-                    icon={Mail}
-                    className="py-0 w-full"
-                />
+            <div className="flex items-center gap-4 border-b pb-6 px-1">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Motor de Correos</h1>
+                    <p className="text-muted-foreground text-sm">Diseña la experiencia de comunicación de tu agencia</p>
+                </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="sticky top-0 z-20 pb-4">
-                    <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-[1000px] gap-2 p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl h-auto">
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b">
+                    <TabsList className="bg-transparent w-full justify-start gap-8 px-2 overflow-x-auto h-auto p-0">
                         {['invoices', 'quotes', 'briefs', 'portal', 'settings'].map(tab => (
                             <TabsTrigger
                                 key={tab}
                                 value={tab}
-                                className="flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:dark:bg-white/10 data-[state=active]:text-primary data-[state=active]:dark:text-white data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
+                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary px-1 py-3 text-sm font-medium transition-all hover:text-primary/80 data-[state=active]:shadow-none bg-transparent"
                             >
                                 {tab === 'invoices' && 'Facturación'}
                                 {tab === 'quotes' && 'Cotizaciones'}
@@ -242,8 +239,8 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
 
                             {/* LEFT: Style Selector */}
                             {!isCustomizing ? (
-                                <div className="lg:col-span-3 space-y-6 glass-card p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-xl">
-                                    <div className="space-y-1">
+                                <div className="lg:col-span-3 space-y-6">
+                                    <div className="space-y-1 px-1">
                                         <h3 className="font-semibold text-lg">Estilo Visual</h3>
                                         <p className="text-xs text-muted-foreground">Elige la identidad para {
                                             activeTab === 'invoices' ? 'tus facturas' :
@@ -318,7 +315,7 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
                                     </div>
                                 </div>
                             ) : (
-                                <div className="lg:col-span-3 space-y-6 glass-card p-6 rounded-2xl border border-gray-200 dark:border-white/10 shadow-xl">
+                                <div className="lg:col-span-3 space-y-6">
                                     <div className="flex items-center gap-2 mb-4">
                                         <Button variant="ghost" size="icon" onClick={() => setIsCustomizing(false)}>
                                             <ArrowLeft className="w-4 h-4" />
@@ -341,8 +338,8 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
 
                             {/* RIGHT: Real Preview */}
                             <div className="lg:col-span-9">
-                                <div className="glass-card rounded-2xl border border-gray-200 dark:border-white/10 p-4 h-[800px] flex flex-col relative group shadow-xl">
-                                    <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="bg-slate-100 dark:bg-slate-900/50 rounded-2xl border p-2 h-[800px] flex flex-col relative group">
+                                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Badge variant="outline" className="bg-background/50 backdrop-blur">
                                             <Eye className="w-3 h-3 mr-1" /> Vista Previa Real (HTML)
                                         </Badge>

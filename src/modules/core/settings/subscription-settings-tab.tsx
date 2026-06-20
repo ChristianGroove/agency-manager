@@ -141,7 +141,7 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
 
     if (!app) {
         return (
-            <Card className="glass-card rounded-2xl relative overflow-hidden glass-card rounded-2xl relative overflow-hidden">
+            <Card>
                 <CardHeader>
                     <CardTitle>Plan Actual</CardTitle>
                     <CardDescription>
@@ -194,7 +194,7 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
             <script src="https://checkout.wompi.co/widget.js" async></script>
 
             {/* Current Plan Card */}
-            <Card className="glass-card rounded-2xl relative overflow-hidden border-primary/20 bg-primary/5 dark:bg-primary/10">
+            <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
                 <CardHeader>
                     <div className="flex items-start justify-between">
                         <div>
@@ -355,7 +355,7 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
                     {history.length > 0 ? (
                         <div className="border rounded-lg divide-y bg-white dark:bg-white/5 dark:divide-white/10">
                             {history.map((tx) => (
-                                <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
+                                <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400">
                                             <Check className="h-4 w-4" />
@@ -381,7 +381,7 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
                             ))}
                         </div>
                     ) : (
-                        <Card className="glass-card rounded-2xl relative overflow-hidden p-8 text-center border-dashed bg-muted/30">
+                        <Card className="p-8 text-center border-dashed bg-muted/30">
                             <div className="mx-auto w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3">
                                 <History className="h-5 w-5 text-muted-foreground" />
                             </div>
@@ -394,4 +394,3 @@ export function SubscriptionSettingsTab({ app, allowDirectBilling }: Subscriptio
         </div>
     )
 }
-

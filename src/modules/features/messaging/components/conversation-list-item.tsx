@@ -86,11 +86,10 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
  
     const formattedLastMessageTime = useMemo(() => {
         if (!conv.last_message_at) return t('common.recently')
-        let formatted = formatDistanceToNow(new Date(conv.last_message_at), {
+        return formatDistanceToNow(new Date(conv.last_message_at), {
             addSuffix: true,
             locale: locale === 'es' ? es : enUS
         })
-        return formatted.replace('alrededor de ', 'más de ').replace('about ', 'over ')
     }, [conv.last_message_at, locale, t, tick]) // Update every tick (30s)
  
     // Find pipeline color for the stroke (Explicit class map for Tailwind safety)
@@ -146,11 +145,11 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
             {...attributes}
             onClick={() => onSelect(conv.id)}
             className={cn(
-                "w-full p-4 text-left transition-all relative z-20 cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
+                "w-full p-4 text-left transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
                 isSelected 
-                    ? cn("bg-black/5 dark:bg-white/10", pipelineBorderClass || "border-l-black dark:border-l-white") 
-                    : "bg-transparent border-l-transparent hover:bg-black/[0.03] dark:hover:bg-white/5",
-                isUnread && !isSelected && "bg-white/40 dark:bg-white/5 font-medium",
+                    ? cn("bg-zinc-100/80 dark:bg-zinc-100/10", pipelineBorderClass || "border-l-black dark:border-l-white") 
+                    : "hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 border-l-transparent",
+                isUnread && !isSelected && "bg-white dark:bg-zinc-950",
                 isDragging && "opacity-50 grayscale",
                 isNew && "ring-1 ring-inset ring-blue-500/50 bg-blue-50/50 dark:bg-blue-900/20 transition-all duration-500 ease-out"
             )}

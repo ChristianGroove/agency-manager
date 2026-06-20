@@ -16,15 +16,15 @@ export function TagNode({ data, selected }: TagNodeProps) {
 
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
             isAdd
-                ? (selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-zinc-200 dark:border-zinc-800")
-                : (selected ? "border-red-500 shadow-xl scale-105 ring-1 ring-red-500" : "border-zinc-200 dark:border-zinc-800")
+                ? (selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-slate-200 dark:border-slate-800")
+                : (selected ? "border-red-500 shadow-xl scale-105 ring-1 ring-red-500" : "border-slate-200 dark:border-slate-800")
         )}>
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}

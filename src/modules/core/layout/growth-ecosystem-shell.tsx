@@ -27,7 +27,7 @@ export function GrowthEcosystemShell({
                 </div> */}
 
                 {/* Main Workspace */}
-                <main className={`${fullHeight ? 'flex-1' : ''} ${noPadding ? 'p-6' : 'p-0'}`}>
+                <main className={`${fullHeight ? 'flex-1 overflow-hidden' : ''} ${noPadding ? 'p-6' : 'p-0'}`}>
                     {children}
                 </main>
             </div>

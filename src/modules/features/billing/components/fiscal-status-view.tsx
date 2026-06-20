@@ -66,7 +66,7 @@ export function FiscalStatusView() {
                     <span className="text-sm font-medium">Zona Fiscal: Evidencia Inmutable</span>
                 </div>
                 <div className="relative w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
                         placeholder="Buscar por Factura o CUFE..."
                         className="pl-8 bg-white dark:bg-white/5 dark:text-white dark:border-white/10"
@@ -77,9 +77,9 @@ export function FiscalStatusView() {
             </div>
 
             {/* Read-Only Table */}
-            <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead>Factura</TableHead>
                             <TableHead>Emisión</TableHead>
@@ -92,39 +92,39 @@ export function FiscalStatusView() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-zinc-400">
+                                <TableCell colSpan={6} className="h-24 text-center text-gray-400">
                                     Cargando libros fiscales...
                                 </TableCell>
                             </TableRow>
                         ) : filteredDocs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-zinc-500 dark:text-zinc-400">
+                                <TableCell colSpan={6} className="h-32 text-center text-gray-500 dark:text-gray-400">
                                     <div className="flex flex-col items-center gap-2">
-                                        <Activity className="h-8 w-8 text-zinc-300 dark:text-zinc-600" />
+                                        <Activity className="h-8 w-8 text-gray-300 dark:text-gray-600" />
                                         <p>No hay documentos electrónicos emitidos.</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredDocs.map((doc, i) => (
-                                <TableRow key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
+                                <TableRow key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                     <TableCell className="font-mono font-medium dark:text-white">{doc.invoice_number}</TableCell>
-                                    <TableCell className="text-zinc-500 dark:text-zinc-400 text-xs">
+                                    <TableCell className="text-gray-500 dark:text-gray-400 text-xs">
                                         {new Date(doc.issued_at).toLocaleString()}
                                     </TableCell>
                                     <TableCell>{getStatusBadge(doc.dian_status)}</TableCell>
                                     <TableCell>
                                         {doc.cufe ? (
                                             <div className="flex items-center gap-2 group cursor-help" title={doc.cufe}>
-                                                <div className="font-mono text-[10px] text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-white/5 px-2 py-1 rounded border border-zinc-100 dark:border-white/10 max-w-[120px] truncate">
+                                                <div className="font-mono text-[10px] text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5 px-2 py-1 rounded border border-gray-100 dark:border-white/10 max-w-[120px] truncate">
                                                     {doc.cufe}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <span className="text-zinc-300 text-xs italic">Pendiente</span>
+                                            <span className="text-gray-300 text-xs italic">Pendiente</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="font-medium text-zinc-900 dark:text-white">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">
                                         ${doc.total.toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -134,7 +134,7 @@ export function FiscalStatusView() {
                                                     <FileCode className="h-4 w-4" />
                                                 </Button>
                                             )}
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" title="Ver Traza de Auditoría">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Ver Traza de Auditoría">
                                                 <Activity className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -146,11 +146,10 @@ export function FiscalStatusView() {
                 </Table>
             </div>
 
-            <p className="text-xs text-center text-zinc-400 max-w-2xl mx-auto">
+            <p className="text-xs text-center text-gray-400 max-w-2xl mx-auto">
                 Esta vista muestra exclusivamente los registros inmutables almacenados en la tabla <code>dian_documents</code>.
                 Cualquier discrepancia con la vista operativa debe ser investigada inmediatamente.
             </p>
         </div>
     )
 }
-

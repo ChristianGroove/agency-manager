@@ -211,7 +211,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
     })
 
     const statusConfig = {
-        draft: { label: t('quotes.status.draft'), color: 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200' },
+        draft: { label: t('quotes.status.draft'), color: 'bg-gray-100 text-gray-700 hover:bg-gray-200' },
         sent: { label: t('quotes.status.sent'), color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
         accepted: { label: t('quotes.status.accepted'), color: 'bg-green-50 text-green-700 hover:bg-green-100' },
         converted: { label: t('quotes.status.converted'), color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 ring-1 ring-purple-600/20' },
@@ -231,20 +231,20 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="glass-card rounded-2xl p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                        <Search className="h-4 w-4 text-zinc-400 shrink-0" />
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder={t('quotes.search_placeholder')}
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-zinc-700 dark:text-white placeholder:text-zinc-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
                     {/* Vertical Divider (Desktop) */}
-                    <div className="h-6 w-px bg-zinc-200 hidden md:block" />
+                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
 
                     {/* Collapsible Filter Pills (Middle) */}
                     <div className={cn(
@@ -252,7 +252,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
                     )}>
                         <div className="flex items-center gap-1.5 min-w-max">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden lg:block">{t('quotes.table.status')}</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">{t('quotes.table.status')}</span>
                             {[
                                 { id: 'all', label: t('quotes.status.all') },
                                 ...Object.entries(statusConfig).map(([key, val]) => ({ id: key, label: val.label }))
@@ -263,8 +263,8 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                     className={cn(
                                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
                                         statusFilter === filter.id
-                                            ? "bg-zinc-900 text-white shadow-sm"
-                                            : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+                                            ? "bg-gray-900 text-white shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                                     )}
                                 >
                                     <span>{filter.label}</span>
@@ -274,7 +274,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     </div>
 
                     {/* Divider */}
-                    <div className="h-6 w-px bg-zinc-200 mx-1 hidden md:block" />
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
 
                     {/* Toggle Filters Button (Fixed Right) */}
                     <button
@@ -282,8 +282,8 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white border-zinc-200 dark:border-white/10 shadow-inner"
-                                : "bg-white dark:bg-transparent text-zinc-500 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
+                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-gray-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-gray-500 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                         )}
                         title="Filtrar Cotizaciones"
                     >
@@ -292,7 +292,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                 </div>
             </div>
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -300,7 +300,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     isDeleting={isDeleting}
                 />
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead className="w-[50px]">
                                 <Checkbox
@@ -340,27 +340,27 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                 const hasRecurring = quote.items?.some(i => i.is_recurring)
 
                                 return (
-                                    <TableRow key={quote.id} className="group hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/5 transition-colors">
+                                    <TableRow key={quote.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5 transition-colors">
                                         <TableCell>
                                             <Checkbox
                                                 checked={selectedIds.has(quote.id)}
                                                 onCheckedChange={() => toggleSelection(quote.id)}
                                             />
                                         </TableCell>
-                                        <TableCell className="font-medium text-zinc-900 dark:text-white cursor-pointer hover:underline" onClick={() => setSelectedDetailQuote(quote)}>
+                                        <TableCell className="font-medium text-gray-900 dark:text-white cursor-pointer hover:underline" onClick={() => setSelectedDetailQuote(quote)}>
                                             {quote.number}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-zinc-700 dark:text-zinc-300">{entityName}</span>
-                                                {entityCompany && <span className="text-xs text-zinc-400">{entityCompany}</span>}
+                                                <span className="font-medium text-gray-700 dark:text-gray-300">{entityName}</span>
+                                                {entityCompany && <span className="text-xs text-gray-400">{entityCompany}</span>}
                                                 {quote.lead_id && <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-1 font-medium">Prospecto</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-zinc-500 text-sm">{new Date(quote.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}</TableCell>
+                                        <TableCell className="text-gray-500 text-sm">{new Date(quote.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-zinc-900 dark:text-white">${quote.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX', { minimumFractionDigits: 2 })}</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">${quote.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX', { minimumFractionDigits: 2 })}</span>
                                                 {hasRecurring && (
                                                     <span className="bg-indigo-50 text-indigo-600 p-1 rounded-md" title="Incluye items recurrentes (Suscripción)">
                                                         <RefreshCcw className="h-3 w-3" />
@@ -379,7 +379,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {actionLoading === quote.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin inline-block text-zinc-400" />
+                                                <Loader2 className="h-4 w-4 animate-spin inline-block text-gray-400" />
                                             ) : (
                                                 <div className="flex items-center justify-end gap-1">
                                                     {quote.status !== 'draft' && (
@@ -395,19 +395,19 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                     )}
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-900 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <span className="sr-only">{t('sidebar.more')}</span>
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-48">
                                                             <DropdownMenuItem onClick={() => setSelectedDetailQuote(quote)}>
-                                                                <Eye className="mr-2 h-4 w-4 text-zinc-400" />
+                                                                <Eye className="mr-2 h-4 w-4 text-gray-400" />
                                                                 <span>{t('common.actions.view_details')}</span>
                                                             </DropdownMenuItem>
 
                                                             <DropdownMenuItem onClick={() => handleDuplicate(quote)}>
-                                                                <Copy className="mr-2 h-4 w-4 text-zinc-400" />
+                                                                <Copy className="mr-2 h-4 w-4 text-gray-400" />
                                                                 <span>{t('quotes.actions.duplicate')}</span>
                                                             </DropdownMenuItem>
 
@@ -478,4 +478,3 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
         </div>
     )
 }
-

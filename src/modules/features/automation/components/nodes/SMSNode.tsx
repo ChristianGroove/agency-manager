@@ -14,13 +14,13 @@ export default function SMSNode({ data, selected }: NodeProps) {
 
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
-            selected ? "border-lime-500 shadow-xl scale-105 ring-1 ring-lime-500" : "border-zinc-200 dark:border-zinc-800"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
+            selected ? "border-lime-500 shadow-xl scale-105 ring-1 ring-lime-500" : "border-slate-200 dark:border-slate-800"
         )}>
             <Handle
                 type="target"
                 position={Position.Top}
-                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -37,12 +37,12 @@ export default function SMSNode({ data, selected }: NodeProps) {
             <div className="p-3 space-y-2">
                 <div className="flex items-center gap-2">
                     <Smartphone className="h-3.5 w-3.5 text-lime-600 dark:text-lime-400 shrink-0" />
-                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 font-mono">
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 font-mono">
                         {displayNumber}
                     </span>
                 </div>
 
-                <div className="bg-zinc-50 dark:bg-zinc-950/50 p-2 rounded border border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-600 dark:text-zinc-400 italic line-clamp-2">
+                <div className="bg-slate-50 dark:bg-slate-950/50 p-2 rounded border border-slate-100 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 italic line-clamp-2">
                     "{messagePreview}"
                 </div>
             </div>
@@ -50,7 +50,7 @@ export default function SMSNode({ data, selected }: NodeProps) {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
         </div>
     );

@@ -11,7 +11,6 @@ import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle } from "lucide-rea
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
 import { useSearchParams } from "next/navigation"
-import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 
 interface MarketplacePageProps {
     providers: IntegrationProvider[]
@@ -127,15 +126,6 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
     const installedCount = installedIntegrations.length
     const totalCount = providers.length
 
-    const filterOptions: FilterOption[] = [
-        { id: 'all', label: 'Todas', color: 'zinc' },
-        ...MARKETPLACE_CATEGORIES.map(cat => ({
-            id: cat.key,
-            label: `${cat.icon} ${cat.name}`,
-            color: 'zinc'
-        }))
-    ]
-
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -155,15 +145,29 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             />
 
             {/* Search & Filters */}
-            <div className="sticky top-4 z-30">
-                <SearchFilterBar
-                    searchTerm={search}
-                    onSearchChange={setSearch}
-                    searchPlaceholder="Buscar integraciones..."
-                    activeFilter={category}
-                    onFilterChange={setCategory}
-                    filters={filterOptions}
-                />
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar integraciones..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+                <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <Tabs value={category} onValueChange={setCategory}>
+                        <TabsList className="inline-flex h-auto p-1 overflow-x-auto w-full md:w-auto justify-start">
+                            <TabsTrigger value="all">Todas</TabsTrigger>
+                            {MARKETPLACE_CATEGORIES.slice(0, 4).map(cat => (
+                                <TabsTrigger key={cat.key} value={cat.key} className="whitespace-nowrap gap-2">
+                                    <span>{cat.icon}</span>
+                                    <span>{cat.name}</span>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+                </div>
             </div>
 
             {/* Provider Grid */}
@@ -178,7 +182,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                     }
 
                     return (
-                        <Card key={provider.id} className={`glass-card rounded-2xl relative overflow-hidden transition-all hover:shadow-md border-transparent ${isInstalled ? 'ring-2 ring-emerald-500/50 dark:ring-emerald-500/30' : ''}`}>
+                        <Card key={provider.id} className={`relative transition-all hover:shadow-md ${isInstalled ? 'ring-2 ring-green-500/20' : ''}`}>
                             {provider.is_premium && (
                                 <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
                                     <Crown className="h-3 w-3 mr-1" />
@@ -213,7 +217,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                                 {isInstalled ? (
                                     <Button
                                         variant="secondary"
-                                        className="w-full gap-2 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                                        className="w-full gap-2 text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30"
                                         onClick={() => handleConfigure(provider)}
                                     >
                                         <Check className="h-4 w-4" />

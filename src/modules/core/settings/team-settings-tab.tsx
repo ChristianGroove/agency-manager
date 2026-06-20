@@ -114,7 +114,7 @@ export function TeamSettingsTab() {
             <div className="flex justify-between items-center">
                 <div>
                     <h3 className="text-lg font-medium">Equipo y Permisos</h3>
-                    <p className="text-sm text-zinc-500">Administra quién tiene acceso a esta organización.</p>
+                    <p className="text-sm text-gray-500">Administra quién tiene acceso a esta organización.</p>
                 </div>
                 <div className="flex gap-2">
                     <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
@@ -156,7 +156,7 @@ export function TeamSettingsTab() {
                                             onValueChange={setInviteRole}
                                         />
                                     </div>
-                                    <div className="text-sm text-zinc-500 bg-zinc-50 p-3 rounded">
+                                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
                                         <p>El usuario recibirá un correo con un enlace de acceso único.</p>
                                     </div>
                                     <Button onClick={handleInvite} disabled={isInviting || !inviteEmail} className="w-full">
@@ -180,7 +180,7 @@ export function TeamSettingsTab() {
                 </div>
             </div>
 
-            <Card className="glass-card rounded-2xl relative overflow-hidden">
+            <Card>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
@@ -196,7 +196,7 @@ export function TeamSettingsTab() {
                             {isLoading ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-400" />
+                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
                                     </TableCell>
                                 </TableRow>
                             ) : members.length === 0 ? (
@@ -215,7 +215,7 @@ export function TeamSettingsTab() {
                                                 </div>
                                                 <div>
                                                     <div className="font-medium">{member.user?.full_name || 'Sin Nombre'}</div>
-                                                    <div className="text-xs text-zinc-500">{member.user?.email || 'Sin Email'}</div>
+                                                    <div className="text-xs text-gray-500">{member.user?.email || 'Sin Email'}</div>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -224,13 +224,13 @@ export function TeamSettingsTab() {
                                                 {member.role_name || (member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : member.role)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-zinc-500 text-sm">
+                                        <TableCell className="text-gray-500 text-sm">
                                             {member.created_at ? format(new Date(member.created_at), "d MMM, yyyy", { locale: es }) : 'N/A'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <div className={`h-2 w-2 rounded-full ${member.status === 'blocked' ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                                                <span className="text-sm text-zinc-600">
+                                                <span className="text-sm text-gray-600">
                                                     {member.status === 'blocked' ? 'Bloqueado' : 'Acceso Permitido'}
                                                 </span>
                                             </div>
@@ -251,7 +251,7 @@ export function TeamSettingsTab() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                                    className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
                                                     onClick={() => {
                                                         setEditingMember(member)
                                                         setIsEditOpen(true)
@@ -279,7 +279,7 @@ export function TeamSettingsTab() {
                 </CardContent>
             </Card>
 
-            <div className="glass-card bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/30 rounded-2xl p-4 flex items-start gap-3">
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
                 <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
                     <h4 className="font-medium text-blue-900 text-sm">Gestión de Roles Integrada</h4>

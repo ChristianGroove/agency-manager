@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Search, Eye, Trash2, Edit, ListFilter, MoreVertical, Loader2, Mail, FileText, Copy } from "lucide-react"
@@ -40,11 +40,6 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
     const { t, locale } = useTranslation()
     const router = useRouter()
     const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || [])
-    
-    useEffect(() => {
-        setInvoices(initialInvoices || [])
-    }, [initialInvoices])
-
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
     const [showFilters, setShowFilters] = useState(false)
@@ -180,20 +175,20 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="glass-card rounded-2xl p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                        <Search className="h-4 w-4 text-zinc-400 shrink-0" />
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder={t('invoicing.search_placeholder')}
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-zinc-700 dark:text-white placeholder:text-zinc-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
                     {/* Vertical Divider (Desktop) */}
-                    <div className="h-6 w-px bg-zinc-200 hidden md:block" />
+                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
 
                     {/* Collapsible Filter Pills (Middle) */}
                     <div className={cn(
@@ -201,7 +196,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                         showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
                     )}>
                         <div className="flex items-center gap-1.5 min-w-max">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1 hidden lg:block">{t('invoicing.table.status')}</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">{t('invoicing.table.status')}</span>
                             {[
                                 { id: 'all', label: t('invoicing.status.all'), color: 'gray' },
                                 { id: 'paid', label: t('invoicing.status.paid'), color: 'green' },
@@ -217,8 +212,8 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                                             ? filter.id === 'paid' ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/20 shadow-sm"
                                                 : filter.id === 'pending' ? "bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20 dark:ring-yellow-500/20 shadow-sm"
                                                     : filter.id === 'overdue' ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/20 shadow-sm"
-                                                        : "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm"
-                                            : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
+                                                        : "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
+                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                                     )}
                                 >
                                     <span>{filter.label}</span>
@@ -228,7 +223,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                     </div>
 
                     {/* Divider */}
-                    <div className="h-6 w-px bg-zinc-200 mx-1 hidden md:block" />
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
 
                     {/* Toggle Filters Button (Fixed Right) */}
                     <button
@@ -236,19 +231,24 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white border-zinc-200 dark:border-white/10 shadow-inner"
-                                : "bg-white dark:bg-transparent text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
+                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-gray-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-gray-500 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                         )}
                         title={t('invoicing.form.filter_tooltip')}
                     >
                         <ListFilter className="h-4 w-4" />
                     </button>
 
+                    {/* Create Button (Integrated) */}
+                    <div className="hidden md:block h-6 w-px bg-gray-200 mx-1" />
+                    <div className="shrink-0">
+                        <CreateInvoiceSheet onSuccess={fetchInvoices} />
+                    </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -256,8 +256,8 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                     isDeleting={isDeleting}
                 />
                 <Table>
-                    <TableHeader>
-                        <TableRow className="border-zinc-200 dark:border-white/10">
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                        <TableRow className="border-gray-200 dark:border-white/10">
                             <TableHead className="w-[50px]">
                                 <Checkbox
                                     checked={filteredInvoices.length > 0 && selectedIds.size === filteredInvoices.length}
@@ -276,7 +276,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
+                                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                                     <div className="flex justify-center items-center gap-2 text-muted-foreground">
                                         <Loader2 className="h-5 w-5 animate-spin" />
                                         <span>{t('invoicing.form.loading_table')}</span>
@@ -285,32 +285,32 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                             </TableRow>
                         ) : filteredInvoices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
+                                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                                     {t('invoicing.table.empty')}
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredInvoices.map((invoice) => (
-                                <TableRow key={invoice.id} className="hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
+                                <TableRow key={invoice.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(invoice.id)}
                                             onCheckedChange={() => toggleSelection(invoice.id)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-zinc-900 dark:text-white">{invoice.number}</TableCell>
-                                    <TableCell className="font-medium text-zinc-700 dark:text-zinc-300">{invoice.client?.name}</TableCell>
-                                    <TableCell className="text-zinc-500 dark:text-zinc-400">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">{invoice.number}</TableCell>
+                                    <TableCell className="font-medium text-gray-700 dark:text-gray-300">{invoice.client?.name}</TableCell>
+                                    <TableCell className="text-gray-500 dark:text-gray-400">
                                         <span suppressHydrationWarning>
                                             {new Date(invoice.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="text-zinc-500 dark:text-zinc-400">
+                                    <TableCell className="text-gray-500 dark:text-gray-400">
                                         <span suppressHydrationWarning>
                                             {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX') : '-'}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="font-medium text-zinc-900 dark:text-white">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">
                                         <span suppressHydrationWarning>
                                             ${invoice.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}
                                         </span>
@@ -372,4 +372,3 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
         </div >
     )
 }
-

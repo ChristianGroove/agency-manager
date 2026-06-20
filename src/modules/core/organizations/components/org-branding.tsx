@@ -58,16 +58,6 @@ export function OrgBranding({ orgId, collapsed = false, initialBranding }: { org
         return () => window.removeEventListener('branding-updated', handleUpdate)
     }, [orgId])
 
-    if (!mounted) {
-        // Hydration fix: Always render skeleton on server unless initialBranding is present
-        if (!initialBranding) {
-            if (collapsed) {
-                return <div className="h-9 w-9 bg-white/5 animate-pulse rounded-lg" />
-            }
-            return <div className="h-10 w-32 bg-white/5 animate-pulse rounded-lg" />
-        }
-    }
-
     if (loading) {
         if (collapsed) {
             return <div className="h-9 w-9 bg-white/5 animate-pulse rounded-lg" />

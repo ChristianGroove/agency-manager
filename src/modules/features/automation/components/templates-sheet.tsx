@@ -52,7 +52,7 @@ const categoryColors: Record<string, string> = {
     marketing: 'bg-purple-100 text-purple-600',
     support: 'bg-green-100 text-green-600',
     operations: 'bg-orange-100 text-orange-600',
-    other: 'bg-zinc-100 text-zinc-600',
+    other: 'bg-slate-100 text-slate-600',
 };
 
 const difficultyBadges: Record<string, { label: string; class: string }> = {
@@ -94,9 +94,9 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                     <SheetDescription>Explora workflows pre-construidos</SheetDescription>
                 </SheetHeader>
 
-                <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl">
+                <div className="flex flex-col h-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 shrink-0 px-6 py-5 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800">
+                    <div className="sticky top-0 z-20 shrink-0 px-6 py-5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2.5 bg-brand-pink/10 rounded-xl">
                                 <Sparkles className="h-5 w-5 text-brand-pink" />
@@ -114,16 +114,16 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                         {/* Filters */}
                         <div className="flex gap-3">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
                                     placeholder="Buscar templates..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 bg-zinc-50 dark:bg-zinc-900 border-0 rounded-full h-10"
+                                    className="pl-10 bg-slate-50 dark:bg-slate-900 border-0 rounded-full h-10"
                                 />
                             </div>
                             <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as CategoryFilter)}>
-                                <SelectTrigger className="w-36 bg-zinc-50 dark:bg-zinc-900 border-0 rounded-full h-10">
+                                <SelectTrigger className="w-36 bg-slate-50 dark:bg-slate-900 border-0 rounded-full h-10">
                                     <SelectValue placeholder="Categoría" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -141,7 +141,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                     <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
                         <div className="space-y-3">
                             {filteredTemplates.length === 0 ? (
-                                <div className="text-center py-16 text-zinc-500">
+                                <div className="text-center py-16 text-slate-500">
                                     <Zap className="h-10 w-10 mx-auto mb-3 opacity-50" />
                                     <p className="font-medium">No se encontraron templates</p>
                                     <p className="text-sm mt-1">Intenta con otra búsqueda</p>
@@ -160,8 +160,8 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                         >
                                             <div className={`
                                                 flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border group
-                                                bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800 
-                                                hover:border-gray-200 dark:hover:border-zinc-700 hover:shadow-lg hover:shadow-gray-200/50
+                                                bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 
+                                                hover:border-gray-200 dark:hover:border-slate-700 hover:shadow-lg hover:shadow-gray-200/50
                                             `}>
                                                 {/* Icon */}
                                                 <div className={`
@@ -183,7 +183,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-gray-500 dark:text-zinc-400 line-clamp-1 mb-2">
+                                                    <p className="text-xs text-gray-500 dark:text-slate-400 line-clamp-1 mb-2">
                                                         {template.description}
                                                     </p>
                                                     <div className="flex items-center gap-3 text-[10px] text-gray-400">
@@ -199,7 +199,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                                 </div>
 
                                                 {/* Arrow */}
-                                                <div className="h-8 w-8 flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-full shrink-0 group-hover:bg-brand-pink/10 transition-colors">
+                                                <div className="h-8 w-8 flex items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-full shrink-0 group-hover:bg-brand-pink/10 transition-colors">
                                                     <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-brand-pink group-hover:translate-x-0.5 transition-all" />
                                                 </div>
                                             </div>
@@ -211,7 +211,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                     </div>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between z-20 gap-4">
+                    <div className="sticky bottom-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between z-20 gap-4">
                         <div className="text-sm text-gray-500">
                             <span className="font-medium text-gray-900 dark:text-white">{WORKFLOW_TEMPLATES.length}</span> templates disponibles
                         </div>

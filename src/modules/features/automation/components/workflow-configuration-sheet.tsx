@@ -204,27 +204,27 @@ export function WorkflowConfigurationSheet({
                 "
             >
                 {/* Inner Container with blur */}
-                <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 dark:border-zinc-800/50">
+                <div className="flex flex-col h-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 dark:border-slate-800/50">
 
                     {/* Header Section - Sticky Top */}
-                    <div className="shrink-0 pt-6 pb-2 px-6 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800 z-20">
+                    <div className="shrink-0 pt-6 pb-2 px-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 z-20">
                         <SheetHeader className="p-0 mb-6 text-left">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                     <Settings2 size={24} />
                                 </div>
                                 <div>
-                                    <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-white">Workflow Center</SheetTitle>
-                                    <SheetDescription className="text-sm text-zinc-500 font-medium mt-0.5">Gestión integral de automatización</SheetDescription>
+                                    <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white">Workflow Center</SheetTitle>
+                                    <SheetDescription className="text-sm text-slate-500 font-medium mt-0.5">Gestión integral de automatización</SheetDescription>
                                 </div>
                             </div>
                         </SheetHeader>
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 bg-zinc-100 dark:bg-zinc-800 h-12 p-1 rounded-xl">
-                                <TabsTrigger value="settings" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm text-sm font-semibold">Configuración</TabsTrigger>
-                                <TabsTrigger value="history" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm text-sm font-semibold">Historial</TabsTrigger>
-                                <TabsTrigger value="test" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm text-sm font-semibold">Pruebas</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800 h-12 p-1 rounded-xl">
+                                <TabsTrigger value="settings" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-sm font-semibold">Configuración</TabsTrigger>
+                                <TabsTrigger value="history" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-sm font-semibold">Historial</TabsTrigger>
+                                <TabsTrigger value="test" className="rounded-lg h-10 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm text-sm font-semibold">Pruebas</TabsTrigger>
                             </TabsList>
                         </Tabs>
                     </div>
@@ -238,26 +238,26 @@ export function WorkflowConfigurationSheet({
                                 <ScrollArea className="flex-1">
                                     <div className="p-8 space-y-8 max-w-2xl mx-auto">
                                         <div className="space-y-4">
-                                            <Label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Nombre del Workflow</Label>
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Nombre del Workflow</Label>
                                             <Input
                                                 value={name}
                                                 onChange={(e) => setName(e.target.value)}
-                                                className="h-12 bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-lg px-4 rounded-xl focus-visible:ring-primary/20"
+                                                className="h-12 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-lg px-4 rounded-xl focus-visible:ring-primary/20"
                                                 placeholder="Escribe un nombre..."
                                             />
                                         </div>
                                         <div className="space-y-4">
-                                            <Label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Descripción</Label>
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Descripción</Label>
                                             <Textarea
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
                                                 rows={6}
-                                                className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 resize-none text-base leading-relaxed p-4 rounded-xl focus-visible:ring-primary/20"
+                                                className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 resize-none text-base leading-relaxed p-4 rounded-xl focus-visible:ring-primary/20"
                                                 placeholder="Describe el propósito de este flujo..."
                                             />
                                         </div>
                                         <div className="space-y-4">
-                                            <Label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Canales de Disparo (Trigger)</Label>
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canales de Disparo (Trigger)</Label>
                                             <div className="space-y-1.5">
                                                 <ChannelSelector
                                                     multiple={true}
@@ -268,7 +268,7 @@ export function WorkflowConfigurationSheet({
                                                         onChannelsChange?.(newVal);
                                                     }}
                                                 />
-                                                <p className="text-xs text-zinc-500 leading-relaxed">
+                                                <p className="text-xs text-slate-500 leading-relaxed">
                                                     Selecciona los canales donde esta automatización estará activa.
                                                     <br />
                                                     <span className="text-primary font-medium">Nota:</span> Estos canales sincronizan automáticamente con el nodo "Trigger" del flujo.
@@ -276,18 +276,18 @@ export function WorkflowConfigurationSheet({
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/50 hover:bg-zinc-50 transition-colors">
+                                        <div className="flex items-center justify-between p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 transition-colors">
                                             <div className="space-y-1">
                                                 <Label className="text-base font-semibold block">Estado Activo</Label>
-                                                <p className="text-sm text-zinc-500">Activar o desactivar este workflow globalmente.</p>
+                                                <p className="text-sm text-slate-500">Activar o desactivar este workflow globalmente.</p>
                                             </div>
                                             <Switch checked={isActive} onCheckedChange={setIsActive} className="scale-110" />
                                         </div>
                                     </div>
                                 </ScrollArea>
                                 {/* Footer */}
-                                <div className="sticky bottom-0 p-6 border-t border-zinc-100 dark:border-zinc-900 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex justify-between items-center z-20">
-                                    <Button variant="ghost" onClick={onClose} className="text-zinc-500 hover:text-zinc-900">Cancelar</Button>
+                                <div className="sticky bottom-0 p-6 border-t border-slate-100 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex justify-between items-center z-20">
+                                    <Button variant="ghost" onClick={onClose} className="text-slate-500 hover:text-slate-900">Cancelar</Button>
                                     <Button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 rounded-xl shadow-lg shadow-primary/20 font-medium">
                                         {isSavingSettings ? 'Guardando...' : <><Check className="mr-2 h-4 w-4" /> Guardar Cambios</>}
                                     </Button>
@@ -304,8 +304,8 @@ export function WorkflowConfigurationSheet({
                                             <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div></div>
                                         ) : versions.length === 0 ? (
                                             <div className="text-center py-20 text-muted-foreground">
-                                                <div className="bg-zinc-100 dark:bg-zinc-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                                                    <History className="h-10 w-10 text-zinc-400" />
+                                                <div className="bg-slate-100 dark:bg-slate-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                    <History className="h-10 w-10 text-slate-400" />
                                                 </div>
                                                 <h3 className="text-lg font-semibold mb-2">Sin historial</h3>
                                                 <p>No hay versiones guardadas todavía.</p>
@@ -313,19 +313,19 @@ export function WorkflowConfigurationSheet({
                                         ) : (
                                             <div className="space-y-4">
                                                 {versions.map((version) => (
-                                                    <div key={version.id} className="group relative border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 bg-white dark:bg-zinc-900 hover:border-primary/50 hover:shadow-md transition-all duration-300">
+                                                    <div key={version.id} className="group relative border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-900 hover:border-primary/50 hover:shadow-md transition-all duration-300">
                                                         <div className="flex justify-between items-start mb-2">
                                                             <div className="flex items-center gap-3">
                                                                 <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-md">v{version.version_number}</span>
-                                                                <h4 className="font-semibold text-sm text-zinc-900 dark:text-white">{version.name || `Versión Automática ${version.version_number}`}</h4>
+                                                                <h4 className="font-semibold text-sm text-slate-900 dark:text-white">{version.name || `Versión Automática ${version.version_number}`}</h4>
                                                             </div>
                                                             <Button variant="ghost" size="sm" onClick={() => handleRestore(version)} disabled={!!restoringId} className="h-8 text-primary hover:bg-primary/10 hover:text-primary font-medium text-xs">
                                                                 <RotateCcw size={14} className="mr-1.5" /> Restaurar
                                                             </Button>
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-xs text-zinc-500 mt-2 px-1">
-                                                            <div className="flex items-center gap-1.5"><Calendar size={12} className="text-zinc-400" /> <span>{new Date(version.created_at).toLocaleString()}</span></div>
-                                                            <div className="flex items-center gap-1.5"><User size={12} className="text-zinc-400" /> <span>Usuario del Sistema</span></div>
+                                                        <div className="flex items-center gap-4 text-xs text-slate-500 mt-2 px-1">
+                                                            <div className="flex items-center gap-1.5"><Calendar size={12} className="text-slate-400" /> <span>{new Date(version.created_at).toLocaleString()}</span></div>
+                                                            <div className="flex items-center gap-1.5"><User size={12} className="text-slate-400" /> <span>Usuario del Sistema</span></div>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -333,7 +333,7 @@ export function WorkflowConfigurationSheet({
                                         )}
                                     </div>
                                 </ScrollArea>
-                                <div className="sticky bottom-0 p-6 border-t border-zinc-100 dark:border-zinc-900 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex justify-end z-20">
+                                <div className="sticky bottom-0 p-6 border-t border-slate-100 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex justify-end z-20">
                                     <Button variant="outline" onClick={onClose}>Cerrar</Button>
                                 </div>
                             </div>
@@ -347,7 +347,7 @@ export function WorkflowConfigurationSheet({
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Variables de Entrada</h3>
+                                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Variables de Entrada</h3>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={handleAddVariable} className="h-8 text-primary hover:bg-primary/5"><Plus size={14} className="mr-1.5" /> Nueva Variable</Button>
                                             </div>
@@ -356,14 +356,14 @@ export function WorkflowConfigurationSheet({
                                                     <div key={index} className="flex gap-3 items-center group">
                                                         <div className="grid grid-cols-2 gap-3 flex-1">
                                                             <div className="relative">
-                                                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-400"><Tag size={14} /></div>
+                                                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400"><Tag size={14} /></div>
                                                                 <Input placeholder="variable.key" value={variable.key}
                                                                     onChange={(e) => {
                                                                         const newVars = [...testVariables];
                                                                         newVars[index].key = e.target.value;
                                                                         setTestVariables(newVars);
                                                                     }}
-                                                                    className="pl-9 h-10 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg"
+                                                                    className="pl-9 h-10 bg-slate-50 dark:bg-slate-900/50 rounded-lg"
                                                                 />
                                                             </div>
                                                             <Input placeholder="Valor" value={variable.value}
@@ -372,19 +372,19 @@ export function WorkflowConfigurationSheet({
                                                                     newVars[index].value = e.target.value;
                                                                     setTestVariables(newVars);
                                                                 }}
-                                                                className="h-10 bg-zinc-50 dark:bg-zinc-900/50 font-mono text-xs rounded-lg"
+                                                                className="h-10 bg-slate-50 dark:bg-slate-900/50 font-mono text-xs rounded-lg"
                                                             />
                                                         </div>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveVariable(index)} className="h-9 w-9 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X size={16} /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveVariable(index)} className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X size={16} /></Button>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {testResult && (
-                                            <div className="space-y-4 pt-6 border-t border-zinc-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                            <div className="space-y-4 pt-6 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                                 <div className="flex items-center justify-between">
-                                                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Resultados</h3>
+                                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Resultados</h3>
                                                     <Badge variant={testResult.success ? 'default' : 'destructive'} className={`h-7 px-3 text-xs font-medium rounded-lg ${testResult.success ? 'bg-emerald-500' : ''}`}>
                                                         {testResult.success ? '✓ Exitoso' : '✕ Fallido'}
                                                     </Badge>
@@ -399,16 +399,16 @@ export function WorkflowConfigurationSheet({
 
                                                 <div className="space-y-2">
                                                     {testResult.nodes.map((node, i) => (
-                                                        <div key={i} className={`p-3 rounded-xl border transition-all ${node.status === 'success' ? 'bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800' : 'bg-white border-red-200 dark:bg-zinc-900 dark:border-red-900/50'}`}>
+                                                        <div key={i} className={`p-3 rounded-xl border transition-all ${node.status === 'success' ? 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800' : 'bg-white border-red-200 dark:bg-slate-900 dark:border-red-900/50'}`}>
                                                             <div className="flex justify-between items-center mb-1.5">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className={`h-1.5 w-1.5 rounded-full ${node.status === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                                                                     <span className="font-semibold text-xs">{node.nodeLabel}</span>
                                                                 </div>
-                                                                <span className="font-mono text-[10px] text-zinc-400">{node.duration}ms</span>
+                                                                <span className="font-mono text-[10px] text-slate-400">{node.duration}ms</span>
                                                             </div>
                                                             {node.logs.length > 0 && (
-                                                                <div className="text-[10px] font-mono bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg text-zinc-600 dark:text-zinc-400 border border-zinc-100 dark:border-zinc-800/50">
+                                                                <div className="text-[10px] font-mono bg-slate-50 dark:bg-slate-950 p-2 rounded-lg text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800/50">
                                                                     {node.logs[0]}
                                                                 </div>
                                                             )}
@@ -420,8 +420,8 @@ export function WorkflowConfigurationSheet({
                                     </div>
                                 </ScrollArea>
                                 {/* Footer */}
-                                <div className="sticky bottom-0 p-6 border-t border-zinc-100 dark:border-zinc-900 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex justify-between items-center z-20">
-                                    <Button variant="ghost" onClick={() => setTestResult(null)} disabled={!testResult} className="text-zinc-500 h-11">Limpiar</Button>
+                                <div className="sticky bottom-0 p-6 border-t border-slate-100 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex justify-between items-center z-20">
+                                    <Button variant="ghost" onClick={() => setTestResult(null)} disabled={!testResult} className="text-slate-500 h-11">Limpiar</Button>
                                     <Button onClick={handleRunTest} disabled={isRunningTest} className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 rounded-xl shadow-lg shadow-primary/20 font-medium">
                                         {isRunningTest ? <><Pause size={16} className="mr-2 animate-pulse" /> Ejecutando...</> : <><PlayCircle size={16} className="mr-2" /> Iniciar</>}
                                     </Button>

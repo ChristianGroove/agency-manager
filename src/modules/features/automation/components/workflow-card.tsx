@@ -87,15 +87,15 @@ export function WorkflowCard({
     };
 
     return (
-        <div className="glass-card group p-5 hover:-translate-y-1 transition-all">
+        <div className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex gap-3">
-                    <div className={`mt-1 p-2 rounded-lg ${isTemplate ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : (workflow.is_active ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400')}`}>
+                    <div className={`mt-1 p-2 rounded-lg ${isTemplate ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : (workflow.is_active ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}`}>
                         {isTemplate ? <Copy size={18} /> : <Activity size={18} />}
                     </div>
                     <div>
-                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 leading-tight mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 leading-tight mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {workflow.name}
                         </h3>
                         <p className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">
@@ -128,7 +128,7 @@ export function WorkflowCard({
             )}
 
 
-            <div className="flex items-center justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50 mt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
                 <div className="flex gap-2">
                     {/* Channel Badge with Selector */}
                     {!isTemplate && onChannelChange && (
@@ -141,18 +141,18 @@ export function WorkflowCard({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="rounded-xl h-5 px-1.5 -ml-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all text-[10px] font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400"
+                                        className="h-5 px-1.5 -ml-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400"
                                     >
                                         {Array.isArray(effectiveValue) && effectiveValue.length === 0 ? (
                                             <>
-                                                <Globe className="h-3 w-3 mr-1 text-zinc-400" />
+                                                <Globe className="h-3 w-3 mr-1 text-slate-400" />
                                                 Sin canales (Muteado)
                                             </>
                                         ) : isMulti ? (
                                             <>
                                                 <div className="flex -space-x-1 mr-1">
-                                                    <div className="w-3 h-3 rounded-full bg-zinc-200 border border-white dark:border-zinc-900"></div>
-                                                    <div className="w-3 h-3 rounded-full bg-zinc-300 border border-white dark:border-zinc-900"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-slate-200 border border-white dark:border-slate-900"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-slate-300 border border-white dark:border-slate-900"></div>
                                                 </div>
                                                 Varios canales
                                             </>
@@ -185,12 +185,12 @@ export function WorkflowCard({
 
                 {/* Actions Menu */}
                 <div className="flex items-center gap-1 relative z-10" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" onClick={() => onEdit(workflow.id)} className="rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 h-8 px-2">
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(workflow.id)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 h-8 px-2">
                         Editar
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="rounded-xl h-8 w-8 p-0 text-zinc-400 hover:text-zinc-600">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>

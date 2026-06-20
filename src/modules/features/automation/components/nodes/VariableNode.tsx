@@ -6,13 +6,13 @@ import { cn } from '@/modules/infrastructure/utils/utils';
 const VariableNode = ({ data, selected }: NodeProps) => {
     return (
         <div className={cn(
-            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-zinc-900",
-            selected ? "border-fuchsia-500 shadow-xl scale-105 ring-1 ring-fuchsia-500" : "border-zinc-200 dark:border-zinc-800"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
+            selected ? "border-fuchsia-500 shadow-xl scale-105 ring-1 ring-fuchsia-500" : "border-slate-200 dark:border-slate-800"
         )}>
             <Handle
                 type="target"
                 position={Position.Top}
-                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
             {/* Premium Header */}
@@ -34,7 +34,7 @@ const VariableNode = ({ data, selected }: NodeProps) => {
                             {data.targetVar as string || 'var'}
                         </span>
                     </div>
-                    <div className="pl-5 text-zinc-500 font-mono truncate text-[10px]">
+                    <div className="pl-5 text-slate-500 font-mono truncate text-[10px]">
                         {data.actionType === 'set' ? `= ${data.value}` : `${data.actionType} (${data.operand1}, ${data.operand2})`}
                     </div>
                 </div>
@@ -43,7 +43,7 @@ const VariableNode = ({ data, selected }: NodeProps) => {
             <Handle
                 type="source"
                 position={Position.Bottom}
-                className="!w-3 !h-3 !bg-zinc-400 !border-2 !border-white transition-all hover:scale-125"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
         </div>
     );

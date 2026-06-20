@@ -4,10 +4,10 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useDebouncedCallback } from "use-debounce"
 import { supabase } from "@/modules/core/database/supabase"
-import { Search, MessageSquare, Clock, Filter, Archive, Users, Settings as SettingsIcon, MessageCircle, User, Activity, X } from "lucide-react"
+import { Search, MessageSquare, Clock, Filter, Archive, Users, Settings as SettingsIcon, MessageCircle, User, Activity } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { Database } from "@/types/supabase"
@@ -93,7 +93,6 @@ export function SidebarConversationList({
     const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
     const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false)
 
     // Refs para leer valores actuales en closures de Realtime sin re-registrar el canal (FIX BUG 2)
     // SEGURIDAD: identityLoadedRef es crítico — sin él, si el canal se registra antes de que
@@ -403,7 +402,7 @@ export function SidebarConversationList({
 
     return (
         <div 
-            className="flex flex-col h-full bg-transparent"
+            className="flex flex-col h-full bg-white dark:bg-zinc-950"
             data-role={effectivePermissions?.role}
             data-hierarchy={effectivePermissions?.hierarchy}
         >
@@ -415,70 +414,27 @@ export function SidebarConversationList({
             />
 
             <TooltipProvider>
-                <div className="px-4 pb-2 pt-2">
-                    <div className="flex items-center gap-1">
-                        {isSearchExpanded ? (
-                            <div className="relative flex-1 flex items-center animate-in fade-in slide-in-from-right-5">
-                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    ref={searchInputRef}
-                                    placeholder={t('crm.inbox.sidebar.search_placeholder')}
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-8 pr-8 bg-muted/40 dark:bg-white/5 border-transparent hover:bg-muted/60 dark:hover:bg-white/10 focus-visible:bg-background dark:focus-visible:bg-zinc-900 shadow-none h-8 text-xs transition-all w-full"
-                                    autoFocus
-                                />
-                                <Button variant="ghost" size="icon" className="absolute right-1 h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }}>
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex-1 min-w-0">
-                                <Select value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)}>
-                                    <SelectTrigger className="h-8 bg-transparent border-transparent hover:bg-muted/40 dark:hover:bg-white/5 shadow-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none px-2 font-semibold text-xs truncate">
-                                        <div className="flex items-center gap-2 truncate">
-                                            <span className="truncate">
-                                                {activeFilter === 'all' && t('crm.inbox.sidebar.filters.all')}
-                                                {activeFilter === 'unread' && t('crm.inbox.sidebar.filters.unread')}
-                                                {activeFilter === 'assigned' && t('crm.inbox.sidebar.filters.assigned_to_me')}
-                                                {activeFilter === 'snoozed' && t('crm.inbox.sidebar.filters.snoozed')}
-                                                {activeFilter === 'archived' && t('crm.inbox.sidebar.filters.archived')}
-                                            </span>
-                                            <Badge variant="secondary" className="h-4 px-1 text-[9px] rounded-full bg-black/5 dark:bg-white/10 font-medium">
-                                                {counts[activeFilter]}
-                                            </Badge>
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent align="start" className="w-[200px]">
-                                        <SelectItem value="all" className="text-xs">{t('crm.inbox.sidebar.filters.all')} ({counts.all})</SelectItem>
-                                        <SelectItem value="unread" className="text-xs">{t('crm.inbox.sidebar.filters.unread')} ({counts.unread})</SelectItem>
-                                        <SelectItem value="assigned" className="text-xs">{t('crm.inbox.sidebar.filters.assigned_to_me')} ({counts.assigned})</SelectItem>
-                                        <SelectItem value="snoozed" className="text-xs">{t('crm.inbox.sidebar.filters.snoozed')} ({counts.snoozed})</SelectItem>
-                                        <SelectItem value="archived" className="text-xs">{t('crm.inbox.sidebar.filters.archived')} ({counts.archived})</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {!isSearchExpanded && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0 rounded-full hover:bg-muted/60 dark:hover:bg-white/10 border-transparent transition-all" onClick={() => setIsSearchExpanded(true)}>
-                                        <Search className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Buscar</TooltipContent>
-                            </Tooltip>
-                        )}
+                <div className="px-4 pb-2 pt-2 space-y-3">
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                ref={searchInputRef}
+                                placeholder={t('crm.inbox.sidebar.search_placeholder')}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
+                            />
+                        </div>
 
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
-                                    variant="ghost"
-                                    size="icon"
+                                    variant="outline"
+                                    size="sm"
                                     className={cn(
-                                        "h-8 w-8 shrink-0 rounded-full bg-transparent hover:bg-muted/60 dark:hover:bg-white/10 border-transparent transition-all",
-                                        selectedChannelId ? "text-brand-pink" : "text-muted-foreground hover:text-foreground"
+                                        "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none",
+                                        selectedChannelId && "text-brand-pink"
                                     )}
                                 >
                                     <Filter className="h-4 w-4" />
@@ -517,11 +473,11 @@ export function SidebarConversationList({
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
-                                        variant="ghost"
-                                        size="icon"
+                                        variant="outline"
+                                        size="sm"
                                         className={cn(
-                                            "h-8 w-8 shrink-0 rounded-full border-transparent transition-colors",
-                                            isAgentMonitorVisible ? "text-brand-cyan bg-brand-cyan/10" : "bg-transparent hover:bg-muted/60 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground",
+                                            "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none transition-colors",
+                                            isAgentMonitorVisible ? "text-brand-cyan bg-brand-cyan/10" : "text-muted-foreground",
                                             selectedAgentId && "text-brand-pink"
                                         )}
                                         onClick={() => setIsAgentMonitorVisible((v: boolean) => !v)}
@@ -538,15 +494,73 @@ export function SidebarConversationList({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0 bg-transparent rounded-full hover:bg-muted/60 dark:hover:bg-white/10 border-transparent transition-all"
+                                    className="h-9 w-9 text-muted-foreground hover:text-foreground shrink-0"
                                     onClick={() => setIsSettingsOpen(true)}
                                 >
-                                    <SettingsIcon className="h-4 w-4" />
+                                    <SettingsIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>{t('crm.inbox.sidebar.inbox_settings')}</TooltipContent>
                         </Tooltip>
                     </div>
+
+                    <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
+                        <TabsList className="w-full justify-start gap-1 bg-transparent p-0 h-auto">
+                            <TabsTrigger
+                                value="all"
+                                className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
+                            >
+                                {t('crm.inbox.sidebar.filters.all')}
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="unread"
+                                className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
+                            >
+                                {t('crm.inbox.sidebar.filters.unread')}
+                                {counts.unread > 0 && (
+                                    <Badge className="ml-1.5 h-4 min-w-[1rem] px-1 bg-brand-pink text-white border-none shadow-none text-[9px] flex items-center justify-center">
+                                        {counts.unread}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="assigned"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <User className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.assigned_to_me')}</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="snoozed"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <Clock className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.snoozed')}</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="archived"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <Archive className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.archived')}</TooltipContent>
+                            </Tooltip>
+                        </TabsList>
+                    </Tabs>
                 </div>
             </TooltipProvider>
 
@@ -565,7 +579,6 @@ export function SidebarConversationList({
                     </div>
                 ) : (
                     <Virtuoso
-                        className="scrollbar-thin"
                         style={{ height: '100%' }}
                         totalCount={visibleConversations.length}
                         data={visibleConversations}

@@ -20,7 +20,7 @@ export function PerformanceStats({ stats }: PerformanceStatsProps) {
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="glass-card">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                         Total Ejecuciones
@@ -35,7 +35,7 @@ export function PerformanceStats({ stats }: PerformanceStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                         Tasa de Éxito
@@ -50,7 +50,7 @@ export function PerformanceStats({ stats }: PerformanceStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                         Fallidos
@@ -65,7 +65,7 @@ export function PerformanceStats({ stats }: PerformanceStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                         Duración Promedio

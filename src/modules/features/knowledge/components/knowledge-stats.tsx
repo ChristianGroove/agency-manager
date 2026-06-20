@@ -17,7 +17,7 @@ export function KnowledgeStats({ data }: KnowledgeStatsProps) {
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="glass-card rounded-2xl bg-gradient-to-br from-[var(--brand-pink)]/5 to-white/50 dark:from-[var(--brand-pink)]/10 dark:to-zinc-900/50 border-[var(--brand-pink)]/20 dark:border-[var(--brand-pink)]/30 relative overflow-hidden">
+            <Card className="bg-gradient-to-br from-[var(--brand-pink)]/5 to-white dark:from-[var(--brand-pink)]/10 dark:to-zinc-900 border-[var(--brand-pink)]/20 dark:border-[var(--brand-pink)]/30">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-[var(--brand-pink)] dark:text-[var(--brand-pink)]">
                         Total Conocimiento
@@ -32,7 +32,7 @@ export function KnowledgeStats({ data }: KnowledgeStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card rounded-2xl relative overflow-hidden">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Extraído por IA</CardTitle>
                     <BrainCircuit className="h-4 w-4 text-muted-foreground" />
@@ -45,7 +45,7 @@ export function KnowledgeStats({ data }: KnowledgeStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card rounded-2xl relative overflow-hidden">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Manual</CardTitle>
                     <Lightbulb className="h-4 w-4 text-muted-foreground" />
@@ -58,7 +58,7 @@ export function KnowledgeStats({ data }: KnowledgeStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="glass-card rounded-2xl relative overflow-hidden">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Categorías</CardTitle>
                     <Tag className="h-4 w-4 text-muted-foreground" />

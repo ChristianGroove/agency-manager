@@ -19,9 +19,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { useTheme } from "next-themes"
-import { useSidebar } from "./sidebar-provider"
 
 interface SidebarProps {
     // isCollapsed & toggleCollapse moved to Context
@@ -147,19 +144,8 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const userRole = sidebarContext?.userRole || hookData.userRole
     const isLoading = sidebarContext ? false : hookData.isLoading
 
-    const { setIsCollapsed } = useSidebar()
-
     // Track which categories are expanded - default to core and crm
-    const [activeCategories, setActiveCategories] = React.useState<string[]>(['core', 'crm', 'tools'])
-
-    // Auto-collapse sidebar when navigating to the Inbox
-    React.useEffect(() => {
-        if (pathname === '/crm/inbox' || pathname?.startsWith('/crm/inbox/')) {
-            if (!isCollapsed) {
-                setIsCollapsed(true)
-            }
-        }
-    }, [pathname])
+    const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm', 'tools'])
 
     // Initial state might need to be derived from Module Config but strictly user requested 2 max.
     // 'core' is always expanded usually but let's treat it as a category.
@@ -207,7 +193,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
         <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
 
             {/* Header Logo */}
-            <div className={cn("flex items-center justify-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "px-0" : "")}>
+            <div className={cn("flex items-center mb-6 pl-2 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "")}>
                 <OrgBranding
                     orgId={currentOrgId}
                     collapsed={isCollapsed}
@@ -302,6 +288,11 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     )
 }
 
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { useTheme } from "next-themes"
+
+import { useSidebar } from "./sidebar-provider"
+
 export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarContext, orgCount }: Omit<SidebarProps, 'isCollapsed' | 'toggleCollapse'>) {
     const { isCollapsed, toggleCollapse } = useSidebar()
     const { resolvedTheme } = useTheme()
@@ -346,8 +337,8 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
         <TooltipProvider>
             <div
                 className={cn(
-                    "glass-panel fixed left-4 top-4 bottom-4 h-auto bg-white/10 dark:bg-white/5 backdrop-blur-md text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col select-none animate-float-sidebar",
-                    "shadow-lg shadow-black/10 dark:shadow-black/20",
+                    "fixed left-4 top-4 bottom-4 h-auto bg-white/95 dark:bg-brand-dark/95 backdrop-blur-xl text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col border border-gray-200 dark:border-white/10 select-none animate-float-sidebar",
+                    "shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_0_40px_-5px_rgba(255,255,255,0.15)]",
                     isCollapsed ? "w-16" : "w-64"
                 )}
                 onMouseDown={(e) => handleDragStart(e.clientX)}
@@ -358,7 +349,7 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
                 onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
                 onTouchEnd={handleDragEnd}
             >
-                {/* <SidebarParticles orgId={currentOrgId} /> */}
+                <SidebarParticles orgId={currentOrgId} />
 
                 {/* Toggle Button */}
                 <button

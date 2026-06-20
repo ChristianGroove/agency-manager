@@ -139,7 +139,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
                 ))}
 
                 {channels.length === 0 && (
-                    <div className="glass-card col-span-full flex flex-col items-center justify-center p-12 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl text-center space-y-4">
+                    <div className="col-span-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl text-center space-y-4 bg-muted/20 dark:bg-muted/10">
                         <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full">
                             <MessageCircle className="h-8 w-8 text-[#25D366]" />
                         </div>

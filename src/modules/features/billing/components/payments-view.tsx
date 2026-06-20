@@ -48,7 +48,7 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
             case 'OVERDUE':
                 return <Badge className="bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/10 font-bold">Vencida</Badge>
             default: // UNPAID
-                return <Badge variant="outline" className="text-zinc-500 dark:text-zinc-400 border-zinc-300 dark:border-white/20">Pendiente</Badge>
+                return <Badge variant="outline" className="text-gray-500 dark:text-gray-400 border-gray-300 dark:border-white/20">Pendiente</Badge>
         }
     }
 
@@ -56,23 +56,23 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
         <div className="space-y-6">
             {/* Financial Dashboard Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-white/5 backdrop-blur-md p-4 rounded-xl border border-zinc-100 dark:border-white/10 shadow-sm flex items-center gap-4">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md p-4 rounded-xl border border-gray-100 dark:border-white/10 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
                         <Wallet className="h-6 w-6" />
                     </div>
                     <div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Por Cobrar</p>
-                        <p className="text-2xl font-bold text-zinc-900 dark:text-white">${totalReceivable.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Por Cobrar</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">${totalReceivable.toLocaleString()}</p>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-white/5 backdrop-blur-md p-4 rounded-xl border border-zinc-100 dark:border-white/10 shadow-sm flex items-center gap-4">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md p-4 rounded-xl border border-gray-100 dark:border-white/10 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg">
                         <CalendarClock className="h-6 w-6" />
                     </div>
                     <div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Vencido</p>
-                        <p className="text-2xl font-bold text-zinc-900 dark:text-white">${totalOverdue.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Vencido</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</p>
                     </div>
                 </div>
             </div>
@@ -80,7 +80,7 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
             {/* Controls */}
             <div className="flex items-center justify-between gap-4">
                 <div className="relative w-full md:w-80">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
                         placeholder="Buscar por cliente o factura..."
                         className="pl-8 bg-white dark:bg-white/5 dark:text-white dark:border-white/10"
@@ -95,9 +95,9 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
             </div>
 
             {/* Payments Table */}
-            <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead>Factura</TableHead>
                             <TableHead>Cliente</TableHead>
@@ -110,16 +110,16 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
                     <TableBody>
                         {filteredInvoices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-zinc-500 dark:text-zinc-400">
+                                <TableCell colSpan={6} className="h-32 text-center text-gray-500 dark:text-gray-400">
                                     No hay registros de cartera.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredInvoices.map((invoice) => (
-                                <TableRow key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
-                                    <TableCell className="font-medium text-zinc-900 dark:text-white">{invoice.number}</TableCell>
-                                    <TableCell className="text-zinc-600 dark:text-zinc-300">{invoice.client?.name}</TableCell>
-                                    <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm">
+                                <TableRow key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">{invoice.number}</TableCell>
+                                    <TableCell className="text-gray-600 dark:text-gray-300">{invoice.client?.name}</TableCell>
+                                    <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
                                         {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
                                     </TableCell>
                                     <TableCell className="font-medium dark:text-white">
@@ -149,10 +149,9 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
                 </Table>
             </div>
 
-            <p className="text-xs text-center text-zinc-400 max-w-2xl mx-auto">
+            <p className="text-xs text-center text-gray-400 max-w-2xl mx-auto">
                 Gestión de Tesorería: Los pagos registrados aquí <strong>no afectan</strong> el estado fiscal ante la DIAN, solo el saldo de cartera.
             </p>
         </div>
     )
 }
-

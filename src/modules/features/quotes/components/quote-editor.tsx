@@ -149,7 +149,7 @@ export function QuoteEditor({ quote: initialQuote }: QuoteEditorProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label>Cliente / Prospecto</Label>
-                            <Input value={entityName} disabled className="bg-zinc-100" />
+                            <Input value={entityName} disabled className="bg-gray-100" />
                         </div>
                         <div className="space-y-2">
                             <Label>Fecha</Label>
@@ -172,10 +172,10 @@ export function QuoteEditor({ quote: initialQuote }: QuoteEditorProps) {
                         )}
 
                         {items.map((item, index) => (
-                            <div key={index} className="grid grid-cols-12 gap-4 items-start bg-zinc-50/50 p-4 rounded-xl border border-zinc-100">
+                            <div key={index} className="grid grid-cols-12 gap-4 items-start bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                                 {/* Description / Catalog Selector */}
                                 <div className="col-span-12 md:col-span-5 space-y-2">
-                                    <Label className="text-xs font-medium text-zinc-500">Descripción / Servicio</Label>
+                                    <Label className="text-xs font-medium text-gray-500">Descripción / Servicio</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button
@@ -276,7 +276,7 @@ export function QuoteEditor({ quote: initialQuote }: QuoteEditorProps) {
                                 </div>
 
                                 <div className="col-span-6 md:col-span-1 space-y-2">
-                                    <Label className="text-xs font-medium text-zinc-500">Cant.</Label>
+                                    <Label className="text-xs font-medium text-gray-500">Cant.</Label>
                                     <Input
                                         type="number"
                                         min="1"
@@ -286,7 +286,7 @@ export function QuoteEditor({ quote: initialQuote }: QuoteEditorProps) {
                                     />
                                 </div>
                                 <div className="col-span-6 md:col-span-2 space-y-2">
-                                    <Label className="text-xs font-medium text-zinc-500">Precio</Label>
+                                    <Label className="text-xs font-medium text-gray-500">Precio</Label>
                                     <Input
                                         type="number"
                                         min="0"

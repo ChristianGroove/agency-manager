@@ -73,7 +73,7 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
             />
 
             <Table>
-                <TableHeader className="border-b">
+                <TableHeader className="bg-slate-50 border-b">
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="font-semibold text-slate-700 h-11 w-[250px]">Organización</TableHead>
                         <TableHead className="font-semibold text-slate-700 h-11">Identificador</TableHead>
@@ -222,5 +222,4 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
         </div>
     )
 }
-
 

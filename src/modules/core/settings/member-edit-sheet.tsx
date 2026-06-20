@@ -119,7 +119,7 @@ export function MemberEditSheet({
                 "w-full p-0 gap-0 border-none shadow-2xl mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6 bg-transparent",
                 viewMode === 'manage_roles' ? "sm:max-w-4xl" : "sm:max-w-md"
             )}>
-                <div className="bg-white/95 backdrop-blur-xl h-full flex flex-col overflow-hidden rounded-3xl border border-zinc-100">
+                <div className="bg-white/95 backdrop-blur-xl h-full flex flex-col overflow-hidden rounded-3xl border border-gray-100">
 
                     {/* View: ASSIGN MEMBER */}
                     {viewMode === 'assign' && (
@@ -165,7 +165,7 @@ export function MemberEditSheet({
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <Label className="text-sm font-medium text-zinc-700">Rol Asignado</Label>
+                                                <Label className="text-sm font-medium text-gray-700">Rol Asignado</Label>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -179,13 +179,13 @@ export function MemberEditSheet({
                                                 value={role}
                                                 onValueChange={(val) => setRole(val)}
                                             />
-                                            <p className="text-xs text-zinc-500">
+                                            <p className="text-xs text-gray-500">
                                                 El usuario heredará todos los permisos definidos para este rol.
                                             </p>
                                         </div>
 
                                         <div className="space-y-3 pt-2">
-                                            <Label className="text-sm font-medium text-zinc-700 flex items-center gap-2">
+                                            <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                                 <MessageSquare className="h-4 w-4 text-brand-pink" />
                                                 Canales Autorizados (Inbox)
                                             </Label>
@@ -194,7 +194,7 @@ export function MemberEditSheet({
                                                 onChange={setAuthorizedChannels}
                                                 disabled={isOwner}
                                             />
-                                            <p className="text-xs text-zinc-400">
+                                            <p className="text-xs text-gray-400">
                                                 Determina qué líneas de WhatsApp podrá ver este agente en su inbox.
                                             </p>
                                         </div>
@@ -231,12 +231,12 @@ export function MemberEditSheet({
                     {/* View: MANAGE ROLES */}
                     {viewMode === 'manage_roles' && (
                         <div className="flex flex-col h-full">
-                            <div className="flex items-center gap-2 p-4 border-b bg-zinc-50/50">
+                            <div className="flex items-center gap-2 p-4 border-b bg-gray-50/50">
                                 <Button variant="ghost" size="sm" onClick={() => setViewMode('assign')}>
                                     <ChevronDown className="h-4 w-4 rotate-90 mr-1" />
                                     Volver
                                 </Button>
-                                <h3 className="font-medium text-zinc-900">Gestor de Roles y Permisos</h3>
+                                <h3 className="font-medium text-gray-900">Gestor de Roles y Permisos</h3>
                             </div>
                             <div className="flex-1 overflow-hidden p-0">
                                 {/* Embed RoleManager here. We'll verify the import in next steps */}
@@ -272,7 +272,7 @@ function RoleManagerWrapper() {
         })
     }, [])
 
-    if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-zinc-300" /></div>
+    if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-gray-300" /></div>
 
     return <RoleManager initialRoles={roles} />
 }

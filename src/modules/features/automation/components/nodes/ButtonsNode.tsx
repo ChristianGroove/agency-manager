@@ -201,7 +201,7 @@ export function ButtonsNode({ data, selected }: ButtonsNodeProps) {
                     type="source"
                     position={Position.Right}
                     id="continue"
-                    className="!w-3 !h-3 !bg-zinc-300 !border-2 !border-white hover:!bg-zinc-400"
+                    className="!w-3 !h-3 !bg-slate-300 !border-2 !border-white hover:!bg-slate-400"
                     style={{ position: 'static', transform: 'none' }}
                     title="Continuar / Timeout"
                 />

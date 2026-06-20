@@ -25,7 +25,7 @@ export function MagicStatCard({
 }: MagicStatCardProps) {
     return (
         <MagicCard gradientColor={gradientColor} gradientOpacity={0.15} className={className}>
-            <Card className="glass-card h-full transition-all">
+            <Card className="bg-transparent border-gray-100 dark:border-white/10 dark:bg-white/5 shadow-sm hover:shadow-md transition-shadow rounded-[30px] h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         {title}

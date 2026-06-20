@@ -250,7 +250,7 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
 
                                         <div className="rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
                                             <Table>
-                                                <TableHeader>
+                                                <TableHeader className="bg-slate-50 dark:bg-white/5">
                                                     <TableRow>
                                                         <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Fecha</TableHead>
                                                         <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Concepto</TableHead>
@@ -325,4 +325,3 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
         </Dialog>
     )
 }
-

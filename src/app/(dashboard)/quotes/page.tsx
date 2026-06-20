@@ -21,7 +21,7 @@ export default async function QuotesPage() {
     ])
 
     return (
-        <Suspense fallback={<div className="p-8 text-center text-zinc-500">Cargando cotizaciones...</div>}>
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Cargando cotizaciones...</div>}>
             <QuotesView
                 initialQuotes={quotes || []}
                 initialEmitters={emitters}
