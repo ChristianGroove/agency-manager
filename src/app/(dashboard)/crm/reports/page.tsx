@@ -163,10 +163,11 @@ export default function ReportsPage() {
                                     {format(dateRange.from, 'dd MMM', { locale: es })} - {format(dateRange.to, 'dd MMM', { locale: es })}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 rounded-2xl border-none shadow-2xl bg-white/80 dark:bg-black/60 backdrop-blur-xl" align="end">
+                            <PopoverContent className="w-auto p-0 rounded-2xl border-none shadow-2xl bg-white/80 dark:bg-black/60 backdrop-blur-xl overflow-hidden" align="end">
                                 <Calendar
                                     initialFocus
                                     mode="range"
+                                    className="rounded-b-none border-b-0 shadow-none pb-4"
                                     selected={{ from: tempDateRange.from, to: tempDateRange.to }}
                                     onSelect={(range: any) => setTempDateRange({ from: range?.from, to: range?.to })}
                                     numberOfMonths={2}
