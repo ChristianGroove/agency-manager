@@ -336,7 +336,8 @@ export class PlatformBillingService {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        const { data, error, count } = await (await createClient())
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { data, error, count } = await supabaseAdmin
             .from('saas_platform_invoices')
             .select(`
                 *,
@@ -356,7 +357,8 @@ export class PlatformBillingService {
 
     static async getOrganizationInvoices(organizationId: string) {
         await requireSuperAdmin();
-        const { data, error } = await (await createClient())
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { data, error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .select(`
                 *,
@@ -400,7 +402,8 @@ export class PlatformBillingService {
 
     static async deletePlatformInvoice(invoiceId: string) {
         await requireSuperAdmin();
-        const { error } = await (await createClient())
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .delete()
             .eq('id', invoiceId);
