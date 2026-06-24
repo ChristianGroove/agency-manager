@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Suspense } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
-import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check, MapPin, Pencil } from "lucide-react"
+import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check, MapPin, Pencil, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // Importar Componentes de Vistas Internas
@@ -14,7 +14,11 @@ import { RestoOrderTracker } from "./views/RestoOrderTracker"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { getPortalCatalog } from "@/modules/features/portal/services/portal-service"
 import { useSearchParams } from "next/navigation"
+import { RestoDineInTab } from "./views/RestoDineInTab"
 import { updateClientAddress } from "./actions/checkout-actions"
+import { validateTableQR } from "./actions/resto-dinein-actions"
+import { toast } from "sonner"
+import { supabase } from "@/modules/core/database/supabase"
 
 export interface RestoPortalLayoutProps {
     token?: string
@@ -42,7 +46,7 @@ export function B2CRestaurantLayout({
     const [catalogItems, setCatalogItems] = useState<any[]>(catalog || [])
     const [loadingCatalog, setLoadingCatalog] = useState(false)
     const [showSuccessModal, setShowSuccessModal] = useState(false)
-    const { items: cartItems, clearCart } = useRestoCart()
+    const { items: cartItems, clearCart, setTableContext, clearTableContext, orderMode, tableIdentifier, sessionId } = useRestoCart()
     const searchParams = useSearchParams()
 
     // Detectar éxito de pedido tras redirección
@@ -57,6 +61,25 @@ export function B2CRestaurantLayout({
         }
     }, [searchParams, clearCart])
 
+    // Interceptar modo Dine-in
+    useEffect(() => {
+        const tableToken = searchParams.get('table')
+        if (tableToken && currentOrgId) {
+            validateTableQR(currentOrgId, tableToken).then(res => {
+                if (res.success && res.tableId && res.sessionId) {
+                    setTableContext(res.tableId, res.tableIdentifier || "Mesa", res.sessionId)
+                    toast.success(`Conectado a ${res.tableIdentifier}`)
+                    // Limpiar URL
+                    const url = new URL(window.location.href)
+                    url.searchParams.delete('table')
+                    window.history.replaceState({}, '', url.toString())
+                } else {
+                    toast.error(res.error || "Código de mesa inválido")
+                }
+            }).catch(console.error)
+        }
+    }, [searchParams, currentOrgId, setTableContext])
+
     // Escuchar evento de navegación interna (usado por "Repetir Pedido")
     useEffect(() => {
         const handler = (e: Event) => {
@@ -66,6 +89,30 @@ export function B2CRestaurantLayout({
         window.addEventListener('resto-navigate', handler)
         return () => window.removeEventListener('resto-navigate', handler)
     }, [])
+
+    // Escuchar cierres de sesión en tiempo real (si la mesa es liberada por el admin)
+    useEffect(() => {
+        if (orderMode !== 'dine-in' || !sessionId) return
+
+        const channel = supabase.channel(`global_session_${sessionId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'resto_table_sessions',
+                filter: `id=eq.${sessionId}`
+            }, (payload) => {
+                if (payload.new && payload.new.status === 'closed') {
+                    clearTableContext()
+                    toast.info("La mesa ha sido liberada. ¡Gracias por tu visita!")
+                    setActiveTab('menu')
+                }
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [clearTableContext, sessionId, orderMode])
 
     // Fetch Menu Catalog (Only if not provided by parent)
     useEffect(() => {
@@ -87,7 +134,9 @@ export function B2CRestaurantLayout({
     const navItems = [
         { id: 'menu', icon: Store, label: "Menú" },
         { id: 'cart', icon: ShoppingCart, label: "Carrito" },
-        ...(client ? [
+        ...(orderMode === 'dine-in' ? [
+            { id: 'orders', icon: ReceiptText, label: "Mi Cuenta" }
+        ] : client ? [
             { id: 'orders', icon: ReceiptText, label: "Mis Pedidos" },
             { id: 'profile', icon: UserIcon, label: "Perfil" },
         ] : []),
@@ -95,10 +144,10 @@ export function B2CRestaurantLayout({
 
     // Redirigir si el tab activo deja de existir (seguridad)
     useEffect(() => {
-        if (!client && (activeTab === 'orders' || activeTab === 'profile')) {
+        if (!client && orderMode !== 'dine-in' && (activeTab === 'orders' || activeTab === 'profile')) {
             setActiveTab('menu')
         }
-    }, [client, activeTab])
+    }, [client, activeTab, orderMode])
 
     // Calcular Cantidad en Carrito
     const totalCartQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0)
@@ -122,6 +171,17 @@ export function B2CRestaurantLayout({
                 </div>
             </header>
 
+            {/* DINE-IN BANNER */}
+            {orderMode === 'dine-in' && tableIdentifier && (
+                <div className="w-full bg-primary/10 text-primary py-2 px-4 text-center font-medium text-sm flex items-center justify-center gap-2 border-b border-primary/20 sticky top-16 z-30">
+                    <MapPin className="w-4 h-4" />
+                    <span className="flex-1 text-center">Estás ordenando en {tableIdentifier}</span>
+                    <button onClick={clearTableContext} className="p-1 hover:bg-primary/20 rounded-full transition-colors" title="Desconectar de la mesa">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+
             {/* CONTENIDO PRINCIPAL (El Catálogo o Carrito) */}
             <main className="flex-1 w-full flex flex-col pb-20">
                 <Suspense fallback={<GlobalLoader />}>
@@ -142,7 +202,11 @@ export function B2CRestaurantLayout({
                         <RestoCartView orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
                     )}
                     {activeTab === 'orders' && (
-                        <RestoOrderTracker orgId={currentOrgId || ""} client={client} />
+                        orderMode === 'dine-in' ? (
+                            <RestoDineInTab orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
+                        ) : (
+                            <RestoOrderTracker orgId={currentOrgId || ""} client={client} />
+                        )
                     )}
                     {activeTab === 'profile' && (
                         <div className="p-8 text-center text-gray-500">
@@ -222,7 +286,9 @@ export function B2CRestaurantLayout({
                             <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">¡Pedido Recibido!</h3>
                             <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
                                 Tu pedido ha sido enviado a la cocina.
-                                <span className="block font-semibold mt-1 text-gray-700 dark:text-gray-300">Te notificaremos por WhatsApp cualquier novedad.</span>
+                                {orderMode !== 'dine-in' && (
+                                    <span className="block font-semibold mt-1 text-gray-700 dark:text-gray-300">Te notificaremos por WhatsApp cualquier novedad.</span>
+                                )}
                             </p>
                         </div>
                         <Button

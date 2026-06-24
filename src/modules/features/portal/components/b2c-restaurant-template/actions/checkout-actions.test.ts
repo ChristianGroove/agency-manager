@@ -181,10 +181,12 @@ describe('B2C restaurant checkout tenant safety', () => {
         const result = await dispatchRestoOrder({
             orgId: 'org-current',
             items: [{ id: 'item-1', title: 'Burger', quantity: 1, price: 1000 } as any],
-            total: 1000,
             customerName: 'Client',
             customerPhone: '3001234567',
             deliveryAddress: 'Street 1',
+            restoMode: 'delivery',
+            tipAmount: 0,
+            paymentMethod: 'cash'
         })
 
         expect(result).toEqual({

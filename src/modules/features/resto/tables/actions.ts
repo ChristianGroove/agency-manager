@@ -94,11 +94,90 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
         if (error) errors.push(error.message)
     }
 
+    // 3. Delete tables that no longer exist in the layout
+    const existingTableIds = tables
+        .filter(t => !t.id.startsWith('temp_') && !t.isNew)
+        .map(t => t.id)
+
+    // Fetch all current table IDs for this zone from DB
+    const { data: dbTables } = await supabase
+        .from('resto_tables')
+        .select('id')
+        .eq('zone_id', zoneId)
+
+    if (dbTables && dbTables.length > 0) {
+        const idsToDelete = dbTables
+            .map(t => t.id)
+            .filter(id => !existingTableIds.includes(id))
+
+        if (idsToDelete.length > 0) {
+            const { error } = await supabase
+                .from('resto_tables')
+                .delete()
+                .in('id', idsToDelete)
+            if (error) errors.push(error.message)
+        }
+    }
+
     if (errors.length > 0) {
         console.error("Errors saving layout:", errors)
         return { success: false, error: errors.join(', ') }
     }
 
     revalidatePath('/dashboard/resto-tables')
+    revalidatePath('/dashboard/resto-orders')
     return { success: true, zoneId }
+}
+
+export async function deleteZone(zoneId: string) {
+    const supabase = await createClient()
+
+    // Delete all tables in zone first
+    const { error: tablesError } = await supabase
+        .from('resto_tables')
+        .delete()
+        .eq('zone_id', zoneId)
+
+    if (tablesError) return { success: false, error: tablesError.message }
+
+    // Delete zone
+    const { error: zoneError } = await supabase
+        .from('resto_zones')
+        .delete()
+        .eq('id', zoneId)
+
+    if (zoneError) return { success: false, error: zoneError.message }
+
+    revalidatePath('/dashboard/resto-tables')
+    revalidatePath('/dashboard/resto-orders')
+    return { success: true }
+}
+
+export async function updateTableStatus(tableId: string, status: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('resto_tables')
+        .update({ status })
+        .eq('id', tableId)
+
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/dashboard/resto-tables')
+    revalidatePath('/dashboard/resto-orders')
+    return { success: true }
+}
+
+export async function renameZone(zoneId: string, name: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('resto_zones')
+        .update({ name })
+        .eq('id', zoneId)
+
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/dashboard/resto-tables')
+    return { success: true }
 }

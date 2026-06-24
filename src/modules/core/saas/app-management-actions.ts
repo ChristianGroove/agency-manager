@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -330,7 +331,7 @@ export async function addModuleToApp(input: {
     await requireSuperAdmin()
 
     try {
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('saas_app_modules')
             .insert({
                 app_id: input.app_id,
@@ -365,7 +366,7 @@ export async function removeModuleFromApp(appModuleId: string) {
 
     try {
         // 1. Get the module context
-        const { data: moduleToDelete } = await (await createClient())
+        const { data: moduleToDelete } = await supabaseAdmin
             .from('saas_app_modules')
             .select('app_id, module_key')
             .eq('id', appModuleId)
@@ -374,7 +375,7 @@ export async function removeModuleFromApp(appModuleId: string) {
         if (!moduleToDelete) throw new Error("Módulo de Space no encontrado")
 
         // 2. Get all modules currently in this app
-        const { data: appModules } = await (await createClient())
+        const { data: appModules } = await supabaseAdmin
             .from('saas_app_modules')
             .select('module_key')
             .eq('app_id', moduleToDelete.app_id)
@@ -396,7 +397,7 @@ export async function removeModuleFromApp(appModuleId: string) {
         }
 
         // 4. Proceed with deletion
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('saas_app_modules')
             .delete()
             .eq('id', appModuleId)

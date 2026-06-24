@@ -5,21 +5,20 @@ import { ReceiptText, CheckCircle2, ChefHat, Bike, CalendarDays, CircleCheckBig,
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { getRestoGuestOrders } from "../actions/resto-guest-tracking"
 import { getRestoClientOrders, RestoOrderHistoryItem } from "../actions/resto-orders-actions"
-
-const POLL_INTERVAL = 10_000 // 10 segundos
+import { supabase } from "@/modules/core/database/supabase"
 
 /** Resolve the effective order status from both fields */
 function resolveStatus(order: RestoOrderHistoryItem): string {
-    return (order.metadata as any)?.order_status || order.status || 'delivered'
+    return order.kitchen_status || 'pending'
 }
 
 /** Map status to step index (0-3) */
 function statusToStep(status: string): number {
     switch (status) {
-        case 'read': return 1
-        case 'shipped': return 2
+        case 'preparing': return 1
+        case 'ready': return 2
         case 'completed': return 3
-        default: return 0 // delivered = Recibido
+        default: return 0 // pending = Recibido
     }
 }
 
@@ -30,13 +29,20 @@ const STEPS = [
     { key: 'completed', label: 'Completado', icon: CircleCheckBig },
 ] as const
 
+const DINE_IN_STEPS = [
+    { key: 'delivered', label: 'Recibido', icon: CheckCircle2 },
+    { key: 'read', label: 'En Cocina', icon: ChefHat },
+    { key: 'shipped', label: 'Listo', icon: CheckCircle2 },
+    { key: 'completed', label: 'Completado', icon: CircleCheckBig },
+] as const
+
 const STATUS_NOTIFICATIONS: Record<string, { emoji: string; title: string; message: string }> = {
-    read: { emoji: '🍳', title: '¡Tu pedido fue aceptado!', message: 'Está siendo preparado en cocina.' },
-    shipped: { emoji: '🚀', title: '¡Tu pedido fue enviado!', message: 'Va en camino hacia ti.' },
+    preparing: { emoji: '🍳', title: '¡Tu pedido fue aceptado!', message: 'Está siendo preparado en cocina.' },
+    ready: { emoji: '🚀', title: '¡Tu pedido fue enviado / Está listo!', message: 'Va en camino o está listo en barra.' },
 }
 
 export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: any }) {
-    const { recentOrders, addItem } = useRestoCart()
+    const { recentOrders, addItem, tableIdentifier } = useRestoCart()
     const [orders, setOrders] = useState<RestoOrderHistoryItem[]>([])
     const [loading, setLoading] = useState(true)
     const [notification, setNotification] = useState<{ emoji: string; title: string; message: string } | null>(null)
@@ -81,13 +87,42 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
     }, [recentOrders, orgId, client?.id])
 
     // Fetch inicial
-    useEffect(() => { fetchOrders(false) }, [fetchOrders])
+    useEffect(() => { 
+        fetchOrders(false) 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
-    // Polling cada 10s
+    // Realtime Sync (No más fast-refresh costoso por polling)
     useEffect(() => {
-        const interval = setInterval(() => fetchOrders(true), POLL_INTERVAL)
-        return () => clearInterval(interval)
-    }, [fetchOrders])
+        const filter = client?.id ? `lead_id=eq.${client.id}` : `organization_id=eq.${orgId}`
+        
+        const channel = supabase
+            .channel(`tracker_resto_orders_${client?.id || 'guest'}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'resto_orders',
+                    filter: filter,
+                },
+                (payload) => {
+                    // Si es guest, solo refrescar si el id actualizado/insertado está en sus recentOrders
+                    if (!client?.id) {
+                        const affectedId = (payload.new as any)?.id || (payload.old as any)?.id
+                        if (!recentOrders?.includes(affectedId)) return
+                    }
+                    console.log('Realtime Order Update (Tracker):', payload)
+                    fetchOrders(true)
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orgId, client?.id])
 
     if (loading) return <div className="p-8 text-center text-gray-500">Buscando tus pedidos...</div>
 
@@ -108,13 +143,13 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
     const completedOrders = orders.filter(o => resolveStatus(o) === 'completed').slice(0, 5)
 
     const handleRepeatOrder = (order: RestoOrderHistoryItem) => {
-        const items = (order.metadata as any)?.items || []
+        const items = order.items_snapshot || []
         for (const item of items) {
             addItem({
-                catalogItemId: item.name, // Usar nombre como fallback de ID
-                title: item.name,
+                menuItemId: item.menuItemId || item.title, // Fallback si no hay ID
+                title: item.title,
                 price: item.price,
-                quantity: item.qty,
+                quantity: item.quantity,
             })
         }
         // Navegar al tab carrito forzando el state del layout
@@ -148,7 +183,9 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                     const status = resolveStatus(order)
                     const currentStep = statusToStep(status)
                     const orderDate = new Date(order.created_at)
-                    const progressPercent = ((currentStep + 1) / STEPS.length) * 100
+                    const isDineIn = order.resto_mode === 'dine_in' || order.resto_mode === 'dine-in'
+                    const stepsToUse = isDineIn ? DINE_IN_STEPS : STEPS
+                    const progressPercent = ((currentStep + 1) / stepsToUse.length) * 100
 
                     return (
                         <div key={order.id} className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-zinc-800">
@@ -162,24 +199,30 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                                     <p className="text-xs text-gray-500">{orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                                 <span className="text-lg font-bold text-gray-900 dark:text-white">
-                                    ${(order.metadata as any)?.total?.toLocaleString('es-CO') || '0'}
+                                    ${order.total?.toLocaleString('es-CO') || '0'}
                                 </span>
                             </div>
 
                             {/* Items List (compacto) */}
                             <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 mb-4 space-y-1">
-                                {((order.metadata as any)?.items || []).map((item: any, idx: number) => (
+                                {(order.items_snapshot || []).map((item: any, idx: number) => (
                                     <div key={idx} className="flex justify-between text-sm">
                                         <span className="text-gray-700 dark:text-gray-300">
-                                            <span className="font-semibold mr-1">{item.qty}x</span>{item.name}
+                                            <span className="font-semibold mr-1">{item.quantity}x</span>{item.title}
                                         </span>
-                                        <span className="text-gray-500 text-xs">${(item.price * item.qty).toLocaleString('es-CO')}</span>
+                                        <span className="text-gray-500 text-xs">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
                                     </div>
                                 ))}
-                                {(order.metadata as any)?.address && (
+                                {order.delivery_address && !isDineIn && (
                                     <div className="flex items-center gap-1 pt-1 text-xs text-gray-400">
                                         <Bike className="w-3 h-3" />
-                                        {(order.metadata as any).address}
+                                        {order.delivery_address}
+                                    </div>
+                                )}
+                                {isDineIn && (
+                                    <div className="flex items-center gap-1 pt-1 text-xs text-primary/80 font-medium">
+                                        <CircleCheckBig className="w-3 h-3" />
+                                        Orden en Mesa {tableIdentifier ? `(${tableIdentifier})` : ''}
                                     </div>
                                 )}
                             </div>
@@ -196,7 +239,7 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
 
                             {/* 4-Step Icons */}
                             <div className="flex justify-between text-[10px] text-gray-400 font-medium px-1">
-                                {STEPS.map((step, i) => {
+                                {stepsToUse.map((step, i) => {
                                     const Icon = step.icon
                                     const isCurrentStep = i === currentStep
                                     return (
@@ -224,8 +267,8 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                     </h2>
                     {completedOrders.map((order) => {
                         const orderDate = new Date(order.created_at)
-                        const items = (order.metadata as any)?.items || []
-                        const total = (order.metadata as any)?.total || 0
+                        const items = order.items_snapshot || []
+                        const total = order.total || 0
                         const isExpanded = expandedCompletedId === order.id
 
                         return (
@@ -256,9 +299,9 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                                             {items.map((item: any, idx: number) => (
                                                 <div key={idx} className="flex justify-between text-sm">
                                                     <span className="text-gray-700 dark:text-gray-300">
-                                                        <span className="font-semibold mr-1">{item.qty}x</span>{item.name}
+                                                        <span className="font-semibold mr-1">{item.quantity}x</span>{item.title}
                                                     </span>
-                                                    <span className="text-gray-500 text-xs">${(item.price * item.qty).toLocaleString('es-CO')}</span>
+                                                    <span className="text-gray-500 text-xs">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
                                                 </div>
                                             ))}
                                         </div>

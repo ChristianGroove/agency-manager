@@ -4,39 +4,25 @@ import { createClient } from "@/modules/core/database/supabase-server";
 export interface RestoOrderHistoryItem {
     id: string
     created_at: string
-    content: string
-    status: string
-    metadata: {
-        type: string
-        total: number
-        items: { name: string; qty: number; price: number }[]
-        address?: string
-        customer_notes?: string
-        order_status?: string
-    }
+    total: number
+    kitchen_status: string
+    payment_status: string
+    resto_mode: string
+    items_snapshot: any[]
+    delivery_address?: string
+    customer_notes?: string
+    metadata?: any
 }
 
 export async function getRestoClientOrders(orgId: string, clientId: string): Promise<RestoOrderHistoryItem[]> {
     const supabase = (await createClient())
 
     try {
-        // Encontramos todas las conversaciones de este cliente en esta org
-        const { data: convs } = await supabase
-            .from('conversations')
-            .select('id')
+        const { data: orders, error } = await supabase
+            .from('resto_orders')
+            .select('*')
             .eq('organization_id', orgId)
-            .eq('client_id', clientId)
-
-        if (!convs || convs.length === 0) return []
-
-        const convIds = convs.map(c => c.id)
-
-        // Extraemos todos los mensajes cuyo metadata.type sea 'resto_order'
-        const { data: messages, error } = await supabase
-            .from('messages')
-            .select('id, created_at, content, status, metadata')
-            .in('conversation_id', convIds)
-            .contains('metadata', { type: 'resto_order' })
+            .eq('lead_id', clientId)
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -44,7 +30,7 @@ export async function getRestoClientOrders(orgId: string, clientId: string): Pro
             return []
         }
 
-        return messages as RestoOrderHistoryItem[]
+        return orders as RestoOrderHistoryItem[]
 
     } catch (error) {
         console.error("[getRestoClientOrders] Internal Catch Error:", error)

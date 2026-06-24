@@ -72,6 +72,8 @@ export const es = {
         tool_email_engine: "Motor de Correos",
         core_locations: "Sedes",
         module_attendance: "Asistencia",
+        module_resto_menu: "Menú Digital",
+        module_resto_orders: "Gestor de Pedidos",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",

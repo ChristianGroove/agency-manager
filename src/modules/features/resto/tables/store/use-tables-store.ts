@@ -6,7 +6,7 @@ export type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning' | '
 
 export interface VisualElement {
     id: string
-    type: 'wall' | 'plant' | 'bar' | 'generic'
+    type: 'wall' | 'plant' | 'bar' | 'generic' | 'window' | 'door' | 'stairs' | 'label' | 'reception' | 'restroom' | 'kitchen'
     x: number
     y: number
     width: number
@@ -27,6 +27,8 @@ export interface RestoTable {
     height: number
     rotation: number
     status: TableStatus
+    qr_token?: string
+    current_session_id?: string
     isNew?: boolean // Flag for tables that haven't been saved to DB yet
 }
 

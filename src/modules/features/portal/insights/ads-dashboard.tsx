@@ -86,10 +86,10 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                 />
             </div>
 
-            {/* Main Content Area */}
-            <div className="grid grid-cols-1 gap-8">
-                <Card className="rounded-[2.5rem] border-none shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-zinc-900 overflow-hidden border border-slate-100 dark:border-white/10">
-                    <CardHeader className="p-8 pb-4 border-b border-slate-50 dark:border-white/5">
+            <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
+                {/* 1. Global Performance Overview */}
+                <Card className="rounded-[2.5rem] border-none shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl overflow-hidden border border-white/20 dark:border-zinc-800/50">
+                    <CardHeader className="p-6 md:p-8 border-b border-slate-100 dark:border-white/5">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
                                 <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
@@ -166,7 +166,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                         <td colSpan={5} className="px-8 py-0">
                                                             <div className="pb-8 pt-2 pl-12 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                                                 {campaign.ads.map((ad: any) => (
-                                                                    <div key={ad.id} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                                                                    <div key={ad.id} className="flex items-center justify-between p-4 bg-white/40 dark:bg-zinc-800/40 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-white/5 shadow-sm">
                                                                         <div className="flex items-center gap-4">
                                                                             <div className="w-12 h-12 rounded-xl border border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 flex-shrink-0">
                                                                                 {ad.thumbnail_url ? (
@@ -219,7 +219,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
 
 function KPICard({ title, value, icon: Icon, color, bgColor }: any) {
     return (
-        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+        <Card className="p-5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-center gap-4">
                 <div className={cn("p-3 rounded-xl group-hover:scale-110 transition-transform", bgColor)}>
                     <Icon className={cn("h-6 w-6", color)} />

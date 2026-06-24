@@ -165,7 +165,7 @@ export function InsightsTab({ client, services, token, insightsAccess }: Insight
 const MetricCard = ({ icon: Icon, label, value, color }: any) => {
     // Basic implementation based on usage
     return (
-        <div className="bg-white p-3 md:p-6 rounded-xl border border-brand-gray-200 shadow-sm flex flex-col items-center justify-center text-center hover:border-brand-primary/50 transition-colors">
+        <div className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl p-3 md:p-6 rounded-xl border border-white/20 dark:border-zinc-800/50 shadow-sm flex flex-col items-center justify-center text-center hover:border-brand-primary/50 transition-colors">
             <div className={`w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-2 md:mb-3 bg-${color}-50 text-${color}-500`}>
                 <Icon className="w-4 h-4 md:w-6 md:h-6" />
             </div>
@@ -190,7 +190,7 @@ const SocialDashboard = ({ data }: { data: any }) => {
 
     if (!currentData) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm border border-brand-gray-200">
+            <div className="flex flex-col items-center justify-center p-12 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-xl shadow-sm border border-white/20 dark:border-zinc-800/50">
                 <div className="w-16 h-16 bg-brand-gray-100 rounded-full flex items-center justify-center mb-4">
                     <LayoutGrid className="w-8 h-8 text-brand-gray-400" />
                 </div>
@@ -268,7 +268,7 @@ const SocialDashboard = ({ data }: { data: any }) => {
             </div>
 
             {/* Top Posts */}
-            <div className="bg-white rounded-xl shadow-sm border border-brand-gray-200 overflow-hidden">
+            <div className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-xl shadow-sm border border-white/20 dark:border-zinc-800/50 overflow-hidden">
                 <div className="p-4 border-b border-brand-gray-100 flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <ImageIcon className="w-5 h-5 text-brand-gray-400" />

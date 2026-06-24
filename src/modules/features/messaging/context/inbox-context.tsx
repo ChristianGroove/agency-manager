@@ -56,11 +56,16 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     const [agents, setAgents] = useState<any[]>([])
     const [templates, setTemplates] = useState<any[]>([])
     const [isTemplatesLoading, setIsTemplatesLoading] = useState(false)
+    const isTemplatesLoadingRef = React.useRef(false)
+    
     const [catalogCategories, setCatalogCategories] = useState<any[]>([])
     const [initialProducts, setInitialProducts] = React.useState<any[]>([])
     const [isCatalogLoading, setIsCatalogLoading] = useState(false)
+    const isCatalogLoadingRef = React.useRef(false)
+    
     const [allTags, setAllTags] = React.useState<any[]>([])
     const [isTagsLoading, setIsTagsLoading] = useState(false)
+    const isTagsLoadingRef = React.useRef(false)
     const [pipelineStages, setPipelineStages] = useState<any[]>([])
     const [tick, setTick] = React.useState(0)
     const [isAgentMonitorVisible, setIsAgentMonitorVisible] = useState(false)
@@ -112,29 +117,34 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const refreshTags = useCallback(async () => {
-        if (isTagsLoading) return;
+        if (isTagsLoadingRef.current) return;
+        isTagsLoadingRef.current = true;
         setIsTagsLoading(true)
         try {
             const tags = await getTags()
             setAllTags(tags)
         } finally {
+            isTagsLoadingRef.current = false;
             setIsTagsLoading(false)
         }
-    }, [isTagsLoading])
+    }, [])
 
     const refreshTemplates = useCallback(async () => {
-        if (isTemplatesLoading) return;
+        if (isTemplatesLoadingRef.current) return;
+        isTemplatesLoadingRef.current = true;
         setIsTemplatesLoading(true)
         try {
             const all = await getTemplates()
             setTemplates(all)
         } finally {
+            isTemplatesLoadingRef.current = false;
             setIsTemplatesLoading(false)
         }
-    }, [isTemplatesLoading])
+    }, [])
 
     const refreshCatalog = useCallback(async () => {
-        if (isCatalogLoading) return;
+        if (isCatalogLoadingRef.current) return;
+        isCatalogLoadingRef.current = true;
         setIsCatalogLoading(true)
         try {
             const [cats, products] = await Promise.all([
@@ -144,9 +154,10 @@ export function InboxProvider({ children }: { children: ReactNode }) {
             if (cats) setCatalogCategories(cats)
             if (products?.success) setInitialProducts(products.data || [])
         } finally {
+            isCatalogLoadingRef.current = false;
             setIsCatalogLoading(false)
         }
-    }, [isCatalogLoading])
+    }, [])
     
     const refreshStages = useCallback(async () => {
         const stages = await getPipelineStagesAction()

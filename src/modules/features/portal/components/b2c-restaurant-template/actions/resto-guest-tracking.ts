@@ -7,17 +7,17 @@ import { createClient } from "@/modules/core/database/supabase-server";
  * basándose únicamente en los messageIds que guardó en su LocalStorage (Zustand),
  * permitiendo una experiencia "Guest Checkout" completa sin login.
  */
-export async function getRestoGuestOrders(messageIds: string[], orgId: string): Promise<RestoOrderHistoryItem[]> {
-    if (!messageIds || messageIds.length === 0) return []
+export async function getRestoGuestOrders(orderIds: string[], orgId: string): Promise<RestoOrderHistoryItem[]> {
+    if (!orderIds || orderIds.length === 0) return []
 
     const supabase = (await createClient())
 
     try {
-        const { data: messages, error } = await supabase
-            .from('messages')
-            .select('id, created_at, content, status, metadata')
+        const { data: orders, error } = await supabase
+            .from('resto_orders')
+            .select('*')
             .eq('organization_id', orgId)
-            .in('id', messageIds)
+            .in('id', orderIds)
             .order('created_at', { ascending: false })
             .limit(10) // Limitamos a los 10 más recientes por desempeño del cliente Anónimo
 
@@ -26,7 +26,7 @@ export async function getRestoGuestOrders(messageIds: string[], orgId: string): 
             return []
         }
 
-        return messages as RestoOrderHistoryItem[]
+        return orders as RestoOrderHistoryItem[]
 
     } catch (error) {
         console.error("[getRestoGuestOrders] Catch:", error)

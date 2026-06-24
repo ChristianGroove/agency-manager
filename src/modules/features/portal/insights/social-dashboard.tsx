@@ -45,7 +45,7 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
             </div>
 
             {/* Top Posts */}
-            <Card>
+            <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-sm">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                         <ImageIcon className="w-5 h-5 text-gray-500" />
@@ -60,7 +60,7 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
                                 href={post.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group block bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                                className="group block bg-gray-50/50 dark:bg-gray-800/50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                             >
                                 <div className="aspect-square bg-gray-200 relative">
                                     {post.image ? (
@@ -105,7 +105,7 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
 
 function KPICard({ title, value, icon: Icon, color, bg }: any) {
     return (
-        <Card>
+        <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-sm">
             <CardContent className="p-4 flex flex-col items-center text-center gap-2">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${bg} ${color} mb-1`}>
                     <Icon className="w-5 h-5" />

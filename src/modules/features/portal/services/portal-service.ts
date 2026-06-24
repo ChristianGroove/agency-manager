@@ -84,7 +84,7 @@ export async function getPortalData(token: string) {
                 isB2B ? (await createClient()).from('hosting_accounts').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 (await createClient()).from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
                 (await createClient()).from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                isB2C ? (await createClient()).from('service_catalog').select('*').eq('organization_id', client.organization_id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
+                isB2C ? (await createClient()).from('resto_menu_items').select('*, category:resto_menu_categories(id, name, order_index), resto_item_modifier_groups(order_index, resto_modifier_groups(*))').eq('organization_id', client.organization_id).eq('is_visible', true).is('deleted_at', null) : Promise.resolve({ data: [] })
             ])
 
             // Hierarchical Module Resolution
@@ -186,7 +186,11 @@ export async function getPortalData(token: string) {
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
                 paymentMethods: sanitizePaymentMethodsForClient(paymentMethods || []),
-                catalog: catalogItems || [],
+                catalog: (catalogItems || []).map((item: any) => ({
+                    ...item,
+                    modifiers: item.resto_item_modifier_groups ? item.resto_item_modifier_groups.sort((a: any, b: any) => a.order_index - b.order_index).map((link: any) => link.resto_modifier_groups) : [],
+                    resto_item_modifier_groups: undefined
+                })),
                 insightsAccess: showInsights
                     ? resolvedInsightsAccess
                     : { show: false, mode: { organic: false, ads: false } }
@@ -264,11 +268,15 @@ export async function getPortalData(token: string) {
         }
 
         // 4. Guest Flow
-        const { data: org } = await (await createClient())
-            .from('organizations')
-            .select('*')
-            .eq('slug', token)
-            .single()
+        let orgQuery = (await createClient()).from('organizations').select('*')
+        
+        if (isUuid) {
+            orgQuery = orgQuery.or(`id.eq.${token},slug.eq.${token}`)
+        } else {
+            orgQuery = orgQuery.eq('slug', token)
+        }
+        
+        const { data: org } = await orgQuery.single()
 
         if (org) {
             const { data: rawSettings } = await (await createClient())
@@ -298,8 +306,8 @@ export async function getPortalData(token: string) {
             settings.portal_template = portalTemplate
 
             const [ { data: appPortalConfig }, { data: catalogItems } ] = await Promise.all([
-                (await createClient()).from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                (portalTemplate === 'b2c_commerce') ? (await createClient()).from('service_catalog').select('*').eq('organization_id', org.id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
+                (await createClient()).from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'guest').order('display_order', { ascending: true }),
+                (portalTemplate === 'b2c_commerce') ? (await createClient()).from('resto_menu_items').select('*, category:resto_menu_categories(id, name, order_index)').eq('organization_id', org.id).eq('is_visible', true).is('deleted_at', null) : Promise.resolve({ data: [] })
             ])
 
             let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
@@ -356,7 +364,13 @@ export async function getPortalMetadata(token: string) {
         }
 
         if (!organizationId) {
-            const { data: org } = await (await createClient()).from('organizations').select('id').eq('slug', token).maybeSingle()
+            let orgQuery = (await createClient()).from('organizations').select('id')
+            if (isUuid) {
+                orgQuery = orgQuery.or(`id.eq.${token},slug.eq.${token}`)
+            } else {
+                orgQuery = orgQuery.eq('slug', token)
+            }
+            const { data: org } = await orgQuery.maybeSingle()
             if (org) organizationId = org.id
         }
 
@@ -430,22 +444,20 @@ export async function getPortalCatalog(token: string) {
 
     if (!organizationId) throw new Error('Unauthorized')
 
-    const [ { data: catalogItems }, { data: categories } ] = await Promise.all([
-        (await createClient()).from('service_catalog').select('*').eq('organization_id', organizationId).eq('is_visible_in_portal', true),
-        (await createClient()).from('service_categories').select('id, name').eq('organization_id', organizationId)
-    ])
+    const { data: catalogItems, error } = await (await createClient())
+        .from('resto_menu_items')
+        .select('*, category:resto_menu_categories(id, name, order_index), resto_item_modifier_groups(order_index, resto_modifier_groups(*))')
+        .eq('organization_id', organizationId)
+        .eq('is_visible', true)
+        .is('deleted_at', null)
 
-    const categoryMap = (categories || []).reduce((acc: Record<string, string>, cat) => {
-        acc[cat.id] = cat.name
-        return acc
-    }, {})
-
-    const itemsWithName = (catalogItems || []).map(item => ({
+    const formattedCatalog = (catalogItems || []).map((item: any) => ({
         ...item,
-        category: categoryMap[item.category] || item.category
+        modifiers: item.resto_item_modifier_groups ? item.resto_item_modifier_groups.sort((a: any, b: any) => a.order_index - b.order_index).map((link: any) => link.resto_modifier_groups) : [],
+        resto_item_modifier_groups: undefined
     }))
 
-    return itemsWithName.sort((a, b) => (a.category || '').localeCompare(b.category || ''))
+    return formattedCatalog
 }
 
 export async function getPortalQuote(token: string, quoteId: string) {

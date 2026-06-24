@@ -27,7 +27,9 @@ import {
     BrainCircuit,
     BarChart3,
     ScanFace,
-    Mail
+    Mail,
+    Utensils,
+    ClipboardList
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -180,15 +182,27 @@ export const MODULE_ROUTES: ModuleRoute[] = [
             requiredPermission: 'operations.attendance.view'
         }
     },
+
     {
-        key: 'module_resto_tables',
-        label: 'Mesas',
-        href: '/resto-tables',
-        icon: Grid,
+        key: 'module_resto_orders',
+        label: 'Gestor de Pedidos',
+        href: '/resto-orders',
+        icon: ClipboardList,
         category: 'operations',
-        parentModule: 'module_resto_tables',
+        parentModule: 'module_resto_orders',
         access: {
-            requiredPermission: 'operations.resto.view'
+            allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
+        key: 'module_resto_menu',
+        label: 'Menú Digital',
+        href: '/menu',
+        icon: Utensils,
+        category: 'operations',
+        parentModule: 'module_resto_menu',
+        access: {
+            allowedRoles: ['owner', 'admin']
         }
     },
     {

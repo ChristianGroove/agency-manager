@@ -158,7 +158,9 @@ export const enTranslations = {
     // Sidebar
     'sidebar.cat_crm': 'CRM & Sales',
     'sidebar.meta_ads_monitor': 'Meta Ads Monitor',
-    'sidebar.module_meta_ads': 'Meta Ads Engine'
+    'sidebar.module_meta_ads': 'Meta Ads Engine',
+    'sidebar.module_resto_menu': 'Digital Menu',
+    'sidebar.module_resto_orders': 'Orders Manager'
 };
 
 export const esTranslations = {
@@ -210,6 +212,8 @@ export const esTranslations = {
     'sidebar.cat_crm': 'CRM y Ventas',
     'sidebar.meta_ads_monitor': 'Monitor de Meta Ads',
     'sidebar.module_meta_ads': 'Motor de Meta Ads',
+    'sidebar.module_resto_menu': 'Menú Digital',
+    'sidebar.module_resto_orders': 'Gestor de Pedidos',
 
     // Distribution
     'crm.inbox.sidebar.distribute': 'Repartir',

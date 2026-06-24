@@ -72,6 +72,8 @@ export const en = {
         tool_email_engine: "Email Engine",
         core_locations: "Locations",
         module_attendance: "Attendance",
+        module_resto_menu: "Digital Menu",
+        module_resto_orders: "Order Manager",
         // Categories
         cat_core: "Main",
         cat_crm: "CRM",

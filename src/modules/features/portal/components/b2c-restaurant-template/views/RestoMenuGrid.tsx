@@ -2,11 +2,12 @@
 
 import React, { useState, useMemo } from "react"
 import { FoodCard } from "../components/FoodCard"
+import { FoodModal } from "../components/FoodModal"
 import { Search } from "lucide-react"
-import { ServiceCatalogItem } from "@/types"
+import { RestoMenuItem } from "@/types"
 
 export interface RestoMenuGridProps {
-    items: ServiceCatalogItem[]
+    items: RestoMenuItem[]
     orgId: string
     primaryColor?: string
 }
@@ -14,15 +15,32 @@ export interface RestoMenuGridProps {
 export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [selectedItemForModal, setSelectedItemForModal] = useState<RestoMenuItem | null>(null)
 
     // Get all unique categories for badges
     const categories = useMemo(() => {
-        const cats = new Set<string>()
+        const catMap = new Map<string, { name: string, order_index: number }>()
+        let hasOthers = false;
+
         items.forEach(item => {
-            if (item.category) cats.add(item.category)
-            else cats.add("Otros")
+            if (item.category && item.category.name) {
+                const cat: any = item.category;
+                catMap.set(cat.name, {
+                    name: cat.name,
+                    order_index: cat.order_index ?? 9999
+                })
+            } else {
+                hasOthers = true;
+            }
         })
-        return Array.from(cats).sort()
+        
+        const sortedCats = Array.from(catMap.values())
+            .sort((a, b) => a.order_index - b.order_index)
+            .map(c => c.name)
+            
+        if (hasOthers) sortedCats.push("Otros")
+        
+        return sortedCats
     }, [items])
 
     const filteredItems = useMemo(() => {
@@ -30,7 +48,7 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
 
-            const itemCategory = item.category || "Otros"
+            const itemCategory = item.category?.name || "Otros"
             const matchesCategory = !selectedCategory || itemCategory === selectedCategory
 
             return matchesSearch && matchesCategory
@@ -84,6 +102,7 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
                             item={item}
                             orgId={orgId}
                             primaryColor={primaryColor}
+                            onSelect={() => setSelectedItemForModal(item)}
                         />
                     ))
                 ) : (
@@ -92,6 +111,15 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
                     </div>
                 )}
             </div>
+
+            {selectedItemForModal && (
+                <FoodModal 
+                    item={selectedItemForModal} 
+                    orgId={orgId} 
+                    primaryColor={primaryColor}
+                    onClose={() => setSelectedItemForModal(null)} 
+                />
+            )}
         </div>
     )
 }

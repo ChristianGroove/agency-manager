@@ -274,3 +274,4 @@ export type WorkOrder = {
         email: string
     }
 }
+export * from './resto-menu'
