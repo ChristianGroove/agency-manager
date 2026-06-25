@@ -295,7 +295,7 @@ export async function removeMember(userId: string) {
     }
 
     try {
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .delete()
             .match({ organization_id: orgId, user_id: userId })
@@ -327,7 +327,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
         // Fetch the target role's hierarchy to sync the legacy 'role' column.
         // This is critical: the assignment-engine and DB-level checks read
         // the legacy column, so it must reflect the actual access level.
-        const { data: roleData } = await (await createClient())
+        const { data: roleData } = await supabaseAdmin
             .from('organization_roles')
             .select('hierarchy_level')
             .eq('id', newRoleId)
@@ -338,7 +338,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
                          : hierarchyLevel >= 50 ? 'admin'
                          : 'member'
 
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .update({
                 role_id: newRoleId,
@@ -376,7 +376,7 @@ export async function updateMemberPermissions(
         return { success: false, error: "No tienes permisos para editar permisos" }
     }
 
-    const { data: member } = await (await createClient())
+    const { data: member } = await supabaseAdmin
         .from('organization_members')
         .select(`
             permissions, 
@@ -406,7 +406,7 @@ export async function updateMemberPermissions(
     }
 
     try {
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .update({ permissions: newPermissions })
             .match({ organization_id: orgId, user_id: userId })
@@ -546,7 +546,7 @@ export async function createUserManually(data: {
 
     try {
         // 1. Create User via Admin API
-        let { data: userData, error: createError } = await (await createClient()).auth.admin.createUser({
+        let { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
             password: data.password,
             email_confirm: true,
@@ -557,7 +557,7 @@ export async function createUserManually(data: {
 
         if (createError) {
             if (createError.message?.includes("already been registered")) {
-                const { data: profile } = await (await createClient())
+                const { data: profile } = await supabaseAdmin
                     .from('profiles')
                     .select('id')
                     .eq('email', data.email)
@@ -567,7 +567,7 @@ export async function createUserManually(data: {
                     return { success: false, error: "El correo está registrado pero no pudimos recuperar el usuario." }
                 }
 
-                const { data: updatedUser, error: updateError } = await (await createClient()).auth.admin.updateUserById(
+                const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
                     profile.id,
                     {
                         password: data.password,
@@ -590,7 +590,7 @@ export async function createUserManually(data: {
 
         // 2. Asegurar Perfil (Upsert)
         // Nota: Quitamos 'email' porque no existe en la tabla profiles (está en auth.users y organization_members)
-        const { error: profileError } = await (await createClient())
+        const { error: profileError } = await supabaseAdmin
             .from('profiles')
             .upsert({
                 id: userId,
@@ -609,7 +609,7 @@ export async function createUserManually(data: {
 
         // 3. Añadir a Miembros de la Organización
         // Obtenemos el nombre del rol para mapearlo a la columna legada 'role' y evitar fallos de constraint
-        const { data: roleData } = await (await createClient())
+        const { data: roleData } = await supabaseAdmin
             .from('organization_roles')
             .select('name')
             .eq('id', data.role)
@@ -619,7 +619,7 @@ export async function createUserManually(data: {
         const legacyRole = (roleName.includes('admin') || roleName.includes('administrador')) ? 'admin' : 
                           (roleName.includes('dueño') || roleName.includes('owner')) ? 'owner' : 'member'
 
-        const { error: memberError } = await (await createClient())
+        const { error: memberError } = await supabaseAdmin
             .from('organization_members')
             .insert({
                 organization_id: orgId,
