@@ -10,12 +10,12 @@ import {
 import {
     Users, DollarSign, TrendingUp, MessageSquare, Target, Award,
     BarChart3, PieChart, Activity, RefreshCw, Clock, Calendar as CalendarIcon,
-    AlertTriangle, ArrowUpRight, ArrowDownRight, UserCheck, ShieldCheck, Sparkles
+    AlertTriangle, ArrowUpRight, ArrowDownRight, UserCheck, ShieldCheck, Sparkles, FileText, Download
 } from 'lucide-react'
 import { cn } from '@/modules/infrastructure/utils/utils'
 import { getAdvancedReports, type AdvancedReportData, getBase64Image } from '@/modules/features/crm/services/logic/analytics-actions'
 import { getEffectiveBranding } from '@/modules/core/branding/actions'
-import { generateCRMReportPDF } from '@/modules/features/crm/services/crm-report-generator'
+import { generateCRMReportPDF, generateAgentReportPDF } from '@/modules/features/crm/services/crm-report-generator'
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
-import { FileText, Download } from 'lucide-react'
 import type { BrandingConfig } from '@/types/branding'
 import { SectionHeader } from '@/components/layout/section-header'
 
@@ -38,6 +37,7 @@ export default function ReportsPage() {
     const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [exporting, setExporting] = useState(false)
+    const [exportingAgent, setExportingAgent] = useState<string | null>(null)
     const [selectedPreset, setSelectedPreset] = useState('30d')
     const [dateRange, setDateRange] = useState<{ from: Date, to: Date }>({
         from: startOfDay(subDays(new Date(), 30)),
@@ -104,6 +104,29 @@ export default function ReportsPage() {
             console.error("Export error:", error)
         } finally {
             setExporting(false)
+        }
+    }
+
+    const handleExportAgentPdf = async (agentId: string, agentName: string) => {
+        if (!reportData || !branding) return
+        setExportingAgent(agentId)
+        try {
+            const blob = await generateAgentReportPDF({
+                agentId,
+                reportData,
+                branding,
+                dateRange
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `Reporte_Agente_${agentName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (error) {
+            console.error("Agent export error:", error)
+        } finally {
+            setExportingAgent(null)
         }
     }
 
@@ -354,6 +377,7 @@ export default function ReportsPage() {
                                 <th className="px-6 py-4 text-center">Respuesta (Avg)</th>
                                 <th className="px-6 py-4 text-center">Tiempo Conectado</th>
                                 <th className="px-6 py-4 text-center">SLA (&lt; 5s)</th>
+                                <th className="px-6 py-4 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -392,6 +416,22 @@ export default function ReportsPage() {
                                         >
                                             {agent.sla_met_percentage}%
                                         </Badge>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleExportAgentPdf(agent.agent_id, agent.agent_name)}
+                                            disabled={exportingAgent === agent.agent_id}
+                                            className="text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+                                            title="Descargar Informe Individual"
+                                        >
+                                            {exportingAgent === agent.agent_id ? (
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <FileText className="w-4 h-4" />
+                                            )}
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}
