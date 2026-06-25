@@ -295,7 +295,7 @@ export async function removeMember(userId: string) {
     }
 
     try {
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .delete()
             .match({ organization_id: orgId, user_id: userId })
@@ -327,7 +327,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
         // Fetch the target role's hierarchy to sync the legacy 'role' column.
         // This is critical: the assignment-engine and DB-level checks read
         // the legacy column, so it must reflect the actual access level.
-        const { data: roleData } = await (await createClient())
+        const { data: roleData } = await supabaseAdmin
             .from('organization_roles')
             .select('hierarchy_level')
             .eq('id', newRoleId)
@@ -338,7 +338,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
                          : hierarchyLevel >= 50 ? 'admin'
                          : 'member'
 
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .update({
                 role_id: newRoleId,
@@ -376,7 +376,7 @@ export async function updateMemberPermissions(
         return { success: false, error: "No tienes permisos para editar permisos" }
     }
 
-    const { data: member } = await (await createClient())
+    const { data: member } = await supabaseAdmin
         .from('organization_members')
         .select(`
             permissions, 
@@ -406,7 +406,7 @@ export async function updateMemberPermissions(
     }
 
     try {
-        const { error } = await (await createClient())
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .update({ permissions: newPermissions })
             .match({ organization_id: orgId, user_id: userId })
