@@ -38,12 +38,13 @@ export default function ReportsPage() {
     const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [exporting, setExporting] = useState(false)
+    const [selectedPreset, setSelectedPreset] = useState('30d')
     const [dateRange, setDateRange] = useState<{ from: Date, to: Date }>({
-        from: startOfDay(new Date()),
+        from: startOfDay(subDays(new Date(), 30)),
         to: endOfDay(new Date())
     })
     const [tempDateRange, setTempDateRange] = useState<{ from?: Date, to?: Date }>({
-        from: startOfDay(new Date()),
+        from: startOfDay(subDays(new Date(), 30)),
         to: endOfDay(new Date())
     })
     const [calendarOpen, setCalendarOpen] = useState(false)
@@ -138,21 +139,27 @@ export default function ReportsPage() {
                             Exportar PDF
                         </Button>
 
-                        <Select defaultValue="today" onValueChange={(val) => {
+                        <Select value={selectedPreset} onValueChange={(val) => {
                             const now = new Date()
+                            setSelectedPreset(val)
                             if (val === 'today') setDateRange({ from: startOfDay(now), to: endOfDay(now) })
-                            if (val === '7d') setDateRange({ from: subDays(now, 7), to: now })
-                            if (val === '15d') setDateRange({ from: subDays(now, 15), to: now })
-                            if (val === '30d') setDateRange({ from: subDays(now, 30), to: now })
+                            if (val === '7d') setDateRange({ from: startOfDay(subDays(now, 7)), to: endOfDay(now) })
+                            if (val === '15d') setDateRange({ from: startOfDay(subDays(now, 15)), to: endOfDay(now) })
+                            if (val === '30d') setDateRange({ from: startOfDay(subDays(now, 30)), to: endOfDay(now) })
+                            if (val === '60d') setDateRange({ from: startOfDay(subDays(now, 60)), to: endOfDay(now) })
+                            if (val === '90d') setDateRange({ from: startOfDay(subDays(now, 90)), to: endOfDay(now) })
                         }}>
                             <SelectTrigger className="w-[160px] bg-white dark:bg-transparent border-slate-200 dark:border-white/10 rounded-xl">
-                                <SelectValue placeholder="Rápido: Hoy" />
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="today">Hoy</SelectItem>
                                 <SelectItem value="7d">Últimos 7 días</SelectItem>
                                 <SelectItem value="15d">Últimos 15 días</SelectItem>
                                 <SelectItem value="30d">Últimos 30 días</SelectItem>
+                                <SelectItem value="60d">Últimos 60 días</SelectItem>
+                                <SelectItem value="90d">Últimos 90 días</SelectItem>
+                                <SelectItem value="custom" className="hidden">Personalizado</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -182,6 +189,7 @@ export default function ReportsPage() {
                                                 from: startOfDay(tempDateRange.from), 
                                                 to: endOfDay(tempDateRange.to) 
                                             })
+                                            setSelectedPreset('custom')
                                             setCalendarOpen(false)
                                         }
                                     }} disabled={!tempDateRange.from || !tempDateRange.to} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20">
@@ -201,13 +209,22 @@ export default function ReportsPage() {
             <div className="space-y-6 pt-6">
 
             {/* KPI Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 px-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 px-1">
                 <Card className="p-5 glass-card bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-transparent relative overflow-hidden group">
-                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Total Leads</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Leads Nuevos</p>
                     <div className="flex items-end gap-2">
                         <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary?.total_leads ?? 0)}</h3>
                     </div>
                     <Users className="absolute right-4 bottom-4 w-6 h-6 text-blue-500/20" />
+                </Card>
+
+                <Card className="p-5 glass-card bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 dark:from-cyan-500/20 dark:to-transparent relative overflow-hidden group">
+                    <p className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 mb-1">Leads Activos</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary?.active_leads ?? 0)}</h3>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">Con conversaciones en el período</p>
+                    <MessageSquare className="absolute right-4 bottom-4 w-6 h-6 text-cyan-500/20" />
                 </Card>
 
                 <Card className="p-5 glass-card bg-gradient-to-br from-purple-500/10 to-purple-600/5 dark:from-purple-500/20 dark:to-transparent relative overflow-hidden group">

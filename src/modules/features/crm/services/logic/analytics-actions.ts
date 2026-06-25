@@ -2,6 +2,7 @@
 
 import { createClient } from '@/modules/core/database/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { unstable_noStore as noStore } from 'next/cache'
 
 const PUBLIC_ANALYTICS_ERROR = "No se pudieron cargar las metricas de CRM"
 const PUBLIC_REPORTS_ERROR = "No se pudo generar el reporte"
@@ -134,6 +135,7 @@ export interface AdvancedReportData {
     }
     summary: {
         total_leads: number
+        active_leads: number
         won_leads: number
         abandoned_leads: number
         avg_response_time: number
@@ -530,6 +532,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 }
 
 export async function getAdvancedReports(startDate: string, endDate: string, orgId?: string): Promise<{ success: boolean, data?: AdvancedReportData, error?: string }> {
+    noStore()
     try {
         const targetOrgId = orgId || await getOrgId()
         
