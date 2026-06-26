@@ -13,7 +13,7 @@ import {
     MessageSquare, Zap, Clock, AlertCircle, RefreshCw
 } from "lucide-react"
 import { toast } from "sonner"
-import { MessageTemplate, getTemplates, syncTemplatesFromMeta } from "../actions/templates"
+import { MessageTemplate, getTemplatesForConversation, syncTemplatesForConversation } from "../actions/templates"
 import { sendTemplateMessage } from "@/modules/features/messaging/send-template-action"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -80,7 +80,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
         try {
             // Auto-sync from Meta to ensure we have the latest templates
             try {
-                const result = await syncTemplatesFromMeta()
+                const result = await syncTemplatesForConversation(conversationId)
                 console.log(`[TemplatePicker] Synced ${result.synced} templates from Meta`)
                 if (result.errors.length > 0) {
                     console.warn('[TemplatePicker] Sync errors:', result.errors)
@@ -91,7 +91,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                 setSyncError(msg)
             }
 
-            const all = await getTemplates()
+            const all = await getTemplatesForConversation(conversationId)
             // Only show APPROVED templates that genuinely exist in Meta (have meta_id)
             setTemplates(all.filter(t => t.status === 'APPROVED' && t.meta_id))
         } catch {

@@ -351,7 +351,7 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
                     content: extractBodyText(mt.components),
                     updated_at: new Date().toISOString()
                 }, {
-                    onConflict: 'organization_id,name,language'
+                    onConflict: 'organization_id,channel_id,name,language'
                 })
 
             if (upsertError) {
@@ -501,3 +501,33 @@ export async function deleteTemplateFromMeta(templateId: string, channelId?: str
     return { success: true }
 }
 
+/**
+ * Resolves the channel_id for a given conversation.
+ */
+async function getChannelIdForConversation(conversationId: string): Promise<string | null> {
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from('conversations')
+        .select('channel_id')
+        .eq('id', conversationId)
+        .single()
+    return data?.channel_id || null
+}
+
+/**
+ * Get templates specifically approved for the channel of a given conversation.
+ */
+export async function getTemplatesForConversation(conversationId: string): Promise<MessageTemplate[]> {
+    const channelId = await getChannelIdForConversation(conversationId)
+    if (!channelId) throw new Error("Conversation channel not found")
+    return getTemplates(channelId)
+}
+
+/**
+ * Sync templates for the specific WABA account associated with a given conversation.
+ */
+export async function syncTemplatesForConversation(conversationId: string): Promise<{ synced: number, errors: string[] }> {
+    const channelId = await getChannelIdForConversation(conversationId)
+    if (!channelId) throw new Error("Conversation channel not found")
+    return syncTemplatesFromMeta(channelId)
+}
