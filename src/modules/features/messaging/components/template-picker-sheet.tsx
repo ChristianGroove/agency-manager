@@ -132,7 +132,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
             const bodyParams = bodyVars.map(v => variableValues[v] || '')
             const headerParams = headerVars.length > 0 ? headerVars.map(v => variableValues[v] || '') : undefined
 
-            await sendTemplateMessage({
+            const res = await sendTemplateMessage({
                 conversationId,
                 templateName: selectedTemplate.name,
                 templateLanguage: selectedTemplate.language,
@@ -140,7 +140,13 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                 headerParameters: headerParams
             })
 
-            toast.success("Plantilla enviada âœ“")
+            if (res && res.error) {
+                toast.error(res.error)
+                setSending(false)
+                return
+            }
+
+            toast.success("Plantilla enviada con éxito")
             onOpenChange(false)
             onSent?.()
         } catch (error: any) {

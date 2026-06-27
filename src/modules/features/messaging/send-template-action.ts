@@ -99,10 +99,10 @@ export async function sendTemplateMessage(input: {
 
     // 1. Auth Check
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error("Unauthorized")
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     // 2. Fetch Conversation with Lead phone
     const { data: conversation, error: convError } = await supabase
@@ -120,7 +120,7 @@ export async function sendTemplateMessage(input: {
     }
 
     const recipientPhone = conversation.leads?.phone || (conversation as any).phone
-    if (!recipientPhone) throw new Error("Contact has no phone number")
+    if (!recipientPhone) return { success: false, error: "Contact has no phone number" }
 
     // 3. Resolve Meta Connection (same pattern as sendMessage)
     let connection = null
@@ -147,7 +147,7 @@ export async function sendTemplateMessage(input: {
         connection = defaultConn
     }
     if (!connection) {
-        throw new Error("No active WhatsApp connection. Configure one in Settings > Integrations.")
+        return { success: false, error: "No active WhatsApp connection. Configure one in Settings > Integrations." }
     }
 
     // 4. Extract credentials
@@ -167,7 +167,7 @@ export async function sendTemplateMessage(input: {
         const envToken = process.env.META_API_TOKEN
         const envPhoneId = process.env.META_PHONE_NUMBER_ID
         if (!envToken || !envPhoneId) {
-            throw new Error("Missing Meta credentials. Please re-configure the channel.")
+            return { success: false, error: "Missing Meta credentials. Please re-configure the channel." }
         }
     }
 
@@ -244,7 +244,7 @@ export async function sendTemplateMessage(input: {
             templateName: input.templateName,
         })
         const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
-        throw new Error(publicTemplateMessageError(errorMsg))
+        return { success: false, error: publicTemplateMessageError(errorMsg) }
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`

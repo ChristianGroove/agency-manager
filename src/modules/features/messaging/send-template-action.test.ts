@@ -141,12 +141,12 @@ describe('sendTemplateMessage', () => {
         }))
 
         const { sendTemplateMessage } = await import('./send-template-action')
-        await expect(sendTemplateMessage({
+        const res = await sendTemplateMessage({
             conversationId: 'conversation-secret-id',
             templateName: 'payment_reminder',
             templateLanguage: 'es',
             bodyParameters: ['client-secret-name'],
-        })).rejects.toThrow(/^Conversation not found$/)
+        }); expect(res.error).toMatch(/^Conversation not found$/)
 
         expect(fetchMock).not.toHaveBeenCalled()
         expect(mocks.assertUsageAllowed).not.toHaveBeenCalled()
@@ -227,12 +227,12 @@ describe('sendTemplateMessage', () => {
         mocks.createClient.mockResolvedValue(createSupabaseMock())
 
         const { sendTemplateMessage } = await import('./send-template-action')
-        await expect(sendTemplateMessage({
+        const res = await sendTemplateMessage({
             conversationId: 'conversation-secret-id',
             templateName: 'payment_reminder',
             templateLanguage: 'es',
             bodyParameters: ['client-secret-name'],
-        })).rejects.toThrow(/^Template message send failed$/)
+        }); expect(res.error).toMatch(/^Template message send failed$/)
 
         const logText = collectConsoleCalls(logSpy, errorSpy)
         expect(logText).not.toContain('+571234567890')
@@ -245,3 +245,4 @@ describe('sendTemplateMessage', () => {
         expect(logText).toContain('hasMessage')
     })
 })
+
