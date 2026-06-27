@@ -13,7 +13,7 @@ function isDeployedRuntime() {
 }
 
 function publicTemplateMessageError(error: unknown, fallback = PUBLIC_SEND_TEMPLATE_ERROR) {
-    if (isDeployedRuntime()) return fallback
+    // TEMPORARILY DISABLED to see real Meta errors: if (isDeployedRuntime()) return fallback
     if (typeof error === 'string' && error) return error
     if (error instanceof Error && error.message) return error.message
     if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
