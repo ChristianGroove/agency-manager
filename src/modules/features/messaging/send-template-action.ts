@@ -92,9 +92,11 @@ export async function sendTemplateMessage(input: {
     conversationId: string
     templateName: string
     templateLanguage: string
-    bodyParameters: string[]       // Values for {{1}}, {{2}}, etc.
-    headerParameters?: string[]    // Header variable values (if any)
-}) {
+    bodyParameters?: string[]
+    headerParameters?: string[]
+    mediaHeaderUrl?: string
+    mediaHeaderType?: string // 'image' | 'video' | 'document'
+}): Promise<{ success: boolean, messageId?: string, error?: string }> {
     const supabase = await createClient()
 
     // 1. Auth Check
@@ -177,8 +179,22 @@ export async function sendTemplateMessage(input: {
     // 5. Build HSM Template Payload (Graph API v24.0)
     const templateComponents: any[] = []
 
-    // Header parameters (if any)
-    if (input.headerParameters && input.headerParameters.length > 0) {
+    // Media header (image/video/document)
+    if (input.mediaHeaderUrl && input.mediaHeaderType) {
+        templateComponents.push({
+            type: "header",
+            parameters: [
+                {
+                    type: input.mediaHeaderType,
+                    [input.mediaHeaderType]: {
+                        link: input.mediaHeaderUrl
+                    }
+                }
+            ]
+        })
+    }
+    // Text Header parameters (if any)
+    else if (input.headerParameters && input.headerParameters.length > 0) {
         templateComponents.push({
             type: "header",
             parameters: input.headerParameters.map(val => ({

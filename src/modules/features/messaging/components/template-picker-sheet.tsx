@@ -121,7 +121,16 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
     const filledBody = fillVariables(bodyText, variableValues)
     const filledHeader = fillVariables(headerText, variableValues)
 
-    const allFilled = allVars.length === 0 || allVars.every(v => variableValues[v]?.trim())
+    const hasMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComponent?.format || '')
+    const [mediaUrl, setMediaUrl] = useState("")
+
+    // Reset media url when template changes
+    useEffect(() => {
+        setMediaUrl("")
+    }, [selectedTemplate])
+
+    const allFilled = (allVars.length === 0 || allVars.every(v => variableValues[v]?.trim())) && 
+                     (!hasMediaHeader || mediaUrl.trim().length > 0)
 
     const handleSend = async () => {
         if (!selectedTemplate || !allFilled) return
@@ -137,7 +146,9 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                 templateName: selectedTemplate.name,
                 templateLanguage: selectedTemplate.language,
                 bodyParameters: bodyParams,
-                headerParameters: headerParams
+                headerParameters: headerParams,
+                mediaHeaderUrl: hasMediaHeader ? mediaUrl.trim() : undefined,
+                mediaHeaderType: hasMediaHeader ? headerComponent?.format?.toLowerCase() : undefined
             })
 
             if (res && res.error) {
@@ -346,16 +357,33 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                 </div>
 
                                 {/* Variable Inputs */}
-                                {allVars.length > 0 && (
+                                {(allVars.length > 0 || hasMediaHeader) && (
                                     <>
                                         <Separator />
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <AlertCircle className="h-4 w-4 text-amber-500" />
                                                 <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                    Completa las variables
+                                                    Completa los campos requeridos
                                                 </Label>
                                             </div>
+
+                                            {/* Media Header Input */}
+                                            {hasMediaHeader && (
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">
+                                                        URL de {headerComponent?.format === 'IMAGE' ? 'Imagen' : headerComponent?.format === 'VIDEO' ? 'Video' : 'Documento'} (Requerido)
+                                                    </Label>
+                                                    <Input
+                                                        placeholder={`Ingresa el enlace público del archivo`}
+                                                        value={mediaUrl}
+                                                        onChange={(e) => setMediaUrl(e.target.value)}
+                                                        className="h-10 bg-gray-50 dark:bg-zinc-800"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            )}
+
                                             {allVars.map((varName, i) => {
                                                 const isHeader = headerVars.includes(varName)
                                                 return (
@@ -380,10 +408,10 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                     </>
                                 )}
 
-                                {allVars.length === 0 && (
-                                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-sm text-green-700 dark:text-green-400">
+                                {!hasMediaHeader && allVars.length === 0 && (
+                                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-700 dark:text-green-400">
                                         <CheckCircle2 className="h-4 w-4" />
-                                        Esta plantilla no requiere variables
+                                        <span className="text-sm font-medium">Esta plantilla no requiere variables</span>
                                     </div>
                                 )}
                             </div>
