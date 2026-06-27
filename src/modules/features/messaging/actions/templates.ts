@@ -508,10 +508,10 @@ async function getChannelIdForConversation(conversationId: string): Promise<stri
     const supabase = await createClient()
     const { data } = await supabase
         .from('conversations')
-        .select('channel_id')
+        .select('connection_id')
         .eq('id', conversationId)
         .single()
-    return data?.channel_id || null
+    return data?.connection_id || null
 }
 
 /**
