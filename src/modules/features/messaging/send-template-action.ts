@@ -207,7 +207,7 @@ export async function sendTemplateMessage(input: {
         template: {
             name: input.templateName,
             language: { code: input.templateLanguage },
-            components: templateComponents
+            ...(templateComponents.length > 0 ? { components: templateComponents } : {})
         }
     }
 
