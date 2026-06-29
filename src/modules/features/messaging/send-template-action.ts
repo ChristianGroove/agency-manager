@@ -271,8 +271,8 @@ export async function sendTemplateMessage(input: {
     })
 
     // 7. Build preview text for DB storage
-    let previewText = `ðŸ“‹ Plantilla: ${input.templateName}`
-    if (input.bodyParameters.length > 0) {
+    let previewText = `📝 Plantilla: ${input.templateName}`
+    if (input.bodyParameters && input.bodyParameters.length > 0) {
         previewText += ` (${input.bodyParameters.join(', ')})`
     }
 
