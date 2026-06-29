@@ -22,8 +22,10 @@ export interface TemplateComponent {
     buttons?: TemplateButton[]
     example?: {
         header_handle?: string[]
+        header_url?: string[]
         body_text?: string[][]
     }
+    pixy_media_url?: string
 }
 
 export interface MessageTemplate {
@@ -395,6 +397,12 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
             if (c.text) comp.text = c.text
             if (c.buttons) comp.buttons = c.buttons
             if (c.example) comp.example = c.example
+            
+            // Map pixy_media_url to Meta's example.header_url for approval
+            if (c.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format) && c.pixy_media_url) {
+                if (!comp.example) comp.example = {}
+                comp.example.header_url = [c.pixy_media_url] // Must be an array of length 1
+            }
             return comp
         })
 

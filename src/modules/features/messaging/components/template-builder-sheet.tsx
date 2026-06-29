@@ -20,6 +20,8 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { supabase } from "@/modules/core/database/supabase"
+import { UploadCloud } from "lucide-react"
 
 interface TemplateBuilderSheetProps {
     open: boolean
@@ -43,6 +45,8 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
     const [headerType, setHeaderType] = useState<'NONE' | 'TEXT' | 'MEDIA'>('NONE')
     const [headerFormat, setHeaderFormat] = useState<'IMAGE' | 'VIDEO' | 'DOCUMENT' | null>(null)
     const [headerText, setHeaderText] = useState("")
+    const [mediaUrl, setMediaUrl] = useState("")
+    const [isUploading, setIsUploading] = useState(false)
 
     const [bodyText, setBodyText] = useState("")
 
@@ -84,6 +88,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                     } else {
                         setHeaderType('MEDIA')
                         setHeaderFormat(header.format as any)
+                        setMediaUrl(header.pixy_media_url || header.example?.header_url?.[0] || "")
                     }
                 } else {
                     setHeaderType('NONE')
@@ -98,6 +103,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                 setHeaderType('NONE')
                 setHeaderFormat(null)
                 setHeaderText("")
+                setMediaUrl("")
                 setBodyText("")
                 setFooterText("")
                 setButtons([])
@@ -113,7 +119,9 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
         if (headerType === 'TEXT' && headerText) {
             components.push({ type: 'HEADER', format: 'TEXT', text: headerText })
         } else if (headerType === 'MEDIA' && headerFormat) {
-            components.push({ type: 'HEADER', format: headerFormat })
+            const comp: TemplateComponent = { type: 'HEADER', format: headerFormat }
+            if (mediaUrl) comp.pixy_media_url = mediaUrl
+            components.push(comp)
         }
 
         // BODY
@@ -298,23 +306,75 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                 )}
 
                                                 {headerType === 'MEDIA' && (
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {['IMAGE', 'VIDEO', 'DOCUMENT'].map((f) => (
-                                                            <div
-                                                                key={f}
-                                                                onClick={() => setHeaderFormat(f as any)}
-                                                                className={`
-                                                                    py-3 rounded-lg border flex flex-col items-center justify-center gap-1 cursor-pointer
-                                                                    ${headerFormat === f ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'hover:bg-slate-50'}
-                                                                `}
-                                                            >
-                                                                {f === 'IMAGE' && <ImageIcon className="w-4 h-4" />}
-                                                                {f === 'VIDEO' && <Video className="w-4 h-4" />}
-                                                                {/* @ts-ignore */}
-                                                                {f === 'DOCUMENT' && <Type className="w-4 h-4" />}
-                                                                <span className="text-[10px] font-medium">{f === 'IMAGE' ? t('crm.inbox.chat.templates.image') : f === 'VIDEO' ? t('crm.inbox.chat.templates.video') : t('crm.inbox.chat.templates.doc')}</span>
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {['IMAGE', 'VIDEO', 'DOCUMENT'].map((f) => (
+                                                                <div
+                                                                    key={f}
+                                                                    onClick={() => setHeaderFormat(f as any)}
+                                                                    className={`
+                                                                        py-3 rounded-lg border flex flex-col items-center justify-center gap-1 cursor-pointer
+                                                                        ${headerFormat === f ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'hover:bg-slate-50'}
+                                                                    `}
+                                                                >
+                                                                    {f === 'IMAGE' && <ImageIcon className="w-4 h-4" />}
+                                                                    {f === 'VIDEO' && <Video className="w-4 h-4" />}
+                                                                    {/* @ts-ignore */}
+                                                                    {f === 'DOCUMENT' && <Type className="w-4 h-4" />}
+                                                                    <span className="text-[10px] font-medium">{f === 'IMAGE' ? t('crm.inbox.chat.templates.image') : f === 'VIDEO' ? t('crm.inbox.chat.templates.video') : t('crm.inbox.chat.templates.doc')}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        {headerFormat && (
+                                                            <div className="border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center">
+                                                                {isUploading ? (
+                                                                    <div className="flex flex-col items-center space-y-2 py-4">
+                                                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                                                                        <span className="text-xs text-muted-foreground">Subiendo archivo...</span>
+                                                                    </div>
+                                                                ) : mediaUrl ? (
+                                                                    <div className="w-full space-y-2 text-left">
+                                                                        <div className="text-xs font-medium text-green-600">Archivo subido correctamente</div>
+                                                                        <Input value={mediaUrl} readOnly className="h-8 text-xs bg-slate-50" />
+                                                                        <Button type="button" variant="outline" size="sm" onClick={() => setMediaUrl("")} className="w-full h-8 text-xs">Cambiar Archivo</Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="py-4 space-y-3">
+                                                                        <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-500">
+                                                                            <UploadCloud className="w-5 h-5" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-sm font-medium">Subir archivo {headerFormat}</p>
+                                                                            <p className="text-xs text-muted-foreground">Se guardará y usará automáticamente</p>
+                                                                        </div>
+                                                                        <div className="relative">
+                                                                            <Input 
+                                                                                type="file" 
+                                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                                                                accept={headerFormat === 'IMAGE' ? 'image/*' : headerFormat === 'VIDEO' ? 'video/*' : '.pdf,.doc,.docx'}
+                                                                                onChange={async (e) => {
+                                                                                    const file = e.target.files?.[0]
+                                                                                    if (!file) return
+                                                                                    setIsUploading(true)
+                                                                                    try {
+                                                                                        const fileName = `${Date.now()}_${file.name}`
+                                                                                        const { data, error } = await supabase.storage.from('whatsapp-media').upload(fileName, file)
+                                                                                        if (error) throw error
+                                                                                        const { data: urlData } = supabase.storage.from('whatsapp-media').getPublicUrl(data.path)
+                                                                                        setMediaUrl(urlData.publicUrl)
+                                                                                    } catch (err: any) {
+                                                                                        toast.error("Error al subir archivo", { description: err.message })
+                                                                                    } finally {
+                                                                                        setIsUploading(false)
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                            <Button type="button" size="sm" variant="secondary" className="pointer-events-none">Seleccionar Archivo</Button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ))}
+                                                        )}
                                                     </div>
                                                 )}
                                             </AccordionContent>

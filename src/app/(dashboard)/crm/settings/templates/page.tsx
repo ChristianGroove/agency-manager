@@ -81,6 +81,23 @@ export default function TemplatesPage() {
         }
     }
 
+    const handleSubmitToMeta = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!confirm("¿Enviar esta plantilla a revisión de Meta? Una vez enviada, no se podrá editar localmente hasta que sea aprobada o rechazada.")) return
+        try {
+            const res = await submitTemplateToMeta(id, selectedChannelId)
+            if (res.success) {
+                toast.success("Plantilla enviada a revisión correctamente.")
+                await loadTemplates()
+            } else {
+                toast.error(res.error || "Error al enviar a Meta")
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Error al enviar a Meta")
+        }
+    }
+
+
     const handleSync = async () => {
         if (!selectedChannelId) return
         setIsSyncing(true)
@@ -273,13 +290,24 @@ export default function TemplatesPage() {
                                                 ? template.status.toLowerCase()
                                                 : t.status.local_only}
                                         </span>
-                                        <button
-                                            onClick={(e) => handleDelete(template.id, e)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                                            title="Eliminar plantilla"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+                                        <div className="flex gap-1">
+                                            {!template.meta_id && (
+                                                <button
+                                                    onClick={(e) => handleSubmitToMeta(template.id, e)}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20"
+                                                    title="Enviar a revisión de Meta"
+                                                >
+                                                    <Upload className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={(e) => handleDelete(template.id, e)}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                                title="Eliminar plantilla"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>

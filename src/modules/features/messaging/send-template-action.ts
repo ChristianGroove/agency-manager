@@ -97,7 +97,8 @@ export async function sendTemplateMessage(input: {
     mediaHeaderUrl?: string
     mediaHeaderType?: string // 'image' | 'video' | 'document'
 }): Promise<{ success: boolean, messageId?: string, error?: string }> {
-    const supabase = await createClient()
+    try {
+        const supabase = await createClient()
 
     // 1. Auth Check
     const { data: { user } } = await supabase.auth.getUser()
@@ -115,10 +116,13 @@ export async function sendTemplateMessage(input: {
         .single()
 
     if (convError || !conversation) {
-        throw new Error(publicTemplateMessageError(
-            convError || `Conversation not found: ${input.conversationId}`,
-            PUBLIC_CONVERSATION_NOT_FOUND_ERROR
-        ))
+        return { 
+            success: false, 
+            error: publicTemplateMessageError(
+                convError || `Conversation not found: ${input.conversationId}`,
+                PUBLIC_CONVERSATION_NOT_FOUND_ERROR
+            )
+        }
     }
 
     const recipientPhone = conversation.leads?.phone || (conversation as any).phone
@@ -297,5 +301,9 @@ export async function sendTemplateMessage(input: {
 
     revalidatePath('/inbox')
     return { success: true, messageId }
+    } catch (e: any) {
+        console.error('[sendTemplateMessage] Unhandled error:', e)
+        return { success: false, error: e.message || 'Error inesperado al enviar la plantilla' }
+    }
 }
 
