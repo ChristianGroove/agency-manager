@@ -13,7 +13,7 @@ function isDeployedRuntime() {
 }
 
 function publicTemplateMessageError(error: unknown, fallback = PUBLIC_SEND_TEMPLATE_ERROR) {
-    // TEMPORARILY DISABLED to see real Meta errors: if (isDeployedRuntime()) return fallback
+    if (isDeployedRuntime()) return fallback
     if (typeof error === 'string' && error) return error
     if (error instanceof Error && error.message) return error.message
     if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
@@ -303,7 +303,7 @@ export async function sendTemplateMessage(input: {
     return { success: true, messageId }
     } catch (e: any) {
         console.error('[sendTemplateMessage] Unhandled error:', e)
-        return { success: false, error: e.message || 'Error inesperado al enviar la plantilla' }
+        return { success: false, error: publicTemplateMessageError(e) }
     }
 }
 

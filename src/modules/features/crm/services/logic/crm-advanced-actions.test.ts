@@ -28,8 +28,8 @@ vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
 }))
 
-vi.mock('./services/leads.service', () => ({
-    LeadsService: mocks.LeadsService,
+vi.mock('../contact-service', () => ({
+    ContactService: mocks.LeadsService,
 }))
 
 vi.mock('./services/crm-advanced.service', () => ({

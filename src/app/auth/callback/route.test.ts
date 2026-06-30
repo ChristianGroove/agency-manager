@@ -40,7 +40,16 @@ describe('/auth/callback', () => {
         mocks.createClient.mockResolvedValue({
             auth: {
                 exchangeCodeForSession: vi.fn(async () => ({ error: null })),
+                getUser: vi.fn(async () => ({ data: { user: { id: 'test-user-id' } }, error: null })),
             },
+            from: vi.fn(() => ({
+                select: vi.fn(() => ({
+                    eq: vi.fn(async () => ({
+                        data: [{ status: 'active' }],
+                        error: null,
+                    }))
+                }))
+            }))
         })
 
         const { GET } = await import('./route')

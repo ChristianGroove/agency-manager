@@ -161,12 +161,7 @@ export async function upsertRole(role: Partial<Role>) {
 
         if (existingRoleError || !existingRole) throw new Error('Role not found');
         
-        // Allow modifying permissions of System Roles, but protect their core attributes
-        if (existingRole.is_system_role) {
-            payload.name = existingRole.name;
-            payload.description = existingRole.description;
-            payload.hierarchy_level = existingRole.hierarchy_level;
-        }
+        if (existingRole.is_system_role) throw new Error('Cannot modify a System Role');
 
         // Update
         // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).

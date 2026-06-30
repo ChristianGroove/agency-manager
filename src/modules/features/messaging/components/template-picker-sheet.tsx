@@ -124,9 +124,19 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
     const hasMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComponent?.format || '')
     const [mediaUrl, setMediaUrl] = useState("")
 
-    // Reset media url when template changes
+    // Set media url from template if available, otherwise reset
     useEffect(() => {
-        setMediaUrl("")
+        if (!selectedTemplate) {
+            setMediaUrl("")
+            return
+        }
+        const header = selectedTemplate.components?.find(c => c.type === 'HEADER')
+        if (header && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(header.format || '')) {
+            const savedUrl = header.pixy_media_url || header.example?.header_url?.[0] || ""
+            setMediaUrl(savedUrl)
+        } else {
+            setMediaUrl("")
+        }
     }, [selectedTemplate])
 
     const allFilled = (allVars.length === 0 || allVars.every(v => variableValues[v]?.trim())) && 

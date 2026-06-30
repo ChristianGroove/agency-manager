@@ -147,7 +147,7 @@ describe('messaging template Meta actions logging', () => {
             name: 'secret_template_name',
             organization_id: 'org-secret-id',
         }), expect.objectContaining({
-            onConflict: 'organization_id,name,language',
+            onConflict: 'organization_id,channel_id,name,language',
         }))
 
         const logText = collectConsoleCalls(logSpy, errorSpy)

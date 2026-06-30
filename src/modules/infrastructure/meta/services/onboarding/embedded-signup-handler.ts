@@ -70,10 +70,9 @@ function logEmbeddedSignupHandlerError(label: string, error: unknown, details?: 
 }
 
 function publicOnboardingError(error: unknown) {
-    // TEMPORARY: Return real error in production for debugging
-    // if (isDeployedRuntime()) {
-    //     return 'Embedded signup failed';
-    // }
+    if (isDeployedRuntime()) {
+        return 'Embedded signup failed';
+    }
 
     return error instanceof Error
         ? error.message

@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         if (!result.success) {
             logEmbeddedSignupError("[EmbeddedSignup API] Onboarding failed:", result.error);
             return NextResponse.json(
-                { success: false, error: result.error || "Embedded signup failed" },
+                { success: false, error: isProductionRuntime() ? "Embedded signup failed" : (result.error || "Embedded signup failed") },
                 { status: 422 }
             );
         }
