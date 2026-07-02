@@ -272,8 +272,8 @@ export async function sendTemplateMessage(input: {
             templateLanguage: input.templateLanguage,
             templateName: input.templateName,
         })
-        const errorMsg = result?.error?.message || result?.error?.error_user_msg || result?.error?.error_data?.details || 'Failed to send template'
-        return { success: false, error: publicTemplateMessageError(errorMsg) }
+        const errorMsg = result?.error?.error_data?.details || result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
+        return { success: false, error: errorMsg }
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`

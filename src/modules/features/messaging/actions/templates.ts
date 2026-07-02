@@ -434,7 +434,7 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
     console.log('[submitTemplateToMeta] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
 
     if (!response.ok) {
-        const errorMsg = result?.error?.message || result?.error?.error_data?.details || 'Failed to submit template to Meta'
+        const errorMsg = result?.error?.error_data?.details || result?.error?.message || 'Failed to submit template to Meta'
         console.error('[submitTemplateToMeta] DIAGNOSTIC - Error details:', result?.error?.error_data)
         // Update local status
         await supabase
