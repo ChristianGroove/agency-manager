@@ -393,7 +393,10 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
         .filter((c: any) => c.type !== 'UI_METADATA')
         .map((c: any) => {
             const comp: any = { type: c.type }
-            if (c.format) comp.format = c.format
+            
+            // Format is only allowed for HEADER components
+            if (c.format && c.type === 'HEADER') comp.format = c.format
+            
             if (c.text) comp.text = c.text
             if (c.buttons) comp.buttons = c.buttons
             if (c.example) comp.example = c.example
