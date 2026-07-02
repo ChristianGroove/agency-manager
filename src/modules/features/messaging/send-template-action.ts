@@ -245,6 +245,11 @@ export async function sendTemplateMessage(input: {
     await assertUsageAllowed({ organizationId: orgId, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`
+
+    // === DIAGNOSTIC: Log full payload ===
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Full payload:', JSON.stringify(metaPayload, null, 2))
+    console.log('[sendTemplateMessage] DIAGNOSTIC - API URL:', apiUrl)
+
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -256,6 +261,10 @@ export async function sendTemplateMessage(input: {
 
     const result = await response.json()
 
+    // === DIAGNOSTIC: Log full Meta response ===
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Status:', response.status)
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
+
     if (!response.ok) {
         logTemplateError('[sendTemplateMessage] Meta API Error:', result, {
             phoneNumberId: finalPhoneId,
@@ -263,7 +272,7 @@ export async function sendTemplateMessage(input: {
             templateLanguage: input.templateLanguage,
             templateName: input.templateName,
         })
-        const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
+        const errorMsg = result?.error?.message || result?.error?.error_user_msg || result?.error?.error_data?.details || 'Failed to send template'
         return { success: false, error: publicTemplateMessageError(errorMsg) }
     }
 

@@ -397,11 +397,10 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
             if (c.text) comp.text = c.text
             if (c.buttons) comp.buttons = c.buttons
             if (c.example) comp.example = c.example
-            
-            // Map pixy_media_url to Meta's example.header_url for approval
-            if (c.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format) && c.pixy_media_url) {
-                if (!comp.example) comp.example = {}
-                comp.example.header_url = [c.pixy_media_url] // Must be an array of length 1
+            // Meta's Cloud API does not accept header_url for media examples, and requires a Resumable Upload handle.
+            // Since we don't have App ID for the handle, we omit the example for media headers to avoid Invalid Parameter errors.
+            if (c.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
+                if (comp.example) delete comp.example
             }
             return comp
         })
@@ -414,6 +413,11 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
     }
 
     const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/message_templates`
+
+    // === DIAGNOSTIC: Log full payload ===
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - URL:', url)
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Full payload:', JSON.stringify(payload, null, 2))
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -425,8 +429,13 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
 
     const result = await response.json()
 
+    // === DIAGNOSTIC: Log full Meta response ===
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Meta Response Status:', response.status)
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
+
     if (!response.ok) {
-        const errorMsg = result?.error?.message || 'Failed to submit template to Meta'
+        const errorMsg = result?.error?.message || result?.error?.error_data?.details || 'Failed to submit template to Meta'
+        console.error('[submitTemplateToMeta] DIAGNOSTIC - Error details:', result?.error?.error_data)
         // Update local status
         await supabase
             .from('messaging_templates')
