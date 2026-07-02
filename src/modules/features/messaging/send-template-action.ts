@@ -312,7 +312,7 @@ export async function sendTemplateMessage(input: {
     return { success: true, messageId }
     } catch (e: any) {
         console.error('[sendTemplateMessage] Unhandled error:', e)
-        return { success: false, error: publicTemplateMessageError(e) }
+        return { success: false, error: e.message || 'Error interno inesperado' }
     }
 }
 
