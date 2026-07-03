@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
+import { createClient } from "@/modules/core/database/supabase-server"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { EmailService } from "@/modules/features/notifications/email.service"
@@ -72,7 +73,7 @@ export class PlatformBillingService {
         amountSubtotal?: number,
         recipientEmail?: string
     }) {
-        const supabase = supabaseAdmin
+        const supabase = await createClient()
 
         // 1. Security Check: Only SuperAdmins
         const { data: { user } } = await supabase.auth.getUser()
@@ -139,7 +140,7 @@ export class PlatformBillingService {
 
     static async sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
         await requireSuperAdmin();
-        const supabase = supabaseAdmin
+        const supabase = await createClient()
 
         // 1. Fetch Invoice
         const { data: invoice, error } = await supabaseAdmin
@@ -378,7 +379,7 @@ export class PlatformBillingService {
 
     static async getPlatformPaymentMethods() {
         await requireSuperAdmin();
-        const supabase = supabaseAdmin
+        const supabase = await createClient()
         
         // 1. Find Platform Organization
         const { data: platformOrg } = await supabaseAdmin
@@ -414,7 +415,7 @@ export class PlatformBillingService {
 
     static async manualActivateSubscription(organizationId: string, options?: { expiryDate?: string, monthsToAdd?: number }) {
         await requireSuperAdmin();
-        const supabase = supabaseAdmin
+        const supabase = await createClient()
 
         // 1. Security Check
         const { data: { user } } = await supabase.auth.getUser()
