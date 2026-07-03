@@ -1,10 +1,73 @@
 'use server'
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
-import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+
+/**
+ * Portal Branding Helper (uses supabaseAdmin to work without session)
+ * Replicates the cascade logic from getEffectiveBranding but without RLS dependency
+ */
+async function getPortalBranding(orgId: string) {
+    const DEFAULT_BRANDING = {
+        name: "Pixy",
+        logos: { main: "/branding/logo dark.svg", main_light: null as string | null, portal: "/branding/iso.svg", favicon: "/pixy-isotipo.png", login_bg: null as string | null },
+        colors: { primary: "#4F46E5", secondary: "#EC4899" },
+    }
+
+    const [platformResult, orgResult, settingsResult] = await Promise.all([
+        supabaseAdmin.from('platform_settings').select('*').eq('id', 1).maybeSingle(),
+        supabaseAdmin.from('organizations').select('branding_tier_id, branding_tier:branding_tiers(id, name, features)').eq('id', orgId).maybeSingle(),
+        supabaseAdmin.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
+    ])
+
+    const platform = platformResult.data
+    const platformBranding = platform ? {
+        name: platform.agency_name || DEFAULT_BRANDING.name,
+        logos: {
+            main: platform.main_logo_url || DEFAULT_BRANDING.logos.main,
+            main_light: platform.main_logo_light_url || DEFAULT_BRANDING.logos.main_light,
+            portal: platform.portal_logo_url || DEFAULT_BRANDING.logos.portal,
+            favicon: platform.favicon_url || DEFAULT_BRANDING.logos.favicon,
+            login_bg: platform.login_background_url || DEFAULT_BRANDING.logos.login_bg,
+        },
+        colors: {
+            primary: platform.brand_color_primary || DEFAULT_BRANDING.colors.primary,
+            secondary: platform.brand_color_secondary || DEFAULT_BRANDING.colors.secondary,
+        },
+    } : DEFAULT_BRANDING
+
+    const org = orgResult.data
+    const tenantSettings = settingsResult.data
+    if (!tenantSettings) return platformBranding
+
+    const tierFeatures = (org?.branding_tier as any)?.features || {}
+    const tierId = org?.branding_tier_id || ''
+    const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
+    const canCustomizeLogo = !!tierFeatures.custom_logo || isPremiumTier
+    const canCustomizeColors = !!tierFeatures.custom_colors || isPremiumTier
+    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || (isPremiumTier && tierId.includes('whitelabel'))
+
+    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? (tenantVal || platformVal) : platformVal
+    const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? (tenantVal || platformVal) : platformVal
+    const pickGeneral = (tenantVal: any, platformVal: any) => canRemoveBranding ? (tenantVal || platformVal) : platformVal
+
+    return {
+        name: pickGeneral(tenantSettings.agency_name, platformBranding.name),
+        logos: {
+            main: pickLogo(tenantSettings.main_logo_url, platformBranding.logos.main),
+            main_light: pickLogo(tenantSettings.main_logo_light_url, platformBranding.logos.main_light),
+            portal: pickLogo(tenantSettings.portal_logo_url, platformBranding.logos.portal),
+            favicon: pickLogo(tenantSettings.isotipo_url, platformBranding.logos.favicon),
+            login_bg: pickLogo(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg),
+        },
+        colors: {
+            primary: pickColor(tenantSettings.portal_primary_color, platformBranding.colors.primary),
+            secondary: pickColor(tenantSettings.portal_secondary_color, platformBranding.colors.secondary),
+        },
+    }
+}
 
 /**
  * Core Data Fetcher for the Portal
@@ -15,7 +78,7 @@ export async function getPortalData(token: string) {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
         // 1. Try finding a CLIENT first
-        let clientQuery = (await createClient()).from('leads').select('*')
+        let clientQuery = supabaseAdmin.from('leads').select('*')
         if (isUuid) {
             clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         } else {
@@ -32,20 +95,20 @@ export async function getPortalData(token: string) {
                 }
             }
 
-            const { data: orgData } = await (await createClient())
+            const { data: orgData } = await supabaseAdmin
                 .from('organizations')
                 .select('active_app_id, saas_apps(portal_template)')
                 .eq('id', client.organization_id)
-                .single()
+                .maybeSingle()
 
             const portalTemplate = (orgData?.saas_apps as any)?.portal_template || 'b2b_dashboard'
-            const { data: rawSettings } = await (await createClient())
+            const { data: rawSettings } = await supabaseAdmin
                 .from('organization_settings')
                 .select('*')
                 .eq('organization_id', client.organization_id)
-                .single()
+                .maybeSingle()
 
-            const branding = await getEffectiveBranding(client.organization_id)
+            const branding = await getPortalBranding(client.organization_id)
 
             const settings = {
                 ...(rawSettings || {}),
@@ -72,19 +135,19 @@ export async function getPortalData(token: string) {
                 { data: appPortalConfig },
                 { data: catalogItems }
             ] = await Promise.all([
-                (await createClient()).from('invoices').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
-                isB2B ? (await createClient()).from('quotes').select('*')
+                supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
+                isB2B ? supabaseAdmin.from('quotes').select('*')
                     .eq('organization_id', client.organization_id)
                     .or(`client_id.eq.${client.id},lead_id.eq.${client.id}`)
                     .is('deleted_at', null)
                     .order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? (await createClient()).from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? (await createClient()).from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? (await createClient()).from('services').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                isB2B ? (await createClient()).from('hosting_accounts').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-                (await createClient()).from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
-                (await createClient()).from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                isB2C ? (await createClient()).from('service_catalog').select('*').eq('organization_id', client.organization_id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
+                isB2B ? supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('organization_id', client.organization_id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
+                isB2C ? supabaseAdmin.from('service_catalog').select('*').eq('organization_id', client.organization_id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
             ])
 
             // Hierarchical Module Resolution
@@ -195,7 +258,7 @@ export async function getPortalData(token: string) {
 
         // 3. Staff Flow
         if (!client && isUuid) {
-            const { data: staff } = await (await createClient())
+            const { data: staff } = await supabaseAdmin
                 .from('cleaning_staff_profiles')
                 .select('*')
                 .eq('access_token', token)
@@ -203,16 +266,16 @@ export async function getPortalData(token: string) {
                 .maybeSingle()
 
             if (staff) {
-                const { data: settings } = await (await createClient())
+                const { data: settings } = await supabaseAdmin
                     .from('organization_settings')
                     .select('*')
                     .eq('organization_id', staff.organization_id)
-                    .single()
+                    .maybeSingle()
 
                 const startOfDay = new Date()
                 startOfDay.setHours(0, 0, 0, 0)
 
-                const { data: rawJobs } = await (await createClient())
+                const { data: rawJobs } = await supabaseAdmin
                     .from('appointments')
                     .select('*')
                     .eq('staff_id', staff.id)
@@ -221,8 +284,8 @@ export async function getPortalData(token: string) {
 
                 const jobs = await Promise.all((rawJobs || []).map(async (job) => {
                     const [clientRes, serviceRes] = await Promise.all([
-                        job.client_id ? (await createClient()).from('leads').select('id, name, phone, address').eq('id', job.client_id).maybeSingle() : Promise.resolve({ data: null }),
-                        job.service_id ? (await createClient()).from('cleaning_services').select('id, name, estimated_duration_minutes').eq('id', job.service_id).maybeSingle() : Promise.resolve({ data: null })
+                        job.client_id ? supabaseAdmin.from('leads').select('id, name, phone, address').eq('id', job.client_id).maybeSingle() : Promise.resolve({ data: null }),
+                        job.service_id ? supabaseAdmin.from('cleaning_services').select('id, name, estimated_duration_minutes').eq('id', job.service_id).maybeSingle() : Promise.resolve({ data: null })
                     ])
                     return {
                         ...job,
@@ -235,7 +298,7 @@ export async function getPortalData(token: string) {
             }
 
             // Attendance Staff
-            const { data: retailStaff } = await (await createClient())
+            const { data: retailStaff } = await supabaseAdmin
                 .from('organization_staff')
                 .select('*, organization_locations(*)')
                 .eq('access_token', token)
@@ -243,13 +306,13 @@ export async function getPortalData(token: string) {
                 .maybeSingle()
 
             if (retailStaff) {
-                const { data: settings } = await (await createClient())
+                const { data: settings } = await supabaseAdmin
                     .from('organization_settings')
                     .select('*')
                     .eq('organization_id', retailStaff.organization_id)
-                    .single()
+                    .maybeSingle()
 
-                const branding = await getEffectiveBranding(retailStaff.organization_id)
+                const branding = await getPortalBranding(retailStaff.organization_id)
                 const effectiveSettings = {
                     ...(settings || {}),
                     agency_name: branding.name,
@@ -264,20 +327,20 @@ export async function getPortalData(token: string) {
         }
 
         // 4. Guest Flow
-        const { data: org } = await (await createClient())
+        const { data: org } = await supabaseAdmin
             .from('organizations')
             .select('*')
             .eq('slug', token)
-            .single()
+            .maybeSingle()
 
         if (org) {
-            const { data: rawSettings } = await (await createClient())
+            const { data: rawSettings } = await supabaseAdmin
                 .from('organization_settings')
                 .select('*')
                 .eq('organization_id', org.id)
-                .single()
+                .maybeSingle()
 
-            const branding = await getEffectiveBranding(org.id)
+            const branding = await getPortalBranding(org.id)
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
@@ -288,7 +351,7 @@ export async function getPortalData(token: string) {
                 portal_secondary_color: branding.colors.secondary
             }
 
-            const { data: appData } = await (await createClient())
+            const { data: appData } = await supabaseAdmin
                 .from('saas_apps')
                 .select('portal_template')
                 .eq('id', org.active_app_id || '')
@@ -298,8 +361,8 @@ export async function getPortalData(token: string) {
             settings.portal_template = portalTemplate
 
             const [ { data: appPortalConfig }, { data: catalogItems } ] = await Promise.all([
-                (await createClient()).from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                (portalTemplate === 'b2c_commerce') ? (await createClient()).from('service_catalog').select('*').eq('organization_id', org.id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
+                (portalTemplate === 'b2c_commerce') ? supabaseAdmin.from('service_catalog').select('*').eq('organization_id', org.id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
             ])
 
             let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
@@ -340,7 +403,7 @@ export async function getPortalMetadata(token: string) {
         let isAttendance = false
 
         if (isUuid) {
-            const { data: staff } = await (await createClient()).from('organization_staff').select('organization_id').eq('access_token', token).maybeSingle()
+            const { data: staff } = await supabaseAdmin.from('organization_staff').select('organization_id').eq('access_token', token).maybeSingle()
             if (staff) {
                 organizationId = staff.organization_id
                 isAttendance = true
@@ -348,7 +411,7 @@ export async function getPortalMetadata(token: string) {
         }
 
         if (!organizationId) {
-            let clientQuery = (await createClient()).from('leads').select('organization_id')
+            let clientQuery = supabaseAdmin.from('leads').select('organization_id')
             if (isUuid) clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
             else clientQuery = clientQuery.eq('portal_short_token', token)
             const { data: client } = await clientQuery.maybeSingle()
@@ -356,13 +419,13 @@ export async function getPortalMetadata(token: string) {
         }
 
         if (!organizationId) {
-            const { data: org } = await (await createClient()).from('organizations').select('id').eq('slug', token).maybeSingle()
+            const { data: org } = await supabaseAdmin.from('organizations').select('id').eq('slug', token).maybeSingle()
             if (org) organizationId = org.id
         }
 
         if (!organizationId) return {}
 
-        const { data: settings } = await (await createClient()).from('organization_settings').select('*').eq('organization_id', organizationId).single()
+        const { data: settings } = await supabaseAdmin.from('organization_settings').select('*').eq('organization_id', organizationId).maybeSingle()
         return { ...(settings || {}), isAttendance }
     } catch {
         return {}
@@ -374,13 +437,13 @@ export async function getPortalMetadata(token: string) {
  */
 export async function getPortalBriefing(token: string, briefingId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = (await createClient()).from('leads').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
     const { data: client, error: clientError } = await query.single()
     if (clientError || !client) throw new Error('Unauthorized')
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('briefings')
         .select('*, template:briefing_templates(id, name, description, structure), client:leads(name, email)')
         .eq('id', briefingId)
@@ -394,13 +457,13 @@ export async function getPortalBriefing(token: string, briefingId: string) {
 
 export async function getPortalBriefingResponses(token: string, briefingId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = (await createClient()).from('leads').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
     const { data: client, error: clientError } = await query.single()
     if (clientError || !client) throw new Error('Unauthorized')
 
-    const { data: briefing, error: briefingError } = await (await createClient())
+    const { data: briefing, error: briefingError } = await supabaseAdmin
         .from('briefings')
         .select('id')
         .eq('id', briefingId)
@@ -410,29 +473,29 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
 
     if (briefingError || !briefing) throw new Error('Unauthorized')
 
-    const { data, error } = await (await createClient()).from('briefing_responses').select('*').eq('briefing_id', briefing.id)
+    const { data, error } = await supabaseAdmin.from('briefing_responses').select('*').eq('briefing_id', briefing.id)
     if (error) throw error
     return data || []
 }
 
 export async function getPortalCatalog(token: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let clientQuery = (await createClient()).from('leads').select('id, organization_id')
+    let clientQuery = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else clientQuery = clientQuery.eq('portal_short_token', token)
     const { data: client } = await clientQuery.maybeSingle()
 
     let organizationId: string | null = client?.organization_id || null
     if (!organizationId) {
-        const { data: org } = await (await createClient()).from('organizations').select('id').eq('slug', token).maybeSingle()
+        const { data: org } = await supabaseAdmin.from('organizations').select('id').eq('slug', token).maybeSingle()
         if (org) organizationId = org.id
     }
 
     if (!organizationId) throw new Error('Unauthorized')
 
     const [ { data: catalogItems }, { data: categories } ] = await Promise.all([
-        (await createClient()).from('service_catalog').select('*').eq('organization_id', organizationId).eq('is_visible_in_portal', true),
-        (await createClient()).from('service_categories').select('id, name').eq('organization_id', organizationId)
+        supabaseAdmin.from('service_catalog').select('*').eq('organization_id', organizationId).eq('is_visible_in_portal', true),
+        supabaseAdmin.from('service_categories').select('id, name').eq('organization_id', organizationId)
     ])
 
     const categoryMap = (categories || []).reduce((acc: Record<string, string>, cat) => {
@@ -450,14 +513,14 @@ export async function getPortalCatalog(token: string) {
 
 export async function getPortalQuote(token: string, quoteId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = (await createClient()).from('leads').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
 
     const { data: client, error: clientError } = await query.single()
     if (clientError || !client) throw new Error('Unauthorized')
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('quotes')
         .select('*, client:leads!client_id (*), lead:leads!lead_id (*), emitter:emitters (*)')
         .eq('id', quoteId)
@@ -468,8 +531,8 @@ export async function getPortalQuote(token: string, quoteId: string) {
     if (error) throw error
 
     if (!data.emitter) {
-        const { data: defaultEmitter } = await (await createClient()).from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_default', true).maybeSingle()
-        data.emitter = defaultEmitter || await (await createClient()).from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle().then(r => r.data)
+        const { data: defaultEmitter } = await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_default', true).maybeSingle()
+        data.emitter = defaultEmitter || await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle().then(r => r.data)
     }
 
     return data as Quote
@@ -477,14 +540,14 @@ export async function getPortalQuote(token: string, quoteId: string) {
 
 export async function getPortalInvoice(token: string, invoiceId: string) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-    let query = (await createClient()).from('leads').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
     if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     else query = query.eq('portal_short_token', token)
 
     const { data: client, error: clientError } = await query.single()
     if (clientError || !client) throw new Error('Unauthorized')
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('invoices')
         .select('*, client:leads (*), emitter:emitters (*)')
         .eq('id', invoiceId)
@@ -496,8 +559,8 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
     if (error) throw error
 
     if (!data.emitter) {
-        const { data: defaultEmitter } = await (await createClient()).from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_default', true).maybeSingle()
-        data.emitter = defaultEmitter || await (await createClient()).from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle().then(r => r.data)
+        const { data: defaultEmitter } = await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_default', true).maybeSingle()
+        data.emitter = defaultEmitter || await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle().then(r => r.data)
     }
 
     return data as Invoice

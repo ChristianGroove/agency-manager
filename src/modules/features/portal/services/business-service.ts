@@ -1,6 +1,5 @@
 'use server'
-import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
  * Business Actions and Activity Logging for the Portal
@@ -15,7 +14,7 @@ export async function logPortalAccess(params: {
     metadata?: Record<string, any>
 }) {
     try {
-        await (await createClient()).from('portal_access_logs').insert({
+        await supabaseAdmin.from('portal_access_logs').insert({
             client_id: params.clientId,
             organization_id: params.organizationId,
             token_used: params.tokenUsed,
@@ -29,16 +28,15 @@ export async function logPortalAccess(params: {
     }
 }
 
-export async function getPortalAccessLogs(clientId: string, limit: number = 50) {
+export async function getPortalAccessLogs(clientId: string, organizationId: string, limit: number = 50) {
     try {
-        const orgId = await getCurrentOrganizationId()
-        if (!orgId) throw new Error('Unauthorized')
+        if (!organizationId) throw new Error('Unauthorized')
 
-        const { data, error } = await (await createClient())
+        const { data, error } = await supabaseAdmin
             .from('portal_access_logs')
             .select('*')
             .eq('client_id', clientId)
-            .eq('organization_id', orgId)
+            .eq('organization_id', organizationId)
             .order('created_at', { ascending: false })
             .limit(limit)
 
@@ -53,13 +51,13 @@ export async function getPortalAccessLogs(clientId: string, limit: number = 50) 
 export async function acceptQuote(token: string, quoteId: string) {
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-        let query = (await createClient()).from('leads').select('id, name, user_id, organization_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id, organization_id')
         if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         else query = query.eq('portal_short_token', token)
         const { data: client, error: clientError } = await query.single()
         if (clientError || !client) throw new Error('Unauthorized')
 
-        const { data: quote, error: quoteError } = await (await createClient())
+        const { data: quote, error: quoteError } = await supabaseAdmin
             .from('quotes')
             .update({ status: 'accepted' })
             .eq('id', quoteId)
@@ -70,14 +68,14 @@ export async function acceptQuote(token: string, quoteId: string) {
 
         if (quoteError) throw quoteError
 
-        await (await createClient()).from('client_events').insert({
+        await supabaseAdmin.from('client_events').insert({
             client_id: client.id, type: 'quote', title: 'Cotización Aprobada',
             description: `Se ha aprobado la cotización #${quote.number}`,
             metadata: { quote_id: quote.id, amount: quote.total }, icon: 'FileCheck'
         })
 
         if (client.user_id) {
-            await (await createClient()).from('notifications').insert({
+            await supabaseAdmin.from('notifications').insert({
                 user_id: client.user_id, type: 'quote_accepted', title: '✅ Cotización Aprobada',
                 message: `El cliente ${client.name} ha aprobado la cotización #${quote.number}. Monto: $${quote.total.toLocaleString()}`,
                 client_id: client.id, action_url: `/dashboard/quotes/${quote.id}`, read: false
@@ -93,13 +91,13 @@ export async function acceptQuote(token: string, quoteId: string) {
 export async function rejectQuote(token: string, quoteId: string) {
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-        let query = (await createClient()).from('leads').select('id, name, user_id, organization_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id, organization_id')
         if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         else query = query.eq('portal_short_token', token)
         const { data: client, error: clientError } = await query.single()
         if (clientError || !client) throw new Error('Unauthorized')
 
-        const { data: quote, error: quoteError } = await (await createClient())
+        const { data: quote, error: quoteError } = await supabaseAdmin
             .from('quotes')
             .update({ status: 'rejected' })
             .eq('id', quoteId)
@@ -110,14 +108,14 @@ export async function rejectQuote(token: string, quoteId: string) {
 
         if (quoteError) throw quoteError
 
-        await (await createClient()).from('client_events').insert({
+        await supabaseAdmin.from('client_events').insert({
             client_id: client.id, type: 'quote', title: 'Cotización Rechazada',
             description: `Se ha rechazado la cotización #${quote.number}`,
             metadata: { quote_id: quote.id, amount: quote.total }, icon: 'FileX'
         })
 
         if (client.user_id) {
-            await (await createClient()).from('notifications').insert({
+            await supabaseAdmin.from('notifications').insert({
                 user_id: client.user_id, type: 'quote_rejected', title: '❌ Cotización Rechazada',
                 message: `El cliente ${client.name} ha rechazado la cotización #${quote.number}.`,
                 client_id: client.id, action_url: `/dashboard/quotes/${quote.id}`, read: false
@@ -133,13 +131,13 @@ export async function rejectQuote(token: string, quoteId: string) {
 export async function registerServiceInterest(token: string, serviceId: string, serviceName: string) {
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-        let query = (await createClient()).from('leads').select('id, name, user_id, organization_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id, organization_id')
         if (isUuid) query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         else query = query.eq('portal_short_token', token)
         const { data: client, error: clientError } = await query.single()
         if (clientError || !client) throw new Error('Unauthorized')
 
-        const { data: service, error: serviceError } = await (await createClient())
+        const { data: service, error: serviceError } = await supabaseAdmin
             .from('service_catalog')
             .select('id, name')
             .eq('id', serviceId)
@@ -149,7 +147,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
 
         if (serviceError || !service) throw new Error('Service not found')
 
-        const { data: existing } = await (await createClient())
+        const { data: existing } = await supabaseAdmin
             .from('client_events')
             .select('id').eq('client_id', client.id).eq('type', 'interest')
             .eq('metadata->>service_id', serviceId)
@@ -157,7 +155,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
             .single()
 
         if (!existing) {
-            await (await createClient()).from('client_events').insert({
+            await supabaseAdmin.from('client_events').insert({
                 client_id: client.id, type: 'interest', title: 'Interés en Servicio',
                 description: `El cliente ha mostrado interés en: ${service.name}`,
                 metadata: { service_id: service.id, service_name: service.name, channel: 'whatsapp_click' },
@@ -165,7 +163,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
             })
 
             if (client.user_id) {
-                await (await createClient()).from('notifications').insert({
+                await supabaseAdmin.from('notifications').insert({
                     user_id: client.user_id, type: 'service_interest', title: '❤️ Interés en Servicio',
                     message: `El cliente ${client.name} está interesado en: ${service.name}`,
                     client_id: client.id, action_url: `/dashboard/clients/${client.id}`, read: false
