@@ -108,23 +108,25 @@ function SidebarSection({
     if (collapsed) return <div className="space-y-0.5 mb-2">{children}</div>
 
     return (
-        <div className="mb-2">
+        <div className="mb-3">
             <button
                 onClick={onToggle}
-                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider hover:text-gray-700 dark:hover:text-zinc-400 transition-colors group"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider group outline-none"
             >
-                <span className="flex items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400" />
-                    {title}
+                <span className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-md bg-gradient-to-b from-gray-50 to-gray-100 dark:from-zinc-800/80 dark:to-zinc-900/80 border border-gray-200/80 dark:border-zinc-700/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-center shrink-0 transition-all duration-200 group-hover:shadow-sm group-hover:border-gray-300 dark:group-hover:border-zinc-600">
+                        <Icon className="h-[14px] w-[14px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" />
+                    </div>
+                    <span className="group-hover:text-gray-700 dark:group-hover:text-zinc-300 transition-colors tracking-widest">{title}</span>
                 </span>
                 <ChevronDown className={cn(
-                    "h-3 w-3 transition-transform duration-200",
+                    "h-3.5 w-3.5 text-gray-400/70 group-hover:text-gray-500 dark:group-hover:text-zinc-400 transition-transform duration-200",
                     isExpanded ? "" : "-rotate-90"
                 )} />
             </button>
             <div className={cn(
-                "space-y-0.5 overflow-hidden transition-all duration-200 ml-3.5 pl-2 border-l border-gray-200 dark:border-zinc-800",
-                isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                "space-y-0.5 overflow-hidden transition-all duration-300 ml-6 pl-3 border-l border-gray-200 dark:border-zinc-800/80 relative",
+                isExpanded ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0"
             )}>
                 {children}
             </div>
