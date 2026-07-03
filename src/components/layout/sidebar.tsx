@@ -60,8 +60,8 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                 ) : (
                     <Icon
                         className={cn(
-                            "h-4 w-4 shrink-0 transition-transform duration-200",
-                            active ? "scale-110" : "group-hover:scale-105",
+                            "h-4 w-4 shrink-0 transition-all duration-300 ease-out",
+                            active ? "scale-[1.15]" : "group-hover:scale-[1.2] group-hover:rotate-[10deg]",
                             isSuperAdminRoute
                                 ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
                                 : collapsed
