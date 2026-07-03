@@ -27,7 +27,8 @@ import {
     BrainCircuit,
     BarChart3,
     ScanFace,
-    Mail
+    Mail,
+    Wrench
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -416,7 +417,7 @@ export const CATEGORY_ICONS: Record<ModuleCategory, any> = {
     core: LayoutDashboard,
     crm: Users,
     operations: Briefcase,
-    tools: Sparkles, // Use Wrench if available, Sparkles for now
+    tools: Wrench,
     finance: CreditCard,
     config: Settings
 };
