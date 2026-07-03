@@ -37,15 +37,15 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
         <Link href={href}>
             <div
                 className={cn(
-                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-all duration-200 group",
+                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-colors duration-75 group border",
                     collapsed ? "justify-center px-2" : "px-3",
                     active
                         ? isSuperAdminRoute
-                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-md shadow-purple-500/10 border border-purple-200 dark:border-purple-500/20"
-                            : "bg-gray-100/80 text-gray-900 shadow-sm dark:bg-white/10 dark:text-white dark:shadow-black/20"
+                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-md shadow-purple-500/10 border-purple-200 dark:border-purple-500/20"
+                            : "bg-white border-gray-200/50 text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-white/10 dark:border-transparent dark:text-white dark:shadow-black/20"
                         : isSuperAdminRoute
-                            ? "text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
-                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
+                            ? "border-transparent text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
+                            : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
                 )}
             >
                 {boxed && !collapsed ? (
@@ -128,10 +128,10 @@ function SidebarSection({
                     <div className="w-7 h-7 rounded-md bg-gradient-to-b from-gray-50 to-gray-100 dark:from-zinc-800/80 dark:to-zinc-900/80 border border-gray-200/80 dark:border-zinc-700/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-center shrink-0 transition-all duration-200 group-hover:shadow-sm group-hover:border-gray-300 dark:group-hover:border-zinc-600">
                         <Icon className="h-[15px] w-[15px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-all duration-300 ease-out group-hover:scale-[1.2] group-hover:rotate-[10deg]" />
                     </div>
-                    <span className="group-hover:text-gray-700 dark:group-hover:text-zinc-300 transition-colors tracking-widest">{title}</span>
+                    <span className="group-hover:text-gray-900 dark:group-hover:text-zinc-300 transition-colors tracking-widest">{title}</span>
                 </span>
                 <ChevronDown className={cn(
-                    "h-3.5 w-3.5 text-gray-400/70 group-hover:text-gray-500 dark:group-hover:text-zinc-400 transition-transform duration-200",
+                    "h-3.5 w-3.5 text-gray-400/70 group-hover:text-gray-600 dark:group-hover:text-zinc-400 transition-transform duration-200",
                     isExpanded ? "" : "-rotate-90"
                 )} />
             </button>
