@@ -62,7 +62,7 @@ describe('portal business actions tenant safety', () => {
         })
 
         const { getPortalAccessLogs } = await import('./business-service')
-        const result = await getPortalAccessLogs('client-current', 10)
+        const result = await getPortalAccessLogs('client-current', 'org-current', 10)
 
         expect(result).toEqual({
             success: true,
