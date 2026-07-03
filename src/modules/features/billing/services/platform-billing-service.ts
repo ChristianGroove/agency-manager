@@ -1,4 +1,4 @@
-import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { isSuperAdmin, requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { generatePlatformInvoicePDF } from "@/modules/infrastructure/pdf/services/platform-pdf-generator"
 import { EmailService } from "@/modules/features/notifications/email.service"
@@ -72,7 +72,7 @@ export class PlatformBillingService {
         amountSubtotal?: number,
         recipientEmail?: string
     }) {
-        const supabase = await createClient()
+        const supabase = supabaseAdmin
 
         // 1. Security Check: Only SuperAdmins
         const { data: { user } } = await supabase.auth.getUser()
@@ -86,7 +86,7 @@ export class PlatformBillingService {
         // 1.5. Upsert Billing Profile for persistence (Safe)
         if (data.clientTaxId || data.clientAddress || data.clientLegalName) {
             try {
-                await (await createClient())
+                await supabaseAdmin
                     .from('organization_billing_profiles')
                     .upsert({
                         organization_id: data.organizationId,
@@ -101,7 +101,7 @@ export class PlatformBillingService {
         }
 
         // 2. Insert into saas_platform_invoices
-        const { data: invoice, error } = await (await createClient())
+        const { data: invoice, error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .insert({
                 organization_id: data.organizationId,
@@ -139,10 +139,10 @@ export class PlatformBillingService {
 
     static async sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
         await requireSuperAdmin();
-        const supabase = await createClient()
+        const supabase = supabaseAdmin
 
         // 1. Fetch Invoice
-        const { data: invoice, error } = await (await createClient())
+        const { data: invoice, error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .select(`
                 *,
@@ -166,7 +166,7 @@ export class PlatformBillingService {
         }
 
         // 3. Fetch Platform Payment Methods
-        const { data: platformOrg } = await (await createClient())
+        const { data: platformOrg } = await supabaseAdmin
             .from('organizations')
             .select('id')
             .eq('organization_type', 'platform')
@@ -176,7 +176,7 @@ export class PlatformBillingService {
         let pdfPaymentMethods = [];
 
         if (platformOrg) {
-            const { data: methods } = await (await createClient())
+            const { data: methods } = await supabaseAdmin
                 .from('organization_payment_methods')
                 .select('*')
                 .eq('organization_id', platformOrg.id)
@@ -247,7 +247,7 @@ export class PlatformBillingService {
             const signatureRaw = `${reference}${amountInCents}${currency}${integritySecret}`;
             const signature = crypto.createHash('sha256').update(signatureRaw).digest('hex');
             
-            await (await createClient()).from('payment_transactions').insert({
+            await supabaseAdmin.from('payment_transactions').insert({
                 organization_id: invoice.organization_id,
                 reference,
                 amount_in_cents: amountInCents,
@@ -336,7 +336,7 @@ export class PlatformBillingService {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        
         const { data, error, count } = await supabaseAdmin
             .from('saas_platform_invoices')
             .select(`
@@ -357,7 +357,7 @@ export class PlatformBillingService {
 
     static async getOrganizationInvoices(organizationId: string) {
         await requireSuperAdmin();
-        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        
         const { data, error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .select(`
@@ -378,10 +378,10 @@ export class PlatformBillingService {
 
     static async getPlatformPaymentMethods() {
         await requireSuperAdmin();
-        const supabase = await createClient()
+        const supabase = supabaseAdmin
         
         // 1. Find Platform Organization
-        const { data: platformOrg } = await (await createClient())
+        const { data: platformOrg } = await supabaseAdmin
             .from('organizations')
             .select('id')
             .eq('organization_type', 'platform')
@@ -390,7 +390,7 @@ export class PlatformBillingService {
         if (!platformOrg) return [];
 
         // 2. Fetch Active Methods
-        const { data: methods } = await (await createClient())
+        const { data: methods } = await supabaseAdmin
             .from('organization_payment_methods')
             .select('*')
             .eq('organization_id', platformOrg.id)
@@ -402,7 +402,7 @@ export class PlatformBillingService {
 
     static async deletePlatformInvoice(invoiceId: string) {
         await requireSuperAdmin();
-        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        
         const { error } = await supabaseAdmin
             .from('saas_platform_invoices')
             .delete()
@@ -414,14 +414,14 @@ export class PlatformBillingService {
 
     static async manualActivateSubscription(organizationId: string, options?: { expiryDate?: string, monthsToAdd?: number }) {
         await requireSuperAdmin();
-        const supabase = await createClient()
+        const supabase = supabaseAdmin
 
         // 1. Security Check
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { success: false, error: "No autorizado" }
 
         // 2. Fetch Organization Data
-        const { data: org, error: orgFetchError } = await (await createClient())
+        const { data: org, error: orgFetchError } = await supabaseAdmin
             .from('organizations')
             .select('name, subscription_product_id, active_app_id')
             .eq('id', organizationId)
@@ -434,7 +434,7 @@ export class PlatformBillingService {
         // 3. PRODUCT & APP RESOLUTION
         let finalProduct: { id: string, slug: string } | null = null;
         const productRef = org.subscription_product_id;
-        const { data: foundProduct } = await (await createClient())
+        const { data: foundProduct } = await supabaseAdmin
             .from('saas_products')
             .select('id, slug')
             .or(`id.eq.${productRef || '00000000-0000-0000-0000-000000000000'},slug.eq.${productRef || 'none'}`)
@@ -443,7 +443,7 @@ export class PlatformBillingService {
         if (foundProduct) {
             finalProduct = foundProduct;
         } else {
-            const { data: fallback } = await (await createClient())
+            const { data: fallback } = await supabaseAdmin
                 .from('saas_products')
                 .select('id, slug')
                 .order('status', { ascending: false })
@@ -453,7 +453,7 @@ export class PlatformBillingService {
         }
 
         let dialect: 'uuid' | 'slug' | 'app' = 'uuid';
-        const { data: sampleSub } = await (await createClient())
+        const { data: sampleSub } = await supabaseAdmin
             .from('saas_subscriptions')
             .select('plan_id')
             .limit(1)
@@ -488,7 +488,7 @@ export class PlatformBillingService {
 
         // 5. DB Sync
         try {
-            const { error: subError } = await (await createClient())
+            const { error: subError } = await supabaseAdmin
                 .from('saas_subscriptions')
                 .upsert({
                     organization_id: organizationId,
@@ -501,7 +501,7 @@ export class PlatformBillingService {
 
             if (subError) throw subError;
 
-            await (await createClient())
+            await supabaseAdmin
                 .from('organizations')
                 .update({ subscription_status: 'active' })
                 .eq('id', organizationId);
@@ -516,14 +516,14 @@ export class PlatformBillingService {
     static async suspendOrganizationSubscription(organizationId: string) {
         await requireSuperAdmin();
         
-        const { error: subError } = await (await createClient())
+        const { error: subError } = await supabaseAdmin
             .from('saas_subscriptions')
             .update({ status: 'suspended', updated_at: new Date().toISOString() })
             .eq('organization_id', organizationId)
 
         if (subError) throw subError;
 
-        const { error: orgError } = await (await createClient())
+        const { error: orgError } = await supabaseAdmin
             .from('organizations')
             .update({ 
                 status: 'suspended', 
@@ -541,7 +541,7 @@ export class PlatformBillingService {
     static async markPlatformInvoiceAsPaid(invoiceId: string) {
         await requireSuperAdmin();
         
-        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        
         
         // 1. Update invoice status
         const { error: invoiceError } = await supabaseAdmin
