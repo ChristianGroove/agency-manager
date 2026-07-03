@@ -32,7 +32,7 @@ interface SidebarProps {
     orgCount?: number
 }
 
-function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
+function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false, boxed = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean, boxed?: boolean }) {
     const content = (
         <Link href={href}>
             <div
@@ -48,19 +48,30 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                             : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
                 )}
             >
-                <Icon
-                    className={cn(
-                        "h-4 w-4 shrink-0 transition-transform duration-200",
-                        active ? "scale-110" : "group-hover:scale-105",
-                        isSuperAdminRoute
-                            ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
-                            : collapsed
-                                ? cn(
-                                    active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-300"
-                                )
-                                : "text-[var(--brand-pink)]"
-                    )}
-                />
+                {boxed && !collapsed ? (
+                    <div className="w-6 h-6 rounded-md bg-gradient-to-b from-gray-50 to-gray-100 dark:from-zinc-800/80 dark:to-zinc-900/80 border border-gray-200/80 dark:border-zinc-700/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-center shrink-0 transition-all duration-200 group-hover:shadow-sm group-hover:border-gray-300 dark:group-hover:border-zinc-600">
+                        <Icon
+                            className={cn(
+                                "h-[14px] w-[14px] shrink-0 transition-transform duration-200",
+                                active ? "scale-110 text-[var(--brand-pink)]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 group-hover:scale-105"
+                            )}
+                        />
+                    </div>
+                ) : (
+                    <Icon
+                        className={cn(
+                            "h-4 w-4 shrink-0 transition-transform duration-200",
+                            active ? "scale-110" : "group-hover:scale-105",
+                            isSuperAdminRoute
+                                ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
+                                : collapsed
+                                    ? cn(
+                                        active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-300"
+                                    )
+                                    : "text-[var(--brand-pink)]"
+                        )}
+                    />
+                )}
                 {!collapsed && (
                     <span className={cn(
                         "transition-all duration-200 truncate text-[13px]",
@@ -253,6 +264,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                             href={route.href}
                                             active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                             collapsed={isCollapsed}
+                                            boxed={true}
                                         />
                                     ))}
                                 </div>
