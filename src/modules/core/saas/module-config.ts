@@ -28,7 +28,8 @@ import {
     BarChart3,
     ScanFace,
     Mail,
-    Wrench
+    Wrench,
+    Building2
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -394,7 +395,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         key: 'reseller_tenants',
         label: 'Organizaciones',
         href: '/platform/organizations',
-        icon: Users, // Using Users icon
+        icon: Building2,
         category: 'core', // Put in core to appear at top
         isCore: true, // Fix: Always core, but protected by access rules (excluded for clients)
         access: {
