@@ -150,19 +150,19 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
     const handleSubmit = async () => {
         if (!form.name.trim()) {
-            toast.error('Ingresa un nombre para la campaña')
+            toast.error(t("marketing.create_broadcast.error_name"))
             return
         }
 
         // WhatsApp requires a template
         if (form.channel === 'whatsapp') {
             if (!selectedTemplate) {
-                toast.error('Selecciona una plantilla aprobada para WhatsApp')
+                toast.error(t("marketing.create_broadcast.error_template"))
                 return
             }
         } else {
             if (!form.message.trim()) {
-                toast.error('Ingresa el mensaje a enviar')
+                toast.error(t("marketing.create_broadcast.error_message"))
                 return
             }
         }
@@ -182,11 +182,11 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
         })
 
         if (result.success) {
-            toast.success('Campaña creada exitosamente')
+            toast.success(t("marketing.create_broadcast.success"))
             onOpenChange(false)
             onSuccess()
         } else {
-            toast.error(result.error || 'Error al crear campaña')
+            toast.error(result.error || t("marketing.create_broadcast.error_create"))
         }
         setLoading(false)
     }
@@ -227,8 +227,8 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         <Users className="h-5 w-5 text-brand-pink" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Destinatarios</p>
-                                        <p className="text-xs text-muted-foreground">Según los filtros actuales</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t("marketing.create_broadcast.recipients")}</p>
+                                        <p className="text-xs text-muted-foreground">{t("marketing.create_broadcast.recipients_desc")}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -253,7 +253,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                             {/* Channel */}
                             <div className="space-y-2">
-                                <Label>Canal de Envío</Label>
+                                <Label>{t("marketing.create_broadcast.channel")}</Label>
                                 <Select
                                     value={form.channel}
                                     onValueChange={(v) => setForm(prev => ({ ...prev, channel: v as any }))}
@@ -291,19 +291,19 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2">
                                             <FileText className="h-4 w-4 text-green-600" />
-                                            Plantilla WhatsApp *
+                                            {t("marketing.create_broadcast.wa_template")}
                                         </Label>
                                         <Select
                                             value={selectedTemplate?.id || ''}
                                             onValueChange={handleTemplateSelect}
                                         >
                                             <SelectTrigger className="h-11">
-                                                <SelectValue placeholder="Selecciona una plantilla aprobada" />
+                                                <SelectValue placeholder={t("marketing.create_broadcast.select_template")} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {templates.length === 0 ? (
                                                     <div className="p-3 text-center text-sm text-muted-foreground">
-                                                        No hay plantillas aprobadas
+                                                        {t("marketing.create_broadcast.no_templates")}
                                                     </div>
                                                 ) : (
                                                     templates.map(t => (
@@ -321,7 +321,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         </Select>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
-                                            Solo plantillas aprobadas por Meta
+                                            {t("marketing.create_broadcast.meta_approved")}
                                         </p>
                                     </div>
 
@@ -330,10 +330,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         <div className="space-y-3 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
                                             <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
                                                 <AlertCircle className="h-3.5 w-3.5" />
-                                                Valores predeterminados para variables
+                                                {t("marketing.create_broadcast.var_defaults")}
                                             </Label>
                                             <p className="text-[11px] text-muted-foreground">
-                                                Mapea variables a datos del lead: nombre, empresa, etc.
+                                                {t("marketing.create_broadcast.var_desc")}
                                             </p>
                                             {templateVars.map(varName => (
                                                 <div key={varName} className="flex items-center gap-3">
@@ -341,7 +341,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                         {varName}
                                                     </Badge>
                                                     <Input
-                                                        placeholder={`Valor para ${varName} (ej: lead.nombre)`}
+                                                        placeholder={t("marketing.create_broadcast.var_placeholder").replace('{var}', varName)}
                                                         value={templateVarValues[varName] || ''}
                                                         onChange={(e) => setTemplateVarValues(prev => ({
                                                             ...prev,
@@ -358,7 +358,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2">
                                             <Clock className="h-4 w-4 text-blue-600" />
-                                            Tiempo de Vida (TTL)
+                                            {t("marketing.create_broadcast.ttl")}
                                         </Label>
                                         <Select
                                             value={String(ttlSeconds)}
@@ -368,26 +368,26 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="43200">Flash Sale — 12 horas</SelectItem>
-                                                <SelectItem value="86400">Diario — 24 horas</SelectItem>
-                                                <SelectItem value="604800">Semanal — 7 días</SelectItem>
-                                                <SelectItem value="2592000">Mensual — 30 días</SelectItem>
+                                                <SelectItem value="43200">{t("marketing.create_broadcast.ttl_12h")}</SelectItem>
+                                                <SelectItem value="86400">{t("marketing.create_broadcast.ttl_24h")}</SelectItem>
+                                                <SelectItem value="604800">{t("marketing.create_broadcast.ttl_7d")}</SelectItem>
+                                                <SelectItem value="2592000">{t("marketing.create_broadcast.ttl_30d")}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    <Label>Mensaje *</Label>
+                                    <Label>{t("marketing.create_broadcast.message_label")}</Label>
                                     <Textarea
-                                        placeholder="Escribe tu mensaje aquí... Usa {{nombre}} para personalizar"
+                                        placeholder={t("marketing.create_broadcast.message_placeholder")}
                                         rows={5}
                                         value={form.message}
                                         onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
                                         className="resize-none"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Variables: {'{{nombre}}'}, {'{{empresa}}'}, {'{{telefono}}'}
+                                        {t("marketing.create_broadcast.message_vars")} {'{{nombre}}'}, {'{{empresa}}'}, {'{{telefono}}'}
                                     </p>
                                 </div>
                             )}
@@ -396,7 +396,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             <div className="space-y-4 p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
                                 <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <Users className="h-4 w-4 text-brand-pink" />
-                                    Segmentación
+                                    {t("marketing.create_broadcast.segmentation")}
                                 </h3>
 
                                 <div className="space-y-2">
@@ -409,17 +409,17 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                             <SelectValue placeholder={t("marketing.create_broadcast.tags_placeholder")} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">Todos los estados</SelectItem>
-                                            <SelectItem value="open">Abierto</SelectItem>
-                                            <SelectItem value="qualified">Calificado</SelectItem>
-                                            <SelectItem value="negotiation">Negociación</SelectItem>
-                                            <SelectItem value="won">Ganado</SelectItem>
+                                            <SelectItem value="all">{t("marketing.create_broadcast.all_status")}</SelectItem>
+                                            <SelectItem value="open">{t("marketing.create_broadcast.open")}</SelectItem>
+                                            <SelectItem value="qualified">{t("marketing.create_broadcast.qualified")}</SelectItem>
+                                            <SelectItem value="negotiation">{t("marketing.create_broadcast.negotiation")}</SelectItem>
+                                            <SelectItem value="won">{t("marketing.create_broadcast.won")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="flex items-center justify-between py-2">
-                                    <Label htmlFor="has_phone" className="cursor-pointer">Solo con teléfono</Label>
+                                    <Label htmlFor="has_phone" className="cursor-pointer">{t("marketing.create_broadcast.has_phone")}</Label>
                                     <Switch
                                         id="has_phone"
                                         checked={form.filters.has_phone}
@@ -428,7 +428,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </div>
 
                                 <div className="flex items-center justify-between py-2">
-                                    <Label htmlFor="has_email" className="cursor-pointer">Solo con email</Label>
+                                    <Label htmlFor="has_email" className="cursor-pointer">{t("marketing.create_broadcast.has_email")}</Label>
                                     <Switch
                                         id="has_email"
                                         checked={form.filters.has_email}
@@ -445,7 +445,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 >
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert className="h-4 w-4 text-orange-500" />
-                                        Opciones Avanzadas (Anti-Ban)
+                                        {t("marketing.create_broadcast.advanced")}
                                     </div>
                                     {showAdvanced ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                                 </button>
@@ -454,28 +454,28 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                     <div className="pt-4 border-t border-slate-200 dark:border-zinc-800 space-y-6 animate-in slide-in-from-top-2">
                                         {/* Mode */}
                                         <div className="space-y-3">
-                                            <Label>Modo de Envío</Label>
+                                            <Label>{t("marketing.create_broadcast.mode")}</Label>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                                 <div 
                                                     className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'stealth' ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-green-200 dark:hover:border-green-800")} 
                                                     onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'stealth' })}
                                                 >
                                                     <h4 className="font-bold text-sm mb-1 text-green-800 dark:text-green-400">Stealth Mode</h4>
-                                                    <p className="text-[10px] text-green-600/80 dark:text-green-500/80">1 msg / 3 mins. Ideal calentar números.</p>
+                                                    <p className="text-[10px] text-green-600/80 dark:text-green-500/80">{t("marketing.create_broadcast.mode_stealth_desc")}</p>
                                                 </div>
                                                 <div 
                                                     className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'growth' ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800")} 
                                                     onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'growth' })}
                                                 >
                                                     <h4 className="font-bold text-sm mb-1 text-blue-800 dark:text-blue-400">Growth</h4>
-                                                    <p className="text-[10px] text-blue-600/80 dark:text-blue-500/80">1 msg / 30 segs. Recomendado y seguro.</p>
+                                                    <p className="text-[10px] text-blue-600/80 dark:text-blue-500/80">{t("marketing.create_broadcast.mode_growth_desc")}</p>
                                                 </div>
                                                 <div 
                                                     className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'turbo' ? "border-red-500 bg-red-50 dark:bg-red-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-red-200 dark:hover:border-red-800")} 
                                                     onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'turbo' })}
                                                 >
                                                     <h4 className="font-bold text-sm mb-1 text-red-800 dark:text-red-400">Turbo</h4>
-                                                    <p className="text-[10px] text-red-600/80 dark:text-red-500/80">1 msg / 5 segs. Solo Tier Alto o SMS.</p>
+                                                    <p className="text-[10px] text-red-600/80 dark:text-red-500/80">{t("marketing.create_broadcast.mode_turbo_desc")}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -483,8 +483,8 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         {/* Humanize Jitter */}
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <Label className="cursor-pointer font-semibold dark:text-gray-100">Humanizar (Jitter Aleatorio)</Label>
-                                                <p className="text-xs text-muted-foreground mt-1">Añade retrasos aleatorios para imitar escritura humana y despistar bots de Meta.</p>
+                                                <Label className="cursor-pointer font-semibold dark:text-gray-100">{t("marketing.create_broadcast.humanize")}</Label>
+                                                <p className="text-xs text-muted-foreground mt-1">{t("marketing.create_broadcast.humanize_desc")}</p>
                                             </div>
                                             <Switch 
                                                 checked={deliveryConfig.humanize} 
@@ -494,11 +494,11 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                                         {/* Schedule Window */}
                                         <div className="space-y-3">
-                                            <Label className="font-semibold dark:text-gray-100">Ventana de Horario (Schedule Window)</Label>
-                                            <p className="text-xs text-muted-foreground">Forzar que los envíos automáticos solo salgan en horas laborales para evitar bloqueos por envíos de madrugada.</p>
+                                            <Label className="font-semibold dark:text-gray-100">{t("marketing.create_broadcast.schedule")}</Label>
+                                            <p className="text-xs text-muted-foreground">{t("marketing.create_broadcast.schedule_desc")}</p>
                                             <div className="flex items-center gap-4 mt-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium dark:text-gray-200">De</span>
+                                                    <span className="text-sm font-medium dark:text-gray-200">{t("marketing.create_broadcast.from")}</span>
                                                     <Select
                                                         value={String(deliveryConfig.schedule_window.start)}
                                                         onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, start: Number(v) } })}
@@ -514,7 +514,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                     </Select>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium dark:text-gray-200">a</span>
+                                                    <span className="text-sm font-medium dark:text-gray-200">{t("marketing.create_broadcast.to")}</span>
                                                     <Select
                                                         value={String(deliveryConfig.schedule_window.end)}
                                                         onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, end: Number(v) } })}
@@ -538,7 +538,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             {/* Preview */}
                             {(form.channel === 'whatsapp' ? selectedTemplate : form.message) && (
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">Vista Previa</Label>
+                                    <Label className="text-xs text-muted-foreground">{t("marketing.create_broadcast.preview")}</Label>
                                     <div className="bg-[#e5ddd5] dark:bg-zinc-800 rounded-2xl p-4">
                                         <div className="max-w-[85%] ml-auto">
                                             <div className="bg-[#dcf8c6] dark:bg-green-900/60 rounded-xl rounded-tr-sm p-3 shadow-sm">
@@ -557,7 +557,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     {/* Footer */}
                     <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-transparent backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
                         <Button variant="ghost" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => onOpenChange(false)}>
-                            Cancelar
+                            {t("marketing.create_broadcast.cancel")}
                         </Button>
                         <Button
                             onClick={handleSubmit}
@@ -565,7 +565,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             className="bg-brand-pink text-white hover:bg-brand-pink/90 px-8"
                         >
                             {loading ? (
-                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando...</>
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("marketing.create_broadcast.creating")}</>
                             ) : (
                                 <>{t("marketing.create_broadcast.continue")} <ArrowRight className="w-4 h-4 ml-2" /></>
                             )}
