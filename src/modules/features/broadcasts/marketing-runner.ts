@@ -1,7 +1,7 @@
 import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { addMinutes, addHours, addDays, isBefore } from "date-fns"
 import { createClient } from "@/modules/core/database/supabase-server";
-import { addJitter, enforceScheduleWindow } from './marketing-actions'
+import { addJitter, enforceScheduleWindow } from './marketing-utils'
 
 /**
  * MARKETING RUNNER (Execution Engine)

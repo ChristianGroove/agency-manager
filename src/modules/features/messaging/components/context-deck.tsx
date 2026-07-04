@@ -237,7 +237,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     }
 
     // Lead Initials
-    const leadInitials = (lead?.title || 'UN').slice(0, 2).toUpperCase()
+    const leadInitials = ((lead as any)?.name || 'UN').slice(0, 2).toUpperCase()
 
     return (
         <div className="flex flex-col h-full min-h-0 w-full">
@@ -294,7 +294,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="relative">
                                     <Avatar className="h-14 w-14 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
-                                        <AvatarImage src={lead?.avatar_url} className="object-cover" />
+                                        <AvatarImage src={lead?.avatar_url || undefined} className="object-cover" />
                                         <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold text-lg">
                                             {leadInitials}
                                         </AvatarFallback>
@@ -305,7 +305,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     )} />
                                 </div>
                                 <div className="flex-1 min-w-0 py-1">
-                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead?.name || lead?.title || t('crm.inbox.context.unknown_contact')}</h2>
+                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{(lead as any)?.name || t('crm.inbox.context.unknown_contact')}</h2>
                                     {loading && (
                                         <div className="flex items-center gap-2 mt-1">
                                             <div className="h-2 w-2 border-2 border-brand-pink border-t-transparent rounded-full animate-spin opacity-60" />
@@ -348,10 +348,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     <ContactItem
                                         icon={conversation?.channel === 'instagram' ? User : Phone}
                                         label={conversation?.channel === 'instagram' ? 'Instagram ID' : conversation?.channel === 'messenger' ? 'Messenger ID' : t('crm.inbox.context.contact_fields.mobile')}
-                                        value={lead?.phone}
+                                        value={lead?.phone || undefined}
                                         t={t}
                                     />
-                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead?.email} t={t} />
+                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead?.email || undefined} t={t} />
                                     <ContactItem
                                         icon={MapPin}
                                         label={t('crm.inbox.context.contact_fields.location')}

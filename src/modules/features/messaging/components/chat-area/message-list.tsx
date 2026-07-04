@@ -82,7 +82,7 @@ export const MessageList = forwardRef((
                         <MessageBubble
                             content={content}
                             direction={msg.direction as 'inbound' | 'outbound'}
-                            timestamp={msg.created_at}
+                            timestamp={msg.created_at || new Date().toISOString()}
                             status={msg.status as any}
                             messageId={msg.id}
                             metadata={msg.metadata}

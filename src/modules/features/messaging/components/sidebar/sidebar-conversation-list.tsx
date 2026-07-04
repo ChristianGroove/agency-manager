@@ -394,7 +394,7 @@ export function SidebarConversationList({
     const counts = useMemo(() => {
         return {
             all: conversations.filter(c => c.state !== 'archived' && c.status !== 'snoozed').length,
-            unread: conversations.filter(c => c.unread_count > 0 && c.state !== 'archived' && c.status !== 'snoozed').length,
+            unread: conversations.filter(c => (c.unread_count || 0) > 0 && c.state !== 'archived' && c.status !== 'snoozed').length,
             assigned: conversations.filter(c => c.assigned_to === currentUserId && c.state !== 'archived').length,
             archived: conversations.filter(c => c.state === 'archived').length,
             snoozed: conversations.filter(c => c.status === 'snoozed').length
@@ -577,7 +577,7 @@ export function SidebarConversationList({
                                     conv={conv}
                                     isSelected={conv.id === selectedId}
                                     onSelect={(id) => {
-                                        const contactData = conv.clients || conv.leads || { name: conv.leads?.name || conv.leads?.phone }
+                                        const contactData: any = conv.clients || conv.leads || { name: (conv.leads as any)?.name || (conv.leads as any)?.phone }
                                         if (updateLeadCache) {
                                             updateLeadCache(id, {
                                                 lead: {

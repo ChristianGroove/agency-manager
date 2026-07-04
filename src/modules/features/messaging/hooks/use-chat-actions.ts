@@ -99,7 +99,7 @@ export function useChatActions(params: {
         }
 
         const optimisticId = crypto.randomUUID()
-        const optimisticMsg: Message = {
+        const optimisticMsg: any = {
             id: optimisticId,
             conversation_id: conversationId,
             direction: 'outbound',

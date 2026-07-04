@@ -24,7 +24,8 @@ import {
     CheckCircle2,
     ShieldAlert,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    ArrowRight
 } from 'lucide-react'
 import {
     Select,
@@ -37,6 +38,7 @@ import { createQuickCampaign } from '../marketing-actions'
 import { getRecipientCount } from '../actions'
 import { toast } from 'sonner'
 import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from '@/modules/features/messaging/messaging-actions'
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface CreateBroadcastSheetProps {
     open: boolean
@@ -45,6 +47,7 @@ interface CreateBroadcastSheetProps {
 }
 
 export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBroadcastSheetProps) {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(false)
     const [recipientCount, setRecipientCount] = useState(0)
     const [countLoading, setCountLoading] = useState(false)
@@ -206,10 +209,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                         </div>
                         <div>
                             <SheetTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                                Nueva Campaña
+                                {t("marketing.create_broadcast.title")}
                             </SheetTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Envía un mensaje a múltiples contactos
+                                {t("marketing.create_broadcast.desc")}
                             </p>
                         </div>
                     </div>
@@ -239,12 +242,12 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                             {/* Name */}
                             <div className="space-y-2">
-                                <Label>Nombre de la Campaña *</Label>
+                                <Label className="text-gray-700 dark:text-gray-300 font-semibold">{t("marketing.create_broadcast.campaign_name")}</Label>
                                 <Input
-                                    placeholder="Ej: Promoción Enero 2026"
+                                    placeholder={t("marketing.create_broadcast.campaign_placeholder")}
                                     value={form.name}
                                     onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                                    className="h-11"
+                                    className="h-11 bg-white dark:bg-zinc-800/50"
                                 />
                             </div>
 
@@ -351,13 +354,6 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         </div>
                                     )}
 
-                                    {selectedTemplate && templateVars.length === 0 && (
-                                        <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-xs text-green-700 dark:text-green-400">
-                                            <CheckCircle2 className="h-4 w-4" />
-                                            Esta plantilla no requiere variables
-                                        </div>
-                                    )}
-
                                     {/* TTL Selector */}
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-2">
@@ -404,13 +400,13 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </h3>
 
                                 <div className="space-y-2">
-                                    <Label>Estado del Lead</Label>
+                                    <Label className="text-gray-700 dark:text-gray-300 font-semibold">{t("marketing.create_broadcast.tags")}</Label>
                                     <Select
-                                        value={form.filters.status || 'all'}
+                                        value={form.filters.status}
                                         onValueChange={(v) => updateFilters({ ...form.filters, status: v === 'all' ? '' : v })}
                                     >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Todos" />
+                                        <SelectTrigger className="w-full bg-white dark:bg-zinc-800/50 border-slate-200 dark:border-zinc-700">
+                                            <SelectValue placeholder={t("marketing.create_broadcast.tags_placeholder")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">Todos los estados</SelectItem>
@@ -560,17 +556,19 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                     {/* Footer */}
                     <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-transparent backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
-                        <Button variant="ghost" className="dark:text-gray-300 dark:hover:text-white dark:hover:bg-white/10" onClick={() => onOpenChange(false)}>
+                        <Button variant="ghost" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={loading}
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white px-6"
+                            disabled={loading || !form.name || (form.channel === 'whatsapp' && !selectedTemplate)}
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 px-8"
                         >
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Send className="mr-2 h-4 w-4" />
-                            Crear Campaña
+                            {loading ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando...</>
+                            ) : (
+                                <>{t("marketing.create_broadcast.continue")} <ArrowRight className="w-4 h-4 ml-2" /></>
+                            )}
                         </Button>
                     </div>
                 </div>
