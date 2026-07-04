@@ -105,17 +105,9 @@ export function MarketingDashboard() {
                                     <Workflow className="h-4 w-4 mr-2" />
                                     Run Cycle
                                 </Button>
-                                <Button
-                                    onClick={() => router.push('/crm/marketing/new')}
-                                    variant="outline"
-                                    className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
-                                >
+                                <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
                                     <Megaphone className="h-4 w-4 mr-2" />
                                     Nueva Campaña
-                                </Button>
-                                <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
-                                    <Radio className="h-4 w-4 mr-2" />
-                                    Broadcast Rápido
                                 </Button>
                             </>
                         )}
