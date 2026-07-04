@@ -51,9 +51,25 @@ export async function runMarketingCycle() {
             processedCount++
         } catch (e: any) {
             console.error(`[Runner] Failed enrollment ${enrollment.id}:`, e)
-            // Log failure to enrollment but don't crash runner
+            const errorMsg = e.message || 'Unknown Error'
+            
+            // QoS Monitor: Auto-pause on critical Meta errors to protect WhatsApp number
+            const isCritical = errorMsg.toLowerCase().includes('rate limit') || 
+                               errorMsg.toLowerCase().includes('spam') || 
+                               errorMsg.toLowerCase().includes('restricted') ||
+                               errorMsg.toLowerCase().includes('template') ||
+                               errorMsg.toLowerCase().includes('not approved')
+
+            if (isCritical) {
+                console.warn(`[QoS Monitor] Auto-paused campaign ${enrollment.campaign.id} due to critical error: ${errorMsg}`)
+                await supabase.from('marketing_campaigns').update({
+                    status: 'paused'
+                }).eq('id', enrollment.campaign.id)
+            }
+
             await supabase.from('marketing_enrollments').update({
-                execution_logs: [...(enrollment.execution_logs || []), { date: new Date().toISOString(), error: e.message }]
+                status: 'failed',
+                execution_logs: [...(enrollment.execution_logs || []), { date: new Date().toISOString(), error: errorMsg }]
             }).eq('id', enrollment.id)
         }
     }
@@ -67,6 +83,12 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
     // TENANT ISOLATION CHECK
     if (campaign.organization_id !== lead.organization_id) {
         throw new Error(`Integrity Error: Campaign Org ${campaign.organization_id} != Lead Org ${lead.organization_id}`)
+    }
+
+    // CAMPAIGN STATUS CHECK
+    if (campaign.status === 'paused') {
+        debugLogs.push(`[${enrollment.id}] Campaign is paused. Skipping.`)
+        return
     }
 
     // SCHEDULED CAMPAIGN CHECK

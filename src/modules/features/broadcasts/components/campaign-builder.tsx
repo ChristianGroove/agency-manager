@@ -52,10 +52,9 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
     // Safety Config State
     const [deliveryConfig, setDeliveryConfig] = useState({
-        mode: 'stealth',
+        mode: 'stealth' as 'stealth' | 'growth' | 'turbo',
         humanize: true,
-        start_hour: 9,
-        end_hour: 18
+        schedule_window: { start: 9, end: 18 }
     })
 
     // Create Sequence State
@@ -691,12 +690,33 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                     <Switch checked={deliveryConfig.humanize} onCheckedChange={(v) => setDeliveryConfig({ ...deliveryConfig, humanize: v })} />
                                 </div>
 
-                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                                    <div>
-                                        <Label className="text-base font-semibold">Horario de Protección</Label>
-                                        <p className="text-sm text-muted-foreground">Solo enviar en horario comercial (9:00 - 18:00) para reducir quejas.</p>
+                                <div className="flex flex-col gap-2 p-4 bg-slate-50 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-base font-semibold">Horario de Protección (Schedule Window)</Label>
+                                            <p className="text-sm text-muted-foreground">Solo enviar en horario comercial para reducir quejas y bloqueos de Meta.</p>
+                                        </div>
                                     </div>
-                                    <Switch checked={true} />
+                                    <div className="flex items-center gap-4 mt-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-700">De</span>
+                                            <Select value={String(deliveryConfig.schedule_window.start)} onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, start: Number(v) } })}>
+                                                <SelectTrigger className="w-[100px] bg-white"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {[...Array(24)].map((_, i) => <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-700">a</span>
+                                            <Select value={String(deliveryConfig.schedule_window.end)} onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, end: Number(v) } })}>
+                                                <SelectTrigger className="w-[100px] bg-white"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {[...Array(24)].map((_, i) => <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl opacity-70">

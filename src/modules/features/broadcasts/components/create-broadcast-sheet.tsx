@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { cn } from '@/modules/infrastructure/utils/utils'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,10 @@ import {
     FileText,
     Clock,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    ShieldAlert,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react'
 import {
     Select,
@@ -48,6 +52,17 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
     const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
     const [templateVarValues, setTemplateVarValues] = useState<Record<string, string>>({})
     const [ttlSeconds, setTtlSeconds] = useState(86400) // Default 24h
+    const [showAdvanced, setShowAdvanced] = useState(false)
+
+    const [deliveryConfig, setDeliveryConfig] = useState<{
+        mode: 'stealth' | 'growth' | 'turbo',
+        humanize: boolean,
+        schedule_window: { start: number, end: number }
+    }>({
+        mode: 'growth',
+        humanize: true,
+        schedule_window: { start: 9, end: 17 } // 9 AM to 5 PM
+    })
 
     const [form, setForm] = useState({
         name: '',
@@ -159,7 +174,8 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
             template_name: selectedTemplate?.name,
             template_language: selectedTemplate?.language,
             template_params: templateVarValues,
-            ttl_seconds: form.channel === 'whatsapp' ? ttlSeconds : undefined
+            ttl_seconds: form.channel === 'whatsapp' ? ttlSeconds : undefined,
+            delivery_config: deliveryConfig
         })
 
         if (result.success) {
@@ -182,14 +198,14 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-3xl overflow-hidden">
+                <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl rounded-3xl overflow-hidden">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 backdrop-blur-md border-b border-gray-100">
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800">
                         <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                             <Radio className="h-5 w-5" />
                         </div>
                         <div>
-                            <SheetTitle className="text-xl font-semibold text-gray-900">
+                            <SheetTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                                 Nueva Campaña
                             </SheetTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -202,13 +218,13 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     <ScrollArea className="flex-1">
                         <div className="px-8 py-6 space-y-6">
                             {/* Recipients Preview */}
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-brand-pink/10 rounded-lg">
                                         <Users className="h-5 w-5 text-brand-pink" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900">Destinatarios</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Destinatarios</p>
                                         <p className="text-xs text-muted-foreground">Según los filtros actuales</p>
                                     </div>
                                 </div>
@@ -216,7 +232,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                     {countLoading ? (
                                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                                     ) : (
-                                        <p className="text-2xl font-bold text-gray-900">{recipientCount}</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{recipientCount}</p>
                                     )}
                                 </div>
                             </div>
@@ -381,8 +397,8 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             )}
 
                             {/* Segmentation */}
-                            <div className="space-y-4 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
-                                <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                            <div className="space-y-4 p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <Users className="h-4 w-4 text-brand-pink" />
                                     Segmentación
                                 </h3>
@@ -423,6 +439,104 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         onCheckedChange={(v) => updateFilters({ ...form.filters, has_email: v })}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Advanced Anti-Ban Delivery Options */}
+                            <div className="space-y-4 p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                <button
+                                    onClick={() => setShowAdvanced(!showAdvanced)}
+                                    className="w-full flex items-center justify-between font-semibold text-sm text-gray-900 dark:text-gray-100 group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ShieldAlert className="h-4 w-4 text-orange-500" />
+                                        Opciones Avanzadas (Anti-Ban)
+                                    </div>
+                                    {showAdvanced ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                </button>
+                                
+                                {showAdvanced && (
+                                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800 space-y-6 animate-in slide-in-from-top-2">
+                                        {/* Mode */}
+                                        <div className="space-y-3">
+                                            <Label>Modo de Envío</Label>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div 
+                                                    className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'stealth' ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-green-200 dark:hover:border-green-800")} 
+                                                    onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'stealth' })}
+                                                >
+                                                    <h4 className="font-bold text-sm mb-1 text-green-800 dark:text-green-400">Stealth Mode</h4>
+                                                    <p className="text-[10px] text-green-600/80 dark:text-green-500/80">1 msg / 3 mins. Ideal calentar números.</p>
+                                                </div>
+                                                <div 
+                                                    className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'growth' ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800")} 
+                                                    onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'growth' })}
+                                                >
+                                                    <h4 className="font-bold text-sm mb-1 text-blue-800 dark:text-blue-400">Growth</h4>
+                                                    <p className="text-[10px] text-blue-600/80 dark:text-blue-500/80">1 msg / 30 segs. Recomendado y seguro.</p>
+                                                </div>
+                                                <div 
+                                                    className={cn("p-3 rounded-xl border-2 cursor-pointer transition-all", deliveryConfig.mode === 'turbo' ? "border-red-500 bg-red-50 dark:bg-red-900/20" : "border-gray-200 dark:border-zinc-700 hover:border-red-200 dark:hover:border-red-800")} 
+                                                    onClick={() => setDeliveryConfig({ ...deliveryConfig, mode: 'turbo' })}
+                                                >
+                                                    <h4 className="font-bold text-sm mb-1 text-red-800 dark:text-red-400">Turbo</h4>
+                                                    <p className="text-[10px] text-red-600/80 dark:text-red-500/80">1 msg / 5 segs. Solo Tier Alto o SMS.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Humanize Jitter */}
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <Label className="cursor-pointer font-semibold">Humanizar (Jitter Aleatorio)</Label>
+                                                <p className="text-xs text-muted-foreground mt-1">Añade retrasos aleatorios para imitar escritura humana y despistar bots de Meta.</p>
+                                            </div>
+                                            <Switch 
+                                                checked={deliveryConfig.humanize} 
+                                                onCheckedChange={(v) => setDeliveryConfig({ ...deliveryConfig, humanize: v })} 
+                                            />
+                                        </div>
+
+                                        {/* Schedule Window */}
+                                        <div className="space-y-3">
+                                            <Label className="font-semibold">Ventana de Horario (Schedule Window)</Label>
+                                            <p className="text-xs text-muted-foreground">Forzar que los envíos automáticos solo salgan en horas laborales para evitar bloqueos por envíos de madrugada.</p>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium">De</span>
+                                                    <Select
+                                                        value={String(deliveryConfig.schedule_window.start)}
+                                                        onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, start: Number(v) } })}
+                                                    >
+                                                        <SelectTrigger className="w-[100px] h-9">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {[...Array(24)].map((_, i) => (
+                                                                <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium">a</span>
+                                                    <Select
+                                                        value={String(deliveryConfig.schedule_window.end)}
+                                                        onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, end: Number(v) } })}
+                                                    >
+                                                        <SelectTrigger className="w-[100px] h-9">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {[...Array(24)].map((_, i) => (
+                                                                <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Preview */}

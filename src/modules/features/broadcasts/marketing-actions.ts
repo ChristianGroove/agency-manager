@@ -3,6 +3,7 @@
 import { createClient } from '@/modules/core/database/supabase-server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { addSeconds, addDays, setHours, setMinutes, setSeconds, isBefore, isAfter } from 'date-fns'
 
 export interface Campaign {
     id: string
@@ -177,6 +178,7 @@ export async function createQuickCampaign(data: {
     template_language?: string
     template_params?: Record<string, string>
     ttl_seconds?: number
+    delivery_config?: DeliveryConfig
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -196,7 +198,7 @@ export async function createQuickCampaign(data: {
             goal: 'broadcast',
             status: 'active',
             created_by: user.id,
-            delivery_config: { mode: 'growth', humanize: true } // Default safe mode
+            delivery_config: data.delivery_config || { mode: 'growth', humanize: true }
         })
         .select()
         .single()
@@ -421,7 +423,7 @@ export async function enrollAudienceInCampaign(campaignId: string) {
     // 1. Get campaign with linked audience
     const { data: campaign, error: cErr } = await adminClient
         .from('marketing_campaigns')
-        .select('id, organization_id, audience_id, status, scheduled_for')
+        .select('id, organization_id, audience_id, status, scheduled_for, delivery_config')
         .eq('id', campaignId)
         .single()
 
@@ -499,15 +501,19 @@ export async function enrollAudienceInCampaign(campaignId: string) {
 
     if (newLeads.length === 0) return { success: true, enrolled: 0, message: 'All leads already enrolled' }
 
-    // 8. Create enrollments
-    const enrollments = newLeads.map(lead => ({
+    // 8. Create enrollments with Staggered Times
+    const config = (campaign.delivery_config || { mode: 'growth', humanize: true }) as DeliveryConfig
+    const baseDate = campaign.scheduled_for ? new Date(campaign.scheduled_for) : new Date()
+    const scheduledTimes = calculateStaggeredTimes(newLeads.length, config, baseDate)
+
+    const enrollments = newLeads.map((lead, idx) => ({
         organization_id: campaign.organization_id,
         campaign_id: campaignId,
         sequence_id: sequence.id,
         contact_id: lead.id,
         current_step_id: firstStep.id,
         status: 'active',
-        next_run_at: new Date().toISOString()
+        next_run_at: scheduledTimes[idx].toISOString()
     }))
 
     const { error: insertErr } = await adminClient
@@ -597,6 +603,55 @@ export async function previewAudienceCount(filters: any) {
     if (error) return { success: false, error: error.message }
     return { success: true, count: count || 0 }
 }
+
+// --- ANTI-BAN STAGGERING ALGORITHM ---
+
+function calculateStaggeredTimes(count: number, config: DeliveryConfig, baseTime: Date = new Date()): Date[] {
+    const times: Date[] = []
+    
+    // Define base intervals based on mode
+    let baseIntervalSeconds = 30 // default growth
+    if (config.mode === 'stealth') baseIntervalSeconds = 180 // 3 minutes
+    if (config.mode === 'turbo') baseIntervalSeconds = 5 // 5 seconds
+    
+    let currentTime = new Date(baseTime)
+    
+    for (let i = 0; i < count; i++) {
+        // 1. Add base interval
+        let nextTime = addSeconds(currentTime, baseIntervalSeconds)
+        
+        // 2. Add Jitter if humanize is true (Random [-10%, +25%] of interval)
+        if (config.humanize) {
+            const jitterRange = baseIntervalSeconds * 0.35 // 35% variance total
+            const randomJitter = (Math.random() * jitterRange) - (baseIntervalSeconds * 0.1) 
+            nextTime = addSeconds(nextTime, Math.round(randomJitter))
+        }
+        
+        // 3. Enforce Schedule Window (e.g. 9 to 17)
+        if (config.schedule_window) {
+            const currentHour = nextTime.getHours()
+            const startH = config.schedule_window.start
+            const endH = config.schedule_window.end
+            
+            if (currentHour < startH || currentHour >= endH) {
+                // Shift to next valid day at start time
+                nextTime = setHours(nextTime, startH)
+                nextTime = setMinutes(nextTime, Math.floor(Math.random() * 30)) // Random minute start
+                nextTime = setSeconds(nextTime, 0)
+                
+                if (currentHour >= endH) {
+                    nextTime = addDays(nextTime, 1)
+                }
+            }
+        }
+        
+        times.push(nextTime)
+        currentTime = nextTime // Pass the baton
+    }
+    
+    return times
+}
+
 
 export async function importLeads(leads: any[]) {
     const supabase = await createClient()
