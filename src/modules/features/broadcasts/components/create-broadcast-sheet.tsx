@@ -198,9 +198,9 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl rounded-3xl overflow-hidden">
+                <div className="flex flex-col h-full bg-white/95 dark:bg-[#0a0a0a]/60 dark:border-l dark:border-white/5 backdrop-blur-2xl rounded-3xl overflow-hidden">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800">
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-transparent backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                         <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                             <Radio className="h-5 w-5" />
                         </div>
@@ -487,7 +487,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         {/* Humanize Jitter */}
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <Label className="cursor-pointer font-semibold">Humanizar (Jitter Aleatorio)</Label>
+                                                <Label className="cursor-pointer font-semibold dark:text-gray-100">Humanizar (Jitter Aleatorio)</Label>
                                                 <p className="text-xs text-muted-foreground mt-1">Añade retrasos aleatorios para imitar escritura humana y despistar bots de Meta.</p>
                                             </div>
                                             <Switch 
@@ -498,11 +498,11 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                                         {/* Schedule Window */}
                                         <div className="space-y-3">
-                                            <Label className="font-semibold">Ventana de Horario (Schedule Window)</Label>
+                                            <Label className="font-semibold dark:text-gray-100">Ventana de Horario (Schedule Window)</Label>
                                             <p className="text-xs text-muted-foreground">Forzar que los envíos automáticos solo salgan en horas laborales para evitar bloqueos por envíos de madrugada.</p>
                                             <div className="flex items-center gap-4 mt-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium">De</span>
+                                                    <span className="text-sm font-medium dark:text-gray-200">De</span>
                                                     <Select
                                                         value={String(deliveryConfig.schedule_window.start)}
                                                         onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, start: Number(v) } })}
@@ -518,7 +518,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                     </Select>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium">a</span>
+                                                    <span className="text-sm font-medium dark:text-gray-200">a</span>
                                                     <Select
                                                         value={String(deliveryConfig.schedule_window.end)}
                                                         onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, end: Number(v) } })}
@@ -559,8 +559,8 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     </ScrollArea>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 flex items-center justify-between">
-                        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-transparent backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                        <Button variant="ghost" className="dark:text-gray-300 dark:hover:text-white dark:hover:bg-white/10" onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>
                         <Button
