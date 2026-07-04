@@ -912,7 +912,8 @@ export class MetaProvider implements MessagingProvider {
                             metadata: { 
                                 raw: msg,
                                 phoneNumberId: phoneNumberId // CRITICAL for resolver
-                            }
+                            },
+                            referral: msg.referral || undefined
                         });
                     }
                 }

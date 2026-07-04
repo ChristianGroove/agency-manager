@@ -9,7 +9,7 @@ import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
     MoreHorizontal, Tag, DollarSign, Palette,
-    Copy, Send, KeyRound
+    Copy, Send, KeyRound, Megaphone, Target
 } from "lucide-react"
 import { TagsPicker } from "@/modules/features/crm/components/tags/tags-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -370,6 +370,30 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             </div>
 
                             <Separator className="opacity-50" />
+
+                            {/* Meta Ads Origin */}
+                            {conversation?.metadata?.referral && (
+                                <>
+                                    <div className="space-y-3 bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
+                                        <div className="flex items-center gap-2 relative z-10">
+                                            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                                                <Megaphone className="h-4 w-4" />
+                                            </div>
+                                            <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-300 uppercase tracking-wider">Origen del Lead: Meta Ads</h4>
+                                        </div>
+                                        <div className="space-y-1.5 relative z-10">
+                                            <ContactItem icon={Target} label="Ad ID" value={conversation.metadata.referral.ad_id || conversation.metadata.referral.source_id} t={t} />
+                                            <ContactItem icon={Palette} label="Campaña" value={conversation.metadata.referral.source_id} t={t} />
+                                            {conversation.metadata.referral.source_url && (
+                                                <ContactItem icon={ExternalLink} label="Enlace del Anuncio" value={conversation.metadata.referral.source_url} t={t} />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
+                                </>
+                            )}
 
                             {/* Assignment Panel - Reordered to bottom */}
                             <div className="space-y-2">
