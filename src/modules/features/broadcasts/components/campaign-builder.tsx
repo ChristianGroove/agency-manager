@@ -87,9 +87,16 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         ])
 
         if (seqResult.success) {
-            setSequences(seqResult.sequences!)
-            if (seqResult.sequences!.length > 0 && !activeSequence) {
-                setActiveSequence(seqResult.sequences![0].id)
+            let loadedSeqs = seqResult.sequences!
+            if (loadedSeqs.length === 0) {
+                const created = await createSequence({ name: 'Flujo Principal', campaign_id: campaignId, trigger_type: 'manual' })
+                if (created.success) {
+                    loadedSeqs = [{...created.sequence, steps: []}] as any[]
+                }
+            }
+            setSequences(loadedSeqs)
+            if (loadedSeqs.length > 0 && !activeSequence) {
+                setActiveSequence(loadedSeqs[0].id)
             }
         }
         if (audResult.success) {
@@ -342,31 +349,31 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         {campaignName}
                         <Badge variant={campaignStatus === 'active' ? 'default' : 'outline'} className={cn("ml-2 font-normal", campaignStatus === 'active' ? "bg-green-500 hover:bg-green-600" : "")}>
-                            {campaignStatus === 'active' ? 'Activa' : (campaignStatus === 'paused' ? 'Pausada' : 'Borrador')}
+                            {campaignStatus === 'active' ? 'Activo' : (campaignStatus === 'paused' ? 'Pausado' : 'Borrador')}
                         </Badge>
                         {stats && (
-                            <div className="flex items-center gap-2 ml-4 text-sm font-medium text-muted-foreground border-l pl-4">
+                            <div className="flex items-center gap-2 ml-4 text-sm font-medium text-muted-foreground border-l dark:border-zinc-800 pl-4">
                                 <span title="Total Inscritos" className="flex items-center gap-1"><Users className="w-4 h-4" /> {stats.stats.total}</span>
                                 <span title="En Progreso" className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400"><Activity className="w-4 h-4" /> {stats.stats.active}</span>
                             </div>
                         )}
                     </h2>
-                    <p className="text-sm text-muted-foreground">Marketing Engine Configuration</p>
+                    <p className="text-sm text-muted-foreground">Constructor de Embudos Automatizados (Drip Campaigns)</p>
                 </div>
                 <div className="flex gap-2">
                     <Button
                         onClick={handleToggleStatus}
-                        className={cn("shadow-lg transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20" : "bg-green-600 text-white hover:bg-green-700 shadow-green-500/20")}
+                        className={cn("shadow-lg transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20" : "bg-brand-pink text-white hover:bg-brand-pink/90 shadow-pink-500/20")}
                     >
-                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> Pausar Campaña</> : <><Play className="w-4 h-4 mr-2" /> Activar Campaña</>}
+                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> Pausar Embudo</> : <><Play className="w-4 h-4 mr-2" /> Activar Embudo</>}
                     </Button>
                 </div>
             </div>
 
             {/* Main Tabs */}
             <Tabs defaultValue="design" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="bg-white dark:bg-zinc-900 border border-gray-100 px-2 justify-start w-fit rounded-lg mb-4">
-                    <TabsTrigger value="design" className="gap-2"><GitMerge className="w-4 h-4" /> Diseñador</TabsTrigger>
+                <TabsList className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 px-2 justify-start w-fit rounded-lg mb-4">
+                    <TabsTrigger value="design" className="gap-2"><GitMerge className="w-4 h-4" /> Pasos del Embudo</TabsTrigger>
                     <TabsTrigger value="audience" className="gap-2"><Users className="w-4 h-4" /> Audiencia</TabsTrigger>
                     <TabsTrigger value="settings" className="gap-2"><Settings className="w-4 h-4" /> Configuración & Seguridad</TabsTrigger>
                     {campaignStatus !== 'draft' && (
@@ -376,92 +383,108 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
                 {/* --- DESIGN TAB --- */}
                 <TabsContent value="design" className="flex-1 flex gap-6 overflow-hidden mt-0">
-                    {/* Sidebar */}
-                    <div className="w-64 shrink-0 flex flex-col gap-4">
-                        <div className="flex items-center justify-between px-1">
-                            <h3 className="font-semibold text-sm text-gray-500 uppercase tracking-wider">Secuencias</h3>
-                            <Dialog open={isCreateSeqOpen} onOpenChange={setIsCreateSeqOpen}>
-                                <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-6 w-6"><Plus className="w-4 h-4" /></Button></DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader><DialogTitle>Nueva Secuencia</DialogTitle></DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <Input placeholder="Ej: Bienvenida" value={newSeqName} onChange={(e) => setNewSeqName(e.target.value)} />
-                                        <Button onClick={handleCreateSequence} className="w-full">Crear</Button>
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                        <div className="space-y-1">
-                            {sequences.map(seq => (
-                                <div key={seq.id} className={cn("group flex items-center gap-2 w-full p-2 rounded-lg text-sm font-medium transition-all", activeSequence === seq.id ? "bg-blue-50 text-blue-700 border border-blue-200" : "hover:bg-gray-100 text-gray-700")}>
-                                    <button onClick={() => setActiveSequence(seq.id)} className="flex-1 text-left flex items-center gap-3 truncate">
-                                        <GitMerge className="w-4 h-4 shrink-0 opacity-70" /> <span className="truncate">{seq.name}</span>
-                                    </button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"><MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteSequence(seq.id)}><Trash2 className="w-3 h-3 mr-2" /> Eliminar</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Canvas */}
-                    <Card className="flex-1 bg-slate-50/50 dark:bg-zinc-900/50 border-gray-200 flex flex-col overflow-hidden relative">
+                    {/* Full Width Canvas */}
+                    <Card className="flex-1 bg-slate-50/50 dark:bg-zinc-950/30 border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden relative shadow-inner">
                         {!currentSequence ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground"><Sparkles className="w-12 h-12 mb-4 text-gray-300" /><p>Selecciona una secuencia</p></div>
+                            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground"><Sparkles className="w-12 h-12 mb-4 text-gray-300 dark:text-zinc-700" /><p>Selecciona una secuencia</p></div>
                         ) : (
                             <div className="flex-1 flex flex-col">
-                                <div className="p-4 border-b border-gray-200 bg-white flex justify-between items-center">
-                                    <h3 className="font-bold flex items-center gap-2"><GitMerge className="w-4 h-4 text-blue-500" />{currentSequence.name}</h3>
+                                <div className="p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center shadow-sm z-10">
+                                    <h3 className="font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100"><GitMerge className="w-4 h-4 text-brand-pink" />{currentSequence.name}</h3>
                                     <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
-                                        <Button size="sm" variant="outline" onClick={openAddStep}><Plus className="w-3 h-3 mr-2" />Agregar Paso</Button>
-                                        <DialogContent>
-                                            <DialogHeader><DialogTitle>Añadir Paso</DialogTitle></DialogHeader>
+                                        <Button size="sm" onClick={openAddStep} className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white dark:border-zinc-700 shadow-sm">
+                                            <Plus className="w-3 h-3 mr-2" />Agregar Paso al Embudo
+                                        </Button>
+                                        <DialogContent className="dark:bg-zinc-900 dark:border-zinc-800">
+                                            <DialogHeader><DialogTitle className="dark:text-white">Añadir Paso</DialogTitle></DialogHeader>
                                             <div className="space-y-4 py-4">
-                                                <Label>Tipo</Label>
+                                                <Label className="dark:text-gray-200">Tipo de Acción</Label>
                                                 <Select value={stepForm.type} onValueChange={(v) => setStepForm({ ...stepForm, type: v })}>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent><SelectItem value="email">Email</SelectItem><SelectItem value="whatsapp">WhatsApp</SelectItem><SelectItem value="delay">Delay</SelectItem></SelectContent>
+                                                    <SelectTrigger className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"><SelectValue /></SelectTrigger>
+                                                    <SelectContent className="dark:bg-zinc-800 dark:border-zinc-700">
+                                                        <SelectItem value="whatsapp">Mensaje de WhatsApp</SelectItem>
+                                                        <SelectItem value="email">Email Automático</SelectItem>
+                                                        <SelectItem value="delay">Esperar (Retraso)</SelectItem>
+                                                    </SelectContent>
                                                 </Select>
-                                                <Label>Nombre</Label><Input value={stepForm.name} onChange={(e) => setStepForm({ ...stepForm, name: e.target.value })} />
-                                                <Label>Contenido / Duración</Label>
+                                                <Label className="dark:text-gray-200">Nombre Interno</Label>
+                                                <Input value={stepForm.name} onChange={(e) => setStepForm({ ...stepForm, name: e.target.value })} className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" placeholder="Ej: Mensaje de Bienvenida" />
+                                                <Label className="dark:text-gray-200">Configuración</Label>
                                                 {stepForm.type === 'delay' ? (
                                                     <div className="flex items-center gap-2">
-                                                        <Input type="number" value={stepForm.delay} onChange={(e) => setStepForm({ ...stepForm, delay: e.target.value })} />
+                                                        <Input type="number" value={stepForm.delay} onChange={(e) => setStepForm({ ...stepForm, delay: e.target.value })} className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
                                                         <span className="text-sm text-muted-foreground">días</span>
                                                     </div>
                                                 ) : (
-                                                    <Textarea value={stepForm.content} onChange={(e) => setStepForm({ ...stepForm, content: e.target.value })} />
+                                                    <Textarea value={stepForm.content} onChange={(e) => setStepForm({ ...stepForm, content: e.target.value })} className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" placeholder="Escribe tu mensaje aquí..." />
                                                 )}
-                                                <Button onClick={handleSaveStep} className="w-full">{editingStepId ? 'Guardar Cambios' : 'Añadir'}</Button>
+                                                <Button onClick={handleSaveStep} className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white">{editingStepId ? 'Guardar Cambios' : 'Añadir al Embudo'}</Button>
                                             </div>
                                         </DialogContent>
                                     </Dialog>
                                 </div>
-                                <ScrollArea className="flex-1 p-8">
+                                <ScrollArea className="flex-1 p-8 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] dark:bg-none">
                                     <div className="max-w-2xl mx-auto space-y-8 pb-20 relative">
-                                        <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 -z-10" />
-                                        <div className="flex gap-6 relative"><div className="w-16 flex justify-center"><div className="w-8 h-8 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center"><Play className="w-3 h-3 text-green-600" /></div></div><div className="pt-1"><h4 className="font-semibold">Inicio</h4></div></div>
+                                        {/* Main Vertical Timeline Connector */}
+                                        <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-300 dark:bg-zinc-700 -z-10" />
+                                        
+                                        {/* Start Node */}
+                                        <div className="flex gap-6 relative">
+                                            <div className="w-16 flex justify-center">
+                                                <div className="w-8 h-8 rounded-full bg-green-100 border-2 border-green-500 dark:bg-green-900/40 flex items-center justify-center shadow-md">
+                                                    <Play className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                                </div>
+                                            </div>
+                                            <div className="pt-1">
+                                                <h4 className="font-semibold text-gray-800 dark:text-gray-200">Inicio del Embudo</h4>
+                                                <p className="text-xs text-muted-foreground mt-1">Los contactos ingresan aquí cuando activas la campaña</p>
+                                            </div>
+                                        </div>
+                                        
                                         {currentSequence.steps?.map((step, idx) => (
                                             <div key={step.id} className="flex gap-6 relative group">
-                                                {/* Connector Line */}
-                                                {idx < (currentSequence.steps?.length || 0) - 1 && (
-                                                    <div className="absolute left-8 top-10 bottom-[-24px] w-0.5 bg-gray-200 -z-10" />
-                                                )}
-
-                                                <div className="w-16 flex justify-center"><div className="w-10 h-10 rounded-xl bg-white border shadow-sm flex items-center justify-center z-10 group-hover:scale-110 transition-transform cursor-pointer" onClick={() => openEditStep(step)}>{step.type === 'email' ? <Mail className="w-5 h-5 text-purple-500" /> : step.type === 'whatsapp' ? <MessageSquare className="w-5 h-5 text-green-500" /> : <Clock className="w-5 h-5 text-amber-500" />}</div></div>
-                                                <Card className="flex-1 p-4 bg-white border-gray-100 hover:shadow-md transition-all relative cursor-pointer" onClick={() => openEditStep(step)}>
+                                                {/* Step Icon */}
+                                                <div className="w-16 flex justify-center">
+                                                    <div 
+                                                        className={cn(
+                                                            "w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 shadow-md flex items-center justify-center z-10 group-hover:scale-110 transition-transform cursor-pointer",
+                                                            step.type === 'delay' && "rounded-full"
+                                                        )} 
+                                                        onClick={() => openEditStep(step)}
+                                                    >
+                                                        {step.type === 'email' ? <Mail className="w-5 h-5 text-purple-500" /> : 
+                                                         step.type === 'whatsapp' ? <MessageSquare className="w-5 h-5 text-green-500" /> : 
+                                                         <Clock className="w-5 h-5 text-amber-500" />}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Step Card */}
+                                                <Card 
+                                                    className={cn(
+                                                        "flex-1 p-5 bg-white dark:bg-zinc-900/90 border-gray-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all relative cursor-pointer group-hover:border-brand-pink/50",
+                                                        step.type === 'delay' && "bg-amber-50/50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50 border-dashed"
+                                                    )} 
+                                                    onClick={() => openEditStep(step)}
+                                                >
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <div className="flex items-center gap-2 mb-1"><Badge variant="outline" className="text-[10px] h-5 uppercase">{step.type}</Badge></div>
-                                                            <h4 className="font-semibold">{step.name}</h4>
-                                                            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{step.type === 'delay' ? `Esperar ${step.delay_config?.duration} días` : step.content?.body}</p>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Badge variant="outline" className={cn("text-[10px] h-5 uppercase dark:border-zinc-700", step.type === 'delay' ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "")}>
+                                                                    {step.type === 'whatsapp' ? 'WhatsApp' : step.type}
+                                                                </Badge>
+                                                            </div>
+                                                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-base">{step.name}</h4>
+                                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                                                                {step.type === 'delay' ? `Esperar ${step.delay_config?.value || step.delay} ${step.delay_config?.unit || 'días'}` : step.content}
+                                                            </p>
                                                         </div>
                                                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => openEditStep(step)}><Edit2 className="w-3 h-3 text-gray-400 hover:text-blue-500" /></Button>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteStep(step.id)}><Trash2 className="w-3 h-3 text-gray-400 hover:text-red-500" /></Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openEditStep(step)}>
+                                                                <Edit2 className="w-4 h-4 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDeleteStep(step.id)}>
+                                                                <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500 dark:hover:text-red-400" />
+                                                            </Button>
                                                         </div>
                                                     </div>
                                                 </Card>
