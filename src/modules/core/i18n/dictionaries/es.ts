@@ -1457,6 +1457,51 @@ export const es = {
             }
         }
     },
+    meta_ads_monitor: {
+        title: "Meta Ads Monitor",
+        subtitle: "Control total sobre el rendimiento de tus anuncios y la calidad de tus leads en tiempo real.",
+        sync_real: "Sincronizar Datos Reales",
+        sync_error: "Error al sincronizar datos",
+        sync_success: "Métricas sincronizadas correctamente desde Meta",
+        sync_unexpected: "Error inesperado al sincronizar",
+        loading_api: "Consultando a Meta Graph API...",
+        connection_required: "Conexión Requerida",
+        connection_desc: "Para visualizar las métricas y automatizar tus leads, primero debes conectar la cuenta de Meta de tu negocio.",
+        global_config: "Configuración Global",
+        tab_overview: "Vista General",
+        tab_settings: "Conexión y API",
+        metrics_title: "Métricas de Rendimiento",
+        config_title: "Configuración de Meta",
+        config_desc: "Gestiona las credenciales de Graph API y los IDs de activos para el monitoreo automatizado.",
+        settings: {
+            api_credentials: "Credenciales de Meta Graph API",
+            e2e_notice: "Tus credenciales se cifran de extremo a extremo (E2EE) antes de guardarse en el sistema.",
+            connected: "Conectado",
+            pending: "Pendiente",
+            access_token: "System User Access Token",
+            required: "Requerido",
+            token_placeholder_saved: "Token configurado; deja vacío para conservarlo",
+            token_placeholder_empty: "EAA...",
+            ad_account_id: "Ad Account ID",
+            page_id: "Facebook Page ID",
+            save_config: "Guardar Configuración"
+        },
+        dashboard: {
+            spend: "Inversión",
+            clicks: "Resultados (Clics)",
+            reach: "Alcance",
+            roas: "ROAS",
+            active_campaigns: "Campañas Activas",
+            col_campaign: "Campaña / Estado",
+            col_budget: "Presupuesto",
+            col_spend: "Gasto",
+            col_conv: "Conv.",
+            col_ctr_roas: "CTR / ROAS",
+            daily: "Diario",
+            total: "Total",
+            last_sync: "Última Sincronización"
+        }
+    },
     marketing: {
         dashboard: {
             title_insights: "Meta Insights",

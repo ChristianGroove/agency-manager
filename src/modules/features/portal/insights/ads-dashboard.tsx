@@ -6,6 +6,7 @@ import { DollarSign, Eye, MousePointer2, TrendingUp, BarChart3, AlertCircle, Che
 import { formatCurrency, cn } from "@/modules/infrastructure/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface AdsDashboardProps {
     data: any // Keeping it flexible to handle both NormalizedAdsMetrics and DB Row
@@ -16,6 +17,7 @@ interface AdsDashboardProps {
 }
 
 export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
+    const { t } = useTranslation()
     const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
 
     if (!data) return null
@@ -57,28 +59,28 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
         <div className="space-y-10">
             <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4", loading ? "opacity-50 pointer-events-none" : "opacity-100")}>
                 <KPICard
-                    title="Inversión"
+                    title={t("meta_ads_monitor.dashboard.spend")}
                     value={formatCurrency(safeData.spend)}
                     icon={DollarSign}
                     color="text-blue-600 dark:text-blue-400"
                     bgColor="bg-blue-50 dark:bg-blue-500/10"
                 />
                 <KPICard
-                    title="Resultados (Clics)"
+                    title={t("meta_ads_monitor.dashboard.clicks")}
                     value={safeData.clicks.toLocaleString()}
                     icon={MousePointer2}
                     color="text-purple-600 dark:text-purple-400"
                     bgColor="bg-purple-50 dark:bg-purple-500/10"
                 />
                 <KPICard
-                    title="Alcance"
+                    title={t("meta_ads_monitor.dashboard.reach")}
                     value={safeData.impressions.toLocaleString()}
                     icon={Eye}
                     color="text-emerald-600 dark:text-emerald-400"
                     bgColor="bg-emerald-50 dark:bg-emerald-500/10"
                 />
                 <KPICard
-                    title="ROAS"
+                    title={t("meta_ads_monitor.dashboard.roas")}
                     value={`${safeData.roas > 0 ? safeData.roas.toFixed(2) : '--'}x`}
                     icon={TrendingUp}
                     color="text-amber-600 dark:text-amber-400"
@@ -95,7 +97,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                 <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
                                     <BarChart3 className="w-5 h-5 text-indigo-600" />
                                 </div>
-                                Campañas Activas
+                                {t("meta_ads_monitor.dashboard.active_campaigns")}
                             </CardTitle>
                         </div>
                     </CardHeader>
@@ -104,11 +106,11 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50/50 dark:bg-white/[0.02] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                                     <tr>
-                                        <th className="px-8 py-5">Campaña / Estado</th>
-                                        <th className="px-6 py-5 text-right">Presupuesto</th>
-                                        <th className="px-6 py-5 text-right">Gasto</th>
-                                        <th className="px-6 py-5 text-right">Conv.</th>
-                                        <th className="px-8 py-5 text-right">CTR / ROAS</th>
+                                        <th className="px-8 py-5">{t("meta_ads_monitor.dashboard.col_campaign")}</th>
+                                        <th className="px-6 py-5 text-right">{t("meta_ads_monitor.dashboard.col_budget")}</th>
+                                        <th className="px-6 py-5 text-right">{t("meta_ads_monitor.dashboard.col_spend")}</th>
+                                        <th className="px-6 py-5 text-right">{t("meta_ads_monitor.dashboard.col_conv")}</th>
+                                        <th className="px-8 py-5 text-right">{t("meta_ads_monitor.dashboard.col_ctr_roas")}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 dark:divide-white/5">
@@ -140,7 +142,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">{formatCurrency(budget)}</p>
-                                                        <p className="text-[10px] text-zinc-400 font-medium">{campaign.daily_budget ? 'Diario' : 'Total'}</p>
+                                                        <p className="text-[10px] text-zinc-400 font-medium">{campaign.daily_budget ? t("meta_ads_monitor.dashboard.daily") : t("meta_ads_monitor.dashboard.total")}</p>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <div className="flex flex-col items-end gap-1.5">
@@ -182,11 +184,11 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                                         </div>
                                                                         <div className="flex items-center gap-10 pr-4">
                                                                             <div className="text-right">
-                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Gasto</p>
+                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_spend")}</p>
                                                                                 <p className="text-sm font-black text-indigo-600">{formatCurrency(ad.spend)}</p>
                                                                             </div>
                                                                             <div className="text-right">
-                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Conv.</p>
+                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_conv")}</p>
                                                                                 <p className="text-sm font-black text-slate-800 dark:text-slate-200">{ad.conversions}</p>
                                                                             </div>
                                                                         </div>
@@ -209,7 +211,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
             <div className="flex justify-center pt-4">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                     <span className="w-8 h-[1px] bg-slate-200" />
-                    Última Sincronización: {new Date(safeData.last_updated).toLocaleString()}
+                    {t("meta_ads_monitor.dashboard.last_sync")}: {new Date(safeData.last_updated).toLocaleString()}
                     <span className="w-8 h-[1px] bg-slate-200" />
                 </p>
             </div>

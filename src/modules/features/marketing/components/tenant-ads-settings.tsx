@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Globe, Save, AlertCircle, CheckCircle2, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 import { getOrgMetaConfig, saveOrgMetaConfig } from "../actions"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface TenantAdsSettingsProps {
     onSuccess?: () => void
 }
 
 export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [config, setConfig] = useState<any>(null)
@@ -61,21 +63,21 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-[2rem] bg-slate-50/50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5">
                 <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Credenciales de Meta Graph API</h3>
+                    <h3 className="font-bold text-slate-900 dark:text-white">{t("meta_ads_monitor.settings.api_credentials")}</h3>
                     <p className="text-xs text-slate-500 font-medium mt-1">
-                        Tus credenciales se cifran de extremo a extremo (E2EE) antes de guardarse en el sistema.
+                        {t("meta_ads_monitor.settings.e2e_notice")}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-slate-100 dark:border-white/10 shadow-sm shrink-0">
                     {isConnected ? (
                         <>
                             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Conectado</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t("meta_ads_monitor.settings.connected")}</span>
                         </>
                     ) : (
                         <>
                             <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-xs font-bold text-slate-500">Pendiente</span>
+                            <span className="text-xs font-bold text-slate-500">{t("meta_ads_monitor.settings.pending")}</span>
                         </>
                     )}
                 </div>
@@ -84,20 +86,20 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                        System User Access Token
-                        {!isConnected && <span className="ml-2 text-[9px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full font-bold">Requerido</span>}
+                        {t("meta_ads_monitor.settings.access_token")}
+                        {!isConnected && <span className="ml-2 text-[9px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full font-bold">{t("meta_ads_monitor.settings.required")}</span>}
                     </Label>
                     <Input 
                         name="access_token" 
                         type="password" 
-                        placeholder={isConnected ? "Token configurado; deja vacío para conservarlo" : "EAA..."}
+                        placeholder={isConnected ? t("meta_ads_monitor.settings.token_placeholder_saved") : t("meta_ads_monitor.settings.token_placeholder_empty")}
                         className="h-12 bg-white dark:bg-zinc-900/50 border-slate-200 dark:border-white/10 rounded-2xl font-mono text-sm focus:ring-primary shadow-sm"
                         required={!isConnected}
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Ad Account ID</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t("meta_ads_monitor.settings.ad_account_id")}</Label>
                     <Input 
                         name="ad_account_id" 
                         placeholder="act_123456789" 
@@ -108,7 +110,7 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Facebook Page ID</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t("meta_ads_monitor.settings.page_id")}</Label>
                     <Input 
                         name="page_id" 
                         placeholder="1234567890" 
@@ -122,7 +124,7 @@ export function TenantAdsSettings({ onSuccess }: TenantAdsSettingsProps) {
             <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 h-12 rounded-2xl shadow-lg shadow-primary/20 font-bold text-sm transition-all active:scale-95">
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Guardar Configuración
+                    {t("meta_ads_monitor.settings.save_config")}
                 </Button>
             </div>
         </form>

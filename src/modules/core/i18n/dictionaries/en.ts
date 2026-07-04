@@ -1457,6 +1457,51 @@ export const en = {
             }
         }
     },
+    meta_ads_monitor: {
+        title: "Meta Ads Monitor",
+        subtitle: "Total control over your ad performance and lead quality in real time.",
+        sync_real: "Sync Real Data",
+        sync_error: "Error syncing data",
+        sync_success: "Metrics synchronized successfully from Meta",
+        sync_unexpected: "Unexpected error syncing data",
+        loading_api: "Querying Meta Graph API...",
+        connection_required: "Connection Required",
+        connection_desc: "To view metrics and automate your leads, you must first connect your business's Meta account.",
+        global_config: "Global Configuration",
+        tab_overview: "Overview",
+        tab_settings: "Connection & API",
+        metrics_title: "Performance Metrics",
+        config_title: "Meta Configuration",
+        config_desc: "Manage Graph API credentials and asset IDs for automated monitoring.",
+        settings: {
+            api_credentials: "Meta Graph API Credentials",
+            e2e_notice: "Your credentials are End-to-End Encrypted (E2EE) before being saved to the system.",
+            connected: "Connected",
+            pending: "Pending",
+            access_token: "System User Access Token",
+            required: "Required",
+            token_placeholder_saved: "Token configured; leave empty to keep it",
+            token_placeholder_empty: "EAA...",
+            ad_account_id: "Ad Account ID",
+            page_id: "Facebook Page ID",
+            save_config: "Save Configuration"
+        },
+        dashboard: {
+            spend: "Spend",
+            clicks: "Results (Clicks)",
+            reach: "Reach",
+            roas: "ROAS",
+            active_campaigns: "Active Campaigns",
+            col_campaign: "Campaign / Status",
+            col_budget: "Budget",
+            col_spend: "Spend",
+            col_conv: "Conv.",
+            col_ctr_roas: "CTR / ROAS",
+            daily: "Daily",
+            total: "Total",
+            last_sync: "Last Sync"
+        }
+    },
     marketing: {
         dashboard: {
             title_insights: "Meta Insights",

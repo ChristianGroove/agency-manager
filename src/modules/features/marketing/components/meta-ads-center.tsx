@@ -11,8 +11,10 @@ import { getOrgAdsMetrics, syncOrgAdsMetrics } from "../actions"
 import { SectionHeader } from "@/components/layout/section-header"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function MetaAdsCenter() {
+    const { t } = useTranslation()
     const [adsData, setAdsData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState("overview")
@@ -34,13 +36,13 @@ export function MetaAdsCenter() {
         try {
             const result = await syncOrgAdsMetrics()
             if (!result.success) {
-                toast.error(result.error || "Error al sincronizar datos")
+                toast.error(result.error || t("meta_ads_monitor.sync_error"))
             } else {
-                toast.success("Métricas sincronizadas correctamente desde Meta")
+                toast.success(t("meta_ads_monitor.sync_success"))
                 await loadData()
             }
         } catch (error) {
-            toast.error("Error inesperado al sincronizar")
+            toast.error(t("meta_ads_monitor.sync_unexpected"))
         } finally {
             setLoading(false)
         }
@@ -53,8 +55,8 @@ export function MetaAdsCenter() {
     return (
         <div className="space-y-6 min-h-screen pb-20">
             <SectionHeader
-                title="Meta Ads Monitor"
-                subtitle="Control total sobre el rendimiento de tus anuncios y la calidad de tus leads en tiempo real."
+                title={t("meta_ads_monitor.title")}
+                subtitle={t("meta_ads_monitor.subtitle")}
                 icon={BarChart3}
                 action={
                     <div className="flex items-center gap-3">
@@ -66,7 +68,7 @@ export function MetaAdsCenter() {
                             className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl"
                         >
                             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                            Sincronizar Datos Reales
+                            {t("meta_ads_monitor.sync_real")}
                         </Button>
                     </div>
                 }
@@ -75,7 +77,7 @@ export function MetaAdsCenter() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-                    <p className="text-sm font-bold text-slate-500 animate-pulse">Consultando a Meta Graph API...</p>
+                    <p className="text-sm font-bold text-slate-500 animate-pulse">{t("meta_ads_monitor.loading_api")}</p>
                 </div>
             ) : !adsData ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -83,9 +85,9 @@ export function MetaAdsCenter() {
                         <div className="glass-card p-6 mb-6 animate-bounce-slow">
                             <BarChart3 className="h-12 w-12 text-primary" />
                         </div>
-                        <h3 className="text-2xl font-bold mb-3">Conexión Requerida</h3>
+                        <h3 className="text-2xl font-bold mb-3">{t("meta_ads_monitor.connection_required")}</h3>
                         <p className="text-muted-foreground max-w-md text-lg">
-                            Para visualizar las métricas y automatizar tus leads, primero debes conectar la cuenta de Meta de tu negocio.
+                            {t("meta_ads_monitor.connection_desc")}
                         </p>
                     </Card>
                     
@@ -93,7 +95,7 @@ export function MetaAdsCenter() {
                         <Card className="glass-card p-8 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none">
                             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                                 <Settings2 className="h-5 w-5 text-primary" />
-                                Configuración Global
+                                {t("meta_ads_monitor.global_config")}
                             </h3>
                             <TenantAdsSettings onSuccess={loadData} />
                         </Card>
@@ -104,10 +106,10 @@ export function MetaAdsCenter() {
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                         <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
                             <TabsTrigger value="overview" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 text-sm font-bold">
-                                Vista General
+                                {t("meta_ads_monitor.tab_overview")}
                             </TabsTrigger>
                             <TabsTrigger value="settings" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 text-sm font-bold">
-                                Conexión y API
+                                {t("meta_ads_monitor.tab_settings")}
                             </TabsTrigger>
                         </TabsList>
 
@@ -115,7 +117,6 @@ export function MetaAdsCenter() {
                             <AdsDashboard 
                                 data={adsData} 
                                 loading={loading}
-                                title="Métricas de Rendimiento"
                             />
                         </TabsContent>
 
@@ -123,9 +124,9 @@ export function MetaAdsCenter() {
                             <div className="max-w-2xl mx-auto">
                                 <Card className="glass-card p-10 rounded-3xl shadow-2xl shadow-slate-200/60 dark:shadow-none">
                                     <div className="mb-8">
-                                        <h3 className="text-2xl font-bold mb-2">Configuración de Meta</h3>
+                                        <h3 className="text-2xl font-bold mb-2">{t("meta_ads_monitor.config_title")}</h3>
                                         <p className="text-muted-foreground">
-                                            Gestiona las credenciales de Graph API y los IDs de activos para el monitoreo automatizado.
+                                            {t("meta_ads_monitor.config_desc")}
                                         </p>
                                     </div>
                                     <TenantAdsSettings onSuccess={loadData} />
