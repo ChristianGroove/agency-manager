@@ -1,15 +1,16 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { BarChart3, Target, TrendingUp, DollarSign, Users, MousePointer2, Settings2, RefreshCcw, Zap } from "lucide-react"
+import { BarChart3, Target, TrendingUp, DollarSign, Users, MousePointer2, Settings2, RefreshCcw, Zap, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdsDashboard } from "@/modules/features/portal/insights/ads-dashboard"
 import { TenantAdsSettings } from "./tenant-ads-settings"
-import { getOrgAdsMetrics } from "../actions"
+import { getOrgAdsMetrics, syncOrgAdsMetrics } from "../actions"
 import { SectionHeader } from "@/components/layout/section-header"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 export function MetaAdsCenter() {
     const [adsData, setAdsData] = useState<any>(null)
@@ -23,6 +24,23 @@ export function MetaAdsCenter() {
             setAdsData(data)
         } catch (error) {
             console.error("Failed to load ads data:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function syncData() {
+        setLoading(true)
+        try {
+            const result = await syncOrgAdsMetrics()
+            if (!result.success) {
+                toast.error(result.error || "Error al sincronizar datos")
+            } else {
+                toast.success("Métricas sincronizadas correctamente desde Meta")
+                await loadData()
+            }
+        } catch (error) {
+            toast.error("Error inesperado al sincronizar")
         } finally {
             setLoading(false)
         }
@@ -43,22 +61,23 @@ export function MetaAdsCenter() {
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={loadData} 
+                            onClick={syncData} 
                             disabled={loading}
                             className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 rounded-xl"
                         >
                             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                            Sincronizar
-                        </Button>
-                        <Button className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 px-6">
-                            <Zap className="h-4 w-4 mr-2 fill-current" />
-                            Optimizar
+                            Sincronizar Datos Reales
                         </Button>
                     </div>
                 }
             />
 
-            {!adsData && !loading ? (
+            {loading ? (
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                    <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
+                    <p className="text-sm font-bold text-slate-500 animate-pulse">Consultando a Meta Graph API...</p>
+                </div>
+            ) : !adsData ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <Card className="glass-card lg:col-span-2 p-12 flex flex-col items-center justify-center text-center border-dashed border-2 border-gray-200 dark:border-white/10 min-h-[400px] rounded-3xl">
                         <div className="glass-card p-6 mb-6 animate-bounce-slow">

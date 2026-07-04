@@ -88,8 +88,8 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
 
             {/* Main Content Area */}
             <div className="grid grid-cols-1 gap-8">
-                <Card className="rounded-[2.5rem] border-none shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-zinc-900 overflow-hidden border border-slate-100 dark:border-white/10">
-                    <CardHeader className="p-8 pb-4 border-b border-slate-50 dark:border-white/5">
+                <Card className="rounded-[2.5rem] border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
+                    <CardHeader className="p-8 pb-6 border-b border-slate-100/50 dark:border-white/5">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
                                 <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
@@ -219,14 +219,16 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
 
 function KPICard({ title, value, icon: Icon, color, bgColor }: any) {
     return (
-        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-center gap-4">
-                <div className={cn("p-3 rounded-xl group-hover:scale-110 transition-transform", bgColor)}>
-                    <Icon className={cn("h-6 w-6", color)} />
+        <Card className="p-6 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none hover:shadow-lg transition-all group rounded-[2rem]">
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <div className={cn("p-3.5 rounded-2xl group-hover:scale-110 transition-transform shadow-sm", bgColor)}>
+                        <Icon className={cn("h-6 w-6", color)} />
+                    </div>
                 </div>
                 <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{value}</p>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">{title}</p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">{value}</p>
+                    <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">{title}</p>
                 </div>
             </div>
         </Card>
