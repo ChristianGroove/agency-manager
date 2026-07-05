@@ -95,7 +95,7 @@ export class MessagingPersistence {
         const supabase = (supabaseAdmin)
 
         const payload: Record<string, unknown> = {
-            id: id || messageId || undefined, // Use provided ID to match optimistic UI
+            id: id || undefined, // Supabase will auto-generate UUID if undefined
             conversation_id: conversationId,
             ...(organizationId ? { organization_id: organizationId } : {}),
             direction: 'outbound',

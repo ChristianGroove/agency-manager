@@ -13,20 +13,23 @@ import {
     CheckCircle2,
     BarChart3,
     Megaphone,
+    Zap,
     Workflow,
     ArrowRight,
     Search,
-    Filter
+    Filter,
+    Users
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { SplitText } from "@/components/ui/split-text"
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
-import { BroadcastsView } from './broadcasts-view'
 import { CampaignsList } from './campaigns-list'
 import { getMarketingStats } from '../marketing-actions'
 import { SectionHeader } from "@/components/layout/section-header"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function MarketingDashboard() {
+    const { t } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
     const tabParam = searchParams.get('tab')
@@ -89,8 +92,8 @@ export function MarketingDashboard() {
         <div className="space-y-6 min-h-screen pb-20">
             {/* Header Section */}
             <SectionHeader
-                title={activeTab === 'insights' ? "Meta Insights" : "Marketing Masivo"}
-                subtitle={activeTab === 'insights' ? "Análisis de rendimiento de Meta Ads y conversiones" : "Gestiona campañas, automatizaciones y envíos masivos"}
+                title={activeTab === 'insights' ? t("marketing.dashboard.title_insights") : t("marketing.dashboard.title_marketing")}
+                subtitle={activeTab === 'insights' ? t("marketing.dashboard.subtitle_insights") : t("marketing.dashboard.subtitle_marketing")}
                 icon={activeTab === 'insights' ? BarChart3 : Megaphone}
                 action={
                     <div className="flex gap-3">
@@ -103,25 +106,17 @@ export function MarketingDashboard() {
                                     title="Forzar ciclo de ejecución (Debug)"
                                 >
                                     <Workflow className="h-4 w-4 mr-2" />
-                                    Run Cycle
+                                    {t("marketing.dashboard.run_cycle")}
                                 </Button>
-                                <Button
-                                    onClick={() => router.push('/crm/marketing/new')}
-                                    variant="outline"
-                                    className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
-                                >
-                                    <Megaphone className="h-4 w-4 mr-2" />
-                                    Nueva Campaña
-                                </Button>
-                                <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
-                                    <Radio className="h-4 w-4 mr-2" />
-                                    Broadcast Rápido
+                                <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
+                                    <Zap className="h-4 w-4 mr-2" />
+                                    {t("marketing.dashboard.quick_campaign")}
                                 </Button>
                             </>
                         )}
                         {activeTab === 'insights' && (
                             <Button variant="outline" onClick={() => setActiveTab('campaigns')}>
-                                Volver a Marketing
+                                {t("marketing.dashboard.back_to_marketing")}
                             </Button>
                         )}
                     </div>
@@ -137,7 +132,7 @@ export function MarketingDashboard() {
                         </div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalCampaigns}</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Campañas</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.campaigns")}</p>
                         </div>
                     </div>
                 </Card>
@@ -149,31 +144,31 @@ export function MarketingDashboard() {
                         </div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalMessages}</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Msjs Enviados</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.messages_sent")}</p>
                         </div>
                     </div>
                 </Card>
 
                 <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                        <div className="p-3 bg-green-50 dark:bg-green-500/10 rounded-xl group-hover:scale-110 transition-transform">
+                            <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.deliveryRate}%</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tasa Entrega</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.engagement")}</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all opacity-60">
+                <Card className="glass-card p-5 group hover:-translate-y-1 transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl group-hover:scale-110 transition-transform">
-                            <BarChart3 className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                            <Users className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">--%</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Conversión</p>
+                            <p className="text-3xl font-bold text-gray-900 dark:text-white">--</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.active_audiences")}</p>
                         </div>
                     </div>
                 </Card>
@@ -183,15 +178,12 @@ export function MarketingDashboard() {
             <Tabs 
                 value={activeTab} 
                 onValueChange={setActiveTab} 
-                className="space-y-6"
+                className="w-full"
             >
-                <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
-                    <TabsTrigger value="campaigns" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
-                        Campaños
-                    </TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
-                        Historial de Envíos
-                    </TabsTrigger>
+                <TabsList className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-1">
+                    <TabsTrigger value="campaigns" className="data-[state=active]:bg-brand-pink/10 data-[state=active]:text-brand-pink">{t("marketing.dashboard.tabs.campaigns")}</TabsTrigger>
+                    <TabsTrigger value="history" className="data-[state=active]:bg-brand-pink/10 data-[state=active]:text-brand-pink">{t("marketing.dashboard.tabs.history")}</TabsTrigger>
+                    <TabsTrigger value="insights" className="data-[state=active]:bg-brand-pink/10 data-[state=active]:text-brand-pink">{t("marketing.dashboard.tabs.insights")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="campaigns" className="mt-0">
@@ -199,7 +191,9 @@ export function MarketingDashboard() {
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
-                    <BroadcastsView />
+                    <div className="p-12 text-center text-muted-foreground bg-slate-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-white/10">
+                        <p>{t("marketing.dashboard.tabs.history")}</p>
+                    </div>
                 </TabsContent>
 
             </Tabs>

@@ -129,7 +129,7 @@ describe('/api/integrations/meta/embedded-signup', () => {
             connectionId: 'connection_123',
             wabaId: 'waba_123',
         })
-        expect(completeOnboarding).toHaveBeenCalledWith('org_123', 'code_123')
+        expect(completeOnboarding).toHaveBeenCalledWith('org_123', 'code_123', undefined)
 
         const infoLogText = collectConsoleCalls(logSpy)
         expect(infoLogText).not.toContain('org_123')

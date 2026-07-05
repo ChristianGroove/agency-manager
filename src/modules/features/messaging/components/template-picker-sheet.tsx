@@ -13,7 +13,7 @@ import {
     MessageSquare, Zap, Clock, AlertCircle, RefreshCw
 } from "lucide-react"
 import { toast } from "sonner"
-import { MessageTemplate, getTemplates, syncTemplatesFromMeta } from "../actions/templates"
+import { MessageTemplate, getTemplatesForConversation, syncTemplatesForConversation } from "../actions/templates"
 import { sendTemplateMessage } from "@/modules/features/messaging/send-template-action"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -80,7 +80,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
         try {
             // Auto-sync from Meta to ensure we have the latest templates
             try {
-                const result = await syncTemplatesFromMeta()
+                const result = await syncTemplatesForConversation(conversationId)
                 console.log(`[TemplatePicker] Synced ${result.synced} templates from Meta`)
                 if (result.errors.length > 0) {
                     console.warn('[TemplatePicker] Sync errors:', result.errors)
@@ -91,7 +91,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                 setSyncError(msg)
             }
 
-            const all = await getTemplates()
+            const all = await getTemplatesForConversation(conversationId)
             // Only show APPROVED templates that genuinely exist in Meta (have meta_id)
             setTemplates(all.filter(t => t.status === 'APPROVED' && t.meta_id))
         } catch {
@@ -121,7 +121,26 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
     const filledBody = fillVariables(bodyText, variableValues)
     const filledHeader = fillVariables(headerText, variableValues)
 
-    const allFilled = allVars.length === 0 || allVars.every(v => variableValues[v]?.trim())
+    const hasMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComponent?.format || '')
+    const [mediaUrl, setMediaUrl] = useState("")
+
+    // Set media url from template if available, otherwise reset
+    useEffect(() => {
+        if (!selectedTemplate) {
+            setMediaUrl("")
+            return
+        }
+        const header = selectedTemplate.components?.find(c => c.type === 'HEADER')
+        if (header && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(header.format || '')) {
+            const savedUrl = header.pixy_media_url || header.example?.header_url?.[0] || ""
+            setMediaUrl(savedUrl)
+        } else {
+            setMediaUrl("")
+        }
+    }, [selectedTemplate])
+
+    const allFilled = (allVars.length === 0 || allVars.every(v => variableValues[v]?.trim())) && 
+                     (!hasMediaHeader || mediaUrl.trim().length > 0)
 
     const handleSend = async () => {
         if (!selectedTemplate || !allFilled) return
@@ -132,15 +151,23 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
             const bodyParams = bodyVars.map(v => variableValues[v] || '')
             const headerParams = headerVars.length > 0 ? headerVars.map(v => variableValues[v] || '') : undefined
 
-            await sendTemplateMessage({
+            const res = await sendTemplateMessage({
                 conversationId,
                 templateName: selectedTemplate.name,
                 templateLanguage: selectedTemplate.language,
                 bodyParameters: bodyParams,
-                headerParameters: headerParams
+                headerParameters: headerParams,
+                mediaHeaderUrl: hasMediaHeader ? mediaUrl.trim() : undefined,
+                mediaHeaderType: hasMediaHeader ? headerComponent?.format?.toLowerCase() : undefined
             })
 
-            toast.success("Plantilla enviada âœ“")
+            if (res && res.error) {
+                toast.error(res.error)
+                setSending(false)
+                return
+            }
+
+            toast.success("Plantilla enviada con éxito")
             onOpenChange(false)
             onSent?.()
         } catch (error: any) {
@@ -340,16 +367,33 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                 </div>
 
                                 {/* Variable Inputs */}
-                                {allVars.length > 0 && (
+                                {(allVars.length > 0 || hasMediaHeader) && (
                                     <>
                                         <Separator />
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <AlertCircle className="h-4 w-4 text-amber-500" />
                                                 <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                    Completa las variables
+                                                    Completa los campos requeridos
                                                 </Label>
                                             </div>
+
+                                            {/* Media Header Input */}
+                                            {hasMediaHeader && (
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">
+                                                        URL de {headerComponent?.format === 'IMAGE' ? 'Imagen' : headerComponent?.format === 'VIDEO' ? 'Video' : 'Documento'} (Requerido)
+                                                    </Label>
+                                                    <Input
+                                                        placeholder={`Ingresa el enlace público del archivo`}
+                                                        value={mediaUrl}
+                                                        onChange={(e) => setMediaUrl(e.target.value)}
+                                                        className="h-10 bg-gray-50 dark:bg-zinc-800"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            )}
+
                                             {allVars.map((varName, i) => {
                                                 const isHeader = headerVars.includes(varName)
                                                 return (
@@ -374,10 +418,10 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                     </>
                                 )}
 
-                                {allVars.length === 0 && (
-                                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-sm text-green-700 dark:text-green-400">
+                                {!hasMediaHeader && allVars.length === 0 && (
+                                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-700 dark:text-green-400">
                                         <CheckCircle2 className="h-4 w-4" />
-                                        Esta plantilla no requiere variables
+                                        <span className="text-sm font-medium">Esta plantilla no requiere variables</span>
                                     </div>
                                 )}
                             </div>

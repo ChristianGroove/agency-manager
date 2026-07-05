@@ -1,10 +1,74 @@
 'use server'
 import type { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import type { Briefing as DetailedBriefing } from "@/types/briefings"
-import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { sanitizePaymentMethodsForClient } from "@/modules/core/settings/payment-methods-sanitizer"
 import { resolvePortalInsightsAccess } from "@/modules/features/portal/insights/access"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+
+
+/**
+ * Portal Branding Helper (uses supabaseAdmin to work without session)
+ * Replicates the cascade logic from getEffectiveBranding but without RLS dependency
+ */
+async function getPortalBranding(orgId: string) {
+    const DEFAULT_BRANDING = {
+        name: "Pixy",
+        logos: { main: "/branding/logo dark.svg", main_light: null as string | null, portal: "/branding/iso.svg", favicon: "/pixy-isotipo.png", login_bg: null as string | null },
+        colors: { primary: "#4F46E5", secondary: "#EC4899" },
+    }
+
+    const [platformResult, orgResult, settingsResult] = await Promise.all([
+        supabaseAdmin.from('platform_settings').select('*').eq('id', 1).maybeSingle(),
+        supabaseAdmin.from('organizations').select('branding_tier_id, branding_tier:branding_tiers(id, name, features)').eq('id', orgId).maybeSingle(),
+        supabaseAdmin.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
+    ])
+
+    const platform = platformResult.data
+    const platformBranding = platform ? {
+        name: platform.agency_name || DEFAULT_BRANDING.name,
+        logos: {
+            main: platform.main_logo_url || DEFAULT_BRANDING.logos.main,
+            main_light: platform.main_logo_light_url || DEFAULT_BRANDING.logos.main_light,
+            portal: platform.portal_logo_url || DEFAULT_BRANDING.logos.portal,
+            favicon: platform.favicon_url || DEFAULT_BRANDING.logos.favicon,
+            login_bg: platform.login_background_url || DEFAULT_BRANDING.logos.login_bg,
+        },
+        colors: {
+            primary: platform.brand_color_primary || DEFAULT_BRANDING.colors.primary,
+            secondary: platform.brand_color_secondary || DEFAULT_BRANDING.colors.secondary,
+        },
+    } : DEFAULT_BRANDING
+
+    const org = orgResult.data
+    const tenantSettings = settingsResult.data
+    if (!tenantSettings) return platformBranding
+
+    const tierFeatures = (org?.branding_tier as any)?.features || {}
+    const tierId = org?.branding_tier_id || ''
+    const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
+    const canCustomizeLogo = !!tierFeatures.custom_logo || isPremiumTier
+    const canCustomizeColors = !!tierFeatures.custom_colors || isPremiumTier
+    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || (isPremiumTier && tierId.includes('whitelabel'))
+
+    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? (tenantVal || platformVal) : platformVal
+    const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? (tenantVal || platformVal) : platformVal
+    const pickGeneral = (tenantVal: any, platformVal: any) => canRemoveBranding ? (tenantVal || platformVal) : platformVal
+
+    return {
+        name: pickGeneral(tenantSettings.agency_name, platformBranding.name),
+        logos: {
+            main: pickLogo(tenantSettings.main_logo_url, platformBranding.logos.main),
+            main_light: pickLogo(tenantSettings.main_logo_light_url, platformBranding.logos.main_light),
+            portal: pickLogo(tenantSettings.portal_logo_url, platformBranding.logos.portal),
+            favicon: pickLogo(tenantSettings.isotipo_url, platformBranding.logos.favicon),
+            login_bg: pickLogo(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg),
+        },
+        colors: {
+            primary: pickColor(tenantSettings.portal_primary_color, platformBranding.colors.primary),
+            secondary: pickColor(tenantSettings.portal_secondary_color, platformBranding.colors.secondary),
+        },
+    }
+}
 
 /**
  * Core Data Fetcher for the Portal
@@ -45,7 +109,7 @@ export async function getPortalData(token: string) {
                 .eq('organization_id', client.organization_id)
                 .maybeSingle()
 
-            const branding = await getEffectiveBranding(client.organization_id)
+            const branding = await getPortalBranding(client.organization_id)
 
             const settings = {
                 ...(rawSettings || {}),
@@ -253,7 +317,7 @@ export async function getPortalData(token: string) {
                     .eq('organization_id', retailStaff.organization_id)
                     .maybeSingle()
 
-                const branding = await getEffectiveBranding(retailStaff.organization_id)
+                const branding = await getPortalBranding(retailStaff.organization_id)
                 const effectiveSettings = {
                     ...(settings || {}),
                     agency_name: branding.name,
@@ -285,7 +349,7 @@ export async function getPortalData(token: string) {
                 .eq('organization_id', org.id)
                 .maybeSingle()
 
-            const branding = await getEffectiveBranding(org.id)
+            const branding = await getPortalBranding(org.id)
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,

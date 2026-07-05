@@ -107,9 +107,17 @@ describe('message actions logging', () => {
     it('does not expose conversation ids or database messages when marking as read fails', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        let conversationsCalls = 0
         mocks.createClient.mockResolvedValue({
             from: vi.fn((table: string) => {
                 if (table === 'conversations') {
+                    conversationsCalls += 1
+                    if (conversationsCalls === 1) {
+                        return singleQuery({
+                            data: { organization_id: 'org-secret-id' },
+                            error: null,
+                        })
+                    }
                     return updateEqQuery({
                         error: {
                             code: '42501',

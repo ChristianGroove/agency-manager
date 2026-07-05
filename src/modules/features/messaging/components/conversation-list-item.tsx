@@ -6,7 +6,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { es, enUS } from "date-fns/locale"
-import { UserCheck, MessageSquare, Facebook, Instagram, Clock, Bot } from "lucide-react"
+import { UserCheck, MessageSquare, Facebook, Instagram, Clock, Bot, Megaphone } from "lucide-react"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import {
@@ -232,6 +232,18 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                                             <Bot className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                                         </TooltipTrigger>
                                         <TooltipContent>Atendido por Bot</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                            {conv.metadata?.referral && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 p-0.5 rounded-full shrink-0">
+                                                <Megaphone className="h-3 w-3" />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Origen: Meta Ads</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             )}

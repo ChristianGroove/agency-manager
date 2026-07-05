@@ -22,8 +22,10 @@ export interface TemplateComponent {
     buttons?: TemplateButton[]
     example?: {
         header_handle?: string[]
+        header_url?: string[]
         body_text?: string[][]
     }
+    pixy_media_url?: string
 }
 
 export interface MessageTemplate {
@@ -351,7 +353,7 @@ export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synce
                     content: extractBodyText(mt.components),
                     updated_at: new Date().toISOString()
                 }, {
-                    onConflict: 'organization_id,name,language'
+                    onConflict: 'organization_id,channel_id,name,language'
                 })
 
             if (upsertError) {
@@ -391,10 +393,18 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
         .filter((c: any) => c.type !== 'UI_METADATA')
         .map((c: any) => {
             const comp: any = { type: c.type }
-            if (c.format) comp.format = c.format
+            
+            // Format is only allowed for HEADER components
+            if (c.format && c.type === 'HEADER') comp.format = c.format
+            
             if (c.text) comp.text = c.text
             if (c.buttons) comp.buttons = c.buttons
             if (c.example) comp.example = c.example
+            // Meta's Cloud API does not accept header_url for media examples, and requires a Resumable Upload handle.
+            // Since we don't have App ID for the handle, we omit the example for media headers to avoid Invalid Parameter errors.
+            if (c.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(c.format)) {
+                if (comp.example) delete comp.example
+            }
             return comp
         })
 
@@ -406,6 +416,11 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
     }
 
     const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/message_templates`
+
+    // === DIAGNOSTIC: Log full payload ===
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - URL:', url)
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Full payload:', JSON.stringify(payload, null, 2))
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -417,8 +432,13 @@ export async function submitTemplateToMeta(templateId: string, channelId?: strin
 
     const result = await response.json()
 
+    // === DIAGNOSTIC: Log full Meta response ===
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Meta Response Status:', response.status)
+    console.log('[submitTemplateToMeta] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
+
     if (!response.ok) {
-        const errorMsg = result?.error?.message || 'Failed to submit template to Meta'
+        const errorMsg = result?.error?.error_user_msg || result?.error?.error_data?.details || result?.error?.message || 'Failed to submit template to Meta'
+        console.error('[submitTemplateToMeta] DIAGNOSTIC - Error details:', result?.error?.error_data)
         // Update local status
         await supabase
             .from('messaging_templates')
@@ -501,3 +521,33 @@ export async function deleteTemplateFromMeta(templateId: string, channelId?: str
     return { success: true }
 }
 
+/**
+ * Resolves the channel_id for a given conversation.
+ */
+async function getChannelIdForConversation(conversationId: string): Promise<string | null> {
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from('conversations')
+        .select('connection_id')
+        .eq('id', conversationId)
+        .single()
+    return data?.connection_id || null
+}
+
+/**
+ * Get templates specifically approved for the channel of a given conversation.
+ */
+export async function getTemplatesForConversation(conversationId: string): Promise<MessageTemplate[]> {
+    const channelId = await getChannelIdForConversation(conversationId)
+    if (!channelId) throw new Error("Conversation channel not found")
+    return getTemplates(channelId)
+}
+
+/**
+ * Sync templates for the specific WABA account associated with a given conversation.
+ */
+export async function syncTemplatesForConversation(conversationId: string): Promise<{ synced: number, errors: string[] }> {
+    const channelId = await getChannelIdForConversation(conversationId)
+    if (!channelId) throw new Error("Conversation channel not found")
+    return syncTemplatesFromMeta(channelId)
+}

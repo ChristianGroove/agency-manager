@@ -1,6 +1,7 @@
 import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { addMinutes, addHours, addDays, isBefore } from "date-fns"
 import { createClient } from "@/modules/core/database/supabase-server";
+import { addJitter, enforceScheduleWindow } from './marketing-utils'
 
 /**
  * MARKETING RUNNER (Execution Engine)
@@ -51,9 +52,25 @@ export async function runMarketingCycle() {
             processedCount++
         } catch (e: any) {
             console.error(`[Runner] Failed enrollment ${enrollment.id}:`, e)
-            // Log failure to enrollment but don't crash runner
+            const errorMsg = e.message || 'Unknown Error'
+            
+            // QoS Monitor: Auto-pause on critical Meta errors to protect WhatsApp number
+            const isCritical = errorMsg.toLowerCase().includes('rate limit') || 
+                               errorMsg.toLowerCase().includes('spam') || 
+                               errorMsg.toLowerCase().includes('restricted') ||
+                               errorMsg.toLowerCase().includes('template') ||
+                               errorMsg.toLowerCase().includes('not approved')
+
+            if (isCritical) {
+                console.warn(`[QoS Monitor] Auto-paused campaign ${enrollment.campaign.id} due to critical error: ${errorMsg}`)
+                await supabase.from('marketing_campaigns').update({
+                    status: 'paused'
+                }).eq('id', enrollment.campaign.id)
+            }
+
             await supabase.from('marketing_enrollments').update({
-                execution_logs: [...(enrollment.execution_logs || []), { date: new Date().toISOString(), error: e.message }]
+                status: 'failed',
+                execution_logs: [...(enrollment.execution_logs || []), { date: new Date().toISOString(), error: errorMsg }]
             }).eq('id', enrollment.id)
         }
     }
@@ -67,6 +84,12 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
     // TENANT ISOLATION CHECK
     if (campaign.organization_id !== lead.organization_id) {
         throw new Error(`Integrity Error: Campaign Org ${campaign.organization_id} != Lead Org ${lead.organization_id}`)
+    }
+
+    // CAMPAIGN STATUS CHECK
+    if (campaign.status === 'paused') {
+        debugLogs.push(`[${enrollment.id}] Campaign is paused. Skipping.`)
+        return
     }
 
     // SCHEDULED CAMPAIGN CHECK
@@ -99,7 +122,12 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
 
     if (step.type === 'delay') {
         const delayConfig = step.delay_config || { value: 1, unit: 'days' }
-        const nextTime = calculateDelay(delayConfig)
+        let nextTime = calculateDelay(delayConfig)
+        
+        if (campaign.delivery_config) {
+            nextTime = addJitter(nextTime, campaign.delivery_config)
+            nextTime = enforceScheduleWindow(nextTime, campaign.delivery_config)
+        }
 
         debugLogs.push(`[${enrollment.id}] Processing Delay: ${delayConfig.value} ${delayConfig.unit}. Next run: ${nextTime.toISOString()}`)
 
@@ -201,11 +229,15 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
         const nextStep = await getNextStep(supabase, step)
 
         if (nextStep) {
+            let nextRun = new Date()
+            if (campaign.delivery_config) {
+                nextRun = addJitter(nextRun, campaign.delivery_config)
+                nextRun = enforceScheduleWindow(nextRun, campaign.delivery_config)
+            }
+
             await supabase.from('marketing_enrollments').update({
                 current_step_id: nextStep.id,
-                // If next is a Delay, it will be handled in next polling cycle (immediately if delay=0, or next minute)
-                // If next is Message, we set next_run_at to NOW to trigger it ASAP (or add small buffer for safety)
-                next_run_at: new Date().toISOString(),
+                next_run_at: nextRun.toISOString(),
                 last_run_at: new Date().toISOString(),
                 execution_logs: [...(enrollment.execution_logs || []), {
                     date: new Date().toISOString(),

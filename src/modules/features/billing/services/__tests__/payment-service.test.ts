@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+let currentClient: any = null
+
 const mocks = vi.hoisted(() => ({
     createClient: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
@@ -8,8 +10,46 @@ const mocks = vi.hoisted(() => ({
     from: vi.fn(),
 }))
 
+const originalMockResolvedValue = mocks.createClient.mockResolvedValue;
+mocks.createClient.mockResolvedValue = (value: any) => {
+    currentClient = value;
+    return originalMockResolvedValue.call(mocks.createClient, value);
+};
+
+const originalMockImplementation = mocks.createClient.mockImplementation;
+mocks.createClient.mockImplementation = (fn: any) => {
+    return originalMockImplementation.call(mocks.createClient, async (...args: any[]) => {
+        const res = await fn(...args);
+        currentClient = res;
+        return res;
+    });
+};
+
+mocks.from.mockImplementation((table: string) => {
+    if (currentClient && typeof currentClient.from === 'function') {
+        return currentClient.from(table);
+    }
+    return {
+        select: vi.fn().mockReturnThis(),
+        insert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnThis(),
+        upsert: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(async () => ({ data: null, error: null })),
+    }
+})
+
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: mocks.createClient,
+}))
+
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: {
+        from: vi.fn((table: string) => {
+            return mocks.from(table)
+        })
+    }
 }))
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
@@ -80,6 +120,21 @@ afterEach(() => {
     mocks.getCurrentOrganizationApp.mockReset()
     mocks.logDomainEvent.mockReset()
     mocks.from.mockReset()
+    currentClient = null
+    mocks.from.mockImplementation((table: string) => {
+        if (currentClient && typeof currentClient.from === 'function') {
+            return currentClient.from(table);
+        }
+        return {
+            select: vi.fn().mockReturnThis(),
+            insert: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
+            delete: vi.fn().mockReturnThis(),
+            upsert: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn(async () => ({ data: null, error: null })),
+        }
+    })
 })
 
 describe('PaymentService', () => {

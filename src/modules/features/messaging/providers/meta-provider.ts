@@ -875,6 +875,10 @@ export class MetaProvider implements MessagingProvider {
 
                         if (type === 'text') {
                             text = msg.text?.body || '';
+                        } else if (type === 'button') {
+                            // Quick reply buttons from templates come as type: 'button'
+                            buttonId = msg.button?.payload || '';
+                            text = msg.button?.text || '';
                         } else if (type === 'interactive') {
                             const interact = msg.interactive;
                             if (interact.type === 'button_reply') {
@@ -908,7 +912,8 @@ export class MetaProvider implements MessagingProvider {
                             metadata: { 
                                 raw: msg,
                                 phoneNumberId: phoneNumberId // CRITICAL for resolver
-                            }
+                            },
+                            referral: msg.referral || undefined
                         });
                     }
                 }

@@ -32,35 +32,46 @@ interface SidebarProps {
     orgCount?: number
 }
 
-function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
+function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false, boxed = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean, boxed?: boolean }) {
     const content = (
         <Link href={href}>
             <div
                 className={cn(
-                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-all duration-200 group",
+                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-colors duration-75 group border",
                     collapsed ? "justify-center px-2" : "px-3",
                     active
                         ? isSuperAdminRoute
-                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-md shadow-purple-500/10 border border-purple-200 dark:border-purple-500/20"
-                            : "bg-gray-100/80 text-gray-900 shadow-sm dark:bg-white/10 dark:text-white dark:shadow-black/20"
+                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-md shadow-purple-500/10 border-purple-200 dark:border-purple-500/20"
+                            : "bg-white border-gray-200/50 text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-white/10 dark:border-transparent dark:text-white dark:shadow-black/20"
                         : isSuperAdminRoute
-                            ? "text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
-                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
+                            ? "border-transparent text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
+                            : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
                 )}
             >
-                <Icon
-                    className={cn(
-                        "h-4 w-4 shrink-0 transition-transform duration-200",
-                        active ? "scale-110" : "group-hover:scale-105",
-                        isSuperAdminRoute
-                            ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
-                            : collapsed
-                                ? cn(
-                                    active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-300"
-                                )
-                                : "text-[var(--brand-pink)]"
-                    )}
-                />
+                {boxed && !collapsed ? (
+                    <div className="w-7 h-7 rounded-md bg-gradient-to-b from-gray-50 to-gray-100 dark:from-zinc-800/80 dark:to-zinc-900/80 border border-gray-200/80 dark:border-zinc-700/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-center shrink-0 transition-all duration-200 group-hover:shadow-sm group-hover:border-gray-300 dark:group-hover:border-zinc-600">
+                        <Icon
+                            className={cn(
+                                "h-[15px] w-[15px] shrink-0 transition-all duration-300 ease-out",
+                                active ? "scale-[1.15] text-[var(--brand-pink)]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 group-hover:scale-[1.2] group-hover:rotate-[10deg]"
+                            )}
+                        />
+                    </div>
+                ) : (
+                    <Icon
+                        className={cn(
+                            "h-4 w-4 shrink-0 transition-all duration-300 ease-out",
+                            active ? "scale-[1.15]" : "group-hover:scale-[1.2] group-hover:rotate-[10deg]",
+                            isSuperAdminRoute
+                                ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
+                                : collapsed
+                                    ? cn(
+                                        active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-300"
+                                    )
+                                    : "text-[var(--brand-pink)]"
+                        )}
+                    />
+                )}
                 {!collapsed && (
                     <span className={cn(
                         "transition-all duration-200 truncate text-[13px]",
@@ -108,23 +119,25 @@ function SidebarSection({
     if (collapsed) return <div className="space-y-0.5 mb-2">{children}</div>
 
     return (
-        <div className="mb-2">
+        <div className="mb-3">
             <button
                 onClick={onToggle}
-                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider hover:text-gray-700 dark:hover:text-zinc-400 transition-colors group"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider group outline-none"
             >
-                <span className="flex items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400" />
-                    {title}
+                <span className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-md bg-gradient-to-b from-gray-50 to-gray-100 dark:from-zinc-800/80 dark:to-zinc-900/80 border border-gray-200/80 dark:border-zinc-700/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] flex items-center justify-center shrink-0 transition-all duration-200 group-hover:shadow-sm group-hover:border-gray-300 dark:group-hover:border-zinc-600">
+                        <Icon className="h-[15px] w-[15px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-all duration-300 ease-out group-hover:scale-[1.2] group-hover:rotate-[10deg]" />
+                    </div>
+                    <span className="group-hover:text-gray-900 dark:group-hover:text-zinc-300 transition-colors tracking-widest">{title}</span>
                 </span>
                 <ChevronDown className={cn(
-                    "h-3 w-3 transition-transform duration-200",
+                    "h-3.5 w-3.5 text-gray-400/70 group-hover:text-gray-600 dark:group-hover:text-zinc-400 transition-transform duration-200",
                     isExpanded ? "" : "-rotate-90"
                 )} />
             </button>
             <div className={cn(
-                "space-y-0.5 overflow-hidden transition-all duration-200 ml-3.5 pl-2 border-l border-gray-200 dark:border-zinc-800",
-                isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                "space-y-0.5 overflow-hidden transition-all duration-300 ml-[26px] pl-3 border-l border-gray-200 dark:border-zinc-800/80 relative",
+                isExpanded ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0"
             )}>
                 {children}
             </div>
@@ -204,7 +217,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const categoryOrder: ModuleCategory[] = ['core', 'crm', 'operations', 'tools', 'finance', 'config']
 
     return (
-        <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        <div className="px-3 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
 
             {/* Header Logo */}
             <div className={cn("flex items-center justify-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "px-0" : "")}>
@@ -251,6 +264,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                             href={route.href}
                                             active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                             collapsed={isCollapsed}
+                                            boxed={true}
                                         />
                                     ))}
                                 </div>

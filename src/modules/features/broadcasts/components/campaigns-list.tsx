@@ -28,8 +28,10 @@ import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function CampaignsList() {
+    const { t } = useTranslation()
     const router = useRouter()
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [loading, setLoading] = useState(true)
@@ -54,7 +56,7 @@ export function CampaignsList() {
 
         const result = await createCampaign({ name: newCampaignName })
         if (result.success) {
-            toast.success('Campaña creada')
+            toast.success(t("marketing.campaigns_list.created"))
             setIsCreateOpen(false)
             setNewCampaignName('')
             // Auto-redirect to builder
@@ -69,10 +71,10 @@ export function CampaignsList() {
     }
 
     async function handleDelete(id: string) {
-        if (!confirm('¿Estás seguro de eliminar esta campaña?')) return
+        if (!confirm(t("marketing.campaigns_list.confirm_delete"))) return
         const result = await deleteCampaign(id)
         if (result.success) {
-            toast.success('Campaña eliminada')
+            toast.success(t("marketing.campaigns_list.deleted"))
             loadCampaigns()
         } else {
             toast.error(result.error)
@@ -80,7 +82,7 @@ export function CampaignsList() {
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-gray-500">Cargando campañas...</div>
+        return <div className="p-8 text-center text-gray-500">{t("marketing.campaigns_list.loading")}</div>
     }
 
     if (campaigns.length === 0) {
@@ -89,31 +91,38 @@ export function CampaignsList() {
                 <div className="p-6 bg-gradient-to-tr from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full mb-6 relative">
                     <Megaphone className="w-12 h-12 text-brand-pink" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Comienza tu primera Campaña</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("marketing.campaigns_list.empty_title")}</h2>
                 <p className="text-gray-500 dark:text-gray-400 max-w-md text-center mb-8">
-                    Organiza tus envíos, crea secuencias automáticas y mide el impacto real de tu marketing.
+                    {t("marketing.campaigns_list.empty_desc")}
                 </p>
 
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-brand-pink text-white hover:bg-brand-pink/90">Crear Campaña</Button>
+                        <Button className="bg-brand-pink text-white hover:bg-brand-pink/90">{t("marketing.campaigns_list.advanced_campaign")}</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle>Nueva Campaña</DialogTitle>
-                            <DialogDescription>Asigna un nombre para identificar tu campaña</DialogDescription>
+                            <DialogTitle>{t("marketing.campaigns_list.create_campaign")}</DialogTitle>
+                            <DialogDescription>
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label>Nombre</Label>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="name" className="text-right">
+                                    {t("marketing.campaigns_list.name_label")}
+                                </Label>
                                 <Input
-                                    placeholder="Ej: Black Friday 2026"
+                                    id="name"
                                     value={newCampaignName}
                                     onChange={(e) => setNewCampaignName(e.target.value)}
+                                    placeholder={t("marketing.campaigns_list.name_placeholder")}
+                                    className="col-span-3"
                                 />
                             </div>
-                            <Button onClick={handleCreate} disabled={!newCampaignName.trim()} className="w-full bg-brand-pink text-white hover:bg-brand-pink/90">
-                                Crear
+                        </div>
+                        <div className="flex justify-end">
+                            <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white" disabled={!newCampaignName.trim()}>
+                                {t("marketing.campaigns_list.create_campaign")}
                             </Button>
                         </div>
                     </DialogContent>
@@ -124,28 +133,38 @@ export function CampaignsList() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Mis Campañas</h3>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white"></h2>
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm" variant="outline"> <Plus className="w-4 h-4 mr-2" /> Nueva </Button>
+                        <Button className="bg-brand-pink text-white hover:bg-brand-pink/90">
+                            <Plus className="w-4 h-4 mr-2" />
+                            {t("marketing.campaigns_list.create_campaign")}
+                        </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                            <DialogTitle>Nueva Campaña</DialogTitle>
-                            <DialogDescription>Asigna un nombre para identificar tu campaña</DialogDescription>
+                            <DialogTitle>{t("marketing.campaigns_list.create_campaign")}</DialogTitle>
+                            <DialogDescription>
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label>Nombre</Label>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="name2" className="text-right">
+                                    {t("marketing.campaigns_list.name_label")}
+                                </Label>
                                 <Input
-                                    placeholder="Ej: Black Friday 2026"
+                                    id="name2"
                                     value={newCampaignName}
                                     onChange={(e) => setNewCampaignName(e.target.value)}
+                                    placeholder={t("marketing.campaigns_list.name_placeholder")}
+                                    className="col-span-3"
                                 />
                             </div>
-                            <Button onClick={handleCreate} disabled={!newCampaignName.trim()} className="w-full bg-brand-pink text-white hover:bg-brand-pink/90">
-                                Crear
+                        </div>
+                        <div className="flex justify-end">
+                            <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white" disabled={!newCampaignName.trim()}>
+                                {t("marketing.campaigns_list.create_campaign")}
                             </Button>
                         </div>
                     </DialogContent>
@@ -154,7 +173,7 @@ export function CampaignsList() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {campaigns.map(campaign => (
-                    <Card key={campaign.id} className="glass-card group hover:-translate-y-1 transition-all">
+                    <Card key={campaign.id} className="glass-card group hover:-translate-y-1 transition-all overflow-hidden">
                         <div className="p-5">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
@@ -177,10 +196,10 @@ export function CampaignsList() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => handleEdit(campaign.id)}>
-                                            Editar
+                                            {t("common.edit")}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDelete(campaign.id)} className="text-red-600">
-                                            <Trash2 className="w-4 h-4 mr-2" /> Eliminar
+                                            <Trash2 className="w-4 h-4 mr-2" /> {t("common.delete")}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -188,22 +207,22 @@ export function CampaignsList() {
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
-                                    <p className="text-xs text-muted-foreground mb-1">Impactados</p>
+                                    <p className="text-xs text-muted-foreground mb-1">{t("marketing.campaigns_list.impacted")}</p>
                                     <p className="text-lg font-bold text-gray-900 dark:text-white">{campaign.total_enrolled}</p>
                                 </div>
                                 <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
-                                    <p className="text-xs text-muted-foreground mb-1">Engagement</p>
+                                    <p className="text-xs text-muted-foreground mb-1">{t("marketing.dashboard.kpis.engagement")}</p>
                                     <p className="text-lg font-bold text-gray-900 dark:text-white">{campaign.engagement_score}%</p>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                                 <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                                    {campaign.status === 'draft' ? 'Borrador' : 'Activa'}
+                                    {campaign.status === 'draft' ? t("marketing.campaigns_list.draft") : t("marketing.campaigns_list.active")}
                                 </Badge>
                                 <Link href={`/crm/marketing/campaigns/${campaign.id}`}>
                                     <Button size="sm" variant="ghost" className="h-7 hover:bg-blue-50 hover:text-blue-600 px-2 -mr-2">
-                                        Ver Detalles <ArrowRight className="w-3 h-3 ml-1" />
+                                        {t("marketing.campaigns_list.view_details")} <ArrowRight className="w-3 h-3 ml-1" />
                                     </Button>
                                 </Link>
                             </div>

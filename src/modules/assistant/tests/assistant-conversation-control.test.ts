@@ -9,6 +9,9 @@ vi.mock('next/headers', () => ({
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
     createClient: vi.fn(async () => ({
+        auth: {
+            getUser: vi.fn(async () => ({ data: { user: { id: 'mock-user', email: 'mock@example.com' } }, error: null }))
+        },
         from: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),

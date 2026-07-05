@@ -9,7 +9,7 @@ import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
     MoreHorizontal, Tag, DollarSign, Palette,
-    Copy, Send, KeyRound
+    Copy, Send, KeyRound, Megaphone, Target
 } from "lucide-react"
 import { TagsPicker } from "@/modules/features/crm/components/tags/tags-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -237,7 +237,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     }
 
     // Lead Initials
-    const leadInitials = (lead?.title || 'UN').slice(0, 2).toUpperCase()
+    const leadInitials = ((lead as any)?.name || 'UN').slice(0, 2).toUpperCase()
 
     return (
         <div className="flex flex-col h-full min-h-0 w-full">
@@ -294,7 +294,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="relative">
                                     <Avatar className="h-14 w-14 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
-                                        <AvatarImage src={lead?.avatar_url} className="object-cover" />
+                                        <AvatarImage src={lead?.avatar_url || undefined} className="object-cover" />
                                         <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold text-lg">
                                             {leadInitials}
                                         </AvatarFallback>
@@ -305,7 +305,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     )} />
                                 </div>
                                 <div className="flex-1 min-w-0 py-1">
-                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead?.name || lead?.title || t('crm.inbox.context.unknown_contact')}</h2>
+                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{(lead as any)?.name || t('crm.inbox.context.unknown_contact')}</h2>
                                     {loading && (
                                         <div className="flex items-center gap-2 mt-1">
                                             <div className="h-2 w-2 border-2 border-brand-pink border-t-transparent rounded-full animate-spin opacity-60" />
@@ -348,10 +348,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     <ContactItem
                                         icon={conversation?.channel === 'instagram' ? User : Phone}
                                         label={conversation?.channel === 'instagram' ? 'Instagram ID' : conversation?.channel === 'messenger' ? 'Messenger ID' : t('crm.inbox.context.contact_fields.mobile')}
-                                        value={lead?.phone}
+                                        value={lead?.phone || undefined}
                                         t={t}
                                     />
-                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead?.email} t={t} />
+                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead?.email || undefined} t={t} />
                                     <ContactItem
                                         icon={MapPin}
                                         label={t('crm.inbox.context.contact_fields.location')}
@@ -370,6 +370,30 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             </div>
 
                             <Separator className="opacity-50" />
+
+                            {/* Meta Ads Origin */}
+                            {conversation?.metadata?.referral && (
+                                <>
+                                    <div className="space-y-3 bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
+                                        <div className="flex items-center gap-2 relative z-10">
+                                            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                                                <Megaphone className="h-4 w-4" />
+                                            </div>
+                                            <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-300 uppercase tracking-wider">Origen del Lead: Meta Ads</h4>
+                                        </div>
+                                        <div className="space-y-1.5 relative z-10">
+                                            <ContactItem icon={Target} label="Ad ID" value={conversation.metadata.referral.ad_id || conversation.metadata.referral.source_id} t={t} />
+                                            <ContactItem icon={Palette} label="Campaña" value={conversation.metadata.referral.source_id} t={t} />
+                                            {conversation.metadata.referral.source_url && (
+                                                <ContactItem icon={ExternalLink} label="Enlace del Anuncio" value={conversation.metadata.referral.source_url} t={t} />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
+                                </>
+                            )}
 
                             {/* Assignment Panel - Reordered to bottom */}
                             <div className="space-y-2">

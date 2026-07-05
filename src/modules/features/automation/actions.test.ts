@@ -11,6 +11,10 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: mocks.supabaseAdmin,
 }))
 
+vi.mock('@/modules/core/database/supabase-server', () => ({
+    createClient: vi.fn(async () => mocks.supabaseAdmin),
+}))
+
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))

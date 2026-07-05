@@ -324,6 +324,14 @@ export class InboxService {
 
             const initialTags = leadTags ? leadTags.map((t: any) => t.tag.name) : []
 
+            const initialMetadata = { ...msg.metadata }
+            if (msg.referral) {
+                initialMetadata.referral = {
+                    ...msg.referral,
+                    free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+                }
+            }
+
             const { data: newConv } = await supabase.from('conversations').insert({
                 organization_id: organizationId,
                 lead_id: lead.id,
@@ -336,7 +344,7 @@ export class InboxService {
                 last_message_preview: typeof msg.content === 'object' ? (msg.content as any).text : msg.content,
                 last_message_at: new Date().toISOString(),
                 connection_id: connectionId,
-                metadata: msg.metadata,
+                metadata: initialMetadata,
                 tags: initialTags
             }).select().single()
             conversation = newConv

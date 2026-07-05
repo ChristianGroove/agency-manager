@@ -92,17 +92,20 @@ export async function sendTemplateMessage(input: {
     conversationId: string
     templateName: string
     templateLanguage: string
-    bodyParameters: string[]       // Values for {{1}}, {{2}}, etc.
-    headerParameters?: string[]    // Header variable values (if any)
-}) {
-    const supabase = await createClient()
+    bodyParameters?: string[]
+    headerParameters?: string[]
+    mediaHeaderUrl?: string
+    mediaHeaderType?: string // 'image' | 'video' | 'document'
+}): Promise<{ success: boolean, messageId?: string, error?: string }> {
+    try {
+        const supabase = await createClient()
 
     // 1. Auth Check
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    if (!user) return { success: false, error: "Unauthorized" }
 
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error("Unauthorized")
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     // 2. Fetch Conversation with Lead phone
     const { data: conversation, error: convError } = await supabase
@@ -113,14 +116,17 @@ export async function sendTemplateMessage(input: {
         .single()
 
     if (convError || !conversation) {
-        throw new Error(publicTemplateMessageError(
-            convError || `Conversation not found: ${input.conversationId}`,
-            PUBLIC_CONVERSATION_NOT_FOUND_ERROR
-        ))
+        return { 
+            success: false, 
+            error: publicTemplateMessageError(
+                convError || `Conversation not found: ${input.conversationId}`,
+                PUBLIC_CONVERSATION_NOT_FOUND_ERROR
+            )
+        }
     }
 
     const recipientPhone = conversation.leads?.phone || (conversation as any).phone
-    if (!recipientPhone) throw new Error("Contact has no phone number")
+    if (!recipientPhone) return { success: false, error: "Contact has no phone number" }
 
     // 3. Resolve Meta Connection (same pattern as sendMessage)
     let connection = null
@@ -147,7 +153,7 @@ export async function sendTemplateMessage(input: {
         connection = defaultConn
     }
     if (!connection) {
-        throw new Error("No active WhatsApp connection. Configure one in Settings > Integrations.")
+        return { success: false, error: "No active WhatsApp connection. Configure one in Settings > Integrations." }
     }
 
     // 4. Extract credentials
@@ -167,7 +173,7 @@ export async function sendTemplateMessage(input: {
         const envToken = process.env.META_API_TOKEN
         const envPhoneId = process.env.META_PHONE_NUMBER_ID
         if (!envToken || !envPhoneId) {
-            throw new Error("Missing Meta credentials. Please re-configure the channel.")
+            return { success: false, error: "Missing Meta credentials. Please re-configure the channel." }
         }
     }
 
@@ -177,8 +183,22 @@ export async function sendTemplateMessage(input: {
     // 5. Build HSM Template Payload (Graph API v24.0)
     const templateComponents: any[] = []
 
-    // Header parameters (if any)
-    if (input.headerParameters && input.headerParameters.length > 0) {
+    // Media header (image/video/document)
+    if (input.mediaHeaderUrl && input.mediaHeaderType) {
+        templateComponents.push({
+            type: "header",
+            parameters: [
+                {
+                    type: input.mediaHeaderType,
+                    [input.mediaHeaderType]: {
+                        link: input.mediaHeaderUrl
+                    }
+                }
+            ]
+        })
+    }
+    // Text Header parameters (if any)
+    else if (input.headerParameters && input.headerParameters.length > 0) {
         templateComponents.push({
             type: "header",
             parameters: input.headerParameters.map(val => ({
@@ -207,7 +227,7 @@ export async function sendTemplateMessage(input: {
         template: {
             name: input.templateName,
             language: { code: input.templateLanguage },
-            components: templateComponents
+            ...(templateComponents.length > 0 ? { components: templateComponents } : {})
         }
     }
 
@@ -225,6 +245,11 @@ export async function sendTemplateMessage(input: {
     await assertUsageAllowed({ organizationId: orgId, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`
+
+    // === DIAGNOSTIC: Log full payload ===
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Full payload:', JSON.stringify(metaPayload, null, 2))
+    console.log('[sendTemplateMessage] DIAGNOSTIC - API URL:', apiUrl)
+
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -236,6 +261,10 @@ export async function sendTemplateMessage(input: {
 
     const result = await response.json()
 
+    // === DIAGNOSTIC: Log full Meta response ===
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Status:', response.status)
+    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
+
     if (!response.ok) {
         logTemplateError('[sendTemplateMessage] Meta API Error:', result, {
             phoneNumberId: finalPhoneId,
@@ -243,8 +272,8 @@ export async function sendTemplateMessage(input: {
             templateLanguage: input.templateLanguage,
             templateName: input.templateName,
         })
-        const errorMsg = result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
-        throw new Error(publicTemplateMessageError(errorMsg))
+        const errorMsg = result?.error?.error_data?.details || result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
+        return { success: false, error: errorMsg }
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`
@@ -255,8 +284,8 @@ export async function sendTemplateMessage(input: {
     })
 
     // 7. Build preview text for DB storage
-    let previewText = `ðŸ“‹ Plantilla: ${input.templateName}`
-    if (input.bodyParameters.length > 0) {
+    let previewText = `📝 Plantilla: ${input.templateName}`
+    if (input.bodyParameters && input.bodyParameters.length > 0) {
         previewText += ` (${input.bodyParameters.join(', ')})`
     }
 
@@ -281,5 +310,9 @@ export async function sendTemplateMessage(input: {
 
     revalidatePath('/inbox')
     return { success: true, messageId }
+    } catch (e: any) {
+        console.error('[sendTemplateMessage] Unhandled error:', e)
+        return { success: false, error: e.message || 'Error interno inesperado' }
+    }
 }
 
