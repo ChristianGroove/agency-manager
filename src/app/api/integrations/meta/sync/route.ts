@@ -21,9 +21,6 @@ export async function POST(req: Request) {
     const guard = await requirePlatformAdminOrInternalSecret(req)
     if (guard) return guard;
 
-    const unauthorized = await requirePlatformAdminOrInternalSecret(req)
-    if (unauthorized) return unauthorized
-
     try {
         const body = await req.json().catch(() => ({}))
         const { clientId } = body

@@ -2,6 +2,9 @@
 
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
+import { encryptObject, decryptObject } from "@/modules/infrastructure/integrations/encryption"
+import { MetaConnector } from '@/modules/infrastructure/meta/services/connector'
+import { AdsService } from '@/modules/infrastructure/meta/services/ads-service'
 
 const META_PROVIDER_KEY = 'meta_ads_monitor'
 
@@ -45,8 +48,13 @@ export async function getOrgMetaConfig() {
         .eq('organization_id', member.organization_id)
         .eq('provider_key', META_PROVIDER_KEY)
         .single()
+        
+    let config = data
+    if (config && config.credentials) {
+        config.credentials = decryptObject(config.credentials)
+    }
 
-    return { config: sanitizeMetaConfigForClient(data), error }
+    return { config: sanitizeMetaConfigForClient(config), error }
 }
 
 export async function saveOrgMetaConfig(formData: FormData) {
@@ -80,24 +88,24 @@ export async function saveOrgMetaConfig(formData: FormData) {
         .eq('provider_key', META_PROVIDER_KEY)
         .single()
 
-    const existingCredentials = existing?.credentials && typeof existing.credentials === 'object'
-        ? existing.credentials
-        : {}
+    const existingCredentials = existing?.credentials ? decryptObject(existing.credentials) : {}
     const accessToken = submittedAccessToken || existingCredentials.access_token
 
     if (!accessToken) {
         return { success: false, error: "Falta el token de acceso de Meta" }
     }
+    
+    const normalizedAdAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
 
     const connectionData = {
         organization_id: member.organization_id,
         provider_key: META_PROVIDER_KEY,
         connection_name: 'Meta Ads Monitor (Org)',
-        credentials: {
+        credentials: encryptObject({
             access_token: accessToken,
-            ad_account_id: adAccountId,
+            ad_account_id: normalizedAdAccountId,
             page_id: pageId
-        },
+        }),
         status: 'active',
         updated_at: new Date().toISOString()
     }
@@ -168,85 +176,34 @@ export async function syncOrgAdsMetrics(datePreset: string = 'last_30d') {
         .eq('provider_key', META_PROVIDER_KEY)
         .single()
 
-    const creds = config?.credentials as any
+    const creds = config?.credentials ? decryptObject(config.credentials) : {}
     const accessToken = creds?.access_token
     const adAccountId = creds?.ad_account_id
 
     if (!accessToken || !adAccountId) {
         return { success: false, error: "Conexión a Meta no configurada. Por favor, configura el Access Token y el Ad Account ID." }
     }
+    
+    const normalizedAdAccountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
 
-    // 2. Fetch from Meta API
+    // 2. Fetch from Meta API using AdsService
     try {
-        const url = `https://graph.facebook.com/v20.0/${adAccountId}/insights?fields=campaign_id,campaign_name,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type,action_values&level=campaign&date_preset=${datePreset}&access_token=${accessToken}`
+        const connector = new MetaConnector(accessToken)
+        const adsService = new AdsService(connector)
         
-        const response = await fetch(url, { cache: 'no-store' })
-        const json = await response.json()
-
-        if (json.error) {
-            console.error("Meta API Error:", json.error)
-            return { success: false, error: json.error.message || "Error al sincronizar con Meta" }
-        }
-
-        const data = json.data || []
-        
-        // 3. Process and normalize data
-        let totalSpend = 0
-        let totalImpressions = 0
-        let totalClicks = 0
-        let totalConversions = 0
-        let totalActionValue = 0
-
-        const campaigns = data.map((item: any) => {
-            const spend = Number(item.spend || 0)
-            const impressions = Number(item.impressions || 0)
-            const clicks = Number(item.clicks || 0)
-            
-            const actions = item.actions || []
-            const leadAction = actions.find((a: any) => a.action_type === 'lead' || a.action_type.includes('lead'))
-            const conversions = leadAction ? Number(leadAction.value) : 0
-            
-            const actionValues = item.action_values || []
-            const leadValue = actionValues.find((a: any) => a.action_type === 'lead' || a.action_type.includes('lead'))
-            const conversionValue = leadValue ? Number(leadValue.value) : 0
-
-            totalSpend += spend
-            totalImpressions += impressions
-            totalClicks += clicks
-            totalConversions += conversions
-            totalActionValue += conversionValue
-
-            return {
-                id: item.campaign_id,
-                name: item.campaign_name,
-                status: 'ACTIVE', // Defaulting to active as it had insights
-                spend,
-                impressions,
-                clicks,
-                ctr: Number(item.ctr || 0),
-                cpc: Number(item.cpc || 0),
-                conversions,
-                cost_per_conversion: conversions > 0 ? spend / conversions : 0,
-                roas: spend > 0 ? conversionValue / spend : 0
-            }
-        })
-
-        const totalCpc = totalClicks > 0 ? totalSpend / totalClicks : 0
-        const totalCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
-        const roas = totalSpend > 0 ? totalActionValue / totalSpend : 0
+        const metrics = await adsService.getMetrics(normalizedAdAccountId, datePreset)
 
         const snapshot = {
             organization_id: member.organization_id,
             snapshot_date: new Date().toISOString().split('T')[0],
-            spend: totalSpend,
-            impressions: totalImpressions,
-            clicks: totalClicks,
-            cpc: totalCpc,
-            ctr: totalCtr,
-            conversions: totalConversions,
-            cost_per_conversion: totalConversions > 0 ? totalSpend / totalConversions : 0,
-            roas,
-            campaigns,
+            spend: metrics.spend,
+            impressions: metrics.impressions,
+            clicks: metrics.clicks,
+            cpc: metrics.cpc,
+            ctr: metrics.ctr,
+            roas: metrics.roas,
+            campaigns: metrics.campaigns,
+            metadata: { datePreset, demographics: metrics.demographics },
             updated_at: new Date().toISOString()
         }
 

@@ -1487,6 +1487,7 @@ export const en = {
             save_config: "Save Configuration"
         },
         dashboard: {
+            chart_title: "Campaigns Overall Performance",
             spend: "Spend",
             clicks: "Results (Clicks)",
             reach: "Reach",

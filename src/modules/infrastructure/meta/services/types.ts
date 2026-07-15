@@ -104,6 +104,10 @@ export interface NormalizedAdsMetrics {
             thumbnail_url?: string
         }>
     }>
+    demographics?: {
+        ageGender: Array<{ age: string; gender: string; spend: number; impressions: number; conversions: number }>
+        region: Array<{ region: string; spend: number; impressions: number; conversions: number }>
+    }
     last_updated: string
 }
 

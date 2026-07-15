@@ -1487,6 +1487,7 @@ export const es = {
             save_config: "Guardar Configuración"
         },
         dashboard: {
+            chart_title: "Rendimiento General de Campañas",
             spend: "Inversión",
             clicks: "Resultados (Clics)",
             reach: "Alcance",
