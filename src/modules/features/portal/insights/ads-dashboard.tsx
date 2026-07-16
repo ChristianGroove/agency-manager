@@ -126,7 +126,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                         <>
                                             <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
                                             <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} />
-                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: string) => [name === 'spend' ? formatCurrency(value) : value, name === 'spend' ? 'Gasto' : 'Conversiones']} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [name === 'spend' ? formatCurrency(value) : value, name === 'spend' ? 'Gasto' : 'Conversiones']} />
                                             <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
                                             <Bar yAxisId="left" dataKey="spend" name="spend" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={40} />
                                             <Bar yAxisId="right" dataKey="conversions" name="conversions" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -137,7 +137,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                         <>
                                             <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
                                             <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
-                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: string) => [formatCurrency(value), name === 'cpc' ? 'CPC' : 'Costo x Conv.']} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [formatCurrency(value), name === 'cpc' ? 'CPC' : 'Costo x Conv.']} />
                                             <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
                                             <Bar yAxisId="left" dataKey="cpc" name="cpc" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={40} />
                                             <Bar yAxisId="right" dataKey="cost_per_conversion" name="cost_per_conversion" fill="#0ea5e9" radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -148,7 +148,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                         <>
                                             <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
                                             <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `${val}x`} />
-                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: string) => [name === 'ctr' ? `${value}%` : `${value}x`, name === 'ctr' ? 'CTR' : 'ROAS']} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [name === 'ctr' ? `${value}%` : `${value}x`, name === 'ctr' ? 'CTR' : 'ROAS']} />
                                             <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
                                             <Bar yAxisId="left" dataKey="ctr" name="ctr" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={40} />
                                             <Bar yAxisId="right" dataKey="roas" name="roas" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -306,13 +306,13 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                         innerRadius={60}
                                         outerRadius={80}
                                         paddingAngle={5}
-                                        label={({ age, gender }) => `${age} (${gender.substring(0,1).toUpperCase()})`}
+                                        label={(props: any) => `${props.age} (${props.gender.substring(0,1).toUpperCase()})`}
                                     >
                                         {safeData.demographics.ageGender.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][index % 5]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(val) => formatCurrency(val)} />
+                                    <Tooltip formatter={(val: any) => formatCurrency(val)} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
