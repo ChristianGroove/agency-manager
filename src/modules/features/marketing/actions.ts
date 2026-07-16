@@ -47,7 +47,10 @@ export async function getOrgMetaConfig() {
         .select('*')
         .eq('organization_id', member.organization_id)
         .eq('provider_key', META_PROVIDER_KEY)
-        .single()
+        .neq('status', 'deleted')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
         
     let config = data
     if (config && config.credentials) {
@@ -168,13 +171,16 @@ export async function syncOrgAdsMetrics(datePreset: string = 'last_30d') {
 
     if (!member) return { success: false, error: "No organization found" }
 
-    // 1. Get credentials
+    // 1. Get credentials (prefer most recently updated connection)
     const { data: config } = await supabase
         .from('integration_connections')
         .select('credentials')
         .eq('organization_id', member.organization_id)
         .eq('provider_key', META_PROVIDER_KEY)
-        .single()
+        .neq('status', 'deleted')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
     const creds = config?.credentials ? decryptObject(config.credentials) : {}
     const accessToken = creds?.access_token

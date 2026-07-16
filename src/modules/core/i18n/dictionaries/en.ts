@@ -905,6 +905,9 @@ export const en = {
             subtitle: "Connect your accounts to manage conversations.",
             marketplace: "Marketplace",
             connect_qr: "Connect with QR (Legacy)",
+            connect_ads: "Connect Meta Ads",
+            ads_connected: "Ad account connected",
+            ads_no_accounts: "No ad accounts found",
             empty_state: {
                 title: "No channels connected",
                 description: "Connect WhatsApp, Messenger or Instagram to centralize your conversations."

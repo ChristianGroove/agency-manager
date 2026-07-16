@@ -72,7 +72,7 @@ function publicMetaChannelError(error: unknown, fallback: string) {
 interface UIActivateInput {
     parentConnectionId: string
     assetId: string
-    assetType: "page" | "instagram" | "whatsapp"
+    assetType: "page" | "instagram" | "whatsapp" | "ads"
     assetName: string
     wabaId?: string
     pageId?: string
@@ -83,7 +83,7 @@ interface UIActivateInput {
  */
 interface CallbackActivateInput {
     orgId: string
-    providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud'
+    providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud' | 'meta_ads_monitor'
     assetId: string
     assetName: string
     accessToken: string
@@ -91,6 +91,8 @@ interface CallbackActivateInput {
     displayPhoneNumber?: string
     wabaId?: string
     pageId?: string
+    adAccountId?: string  // For ads only
+    currency?: string  // For ads only
 }
 
 type ActivateInput = UIActivateInput | CallbackActivateInput;
@@ -139,8 +141,9 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         const providerKeyMap = {
             'page': 'facebook_page',
             'instagram': 'instagram_dme',
-            'whatsapp': 'whatsapp_cloud'
-        };
+            'whatsapp': 'whatsapp_cloud',
+            'ads': 'meta_ads_monitor'
+        } as const;
         providerKey = providerKeyMap[input.assetType];
         assetId = input.assetId;
         assetName = input.assetName;
@@ -218,17 +221,65 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             }
         }
 
-        // Check if channel already exists (including deleted ones)
-        const { data: existing } = await (await createClient())
+        // Ads channels: no webhooks needed, use encrypted credentials
+        if (assetType === "ads") {
+            webhookStatus = "not_applicable";
+        }
+
+        // For ads: check by provider_key only (one per org for MVP)
+        // For messaging: check by provider_key + asset_id
+        let existingQuery = (await createClient())
             .from('integration_connections')
             .select('id, status')
             .eq('organization_id', orgId)
-            .eq('provider_key', providerKey)
-            .eq('metadata->>asset_id', assetId)
-            .limit(1);
+            .eq('provider_key', providerKey);
+
+        if (assetType !== 'ads') {
+            existingQuery = existingQuery.eq('metadata->>asset_id', assetId);
+        }
+
+        const { data: existing } = await existingQuery.limit(1);
 
         if (existing && existing.length > 0) {
             const existingChannel = existing[0];
+
+            // For ads: always update (manual or OAuth, keep latest)
+            if (assetType === 'ads') {
+                const { encryptObject } = await import('@/modules/infrastructure/integrations/encryption');
+                const adAccountId = isCallbackInput(input) ? input.adAccountId : undefined;
+                const normalizedAdAccountId = adAccountId?.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+
+                const { error } = await (await createClient())
+                    .from('integration_connections')
+                    .update({
+                        connection_name: assetName,
+                        status: 'active',
+                        credentials: encryptObject({
+                            access_token: finalAccessToken,
+                            ad_account_id: normalizedAdAccountId,
+                        }),
+                        metadata: {
+                            asset_id: assetId,
+                            asset_type: 'ads',
+                            asset_name: assetName,
+                            ad_account_id: normalizedAdAccountId,
+                            currency: isCallbackInput(input) ? input.currency : undefined,
+                            connection_source: 'oauth'
+                        },
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingChannel.id)
+                    .eq('organization_id', orgId);
+
+                if (error) {
+                    logMetaChannelError("[activateMetaChannel] Ads update DB error:", error);
+                    return { success: false, error: publicMetaChannelError(error, 'Meta Ads activation failed') };
+                }
+
+                revalidatePath("/crm/settings/channels");
+                revalidatePath("/crm/meta-ads");
+                return { success: true, channelId: existingChannel.id, reactivated: true };
+            }
 
             if (existingChannel.status === 'active') {
                 return {
@@ -264,22 +315,43 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         }
 
         // Create new channel connection
+        let channelCredentials: any = { access_token: finalAccessToken };
+        let channelMetadata: any = {
+            asset_id: assetId,
+            asset_type: assetType,
+            asset_name: assetName,
+            waba_id: wabaId,
+            display_phone_number: displayPhoneNumber,
+            webhook_status: webhookStatus,
+            page_id: input.pageId || (input as any).page_id
+        };
+
+        // For ads: encrypt credentials and store ad-specific metadata
+        if (assetType === 'ads') {
+            const { encryptObject } = await import('@/modules/infrastructure/integrations/encryption');
+            const adAccountId = isCallbackInput(input) ? input.adAccountId : undefined;
+            const normalizedAdAccountId = adAccountId?.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+
+            channelCredentials = encryptObject({
+                access_token: finalAccessToken,
+                ad_account_id: normalizedAdAccountId,
+            });
+            channelMetadata = {
+                asset_id: assetId,
+                asset_type: 'ads',
+                asset_name: assetName,
+                ad_account_id: normalizedAdAccountId,
+                currency: isCallbackInput(input) ? input.currency : undefined,
+                connection_source: 'oauth'
+            };
+        }
+
         const channelData = {
             organization_id: orgId,
             provider_key: providerKey,
             connection_name: assetName,
-            credentials: {
-                access_token: finalAccessToken
-            },
-            metadata: {
-                asset_id: assetId,
-                asset_type: assetType,
-                asset_name: assetName,
-                waba_id: wabaId,
-                display_phone_number: displayPhoneNumber,
-                webhook_status: webhookStatus,
-                page_id: input.pageId || (input as any).page_id
-            },
+            credentials: channelCredentials,
+            metadata: channelMetadata,
             config: {
                 asset_type: assetType
             },

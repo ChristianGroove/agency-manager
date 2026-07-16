@@ -55,3 +55,11 @@ key_check.json
 supabase/backups/production/emergency_sync_*.sql
 
 env.production
+
+# Ignore all SQL files globally
+*.sql
+
+# Ignore large local SQL dumps
+*restore*.sql
+*dump*.sql
+pixy-local-data-restore-fixed.sql

@@ -4,7 +4,7 @@ import { Channel } from "../types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MessageCircle, MoreVertical, Trash2, Edit, Star, StarOff, Facebook, Instagram, Smartphone } from "lucide-react"
+import { MessageCircle, MoreVertical, Trash2, Edit, Star, StarOff, Facebook, Instagram, Smartphone, BarChart3 } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -45,6 +45,9 @@ const getChannelVisuals = (key: string, isVirtual: boolean, virtType?: string) =
     if (virtType === 'whatsapp') return { iconSrc: '/social media icons/whatsapp.png', bg: 'bg-green-50' }
     if (virtType === 'instagram') return { iconSrc: '/social media icons/instagram.png', bg: 'bg-pink-50' }
     if (virtType === 'facebook') return { iconSrc: '/social media icons/facebook.png', bg: 'bg-blue-50' }
+
+    // Ads
+    if (k === 'meta_ads_monitor' || virtType === 'ads') return { iconSrc: null, bg: 'bg-indigo-50', FallbackIcon: BarChart3 }
 
     // Fallback/Standard
     return { iconSrc: null, bg: 'bg-zinc-100', FallbackIcon: MessageCircle }
@@ -176,6 +179,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                             'meta_instagram': 'Instagram',
                                             'meta_business': 'Meta Business',
                                             'facebook_page': 'Messenger',
+                                            'meta_ads_monitor': 'Meta Ads',
                                         } as Record<string, string>)[channel.provider_key]
                                         || channel.provider_key.replace(/_/g, ' ').toUpperCase()
                                     }
@@ -246,10 +250,13 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
 
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold text-[10px] uppercase tracking-wider text-gray-500">
-                                    {channel.provider_key.includes('whatsapp') ? 'Teléfono' : 'Handle'}
+                                    {channel.provider_key.includes('whatsapp') ? 'Teléfono' : 
+                                     channel.provider_key === 'meta_ads_monitor' ? 'Ad Account ID' : 'Handle'}
                                 </span>
                                 <span className="font-mono font-medium text-gray-700">
-                                    {handle || 'No Info'}
+                                    {channel.provider_key === 'meta_ads_monitor' && (channel.metadata as any)?.ad_account_id 
+                                        ? (channel.metadata as any).ad_account_id 
+                                        : (handle || 'No Info')}
                                 </span>
                             </div>
                             
@@ -290,15 +297,23 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                         'instagram_dme': 'Instagram',
                                         'meta_business': 'Meta Business',
                                         'facebook_page': 'Messenger',
+                                        'meta_ads_monitor': 'Meta Ads Monitor',
                                     } as Record<string, string>)[channel.provider_key] || channel.provider_key.replace(/_/g, ' ').toUpperCase()}</span>
                                 </div>
                                 
-                                {handle && handle !== displayName && (
+                                {handle && handle !== displayName && channel.provider_key !== 'meta_ads_monitor' && (
                                     <div className="flex items-center justify-between">
                                         <span className="opacity-70 uppercase text-[10px] font-bold tracking-wider">
                                             {channel.provider_key.includes('whatsapp') ? 'Teléfono' : 'Handle'}
                                         </span>
                                         <span className="font-medium text-zinc-800 dark:text-zinc-200">{handle}</span>
+                                    </div>
+                                )}
+
+                                {channel.provider_key === 'meta_ads_monitor' && (channel.metadata as any)?.ad_account_id && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="opacity-70 uppercase text-[10px] font-bold tracking-wider">Ad Account ID</span>
+                                        <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200">{(channel.metadata as any).ad_account_id}</span>
                                     </div>
                                 )}
                                 
