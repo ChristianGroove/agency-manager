@@ -14,14 +14,19 @@ export async function generateMetadata() {
 import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
 import { getOrganizationMembers } from "@/modules/core/settings/actions/team"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { getActiveModules } from "@/modules/core/saas/saas-actions"
 
 export default async function ChannelsPage() {
-    const [channels, pipelineStages, agents, organizationId] = await Promise.all([
+    const organizationId = await getCurrentOrganizationId()
+    
+    const [channels, pipelineStages, agents, activeModules] = await Promise.all([
         getChannels(),
         getPipelineStages(),
         getOrganizationMembers(),
-        getCurrentOrganizationId()
+        getActiveModules(organizationId || undefined)
     ])
+
+    const isMetaAdsEnabled = activeModules.includes('module_meta_ads')
 
     return (
         <Suspense fallback={<div>Loading channels...</div>}>
@@ -30,6 +35,7 @@ export default async function ChannelsPage() {
                 pipelineStages={pipelineStages}
                 agents={agents}
                 organizationId={organizationId}
+                isMetaAdsEnabled={isMetaAdsEnabled}
             />
         </Suspense>
     )

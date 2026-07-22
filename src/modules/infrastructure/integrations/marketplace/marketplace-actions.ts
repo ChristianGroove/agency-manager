@@ -342,7 +342,7 @@ export async function getMarketplaceStats(): Promise<{
  * @param channelType - Optional: 'whatsapp' | 'messenger' | 'instagram' for granular connection
  *                      If provided, limits the OAuth to only that channel type
  */
-export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'instagram'): Promise<string> {
+export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'instagram' | 'ads'): Promise<string> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("No organization context")
 
@@ -362,6 +362,13 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
     let scopes: string[];
 
     switch (channelType) {
+        case 'ads':
+            scopes = [
+                'public_profile',
+                'ads_read',
+                'pages_show_list'
+            ];
+            break;
         case 'whatsapp':
             scopes = [
                 'public_profile',
@@ -392,6 +399,7 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
             // Full OAuth for Integraciones page - all scopes
             scopes = [
                 'public_profile',
+                'ads_read',
                 'instagram_basic',
                 'instagram_manage_messages',
                 'pages_show_list',

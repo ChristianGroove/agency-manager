@@ -239,6 +239,12 @@ export async function GET(request: Request) {
             pages = await metaApi.getConnectedAssets(longLivedToken);
         }
 
+        // Discover ad accounts for ads channel type
+        let adAccounts: any[] = [];
+        if (channelType === 'ads') {
+            adAccounts = await metaApi.getAdAccounts(longLivedToken);
+        }
+
         if (!channelType || channelType === 'whatsapp') {
             const wabaResult = await metaApi.getWhatsAppAccounts(longLivedToken);
             wabas = wabaResult.data || [];
@@ -316,6 +322,19 @@ export async function GET(request: Request) {
         // 4. Map assets based on requested channelType
         let filteredAssets: any[] = [];
         switch (channelType) {
+            case 'ads':
+                // For MVP: take only the first ad account per org
+                const firstAdAccount = adAccounts[0];
+                if (firstAdAccount) {
+                    filteredAssets = [{
+                        id: firstAdAccount.id,
+                        name: firstAdAccount.name || `Ad Account ${firstAdAccount.account_id}`,
+                        type: 'ads',
+                        account_id: firstAdAccount.account_id,
+                        currency: firstAdAccount.currency
+                    }];
+                }
+                break;
             case 'whatsapp':
                 filteredAssets = whatsappAssets.filter(a => a.type === 'whatsapp');
                 break;
@@ -374,10 +393,11 @@ export async function GET(request: Request) {
 
             for (const asset of filteredAssets) {
                 try {
-                    let providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud';
+                    let providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud' | 'meta_ads_monitor';
                     switch (asset.type) {
                         case 'whatsapp': providerKey = 'whatsapp_cloud'; break;
                         case 'instagram': providerKey = 'instagram_dme'; break;
+                        case 'ads': providerKey = 'meta_ads_monitor'; break;
                         default: providerKey = 'facebook_page';
                     }
 
@@ -390,7 +410,9 @@ export async function GET(request: Request) {
                         pageAccessToken: asset.access_token,
                         displayPhoneNumber: asset.display_phone_number,
                         wabaId: asset.waba_id,
-                        pageId: asset.page_id
+                        pageId: asset.page_id,
+                        adAccountId: asset.account_id,
+                        currency: asset.currency
                     });
 
                     if (result.success) successCount++;
@@ -401,7 +423,8 @@ export async function GET(request: Request) {
             }
 
             const channelWord = channelType === 'whatsapp' ? 'WhatsApp' :
-                channelType === 'messenger' ? 'Messenger' : 'Instagram';
+                channelType === 'messenger' ? 'Messenger' :
+                channelType === 'ads' ? 'Meta Ads' : 'Instagram';
 
             if (successCount > 0) {
                 return createClientRedirect(appUrl, '/crm/settings/channels', {

@@ -3,7 +3,7 @@
 import { Channel } from "../types"
 import { ChannelCard } from "./channel-card"
 import { Button } from "@/components/ui/button"
-import { Plus, MessageCircle, Store, Instagram } from "lucide-react"
+import { Plus, MessageCircle, Store, Instagram, BarChart3 } from "lucide-react"
 import { useState } from "react"
 import { WhatsAppConnectModal } from "./whatsapp-connect-modal"
 import { useRouter } from "next/navigation"
@@ -30,9 +30,10 @@ interface ChannelsListProps {
     pipelineStages: any[]
     agents: any[]
     organizationId?: string | null
+    isMetaAdsEnabled?: boolean
 }
 
-export function ChannelsList({ channels, pipelineStages, agents, organizationId }: ChannelsListProps) {
+export function ChannelsList({ channels, pipelineStages, agents, organizationId, isMetaAdsEnabled = false }: ChannelsListProps) {
     const { t } = useTranslation()
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const router = useRouter()
@@ -42,7 +43,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
     }
 
     // OAuth handler with specific channel type
-    const handleMetaConnect = async (channelType?: 'whatsapp' | 'messenger' | 'instagram') => {
+    const handleMetaConnect = async (channelType?: 'whatsapp' | 'messenger' | 'instagram' | 'ads') => {
         try {
             const { getMetaAuthUrl } = await import('@/modules/infrastructure/integrations/marketplace/marketplace-actions')
             const url = await getMetaAuthUrl(channelType)
@@ -121,6 +122,17 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
                             <Instagram className="mr-2 h-4 w-4" />
                             Instagram
                         </Button>
+
+                        {/* Meta Ads Button */}
+                        {isMetaAdsEnabled && (
+                            <Button
+                                onClick={() => handleMetaConnect('ads')}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm hover:from-blue-700 hover:to-indigo-700"
+                            >
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                Meta Ads
+                            </Button>
+                        )}
 
 
                     </div>

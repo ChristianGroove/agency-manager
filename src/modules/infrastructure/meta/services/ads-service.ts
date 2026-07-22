@@ -17,7 +17,10 @@ export class AdsService {
         // 2. Fetch Active Campaigns with nested Ads
         const campaignsData = await this.fetchCampaigns(adAccountId, datePreset)
 
-        return this.normalize(accountInsights, campaignsData)
+        // 3. Fetch Demographics
+        const demographicsData = await this.connector.getAdAccountDemographics(adAccountId, datePreset)
+
+        return this.normalize(accountInsights, campaignsData, demographicsData)
     }
 
     private async fetchCampaigns(adAccountId: string, datePreset: string) {
@@ -30,7 +33,7 @@ export class AdsService {
         }
     }
 
-    private normalize(insights: any, campaigns: any[]): NormalizedAdsMetrics {
+    private normalize(insights: any, campaigns: any[], demographics: any): NormalizedAdsMetrics {
         // Zero-decimal currencies (COP, CLP, JPY, KRW, VND, etc.) 
         // Meta API often returns these in base units. We shouldn't divide by 100 if so.
         // Or if the budget matches user expectation as raw, we don't divide.
@@ -139,6 +142,22 @@ export class AdsService {
                     }).sort((a: any, b: any) => b.spend - a.spend)
                 }
             }).sort((a, b) => b.spend - a.spend),
+            demographics: {
+                ageGender: (demographics.ageGender || []).map((d: any) => {
+                    const spend = parseFloat(d.spend || '0')
+                    const actions = d.actions || []
+                    const tier1 = ['purchase', 'lead', 'onsite_conversion.messaging_conversation_started_7d']
+                    const totalConv = actions.reduce((sum: number, action: any) => tier1.includes(action.action_type) ? sum + parseInt(action.value) : sum, 0)
+                    return { age: d.age, gender: d.gender, spend, impressions: parseInt(d.impressions || '0'), conversions: totalConv }
+                }).sort((a: any, b: any) => b.spend - a.spend).slice(0, 10),
+                region: (demographics.region || []).map((d: any) => {
+                    const spend = parseFloat(d.spend || '0')
+                    const actions = d.actions || []
+                    const tier1 = ['purchase', 'lead', 'onsite_conversion.messaging_conversation_started_7d']
+                    const totalConv = actions.reduce((sum: number, action: any) => tier1.includes(action.action_type) ? sum + parseInt(action.value) : sum, 0)
+                    return { region: d.region, spend, impressions: parseInt(d.impressions || '0'), conversions: totalConv }
+                }).sort((a: any, b: any) => b.spend - a.spend).slice(0, 10)
+            },
             last_updated: new Date().toISOString()
         }
     }

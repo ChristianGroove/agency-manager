@@ -77,6 +77,33 @@ export class MetaConnector {
         })
     }
 
+    /**
+     * Get Ad Account Demographics (Macro Level)
+     */
+    async getAdAccountDemographics(adAccountId: string, datePreset: string = 'last_30d') {
+        try {
+            const [ageGender, region] = await Promise.all([
+                this.fetchGraph(`/${adAccountId}/insights`, {
+                    date_preset: datePreset,
+                    breakdowns: 'age,gender',
+                    fields: 'spend,impressions,clicks,actions'
+                }),
+                this.fetchGraph(`/${adAccountId}/insights`, {
+                    date_preset: datePreset,
+                    breakdowns: 'region',
+                    fields: 'spend,impressions,clicks,actions'
+                })
+            ])
+            return {
+                ageGender: ageGender.data || [],
+                region: region.data || []
+            }
+        } catch (error) {
+            console.warn(`[MetaConnector] Failed to fetch demographics for ${adAccountId}`, error)
+            return { ageGender: [], region: [] }
+        }
+    }
+
     // ... (rest of file)
 
     /**

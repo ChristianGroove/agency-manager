@@ -3,6 +3,7 @@ import { NormalizedAdsMetrics } from "@/modules/infrastructure/meta/services/typ
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { DollarSign, Eye, MousePointer2, TrendingUp, BarChart3, AlertCircle, ChevronDown, ChevronUp, Image as ImageIcon, Calendar } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts"
 import { formatCurrency, cn } from "@/modules/infrastructure/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,7 @@ interface AdsDashboardProps {
 export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
     const { t } = useTranslation()
     const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
+    const [chartMode, setChartMode] = useState<'volume' | 'efficiency' | 'engagement'>('volume')
 
     if (!data) return null
 
@@ -34,6 +36,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
         roas: Number(data.roas || 0),
         cpc: Number(data.cpc || 0),
         ctr: Number(data.ctr || 0),
+        demographics: data.metadata?.demographics || data.demographics || null,
         last_updated: data.last_updated || data.updated_at || new Date().toISOString(),
         campaigns: Array.isArray(data.campaigns) ? data.campaigns.map((c: any) => ({
             ...c,
@@ -88,9 +91,79 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                 />
             </div>
 
+            {/* Chart Section */}
+            {safeData.campaigns.length > 0 && (
+                <div className="grid grid-cols-1 gap-8">
+                    <Card className="rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl p-8">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                                </div>
+                                {t("meta_ads_monitor.dashboard.chart_title") || "Rendimiento General"}
+                            </h3>
+                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+                                <button onClick={() => setChartMode('volume')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", chartMode === 'volume' ? "bg-white dark:bg-zinc-700 shadow-sm text-indigo-600 dark:text-indigo-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}>Volumen</button>
+                                <button onClick={() => setChartMode('efficiency')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", chartMode === 'efficiency' ? "bg-white dark:bg-zinc-700 shadow-sm text-emerald-600 dark:text-emerald-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}>Eficiencia</button>
+                                <button onClick={() => setChartMode('engagement')} className={cn("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", chartMode === 'engagement' ? "bg-white dark:bg-zinc-700 shadow-sm text-amber-600 dark:text-amber-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}>Interacción</button>
+                            </div>
+                        </div>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={safeData.campaigns.map((c: any) => ({
+                                    name: c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name,
+                                    spend: c.spend,
+                                    conversions: c.conversions,
+                                    cpc: c.cpc,
+                                    cost_per_conversion: c.cost_per_conversion,
+                                    ctr: c.ctr,
+                                    roas: c.roas || 0
+                                }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.1)" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} dy={10} />
+                                    
+                                    {chartMode === 'volume' && (
+                                        <>
+                                            <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+                                            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [name === 'spend' ? formatCurrency(value) : value, name === 'spend' ? 'Gasto' : 'Conversiones']} />
+                                            <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
+                                            <Bar yAxisId="left" dataKey="spend" name="spend" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                            <Bar yAxisId="right" dataKey="conversions" name="conversions" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                        </>
+                                    )}
+
+                                    {chartMode === 'efficiency' && (
+                                        <>
+                                            <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
+                                            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `$${val}`} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [formatCurrency(value), name === 'cpc' ? 'CPC' : 'Costo x Conv.']} />
+                                            <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
+                                            <Bar yAxisId="left" dataKey="cpc" name="cpc" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                            <Bar yAxisId="right" dataKey="cost_per_conversion" name="cost_per_conversion" fill="#0ea5e9" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                        </>
+                                    )}
+
+                                    {chartMode === 'engagement' && (
+                                        <>
+                                            <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
+                                            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888', fontWeight: 600 }} tickFormatter={(val) => `${val}x`} />
+                                            <Tooltip cursor={{ fill: 'rgba(150,150,150,0.05)' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', fontWeight: 'bold', fontSize: '12px' }} formatter={(value: any, name: any) => [name === 'ctr' ? `${value}%` : `${value}x`, name === 'ctr' ? 'CTR' : 'ROAS']} />
+                                            <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '20px' }} />
+                                            <Bar yAxisId="left" dataKey="ctr" name="ctr" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                            <Bar yAxisId="right" dataKey="roas" name="roas" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                                        </>
+                                    )}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
             {/* Main Content Area */}
             <div className="grid grid-cols-1 gap-8">
-                <Card className="rounded-[2.5rem] border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
+                <Card className="rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
                     <CardHeader className="p-8 pb-6 border-b border-slate-100/50 dark:border-white/5">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
@@ -215,22 +288,66 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                     <span className="w-8 h-[1px] bg-slate-200" />
                 </p>
             </div>
+
+            {/* Demographics Section */}
+            {safeData.demographics && safeData.demographics.ageGender && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <Card className="rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl p-8">
+                        <h3 className="text-lg font-bold mb-6">Edad y Género (Top 5)</h3>
+                        <div className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={safeData.demographics.ageGender.slice(0,5)}
+                                        dataKey="spend"
+                                        nameKey="age"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        label={(props: any) => `${props.age} (${props.gender.substring(0,1).toUpperCase()})`}
+                                    >
+                                        {safeData.demographics.ageGender.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][index % 5]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(val: any) => formatCurrency(val)} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+
+                    <Card className="rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl p-8">
+                        <h3 className="text-lg font-bold mb-6">Top Regiones por Conversión</h3>
+                        <div className="h-[250px] overflow-y-auto pr-2 space-y-4">
+                            {safeData.demographics.region.map((r: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
+                                    <span className="text-sm font-bold">{r.region}</span>
+                                    <div className="flex gap-4 text-xs font-medium text-slate-500">
+                                        <span>Gasto: {formatCurrency(r.spend)}</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">{r.conversions} Conv.</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     )
 }
 
 function KPICard({ title, value, icon: Icon, color, bgColor }: any) {
     return (
-        <Card className="p-6 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none hover:shadow-lg transition-all group rounded-[2rem]">
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <div className={cn("p-3.5 rounded-2xl group-hover:scale-110 transition-transform shadow-sm", bgColor)}>
-                        <Icon className={cn("h-6 w-6", color)} />
-                    </div>
+        <Card className="glass-card p-5 group hover:-translate-y-1 transition-all rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl">
+            <div className="flex items-center gap-4">
+                <div className={cn("p-3 rounded-xl group-hover:scale-110 transition-transform shadow-sm", bgColor)}>
+                    <Icon className={cn("h-6 w-6", color)} />
                 </div>
                 <div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">{value}</p>
-                    <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">{title}</p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mt-1">{title}</p>
                 </div>
             </div>
         </Card>
