@@ -8,10 +8,15 @@ import { Trash2, Send, AlertTriangle } from "lucide-react"
 import { QuantitySelector } from "../components/QuantitySelector"
 import { dispatchRestoOrder, validateCartItems } from "../actions/checkout-actions"
 import { sendDineInRound } from "../actions/resto-session-actions"
+import { usePortalThemeContext } from "@/modules/features/portal/theme/portal-theme-provider"
+import { evaluateStoreStatus } from "@/modules/features/portal/theme/utils/schedule-evaluator"
 
 export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryColor?: string }) {
     const router = useRouter()
     const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile, addRecentOrder, setItems, orderMode, setOrderMode, tableId, tableIdentifier, sessionId } = useRestoCart()
+
+    const { config } = usePortalThemeContext()
+    const storeStatus = evaluateStoreStatus(config)
 
     const [customerName, setCustomerName] = useState(customerProfile?.name || "")
     const [customerPhone, setCustomerPhone] = useState(customerProfile?.phone || "")
@@ -25,12 +30,13 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
     const [validationMessages, setValidationMessages] = useState<string[]>([])
     const [isValidating, setIsValidating] = useState(false)
 
+    const isClosedOrPaused = !storeStatus.isOpen && orderMode !== 'dine-in'
+
     const subtotal = getTotal()
     const tipAmount = Math.round(subtotal * tipPercent)
     const finalTotal = subtotal + tipAmount
 
-    // Sincronizar cambios locales al store principal para que no se pierdan si se refresca la página 
-    // antes de hacer el pago.
+    // Sincronizar cambios locales al store principal
     useEffect(() => {
         setCustomerProfile({ name: customerName, phone: customerPhone, address })
     }, [customerName, customerPhone, address, setCustomerProfile])
@@ -60,7 +66,7 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (items.length === 0) return
+        if (items.length === 0 || isClosedOrPaused) return
 
         setIsSubmitting(true)
 
@@ -83,7 +89,6 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
 
             if (res.success) {
                 clearCart()
-                // Emit custom event to navigate to "Mi Cuenta" tab immediately
                 window.dispatchEvent(new CustomEvent('resto-navigate', { detail: 'orders' }))
             } else {
                 alert("Hubo un error enviando tu pedido a cocina: " + res.error)
@@ -111,10 +116,8 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
         setIsSubmitting(false)
 
         if (res.success && res.messageId) {
-            addRecentOrder(res.messageId) // Guarda localmente el Tracker ID del Pedido
+            addRecentOrder(res.messageId)
 
-            // Si el backend nos devolvió un token de portal (elevación de Guest a Cliente)
-            // Redirigimos para que el usuario ya vea su portal persistente con historial real.
             if (res.portalToken) {
                 router.push(`/portal/${res.portalToken}?orderSuccess=true`)
             } else {
@@ -158,8 +161,19 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
     }
 
     return (
-        <form onSubmit={handleCheckout} className="flex flex-col w-full h-full p-4 pb-24 space-y-6">
+        <form onSubmit={handleCheckout} className="flex flex-col w-full h-full p-4 pb-24 space-y-6 max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold">Tu Pedido</h1>
+
+            {/* Closed / Emergency Paused Warning */}
+            {isClosedOrPaused && (
+                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex gap-3.5 text-xs text-rose-700 dark:text-rose-300 shadow-md">
+                    <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
+                    <div className="flex flex-col space-y-1">
+                        <span className="font-black uppercase tracking-wider text-[11px]">{storeStatus.statusBadgeText}</span>
+                        <span className="font-medium leading-relaxed">{storeStatus.message}</span>
+                    </div>
+                </div>
+            )}
 
             {validationMessages.length > 0 && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/50 rounded-xl p-4 flex gap-3 text-sm text-yellow-800 dark:text-yellow-200">
@@ -237,7 +251,7 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
                 </div>
             )}
 
-            {/* Ocultar datos obligatorios si es Dine-in, excepto nombre (opcional) */}
+            {/* Ocultar datos obligatorios si es Dine-in */}
             {orderMode !== 'dine-in' ? (
                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 space-y-4">
                     <h3 className="font-bold border-b pb-2 mt-4">Tus Datos</h3>
@@ -323,11 +337,11 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
 
             <Button
                 type="submit"
-                disabled={isSubmitting || isValidating}
-                className="w-full h-14 rounded-2xl text-lg font-bold sticky bottom-20 shadow-xl shadow-primary/20"
-                style={primaryColor ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
+                disabled={isSubmitting || isValidating || isClosedOrPaused}
+                className="w-full h-14 rounded-2xl text-lg font-bold sticky bottom-20 shadow-xl shadow-primary/20 disabled:opacity-50"
+                style={primaryColor && !isClosedOrPaused ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
             >
-                {isValidating ? "Validando disponibilidad..." : isSubmitting ? "Enviando..." : orderMode === 'dine-in' ? `Pedir a la Cocina • $${finalTotal.toLocaleString('es-CO')}` : `Pedir por $${finalTotal.toLocaleString('es-CO')}`}
+                {isClosedOrPaused ? `Establecimiento ${storeStatus.statusBadgeText}` : isValidating ? "Validando disponibilidad..." : isSubmitting ? "Enviando..." : orderMode === 'dine-in' ? `Pedir a la Cocina • $${finalTotal.toLocaleString('es-CO')}` : `Pedir por $${finalTotal.toLocaleString('es-CO')}`}
             </Button>
         </form>
     )

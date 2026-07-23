@@ -3,8 +3,11 @@
 import React, { useState, useMemo } from "react"
 import { FoodCard } from "../components/FoodCard"
 import { FoodModal } from "../components/FoodModal"
-import { Search } from "lucide-react"
+import { Search, AlertCircle } from "lucide-react"
 import { RestoMenuItem } from "@/types"
+import { usePortalThemeContext } from "@/modules/features/portal/theme/portal-theme-provider"
+import { evaluateStoreStatus } from "@/modules/features/portal/theme/utils/schedule-evaluator"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface RestoMenuGridProps {
     items: RestoMenuItem[]
@@ -16,6 +19,10 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [selectedItemForModal, setSelectedItemForModal] = useState<RestoMenuItem | null>(null)
+
+    const { config } = usePortalThemeContext()
+    const navStyle = config?.category_nav_style || 'pills'
+    const storeStatus = evaluateStoreStatus(config)
 
     // Get all unique categories for badges
     const categories = useMemo(() => {
@@ -39,7 +46,6 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
             .map(c => c.name)
             
         if (hasOthers) sortedCats.push("Otros")
-        
         return sortedCats
     }, [items])
 
@@ -55,48 +61,90 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
         })
     }, [items, searchQuery, selectedCategory])
 
+    const allCategories = ["Todos", ...categories]
+
     return (
-        <div className="flex flex-col w-full px-4 pt-4 space-y-6">
+        <div className="flex flex-col w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-4 space-y-6">
+            {/* Store Status Warning Banner (Closed or Emergency Paused) */}
+            {!storeStatus.isOpen && (
+                <div className={cn(
+                    "w-full p-4 rounded-2xl border flex items-center gap-3.5 shadow-lg transition-all animate-in fade-in duration-300",
+                    storeStatus.isForceClosed
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
+                        : "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300"
+                )}>
+                    <div className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm",
+                        storeStatus.isForceClosed ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+                    )}>
+                        <AlertCircle className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-xs">
+                        <p className="font-black uppercase tracking-wider text-[11px] opacity-90">{storeStatus.statusBadgeText}</p>
+                        <p className="font-medium leading-relaxed mt-0.5">{storeStatus.message}</p>
+                    </div>
+                </div>
+            )}
+
             {/* Buscador de Platos */}
             <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                     type="text"
                     placeholder="¿Qué se te antoja hoy?"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-12 pl-10 pr-4 rounded-xl bg-gray-100 dark:bg-zinc-800/80 border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none"
+                    className="w-full h-12 pl-10 pr-4 rounded-2xl bg-gray-100/80 dark:bg-zinc-800/80 border border-gray-200/50 dark:border-zinc-700/50 focus:bg-white dark:focus:bg-zinc-900 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none shadow-sm"
                 />
             </div>
 
-            {/* Category Badges */}
-            <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-hide no-scrollbar">
-                <button
-                    onClick={() => setSelectedCategory(null)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === null
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-white dark:bg-zinc-900 text-gray-500 border-gray-100 dark:border-zinc-800"
-                        }`}
-                >
-                    Todos
-                </button>
-                {categories.map(category => (
-                    <button
-                        key={category}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${selectedCategory === category
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-white dark:bg-zinc-900 text-gray-500 border-gray-100 dark:border-zinc-800"
-                            }`}
-                    >
-                        {category}
-                    </button>
-                ))}
+            {/* Dynamic Category Tabs / Badges */}
+            <div className={cn(
+                "flex overflow-x-auto pb-2 scrollbar-hide no-scrollbar gap-2",
+                navStyle === 'underline_tabs' ? "border-b border-gray-200 dark:border-zinc-800 pb-0 gap-4" : ""
+            )}>
+                {allCategories.map(category => {
+                    const isSelected = (category === "Todos" && selectedCategory === null) || selectedCategory === category
+
+                    let btnClass = ""
+                    if (navStyle === 'underline_tabs') {
+                        btnClass = cn(
+                            "py-2.5 px-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 bg-transparent rounded-none",
+                            isSelected ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                        )
+                    } else if (navStyle === 'glass_cards') {
+                        btnClass = cn(
+                            "px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap backdrop-blur-md border shadow-sm transition-all",
+                            isSelected ? "bg-primary text-white border-primary shadow-md scale-[1.02]" : "bg-white/60 dark:bg-zinc-900/60 text-gray-600 dark:text-zinc-300 border-gray-200/60 dark:border-zinc-800"
+                        )
+                    } else {
+                        btnClass = cn(
+                            "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all",
+                            isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 border-gray-200/80 dark:border-zinc-800"
+                        )
+                    }
+
+                    return (
+                        <button
+                            key={category}
+                            onClick={() => setSelectedCategory(category === "Todos" ? null : category)}
+                            className={btnClass}
+                            style={isSelected ? { backgroundColor: navStyle !== 'underline_tabs' ? (primaryColor || config?.primary_color) : undefined } : undefined}
+                        >
+                            {category}
+                        </button>
+                    )
+                })}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
-                {filteredItems.length > 0 ? (
-                    filteredItems.map(item => (
+            {/* Grid de Productos */}
+            {filteredItems.length === 0 ? (
+                <div className="py-12 text-center text-gray-400">
+                    <p className="text-sm font-medium">No se encontraron productos que coincidan.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredItems.map(item => (
                         <FoodCard
                             key={item.id}
                             item={item}
@@ -104,20 +152,16 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
                             primaryColor={primaryColor}
                             onSelect={() => setSelectedItemForModal(item)}
                         />
-                    ))
-                ) : (
-                    <div className="col-span-full py-12 text-center text-gray-500">
-                        No encontramos platos que coincidan con tu búsqueda.
-                    </div>
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
 
+            {/* Modal de Modificadores */}
             {selectedItemForModal && (
-                <FoodModal 
-                    item={selectedItemForModal} 
-                    orgId={orgId} 
-                    primaryColor={primaryColor}
-                    onClose={() => setSelectedItemForModal(null)} 
+                <FoodModal
+                    item={selectedItemForModal}
+                    orgId={orgId}
+                    onClose={() => setSelectedItemForModal(null)}
                 />
             )}
         </div>

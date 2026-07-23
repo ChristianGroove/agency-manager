@@ -25,6 +25,7 @@ import { RestoTable, RestoZone, VisualElement } from '../store/use-tables-store'
 import { saveLayout, deleteZone, renameZone, updateTableStatus } from '../actions'
 import { toast } from 'sonner'
 import { cn } from '@/modules/infrastructure/utils/utils'
+import { supabase } from '@/modules/core/database/supabase'
 
 import {
     Save,

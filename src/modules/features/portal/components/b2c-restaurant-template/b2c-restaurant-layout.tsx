@@ -19,6 +19,12 @@ import { updateClientAddress } from "./actions/checkout-actions"
 import { validateTableQR } from "./actions/resto-dinein-actions"
 import { toast } from "sonner"
 import { supabase } from "@/modules/core/database/supabase"
+import { PortalThemeProvider } from "@/modules/features/portal/theme/portal-theme-provider"
+import { PortalHeader } from "@/modules/features/portal/theme/components/PortalHeader"
+import { PortalPromoBanner } from "@/modules/features/portal/theme/components/PortalPromoBanner"
+import { PortalSocialFooter } from "@/modules/features/portal/theme/components/PortalSocialFooter"
+
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface RestoPortalLayoutProps {
     token?: string
@@ -152,119 +158,115 @@ export function B2CRestaurantLayout({
     // Calcular Cantidad en Carrito
     const totalCartQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0)
 
+    const themeConfig = settings?.portal_theme_config || settings?.portal_modules?.theme_config
+    const isGourmet = themeConfig?.theme_id === 'gourmet_elegance'
+    const isDarkOrGourmet = isGourmet || themeConfig?.color_mode === 'dark'
+    const effectivePrimaryColor = themeConfig?.primary_color || settings?.portal_primary_color || '#4F46E5'
+
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-black font-sans">
-            <SystemAlertBanner />
+        <PortalThemeProvider config={themeConfig}>
+            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300", isDarkOrGourmet ? "dark bg-zinc-950 text-amber-50" : "bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-white")}>
+                <SystemAlertBanner />
 
-            {/* TOP BAR: Branding Inyectado por el Tema Global */}
-            <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm" style={{ borderBottomColor: settings?.portal_primary_color ? `${settings.portal_primary_color}30` : '' }}>
-                <div className="container flex h-16 items-center flex-row justify-center">
-                    <div className="flex items-center gap-2">
-                        {settings?.portal_logo_url ? (
-                            <img src={settings.portal_logo_url} alt="Logo" className="h-8 w-auto object-contain" />
-                        ) : (
-                            <span className="font-bold text-lg" style={{ color: settings?.portal_primary_color || '#F205E2' }}>
-                                {orgData?.name || settings?.agency_name || "Resto"}
-                            </span>
-                        )}
+                {/* LANDING PAGE HEADER */}
+                <PortalHeader 
+                    config={themeConfig} 
+                    orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} 
+                    logoUrl={settings?.portal_logo_url}
+                    tableIdentifier={tableIdentifier}
+                    isGourmet={isGourmet}
+                />
+
+                {/* DINE-IN BANNER */}
+                {orderMode === 'dine-in' && tableIdentifier && (
+                    <div 
+                        className="w-full py-2.5 px-4 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border-b sticky top-0 z-30 transition-colors shadow-sm"
+                        style={{
+                            backgroundColor: `${effectivePrimaryColor}15`,
+                            borderColor: `${effectivePrimaryColor}30`,
+                            color: isDarkOrGourmet ? '#ffffff' : '#111827'
+                        }}
+                    >
+                        <MapPin className="w-4 h-4 shrink-0" style={{ color: effectivePrimaryColor }} />
+                        <span className="flex-1 text-center font-extrabold">Estás ordenando en Mesa #{tableIdentifier}</span>
+                        <button 
+                            onClick={clearTableContext} 
+                            className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-gray-500 hover:text-gray-900 dark:hover:text-white" 
+                            title="Desconectar de la mesa"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
-                </div>
-            </header>
+                )}
 
-            {/* DINE-IN BANNER */}
-            {orderMode === 'dine-in' && tableIdentifier && (
-                <div className="w-full bg-primary/10 text-primary py-2 px-4 text-center font-medium text-sm flex items-center justify-center gap-2 border-b border-primary/20 sticky top-16 z-30">
-                    <MapPin className="w-4 h-4" />
-                    <span className="flex-1 text-center">Estás ordenando en {tableIdentifier}</span>
-                    <button onClick={clearTableContext} className="p-1 hover:bg-primary/20 rounded-full transition-colors" title="Desconectar de la mesa">
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-            )}
+                {/* PROMO BANNER (TOP) */}
+                <PortalPromoBanner config={themeConfig} position="top" isGourmet={isGourmet} />
 
-            {/* CONTENIDO PRINCIPAL (El Catálogo o Carrito) */}
-            <main className="flex-1 w-full flex flex-col pb-20">
-                <Suspense fallback={<GlobalLoader />}>
-                    {activeTab === 'menu' && (
-                        loadingCatalog ? (
-                            <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-[50vh]">
-                                <div
-                                    className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mb-4"
-                                    style={{ borderColor: `${settings?.portal_primary_color || '#F205E2'}40`, borderTopColor: settings?.portal_primary_color || '#F205E2' }}
-                                />
-                                <p className="text-gray-500 font-medium animate-pulse">
-                                    {settings?.portal_catalog_loading_text || 'Cargando catálogo...'}
-                                </p>
-                            </div>
-                        ) : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
-                    )}
-                    {activeTab === 'cart' && (
-                        <RestoCartView orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
-                    )}
-                    {activeTab === 'orders' && (
-                        orderMode === 'dine-in' ? (
-                            <RestoDineInTab orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
-                        ) : (
-                            <RestoOrderTracker orgId={currentOrgId || ""} client={client} />
-                        )
-                    )}
-                    {activeTab === 'profile' && (
-                        <div className="p-8 text-center text-gray-500">
-                            <UserIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Mi Perfil</h2>
-
-                            {client ? (
-                                <RestoClientProfile client={client} token={token} primaryColor={settings?.portal_primary_color} />
+                {/* CONTENIDO PRINCIPAL (El Catálogo o Carrito) */}
+                <main className="flex-1 w-full flex flex-col pb-20">
+                    <Suspense fallback={<GlobalLoader />}>
+                        {activeTab === 'menu' && (
+                            loadingCatalog ? (
+                                <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-[50vh]">
+                                    <div
+                                        className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"
+                                    />
+                                    <p className="text-gray-500 font-medium animate-pulse">
+                                        {settings?.portal_catalog_loading_text || 'Cargando catálogo...'}
+                                    </p>
+                                </div>
+                            ) : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} primaryColor={effectivePrimaryColor} />
+                        )}
+                        {activeTab === 'cart' && (
+                            <RestoCartView orgId={currentOrgId || ""} primaryColor={effectivePrimaryColor} />
+                        )}
+                        {activeTab === 'orders' && (
+                            orderMode === 'dine-in' ? (
+                                <RestoDineInTab orgId={currentOrgId || ""} primaryColor={effectivePrimaryColor} />
                             ) : (
-                                // Modo Guest: Leer de Zustand Memory
-                                (() => {
-                                    const { customerProfile } = useRestoCart()
-                                    if (customerProfile?.name || customerProfile?.phone) {
-                                        return (
-                                            <>
-                                                <p>Estos son los datos que ingresaste localmente. Serán recordados para tu próximo carrito.</p>
-                                                <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
-                                                    <p><strong>Nombre:</strong> {customerProfile.name || 'Sin especificar'}</p>
-                                                    <p><strong>Teléfono:</strong> {customerProfile.phone || 'Sin especificar'}</p>
-                                                    {customerProfile.address && <p><strong>Dirección:</strong> {customerProfile.address}</p>}
-                                                </div>
-                                            </>
-                                        )
-                                    }
-                                    return (
-                                        <div className="mt-6 space-y-2">
-                                            <p>Aún no tenemos tus datos de contacto.</p>
-                                            <p className="text-sm">Cuando realices tu primer pedido en el carrito, recordaremos tu nombre y dirección en este dispositivo.</p>
-                                        </div>
-                                    )
-                                })()
-                            )}
-                        </div>
-                    )}
-                </Suspense>
-            </main>
+                                <RestoOrderTracker orgId={currentOrgId || ""} client={client} />
+                            )
+                        )}
+                        {activeTab === 'profile' && (
+                            <div className="p-8 text-center text-gray-500">
+                                <UserIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Mi Perfil</h2>
+
+                                {client ? (
+                                    <RestoClientProfile client={client} token={token} primaryColor={effectivePrimaryColor} />
+                                ) : (
+                                    <RestoGuestProfile />
+                                )}
+                            </div>
+                        )}
+                    </Suspense>
+
+                    {/* PROMO BANNER (BOTTOM) */}
+                    <PortalPromoBanner config={themeConfig} position="bottom" isGourmet={isGourmet} />
+
+                    {/* SOCIAL FOOTER */}
+                    <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
+                </main>
 
             {/* BOTTOM NAV BAR (Mobile Only) */}
-            <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-[0_-4_20px_rgba(0,0,0,0.05)]">
+            <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-lg">
                 <div className="flex justify-around items-center h-16 px-2">
                     {navItems.map((item) => {
                         const isActive = activeTab === item.id
+                        const IconComponent = item.icon
                         return (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id as 'menu' | 'cart' | 'orders' | 'profile')}
-                                className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${isActive ? '' : 'text-muted-foreground hover:text-foreground'
-                                    }`}
-                                style={{ color: isActive ? (settings?.portal_primary_color || '#F205E2') : '' }}
+                                className={cn("relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "" : "text-muted-foreground hover:text-foreground")}
+                                style={{ color: isActive ? effectivePrimaryColor : undefined }}
                             >
-                                <item.icon className={`h-5 w-5 transition-transform ${isActive ? 'stroke-[2.5px] scale-110' : ''}`} />
-                                <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                                <IconComponent className={cn("h-5 w-5 transition-transform", isActive && "stroke-[2.5px] scale-110")} />
+                                <span className={cn("text-[10px]", isActive ? "font-bold" : "font-medium")}>{item.label}</span>
 
-                                {/* Badge de Notificación para el Carrito */}
                                 {item.id === 'cart' && totalCartQuantity > 0 && (
                                     <span
-                                        className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1"
-                                        style={{ backgroundColor: '#EF4444' }} // Siempre rojo para urgencia o primary
+                                        className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1 bg-red-500"
                                     >
                                         {totalCartQuantity}
                                     </span>
@@ -277,9 +279,9 @@ export function B2CRestaurantLayout({
 
             {/* Modal de Pedido Exitoso */}
             {showSuccessModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-300 border border-white/20">
-                        <div className="h-20 w-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-300 border border-white border-opacity-20">
+                        <div className="h-20 w-20 bg-green-100 dark:bg-green-950 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
                             <Check className="h-10 w-10 stroke-[3px]" />
                         </div>
                         <div className="space-y-2">
@@ -294,14 +296,15 @@ export function B2CRestaurantLayout({
                         <Button
                             onClick={() => setShowSuccessModal(false)}
                             className="w-full h-12 rounded-2xl text-white font-bold text-lg shadow-lg hover:opacity-90 active:scale-95 transition-all"
-                            style={{ backgroundColor: settings?.portal_primary_color || '#F205E2' }}
+                            style={{ backgroundColor: effectivePrimaryColor }}
                         >
                             ¡Genial!
                         </Button>
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </PortalThemeProvider>
     )
 }
 
@@ -391,6 +394,28 @@ function RestoClientProfile({ client, token, primaryColor }: { client: any, toke
                 </div>
             </div>
         </>
+    )
+}
+
+function RestoGuestProfile() {
+    const { customerProfile } = useRestoCart()
+    if (customerProfile?.name || customerProfile?.phone) {
+        return (
+            <>
+                <p>Estos son los datos que ingresaste localmente. Serán recordados para tu próximo carrito.</p>
+                <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
+                    <p><strong>Nombre:</strong> {customerProfile.name || 'Sin especificar'}</p>
+                    <p><strong>Teléfono:</strong> {customerProfile.phone || 'Sin especificar'}</p>
+                    {customerProfile.address && <p><strong>Dirección:</strong> {customerProfile.address}</p>}
+                </div>
+            </>
+        )
+    }
+    return (
+        <div className="mt-6 space-y-2">
+            <p>Aún no tenemos tus datos de contacto.</p>
+            <p className="text-sm">Cuando realices tu primer pedido en el carrito, recordaremos tu nombre y dirección en este dispositivo.</p>
+        </div>
     )
 }
 

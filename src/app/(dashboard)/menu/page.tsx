@@ -1,6 +1,7 @@
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getMenuItems, getMenuCategories } from "@/modules/features/menu/actions"
 import { getModifierGroups } from "@/modules/features/menu/modifiers-actions"
+import { getPortalThemeConfig } from "@/modules/features/menu/actions/theme-actions"
 import { MenuSheetTrigger } from "@/modules/features/menu/components/menu-sheet-trigger"
 import { MenuWorkspace } from "@/modules/features/menu/components/menu-workspace"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
@@ -21,10 +22,11 @@ export default async function MenuPage({ searchParams }: { searchParams: { [key:
         redirect('/dashboard?error=unauthorized_module')
     }
 
-    const [items, categories, modifierGroups] = await Promise.all([
+    const [items, categories, modifierGroups, themeConfig] = await Promise.all([
         getMenuItems(),
         getMenuCategories(),
-        getModifierGroups()
+        getModifierGroups(),
+        getPortalThemeConfig()
     ])
 
     return (
@@ -45,7 +47,13 @@ export default async function MenuPage({ searchParams }: { searchParams: { [key:
             </div>
 
             {/* Content Split */}
-            <MenuWorkspace items={items} categories={categories} modifierGroups={modifierGroups} orgId={orgId} />
+            <MenuWorkspace 
+                items={items} 
+                categories={categories} 
+                modifierGroups={modifierGroups} 
+                initialThemeConfig={themeConfig}
+                orgId={orgId} 
+            />
         </div>
     )
 }

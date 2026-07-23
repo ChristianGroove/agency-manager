@@ -111,15 +111,31 @@ export async function getPortalData(token: string) {
 
             const branding = await getPortalBranding(client.organization_id)
 
+            const rawThemeConfig = (rawSettings as any)?.portal_theme_config || (rawSettings as any)?.portal_modules?.theme_config
+
+            const themeConfig = {
+                ...(rawThemeConfig || {}),
+                tenant_name: branding.name,
+                primary_color: (rawThemeConfig?.primary_color && rawThemeConfig.primary_color !== '#F205E2' && rawThemeConfig.primary_color !== '#4F46E5')
+                    ? rawThemeConfig.primary_color
+                    : branding.colors.primary,
+                tenant_logos: {
+                    main_dark: branding.logos.main,
+                    main_light: branding.logos.main_light,
+                    portal_iso: branding.logos.portal || branding.logos.favicon
+                }
+            }
+
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
                 portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
-                portal_primary_color: branding.colors.primary,
+                portal_primary_color: themeConfig.primary_color,
                 portal_secondary_color: branding.colors.secondary,
-                portal_template: portalTemplate
+                portal_template: portalTemplate,
+                portal_theme_config: themeConfig
             }
 
             const isB2B = portalTemplate === 'b2b_dashboard'

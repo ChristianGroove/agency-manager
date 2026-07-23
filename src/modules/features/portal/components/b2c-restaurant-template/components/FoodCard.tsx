@@ -4,6 +4,8 @@ import { Plus, Flame, Leaf, WheatOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { QuantitySelector } from "./QuantitySelector"
 import { RestoMenuItem } from "@/types"
+import { usePortalThemeContext } from "@/modules/features/portal/theme/portal-theme-provider"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface FoodCardProps {
     item: RestoMenuItem
@@ -31,6 +33,8 @@ const formatAvailableDays = (days?: number[]) => {
 
 export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps) {
     const { items: cartItems, addItem, updateQuantity, removeItem, setOrgId, orgId: currentCartOrgId, clearCart } = useRestoCart()
+    const { config, cardClasses, isGourmet } = usePortalThemeContext()
+    const effectivePrimaryColor = primaryColor || config?.primary_color || '#F205E2'
 
     // Find ALL cart items for this menu item
     const matchingCartItems = cartItems.filter(i => i.menuItemId === item.id)
@@ -99,14 +103,20 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
 
     // Highlight style if selected
     const isSelected = quantity > 0
-    const borderStyle = isSelected && primaryColor
-        ? { border: `2px solid ${primaryColor}`, boxShadow: `0 4px 12px ${primaryColor}20` }
+    const borderStyle = isSelected && effectivePrimaryColor
+        ? { border: `2px solid ${effectivePrimaryColor}`, boxShadow: `0 4px 12px ${effectivePrimaryColor}20` }
         : {}
 
     return (
         <div
-            className={`flex flex-row bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-3 gap-3 overflow-hidden h-36 relative transition-all hover:shadow-md ${isSelected ? 'scale-[1.01]' : ''} ${!item.is_available || !isAvailableToday ? 'opacity-60 grayscale-[0.5]' : ''}`}
+            className={cn(
+                "flex flex-row p-3 gap-3 overflow-hidden h-36 relative transition-all cursor-pointer",
+                cardClasses,
+                isSelected && 'scale-[1.01]',
+                (!item.is_available || !isAvailableToday) && 'opacity-60 grayscale-[0.5]'
+            )}
             style={borderStyle}
+            onClick={onSelect}
         >
             {/* Promo Badge */}
             {item.metadata?.promo_badge && (
@@ -125,7 +135,7 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
                         className="w-full h-full object-cover"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
                         <span className="text-xs">Sin Foto</span>
                     </div>
                 )}
@@ -141,15 +151,15 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
             </div>
 
             {/* Detalles */}
-            <div className="flex flex-col flex-1 py-0.5 justify-between">
+            <div className="flex flex-col flex-1 py-0.5 justify-between min-w-0">
                 <div className="space-y-1">
                     <div className="flex justify-between items-start">
-                        <h3 className="font-bold text-[16px] leading-tight text-gray-900 dark:text-gray-100 line-clamp-1">
+                        <h3 className={cn("font-bold text-[15px] sm:text-[16px] leading-tight line-clamp-1", isGourmet ? "text-amber-50 font-serif" : "text-gray-900 dark:text-gray-100")}>
                             {item.name}
                         </h3>
                     </div>
                     {item.description && (
-                        <p className="text-[11px] text-gray-400 line-clamp-2 leading-tight">
+                        <p className={cn("text-[11px] line-clamp-2 leading-tight", isGourmet ? "text-amber-200/70 font-serif italic" : "text-gray-500 dark:text-zinc-400")}>
                             {item.description}
                         </p>
                     )}
@@ -177,7 +187,7 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
 
                 <div className="flex items-center justify-between mt-auto">
                     <div className="flex flex-col">
-                        <span className="font-extrabold text-gray-950 dark:text-white text-[17px]">
+                        <span className={cn("font-extrabold text-[16px] sm:text-[17px]", isGourmet ? "text-amber-400 font-serif" : "text-gray-950 dark:text-white")}>
                             {priceFormatted}
                         </span>
                         {originalPriceFormatted && (
@@ -199,14 +209,14 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
                                 onIncrement={handleAdd}
                                 onDecrement={handleRemove}
                                 size="sm"
-                                primaryColor={primaryColor}
+                                primaryColor={effectivePrimaryColor}
                             />
                         ) : (
                             <Button
                                 onClick={handleAdd}
                                 size="icon"
                                 className="h-8 w-8 rounded-full shadow-lg hover:bg-primary/90 transition-all active:scale-95 text-white"
-                                style={{ backgroundColor: primaryColor }}
+                                style={{ backgroundColor: effectivePrimaryColor }}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>

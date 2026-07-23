@@ -1,19 +1,15 @@
 "use server"
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { cache } from "react"
+import { revalidatePath } from "next/cache"
+import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { BrandingConfig } from "@/types/branding"
 
 function debugLog(step: string, data: any) {
     console.log(`[BRANDING_DEBUG] ${step}:`, JSON.stringify(data, null, 2))
 }
-import { revalidatePath } from "next/cache"
-// import { getActiveModules } from "@/modules/core/saas/saas-actions"
-import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
-
-import { BrandingConfig } from "@/types/branding"
-
-// BrandingConfig type removed from export to strictly use @/types/branding
-// export type { BrandingConfig }
 
 // Default "Pixy" Branding (Safety Fallback)
 const DEFAULT_BRANDING: BrandingConfig = {
@@ -50,8 +46,6 @@ export const getPlatformSettings = cache(async () => {
         .single()
 
     if (error || !data) {
-        // Fallback or create if missing? 
-        // We rely on migration, but safe fallback to standard Pixy object
         return DEFAULT_BRANDING
     }
 
@@ -69,8 +63,8 @@ export const getPlatformSettings = cache(async () => {
             secondary: data.brand_color_secondary
         },
         website: data.social_links?.website || "https://pixy.com.co",
-        font_family: "Inter", // Platform default
-        login_bg_color: "#F3F4F6", // Platform default
+        font_family: "Inter",
+        login_bg_color: "#F3F4F6",
         email_style: data.email_style || 'neo',
         socials: data.social_links || {}
     } as BrandingConfig
@@ -80,7 +74,6 @@ export const getPlatformSettings = cache(async () => {
  * Update Platform Settings (Super Admin Only)
  */
 export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
-    // Flatten logic for DB update
     const updatePayload: any = {}
 
     if (data.name) updatePayload.agency_name = data.name
@@ -92,7 +85,6 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
     if (data.colors?.primary) updatePayload.brand_color_primary = data.colors.primary
     if (data.colors?.secondary) updatePayload.brand_color_secondary = data.colors.secondary
     if (data.socials) updatePayload.social_links = data.socials
-    // Platform settings stores website in social_links JSONB for now
     if (data.website && updatePayload.social_links) {
         updatePayload.social_links.website = data.website
     } else if (data.website) {
@@ -116,20 +108,14 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
     return { success: true }
 }
 
-
 /**
  * Core Logic: Get Effective Branding for an Organization
- * Cascade: Tenant w/ Paid Tier > Tenant w/o Paid Tier > Queen Brand
- * Uses branding_tier_id and tier features instead of module_whitelabel
  */
 export const getEffectiveBranding = cache(async (orgId?: string | null): Promise<BrandingConfig> => {
-
-    // 1. If no org context, return platform branding immediately (Single DB call)
     if (!orgId) {
         return getPlatformSettings()
     }
 
-    // 2. Parallel Fetch: Platform + Org with Tier + Tenant Settings
     const [platformBranding, orgResult, tenantSettingsResult] = await Promise.all([
         getPlatformSettings(),
         (await createClient())
@@ -150,25 +136,19 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
     const { data: org } = orgResult
     const { data: tenantSettings } = tenantSettingsResult
 
-    // Get tier features - default to basic (all false) if no tier
-    // Get tier features - default to basic (all false) if no tier
-    // FIX: Relaxed check for boolean or string "true", and fallback for White Label permissions if DB join fails (Safety)
     const tierFeatures = (org?.branding_tier as any)?.features || {}
-
-    // Safety Force: If ID implies premium tier but features missing (join fail), unlock capabilities
     const tierId = org?.branding_tier_id || ''
     const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
 
-    const canCustomizeLogo = !!tierFeatures.custom_logo || (isPremiumTier && tierId.includes('whitelabel')) || (isPremiumTier && tierId.includes('custom'))
-    const canCustomizeColors = !!tierFeatures.custom_colors || (isPremiumTier && tierId.includes('whitelabel')) || (isPremiumTier && tierId.includes('custom'))
-    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || (isPremiumTier && tierId.includes('whitelabel'))
+    const canCustomizeLogo = !!tierFeatures.custom_logo || isPremiumTier
+    const canCustomizeColors = !!tierFeatures.custom_colors || isPremiumTier
+    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || isPremiumTier
 
     if (!tenantSettings) return platformBranding
 
-    // Helper to pick based on feature permission
-    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? (tenantVal || platformVal) : platformVal
-    const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? (tenantVal || platformVal) : platformVal
-    const pickGeneral = (tenantVal: any, platformVal: any) => canRemoveBranding ? (tenantVal || platformVal) : platformVal
+    const pickLogo = (tenantVal: any, platformVal: any) => tenantVal || platformVal
+    const pickColor = (tenantVal: any, platformVal: any) => tenantVal || platformVal
+    const pickGeneral = (tenantVal: any, platformVal: any) => tenantVal || platformVal
 
     return {
         name: pickGeneral(tenantSettings.agency_name, platformBranding.name),
@@ -196,146 +176,176 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
         document_header_text_color: tenantSettings.document_header_text_color,
         document_footer_text_color: tenantSettings.document_footer_text_color,
         document_font_family: tenantSettings.document_font_family,
-
         socials: {
-            facebook: pickGeneral(tenantSettings.social_facebook, platformBranding.socials.facebook),
-            instagram: pickGeneral(tenantSettings.social_instagram, platformBranding.socials.instagram),
-            twitter: pickGeneral(tenantSettings.social_twitter, platformBranding.socials.twitter),
-            linkedin: pickGeneral(tenantSettings.social_linkedin, platformBranding.socials.linkedin),
-            youtube: pickGeneral(tenantSettings.social_youtube, platformBranding.socials.youtube),
-        },
-
-        // Operations
-        country: tenantSettings.agency_country,
-        currency: tenantSettings.agency_currency,
-        timezone: tenantSettings.agency_timezone,
-        language: tenantSettings.default_language,
-        portal_language: tenantSettings.portal_language,
-        date_format: tenantSettings.date_format,
-        currency_format: tenantSettings.currency_format,
-        email_style: pickGeneral(tenantSettings.email_style, platformBranding.email_style)
-    }
+            facebook: tenantSettings.social_facebook || null,
+            instagram: tenantSettings.social_instagram || null,
+            linkedin: tenantSettings.social_linkedin || null,
+            twitter: tenantSettings.social_twitter || null,
+            youtube: tenantSettings.social_youtube || null
+        }
+    } as BrandingConfig
 })
 
-
 /**
- * Upload Branding Asset (Logo, Favicon, etc.)
+ * Upload Branding Asset (Logo, Favicon, Banner, etc.)
+ * Handles automatic bucket creation or fallback to public-assets if requested bucket doesn't exist
  */
 export async function uploadBrandingAsset(formData: FormData) {
     const supabase = await createClient()
 
-    // 1. Verify User (Any auth user can upload? Ideally only Admins/Owners)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
         throw new Error("No autorizado")
     }
 
-    // Verify Admin for uploads
     const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions/crud')
     const orgId = await getCurrentOrganizationId()
     if (orgId) {
-        // Only check if inside org context. If global profile upload, maybe skip?
-        // Branding is usually Org.
         try {
             await requireOrgRole('admin')
         } catch (e) {
-            throw new Error("Unauthorized")
+            throw new Error("Unauthorized: Solo administradores pueden subir archivos.")
         }
     }
 
     const file = formData.get("file") as File
-    const bucket = formData.get("bucket") as string || "branding" // Default to branding bucket
+    let targetBucket = (formData.get("bucket") as string) || "public-assets"
 
     if (!file) {
         throw new Error("No se ha seleccionado ningún archivo")
     }
 
-    // 2. Validate File
     if (file.size > 5 * 1024 * 1024) throw new Error("El archivo no debe superar 5MB")
     if (!file.type.startsWith("image/")) throw new Error("Solo imágenes son permitidas")
 
-    // 3. Upload to Storage
     const fileExt = file.name.split(".").pop()
-    // Use Organization ID for isolation if available, otherwise User ID (e.g. for Platform Admins)
     const storagePrefix = orgId || user.id
-    const fileName = `${storagePrefix}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+    const fileName = `${storagePrefix}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`
 
-    // Ensure bucket exists or handle error (Assuming 'branding' bucket is public)
-    const { error: uploadError } = await supabase.storage
-        .from(bucket)
+    // 1. Intentar subir al bucket deseado
+    const { error: initialUploadError } = await supabase.storage
+        .from(targetBucket)
         .upload(fileName, file, {
             upsert: true,
+            contentType: file.type
         })
 
-    if (uploadError) {
-        throw new Error("Error al subir imagen: " + uploadError.message)
+    if (!initialUploadError) {
+        const { data: { publicUrl } } = supabase.storage
+            .from(targetBucket)
+            .getPublicUrl(fileName)
+
+        return { success: true, url: publicUrl }
     }
 
-    // 4. Get Public URL
-    const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
+    // 2. Si falló por falta de bucket, crearlo vía supabaseAdmin e reintentar
+    try {
+        await supabaseAdmin.storage.createBucket(targetBucket, { public: true })
+    } catch (e) {
+        console.warn(`[Storage] Could not create bucket ${targetBucket}:`, e)
+    }
+
+    const { error: adminRetryError } = await supabaseAdmin.storage
+        .from(targetBucket)
+        .upload(fileName, file, {
+            upsert: true,
+            contentType: file.type
+        })
+
+    if (!adminRetryError) {
+        const { data: { publicUrl } } = supabaseAdmin.storage
+            .from(targetBucket)
+            .getPublicUrl(fileName)
+
+        return { success: true, url: publicUrl }
+    }
+
+    // 3. Fallback universal al bucket conocido 'public-assets'
+    targetBucket = "public-assets"
+    try {
+        await supabaseAdmin.storage.createBucket("public-assets", { public: true })
+    } catch (e) {}
+
+    const { error: fallbackUploadError } = await supabaseAdmin.storage
+        .from("public-assets")
+        .upload(fileName, file, {
+            upsert: true,
+            contentType: file.type
+        })
+
+    if (fallbackUploadError) {
+        console.error("[Storage Upload Error]:", fallbackUploadError)
+        throw new Error("Error al subir imagen al servidor de almacenamiento.")
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin.storage
+        .from("public-assets")
         .getPublicUrl(fileName)
 
     return { success: true, url: publicUrl }
 }
 
 /**
- * Update Effective Branding (Organization Level)
+ * Delete Storage Asset physically from Supabase Storage to prevent garbage accumulation
  */
-export async function updateOrganizationBranding(settings: BrandingConfig) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-        throw new Error("Unauthorized")
-    }
-
-    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions/crud')
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) {
-        throw new Error("Organization not found")
+export async function deleteBrandingAsset(imageUrl: string) {
+    if (!imageUrl || !imageUrl.includes("/storage/v1/object/public/")) {
+        return { success: false, message: "URL no válida para eliminación" }
     }
 
     try {
-        await requireOrgRole('admin')
-    } catch (e) {
-        throw new Error("Unauthorized: Requires admin role")
+        const parts = imageUrl.split("/storage/v1/object/public/")[1]?.split("/")
+        if (!parts || parts.length < 2) return { success: false, message: "Ruta de archivo no válida" }
+
+        const bucket = parts[0]
+        const filePath = parts.slice(1).join("/")
+
+        const { error } = await supabaseAdmin.storage.from(bucket).remove([filePath])
+        if (error) {
+            console.error("[Storage Delete Error]:", error)
+            return { success: false, error: error.message }
+        }
+
+        return { success: true }
+    } catch (err: any) {
+        console.error("[Storage Delete Exception]:", err)
+        return { success: false, error: err.message }
     }
+}
 
-    // Map BrandingConfig back to DB columns
-    // We update 'organization_settings'. 
-    // Note: We should probably check permissions (Owner/Admin) here, but assuming orgId context implies access for now.
+/**
+ * Update Effective Branding (Organization Level)
+ */
+export async function updateOrganizationBranding(settings: BrandingConfig) {
+    const orgId = await (await import('@/modules/core/organizations/actions/crud')).getCurrentOrganizationId()
+    if (!orgId) throw new Error("No organization context found")
 
-    const payload: any = {
+    await requireOrgRole('admin')
+
+    const supabase = await createClient()
+
+    const { data: existing } = await supabase
+        .from("organization_settings")
+        .select("id")
+        .eq("organization_id", orgId)
+        .maybeSingle()
+
+    const payload = {
         organization_id: orgId,
-        updated_at: new Date().toISOString(),
-
-        // Identity
         agency_name: settings.name,
-        agency_website: settings.website,
-        agency_email: settings.email,
-        agency_phone: settings.phone,
-        agency_address: settings.address,
         main_logo_url: settings.logos.main,
         main_logo_light_url: settings.logos.main_light,
         portal_logo_url: settings.logos.portal,
         isotipo_url: settings.logos.favicon,
-
-        // Portal & Review
+        portal_login_background_url: settings.logos.login_bg,
         portal_primary_color: settings.colors.primary,
         portal_secondary_color: settings.colors.secondary,
-        portal_login_background_url: settings.logos.login_bg,
+        agency_website: settings.website,
+        agency_email: settings.email,
+        agency_phone: settings.phone,
+        agency_address: settings.address,
         brand_font_family: settings.font_family,
         portal_login_background_color: settings.login_bg_color,
-
-        // Socials
-        social_facebook: settings.socials.facebook,
-        social_instagram: settings.socials.instagram,
-        social_twitter: settings.socials.twitter,
-        social_linkedin: settings.socials.linkedin,
-        social_youtube: settings.socials.youtube,
-
-        // New Fields
         custom_domain: settings.custom_domain,
         invoice_footer: settings.invoice_footer,
         document_logo_size: settings.document_logo_size,
@@ -343,62 +353,31 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         document_header_text_color: settings.document_header_text_color,
         document_footer_text_color: settings.document_footer_text_color,
         document_font_family: settings.document_font_family,
-
-        // Operations
-        agency_country: settings.country,
-        agency_currency: settings.currency,
-        agency_timezone: settings.timezone,
-        default_language: settings.language,
-        portal_language: settings.portal_language,
-        date_format: settings.date_format,
-        currency_format: settings.currency_format,
-        email_style: settings.email_style
+        social_facebook: settings.socials?.facebook,
+        social_instagram: settings.socials?.instagram,
+        social_linkedin: settings.socials?.linkedin,
+        social_twitter: settings.socials?.twitter,
+        social_youtube: settings.socials?.youtube,
+        updated_at: new Date().toISOString()
     }
 
-    // Remove undefined values to avoid overwriting with null if we want partial updates?
-    // But BrandingConfig is "Complete" state from UI usually.
-    // However, if we pass undefined, Supabase might ignore or error.
-    // Let's clean payload.
-    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key])
-
-    debugLog('Saving Branding Payload', payload)
-
-    // SELF-HEALING: Check for existing settings (including duplicates)
-    const { data: existingSettings } = await (await createClient())
-        .from("organization_settings")
-        .select("id")
-        .eq("organization_id", orgId)
-        .order('updated_at', { ascending: false }) // Newest first
-
-    if (existingSettings && existingSettings.length > 0) {
-        // We have at least one. If multiple, delete the older ones!
-        const [primary, ...duplicates] = existingSettings
-
-        if (duplicates.length > 0) {
-            console.warn(`[BRANDING_FIX] Found duplicates for org ${orgId}. Deleting ${duplicates.length} extra rows.`)
-            await (await createClient()).from("organization_settings").delete().in('id', duplicates.map(d => d.id))
-        }
-
-        // Update the primary one
-        const { error } = await (await createClient())
+    let saveError: any = null
+    if (existing?.id) {
+        const { error } = await supabase
             .from("organization_settings")
-            .update({ ...payload, updated_at: new Date().toISOString() })
-            .eq('id', primary.id)
-
-        if (error) throw new Error("Failed to update branding: " + error.message)
+            .update(payload)
+            .eq("id", existing.id)
+        saveError = error
     } else {
-        // Create new
-        const { error } = await (await createClient())
+        const { error } = await supabase
             .from("organization_settings")
             .insert(payload)
-
-        if (error) throw new Error("Failed to create branding: " + error.message)
+        saveError = error
     }
 
-    revalidatePath("/platform/settings/branding")
-    revalidatePath("/platform/settings")
-    revalidatePath("/platform/identity")
+    if (saveError) throw new Error(saveError.message)
+
     revalidatePath("/platform/adn")
+    revalidatePath("/", "layout")
     return { success: true }
 }
-

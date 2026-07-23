@@ -3,10 +3,11 @@
 import React, { useState } from "react"
 import { MenuCategoryManager } from "./category-manager"
 import { MenuSheetTrigger } from "./menu-sheet-trigger"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, Palette } from "lucide-react"
 import { RestoMenuItem, RestoMenuCategory, RestoMenuModifierGroup } from "@/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModifiersWorkspace } from "./modifiers-workspace"
+import { PortalThemeCustomizer } from "@/modules/features/portal/theme/components/PortalThemeCustomizer"
 
 const formatAvailableDays = (days?: number[]) => {
     if (!days || days.length >= 7) return null;
@@ -23,15 +24,19 @@ const formatAvailableDays = (days?: number[]) => {
     return sorted.map(d => dayMap[d]).join(', ');
 }
 
+import { PortalThemeConfig } from "@/modules/features/portal/theme/types"
+
 export function MenuWorkspace({ 
     items, 
     categories, 
     modifierGroups,
+    initialThemeConfig,
     orgId 
 }: { 
     items: RestoMenuItem[], 
     categories: RestoMenuCategory[], 
     modifierGroups: RestoMenuModifierGroup[],
+    initialThemeConfig?: PortalThemeConfig,
     orgId: string 
 }) {
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -52,6 +57,10 @@ export function MenuWorkspace({
                     </TabsTrigger>
                     <TabsTrigger value="modifiers" className="data-[state=active]:bg-primary data-[state=active]:text-white">
                         Modificadores Globales
+                    </TabsTrigger>
+                    <TabsTrigger value="customize" className="data-[state=active]:bg-primary data-[state=active]:text-white flex items-center gap-1.5">
+                        <Palette className="w-3.5 h-3.5" />
+                        Personalizar Portal
                     </TabsTrigger>
                 </TabsList>
             </div>
@@ -183,6 +192,10 @@ export function MenuWorkspace({
 
             <TabsContent value="modifiers" className="flex-1 min-h-0 m-0 data-[state=active]:flex">
                 <ModifiersWorkspace modifierGroups={modifierGroups} />
+            </TabsContent>
+
+            <TabsContent value="customize" className="flex-1 min-h-0 m-0 data-[state=active]:flex flex-col">
+                <PortalThemeCustomizer initialConfig={initialThemeConfig} />
             </TabsContent>
         </Tabs>
     )
