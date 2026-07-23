@@ -23,6 +23,8 @@ import { PortalThemeProvider } from "@/modules/features/portal/theme/portal-them
 import { PortalHeader } from "@/modules/features/portal/theme/components/PortalHeader"
 import { PortalPromoBanner } from "@/modules/features/portal/theme/components/PortalPromoBanner"
 import { PortalSocialFooter } from "@/modules/features/portal/theme/components/PortalSocialFooter"
+import { CyberGlassBackground } from "@/modules/features/portal/theme/components/CyberGlassBackground"
+import { FloatingGlassDock } from "@/modules/features/portal/theme/components/FloatingGlassDock"
 
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -162,10 +164,18 @@ export function B2CRestaurantLayout({
     const isGourmet = themeConfig?.theme_id === 'gourmet_elegance'
     const isDarkOrGourmet = isGourmet || themeConfig?.color_mode === 'dark'
     const effectivePrimaryColor = themeConfig?.primary_color || settings?.portal_primary_color || '#4F46E5'
+    const isCyberGlass = themeConfig?.theme_id === 'cyber_glass_3d' || themeConfig?.category_nav_style === 'floating_dock'
 
     return (
         <PortalThemeProvider config={themeConfig}>
-            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300", isDarkOrGourmet ? "dark bg-zinc-950 text-amber-50" : "bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-white")}>
+            {isCyberGlass && (
+                <CyberGlassBackground 
+                    primaryColor={effectivePrimaryColor} 
+                    secondaryColor={themeConfig?.secondary_color} 
+                    isDark={isDarkOrGourmet} 
+                />
+            )}
+            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300 relative z-10", isDarkOrGourmet ? "dark bg-zinc-950/80 text-amber-50" : "bg-gray-50/80 dark:bg-zinc-950/80 text-gray-900 dark:text-white")}>
                 <SystemAlertBanner />
 
                 {/* LANDING PAGE HEADER */}
@@ -203,7 +213,7 @@ export function B2CRestaurantLayout({
                 <PortalPromoBanner config={themeConfig} position="top" isGourmet={isGourmet} />
 
                 {/* CONTENIDO PRINCIPAL (El Catálogo o Carrito) */}
-                <main className="flex-1 w-full flex flex-col pb-20">
+                <main className="flex-1 w-full flex flex-col pb-24">
                     <Suspense fallback={<GlobalLoader />}>
                         {activeTab === 'menu' && (
                             loadingCatalog ? (
@@ -248,34 +258,43 @@ export function B2CRestaurantLayout({
                     <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
                 </main>
 
-            {/* BOTTOM NAV BAR (Mobile Only) */}
-            <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-lg">
-                <div className="flex justify-around items-center h-16 px-2">
-                    {navItems.map((item) => {
-                        const isActive = activeTab === item.id
-                        const IconComponent = item.icon
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveTab(item.id as 'menu' | 'cart' | 'orders' | 'profile')}
-                                className={cn("relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "" : "text-muted-foreground hover:text-foreground")}
-                                style={{ color: isActive ? effectivePrimaryColor : undefined }}
-                            >
-                                <IconComponent className={cn("h-5 w-5 transition-transform", isActive && "stroke-[2.5px] scale-110")} />
-                                <span className={cn("text-[10px]", isActive ? "font-bold" : "font-medium")}>{item.label}</span>
+            {/* BOTTOM NAV BAR (Standard or Floating Dock) */}
+            {isCyberGlass ? (
+                <FloatingGlassDock 
+                    activeTab={activeTab === 'cart' ? 'cart' : 'menu'} 
+                    setActiveTab={(tab) => setActiveTab(tab as 'menu' | 'cart' | 'orders' | 'profile')} 
+                    cartItemCount={totalCartQuantity} 
+                    primaryColor={effectivePrimaryColor}
+                />
+            ) : (
+                <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-lg">
+                    <div className="flex justify-around items-center h-16 px-2">
+                        {navItems.map((item) => {
+                            const isActive = activeTab === item.id
+                            const IconComponent = item.icon
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id as 'menu' | 'cart' | 'orders' | 'profile')}
+                                    className={cn("relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "" : "text-muted-foreground hover:text-foreground")}
+                                    style={{ color: isActive ? effectivePrimaryColor : undefined }}
+                                >
+                                    <IconComponent className={cn("h-5 w-5 transition-transform", isActive && "stroke-[2.5px] scale-110")} />
+                                    <span className={cn("text-[10px]", isActive ? "font-bold" : "font-medium")}>{item.label}</span>
 
-                                {item.id === 'cart' && totalCartQuantity > 0 && (
-                                    <span
-                                        className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1 bg-red-500"
-                                    >
-                                        {totalCartQuantity}
-                                    </span>
-                                )}
-                            </button>
-                        )
-                    })}
-                </div>
-            </nav>
+                                    {item.id === 'cart' && totalCartQuantity > 0 && (
+                                        <span
+                                            className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1 bg-red-500"
+                                        >
+                                            {totalCartQuantity}
+                                        </span>
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </nav>
+            )}
 
             {/* Modal de Pedido Exitoso */}
             {showSuccessModal && (

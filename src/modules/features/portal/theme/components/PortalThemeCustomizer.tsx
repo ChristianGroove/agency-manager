@@ -39,6 +39,9 @@ import { toast } from 'sonner'
 import { PortalHeader } from './PortalHeader'
 import { PortalPromoBanner } from './PortalPromoBanner'
 import { PortalSocialFooter } from './PortalSocialFooter'
+import { ScheduleModal } from './ScheduleModal'
+import { CyberGlassBackground } from './CyberGlassBackground'
+import { FloatingGlassDock } from './FloatingGlassDock'
 import { PortalThemeProvider } from '../portal-theme-provider'
 import { usePortalTheme } from '../use-portal-theme'
 import { cn } from '@/modules/infrastructure/utils/utils'
@@ -235,6 +238,22 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                         {config.theme_id === 'gourmet_elegance' && <Check className="w-4 h-4 text-amber-500" />}
                                     </div>
                                     <p className="text-xs text-gray-500">Fondo oscuro profundo (`bg-zinc-950`), fuentes serif de lujo y bordes dorados de alta gastronomía.</p>
+                                </div>
+
+                                <div
+                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'cyber_glass_3d', category_nav_style: 'floating_dock' }))}
+                                    className={cn(
+                                        "p-4 rounded-2xl border-2 cursor-pointer transition-all sm:col-span-2",
+                                        config.theme_id === 'cyber_glass_3d'
+                                            ? "border-cyan-500 bg-cyan-500/5 shadow-md ring-2 ring-cyan-500/20"
+                                            : "border-gray-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-gray-300"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-extrabold text-sm text-cyan-600 dark:text-cyan-400">3D Glass Dinámico & Navbar Flotante</h4>
+                                        {config.theme_id === 'cyber_glass_3d' && <Check className="w-4 h-4 text-cyan-500" />}
+                                    </div>
+                                    <p className="text-xs text-gray-500">Fondo ambiental con esferas 3D en movimiento, componentes glass satinados y menú flotante inferior de última generación.</p>
                                 </div>
                             </div>
                         </div>
@@ -809,7 +828,14 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                 </div>
 
                 {/* Inner Screen Scroll Container */}
-                <div className={cn("w-full h-full rounded-[38px] overflow-y-auto no-scrollbar flex flex-col pt-10 relative", pageBackgroundClass)}>
+                <div className={cn("w-full h-full rounded-[38px] overflow-y-auto no-scrollbar flex flex-col pt-10 relative z-10", pageBackgroundClass)}>
+                    {config.theme_id === 'cyber_glass_3d' && (
+                        <CyberGlassBackground 
+                            primaryColor={primaryColor} 
+                            secondaryColor={config.secondary_color} 
+                            isDark={isGourmet || config.color_mode === 'dark'} 
+                        />
+                    )}
                     
                     {/* Header */}
                     <PortalHeader 
@@ -830,7 +856,7 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                     <PortalPromoBanner config={config} position="top" isGourmet={isGourmet} />
 
                     {/* Main Content Area */}
-                    <div className="p-3 space-y-4 flex-1">
+                    <div className="p-3 space-y-4 flex-1 pb-16">
                         
                         {/* Search Bar */}
                         <div className="relative">
@@ -896,6 +922,16 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                     <PortalPromoBanner config={config} position="bottom" isGourmet={isGourmet} />
 
                     <PortalSocialFooter config={config} orgName={config.tenant_name || orgName || "Mi Negocio"} isGourmet={isGourmet} />
+
+                    {(config.theme_id === 'cyber_glass_3d' || config.category_nav_style === 'floating_dock') && (
+                        <FloatingGlassDock 
+                            activeTab="menu" 
+                            setActiveTab={() => {}} 
+                            cartItemCount={2} 
+                            primaryColor={primaryColor} 
+                            isCompact={true}
+                        />
+                    )}
                 </div>
             </div>
         </PortalThemeProvider>

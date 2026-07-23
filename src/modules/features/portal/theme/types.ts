@@ -16,11 +16,11 @@ export interface BusinessScheduleConfig {
 
 export interface PortalThemeConfig {
     // 1. Tema & Paleta
-    theme_id: 'modern_glass' | 'gourmet_elegance'
+    theme_id: 'modern_glass' | 'gourmet_elegance' | 'cyber_glass_3d'
     color_mode: 'dark' | 'light' | 'auto'
     primary_color?: string
     secondary_color?: string
-    background_style: 'solid' | 'gradient' | 'mesh'
+    background_style: 'solid' | 'gradient' | 'mesh' | 'mesh_3d'
     
     // Variante de Logo de Marca y Nombre del Tenant
     tenant_name?: string
@@ -32,7 +32,7 @@ export interface PortalThemeConfig {
     }
 
     // Estilo de Navegación de Categorías
-    category_nav_style?: 'pills' | 'underline_tabs' | 'glass_cards'
+    category_nav_style?: 'pills' | 'underline_tabs' | 'glass_cards' | 'floating_dock'
 
     // 2. Estilo de Tarjetas del Catálogo (Platos, Inmuebles, Productos)
     card_style: {

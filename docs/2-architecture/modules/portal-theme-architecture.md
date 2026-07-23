@@ -29,10 +29,13 @@ export interface BusinessSchedule {
 }
 
 export interface PortalThemeConfig {
-    tenant_name?: string;
+    theme_id: 'modern_glass' | 'gourmet_elegance' | 'cyber_glass_3d';
+    color_mode: 'dark' | 'light' | 'auto';
     primary_color?: string;
     secondary_color?: string;
-    tagline?: string;
+    background_style: 'solid' | 'gradient' | 'mesh' | 'mesh_3d';
+    category_nav_style?: 'pills' | 'underline_tabs' | 'glass_cards' | 'floating_dock';
+    tenant_name?: string;
     header_footer?: {
         show_header?: boolean;
         show_footer?: boolean;
