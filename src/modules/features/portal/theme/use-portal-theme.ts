@@ -36,7 +36,8 @@ export function usePortalTheme(rawConfig?: Partial<PortalThemeConfig> | null) {
         }
     }, [rawConfig])
 
-    const isGlass = config.theme_id === 'modern_glass'
+    const isCyberGlass = config.theme_id === 'cyber_glass_3d'
+    const isGlass = config.theme_id === 'modern_glass' || isCyberGlass
     const isGourmet = config.theme_id === 'gourmet_elegance'
 
     // Compute Card Styling with high-contrast text rules
@@ -49,7 +50,9 @@ export function usePortalTheme(rawConfig?: Partial<PortalThemeConfig> | null) {
         else classes.push('rounded-xl')
 
         // Variant & Theme
-        if (isGlass) {
+        if (isCyberGlass) {
+            classes.push('bg-white/65 dark:bg-zinc-900/75 text-gray-900 dark:text-white backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-xl shadow-black/5')
+        } else if (isGlass) {
             if (config.card_style.variant === 'glass') {
                 classes.push('bg-white/80 dark:bg-zinc-900/90 text-gray-900 dark:text-white backdrop-blur-xl border border-gray-200/70 dark:border-zinc-700/60 shadow-xl')
             } else if (config.card_style.variant === 'bordered') {

@@ -173,9 +173,10 @@ export function B2CRestaurantLayout({
                     primaryColor={effectivePrimaryColor} 
                     secondaryColor={themeConfig?.secondary_color} 
                     isDark={isDarkOrGourmet} 
+                    isFixed={true}
                 />
             )}
-            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300 relative z-10", isDarkOrGourmet ? "dark bg-zinc-950/80 text-amber-50" : "bg-gray-50/80 dark:bg-zinc-950/80 text-gray-900 dark:text-white")}>
+            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300 relative z-10", isCyberGlass ? "bg-transparent text-gray-900 dark:text-white" : isDarkOrGourmet ? "dark bg-zinc-950 text-amber-50" : "bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-white")}>
                 <SystemAlertBanner />
 
                 {/* LANDING PAGE HEADER */}
@@ -261,7 +262,8 @@ export function B2CRestaurantLayout({
             {/* BOTTOM NAV BAR (Standard or Floating Dock) */}
             {isCyberGlass ? (
                 <FloatingGlassDock 
-                    activeTab={activeTab === 'cart' ? 'cart' : 'menu'} 
+                    items={navItems}
+                    activeTab={activeTab} 
                     setActiveTab={(tab) => setActiveTab(tab as 'menu' | 'cart' | 'orders' | 'profile')} 
                     cartItemCount={totalCartQuantity} 
                     primaryColor={effectivePrimaryColor}

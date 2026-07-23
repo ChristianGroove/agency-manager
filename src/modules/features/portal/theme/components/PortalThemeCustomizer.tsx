@@ -24,7 +24,11 @@ import {
     Clock,
     AlertOctagon,
     Plus,
-    Trash2
+    Trash2,
+    Store,
+    ShoppingBag,
+    ReceiptText,
+    User as UserIcon
 } from 'lucide-react'
 import { 
     PortalThemeConfig, 
@@ -207,53 +211,59 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                 Tema Principal del Menú
                             </label>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div
                                     onClick={() => updateConfig(c => ({ ...c, theme_id: 'modern_glass' }))}
                                     className={cn(
-                                        "p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                                        "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'modern_glass'
                                             ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
                                             : "border-gray-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-gray-300"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-extrabold text-sm text-gray-900 dark:text-white">Modern Glassmorphism</h4>
-                                        {config.theme_id === 'modern_glass' && <Check className="w-4 h-4 text-primary" />}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h4 className="font-extrabold text-xs text-gray-900 dark:text-white truncate">Modern Glass</h4>
+                                            {config.theme_id === 'modern_glass' && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">Diseño limpio y cristalino translúcido.</p>
                                     </div>
-                                    <p className="text-xs text-gray-500">Diseño limpio, dinámico con efectos de cristal translúcido e inclinación moderna.</p>
                                 </div>
 
                                 <div
                                     onClick={() => updateConfig(c => ({ ...c, theme_id: 'gourmet_elegance' }))}
                                     className={cn(
-                                        "p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                                        "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'gourmet_elegance'
                                             ? "border-amber-500 bg-amber-500/5 shadow-md ring-2 ring-amber-500/20"
                                             : "border-gray-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-gray-300"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-extrabold text-sm text-amber-600 dark:text-amber-400 font-serif">Gourmet Elegance</h4>
-                                        {config.theme_id === 'gourmet_elegance' && <Check className="w-4 h-4 text-amber-500" />}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h4 className="font-extrabold text-xs text-amber-600 dark:text-amber-400 font-serif truncate">Gourmet Elegance</h4>
+                                            {config.theme_id === 'gourmet_elegance' && <Check className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">Fondo oscuro profundo y bordes dorados.</p>
                                     </div>
-                                    <p className="text-xs text-gray-500">Fondo oscuro profundo (`bg-zinc-950`), fuentes serif de lujo y bordes dorados de alta gastronomía.</p>
                                 </div>
 
                                 <div
                                     onClick={() => updateConfig(c => ({ ...c, theme_id: 'cyber_glass_3d', category_nav_style: 'floating_dock' }))}
                                     className={cn(
-                                        "p-4 rounded-2xl border-2 cursor-pointer transition-all sm:col-span-2",
+                                        "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'cyber_glass_3d'
                                             ? "border-cyan-500 bg-cyan-500/5 shadow-md ring-2 ring-cyan-500/20"
                                             : "border-gray-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-gray-300"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-extrabold text-sm text-cyan-600 dark:text-cyan-400">3D Glass Dinámico & Navbar Flotante</h4>
-                                        {config.theme_id === 'cyber_glass_3d' && <Check className="w-4 h-4 text-cyan-500" />}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h4 className="font-extrabold text-xs text-cyan-600 dark:text-cyan-400 truncate">3D Glass & Dock</h4>
+                                            {config.theme_id === 'cyber_glass_3d' && <Check className="w-3.5 h-3.5 text-cyan-500 shrink-0" />}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">Fondo 3D flotante y navbar inferior dock.</p>
                                     </div>
-                                    <p className="text-xs text-gray-500">Fondo ambiental con esferas 3D en movimiento, componentes glass satinados y menú flotante inferior de última generación.</p>
                                 </div>
                             </div>
                         </div>
@@ -925,6 +935,12 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
 
                     {(config.theme_id === 'cyber_glass_3d' || config.category_nav_style === 'floating_dock') && (
                         <FloatingGlassDock 
+                            items={[
+                                { id: 'menu', icon: Store, label: "Menú" },
+                                { id: 'cart', icon: ShoppingBag, label: "Carrito" },
+                                { id: 'orders', icon: ReceiptText, label: "Pedidos" },
+                                { id: 'profile', icon: UserIcon, label: "Perfil" },
+                            ]}
                             activeTab="menu" 
                             setActiveTab={() => {}} 
                             cartItemCount={2} 
