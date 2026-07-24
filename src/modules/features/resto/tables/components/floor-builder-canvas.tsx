@@ -26,6 +26,7 @@ import { saveLayout, deleteZone, renameZone, updateTableStatus } from '../action
 import { toast } from 'sonner'
 import { cn } from '@/modules/infrastructure/utils/utils'
 import { supabase } from '@/modules/core/database/supabase'
+import { useRouter } from 'next/navigation'
 
 import {
     Save,
@@ -280,6 +281,8 @@ function FloorBuilderCanvasInner({
     const { screenToFlowPosition, fitView } = useReactFlow()
     const wrapperRef = useRef<HTMLDivElement>(null)
 
+    const router = useRouter()
+
     // ── Zones & mode ──────────────────────────────────────────────────────────
     const [zones, setZones] = useState<RestoZone[]>(
         initialZones.length > 0 ? initialZones : [{
@@ -290,6 +293,12 @@ function FloorBuilderCanvasInner({
             visual_elements: [],
         }]
     )
+    const [allTables, setAllTables] = useState<RestoTable[]>(initialTables)
+
+    useEffect(() => {
+        setAllTables(initialTables)
+    }, [initialTables])
+
     const [activeZoneId, setActiveZoneId] = useState<string>(zones[0]?.id || 'temp_main')
     const [mode, setMode] = useState<'live' | 'builder'>(
         defaultMode ?? (readOnly ? 'live' : 'builder')
@@ -378,13 +387,13 @@ function FloorBuilderCanvasInner({
         const zone = zones.find(z => z.id === activeZoneId)
         if (!zone) return
         const isBuilderMode = mode === 'builder'
-        const zoneTables = initialTables.filter(t => t.zone_id === activeZoneId)
+        const zoneTables = allTables.filter(t => t.zone_id === activeZoneId)
         const tableNodes = tablesToNodes(zoneTables, isBuilderMode)
         const decorNodes = visualElementsToNodes(zone.visual_elements || [], isBuilderMode)
         setNodes([...tableNodes, ...decorNodes])
         setEdges([])
         setTimeout(() => fitView({ padding: 0.15 }), 100)
-    }, [activeZoneId, mode])
+    }, [activeZoneId, mode, allTables, zones])
 
     // ── Mode toggle: update isBuilder flag on all nodes ────────────────────────
     useEffect(() => {
@@ -414,23 +423,6 @@ function FloorBuilderCanvasInner({
             supabase.removeChannel(channel)
         }
     }, [mode, orgId, setNodes])
-
-    // ── Keyboard shortcuts ─────────────────────────────────────────────────────
-    useEffect(() => {
-        if (readOnly) return
-        const handler = (e: KeyboardEvent) => {
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key === 'z') { e.preventDefault(); handleUndo() }
-                if (e.key === 'y') { e.preventDefault(); handleRedo() }
-                if (e.key === 's') { e.preventDefault(); handleSave() }
-            }
-            if (e.key === 'Escape' && renamingZoneId) {
-                setRenamingZoneId(null)
-            }
-        }
-        window.addEventListener('keydown', handler)
-        return () => window.removeEventListener('keydown', handler)
-    }, [handleUndo, handleRedo, readOnly, renamingZoneId])
 
     // ── Drag from palette ──────────────────────────────────────────────────────
     const onDragStart = useCallback((e: React.DragEvent, itemData: string) => {
@@ -483,7 +475,7 @@ function FloorBuilderCanvasInner({
         } else if (mode === 'live' && node.type === 'table') {
             // Live mode: open status sheet
             const d = node.data as TableNodeData
-            const tableRecord = initialTables.find(t => t.id === node.id) || {
+            const tableRecord = allTables.find(t => t.id === node.id) || {
                 id: node.id,
                 zone_id: activeZoneId,
                 table_identifier: d.tableIdentifier || d.label || 'Mesa',
@@ -504,7 +496,7 @@ function FloorBuilderCanvasInner({
                 setLiveSheetOpen(true)
             }
         }
-    }, [mode, readOnly, initialTables, activeZoneId, onTableClick])
+    }, [mode, readOnly, allTables, activeZoneId, onTableClick])
 
     // ── Properties panel update ───────────────────────────────────────────────
     const handleNodeUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
@@ -570,7 +562,7 @@ function FloorBuilderCanvasInner({
         }
     }
 
-    const handleDeleteZone = async () => {
+    const handleConfirmDeleteZone = async () => {
         const zone = deleteZoneDialog.zone
         if (!zone) return
         setIsDeletingZone(true)
@@ -690,10 +682,39 @@ function FloorBuilderCanvasInner({
             if (result.success) {
                 toast.success('Layout guardado')
                 setIsDirty(false)
-                if (result.zoneId && result.zoneId !== activeZoneId) {
-                    setZones(prev => prev.map(z => z.id === activeZoneId ? { ...z, id: result.zoneId! } : z))
-                    setActiveZoneId(result.zoneId!)
+
+                const newZoneId = result.zoneId || activeZoneId
+
+                // Update local zones array with new visual elements and real DB zoneId
+                setZones(prev => prev.map(z => (z.id === activeZoneId || z.id === zone.id) ? { ...updatedZone, id: newZoneId } : z))
+                if (newZoneId !== activeZoneId) {
+                    setActiveZoneId(newZoneId)
                 }
+
+                // Map current tables to their persisted state (replacing temp_ IDs with DB UUIDs for new tables)
+                const savedTablesForZone: RestoTable[] = tables.map(t => {
+                    const inserted = result.insertedTables?.find(it => it.table_identifier === t.table_identifier)
+                    return inserted ? { ...inserted, zone_id: newZoneId } : { ...t, zone_id: newZoneId }
+                })
+
+                // Update allTables state so switching zones retains new/updated tables
+                setAllTables(prev => {
+                    const otherTables = prev.filter(t => t.zone_id !== activeZoneId && t.zone_id !== zone.id && t.zone_id !== newZoneId)
+                    return [...otherTables, ...savedTablesForZone]
+                })
+
+                // Update nodes on canvas with new real DB UUIDs
+                setNodes(nds => nds.map(n => {
+                    if (n.type === 'table') {
+                        const d = n.data as TableNodeData
+                        const match = result.insertedTables?.find(it => it.table_identifier === (d.tableIdentifier || d.label))
+                        if (match) {
+                            return { ...n, id: match.id }
+                        }
+                    }
+                    return n
+                }))
+
                 if (pendingZoneId) {
                     const target = pendingZoneId
                     setPendingZoneId(null)
@@ -707,7 +728,24 @@ function FloorBuilderCanvasInner({
         } finally {
             setIsSaving(false)
         }
-    }, [nodes, zones, activeZoneId, orgId])
+    }, [nodes, zones, activeZoneId, orgId, pendingZoneId, router])
+
+    // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+    useEffect(() => {
+        if (readOnly) return
+        const handler = (e: KeyboardEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') { e.preventDefault(); handleUndo() }
+                if (e.key === 'y') { e.preventDefault(); handleRedo() }
+                if (e.key === 's') { e.preventDefault(); handleSave() }
+            }
+            if (e.key === 'Escape' && renamingZoneId) {
+                setRenamingZoneId(null)
+            }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [handleUndo, handleRedo, handleSave, readOnly, renamingZoneId])
 
     // ── Stats ──────────────────────────────────────────────────────────────────
     const tableNodes = nodes.filter(n => n.type === 'table')
@@ -1097,7 +1135,7 @@ function FloorBuilderCanvasInner({
                         <Button variant="outline" onClick={() => setDeleteZoneDialog({ open: false, zone: null })}>
                             Cancelar
                         </Button>
-                        <Button variant="destructive" onClick={handleDeleteZone} disabled={isDeletingZone}>
+                        <Button variant="destructive" onClick={handleConfirmDeleteZone} disabled={isDeletingZone}>
                             {isDeletingZone ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Eliminando...</> : 'Eliminar'}
                         </Button>
                     </DialogFooter>
