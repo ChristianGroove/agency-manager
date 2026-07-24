@@ -287,7 +287,7 @@ export function B2CRestaurantLayout({
             {showScrollTop && (
                 <button
                     onClick={scrollToTop}
-                    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 p-2 rounded-full bg-white/30 dark:bg-zinc-900/30 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-sm text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-900/50 transition-all duration-300 active:scale-90 flex items-center justify-center shrink-0"
+                    className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 p-2 rounded-full bg-white/30 dark:bg-zinc-900/30 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-sm text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-900/50 transition-all duration-300 active:scale-90 flex items-center justify-center shrink-0"
                     title="Volver arriba"
                     aria-label="Volver arriba"
                 >
