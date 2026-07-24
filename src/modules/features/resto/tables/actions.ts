@@ -126,9 +126,15 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
         return { success: false, error: errors.join(', ') }
     }
 
+    // Fetch all current DB tables for this zone to return complete updated state
+    const { data: allZoneTables } = await supabase
+        .from('resto_tables')
+        .select('*')
+        .eq('zone_id', zoneId)
+
     revalidatePath('/dashboard/resto-tables')
     revalidatePath('/dashboard/resto-orders')
-    return { success: true, zoneId, insertedTables }
+    return { success: true, zoneId, insertedTables: (allZoneTables as RestoTable[]) || insertedTables }
 }
 
 export async function deleteZone(zoneId: string) {

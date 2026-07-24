@@ -684,51 +684,53 @@ function FloorBuilderCanvasInner({
                 setIsDirty(false)
 
                 const newZoneId = result.zoneId || activeZoneId
+                const oldZoneId = activeZoneId
 
-                // Update local zones array with new visual elements and real DB zoneId
-                setZones(prev => prev.map(z => (z.id === activeZoneId || z.id === zone.id) ? { ...updatedZone, id: newZoneId } : z))
-                if (newZoneId !== activeZoneId) {
-                    setActiveZoneId(newZoneId)
+                const persistedZone: RestoZone = {
+                    ...updatedZone,
+                    id: newZoneId
                 }
 
-                // Map current tables to their persisted state (replacing temp_ IDs with DB UUIDs for new tables)
-                const savedTablesForZone: RestoTable[] = tables.map(t => {
-                    const inserted = result.insertedTables?.find(it => it.table_identifier === t.table_identifier)
-                    return inserted ? { ...inserted, zone_id: newZoneId } : { ...t, zone_id: newZoneId }
-                })
+                const savedTablesForZone: RestoTable[] = (result.insertedTables && result.insertedTables.length > 0)
+                    ? result.insertedTables
+                    : tables.map(t => ({ ...t, zone_id: newZoneId }))
 
-                // Update allTables state so switching zones retains new/updated tables
+                // 1. Update allTables state with returned DB tables for this zone
                 setAllTables(prev => {
-                    const otherTables = prev.filter(t => t.zone_id !== activeZoneId && t.zone_id !== zone.id && t.zone_id !== newZoneId)
+                    const otherTables = prev.filter(t => t.zone_id !== oldZoneId && t.zone_id !== newZoneId)
                     return [...otherTables, ...savedTablesForZone]
                 })
 
-                // Update nodes on canvas with new real DB UUIDs
-                setNodes(nds => nds.map(n => {
-                    if (n.type === 'table') {
-                        const d = n.data as TableNodeData
-                        const match = result.insertedTables?.find(it => it.table_identifier === (d.tableIdentifier || d.label))
-                        if (match) {
-                            return { ...n, id: match.id }
-                        }
-                    }
-                    return n
-                }))
+                // 2. Update zones array
+                setZones(prev => prev.map(z => (z.id === oldZoneId || z.id === newZoneId) ? persistedZone : z))
+
+                // 3. Update canvas nodes directly to ensure no frame loss or empty state
+                const isBuilderMode = mode === 'builder'
+                const tableNodes = tablesToNodes(savedTablesForZone, isBuilderMode)
+                const decorNodes = visualElementsToNodes(persistedZone.visual_elements || [], isBuilderMode)
+                setNodes([...tableNodes, ...decorNodes])
+
+                // 4. Update activeZoneId if changed
+                if (newZoneId !== activeZoneId) {
+                    setActiveZoneId(newZoneId)
+                }
 
                 if (pendingZoneId) {
                     const target = pendingZoneId
                     setPendingZoneId(null)
                     setActiveZoneId(target)
                 }
+
+                router.refresh()
             } else {
                 toast.error('Error al guardar', { description: result.error })
             }
-        } catch {
-            toast.error('Error inesperado al guardar')
+        } catch (err: any) {
+            toast.error('Error inesperado al guardar', { description: err?.message })
         } finally {
             setIsSaving(false)
         }
-    }, [nodes, zones, activeZoneId, orgId, pendingZoneId, router])
+    }, [nodes, zones, activeZoneId, orgId, pendingZoneId, mode, router])
 
     // ── Keyboard shortcuts ─────────────────────────────────────────────────────
     useEffect(() => {
