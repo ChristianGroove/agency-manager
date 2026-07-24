@@ -905,7 +905,7 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                         {/* Category Badges Preview */}
                         {navStyle === 'glass_cards' ? (
                             <div className="flex overflow-x-auto py-2 px-1 -mx-1 no-scrollbar">
-                                <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/75 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-[0_6px_20px_rgba(0,0,0,0.12)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.4)]">
+                                <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/75 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-[0_3px_10px_rgba(0,0,0,0.06)] dark:shadow-[0_3px_10px_rgba(0,0,0,0.2)]">
                                     {categories.map(cat => {
                                         const isSelected = selectedCat === cat
                                         return (
