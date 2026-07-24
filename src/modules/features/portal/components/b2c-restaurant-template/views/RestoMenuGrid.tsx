@@ -100,8 +100,8 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
 
             {/* Dynamic Category Tabs / Badges */}
             {navStyle === 'glass_cards' ? (
-                <div className="flex overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
-                    <div className="inline-flex items-center gap-1.5 p-1.5 rounded-3xl bg-white/70 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]">
+                <div className="flex overflow-x-auto py-3 px-1.5 -mx-1.5 scrollbar-hide no-scrollbar">
+                    <div className="inline-flex items-center gap-1.5 p-1.5 rounded-3xl bg-white/75 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
                         {allCategories.map(category => {
                             const isSelected = (category === "Todos" && selectedCategory === null) || selectedCategory === category
                             const effectiveColor = primaryColor || config?.primary_color || '#4F46E5'
