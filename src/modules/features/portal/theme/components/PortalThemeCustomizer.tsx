@@ -384,7 +384,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                     { id: 'glass', label: 'Glassmorphism', desc: 'Fondo translúcido' },
                                     { id: 'bordered', label: 'Con Borde de Acento', desc: 'Borde sutil de marca' },
                                     { id: 'elevated', label: 'Elevado con Sombra', desc: 'Sombra 3D profunda' },
-                                    { id: 'flat', label: 'Plano Invertido', desc: 'Contraste alto con fondo invertido' },
+                                    { id: 'flat', label: 'Plano Minimalista', desc: 'Diseño limpio y plano sin sombras' },
                                 ].map(v => (
                                     <div
                                         key={v.id}

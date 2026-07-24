@@ -52,7 +52,7 @@ export function usePortalTheme(rawConfig?: Partial<PortalThemeConfig> | null) {
 
         // Variant & Theme
         if (config.card_style.variant === 'flat') {
-            classes.push('bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border border-zinc-800 dark:border-zinc-200 shadow-xl')
+            classes.push('bg-white dark:bg-zinc-900/90 text-gray-900 dark:text-white border border-gray-200/80 dark:border-zinc-800/80 shadow-none hover:border-gray-300 dark:hover:border-zinc-700')
         } else if (isCyberGlass) {
             classes.push('bg-white/65 dark:bg-zinc-900/75 text-gray-900 dark:text-white backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-xl shadow-black/5')
         } else if (isGlass) {
