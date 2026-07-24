@@ -213,7 +213,11 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div
-                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'modern_glass' }))}
+                                    onClick={() => updateConfig(c => ({ 
+                                        ...c, 
+                                        theme_id: 'modern_glass',
+                                        category_nav_style: c.category_nav_style === 'floating_dock' ? 'pills' : c.category_nav_style 
+                                    }))}
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'modern_glass'
@@ -231,7 +235,11 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                 </div>
 
                                 <div
-                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'gourmet_elegance' }))}
+                                    onClick={() => updateConfig(c => ({ 
+                                        ...c, 
+                                        theme_id: 'gourmet_elegance',
+                                        category_nav_style: c.category_nav_style === 'floating_dock' ? 'pills' : c.category_nav_style 
+                                    }))}
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'gourmet_elegance'

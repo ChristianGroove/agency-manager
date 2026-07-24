@@ -164,7 +164,8 @@ export function B2CRestaurantLayout({
     const isGourmet = themeConfig?.theme_id === 'gourmet_elegance'
     const isDarkOrGourmet = isGourmet || themeConfig?.color_mode === 'dark'
     const effectivePrimaryColor = themeConfig?.primary_color || settings?.portal_primary_color || '#4F46E5'
-    const isCyberGlass = themeConfig?.theme_id === 'cyber_glass_3d' || themeConfig?.category_nav_style === 'floating_dock'
+    const isCyberGlass = themeConfig?.theme_id === 'cyber_glass_3d'
+    const isFloatingDock = isCyberGlass || themeConfig?.category_nav_style === 'floating_dock'
 
     return (
         <PortalThemeProvider config={themeConfig}>
@@ -260,7 +261,7 @@ export function B2CRestaurantLayout({
                 </main>
 
             {/* BOTTOM NAV BAR (Standard or Floating Dock) */}
-            {isCyberGlass ? (
+            {isFloatingDock ? (
                 <FloatingGlassDock 
                     items={navItems}
                     activeTab={activeTab} 
