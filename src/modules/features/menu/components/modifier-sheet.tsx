@@ -177,7 +177,7 @@ export function ModifierSheet({ open, onOpenChange, itemToEdit, onSuccess }: Mod
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Opciones de Selección</Label>
-                                <Button type="button" variant="ghost" size="sm" onClick={handleAddOption} className="h-7 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                                <Button type="button" variant="ghost" size="sm" onClick={handleAddOption} className="h-7 text-xs text-primary bg-primary/10 hover:bg-primary/20">
                                     <Plus className="w-3 h-3 mr-1" /> Añadir Opción
                                 </Button>
                             </div>
@@ -223,7 +223,7 @@ export function ModifierSheet({ open, onOpenChange, itemToEdit, onSuccess }: Mod
                         <Button
                             onClick={handleSubmit}
                             disabled={loading}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 uppercase font-bold text-xs"
+                            className="bg-primary hover:bg-primary/90 text-white px-8 uppercase font-bold text-xs"
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {itemToEdit ? "Guardar" : "Crear Grupo"}

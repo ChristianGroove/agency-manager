@@ -40,7 +40,7 @@ export function ModifiersWorkspace({ modifierGroups }: { modifierGroups: RestoMe
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Modificadores Globales</h2>
                     <p className="text-sm text-gray-500 mt-1">Crea opciones reutilizables como "Tamaños" o "Extras" y asígnalas a múltiples platos.</p>
                 </div>
-                <button onClick={handleOpenNew} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all active:scale-95 whitespace-nowrap">
+                <button onClick={handleOpenNew} className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95 whitespace-nowrap">
                     <Plus className="w-5 h-5" />
                     Nuevo Grupo
                 </button>
@@ -49,8 +49,8 @@ export function ModifiersWorkspace({ modifierGroups }: { modifierGroups: RestoMe
             <div className="flex-1 overflow-y-auto no-scrollbar">
                 {modifierGroups.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full min-h-[300px] border-2 border-dashed border-gray-100 dark:border-zinc-800 rounded-3xl">
-                        <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center mb-4">
-                            <Settings2 className="w-8 h-8 text-indigo-500" />
+                        <div className="w-16 h-16 bg-primary/10 dark:bg-primary/20 rounded-full flex items-center justify-center mb-4">
+                            <Settings2 className="w-8 h-8 text-primary" />
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Sin modificadores</h3>
                         <p className="text-gray-500 mt-1 text-sm text-center">Empieza creando un grupo de opciones.</p>
@@ -61,7 +61,7 @@ export function ModifiersWorkspace({ modifierGroups }: { modifierGroups: RestoMe
                             <div 
                                 key={group.id} 
                                 onClick={() => handleOpenEdit(group)}
-                                className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 cursor-pointer hover:border-indigo-500 hover:shadow-md transition-all group/card relative"
+                                className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 cursor-pointer hover:border-primary hover:shadow-md transition-all group/card relative"
                             >
                                 <div className="flex justify-between items-start mb-3">
                                     <h3 className="font-bold text-gray-900 dark:text-white text-lg">{group.name}</h3>
@@ -90,7 +90,7 @@ export function ModifiersWorkspace({ modifierGroups }: { modifierGroups: RestoMe
                                         </div>
                                     ))}
                                     {group.options.length > 3 && (
-                                        <div className="text-xs text-indigo-500 font-medium pt-1">
+                                        <div className="text-xs text-primary font-medium pt-1">
                                             + {group.options.length - 3} opciones más
                                         </div>
                                     )}
