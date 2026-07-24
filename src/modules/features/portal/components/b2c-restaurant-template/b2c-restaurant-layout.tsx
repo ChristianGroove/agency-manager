@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Suspense } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
-import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check, MapPin, Pencil, X } from "lucide-react"
+import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check, MapPin, Pencil, X, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // Importar Componentes de Vistas Internas
@@ -157,6 +157,29 @@ export function B2CRestaurantLayout({
         }
     }, [client, activeTab, orderMode])
 
+    // UX: Scroll automático al inicio al cambiar entre pestañas del menú inferior
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, [activeTab])
+
+    // UX: Estado y detector de scroll para el botón discreto "Volver arriba"
+    const [showScrollTop, setShowScrollTop] = useState(false)
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 280) {
+                setShowScrollTop(true)
+            } else {
+                setShowScrollTop(false)
+            }
+        }
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
     // Calcular Cantidad en Carrito
     const totalCartQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0)
 
@@ -259,6 +282,18 @@ export function B2CRestaurantLayout({
                     {/* SOCIAL FOOTER */}
                     <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
                 </main>
+
+            {/* Subtle Centered Back To Top Arrow Button */}
+            {showScrollTop && (
+                <button
+                    onClick={scrollToTop}
+                    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 p-2.5 rounded-full bg-white/80 dark:bg-zinc-900/85 backdrop-blur-2xl border border-white/60 dark:border-white/20 shadow-lg text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-all duration-300 active:scale-90 flex items-center justify-center shrink-0"
+                    title="Volver arriba"
+                    aria-label="Volver arriba"
+                >
+                    <ChevronUp className="w-4 h-4" style={{ color: effectivePrimaryColor }} />
+                </button>
+            )}
 
             {/* BOTTOM DOCK NAV BAR */}
             <FloatingGlassDock 
