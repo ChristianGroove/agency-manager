@@ -31,8 +31,9 @@ export interface PortalThemeConfig {
         portal_iso?: string | null
     }
 
-    // Estilo de Navegación de Categorías
+    // Estilo de Navegación de Categorías y Dock Inferior
     category_nav_style?: 'pills' | 'underline_tabs' | 'glass_cards' | 'floating_dock'
+    dock_style?: 'floating_glass' | 'capsule_pill' | 'full_width_dock'
 
     // 2. Estilo de Tarjetas del Catálogo (Platos, Inmuebles, Productos)
     card_style: {
@@ -111,6 +112,7 @@ export const DEFAULT_PORTAL_THEME_CONFIG: PortalThemeConfig = {
         portal_iso: null
     },
     category_nav_style: 'pills',
+    dock_style: 'floating_glass',
     card_style: {
         variant: 'glass',
         border_radius: 'xl',

@@ -35,6 +35,7 @@ export interface PortalThemeConfig {
     secondary_color?: string;
     background_style: 'solid' | 'gradient' | 'mesh' | 'mesh_3d';
     category_nav_style?: 'pills' | 'underline_tabs' | 'glass_cards' | 'floating_dock';
+    dock_style?: 'floating_glass' | 'capsule_pill' | 'full_width_dock';
     tenant_name?: string;
     header_footer?: {
         show_header?: boolean;

@@ -260,44 +260,15 @@ export function B2CRestaurantLayout({
                     <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
                 </main>
 
-            {/* BOTTOM NAV BAR (Standard or Floating Dock) */}
-            {isFloatingDock ? (
-                <FloatingGlassDock 
-                    items={navItems}
-                    activeTab={activeTab} 
-                    setActiveTab={(tab) => setActiveTab(tab as 'menu' | 'cart' | 'orders' | 'profile')} 
-                    cartItemCount={totalCartQuantity} 
-                    primaryColor={effectivePrimaryColor}
-                />
-            ) : (
-                <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-lg">
-                    <div className="flex justify-around items-center h-16 px-2">
-                        {navItems.map((item) => {
-                            const isActive = activeTab === item.id
-                            const IconComponent = item.icon
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setActiveTab(item.id as 'menu' | 'cart' | 'orders' | 'profile')}
-                                    className={cn("relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors", isActive ? "" : "text-muted-foreground hover:text-foreground")}
-                                    style={{ color: isActive ? effectivePrimaryColor : undefined }}
-                                >
-                                    <IconComponent className={cn("h-5 w-5 transition-transform", isActive && "stroke-[2.5px] scale-110")} />
-                                    <span className={cn("text-[10px]", isActive ? "font-bold" : "font-medium")}>{item.label}</span>
-
-                                    {item.id === 'cart' && totalCartQuantity > 0 && (
-                                        <span
-                                            className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1 bg-red-500"
-                                        >
-                                            {totalCartQuantity}
-                                        </span>
-                                    )}
-                                </button>
-                            )
-                        })}
-                    </div>
-                </nav>
-            )}
+            {/* BOTTOM DOCK NAV BAR */}
+            <FloatingGlassDock 
+                items={navItems}
+                activeTab={activeTab} 
+                setActiveTab={(tab) => setActiveTab(tab as 'menu' | 'cart' | 'orders' | 'profile')} 
+                cartItemCount={totalCartQuantity} 
+                primaryColor={effectivePrimaryColor}
+                dockStyle={themeConfig?.dock_style || 'floating_glass'}
+            />
 
             {/* Modal de Pedido Exitoso */}
             {showSuccessModal && (

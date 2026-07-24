@@ -12,6 +12,7 @@ export function usePortalTheme(rawConfig?: Partial<PortalThemeConfig> | null) {
             logo_variant: rawConfig.logo_variant || DEFAULT_PORTAL_THEME_CONFIG.logo_variant,
             tenant_logos: rawConfig.tenant_logos || DEFAULT_PORTAL_THEME_CONFIG.tenant_logos,
             category_nav_style: rawConfig.category_nav_style || DEFAULT_PORTAL_THEME_CONFIG.category_nav_style,
+            dock_style: rawConfig.dock_style || DEFAULT_PORTAL_THEME_CONFIG.dock_style,
             animations_enabled: rawConfig.animations_enabled ?? DEFAULT_PORTAL_THEME_CONFIG.animations_enabled,
             card_style: {
                 ...DEFAULT_PORTAL_THEME_CONFIG.card_style,

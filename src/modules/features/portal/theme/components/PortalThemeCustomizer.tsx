@@ -213,11 +213,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div
-                                    onClick={() => updateConfig(c => ({ 
-                                        ...c, 
-                                        theme_id: 'modern_glass',
-                                        category_nav_style: c.category_nav_style === 'floating_dock' ? 'pills' : c.category_nav_style 
-                                    }))}
+                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'modern_glass' }))}
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'modern_glass'
@@ -235,11 +231,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                 </div>
 
                                 <div
-                                    onClick={() => updateConfig(c => ({ 
-                                        ...c, 
-                                        theme_id: 'gourmet_elegance',
-                                        category_nav_style: c.category_nav_style === 'floating_dock' ? 'pills' : c.category_nav_style 
-                                    }))}
+                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'gourmet_elegance' }))}
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'gourmet_elegance'
@@ -257,7 +249,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                 </div>
 
                                 <div
-                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'cyber_glass_3d', category_nav_style: 'floating_dock' }))}
+                                    onClick={() => updateConfig(c => ({ ...c, theme_id: 'cyber_glass_3d' }))}
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'cyber_glass_3d'
@@ -267,12 +259,40 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                 >
                                     <div>
                                         <div className="flex items-center justify-between mb-1">
-                                            <h4 className="font-extrabold text-xs text-cyan-600 dark:text-cyan-400 truncate">3D Glass & Dock</h4>
+                                            <h4 className="font-extrabold text-xs text-cyan-600 dark:text-cyan-400 truncate">3D Glass Dinámico</h4>
                                             {config.theme_id === 'cyber_glass_3d' && <Check className="w-3.5 h-3.5 text-cyan-500 shrink-0" />}
                                         </div>
-                                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">Fondo 3D flotante y navbar inferior dock.</p>
+                                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">Fondo 3D animado y halo futurista.</p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-3 block">
+                                Estilo del Menú Inferior (Dock Flotante Universal)
+                            </label>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { id: 'floating_glass', label: 'Isla Glass Flotante', desc: 'Cristal satinado con blur y resplandor' },
+                                    { id: 'capsule_pill', label: 'Cápsula Neón', desc: 'Compacto con resplandor neón' },
+                                    { id: 'full_width_dock', label: 'Barra Ancha Flotante', desc: 'Borde a borde con indicador dinámico' },
+                                ].map(dk => (
+                                    <div
+                                        key={dk.id}
+                                        onClick={() => updateConfig(c => ({ ...c, dock_style: dk.id as any }))}
+                                        className={cn(
+                                            "p-3.5 rounded-2xl border cursor-pointer transition-all text-left",
+                                            (config.dock_style || 'floating_glass') === dk.id
+                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                                : "border-gray-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-900/30"
+                                        )}
+                                    >
+                                        <h5 className="font-bold text-xs text-gray-900 dark:text-white">{dk.label}</h5>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">{dk.desc}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -941,21 +961,20 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
 
                     <PortalSocialFooter config={config} orgName={config.tenant_name || orgName || "Mi Negocio"} isGourmet={isGourmet} />
 
-                    {(config.theme_id === 'cyber_glass_3d' || config.category_nav_style === 'floating_dock') && (
-                        <FloatingGlassDock 
-                            items={[
-                                { id: 'menu', icon: Store, label: "Menú" },
-                                { id: 'cart', icon: ShoppingBag, label: "Carrito" },
-                                { id: 'orders', icon: ReceiptText, label: "Pedidos" },
-                                { id: 'profile', icon: UserIcon, label: "Perfil" },
-                            ]}
-                            activeTab="menu" 
-                            setActiveTab={() => {}} 
-                            cartItemCount={2} 
-                            primaryColor={primaryColor} 
-                            isCompact={true}
-                        />
-                    )}
+                    <FloatingGlassDock 
+                        items={[
+                            { id: 'menu', icon: Store, label: "Menú" },
+                            { id: 'cart', icon: ShoppingBag, label: "Carrito" },
+                            { id: 'orders', icon: ReceiptText, label: "Pedidos" },
+                            { id: 'profile', icon: UserIcon, label: "Perfil" },
+                        ]}
+                        activeTab="menu" 
+                        setActiveTab={() => {}} 
+                        cartItemCount={2} 
+                        primaryColor={primaryColor} 
+                        isCompact={true}
+                        dockStyle={config.dock_style || 'floating_glass'}
+                    />
                 </div>
             </div>
         </PortalThemeProvider>
