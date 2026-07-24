@@ -1145,77 +1145,100 @@ function FloorBuilderCanvasInner({
                 </DialogContent>
             </Dialog>
 
-            {/* ── Live Mode: Table Status Sheet ──────────────────────────────── */}
+            {/* ── Live Mode: Table Status Sheet (Floating Glass Design) ───────────────── */}
             <Sheet open={liveSheetOpen} onOpenChange={setLiveSheetOpen}>
-                <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col gap-0 p-0">
-                    {liveSelectedTable && (
-                        <>
-                            {/* Header with status color */}
-                            <div className={cn(
-                                'px-6 pt-6 pb-4 border-b',
-                                selectedTableStatus.lightBg,
-                                selectedTableStatus.border
-                            )}>
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Mesa</span>
+                <SheetContent
+                    side="right"
+                    className="
+                        sm:max-w-[380px] w-full p-0 gap-0 border-none shadow-2xl
+                        mr-3 my-3 h-[calc(100vh-1.5rem)] rounded-3xl overflow-hidden
+                        data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-5
+                        bg-transparent z-[100]
+                    "
+                >
+                    <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/90 dark:border dark:border-white/10 backdrop-blur-2xl rounded-3xl overflow-hidden shadow-2xl">
+                        {liveSelectedTable && (
+                            <>
+                                {/* Floating Glass Header */}
+                                <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-6 py-5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800/60">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-brand-pink/10 dark:bg-brand-pink/20 rounded-2xl text-brand-pink shrink-0">
+                                            <Armchair className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <SheetTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                                                {liveSelectedTable.table_identifier}
+                                            </SheetTitle>
+                                            <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                                <span className="flex items-center gap-1 font-medium">
+                                                    <Users className="h-3 w-3 text-zinc-400" />
+                                                    {liveSelectedTable.capacity} pax
+                                                </span>
+                                                <span>•</span>
+                                                <span className="flex items-center gap-1 font-medium">
+                                                    <MapPin className="h-3 w-3 text-zinc-400" />
+                                                    {zones.find(z => z.id === activeZoneId)?.name || 'Zona'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className={cn(
-                                        'flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full',
+                                        'flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border shadow-sm',
                                         selectedTableStatus.lightBg,
                                         selectedTableStatus.text,
-                                        selectedTableStatus.border,
-                                        'border'
+                                        selectedTableStatus.border
                                     )}>
-                                        <span className={cn('w-1.5 h-1.5 rounded-full', selectedTableStatus.bg)} />
+                                        <span className={cn('w-2 h-2 rounded-full animate-pulse', selectedTableStatus.bg)} />
                                         {selectedTableStatus.label}
                                     </div>
                                 </div>
-                                <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">
-                                    {liveSelectedTable.table_identifier}
-                                </h2>
-                                <div className="flex items-center gap-3 mt-2 text-sm text-zinc-500">
-                                    <span className="flex items-center gap-1">
-                                        <Users className="h-3.5 w-3.5" />
-                                        {liveSelectedTable.capacity} personas
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <MapPin className="h-3.5 w-3.5" />
-                                        {zones.find(z => z.id === activeZoneId)?.name || 'Zona'}
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Status selector */}
-                            <div className="px-6 py-5 flex-1 overflow-y-auto">
-                                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">
-                                    Cambiar estado
-                                </p>
-                                <div className="space-y-2">
-                                    {TABLE_STATUSES.map(s => (
-                                        <button
-                                            key={s.key}
-                                            disabled={isChangingStatus}
-                                            onClick={() => handleChangeTableStatus(s.key as TableStatus)}
-                                            className={cn(
-                                                'w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all',
-                                                liveSelectedTable.status === s.key
-                                                    ? [s.lightBg, s.border, s.text, 'shadow-sm ring-2 ring-current ring-offset-1']
-                                                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600'
-                                            )}
-                                        >
-                                            <span className={cn('w-3 h-3 rounded-full shrink-0', s.bg)} />
-                                            {s.label}
-                                            {liveSelectedTable.status === s.key && (
-                                                <Check className="h-4 w-4 ml-auto" />
-                                            )}
-                                            {isChangingStatus && liveSelectedTable.status !== s.key && (
-                                                <Loader2 className="h-3.5 w-3.5 ml-auto animate-spin opacity-30" />
-                                            )}
-                                        </button>
-                                    ))}
+                                {/* Content Body */}
+                                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                                    {/* Status Selector Section */}
+                                    <div>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+                                            Cambiar Estado de Mesa
+                                        </h3>
+                                        <div className="grid gap-2.5">
+                                            {TABLE_STATUSES.map(s => {
+                                                const isActive = liveSelectedTable.status === s.key
+                                                return (
+                                                    <button
+                                                        key={s.key}
+                                                        disabled={isChangingStatus}
+                                                        onClick={() => handleChangeTableStatus(s.key as TableStatus)}
+                                                        className={cn(
+                                                            'w-full flex items-center justify-between p-3.5 rounded-2xl border text-sm font-medium transition-all duration-200 group relative overflow-hidden',
+                                                            isActive
+                                                                ? [s.lightBg, s.border, s.text, 'shadow-sm ring-2 ring-current ring-offset-2 dark:ring-offset-zinc-950 font-bold']
+                                                                : 'bg-white/60 dark:bg-zinc-900/50 border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn(
+                                                                'w-3 h-3 rounded-full shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-125',
+                                                                s.bg
+                                                            )} />
+                                                            <span>{s.label}</span>
+                                                        </div>
+                                                        {isActive && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Check className="h-4 w-4 stroke-[3]" />
+                                                            </div>
+                                                        )}
+                                                        {isChangingStatus && !isActive && (
+                                                            <Loader2 className="h-4 w-4 animate-spin opacity-40" />
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </SheetContent>
             </Sheet>
             {/* Unsaved Changes Confirmation Modal */}
