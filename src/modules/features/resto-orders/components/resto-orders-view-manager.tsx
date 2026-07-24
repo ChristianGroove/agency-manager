@@ -22,7 +22,7 @@ interface RestoOrdersViewManagerProps {
 }
 
 export function RestoOrdersViewManager({ orders: initialOrders, zones, tables, orgId, orgSlug }: RestoOrdersViewManagerProps) {
-    const [viewMode, setViewMode] = useState<'list' | 'map' | 'editor' | 'kds'>('list')
+    const [viewMode, setViewMode] = useState<'list' | 'map' | 'kds'>('list')
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
     const [orders, setOrders] = useState<any[]>(initialOrders)
 
@@ -170,19 +170,7 @@ export function RestoOrdersViewManager({ orders: initialOrders, zones, tables, o
                             )}
                         >
                             <Map className="w-4 h-4" />
-                            Mapa Live
-                        </button>
-                        <button
-                            onClick={() => setViewMode('editor')}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
-                                viewMode === 'editor' 
-                                    ? "bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
-                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                            )}
-                        >
-                            <PenTool className="w-4 h-4" />
-                            Editor
+                            Mapa de Mesas
                         </button>
                         <button
                             onClick={() => setViewMode('kds')}
@@ -234,7 +222,7 @@ export function RestoOrdersViewManager({ orders: initialOrders, zones, tables, o
                             initialTables={tables}
                             orgId={orgId}
                             orgSlug={orgSlug}
-                            readOnly={true}
+                            readOnly={false}
                             defaultMode="live"
                             onTableClick={handleTableClick}
                         />
@@ -250,19 +238,6 @@ export function RestoOrdersViewManager({ orders: initialOrders, zones, tables, o
                                 </div>
                             </div>
                         )}
-                    </div>
-                )}
-
-                {viewMode === 'editor' && (
-                    <div className="absolute inset-0">
-                        <FloorBuilderCanvas 
-                            initialZones={zones}
-                            initialTables={tables}
-                            orgId={orgId}
-                            orgSlug={orgSlug}
-                            readOnly={false}
-                            defaultMode="builder"
-                        />
                     </div>
                 )}
 
