@@ -500,6 +500,18 @@ function FloorBuilderCanvasInner({
     // ── Properties panel update ───────────────────────────────────────────────
     const handleNodeUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
         setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data } : n))
+        setSelectedNode(prev => prev && prev.id === nodeId ? { ...prev, data } : prev)
+        setAllTables(prev => prev.map(t => {
+            if (t.id === nodeId) {
+                return {
+                    ...t,
+                    table_identifier: (data.tableIdentifier as string) || (data.label as string) || t.table_identifier,
+                    capacity: (data.capacity as number) || t.capacity,
+                    shape: (data.shape as RestoTable['shape']) || t.shape,
+                }
+            }
+            return t
+        }))
         setIsDirty(true)
     }, [setNodes])
 
@@ -1138,8 +1150,12 @@ function FloorBuilderCanvasInner({
                         <Button variant="outline" onClick={() => setDeleteZoneDialog({ open: false, zone: null })}>
                             Cancelar
                         </Button>
-                        <Button variant="destructive" onClick={handleConfirmDeleteZone} disabled={isDeletingZone}>
-                            {isDeletingZone ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Eliminando...</> : 'Eliminar'}
+                        <Button 
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 shadow-sm" 
+                            onClick={handleConfirmDeleteZone} 
+                            disabled={isDeletingZone}
+                        >
+                            {isDeletingZone ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Eliminando...</> : <><Trash2 className="h-4 w-4 stroke-[2.5]" />Eliminar Zona</>}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
