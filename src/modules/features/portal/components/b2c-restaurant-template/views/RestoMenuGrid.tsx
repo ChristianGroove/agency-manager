@@ -99,45 +99,72 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
             </div>
 
             {/* Dynamic Category Tabs / Badges */}
-            <div className={cn(
-                "flex overflow-x-auto pb-2 scrollbar-hide no-scrollbar gap-2",
-                navStyle === 'underline_tabs' ? "border-b border-gray-200 dark:border-zinc-800 pb-0 gap-4" : ""
-            )}>
-                {allCategories.map(category => {
-                    const isSelected = (category === "Todos" && selectedCategory === null) || selectedCategory === category
+            {navStyle === 'glass_cards' ? (
+                <div className="flex overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
+                    <div className="inline-flex items-center gap-1.5 p-1.5 rounded-3xl bg-white/70 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]">
+                        {allCategories.map(category => {
+                            const isSelected = (category === "Todos" && selectedCategory === null) || selectedCategory === category
+                            const effectiveColor = primaryColor || config?.primary_color || '#4F46E5'
 
-                    let btnClass = ""
-                    if (navStyle === 'underline_tabs') {
-                        btnClass = cn(
-                            "py-2.5 px-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 bg-transparent rounded-none",
-                            isSelected ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white"
-                        )
-                    } else if (navStyle === 'glass_cards') {
-                        btnClass = cn(
-                            "px-4.5 py-2.5 rounded-2xl text-xs font-extrabold whitespace-nowrap backdrop-blur-2xl border transition-all duration-300",
-                            isSelected 
-                                ? "text-white border-white/50 shadow-[0_8px_25px_rgba(0,0,0,0.22)] scale-[1.03] ring-2 ring-primary/30" 
-                                : "bg-white/70 dark:bg-zinc-900/80 text-gray-700 dark:text-zinc-200 border-white/60 dark:border-white/15 hover:bg-white/90 dark:hover:bg-zinc-800/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
-                        )
-                    } else {
-                        btnClass = cn(
-                            "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all",
-                            isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 border-gray-200/80 dark:border-zinc-800"
-                        )
-                    }
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category === "Todos" ? null : category)}
+                                    className={cn(
+                                        "relative flex items-center justify-center py-2 px-4 rounded-2xl transition-all duration-300 active:scale-95 whitespace-nowrap text-xs font-extrabold shrink-0",
+                                        isSelected 
+                                            ? "bg-white/95 dark:bg-zinc-800/95 shadow-md text-gray-900 dark:text-white" 
+                                            : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    <span style={{ color: isSelected ? effectiveColor : undefined }}>
+                                        {category}
+                                    </span>
+                                    {isSelected && (
+                                        <div 
+                                            className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full animate-pulse"
+                                            style={{ backgroundColor: effectiveColor }}
+                                        />
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            ) : (
+                <div className={cn(
+                    "flex overflow-x-auto pb-2 scrollbar-hide no-scrollbar gap-2",
+                    navStyle === 'underline_tabs' ? "border-b border-gray-200 dark:border-zinc-800 pb-0 gap-4" : ""
+                )}>
+                    {allCategories.map(category => {
+                        const isSelected = (category === "Todos" && selectedCategory === null) || selectedCategory === category
 
-                    return (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category === "Todos" ? null : category)}
-                            className={btnClass}
-                            style={isSelected ? { backgroundColor: navStyle !== 'underline_tabs' ? (primaryColor || config?.primary_color) : undefined } : undefined}
-                        >
-                            {category}
-                        </button>
-                    )
-                })}
-            </div>
+                        let btnClass = ""
+                        if (navStyle === 'underline_tabs') {
+                            btnClass = cn(
+                                "py-2.5 px-3 text-xs font-bold whitespace-nowrap transition-all border-b-2 bg-transparent rounded-none",
+                                isSelected ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            )
+                        } else {
+                            btnClass = cn(
+                                "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all",
+                                isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-300 border-gray-200/80 dark:border-zinc-800"
+                            )
+                        }
+
+                        return (
+                            <button
+                                key={category}
+                                onClick={() => setSelectedCategory(category === "Todos" ? null : category)}
+                                className={btnClass}
+                                style={isSelected ? { backgroundColor: navStyle !== 'underline_tabs' ? (primaryColor || config?.primary_color) : undefined } : undefined}
+                            >
+                                {category}
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
 
             {/* Grid de Productos */}
             {filteredItems.length === 0 ? (

@@ -903,41 +903,66 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                         </div>
 
                         {/* Category Badges Preview */}
-                        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                            {categories.map(cat => {
-                                const isSelected = selectedCat === cat
-                                let btnClass = ""
-                                if (navStyle === 'underline_tabs') {
-                                    btnClass = cn(
-                                        "py-1 px-2 text-[10px] font-bold whitespace-nowrap transition-all border-b-2 bg-transparent rounded-none",
-                                        isSelected ? "border-primary text-primary" : "border-transparent text-gray-400"
-                                    )
-                                } else if (navStyle === 'glass_cards') {
-                                    btnClass = cn(
-                                        "px-3 py-1.5 rounded-2xl text-[10px] font-extrabold whitespace-nowrap backdrop-blur-2xl border transition-all duration-300",
-                                        isSelected 
-                                            ? "text-white border-white/50 shadow-md scale-105" 
-                                            : "bg-white/70 dark:bg-zinc-900/80 text-gray-700 dark:text-zinc-200 border-white/60 dark:border-white/15"
-                                    )
-                                } else {
-                                    btnClass = cn(
-                                        "px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all",
-                                        isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white dark:bg-zinc-900 text-gray-500 border-gray-200 dark:border-zinc-800"
-                                    )
-                                }
+                        {navStyle === 'glass_cards' ? (
+                            <div className="flex overflow-x-auto no-scrollbar pb-1">
+                                <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/70 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-md">
+                                    {categories.map(cat => {
+                                        const isSelected = selectedCat === cat
+                                        return (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedCat(cat)}
+                                                className={cn(
+                                                    "relative flex items-center justify-center py-1 px-2.5 rounded-xl transition-all duration-300 active:scale-95 whitespace-nowrap text-[10px] font-extrabold shrink-0",
+                                                    isSelected 
+                                                        ? "bg-white/95 dark:bg-zinc-800/95 shadow-sm text-gray-900 dark:text-white" 
+                                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                                )}
+                                            >
+                                                <span style={{ color: isSelected ? primaryColor : undefined }}>
+                                                    {cat}
+                                                </span>
+                                                {isSelected && (
+                                                    <div 
+                                                        className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-3 h-0.5 rounded-full animate-pulse"
+                                                        style={{ backgroundColor: primaryColor }}
+                                                    />
+                                                )}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                                {categories.map(cat => {
+                                    const isSelected = selectedCat === cat
+                                    let btnClass = ""
+                                    if (navStyle === 'underline_tabs') {
+                                        btnClass = cn(
+                                            "py-1 px-2 text-[10px] font-bold whitespace-nowrap transition-all border-b-2 bg-transparent rounded-none",
+                                            isSelected ? "border-primary text-primary" : "border-transparent text-gray-400"
+                                        )
+                                    } else {
+                                        btnClass = cn(
+                                            "px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all",
+                                            isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white dark:bg-zinc-900 text-gray-500 border-gray-200 dark:border-zinc-800"
+                                        )
+                                    }
 
-                                return (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setSelectedCat(cat)}
-                                        className={btnClass}
-                                        style={isSelected ? { backgroundColor: navStyle !== 'underline_tabs' ? primaryColor : undefined } : undefined}
-                                    >
-                                        {cat}
-                                    </button>
-                                )
-                            })}
-                        </div>
+                                    return (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setSelectedCat(cat)}
+                                            className={btnClass}
+                                            style={isSelected ? { backgroundColor: navStyle !== 'underline_tabs' ? primaryColor : undefined } : undefined}
+                                        >
+                                            {cat}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
 
                         {/* Food Cards Grid */}
                         <div className="space-y-3 pt-1">
