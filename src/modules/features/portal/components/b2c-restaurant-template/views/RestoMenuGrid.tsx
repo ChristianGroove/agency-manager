@@ -21,7 +21,7 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
     const [selectedItemForModal, setSelectedItemForModal] = useState<RestoMenuItem | null>(null)
 
     const { config } = usePortalThemeContext()
-    const navStyle = config?.category_nav_style || 'pills'
+    const navStyle = config?.category_nav_style || 'glass_cards'
     const storeStatus = evaluateStoreStatus(config)
 
     // Get all unique categories for badges
@@ -114,8 +114,10 @@ export function RestoMenuGrid({ items, orgId, primaryColor }: RestoMenuGridProps
                         )
                     } else if (navStyle === 'glass_cards') {
                         btnClass = cn(
-                            "px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap backdrop-blur-md border shadow-sm transition-all",
-                            isSelected ? "bg-primary text-white border-primary shadow-md scale-[1.02]" : "bg-white/60 dark:bg-zinc-900/60 text-gray-600 dark:text-zinc-300 border-gray-200/60 dark:border-zinc-800"
+                            "px-4.5 py-2.5 rounded-2xl text-xs font-extrabold whitespace-nowrap backdrop-blur-2xl border transition-all duration-300",
+                            isSelected 
+                                ? "text-white border-white/50 shadow-[0_8px_25px_rgba(0,0,0,0.22)] scale-[1.03] ring-2 ring-primary/30" 
+                                : "bg-white/70 dark:bg-zinc-900/80 text-gray-700 dark:text-zinc-200 border-white/60 dark:border-white/15 hover:bg-white/90 dark:hover:bg-zinc-800/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
                         )
                     } else {
                         btnClass = cn(

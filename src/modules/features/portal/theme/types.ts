@@ -111,7 +111,7 @@ export const DEFAULT_PORTAL_THEME_CONFIG: PortalThemeConfig = {
         main_light: null,
         portal_iso: null
     },
-    category_nav_style: 'pills',
+    category_nav_style: 'glass_cards',
     dock_style: 'floating_glass',
     card_style: {
         variant: 'glass',

@@ -303,16 +303,16 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
 
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {[
-                                    { id: 'pills', label: 'Cápsulas Redondas', desc: 'Badges redondeados' },
+                                    { id: 'glass_cards', label: 'Isla Glass Satinada', desc: 'Tarjetas flotantes con blur prémium' },
+                                    { id: 'pills', label: 'Cápsulas Redondas', desc: 'Badges redondeados clásicos' },
                                     { id: 'underline_tabs', label: 'Tabs Subrayados', desc: 'Línea de acento inferior' },
-                                    { id: 'glass_cards', label: 'Tarjetas de Cristal', desc: 'Translucidez satinada' },
                                 ].map(st => (
                                     <div
                                         key={st.id}
                                         onClick={() => updateConfig(c => ({ ...c, category_nav_style: st.id as any }))}
                                         className={cn(
                                             "p-3.5 rounded-2xl border cursor-pointer transition-all text-left",
-                                            (config.category_nav_style || 'pills') === st.id
+                                            (config.category_nav_style || 'glass_cards') === st.id
                                                 ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                                                 : "border-gray-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-900/30"
                                         )}
@@ -850,7 +850,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
 function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?: string }) {
     const { isGourmet, cardClasses, pageBackgroundClass } = usePortalTheme(config)
     const primaryColor = config.primary_color || '#4F46E5'
-    const navStyle = config.category_nav_style || 'pills'
+    const navStyle = config.category_nav_style || 'glass_cards'
     const [selectedCat, setSelectedCat] = useState("Todos")
 
     const categories = ["Todos", "Hamburguesas Gourmet", "Pizzas Artesanales", "Bebidas", "Postres"]
@@ -860,8 +860,7 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
             <div className="w-[360px] h-[720px] bg-zinc-950 rounded-[48px] p-3 shadow-2xl border-4 border-zinc-800 relative overflow-hidden flex flex-col">
                 
                 {/* Dynamic Island Notch */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-black rounded-full z-50 flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-900 mr-2" />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-zinc-900 rounded-full z-30 flex items-center justify-end px-2">
                     <div className="w-2 h-2 rounded-full bg-blue-900" />
                 </div>
 
@@ -915,8 +914,10 @@ function PreviewPhone({ config, orgName }: { config: PortalThemeConfig; orgName?
                                     )
                                 } else if (navStyle === 'glass_cards') {
                                     btnClass = cn(
-                                        "px-2.5 py-1 rounded-xl text-[10px] font-bold whitespace-nowrap border transition-all",
-                                        isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-white/60 dark:bg-zinc-900/60 text-gray-500 border-gray-200/60 dark:border-zinc-800"
+                                        "px-3 py-1.5 rounded-2xl text-[10px] font-extrabold whitespace-nowrap backdrop-blur-2xl border transition-all duration-300",
+                                        isSelected 
+                                            ? "text-white border-white/50 shadow-md scale-105" 
+                                            : "bg-white/70 dark:bg-zinc-900/80 text-gray-700 dark:text-zinc-200 border-white/60 dark:border-white/15"
                                     )
                                 } else {
                                     btnClass = cn(
