@@ -491,10 +491,9 @@ function FloorBuilderCanvasInner({
 
             if (onTableClick) {
                 onTableClick(tableRecord)
-            } else {
-                setLiveSelectedTable({ ...tableRecord, status: d.status || 'available' })
-                setLiveSheetOpen(true)
             }
+            setLiveSelectedTable({ ...tableRecord, status: d.status || 'available' })
+            setLiveSheetOpen(true)
         }
     }, [mode, readOnly, allTables, activeZoneId, onTableClick])
 
@@ -566,6 +565,7 @@ function FloorBuilderCanvasInner({
         const zone = deleteZoneDialog.zone
         if (!zone) return
         setIsDeletingZone(true)
+
         try {
             if (zone.id.startsWith('temp_')) {
                 // Just remove from local state
@@ -615,11 +615,12 @@ function FloorBuilderCanvasInner({
         if (!liveSelectedTable) return
         setIsChangingStatus(true)
 
-        // Optimistically update the node color on canvas
+        // Optimistically update the node color on canvas & local state
         setNodes(nds => nds.map(n => n.id === liveSelectedTable.id
             ? { ...n, data: { ...n.data, status: newStatus } }
             : n
         ))
+        setAllTables(prev => prev.map(t => t.id === liveSelectedTable.id ? { ...t, status: newStatus } : t))
         setLiveSelectedTable(prev => prev ? { ...prev, status: newStatus } : null)
 
         if (!liveSelectedTable.id.startsWith('temp_')) {
