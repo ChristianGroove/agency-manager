@@ -97,9 +97,10 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
     }
 
     // 3. Delete tables that no longer exist in the layout
-    const existingTableIds = tables
-        .filter(t => !t.id.startsWith('temp_') && !t.isNew)
-        .map(t => t.id)
+    const keepTableIds = [
+        ...tables.filter(t => !t.id.startsWith('temp_') && !t.isNew).map(t => t.id),
+        ...insertedTables.map(t => t.id)
+    ]
 
     // Fetch all current table IDs for this zone from DB
     const { data: dbTables } = await supabase
@@ -110,7 +111,7 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
     if (dbTables && dbTables.length > 0) {
         const idsToDelete = dbTables
             .map(t => t.id)
-            .filter(id => !existingTableIds.includes(id))
+            .filter(id => !keepTableIds.includes(id))
 
         if (idsToDelete.length > 0) {
             const { error } = await supabase
