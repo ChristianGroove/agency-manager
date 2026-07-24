@@ -1,7 +1,7 @@
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
 import { redirect } from "next/navigation"
-import { getRestoOrders } from "@/modules/features/resto-orders/actions"
+import { getRestoOrders, getGroupedOrders } from "@/modules/features/resto-orders/actions"
 import { getZonesAndTables } from "@/modules/features/resto/tables/actions"
 import { RestoOrdersViewManager } from "@/modules/features/resto-orders/components/resto-orders-view-manager"
 
@@ -22,8 +22,9 @@ export default async function RestoOrdersPage() {
         redirect('/dashboard?error=unauthorized_module')
     }
 
-    const [orders, { zones, tables }] = await Promise.all([
+    const [orders, groupedOrders, { zones, tables }] = await Promise.all([
         getRestoOrders(),
+        getGroupedOrders(),
         getZonesAndTables(orgId)
     ])
 
@@ -32,6 +33,7 @@ export default async function RestoOrdersPage() {
             {/* View Manager (Tabs, Map, List, Editor, KDS) */}
             <RestoOrdersViewManager 
                 orders={orders} 
+                groupedOrders={groupedOrders}
                 zones={zones} 
                 tables={tables} 
                 orgId={orgId} 
