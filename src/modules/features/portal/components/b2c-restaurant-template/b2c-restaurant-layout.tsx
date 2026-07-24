@@ -283,15 +283,15 @@ export function B2CRestaurantLayout({
                     <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
                 </main>
 
-            {/* Subtle Transparent Back To Top Arrow Button */}
+            {/* Subtle Glass Back To Top Arrow Button (30% Fill Opacity + Backdrop Blur) */}
             {showScrollTop && (
                 <button
                     onClick={scrollToTop}
-                    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 p-1.5 bg-transparent border-none shadow-none text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all duration-300 active:scale-90 flex items-center justify-center shrink-0 opacity-75 hover:opacity-100 drop-shadow-md"
+                    className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 p-2 rounded-full bg-white/30 dark:bg-zinc-900/30 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-sm text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-900/50 transition-all duration-300 active:scale-90 flex items-center justify-center shrink-0"
                     title="Volver arriba"
                     aria-label="Volver arriba"
                 >
-                    <ChevronUp className="w-5 h-5 stroke-[2.5px]" style={{ color: effectivePrimaryColor }} />
+                    <ChevronUp className="w-4 h-4 stroke-[2.5px]" style={{ color: effectivePrimaryColor }} />
                 </button>
             )}
 
