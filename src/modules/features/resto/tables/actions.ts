@@ -73,10 +73,12 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
 
     // Run sequentially to avoid Promise type issues and ensure reliability
     const errors: string[] = []
+    let insertedTables: RestoTable[] = []
 
     if (tablesToInsert.length > 0) {
-         const { error } = await supabase.from('resto_tables').insert(tablesToInsert)
+         const { data, error } = await supabase.from('resto_tables').insert(tablesToInsert).select('*')
          if (error) errors.push(error.message)
+         else if (data) insertedTables = data as RestoTable[]
     }
 
     for (const table of tablesToUpdate) {
@@ -126,7 +128,7 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
 
     revalidatePath('/dashboard/resto-tables')
     revalidatePath('/dashboard/resto-orders')
-    return { success: true, zoneId }
+    return { success: true, zoneId, insertedTables }
 }
 
 export async function deleteZone(zoneId: string) {

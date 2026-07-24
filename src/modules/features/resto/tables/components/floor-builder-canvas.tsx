@@ -89,7 +89,7 @@ const nodeTypes = {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const makeId = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+const makeId = (prefix: string) => `temp_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
 
 function tablesToNodes(tables: RestoTable[], isBuilder: boolean): Node[] {
     return tables.map(t => ({
@@ -313,9 +313,34 @@ function FloorBuilderCanvasInner({
     const [liveSheetOpen, setLiveSheetOpen] = useState(false)
     const [isChangingStatus, setIsChangingStatus] = useState(false)
 
+    // ── Unsaved changes tracking ──────────────────────────────────────────────
+    const [isDirty, setIsDirty] = useState(false)
+    const [pendingZoneId, setPendingZoneId] = useState<string | null>(null)
+    const [unsavedModalOpen, setUnsavedModalOpen] = useState(false)
+
     // ── RF state ──────────────────────────────────────────────────────────────
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+
+    const handleNodesChange = useCallback((changes: any) => {
+        onNodesChange(changes)
+        if (mode === 'builder' && !readOnly) {
+            const hasUserMods = changes.some((c: any) => c.type === 'position' || c.type === 'dimensions' || c.type === 'remove')
+            if (hasUserMods) {
+                setIsDirty(true)
+            }
+        }
+    }, [onNodesChange, mode, readOnly])
+
+    const handleRequestZoneSwitch = useCallback((targetZoneId: string) => {
+        if (targetZoneId === activeZoneId) return
+        if (isDirty) {
+            setPendingZoneId(targetZoneId)
+            setUnsavedModalOpen(true)
+        } else {
+            setActiveZoneId(targetZoneId)
+        }
+    }, [activeZoneId, isDirty])
 
     // ── Undo/Redo ──────────────────────────────────────────────────────────────
     const [history, setHistory] = useState<{ nodes: Node[]; edges: Edge[] }[]>([])
@@ -447,6 +472,7 @@ function FloorBuilderCanvasInner({
         }
         setNodes(nds => [...nds, newNode])
         saveToHistory()
+        setIsDirty(true)
     }, [screenToFlowPosition, setNodes, saveToHistory, nodes])
 
     // ── Node click ────────────────────────────────────────────────────────────
@@ -483,6 +509,7 @@ function FloorBuilderCanvasInner({
     // ── Properties panel update ───────────────────────────────────────────────
     const handleNodeUpdate = useCallback((nodeId: string, data: Record<string, unknown>) => {
         setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data } : n))
+        setIsDirty(true)
     }, [setNodes])
 
     const handleNodeDelete = useCallback((nodeId: string) => {
@@ -490,6 +517,7 @@ function FloorBuilderCanvasInner({
         saveToHistory()
         setPropsPanelOpen(false)
         setSelectedNode(null)
+        setIsDirty(true)
     }, [setNodes, saveToHistory])
 
     // ── Deselect on pane click ────────────────────────────────────────────────
@@ -509,11 +537,9 @@ function FloorBuilderCanvasInner({
             visual_elements: [],
         }
         setZones(prev => [...prev, newZone])
-        setActiveZoneId(newZone.id)
         setNewZoneName('')
         setAddZoneOpen(false)
-        setNodes([])
-        setEdges([])
+        handleRequestZoneSwitch(newZone.id)
     }
 
     const handleStartRename = (zone: RestoZone) => {
@@ -526,14 +552,16 @@ function FloorBuilderCanvasInner({
             setRenamingZoneId(null)
             return
         }
-        const newName = renameValue.trim()
+        const id = renamingZoneId
+        const name = renameValue.trim()
+        
         // Update local state immediately
-        setZones(prev => prev.map(z => z.id === renamingZoneId ? { ...z, name: newName } : z))
+        setZones(prev => prev.map(z => z.id === id ? { ...z, name } : z))
         setRenamingZoneId(null)
 
         // Persist if it's a real zone
-        if (!renamingZoneId.startsWith('temp_')) {
-            const result = await renameZone(renamingZoneId, newName)
+        if (!id.startsWith('temp_')) {
+            const result = await renameZone(id, name)
             if (!result.success) {
                 toast.error('Error al renombrar zona')
             } else {
@@ -661,9 +689,15 @@ function FloorBuilderCanvasInner({
             const result = await saveLayout(orgId, updatedZone, tables)
             if (result.success) {
                 toast.success('Layout guardado')
+                setIsDirty(false)
                 if (result.zoneId && result.zoneId !== activeZoneId) {
                     setZones(prev => prev.map(z => z.id === activeZoneId ? { ...z, id: result.zoneId! } : z))
                     setActiveZoneId(result.zoneId!)
+                }
+                if (pendingZoneId) {
+                    const target = pendingZoneId
+                    setPendingZoneId(null)
+                    setActiveZoneId(target)
                 }
             } else {
                 toast.error('Error al guardar', { description: result.error })
@@ -723,7 +757,7 @@ function FloorBuilderCanvasInner({
                             ) : (
                                 <>
                                     <button
-                                        onClick={() => setActiveZoneId(zone.id)}
+                                        onClick={() => handleRequestZoneSwitch(zone.id)}
                                         className={cn(
                                             'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all',
                                             zone.id === activeZoneId
@@ -866,13 +900,16 @@ function FloorBuilderCanvasInner({
                 {isBuilder && (
                     <Button
                         size="sm"
-                        className="h-7 gap-1.5 text-xs shrink-0"
+                        className={cn(
+                            "h-7 gap-1.5 text-xs shrink-0 transition-all font-bold",
+                            isDirty ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20" : "bg-primary hover:bg-primary/90 text-white"
+                        )}
                         onClick={handleSave}
                         disabled={isSaving}
                         title="Guardar (Ctrl+S)"
                     >
                         <Save className="h-3.5 w-3.5" />
-                        {isSaving ? 'Guardando...' : 'Guardar'}
+                        {isSaving ? 'Guardando...' : isDirty ? 'Guardar *' : 'Guardar'}
                     </Button>
                 )}
             </div>
@@ -1140,6 +1177,55 @@ function FloorBuilderCanvasInner({
                     )}
                 </SheetContent>
             </Sheet>
+            {/* Unsaved Changes Confirmation Modal */}
+            <Dialog open={unsavedModalOpen} onOpenChange={setUnsavedModalOpen}>
+                <DialogContent className="max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-lg">
+                            <AlertCircle className="w-5 h-5 shrink-0" /> Cambios sin guardar
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-600 dark:text-zinc-400 text-sm mt-2 leading-relaxed">
+                            Has realizado modificaciones en la zona actual. ¿Deseas guardarlas antes de cambiar de zona?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-2 mt-6">
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setUnsavedModalOpen(false)
+                                setPendingZoneId(null)
+                            }}
+                            className="text-xs font-semibold text-zinc-500"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/30 text-xs font-semibold"
+                            onClick={() => {
+                                setIsDirty(false)
+                                setUnsavedModalOpen(false)
+                                if (pendingZoneId) {
+                                    const target = pendingZoneId
+                                    setPendingZoneId(null)
+                                    setActiveZoneId(target)
+                                }
+                            }}
+                        >
+                            Descartar y Cambiar
+                        </Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20"
+                            onClick={async () => {
+                                setUnsavedModalOpen(false)
+                                await handleSave()
+                            }}
+                        >
+                            Guardar y Cambiar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
