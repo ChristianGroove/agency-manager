@@ -154,12 +154,26 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
             <div className="flex flex-col flex-1 py-0.5 justify-between min-w-0">
                 <div className="space-y-1">
                     <div className="flex justify-between items-start">
-                        <h3 className={cn("font-bold text-[15px] sm:text-[16px] leading-tight line-clamp-1", isGourmet ? "text-amber-50 font-serif" : "text-gray-900 dark:text-gray-100")}>
+                        <h3 className={cn(
+                            "font-bold text-[15px] sm:text-[16px] leading-tight line-clamp-1",
+                            config?.card_style?.variant === 'flat' 
+                                ? "text-white dark:text-zinc-950" 
+                                : isGourmet 
+                                    ? "text-amber-50 font-serif" 
+                                    : "text-gray-900 dark:text-gray-100"
+                        )}>
                             {item.name}
                         </h3>
                     </div>
                     {item.description && (
-                        <p className={cn("text-[11px] line-clamp-2 leading-tight", isGourmet ? "text-amber-200/70 font-serif italic" : "text-gray-500 dark:text-zinc-400")}>
+                        <p className={cn(
+                            "text-[11px] line-clamp-2 leading-tight",
+                            config?.card_style?.variant === 'flat' 
+                                ? "text-zinc-300 dark:text-zinc-600" 
+                                : isGourmet 
+                                    ? "text-amber-200/70 font-serif italic" 
+                                    : "text-gray-500 dark:text-zinc-400"
+                        )}>
                             {item.description}
                         </p>
                     )}

@@ -51,7 +51,9 @@ export function usePortalTheme(rawConfig?: Partial<PortalThemeConfig> | null) {
         else classes.push('rounded-xl')
 
         // Variant & Theme
-        if (isCyberGlass) {
+        if (config.card_style.variant === 'flat') {
+            classes.push('bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border border-zinc-800 dark:border-zinc-200 shadow-xl')
+        } else if (isCyberGlass) {
             classes.push('bg-white/65 dark:bg-zinc-900/75 text-gray-900 dark:text-white backdrop-blur-2xl border border-white/60 dark:border-white/15 shadow-xl shadow-black/5')
         } else if (isGlass) {
             if (config.card_style.variant === 'glass') {
