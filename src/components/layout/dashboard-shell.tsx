@@ -39,7 +39,7 @@ function DashboardContent({ children, sidebarSlot, currentOrgId }: { children: R
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0 relative z-10",
+                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0 relative z-auto",
                     isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]"
                 )}
             >

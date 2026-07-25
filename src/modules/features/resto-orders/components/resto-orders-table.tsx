@@ -5,13 +5,14 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { 
     UtensilsCrossed, Truck, ShoppingBag, MapPin, Receipt, X, 
-    Clock, Users, CreditCard, CheckCircle2, Banknote, Loader2,
-    ChevronDown, ChevronUp, CircleDollarSign, FileText
+    Clock, CreditCard, CheckCircle2, Banknote, Loader2,
+    ChevronDown, ChevronUp, CircleDollarSign, FileText,
+    Wallet, Smartphone, Calculator, Phone, Hash
 } from "lucide-react"
-import { GroupedOrder, markSessionPaid, forceRequestBill } from "../actions"
+import { GroupedOrder, processOrderPayment, forceRequestBill } from "../actions"
 import { toast } from "sonner"
 
-// ─── Mode Config ─────────────────────────────────────────────────────
+// ─── Mode Config (Unified Branding Colors) ───────────────────────────
 const MODE_CONFIG: Record<string, { label: string; icon: React.ElementType; colors: string }> = {
     dine_in: {
         label: 'En Mesa',
@@ -21,7 +22,7 @@ const MODE_CONFIG: Record<string, { label: string; icon: React.ElementType; colo
     delivery: {
         label: 'Domicilio',
         icon: Truck,
-        colors: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800'
+        colors: 'bg-brand-pink/10 text-brand-pink border-brand-pink/20 dark:bg-brand-pink/20 dark:text-brand-pink dark:border-brand-pink/40'
     },
     pickup: {
         label: 'Recoger',
@@ -39,7 +40,7 @@ const KITCHEN_CONFIG: Record<string, { label: string; colors: string }> = {
     cancelled: { label: 'Cancelado', colors: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
 }
 
-// ─── Payment Badge Component ─────────────────────────────────────────
+// ─── Payment Badge Component (Unified Brand Accent Button) ───────────
 function PaymentBadge({ 
     row, 
     onCobrar 
@@ -48,36 +49,32 @@ function PaymentBadge({
     onCobrar: (row: GroupedOrder) => void 
 }) {
     if (row.paymentStatus === 'paid') {
+        const methodLabel = row.paymentMethod ? ` (${row.paymentMethod})` : ''
         return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 capitalize">
                 <CheckCircle2 className="w-3 h-3" />
-                Pagado
+                Pagado{methodLabel}
             </span>
         )
     }
 
-    if (row.paymentStatus === 'payment_pending') {
+    // Unified Cobrar Button for ALL modes (dine_in, delivery, pickup)
+    if (
+        row.paymentStatus === 'payment_pending' || 
+        row.restoMode === 'delivery' || 
+        row.restoMode === 'pickup' ||
+        (row.restoMode === 'dine_in' && row.type === 'session')
+    ) {
         return (
             <button
                 onClick={(e) => { e.stopPropagation(); onCobrar(row) }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full 
-                    bg-brand/10 text-brand border border-brand/20 
-                    hover:bg-brand/20 hover:shadow-md hover:scale-105
-                    transition-all duration-200 animate-pulse cursor-pointer"
+                    bg-brand-pink hover:opacity-90 text-white shadow-md shadow-brand-pink/20
+                    hover:scale-105 transition-all duration-200 cursor-pointer"
             >
                 <CircleDollarSign className="w-3.5 h-3.5" />
                 Cobrar
             </button>
-        )
-    }
-
-    // unpaid
-    if (row.restoMode === 'dine_in' && row.type === 'session' && row.sessionStatus === 'active') {
-        return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                <Clock className="w-3 h-3" />
-                Cuenta Abierta
-            </span>
         )
     }
 
@@ -91,7 +88,6 @@ function PaymentBadge({
 // ─── Main Table Component ────────────────────────────────────────────
 export function RestoOrdersTable({
     groupedOrders,
-    // Legacy props for backward compatibility
     orders,
     selectedOrder,
     setSelectedOrder
@@ -103,34 +99,12 @@ export function RestoOrdersTable({
 }) {
     const [billingSheet, setBillingSheet] = useState<GroupedOrder | null>(null)
     const [detailSheet, setDetailSheet] = useState<GroupedOrder | null>(null)
-    const [isProcessing, setIsProcessing] = useState(false)
     const [forcingBill, setForcingBill] = useState<string | null>(null)
 
-    // Use grouped orders if available, otherwise empty
     const rows = groupedOrders || []
 
     const handleCobrar = (row: GroupedOrder) => {
         setBillingSheet(row)
-    }
-
-    const handleConfirmPayment = async () => {
-        if (!billingSheet?.sessionId) return
-        setIsProcessing(true)
-        try {
-            const result = await markSessionPaid(billingSheet.sessionId)
-            if (result.success) {
-                toast.success(`Mesa ${billingSheet.tableIdentifier || ''} pagada y liberada`)
-                setBillingSheet(null)
-                // Page will revalidate
-                window.location.reload()
-            } else {
-                toast.error("Error: " + result.error)
-            }
-        } catch (e: any) {
-            toast.error("Error inesperado: " + e.message)
-        } finally {
-            setIsProcessing(false)
-        }
     }
 
     const handleForceRequestBill = async (row: GroupedOrder) => {
@@ -214,9 +188,16 @@ export function RestoOrdersTable({
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <span className="font-medium text-gray-900 dark:text-white">
-                                                            {row.clientName}
-                                                        </span>
+                                                        <>
+                                                            <span className="font-medium text-gray-900 dark:text-white">
+                                                                {row.clientName}
+                                                            </span>
+                                                            {row.clientPhone && (
+                                                                <span className="text-xs text-gray-500 dark:text-zinc-500">
+                                                                    {row.clientPhone}
+                                                                </span>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>
@@ -249,12 +230,11 @@ export function RestoOrdersTable({
                                             {/* Acciones */}
                                             <td className="px-5 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    {/* Admin force bill button for active dine-in sessions */}
                                                     {row.type === 'session' && row.sessionStatus === 'active' && row.paymentStatus === 'unpaid' && (
                                                         <button
                                                             onClick={() => handleForceRequestBill(row)}
                                                             disabled={forcingBill === row.sessionId}
-                                                            className="text-xs text-zinc-500 hover:text-brand dark:hover:text-brand-light font-medium transition-colors disabled:opacity-50"
+                                                            className="text-xs text-zinc-500 hover:text-brand-pink font-medium transition-colors disabled:opacity-50"
                                                             title="Solicitar cuenta (admin)"
                                                         >
                                                             {forcingBill === row.sessionId ? (
@@ -266,7 +246,7 @@ export function RestoOrdersTable({
                                                     )}
                                                     <button
                                                         onClick={() => handleViewDetail(row)}
-                                                        className="text-brand hover:underline font-semibold text-sm"
+                                                        className="text-brand-pink hover:underline font-semibold text-sm"
                                                     >
                                                         Ver Detalle
                                                     </button>
@@ -281,99 +261,21 @@ export function RestoOrdersTable({
                 </div>
             </div>
 
-            {/* ─── Billing Sheet (Premium Floating) ─────────────────────── */}
+            {/* ─── Universal Payment Sheet (Motor Unificado de Cobro) ─── */}
             {billingSheet && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setBillingSheet(null)}>
-                    <div
-                        className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="relative bg-gradient-to-br from-brand/10 via-brand/5 to-transparent dark:from-brand/20 dark:via-brand/10 p-6 border-b border-gray-100 dark:border-zinc-800">
-                            <button
-                                onClick={() => setBillingSheet(null)}
-                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/80 dark:bg-zinc-800/80 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shadow-sm"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center">
-                                    <CreditCard className="w-6 h-6 text-brand" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                                        Cobrar Mesa {billingSheet.tableIdentifier}
-                                    </h2>
-                                    <p className="text-sm text-gray-500 dark:text-zinc-400">
-                                        {billingSheet.roundCount} {billingSheet.roundCount === 1 ? 'ronda' : 'rondas'} · Sesión {billingSheet.sessionStatus === 'payment_pending' ? 'cuenta solicitada' : 'activa'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-                            {/* Total Summary */}
-                            <div className="bg-gradient-to-br from-brand/5 to-brand/10 dark:from-brand/10 dark:to-brand/20 rounded-2xl p-5 border border-brand/10 dark:border-brand/20">
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase font-semibold tracking-wider">Total a cobrar</p>
-                                        <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">
-                                            ${billingSheet.total?.toLocaleString('es-CO')}
-                                        </p>
-                                    </div>
-                                    {billingSheet.tipAmount > 0 && (
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase font-semibold">Propina</p>
-                                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                                +${billingSheet.tipAmount.toLocaleString('es-CO')}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Rounds Detail */}
-                            <div>
-                                <h3 className="font-bold text-sm mb-3 text-gray-900 dark:text-white flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-gray-400" />
-                                    Detalle por Rondas
-                                </h3>
-                                <div className="space-y-3">
-                                    {billingSheet.orders.map((order: any, idx: number) => (
-                                        <RoundCard key={order.id} order={order} roundNumber={idx + 1} />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-5 bg-gray-50 dark:bg-zinc-800/50 border-t border-gray-100 dark:border-zinc-800 flex gap-3">
-                            <button
-                                onClick={() => setBillingSheet(null)}
-                                className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold text-gray-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleConfirmPayment}
-                                disabled={isProcessing}
-                                className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white bg-brand hover:bg-brand-dark disabled:opacity-60 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20"
-                            >
-                                {isProcessing ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</>
-                                ) : (
-                                    <><CheckCircle2 className="w-4 h-4" /> Confirmar Pago y Liberar Mesa</>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <UniversalPaymentSheet
+                    order={billingSheet}
+                    onClose={() => setBillingSheet(null)}
+                    onSuccess={() => {
+                        setBillingSheet(null)
+                        window.location.reload()
+                    }}
+                />
             )}
 
             {/* ─── Detail Sheet (Order/Session Detail View) ─────────────── */}
             {detailSheet && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setDetailSheet(null)}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setDetailSheet(null)}>
                     <div
                         className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
@@ -381,7 +283,7 @@ export function RestoOrdersTable({
                         {/* Header */}
                         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
                             <h2 className="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white">
-                                <ShoppingBag className="w-5 h-5 text-brand" />
+                                <ShoppingBag className="w-5 h-5 text-brand-pink" />
                                 {detailSheet.type === 'session'
                                     ? `Cuenta Mesa ${detailSheet.tableIdentifier || ''}`
                                     : 'Detalle del Pedido'
@@ -397,7 +299,7 @@ export function RestoOrdersTable({
 
                         <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
                             {/* Summary bar */}
-                            <div className="flex justify-between items-center bg-brand/5 dark:bg-brand/10 p-4 rounded-xl border border-brand/10 dark:border-brand/20">
+                            <div className="flex justify-between items-center bg-brand-pink/5 dark:bg-brand-pink/10 p-4 rounded-xl border border-brand-pink/20">
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Total</p>
                                     <p className="text-2xl font-black text-gray-900 dark:text-white">${detailSheet.total?.toLocaleString('es-CO')}</p>
@@ -480,29 +382,18 @@ export function RestoOrdersTable({
                         </div>
 
                         <div className="p-4 bg-gray-50 dark:bg-zinc-800/50 border-t border-gray-100 dark:border-zinc-800 flex gap-3 justify-end">
-                            {/* If session is active and unpaid, allow admin to force bill */}
-                            {detailSheet.type === 'session' && detailSheet.sessionStatus === 'active' && detailSheet.paymentStatus === 'unpaid' && (
-                                <button
-                                    onClick={() => { setDetailSheet(null); handleForceRequestBill(detailSheet) }}
-                                    className="px-4 py-2.5 rounded-xl text-sm font-semibold text-brand bg-brand/10 border border-brand/20 hover:bg-brand/20 transition-colors flex items-center gap-2"
-                                >
-                                    <Banknote className="w-4 h-4" />
-                                    Solicitar Cuenta
-                                </button>
-                            )}
-                            {/* If payment pending, allow direct cobrar */}
-                            {detailSheet.paymentStatus === 'payment_pending' && detailSheet.sessionId && (
+                            {detailSheet.paymentStatus !== 'paid' && (
                                 <button
                                     onClick={() => { setDetailSheet(null); handleCobrar(detailSheet) }}
-                                    className="px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand hover:bg-brand-dark transition-colors flex items-center gap-2 shadow-lg shadow-brand/20"
+                                    className="px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-pink hover:opacity-90 shadow-lg shadow-brand-pink/20 transition-all flex items-center gap-2"
                                 >
                                     <CreditCard className="w-4 h-4" />
-                                    Cobrar
+                                    Registrar Pago
                                 </button>
                             )}
                             <button
                                 onClick={() => setDetailSheet(null)}
-                                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-zinc-400 hover:text-gray-800 dark:hover:text-zinc-200 transition-colors"
+                                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
                             >
                                 Cerrar
                             </button>
@@ -511,6 +402,236 @@ export function RestoOrdersTable({
                 </div>
             )}
         </>
+    )
+}
+
+// ─── Universal Payment Sheet Component ───────────────────────────────
+function UniversalPaymentSheet({
+    order,
+    onClose,
+    onSuccess
+}: {
+    order: GroupedOrder
+    onClose: () => void
+    onSuccess: () => void
+}) {
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'nequi' | 'daviplata' | 'card' | 'transfer'>('cash')
+    const [cashAmount, setCashAmount] = useState<string>('')
+    const [referenceNumber, setReferenceNumber] = useState<string>('')
+    const [isProcessing, setIsProcessing] = useState(false)
+
+    const totalToPay = order.total || 0
+    const numericCashAmount = parseFloat(cashAmount) || 0
+    const changeGiven = Math.max(0, numericCashAmount - totalToPay)
+
+    const handleConfirm = async () => {
+        setIsProcessing(true)
+        try {
+            const result = await processOrderPayment({
+                targetId: order.id,
+                targetType: order.type,
+                paymentMethod,
+                referenceNumber: referenceNumber.trim() || undefined,
+                amountPaid: paymentMethod === 'cash' ? numericCashAmount : totalToPay,
+                changeGiven: paymentMethod === 'cash' ? changeGiven : 0
+            })
+
+            if (result.success) {
+                toast.success(`Pago de $${totalToPay.toLocaleString('es-CO')} registrado exitosamente`)
+                onSuccess()
+            } else {
+                toast.error("Error al registrar pago: " + result.error)
+            }
+        } catch (e: any) {
+            toast.error("Error inesperado: " + e.message)
+        } finally {
+            setIsProcessing(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+            <div
+                className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header Contextual */}
+                <div className="relative bg-gradient-to-br from-brand-pink/10 via-brand-pink/5 to-transparent dark:from-brand-pink/20 dark:via-brand-pink/10 p-6 border-b border-gray-100 dark:border-zinc-800">
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/80 dark:bg-zinc-800/80 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors shadow-sm"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-brand-pink/10 dark:bg-brand-pink/20 flex items-center justify-center text-brand-pink">
+                            <CreditCard className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {order.restoMode === 'dine_in' && `Cobrar Mesa ${order.tableIdentifier || ''}`}
+                                {order.restoMode === 'delivery' && `Cobrar Domicilio · ${order.clientName}`}
+                                {order.restoMode === 'pickup' && `Cobrar Recoger · ${order.clientName}`}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-zinc-400">
+                                {order.restoMode === 'dine_in' ? `${order.roundCount} rondas` : order.deliveryAddress || 'Retiro en local'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Body */}
+                <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+                    {/* Financial Summary Card */}
+                    <div className="bg-brand-pink/5 dark:bg-brand-pink/10 rounded-2xl p-5 border border-brand-pink/20">
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase font-semibold tracking-wider">Total a cobrar</p>
+                                <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">
+                                    ${totalToPay.toLocaleString('es-CO')}
+                                </p>
+                            </div>
+                            {order.tipAmount > 0 && (
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase font-semibold">Propina</p>
+                                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                                        +${order.tipAmount.toLocaleString('es-CO')}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Method Selector Tabs */}
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Método de Recaudo</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button
+                                onClick={() => setPaymentMethod('cash')}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                    paymentMethod === 'cash' 
+                                        ? 'bg-brand-pink text-white border-brand-pink shadow-md shadow-brand-pink/20' 
+                                        : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50'
+                                }`}
+                            >
+                                <Wallet className="w-5 h-5" />
+                                💵 Efectivo
+                            </button>
+                            <button
+                                onClick={() => setPaymentMethod('nequi')}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                    paymentMethod === 'nequi' 
+                                        ? 'bg-brand-pink text-white border-brand-pink shadow-md shadow-brand-pink/20' 
+                                        : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50'
+                                }`}
+                            >
+                                <Smartphone className="w-5 h-5" />
+                                📱 Transferencia
+                            </button>
+                            <button
+                                onClick={() => setPaymentMethod('card')}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all ${
+                                    paymentMethod === 'card' 
+                                        ? 'bg-brand-pink text-white border-brand-pink shadow-md shadow-brand-pink/20' 
+                                        : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50'
+                                }`}
+                            >
+                                <CreditCard className="w-5 h-5" />
+                                💳 Tarjeta
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Method Specific Controls */}
+                    {paymentMethod === 'cash' && (
+                        <div className="space-y-3 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                            <label className="block text-xs font-bold text-gray-700 dark:text-zinc-300">
+                                Monto Recibido del Cliente ($)
+                            </label>
+                            <div className="flex gap-2">
+                                {[totalToPay, 20000, 50000, 100000].filter(val => val >= totalToPay).map((preset) => (
+                                    <button
+                                        key={preset}
+                                        onClick={() => setCashAmount(preset.toString())}
+                                        className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:border-brand-pink transition-colors"
+                                    >
+                                        ${preset.toLocaleString('es-CO')}
+                                    </button>
+                                ))}
+                            </div>
+                            <input
+                                type="number"
+                                value={cashAmount}
+                                onChange={(e) => setCashAmount(e.target.value)}
+                                placeholder="Escribe el monto recibido..."
+                                className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                            />
+                            {numericCashAmount > 0 && (
+                                <div className="flex justify-between items-center pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                                    <span className="text-xs font-bold text-gray-500">Cambio a Entregar:</span>
+                                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                        ${changeGiven.toLocaleString('es-CO')}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {(paymentMethod === 'nequi' || paymentMethod === 'transfer' || paymentMethod === 'daviplata') && (
+                        <div className="space-y-2 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                            <label className="block text-xs font-bold text-gray-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <Hash className="w-4 h-4 text-brand-pink" />
+                                N° de Comprobante / Referencia Bancaria
+                            </label>
+                            <input
+                                type="text"
+                                value={referenceNumber}
+                                onChange={(e) => setReferenceNumber(e.target.value)}
+                                placeholder="Ej: 948271038"
+                                className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                            />
+                        </div>
+                    )}
+
+                    {paymentMethod === 'card' && (
+                        <div className="space-y-2 bg-zinc-50 dark:bg-zinc-800/40 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+                            <label className="block text-xs font-bold text-gray-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <CreditCard className="w-4 h-4 text-brand-pink" />
+                                N° de Voucher / Comprobante de Datáfono (opcional)
+                            </label>
+                            <input
+                                type="text"
+                                value={referenceNumber}
+                                onChange={(e) => setReferenceNumber(e.target.value)}
+                                placeholder="Ej: 102938"
+                                className="w-full px-4 py-2.5 text-sm font-semibold rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-pink"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Controls */}
+                <div className="p-5 bg-gray-50 dark:bg-zinc-800/50 border-t border-gray-100 dark:border-zinc-800 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleConfirm}
+                        disabled={isProcessing}
+                        className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white bg-brand-pink hover:opacity-90 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-pink/30"
+                    >
+                        {isProcessing ? (
+                            <><Loader2 className="w-4 h-4 animate-spin text-white" /> Procesando...</>
+                        ) : (
+                            <><CheckCircle2 className="w-4 h-4 text-white" /> Confirmar Pago (${totalToPay.toLocaleString('es-CO')})</>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -526,7 +647,7 @@ function RoundCard({ order, roundNumber }: { order: any; roundNumber: number }) 
                 className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-brand/10 text-brand text-xs font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-brand-pink/10 text-brand-pink text-xs font-bold flex items-center justify-center">
                         {roundNumber}
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-white">

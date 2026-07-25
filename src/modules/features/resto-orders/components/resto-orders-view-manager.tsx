@@ -66,8 +66,6 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
                             }
                             setOrders(prev => [fullOrder, ...prev])
                             toast.success("¡Nueva orden recibida!")
-                            // Refresh grouped orders by reloading — realtime grouping is complex
-                            // A simple reload after a short delay ensures data consistency
                             setTimeout(() => window.location.reload(), 1500)
                         }
                     } else if (payload.eventType === 'UPDATE') {
@@ -81,7 +79,6 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'resto_table_sessions', filter: `organization_id=eq.${orgId}` },
                 (payload) => {
-                    // When a session status changes (e.g., to payment_pending), refresh grouped view
                     if (payload.new.status === 'payment_pending' || payload.new.status === 'closed') {
                         setTimeout(() => window.location.reload(), 800)
                     }
@@ -117,7 +114,6 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
             return
         }
 
-        // Find active order for this table
         const activeOrder = orders.find(o => 
             o.resto_mode === 'dine_in' && 
             (o.table_id === table.id) && 
@@ -139,70 +135,70 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
     }
 
     return (
-        <div className="flex flex-col space-y-6 flex-1">
+        <div className="flex flex-col space-y-6 flex-1 h-full min-h-0">
             {/* Section Header */}
             <SectionHeader
                 title="Gestor de Pedidos"
                 subtitle="Historial de comandas y estado de restaurante."
                 icon={ClipboardList}
                 action={
-                    <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800/50 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-x-auto">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
-                                viewMode === 'list' 
-                                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
-                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                            )}
-                        >
-                            <LayoutList className="w-4 h-4" />
-                            Lista
-                        </button>
-                        <button
-                            onClick={() => setViewMode('map')}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
-                                viewMode === 'map' 
-                                    ? "bg-white dark:bg-zinc-800 text-brand dark:text-brand-light shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
-                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                            )}
-                        >
-                            <Map className="w-4 h-4" />
-                            Mapa de Mesas
-                        </button>
-                        <button
-                            onClick={() => setViewMode('kds')}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
-                                viewMode === 'kds' 
-                                    ? "bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
-                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                            )}
-                        >
-                            <ChefHat className="w-4 h-4" />
-                            KDS
-                        </button>
+                    <div className="flex items-center gap-3">
+                        {/* Fullscreen CTA placed to the LEFT of the main multitab */}
+                        {viewMode === 'kds' && (
+                            <button
+                                onClick={requestFullScreen}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 shadow-sm transition-all whitespace-nowrap"
+                                title="Pantalla Completa KDS"
+                            >
+                                <Maximize2 className="w-3.5 h-3.5 text-orange-500" />
+                                Pantalla Completa
+                            </button>
+                        )}
+                        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800/50 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-x-auto">
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
+                                    viewMode === 'list' 
+                                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
+                                        : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                )}
+                            >
+                                <LayoutList className="w-4 h-4" />
+                                Lista
+                            </button>
+                            <button
+                                onClick={() => setViewMode('map')}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
+                                    viewMode === 'map' 
+                                        ? "bg-white dark:bg-zinc-800 text-brand-pink dark:text-brand-pink shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
+                                        : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                )}
+                            >
+                                <Map className="w-4 h-4" />
+                                Mapa de Mesas
+                            </button>
+                            <button
+                                onClick={() => setViewMode('kds')}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap",
+                                    viewMode === 'kds' 
+                                        ? "bg-white dark:bg-zinc-800 text-orange-600 dark:text-orange-400 shadow-sm border border-zinc-200/50 dark:border-zinc-700" 
+                                        : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                )}
+                            >
+                                <ChefHat className="w-4 h-4" />
+                                KDS
+                            </button>
+                        </div>
                     </div>
                 }
             />
 
-            {/* KDS Fullscreen action row */}
-            {viewMode === 'kds' && (
-                <div className="flex justify-end -mt-2">
-                    <button 
-                        onClick={requestFullScreen}
-                        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                    >
-                        <Maximize2 className="w-4 h-4" />
-                        Pantalla Completa
-                    </button>
-                </div>
-            )}
-
             <div className={cn(
                 "flex-1 relative flex flex-col border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900/50 overflow-hidden shadow-sm",
-                viewMode === 'kds' ? "min-h-[800px] border-none bg-transparent dark:bg-transparent shadow-none" : "min-h-[600px]"
+                viewMode === 'kds' ? "min-h-[calc(100vh-13rem)] border-none bg-transparent dark:bg-transparent shadow-none" : "min-h-[600px]"
             )}>
                 {viewMode === 'list' && (
                     <div className="p-4 flex-1 overflow-auto">
@@ -227,7 +223,7 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
                 )}
 
                 {viewMode === 'kds' && (
-                    <div className="absolute inset-0 flex flex-col">
+                    <div className="absolute inset-0 flex flex-col p-1">
                         <KdsBoard orders={orders} onStatusChange={handleStatusChange} />
                     </div>
                 )}

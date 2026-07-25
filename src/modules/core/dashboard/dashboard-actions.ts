@@ -132,12 +132,54 @@ export async function getDashboardPayload() {
     let extraData: any = null
 
     if (orgType === 'resto') {
-        const [settingsRes, bannerRes] = await Promise.all([
+        const today = new Date().toISOString().split('T')[0]
+        const [settingsRes, bannerRes, ordersRes, tablesRes] = await Promise.all([
             supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
-            bannerPromise
+            bannerPromise,
+            supabase.from('resto_orders').select('id, total, resto_mode, kitchen_status, payment_status, created_at').eq('organization_id', orgId).gte('created_at', `${today}T00:00:00`),
+            supabase.from('resto_tables').select('id, status, table_identifier').eq('organization_id', orgId)
         ])
+
+        const todayOrders = ordersRes.data || []
+        const allTables = tablesRes.data || []
+
+        const todayPaidSales = todayOrders
+            .filter((o: any) => o.payment_status === 'paid')
+            .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0)
+
+        const activeOrdersCount = todayOrders
+            .filter((o: any) => ['pending', 'preparing', 'ready'].includes(o.kitchen_status)).length
+
+        const deliveryCount = todayOrders
+            .filter((o: any) => o.resto_mode === 'delivery').length
+
+        const dineInCount = todayOrders
+            .filter((o: any) => o.resto_mode === 'dine_in').length
+
+        const pickupCount = todayOrders
+            .filter((o: any) => o.resto_mode === 'pickup').length
+
+        const occupiedTablesCount = allTables.filter((t: any) => t.status === 'occupied' || t.status === 'billing').length
+        const billingTablesCount = allTables.filter((t: any) => t.status === 'billing').length
+        const availableTablesCount = allTables.filter((t: any) => t.status === 'available').length
+
         dashboardData = { settings: settingsRes.data, bannerConfig: bannerRes.data || null }
-        extraData = { orgDetails }
+        extraData = { 
+            orgDetails,
+            tables: allTables,
+            restoMetrics: {
+                todayPaidSales,
+                activeOrdersCount,
+                deliveryCount,
+                dineInCount,
+                pickupCount,
+                totalTables: allTables.length,
+                occupiedTablesCount,
+                billingTablesCount,
+                availableTablesCount,
+                todayOrdersCount: todayOrders.length
+            }
+        }
     } else if (orgType === 'retail') {
         const today = new Date().toISOString().split('T')[0]
         const [settingsRes, locationsRes, logsRes, bannerRes] = await Promise.all([

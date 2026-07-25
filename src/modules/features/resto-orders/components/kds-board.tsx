@@ -17,8 +17,8 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
     const ready = activeOrders.filter(o => o.kitchen_status === 'ready')
 
     const Column = ({ title, status, items, actionLabel, nextStatus, icon: Icon, colorClass }: any) => (
-        <div className="flex flex-col bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 rounded-[2rem] p-5 h-full min-h-[70vh] shadow-sm">
-            <div className="flex items-center justify-between mb-4 px-2">
+        <div className="flex flex-col bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 rounded-[2rem] p-5 h-full min-h-0 overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between mb-4 px-2 shrink-0">
                 <div className="flex items-center gap-2">
                     <Icon className={`w-5 h-5 ${colorClass}`} />
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider">{title}</h2>
@@ -28,7 +28,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                 </span>
             </div>
 
-            <div className="flex flex-col gap-5 overflow-y-auto -mx-2 px-2 -mt-2 pt-2 pb-20 scrollbar-modern">
+            <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 -mx-2 px-2 pt-1 pb-6 scrollbar-thin">
                 {items.map((order: any) => {
                     // Determine button gradient based on nextStatus
                     const btnGradient = status === 'pending' ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-red-500/20' 
@@ -38,7 +38,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                     const stripColor = status === 'pending' ? 'bg-red-500' : status === 'preparing' ? 'bg-orange-500' : 'bg-green-500';
 
                     return (
-                        <div key={order.id} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                        <div key={order.id} className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden group shrink-0">
                             {/* Subtle Glow Background */}
                             <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent dark:from-white/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                             
@@ -51,7 +51,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
                                             <span>{format(new Date(order.created_at), "h:mm a")}</span>
                                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
-                                            <span className="text-brand-pink">{order.resto_mode.replace('_', ' ')}</span>
+                                            <span className="text-brand-pink">{order.resto_mode?.replace('_', ' ')}</span>
                                         </div>
                                         <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight leading-none mt-1">
                                             {order.resto_tables?.table_identifier || order.metadata?.table_identifier || (order.table_id ? `Mesa ${order.table_id}` : (order.leads?.name || 'Invitado'))}
@@ -69,7 +69,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 mb-5 pt-4 border-t border-gray-100 dark:border-white/10">
+                                <div className="space-y-3 mb-4 pt-3 border-t border-gray-100 dark:border-white/10">
                                     {order.items_snapshot?.map((item: any, idx: number) => (
                                         <div key={idx} className="flex flex-col">
                                             <div className="flex items-start gap-3">
@@ -99,7 +99,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                                 </div>
                                 
                                 {order.customer_notes && (
-                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-500 text-xs p-3 rounded-xl mb-5 font-bold border border-yellow-200 dark:border-yellow-900/50 flex items-start gap-2 shadow-sm">
+                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-500 text-xs p-3 rounded-xl mb-4 font-bold border border-yellow-200 dark:border-yellow-900/50 flex items-start gap-2 shadow-sm">
                                         <span className="text-lg">📌</span>
                                         <span className="pt-0.5">{order.customer_notes}</span>
                                     </div>
@@ -129,7 +129,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
     )
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-h-0 flex-1">
             <Column 
                 title="En Espera" 
                 status="pending" 
