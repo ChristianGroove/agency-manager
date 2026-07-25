@@ -7,7 +7,7 @@ import {
     UtensilsCrossed, Truck, ShoppingBag, MapPin, Receipt, X, 
     Clock, CreditCard, CheckCircle2, Banknote, Loader2,
     ChevronDown, ChevronUp, CircleDollarSign, FileText,
-    Wallet, Smartphone, Calculator, Phone, Hash
+    Wallet, Smartphone, Calculator, Phone, Hash, BellRing
 } from "lucide-react"
 import { GroupedOrder, processOrderPayment, forceRequestBill } from "../actions"
 import { toast } from "sonner"
@@ -58,9 +58,24 @@ function PaymentBadge({
         )
     }
 
+    const isBillRequested = row.paymentStatus === 'payment_pending' || row.sessionStatus === 'payment_pending'
+
+    if (isBillRequested) {
+        return (
+            <button
+                onClick={(e) => { e.stopPropagation(); onCobrar(row) }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-full 
+                    bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/40
+                    animate-pulse hover:scale-105 transition-all duration-200 cursor-pointer"
+            >
+                <BellRing className="w-3.5 h-3.5 animate-bounce" />
+                Pidió Cuenta
+            </button>
+        )
+    }
+
     // Unified Cobrar Button for ALL modes (dine_in, delivery, pickup)
     if (
-        row.paymentStatus === 'payment_pending' || 
         row.restoMode === 'delivery' || 
         row.restoMode === 'pickup' ||
         (row.restoMode === 'dine_in' && row.type === 'session')
@@ -101,7 +116,31 @@ export function RestoOrdersTable({
     const [detailSheet, setDetailSheet] = useState<GroupedOrder | null>(null)
     const [forcingBill, setForcingBill] = useState<string | null>(null)
 
-    const rows = groupedOrders || []
+    // Construct flat list of row items
+    const rows: GroupedOrder[] = (groupedOrders && groupedOrders.length > 0)
+        ? groupedOrders
+        : (orders || []).map((o: any) => ({
+            id: o.id,
+            type: 'individual' as const,
+            clientName: o.leads?.name || 'Invitado',
+            clientPhone: o.leads?.phone || null,
+            tableIdentifier: o.resto_tables?.table_identifier || null,
+            restoMode: o.resto_mode || 'delivery',
+            roundCount: 1,
+            total: Number(o.total) || 0,
+            tipAmount: Number(o.tip_amount) || 0,
+            paymentStatus: o.payment_status || 'unpaid',
+            paymentMethod: o.payment_method || null,
+            paymentReference: o.payment_reference || null,
+            kitchenStatus: o.kitchen_status || 'pending',
+            createdAt: o.created_at,
+            lastOrderAt: o.created_at,
+            sessionId: o.session_id || null,
+            sessionStatus: null,
+            deliveryAddress: o.delivery_address || null,
+            customerNotes: o.customer_notes || null,
+            orders: [o]
+        }))
 
     const handleCobrar = (row: GroupedOrder) => {
         setBillingSheet(row)
@@ -110,19 +149,13 @@ export function RestoOrdersTable({
     const handleForceRequestBill = async (row: GroupedOrder) => {
         if (!row.sessionId) return
         setForcingBill(row.sessionId)
-        try {
-            const result = await forceRequestBill(row.sessionId)
-            if (result.success) {
-                toast.success(`Cuenta solicitada para Mesa ${row.tableIdentifier || ''}`)
-                window.location.reload()
-            } else {
-                toast.error("Error: " + result.error)
-            }
-        } catch (e: any) {
-            toast.error("Error: " + e.message)
-        } finally {
-            setForcingBill(null)
+        const res = await forceRequestBill(row.sessionId)
+        if (res.success) {
+            toast.success(`Cuenta solicitada para Mesa ${row.tableIdentifier}`)
+        } else {
+            toast.error(res.error || "Error al solicitar cuenta")
         }
+        setForcingBill(null)
     }
 
     const handleViewDetail = (row: GroupedOrder) => {
@@ -137,8 +170,8 @@ export function RestoOrdersTable({
                         <thead className="bg-gray-50 dark:bg-black/20 text-gray-500 dark:text-zinc-400 font-semibold border-b border-gray-200 dark:border-white/10">
                             <tr>
                                 <th className="px-5 py-4">Fecha</th>
-                                <th className="px-5 py-4">Cliente</th>
                                 <th className="px-5 py-4">Modo</th>
+                                <th className="px-5 py-4">Cliente</th>
                                 <th className="px-5 py-4">Total</th>
                                 <th className="px-5 py-4">Pago</th>
                                 <th className="px-5 py-4">Estado Cocina</th>
@@ -157,14 +190,23 @@ export function RestoOrdersTable({
                                     const mode = MODE_CONFIG[row.restoMode] || MODE_CONFIG.delivery
                                     const ModeIcon = mode.icon
                                     const kitchen = KITCHEN_CONFIG[row.kitchenStatus] || KITCHEN_CONFIG.pending
+                                    const isBillRequested = row.paymentStatus === 'payment_pending' || row.sessionStatus === 'payment_pending'
 
                                     return (
-                                        <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                                        <tr key={row.id} className={`hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group ${isBillRequested ? 'bg-amber-500/5' : ''}`}>
                                             {/* Fecha */}
                                             <td className="px-5 py-4 text-gray-600 dark:text-zinc-400">
                                                 <div className="text-sm">
                                                     {format(new Date(row.createdAt), "MMM d, h:mm a", { locale: es })}
                                                 </div>
+                                            </td>
+
+                                            {/* Modo */}
+                                            <td className="px-5 py-4">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border ${mode.colors}`}>
+                                                    <ModeIcon className="w-3.5 h-3.5" />
+                                                    {mode.label}
+                                                </span>
                                             </td>
 
                                             {/* Cliente */}
@@ -176,6 +218,11 @@ export function RestoOrdersTable({
                                                                 <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                                                                 Mesa {row.tableIdentifier}
                                                             </span>
+                                                            {row.waiterName && (
+                                                                <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 pl-5">
+                                                                    👤 Mesero: {row.waiterName}
+                                                                </span>
+                                                            )}
                                                             {row.roundCount > 1 && (
                                                                 <span className="text-xs text-gray-500 dark:text-zinc-500 pl-5">
                                                                     {row.roundCount} rondas
@@ -200,14 +247,6 @@ export function RestoOrdersTable({
                                                         </>
                                                     )}
                                                 </div>
-                                            </td>
-
-                                            {/* Modo */}
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border ${mode.colors}`}>
-                                                    <ModeIcon className="w-3.5 h-3.5" />
-                                                    {mode.label}
-                                                </span>
                                             </td>
 
                                             {/* Total */}

@@ -14,6 +14,7 @@ import { PaymentOptionsModal } from "@/modules/features/portal/components/modals
 import { InvoiceDetailModal } from "@/modules/features/portal/components/modals/invoice-detail-modal"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { AttendanceStaffPortal } from "@/modules/features/attendance/components/staff-portal-view"
+import { RestoStaffPortal } from "@/modules/features/resto-orders/components/staff-portal/RestoStaffPortal"
 import { isPortalInvoicePayable } from "@/modules/features/portal/utils/invoice-payability"
 
 // ... existing imports
@@ -22,7 +23,8 @@ export default function PortalPage() {
     const params = useParams()
 
     // Portal Context
-    const [portalType, setPortalType] = useState<'client' | 'staff' | 'attendance_staff' | 'guest'>('client')
+    const [portalType, setPortalType] = useState<'client' | 'staff' | 'attendance_staff' | 'resto_staff' | 'guest'>('client')
+    const [zoneAssignments, setZoneAssignments] = useState<any[]>([])
 
     // Client Data
     const [client, setClient] = useState<Client | null>(null)
@@ -80,6 +82,11 @@ export default function PortalPage() {
             } else if (data.type === 'attendance_staff') {
                 setPortalType('attendance_staff')
                 setStaff(data.staff)
+                setSettings(data.settings || {})
+            } else if (data.type === 'resto_staff') {
+                setPortalType('resto_staff')
+                setStaff(data.staff)
+                setZoneAssignments(data.zoneAssignments || [])
                 setSettings(data.settings || {})
             } else if (data.type === 'guest') {
                 setPortalType('guest')
@@ -238,6 +245,19 @@ export default function PortalPage() {
             <div className="min-h-screen" style={brandingStyles}>
                 <AttendanceStaffPortal
                     staff={staff}
+                    settings={settings}
+                    token={params.token as string}
+                />
+            </div>
+        )
+    }
+
+    if (portalType === 'resto_staff' && staff) {
+        return (
+            <div className="min-h-screen" style={brandingStyles}>
+                <RestoStaffPortal
+                    staff={staff}
+                    zoneAssignments={zoneAssignments}
                     settings={settings}
                     token={params.token as string}
                 />

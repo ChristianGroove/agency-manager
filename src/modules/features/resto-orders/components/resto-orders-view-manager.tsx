@@ -1,17 +1,54 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { RestoOrdersTable } from "./resto-orders-table"
 import { FloorBuilderCanvas } from "@/modules/features/resto/tables/components/floor-builder-canvas"
 import { KdsBoard } from "@/modules/features/resto-orders/components/kds-board"
+import { RestoStaffAdminView } from "@/modules/features/resto-orders/components/resto-staff-admin-view"
 import { RestoTable, RestoZone } from "@/modules/features/resto/tables/store/use-tables-store"
-import { LayoutList, Map, ChefHat, ClipboardList, Maximize2 } from "lucide-react"
+import { LayoutList, Map, ChefHat, ClipboardList, Maximize2, Volume2, BellRing, Users } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
 import { SectionHeader } from "@/components/layout/section-header"
 import { supabase } from "@/modules/core/database/supabase"
 import { updateRestoOrderStatus, GroupedOrder } from "../actions"
 import { closeSession } from "@/modules/features/portal/components/b2c-restaurant-template/actions/resto-session-actions"
+
+function playTone(freq: number, durationSec: number, type: OscillatorType = 'sine') {
+    try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const audioCtx = new AudioContextClass();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationSec);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + durationSec);
+    } catch (e) {
+        console.error("Audio error:", e);
+    }
+}
+
+export function playKitchenAlertSound() {
+    // High C to High G Chime (Nueva Orden)
+    playTone(523.25, 0.2);
+    setTimeout(() => playTone(783.99, 0.3), 150);
+}
+
+export function playBillAlertSound() {
+    // Urgent Double Cash Register Beep (Pedir Cuenta)
+    playTone(880, 0.25, 'triangle');
+    setTimeout(() => playTone(1320, 0.35, 'triangle'), 150);
+}
 
 interface RestoOrdersViewManagerProps {
     orders: any[]
@@ -23,6 +60,7 @@ interface RestoOrdersViewManagerProps {
 }
 
 export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: initialGrouped, zones, tables, orgId, orgSlug }: RestoOrdersViewManagerProps) {
+    const router = useRouter()
     const [viewMode, setViewMode] = useState<'list' | 'map' | 'kds'>('list')
     const [orders, setOrders] = useState<any[]>(initialOrders)
     const [groupedOrders, setGroupedOrders] = useState<GroupedOrder[]>(initialGrouped)
@@ -65,13 +103,16 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
                                 fullOrder.resto_tables = { table_identifier: matchedTable.table_identifier }
                             }
                             setOrders(prev => [fullOrder, ...prev])
-                            toast.success("¡Nueva orden recibida!")
-                            setTimeout(() => window.location.reload(), 1500)
+                            playKitchenAlertSound()
+                            toast.success("¡Nueva orden recibida en cocina!")
+                            router.refresh()
                         }
                     } else if (payload.eventType === 'UPDATE') {
                         setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o))
+                        router.refresh()
                     } else if (payload.eventType === 'DELETE') {
                         setOrders(prev => prev.filter(o => o.id !== payload.old.id))
+                        router.refresh()
                     }
                 }
             )
@@ -79,8 +120,17 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'resto_table_sessions', filter: `organization_id=eq.${orgId}` },
                 (payload) => {
-                    if (payload.new.status === 'payment_pending' || payload.new.status === 'closed') {
-                        setTimeout(() => window.location.reload(), 800)
+                    if (payload.new && payload.new.status === 'payment_pending') {
+                        playBillAlertSound()
+                        const matchedTable = tables.find(t => t.id === payload.new.table_id)
+                        const tableNum = matchedTable?.table_identifier || ''
+                        toast.warning(`🔔 ¡Mesa ${tableNum ? '#' + tableNum : ''} ha solicitado la cuenta!`, {
+                            duration: 10000,
+                            description: 'Selecciona "Cobrar Cuenta" para confirmar y liberar la mesa.'
+                        })
+                        router.refresh()
+                    } else if (payload.new && payload.new.status === 'closed') {
+                        router.refresh()
                     }
                 }
             )
@@ -89,41 +139,21 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [orgId, tables])
+    }, [orgId, tables, router])
 
     const handleStatusChange = async (orderId: string, newStatus: string) => {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, kitchen_status: newStatus } : o))
-        await updateRestoOrderStatus(orderId, newStatus)
+        try {
+            await updateRestoOrderStatus(orderId, newStatus)
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, kitchen_status: newStatus } : o))
+            toast.success(`Estado de orden actualizado a ${newStatus}`)
+        } catch (e) {
+            toast.error("Error al actualizar estado")
+        }
     }
 
-    const handleTableClick = async (table: RestoTable) => {
-        if (table.status === 'billing') {
-            if (window.confirm(`La mesa ${table.table_identifier} ha pedido la cuenta. ¿Confirmar pago y liberar mesa?`)) {
-                if (table.current_session_id) {
-                    const res = await closeSession(table.current_session_id, orgId)
-                    if (res.success) {
-                        toast.success(`Mesa ${table.table_identifier} liberada`)
-                        window.location.reload()
-                    } else {
-                        toast.error("Error al liberar mesa: " + res.error)
-                    }
-                } else {
-                    toast.error("No se encontró session_id en esta mesa.")
-                }
-            }
-            return
-        }
-
-        const activeOrder = orders.find(o => 
-            o.resto_mode === 'dine_in' && 
-            (o.table_id === table.id) && 
-            ['pending', 'preparing', 'ready'].includes(o.kitchen_status)
-        )
-
-        if (activeOrder) {
-            toast.info(`Mesa ${table.table_identifier}: pedido activo en cocina (${activeOrder.kitchen_status})`)
-        } else {
-            toast.info(`La mesa ${table.table_identifier} no tiene pedidos activos.`)
+    const handleTableClick = (table: RestoTable) => {
+        if (table.current_session_id) {
+            setViewMode('list')
         }
     }
 
@@ -139,10 +169,22 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
             {/* Section Header */}
             <SectionHeader
                 title="Gestor de Pedidos"
-                subtitle="Historial de comandas y estado de restaurante."
+                subtitle="Historial de comandas, mapa de restaurante y gestión de personal."
                 icon={ClipboardList}
                 action={
                     <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                playBillAlertSound()
+                                setTimeout(() => playKitchenAlertSound(), 400)
+                                toast.success("🔊 Alertas sonoras probadas e inmovilizadas en el navegador.")
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 shadow-sm transition-all whitespace-nowrap"
+                            title="Probar alertas sonoras (desbloquea audio en el navegador)"
+                        >
+                            <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            <span>Probar Sonido</span>
+                        </button>
                         {/* Fullscreen CTA placed to the LEFT of the main multitab */}
                         {viewMode === 'kds' && (
                             <button

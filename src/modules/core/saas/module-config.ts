@@ -208,6 +208,17 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         }
     },
     {
+        key: 'module_resto_staff',
+        label: 'Meseros',
+        href: '/resto-staff',
+        icon: Users,
+        category: 'operations',
+        parentModule: 'module_resto_orders',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
         key: 'pixy_flows',
         label: 'Pixy Flows',
         href: '/flows',
@@ -226,7 +237,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'config',
         parentModule: 'module_whitelabel',
         access: {
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner', 'admin'],
+            allowedOrgTypes: ['platform', 'reseller']
         }
     },
 
@@ -464,6 +476,7 @@ export function filterRoutesByModules(
 
         // 1. NUCLEAR BLOCKERS (Org Type restrictions)
         if (orgType && access?.excludedOrgTypes?.includes(orgType)) return false
+        if (orgType && access?.allowedOrgTypes && !access.allowedOrgTypes.includes(orgType)) return false
         if (key === 'reseller_tenants' && orgType === 'client') return false
 
         // 2. CAPABILITY CHECK (New)

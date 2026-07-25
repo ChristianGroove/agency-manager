@@ -15,12 +15,12 @@ export async function validateTableQR(orgId: string, qrToken: string): Promise<D
     const supabase = supabaseAdmin;
 
     try {
-        // 1. Fetch table info
+        // 1. Fetch table info (matches either qr_token or table_identifier)
         const { data: table, error: tableError } = await supabase
             .from('resto_tables')
             .select('*')
             .eq('organization_id', orgId)
-            .eq('qr_token', qrToken)
+            .or(`qr_token.eq.${qrToken},table_identifier.eq.${qrToken}`)
             .single();
 
         if (tableError || !table) {
@@ -30,13 +30,26 @@ export async function validateTableQR(orgId: string, qrToken: string): Promise<D
 
         // 2. Si la mesa está disponible, iniciar sesión
         if (table.status === 'available' || !table.current_session_id) {
+            // Resolve primary waiter for this table's zone
+            let waiterId: string | null = null
+            if (table.zone_id) {
+                const { data: primaryAssignment } = await supabase
+                    .from('resto_staff_zone_assignments')
+                    .select('staff_id')
+                    .eq('zone_id', table.zone_id)
+                    .eq('is_primary', true)
+                    .maybeSingle()
+                if (primaryAssignment) waiterId = primaryAssignment.staff_id
+            }
+
             // Crear nueva sesión
             const { data: session, error: sessionError } = await supabase
                 .from('resto_table_sessions')
                 .insert({
                     organization_id: orgId,
                     table_id: table.id,
-                    status: 'active'
+                    status: 'active',
+                    ...(waiterId ? { waiter_id: waiterId } : {})
                 })
                 .select('id')
                 .single();
@@ -85,12 +98,25 @@ export async function validateTableQR(orgId: string, qrToken: string): Promise<D
 
         if (table.status === 'reserved') {
             // Asumimos que si escanea, la reclama
+            // Resolve primary waiter for this table's zone
+            let reservedWaiterId: string | null = null
+            if (table.zone_id) {
+                const { data: primaryAssignment } = await supabase
+                    .from('resto_staff_zone_assignments')
+                    .select('staff_id')
+                    .eq('zone_id', table.zone_id)
+                    .eq('is_primary', true)
+                    .maybeSingle()
+                if (primaryAssignment) reservedWaiterId = primaryAssignment.staff_id
+            }
+
              const { data: session, error: sessionError } = await supabase
                 .from('resto_table_sessions')
                 .insert({
                     organization_id: orgId,
                     table_id: table.id,
-                    status: 'active'
+                    status: 'active',
+                    ...(reservedWaiterId ? { waiter_id: reservedWaiterId } : {})
                 })
                 .select('id')
                 .single();

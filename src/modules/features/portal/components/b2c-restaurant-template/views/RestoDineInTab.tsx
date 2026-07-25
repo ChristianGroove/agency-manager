@@ -103,24 +103,15 @@ export function RestoDineInTab({ orgId, primaryColor }: { orgId: string, primary
 
     return (
         <div className="flex flex-col w-full h-full p-4 pb-24 space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Mesa {tableIdentifier}</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        {status === 'active' && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Activa</span>}
-                        {status === 'payment_pending' && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">Cuenta Pedida</span>}
-                    </div>
-                </div>
-                <div className="text-right">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide">Total Acumulado</div>
-                    <div className="text-2xl font-black text-primary" style={{ color: primaryColor }}>
-                        ${(total_accumulated || 0).toLocaleString('es-CO')}
-                    </div>
-                </div>
-            </div>
-
             <div className="space-y-4">
-                <h2 className="font-bold text-gray-700 dark:text-gray-300">Rondas Pedidas</h2>
+                <div className="flex items-center justify-between">
+                    <h2 className="font-extrabold text-lg text-gray-900 dark:text-white">Rondas Pedidas</h2>
+                    {status === 'payment_pending' && (
+                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 text-xs font-bold rounded-full">
+                            Cuenta Pedida
+                        </span>
+                    )}
+                </div>
                 {rounds && rounds.length > 0 ? (
                     rounds.map((round: any, idx: number) => (
                         <div key={round.id} className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
@@ -155,10 +146,22 @@ export function RestoDineInTab({ orgId, primaryColor }: { orgId: string, primary
                 )}
             </div>
 
+            {/* Total Acumulado (Al final de las rondas) */}
+            {rounds && rounds.length > 0 && (
+                <div className="bg-gray-50 dark:bg-zinc-900/90 border border-gray-200/80 dark:border-zinc-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                        Total Acumulado
+                    </div>
+                    <div className="text-2xl font-black text-primary" style={{ color: primaryColor }}>
+                        ${(total_accumulated || 0).toLocaleString('es-CO')}
+                    </div>
+                </div>
+            )}
+
             {status === 'active' && !showBillForm && (
                 <Button 
                     onClick={() => setShowBillForm(true)}
-                    className="w-full h-14 rounded-2xl text-lg font-bold mt-4 shadow-lg shadow-primary/20"
+                    className="w-full h-14 rounded-2xl text-lg font-bold shadow-lg shadow-primary/20"
                     style={{ backgroundColor: primaryColor }}
                 >
                     <Receipt className="mr-2" /> Pedir la Cuenta

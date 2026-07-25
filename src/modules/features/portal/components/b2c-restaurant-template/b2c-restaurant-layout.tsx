@@ -98,6 +98,7 @@ export function B2CRestaurantLayout({
         return () => window.removeEventListener('resto-navigate', handler)
     }, [])
 
+
     // Escuchar cierres de sesión en tiempo real (si la mesa es liberada por el admin)
     useEffect(() => {
         if (orderMode !== 'dine-in' || !sessionId) return
@@ -190,6 +191,24 @@ export function B2CRestaurantLayout({
     const isCyberGlass = themeConfig?.theme_id === 'cyber_glass_3d'
     const isFloatingDock = isCyberGlass || themeConfig?.category_nav_style === 'floating_dock'
 
+    // Enforce theme mode (light vs dark) on document root ONLY for public portal routes (/portal/*, /p/*)
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const path = window.location.pathname
+        const isPublicPortal = path.startsWith('/portal') || path.startsWith('/p/')
+        if (!isPublicPortal) return // DO NOT touch document classes when rendering inside dashboard!
+
+        const root = document.documentElement
+        const colorMode = themeConfig?.color_mode || 'light'
+        const isGourmetTheme = themeConfig?.theme_id === 'gourmet_elegance'
+
+        if (isGourmetTheme || colorMode === 'dark') {
+            root.classList.add('dark')
+        } else {
+            root.classList.remove('dark')
+        }
+    }, [themeConfig?.color_mode, themeConfig?.theme_id])
+
     return (
         <PortalThemeProvider config={themeConfig}>
             {isCyberGlass && (
@@ -200,7 +219,7 @@ export function B2CRestaurantLayout({
                     isFixed={true}
                 />
             )}
-            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300 relative z-10", isCyberGlass ? "bg-transparent text-gray-900 dark:text-white" : isDarkOrGourmet ? "dark bg-zinc-950 text-amber-50" : "bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-white")}>
+            <div className={cn("flex flex-col min-h-screen font-sans transition-colors duration-300 relative z-10", isCyberGlass ? "bg-transparent text-gray-900 dark:text-white" : isDarkOrGourmet ? "dark bg-zinc-950 text-amber-50" : "bg-gray-50 text-gray-900")}>
                 <SystemAlertBanner />
 
                 {/* LANDING PAGE HEADER */}
@@ -215,27 +234,35 @@ export function B2CRestaurantLayout({
                 {/* DINE-IN BANNER */}
                 {orderMode === 'dine-in' && tableIdentifier && (
                     <div 
-                        className="w-full py-2.5 px-4 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border-b sticky top-0 z-30 transition-colors shadow-sm"
+                        className="w-full py-3 px-4 text-center font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 border-b sticky top-0 z-30 transition-colors shadow-sm"
                         style={{
-                            backgroundColor: `${effectivePrimaryColor}15`,
-                            borderColor: `${effectivePrimaryColor}30`,
-                            color: isDarkOrGourmet ? '#ffffff' : '#111827'
+                            backgroundColor: `${effectivePrimaryColor}18`,
+                            borderColor: `${effectivePrimaryColor}35`,
+                            color: isDarkOrGourmet ? '#ffffff' : '#0f172a'
                         }}
                     >
-                        <MapPin className="w-4 h-4 shrink-0" style={{ color: effectivePrimaryColor }} />
-                        <span className="flex-1 text-center font-extrabold">Estás ordenando en Mesa #{tableIdentifier}</span>
+                        <MapPin className="w-5 h-5 shrink-0" style={{ color: effectivePrimaryColor }} />
+                        <span className="flex-1 text-center font-black tracking-tight">Estás ordenando en Mesa #{tableIdentifier}</span>
                         <button 
-                            onClick={clearTableContext} 
-                            className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-gray-500 hover:text-gray-900 dark:hover:text-white" 
+                            onClick={() => {
+                                if (sessionId) {
+                                    toast.info("Mesa activa: Para desconectarte solicita la cuenta o la liberación al mesero.")
+                                } else {
+                                    clearTableContext()
+                                }
+                            }} 
+                            className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-gray-500 hover:text-gray-900 dark:hover:text-white" 
                             title="Desconectar de la mesa"
                         >
-                            <X className="w-4 h-4" />
+                            <X className="w-4.5 h-4.5" />
                         </button>
                     </div>
                 )}
 
-                {/* PROMO BANNER (TOP) */}
-                <PortalPromoBanner config={themeConfig} position="top" isGourmet={isGourmet} />
+                {/* PROMO BANNER (TOP - Only visible on Menu tab) */}
+                {activeTab === 'menu' && (
+                    <PortalPromoBanner config={themeConfig} position="top" isGourmet={isGourmet} />
+                )}
 
                 {/* CONTENIDO PRINCIPAL (El Catálogo o Carrito) */}
                 <main className="flex-1 w-full flex flex-col pb-24">
@@ -276,11 +303,15 @@ export function B2CRestaurantLayout({
                         )}
                     </Suspense>
 
-                    {/* PROMO BANNER (BOTTOM) */}
-                    <PortalPromoBanner config={themeConfig} position="bottom" isGourmet={isGourmet} />
+                    {/* PROMO BANNER (BOTTOM - Only visible on Menu tab) */}
+                    {activeTab === 'menu' && (
+                        <PortalPromoBanner config={themeConfig} position="bottom" isGourmet={isGourmet} />
+                    )}
 
-                    {/* SOCIAL FOOTER */}
-                    <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
+                    {/* SOCIAL FOOTER (Only visible on Menu tab) */}
+                    {activeTab === 'menu' && (
+                        <PortalSocialFooter config={themeConfig} orgName={themeConfig?.tenant_name || settings?.agency_name || orgData?.name} isGourmet={isGourmet} />
+                    )}
                 </main>
 
             {/* Subtle Glass Back To Top Arrow Button (30% Fill Opacity + Backdrop Blur) */}

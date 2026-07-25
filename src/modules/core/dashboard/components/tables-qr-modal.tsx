@@ -149,7 +149,8 @@ export function TablesQrModal({ tables: initialTables, portalUrl, orgName, onClo
                     ) : (
                         filteredTables.map((t) => {
                             const identifier = t.table_identifier || `Mesa ${t.id}`
-                            const tableUrl = `${portalUrl}?table=${encodeURIComponent(identifier)}`
+                            const qrParam = t.qr_token || t.table_identifier || t.id
+                            const tableUrl = `${portalUrl}?table=${encodeURIComponent(qrParam)}`
 
                             return (
                                 <div

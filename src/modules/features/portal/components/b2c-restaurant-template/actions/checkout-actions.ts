@@ -126,8 +126,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             .single()
 
         if (orderError) {
-            console.error("Error creando orden de restaurante:", orderError)
-            try { require('fs').writeFileSync('checkout-error-log.json', JSON.stringify(orderError, Object.getOwnPropertyNames(orderError), 2)) } catch(e){}
+            console.error("[Resto Checkout] Error creando orden de restaurante:", orderError)
             throw new Error("Error DB: " + JSON.stringify(orderError))
         }
 
@@ -184,7 +183,6 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
 
     } catch (error: any) {
         console.error("[Resto Checkout] Error:", error)
-        try { require('fs').writeFileSync('checkout-error-log.json', JSON.stringify(error, Object.getOwnPropertyNames(error), 2)) } catch(e){}
         return { success: false, error: error.message || "Error en checkout" }
     }
 }

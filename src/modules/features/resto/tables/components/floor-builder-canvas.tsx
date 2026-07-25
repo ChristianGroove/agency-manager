@@ -321,6 +321,22 @@ function FloorBuilderCanvasInner({
     const [liveSelectedTable, setLiveSelectedTable] = useState<RestoTable | null>(null)
     const [liveSheetOpen, setLiveSheetOpen] = useState(false)
     const [isChangingStatus, setIsChangingStatus] = useState(false)
+    const [assignedWaiters, setAssignedWaiters] = useState<any[]>([])
+
+    useEffect(() => {
+        async function loadAssignedWaiters() {
+            if (!activeZoneId || activeZoneId.startsWith('temp_')) {
+                setAssignedWaiters([])
+                return
+            }
+            const { data } = await supabase
+                .from('resto_staff_zone_assignments')
+                .select('*, organization_staff(first_name, last_name, role)')
+                .eq('zone_id', activeZoneId)
+            setAssignedWaiters(data || [])
+        }
+        loadAssignedWaiters()
+    }, [activeZoneId])
 
     // ── Unsaved changes tracking ──────────────────────────────────────────────
     const [isDirty, setIsDirty] = useState(false)
@@ -878,6 +894,12 @@ function FloorBuilderCanvasInner({
                                 <span className="font-bold text-zinc-700 dark:text-zinc-200">{occupiedCount}</span>
                                 <span className="text-zinc-400">ocupadas</span>
                             </span>
+                            {assignedWaiters.length > 0 && (
+                                <span className="flex items-center gap-1 text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 ml-1">
+                                    <Users className="w-3 h-3" />
+                                    {assignedWaiters.map(w => w.organization_staff?.first_name).filter(Boolean).join(', ')}
+                                </span>
+                            )}
                         </div>
                     ) : (
                         <span className="text-[11px] text-zinc-400">

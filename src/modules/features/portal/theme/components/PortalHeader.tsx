@@ -117,18 +117,6 @@ export function PortalHeader({ config, orgName, logoUrl, tableIdentifier, isGour
                             {tagline}
                         </p>
                     )}
-
-                    {tableIdentifier && (
-                        <div className={cn(
-                            "px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm border mt-1",
-                            isGourmet
-                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                : "bg-primary/10 text-primary border-primary/20"
-                        )}>
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Mesa #{tableIdentifier}</span>
-                        </div>
-                    )}
                 </div>
 
                 {/* DESKTOP LAYOUT (md: and up unless isCompact): Logo Left, Badge & Tagline Right-Justified */}

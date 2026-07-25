@@ -46,7 +46,7 @@ export async function createModifierGroup(data: Partial<RestoMenuModifierGroup>)
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/dashboard/resto/menu')
+    revalidatePath('/menu')
     return { success: true, data: newGroup }
 }
 
@@ -75,7 +75,7 @@ export async function updateModifierGroup(id: string, data: Partial<RestoMenuMod
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/dashboard/resto/menu')
+    revalidatePath('/menu')
     return { success: true, data: updatedGroup }
 }
 
@@ -95,7 +95,7 @@ export async function deleteModifierGroup(id: string): Promise<{ success: boolea
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/dashboard/resto/menu')
+    revalidatePath('/menu')
     return { success: true }
 }
 
@@ -133,7 +133,7 @@ export async function updateItemModifiers(itemId: string, modifierGroupIds: stri
         }
     }
 
-    revalidatePath('/dashboard/resto/menu')
+    revalidatePath('/menu')
     return { success: true }
 }
 

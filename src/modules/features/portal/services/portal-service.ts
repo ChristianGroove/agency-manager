@@ -343,6 +343,23 @@ export async function getPortalData(token: string) {
                     portal_primary_color: branding.colors.primary,
                     portal_secondary_color: branding.colors.secondary
                 }
+
+                // Check if staff has a resto role -> render resto staff portal
+                const RESTO_ROLES = ['waiter', 'mesero', 'host', 'hostess', 'bartender', 'barista', 'kitchen', 'cajero']
+                if (RESTO_ROLES.includes(retailStaff.role?.toLowerCase())) {
+                    const { data: zoneAssignments } = await supabaseAdmin
+                        .from('resto_staff_zone_assignments')
+                        .select('*, resto_zones(*)')
+                        .eq('staff_id', retailStaff.id)
+
+                    return {
+                        type: 'resto_staff' as const,
+                        staff: retailStaff,
+                        zoneAssignments: zoneAssignments || [],
+                        settings: effectiveSettings
+                    }
+                }
+
                 return { type: 'attendance_staff', staff: retailStaff, settings: effectiveSettings }
             }
         }

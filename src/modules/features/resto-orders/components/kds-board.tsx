@@ -8,6 +8,14 @@ import { es } from "date-fns/locale"
 import { Utensils, CheckCircle2, Clock, MapPin, Phone, User, Store } from "lucide-react"
 
 export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusChange: (orderId: string, newStatus: string) => Promise<void> }) {
+    const [now, setNow] = useState<Date>(new Date())
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(new Date())
+        }, 15000)
+        return () => clearInterval(interval)
+    }, [])
     
     // Filter active orders
     const activeOrders = orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.kitchen_status))
@@ -30,6 +38,17 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
 
             <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 -mx-2 px-2 pt-1 pb-6 scrollbar-thin">
                 {items.map((order: any) => {
+                    const createdAt = new Date(order.created_at)
+                    const minutesElapsed = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / 60000))
+                    
+                    // Urgency badge styling
+                    let urgencyBadge = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60"
+                    if (minutesElapsed >= 20) {
+                        urgencyBadge = "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-300 animate-pulse font-extrabold"
+                    } else if (minutesElapsed >= 10) {
+                        urgencyBadge = "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200/60 font-bold"
+                    }
+
                     // Determine button gradient based on nextStatus
                     const btnGradient = status === 'pending' ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-red-500/20' 
                                       : status === 'preparing' ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/20'
@@ -49,7 +68,7 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
-                                            <span>{format(new Date(order.created_at), "h:mm a")}</span>
+                                            <span>{format(createdAt, "h:mm a")}</span>
                                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
                                             <span className="text-brand-pink">{order.resto_mode?.replace('_', ' ')}</span>
                                         </div>
@@ -62,9 +81,16 @@ export function KdsBoard({ orders, onStatusChange }: { orders: any[], onStatusCh
                                             )}
                                         </h3>
                                     </div>
-                                    <div className="text-right bg-gray-100/80 dark:bg-black/20 px-3 py-1.5 rounded-xl border border-gray-200/50 dark:border-white/5 backdrop-blur-sm">
-                                        <span className="text-sm font-black text-gray-900 dark:text-white">
-                                            ${order.total?.toLocaleString('es-CO')}
+                                    <div className="flex flex-col items-end gap-1.5">
+                                        <div className="bg-gray-100/80 dark:bg-black/20 px-3 py-1 rounded-xl border border-gray-200/50 dark:border-white/5 backdrop-blur-sm">
+                                            <span className="text-sm font-black text-gray-900 dark:text-white">
+                                                ${order.total?.toLocaleString('es-CO')}
+                                            </span>
+                                        </div>
+                                        {/* Elapsed Time Urgency Badge */}
+                                        <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border ${urgencyBadge}`}>
+                                            <Clock className="w-3 h-3" />
+                                            {minutesElapsed === 0 ? "Hace un momento" : `Hace ${minutesElapsed} min`}
                                         </span>
                                     </div>
                                 </div>

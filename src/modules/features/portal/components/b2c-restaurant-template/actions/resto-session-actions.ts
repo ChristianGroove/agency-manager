@@ -185,13 +185,14 @@ export async function closeSession(sessionId: string, orgId: string) {
             current_session_id: null
         }).eq('id', session.table_id)
 
-        // 3. Marcar órdenes como pagadas
+        // 3. Marcar órdenes como pagadas y completadas en cocina
         await supabase.from('resto_orders').update({
-            payment_status: 'paid'
+            payment_status: 'paid',
+            kitchen_status: 'completed'
         }).eq('session_id', sessionId)
 
-        revalidatePath('/resto-orders')
-        revalidatePath('/resto-orders/kds')
+        revalidatePath('/crm/resto-orders')
+        revalidatePath('/menu')
 
         return { success: true }
     } catch (error: any) {

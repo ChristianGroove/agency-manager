@@ -17,6 +17,7 @@ export interface GroupedOrder {
     tableIdentifier: string | null  // e.g. "M-01" for dine-in
     restoMode: 'dine_in' | 'delivery' | 'pickup'
     roundCount: number              // 1 for individual, N for sessions
+    waiterName?: string | null      // Waiter assigned to table session
 
     // Financials
     total: number                   // accumulated session total or individual order total
@@ -70,6 +71,10 @@ export async function getRestoOrders() {
 
     const supabase = await createClient()
 
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayISO = today.toISOString()
+
     const { data, error } = await supabase
         .from('resto_orders')
         .select(`
@@ -80,6 +85,7 @@ export async function getRestoOrders() {
             )
         `)
         .eq('organization_id', orgId)
+        .or(`kitchen_status.in.(pending,preparing,ready),created_at.gte.${todayISO}`)
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -97,7 +103,11 @@ export async function getGroupedOrders(): Promise<GroupedOrder[]> {
 
     const supabase = await createClient()
 
-    // Fetch all orders with lead info
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayISO = today.toISOString()
+
+    // Fetch active/today orders with lead info
     const { data: orders, error: ordersError } = await supabase
         .from('resto_orders')
         .select(`
@@ -105,6 +115,7 @@ export async function getGroupedOrders(): Promise<GroupedOrder[]> {
             leads ( name, phone )
         `)
         .eq('organization_id', orgId)
+        .or(`kitchen_status.in.(pending,preparing,ready),created_at.gte.${todayISO}`)
         .order('created_at', { ascending: false })
 
     if (ordersError || !orders) {
@@ -116,8 +127,9 @@ export async function getGroupedOrders(): Promise<GroupedOrder[]> {
     const { data: sessions } = await supabase
         .from('resto_table_sessions')
         .select(`
-            id, table_id, status, total_accumulated, payment_status, payment_method, opened_at, closed_at, guest_count,
-            resto_tables!resto_table_sessions_table_id_fkey ( id, table_identifier )
+            id, table_id, status, total_accumulated, payment_status, payment_method, opened_at, closed_at, guest_count, waiter_id,
+            resto_tables!resto_table_sessions_table_id_fkey ( id, table_identifier ),
+            organization_staff!resto_table_sessions_waiter_id_fkey ( first_name, last_name )
         `)
         .eq('organization_id', orgId)
         .order('opened_at', { ascending: false })
@@ -175,6 +187,15 @@ export async function getGroupedOrders(): Promise<GroupedOrder[]> {
             tableIdentifier = tableMap.get(sortedOrders[0].table_id) || null
         }
 
+        // Resolve waiter name
+        let waiterName: string | null = null
+        if (session?.organization_staff) {
+            const staffObj = Array.isArray(session.organization_staff) ? session.organization_staff[0] : session.organization_staff
+            if (staffObj?.first_name) {
+                waiterName = `${staffObj.first_name} ${staffObj.last_name || ''}`.trim()
+            }
+        }
+
         const ordersTotal = sortedOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0)
         const totalTip = sortedOrders.reduce((sum: number, o: any) => sum + (Number(o.tip_amount) || 0), 0)
 
@@ -211,6 +232,7 @@ export async function getGroupedOrders(): Promise<GroupedOrder[]> {
             tableIdentifier,
             restoMode: 'dine_in',
             roundCount: sortedOrders.length,
+            waiterName,
             total: session?.total_accumulated ? Number(session.total_accumulated) : ordersTotal,
             tipAmount: totalTip,
             paymentStatus,
@@ -302,7 +324,8 @@ export async function processOrderPayment(payload: ProcessPaymentPayload) {
             // 4. Update all associated orders
             const updatePayload: any = {
                 payment_status: 'paid',
-                payment_method: paymentMethod
+                payment_method: paymentMethod,
+                kitchen_status: 'completed'
             }
             await supabase.from('resto_orders').update(updatePayload).eq('session_id', targetId)
 
@@ -335,7 +358,7 @@ export async function processOrderPayment(payload: ProcessPaymentPayload) {
             }).eq('id', targetId)
         }
 
-        revalidatePath('/resto-orders')
+        revalidatePath('/crm/resto-orders')
         return { success: true }
     } catch (error: any) {
         console.error("Error processing payment:", error)
