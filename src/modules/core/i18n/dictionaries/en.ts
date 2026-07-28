@@ -74,7 +74,7 @@ export const en = {
         module_attendance: "Attendance",
         module_resto_menu: "Digital Menu",
         module_resto_orders: "Order Manager",
-        module_resto_staff: "Waiters",
+        module_resto_staff: "Operations Staff",
         module_whitelabel: "White Label",
         // Categories
         cat_core: "Main",

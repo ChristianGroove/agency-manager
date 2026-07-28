@@ -74,7 +74,7 @@ export const es = {
         module_attendance: "Asistencia",
         module_resto_menu: "Menú Digital",
         module_resto_orders: "Gestor de Pedidos",
-        module_resto_staff: "Meseros",
+        module_resto_staff: "Personal Operativo",
         module_whitelabel: "Marca Blanca",
         // Categories
         cat_core: "Principal",

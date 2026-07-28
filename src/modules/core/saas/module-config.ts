@@ -209,7 +209,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     },
     {
         key: 'module_resto_staff',
-        label: 'Meseros',
+        label: 'Personal Operativo',
         href: '/resto-staff',
         icon: Users,
         category: 'operations',

@@ -255,7 +255,6 @@ export async function getStaffWithZoneAssignments(orgId: string) {
             .from('organization_staff')
             .select('*')
             .eq('organization_id', orgId)
-            .is('is_active', true)
             .order('created_at', { ascending: false })
 
         if (staffError) {
@@ -290,6 +289,35 @@ export async function getStaffWithZoneAssignments(orgId: string) {
     }
 }
 
+async function getUniquePinForOrg(orgId: string, requestedPin?: string): Promise<string> {
+    const { data: existingStaff } = await supabaseAdmin
+        .from('organization_staff')
+        .select('id, pin_code')
+        .eq('organization_id', orgId)
+        .is('is_active', true)
+
+    const usedPins = new Set((existingStaff || []).map(s => s.pin_code).filter(Boolean))
+
+    if (requestedPin && requestedPin.trim()) {
+        const trimmed = requestedPin.trim()
+        if (usedPins.has(trimmed)) {
+            throw new Error(`El PIN ${trimmed} ya está en uso por otro colaborador. Elige un PIN único.`)
+        }
+        return trimmed
+    }
+
+    // Auto-generate random unique 4-digit PIN
+    let attempts = 0
+    while (attempts < 100) {
+        const candidate = Math.floor(1000 + Math.random() * 9000).toString()
+        if (!usedPins.has(candidate)) {
+            return candidate
+        }
+        attempts++
+    }
+    return Math.floor(1000 + Math.random() * 9000).toString()
+}
+
 export async function createStaffMember(
     orgId: string,
     payload: {
@@ -301,7 +329,9 @@ export async function createStaffMember(
     }
 ) {
     try {
+        const pinCode = await getUniquePinForOrg(orgId, payload.pinCode)
         const accessToken = crypto.randomUUID()
+
         const { data: staff, error } = await supabaseAdmin
             .from('organization_staff')
             .insert({
@@ -310,7 +340,7 @@ export async function createStaffMember(
                 last_name: payload.lastName?.trim() || null,
                 role: payload.role || 'waiter',
                 phone: payload.phone?.trim() || null,
-                pin_code: payload.pinCode?.trim() || '1234',
+                pin_code: pinCode,
                 access_token: accessToken,
                 is_active: true
             })
@@ -323,6 +353,79 @@ export async function createStaffMember(
     } catch (error: any) {
         console.error('[createStaffMember] Error:', error)
         return { success: false, error: error.message || 'Error al crear colaborador' }
+    }
+}
+
+export async function updateStaffPin(
+    orgId: string,
+    staffId: string,
+    newPin: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const trimmed = newPin.trim()
+        if (!trimmed || trimmed.length < 4) {
+            return { success: false, error: 'El PIN debe tener al menos 4 dígitos' }
+        }
+
+        // Check uniqueness
+        const { data: existing } = await supabaseAdmin
+            .from('organization_staff')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('pin_code', trimmed)
+            .neq('id', staffId)
+            .is('is_active', true)
+            .maybeSingle()
+
+        if (existing) {
+            return { success: false, error: `El PIN ${trimmed} ya está asignado a otro colaborador.` }
+        }
+
+        const { error } = await supabaseAdmin
+            .from('organization_staff')
+            .update({ pin_code: trimmed })
+            .eq('id', staffId)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+
+        return { success: true }
+    } catch (error: any) {
+        console.error('[updateStaffPin] Error:', error)
+        return { success: false, error: error.message || 'Error al actualizar PIN' }
+    }
+}
+
+export async function switchStaffByPin(
+    orgId: string,
+    pin: string
+): Promise<{ success: boolean; staff?: any; token?: string; error?: string }> {
+    try {
+        const trimmedPin = pin.trim()
+        if (!trimmedPin) {
+            return { success: false, error: 'Ingresa tu PIN de 4 dígitos' }
+        }
+
+        const { data: staff, error } = await supabaseAdmin
+            .from('organization_staff')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('pin_code', trimmedPin)
+            .is('is_active', true)
+            .maybeSingle()
+
+        if (error || !staff) {
+            return { success: false, error: 'PIN incorrecto o usuario no encontrado' }
+        }
+
+        return {
+            success: true,
+            staff,
+            token: staff.access_token
+        }
+    } catch (error: any) {
+        console.error('[switchStaffByPin] Error:', error)
+        return { success: false, error: error.message || 'Error al validar PIN' }
     }
 }
 
@@ -409,7 +512,66 @@ export async function toggleStaffZoneAssignment(
         return { success: true }
     } catch (error: any) {
         console.error('[toggleStaffZoneAssignment] Error:', error)
-        return { success: false, error: error.message || 'Error al modificar asignación' }
+        return { success: false, error: error.message || 'Error al actualizar asignación de zona' }
     }
 }
 
+export async function toggleStaffActiveStatus(
+    orgId: string,
+    staffId: string,
+    currentIsActive: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const newStatus = !currentIsActive
+        const { error } = await supabaseAdmin
+            .from('organization_staff')
+            .update({ is_active: newStatus })
+            .eq('id', staffId)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+        return { success: true }
+    } catch (error: any) {
+        console.error('[toggleStaffActiveStatus] Error:', error)
+        return { success: false, error: error.message || 'Error al cambiar estado' }
+    }
+}
+
+export async function regenerateStaffToken(
+    orgId: string,
+    staffId: string
+): Promise<{ success: boolean; newToken?: string; error?: string }> {
+    try {
+        const newToken = crypto.randomUUID()
+        const { error } = await supabaseAdmin
+            .from('organization_staff')
+            .update({ access_token: newToken })
+            .eq('id', staffId)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+        return { success: true, newToken }
+    } catch (error: any) {
+        console.error('[regenerateStaffToken] Error:', error)
+        return { success: false, error: error.message || 'Error al regenerar token' }
+    }
+}
+
+export async function deleteStaffMember(
+    orgId: string,
+    staffId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { error } = await supabaseAdmin
+            .from('organization_staff')
+            .delete()
+            .eq('id', staffId)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+        return { success: true }
+    } catch (error: any) {
+        console.error('[deleteStaffMember] Error:', error)
+        return { success: false, error: error.message || 'Error al eliminar colaborador' }
+    }
+}

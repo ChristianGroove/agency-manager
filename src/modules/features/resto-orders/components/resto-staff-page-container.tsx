@@ -16,8 +16,8 @@ export function RestoStaffPageContainer({ orgId, zones }: RestoStaffPageContaine
     return (
         <div className="flex-1 space-y-6">
             <SectionHeader
-                title="Meseros y Personal"
-                subtitle="Gestión de equipo operativo, asignación de zonas y enlaces de acceso a sus portales operacionales."
+                title="Personal Operativo"
+                subtitle="Gestión del equipo de sala, barra y caja, asignación de zonas y credenciales de acceso a portales POS."
                 icon={Users}
                 action={
                     <button
@@ -25,7 +25,7 @@ export function RestoStaffPageContainer({ orgId, zones }: RestoStaffPageContaine
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black text-white bg-brand-pink hover:opacity-90 transition-all shadow-md shadow-brand-pink/20 cursor-pointer whitespace-nowrap"
                     >
                         <Plus className="w-4 h-4" />
-                        Nuevo Mesero / Personal
+                        Nuevo Colaborador
                     </button>
                 }
             />
