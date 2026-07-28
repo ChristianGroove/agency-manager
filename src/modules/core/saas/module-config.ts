@@ -193,6 +193,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_resto_orders',
         access: {
+            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_orders.view'
         }
     },
@@ -204,6 +205,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_resto_menu',
         access: {
+            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_menu.view'
         }
     },
@@ -213,8 +215,9 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/resto-staff',
         icon: Users,
         category: 'operations',
-        parentModule: 'module_resto_staff',
+        parentModule: 'module_resto_orders',
         access: {
+            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_staff.view'
         }
     },
