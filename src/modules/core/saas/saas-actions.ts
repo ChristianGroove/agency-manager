@@ -140,7 +140,9 @@ export async function seedSystemModules() {
         { key: 'core_locations', name: 'Sedes y Ubicaciones', description: 'Gestión física de sucursales y puntos de venta.', category: 'core', is_active: true },
         { key: 'module_attendance', name: 'Control de Asistencia', description: 'Registro de entrada y salida de personal.', category: 'addon', is_active: true },
         { key: 'module_resto_tables', name: 'Gestión de Mesas', description: 'Layout interactivo para restaurantes y servicios.', category: 'addon', is_active: true },
-        { key: 'module_resto_menu', name: 'Menú Digital', description: 'Gestión de menú, platos, categorías e insignias dietarias.', category: 'addon', is_active: true }
+        { key: 'module_resto_menu', name: 'Menú Digital', description: 'Gestión de menú, platos, categorías e insignias dietarias.', category: 'addon', is_active: true },
+        { key: 'module_resto_orders', name: 'Gestor de Pedidos', description: 'Gestión de pedidos, KDS y sesiones de mesa.', category: 'addon', is_active: true },
+        { key: 'module_resto_staff', name: 'Personal Operativo', description: 'Gestión de colaboradores, asignación de zonas y portales de acceso.', category: 'addon', is_active: true }
     ]
 
     const { error } = await supabaseAdmin

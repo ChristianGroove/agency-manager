@@ -38,6 +38,12 @@ export const PERMISSIONS = {
         ATTENDANCE_MANAGE: 'operations.attendance.manage',
         RESTO_VIEW: 'operations.resto.view',
         RESTO_MANAGE: 'operations.resto.manage',
+        RESTO_ORDERS_VIEW: 'operations.resto_orders.view',
+        RESTO_ORDERS_MANAGE: 'operations.resto_orders.manage',
+        RESTO_MENU_VIEW: 'operations.resto_menu.view',
+        RESTO_MENU_MANAGE: 'operations.resto_menu.manage',
+        RESTO_STAFF_VIEW: 'operations.resto_staff.view',
+        RESTO_STAFF_MANAGE: 'operations.resto_staff.manage',
         BRIEFINGS_MANAGE: 'operations.briefings.manage',
         CATALOG_MANAGE: 'operations.catalog.manage',
         BRANDING_MANAGE: 'operations.branding.manage',
@@ -165,6 +171,36 @@ export const PERMISSION_GROUPS = [
         permissions: [
             { id: PERMISSIONS.OPERATIONS.RESTO_VIEW, label: 'Ver Mesas', description: 'Visualizar el canvas de mesas' },
             { id: PERMISSIONS.OPERATIONS.RESTO_MANAGE, label: 'Gestionar Mesas', description: 'Modificar layout y estados' },
+        ]
+    },
+    {
+        id: 'resto_orders',
+        moduleKey: 'module_resto_orders',
+        label: 'Gestión de Pedidos',
+        description: 'Visualización, KDS y gestión operativa de pedidos de restaurante.',
+        permissions: [
+            { id: PERMISSIONS.OPERATIONS.RESTO_ORDERS_VIEW, label: 'Ver Pedidos', description: 'Visualizar pedidos activos y su estado' },
+            { id: PERMISSIONS.OPERATIONS.RESTO_ORDERS_MANAGE, label: 'Gestionar Pedidos', description: 'Cambiar estados, editar y cancelar pedidos' },
+        ]
+    },
+    {
+        id: 'resto_menu',
+        moduleKey: 'module_resto_menu',
+        label: 'Menú Digital',
+        description: 'Edición de carta, precios, categorías y modificadores.',
+        permissions: [
+            { id: PERMISSIONS.OPERATIONS.RESTO_MENU_VIEW, label: 'Ver Menú', description: 'Visualizar la carta y categorías' },
+            { id: PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, label: 'Gestionar Menú', description: 'Crear, editar y eliminar platos y categorías' },
+        ]
+    },
+    {
+        id: 'resto_staff',
+        moduleKey: 'module_resto_staff',
+        label: 'Personal Operativo',
+        description: 'Gestión de meseros, cajeros, zonas y accesos a portales.',
+        permissions: [
+            { id: PERMISSIONS.OPERATIONS.RESTO_STAFF_VIEW, label: 'Ver Personal', description: 'Visualizar lista de colaboradores y sus zonas' },
+            { id: PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, label: 'Gestionar Personal', description: 'Crear, editar, bloquear y eliminar colaboradores' },
         ]
     }
 ];

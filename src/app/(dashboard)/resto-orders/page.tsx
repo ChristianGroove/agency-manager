@@ -1,5 +1,7 @@
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { redirect } from "next/navigation"
 import { getRestoOrders, getGroupedOrders } from "@/modules/features/resto-orders/actions"
 import { getZonesAndTables } from "@/modules/features/resto/tables/actions"
@@ -20,6 +22,12 @@ export default async function RestoOrdersPage() {
 
     if (!activeModules.includes('module_resto_orders') && !isOwnerBypass) {
         redirect('/dashboard?error=unauthorized_module')
+    }
+
+    // IAM V2: Granular permission check (supports custom roles)
+    const canView = await hasPermission(PERMISSIONS.OPERATIONS.RESTO_ORDERS_VIEW)
+    if (!canView) {
+        redirect('/dashboard?error=unauthorized_role')
     }
 
     const [orders, groupedOrders, { zones, tables }] = await Promise.all([

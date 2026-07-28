@@ -5,6 +5,8 @@ import { getPortalThemeConfig } from "@/modules/features/menu/actions/theme-acti
 import { MenuSheetTrigger } from "@/modules/features/menu/components/menu-sheet-trigger"
 import { MenuWorkspace } from "@/modules/features/menu/components/menu-workspace"
 import { getSidebarContext } from "@/modules/core/saas/saas-actions"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { SectionHeader } from "@/components/layout/section-header"
 import { Plus, UtensilsCrossed } from "lucide-react"
 import { redirect } from "next/navigation"
@@ -21,6 +23,12 @@ export default async function MenuPage({ searchParams }: { searchParams: { [key:
 
     if (!activeModules.includes('module_resto_menu') && !isOwnerBypass) {
         redirect('/dashboard?error=unauthorized_module')
+    }
+
+    // IAM V2: Granular permission check (supports custom roles)
+    const canView = await hasPermission(PERMISSIONS.OPERATIONS.RESTO_MENU_VIEW)
+    if (!canView) {
+        redirect('/dashboard?error=unauthorized_role')
     }
 
     const [items, categories, modifierGroups, themeConfig] = await Promise.all([
