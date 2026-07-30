@@ -186,9 +186,6 @@ export function RestoStaffPortal({ staff, zoneAssignments: initialZoneAssignment
                         >
                             <RefreshCw className="w-4 h-4" />
                         </button>
-                        <div className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-xl text-xs font-black">
-                            ${(dashboard?.todayTips || 0).toLocaleString('es-CO')}
-                        </div>
                     </div>
                 </div>
             </header>
