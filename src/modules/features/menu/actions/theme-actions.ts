@@ -34,11 +34,21 @@ export async function getPortalThemeConfig(): Promise<PortalThemeConfig> {
 
         const tenantName = branding?.name || data?.agency_name || 'Mi Negocio'
 
+        // Resolver isotipo del tenant priorizando el ADN de marca real (isotipo_url) sobre los defaults del sistema
+        const rawIsotype = 
+            data?.isotipo_url || 
+            (branding?.logos?.favicon && !branding.logos.favicon.includes('pixy') ? branding.logos.favicon : null) ||
+            data?.portal_logo_url || 
+            (branding?.logos?.portal && !branding.logos.portal.includes('branding/iso') ? branding.logos.portal : null) ||
+            data?.main_logo_url || 
+            branding?.logos?.main || 
+            null
+
         // Logos de Marca del tenant
         const tenantLogos = {
-            main_dark: branding?.logos?.main || data?.main_logo_url || null,
-            main_light: branding?.logos?.main_light || data?.main_logo_light_url || null,
-            portal_iso: branding?.logos?.portal || data?.portal_logo_url || data?.isotipo_url || null,
+            main_dark: data?.main_logo_url || branding?.logos?.main || null,
+            main_light: data?.main_logo_light_url || branding?.logos?.main_light || data?.main_logo_url || branding?.logos?.main || null,
+            portal_iso: rawIsotype,
         }
 
         // Leer de portal_theme_config si existe, o de portal_modules.theme_config

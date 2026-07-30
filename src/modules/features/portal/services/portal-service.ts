@@ -113,6 +113,13 @@ export async function getPortalData(token: string) {
 
             const rawThemeConfig = (rawSettings as any)?.portal_theme_config || (rawSettings as any)?.portal_modules?.theme_config
 
+            const rawIsotype = 
+                (rawSettings as any)?.isotipo_url || 
+                (branding.logos.favicon && !branding.logos.favicon.includes('pixy') ? branding.logos.favicon : null) ||
+                (rawSettings as any)?.portal_logo_url ||
+                (branding.logos.portal && !branding.logos.portal.includes('branding/iso') ? branding.logos.portal : null) ||
+                branding.logos.main
+
             const themeConfig = {
                 ...(rawThemeConfig || {}),
                 tenant_name: branding.name,
@@ -120,9 +127,9 @@ export async function getPortalData(token: string) {
                     ? rawThemeConfig.primary_color
                     : branding.colors.primary,
                 tenant_logos: {
-                    main_dark: branding.logos.main,
-                    main_light: branding.logos.main_light,
-                    portal_iso: branding.logos.portal || branding.logos.favicon
+                    main_dark: (rawSettings as any)?.main_logo_url || branding.logos.main,
+                    main_light: (rawSettings as any)?.main_logo_light_url || branding.logos.main_light || branding.logos.main,
+                    portal_iso: rawIsotype
                 }
             }
 

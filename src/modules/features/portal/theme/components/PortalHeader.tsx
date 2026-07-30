@@ -32,7 +32,7 @@ export function PortalHeader({ config, orgName, logoUrl, tableIdentifier, isGour
     } else if (logoVariant === 'main_light') {
         activeLogoUrl = tenantLogos?.main_light || tenantLogos?.main_dark || logoUrl || ''
     } else if (logoVariant === 'portal_iso') {
-        activeLogoUrl = tenantLogos?.portal_iso || logoUrl || ''
+        activeLogoUrl = tenantLogos?.portal_iso || tenantLogos?.main_dark || tenantLogos?.main_light || logoUrl || ''
     } else {
         // 'auto': Segun el tema (Gourmet / Oscuro usa main_dark, Claro usa main_light)
         if (isGourmet || config?.color_mode === 'dark') {
