@@ -238,13 +238,23 @@ export async function validateCartItems(localItems: CartItem[], orgId: string) {
             continue
         }
 
-        // Calculate actual price
-        const basePrice = dbItem.metadata?.promotional_price || dbItem.base_price || 0
+        // Security check: validate quantity > 0
+        if (!local.quantity || typeof local.quantity !== 'number' || local.quantity <= 0 || !Number.isInteger(local.quantity)) {
+            messages.push(`La cantidad para "${dbItem.name}" debe ser un número entero positivo.`)
+            isValid = false
+            continue
+        }
+
+        // Calculate actual price (handle $0 promotional price correctly)
+        const promoPrice = dbItem.metadata?.promotional_price
+        const basePrice = (typeof promoPrice === 'number' && promoPrice >= 0) ? promoPrice : (dbItem.base_price || 0)
         let modifiersPrice = 0
         const validatedModifiers = []
 
-        // Map db modifiers for easy lookup
-        const dbModifiers = (dbItem.resto_item_modifier_groups || []).map((link: any) => link.resto_modifier_groups)
+        // Map db modifiers for easy lookup safely
+        const dbModifiers = (dbItem.resto_item_modifier_groups || [])
+            .map((link: any) => link?.resto_modifier_groups)
+            .filter(Boolean)
 
         for (const localMod of (local.modifiers || [])) {
             const dbGroup = dbModifiers.find((g: any) => g.name === localMod.groupName)

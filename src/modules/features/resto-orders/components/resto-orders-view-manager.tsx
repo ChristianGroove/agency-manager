@@ -83,9 +83,9 @@ export function RestoOrdersViewManager({ orders: initialOrders, groupedOrders: i
         setGroupedOrders(initialGrouped)
     }, [initialGrouped])
 
-    // Realtime subscription
+    // Realtime subscription isolated per tenant
     useEffect(() => {
-        const channel = supabase.channel('resto-orders-global')
+        const channel = supabase.channel(`resto-orders-${orgId}`)
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'resto_orders', filter: `organization_id=eq.${orgId}` },

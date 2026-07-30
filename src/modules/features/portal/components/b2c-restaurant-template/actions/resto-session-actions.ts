@@ -74,16 +74,20 @@ export async function sendDineInRound(payload: DineInRoundPayload) {
 
         if (orderError) throw new Error("Error DB: " + JSON.stringify(orderError))
 
-        // 5. Actualizar total acumulado de la sesión
-        const newTotal = (session.total_accumulated || 0) + subtotal
+        // 5. Actualizar total acumulado de la sesión de forma atómica sumando todas las órdenes registradas
+        const { data: sessionOrders } = await supabase
+            .from('resto_orders')
+            .select('total')
+            .eq('session_id', session.id)
+
+        const exactTotal = (sessionOrders || []).reduce((sum, ord) => sum + (Number(ord.total) || 0), 0)
+
         await supabase
             .from('resto_table_sessions')
-            .update({ total_accumulated: newTotal })
+            .update({ total_accumulated: exactTotal })
             .eq('id', session.id)
 
-        // Nota: Para notificar a KDS se usa supabase realtime que ya está configurado
-        
-        return { success: true, orderId: newOrder.id, roundNumber, newTotal }
+        return { success: true, orderId: newOrder.id, roundNumber, newTotal: exactTotal }
 
     } catch (error: any) {
         console.error("[Resto DineIn] Error:", error)

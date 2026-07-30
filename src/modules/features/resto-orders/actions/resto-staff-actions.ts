@@ -294,7 +294,6 @@ async function getUniquePinForOrg(orgId: string, requestedPin?: string): Promise
         .from('organization_staff')
         .select('id, pin_code')
         .eq('organization_id', orgId)
-        .is('is_active', true)
 
     const usedPins = new Set((existingStaff || []).map(s => s.pin_code).filter(Boolean))
 
@@ -367,14 +366,13 @@ export async function updateStaffPin(
             return { success: false, error: 'El PIN debe tener al menos 4 dígitos' }
         }
 
-        // Check uniqueness
+        // Check uniqueness across all staff in org
         const { data: existing } = await supabaseAdmin
             .from('organization_staff')
             .select('id')
             .eq('organization_id', orgId)
             .eq('pin_code', trimmed)
             .neq('id', staffId)
-            .is('is_active', true)
             .maybeSingle()
 
         if (existing) {
@@ -488,7 +486,7 @@ export async function toggleStaffZoneAssignment(
                 throw insError
             }
 
-            // Auto-update active sessions in this zone so they reflect the new waiter!
+            // Auto-assign ONLY unassigned active sessions in this zone (don't hijack in-progress sessions!)
             try {
                 const { data: zoneTables } = await supabaseAdmin
                     .from('resto_tables')
@@ -502,6 +500,7 @@ export async function toggleStaffZoneAssignment(
                         .from('resto_table_sessions')
                         .update({ waiter_id: staffId })
                         .in('table_id', tableIds)
+                        .is('waiter_id', null)
                         .neq('status', 'closed')
                 }
             } catch (e) {
