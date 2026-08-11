@@ -114,17 +114,18 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
+                side="right"
                 className="
                     sm:max-w-[600px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-transparent
+                    bg-transparent flex flex-col
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-3xl overflow-hidden">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                        <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
                                 <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
@@ -133,29 +134,29 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                             </svg>
                         </div>
                         <div>
-                            <SheetTitle className="text-xl font-semibold text-gray-900">
+                            <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                                 {accountToEdit ? "Editar Hosting" : "Nuevo Hosting"}
                             </SheetTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                                 Configura los datos del servidor
                             </p>
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto px-8 py-6">
+                    <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin">
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
-                                <Label>Cliente</Label>
+                                <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Cliente</Label>
                                 <Select
                                     value={formData.client_id}
                                     onValueChange={(v) => setFormData({ ...formData, client_id: v })}
                                     disabled={!!clientId}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white">
                                         <SelectValue placeholder="Seleccionar Cliente" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                                         {clients.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
@@ -164,63 +165,67 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Dominio (URL) *</Label>
+                                <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Dominio (URL) *</Label>
                                 <Input
                                     placeholder="ejemplo.com"
                                     value={formData.domain_url}
                                     onChange={(e) => setFormData({ ...formData, domain_url: e.target.value })}
-                                    className="h-11"
+                                    className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Proveedor</Label>
+                                    <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Proveedor</Label>
                                     <Input
                                         placeholder="AWS, HostGator..."
                                         value={formData.provider_name}
                                         onChange={(e) => setFormData({ ...formData, provider_name: e.target.value })}
+                                        className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>IP Servidor</Label>
+                                    <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">IP Servidor</Label>
                                     <Input
                                         placeholder="192.168.x.x"
                                         value={formData.server_ip}
                                         onChange={(e) => setFormData({ ...formData, server_ip: e.target.value })}
+                                        className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Plan / Paquete</Label>
+                                <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Plan / Paquete</Label>
                                 <Input
                                     placeholder="Business 10GB"
                                     value={formData.plan_name}
                                     onChange={(e) => setFormData({ ...formData, plan_name: e.target.value })}
+                                    className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label>URL cPanel / Acceso</Label>
+                                <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">URL cPanel / Acceso</Label>
                                 <Input
                                     placeholder="https://cpanel.ejemplo.com"
                                     value={formData.cpanel_url}
                                     onChange={(e) => setFormData({ ...formData, cpanel_url: e.target.value })}
+                                    className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Estado</Label>
+                                    <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Estado</Label>
                                     <Select
                                         value={formData.status}
                                         onValueChange={(v) => setFormData({ ...formData, status: v })}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                                             <SelectItem value="active">Activo</SelectItem>
                                             <SelectItem value="suspended">Suspendido</SelectItem>
                                             <SelectItem value="cancelled">Cancelado</SelectItem>
@@ -228,11 +233,12 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Renovación</Label>
+                                    <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">Renovación</Label>
                                     <Input
                                         type="date"
                                         value={formData.renewal_date}
                                         onChange={(e) => setFormData({ ...formData, renewal_date: e.target.value })}
+                                        className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
                                     />
                                 </div>
                             </div>
@@ -240,14 +246,14 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                     </div>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 flex items-center justify-between">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                        <Button type="button" variant="ghost" className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold" onClick={() => onOpenChange(false)}>
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white px-6"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
                             onClick={handleSubmit}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

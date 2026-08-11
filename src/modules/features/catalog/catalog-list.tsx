@@ -63,29 +63,29 @@ export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListPr
                 {itemsToRender.map(item => (
                     <div
                         key={item.id}
-                        className="group bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all duration-200 flex items-center justify-between gap-4"
+                        className="group bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-white/10 p-4 hover:shadow-md transition-all duration-200 flex items-center justify-between gap-4"
                     >
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className={cn(
-                                "flex items-center justify-center w-10 h-10 rounded-lg",
-                                item.type === 'recurring' ? "bg-indigo-50 text-indigo-600" : "bg-orange-50 text-orange-600"
+                                "flex items-center justify-center w-10 h-10 rounded-xl",
+                                item.type === 'recurring' ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400" : "bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400"
                             )}>
                                 <Briefcase className="h-5 w-5" />
                             </div>
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-bold text-gray-900 truncate" title={item.name}>{item.name}</h4>
+                                    <h4 className="font-bold text-gray-900 dark:text-white truncate text-sm" title={item.name}>{item.name}</h4>
                                     {item.category && (
-                                        <Badge variant="outline" className="text-[10px] text-gray-500 bg-gray-50 shrink-0">
+                                        <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 shrink-0">
                                             {item.category}
                                         </Badge>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400">
                                     <span className={cn(
                                         "text-[10px] uppercase font-bold tracking-tight",
-                                        item.type === 'recurring' ? "text-indigo-600" : "text-orange-600"
+                                        item.type === 'recurring' ? "text-indigo-600 dark:text-indigo-400" : "text-orange-600 dark:text-orange-400"
                                     )}>
                                         {categoryShorthand(item.type)}
                                     </span>
@@ -97,11 +97,11 @@ export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListPr
 
                         <div className="flex items-center gap-6 shrink-0">
                             <div className="text-right">
-                                <div className="font-bold text-gray-900">
+                                <div className="font-bold text-gray-900 dark:text-white">
                                     ${item.base_price?.toLocaleString() || 0}
                                 </div>
                                 {item.type === 'recurring' && (
-                                    <div className="text-xs text-gray-400">
+                                    <div className="text-xs text-gray-400 dark:text-zinc-500">
                                         /{item.frequency === 'monthly' ? 'mes' : 'año'}
                                     </div>
                                 )}

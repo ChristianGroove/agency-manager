@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signup } from "@/modules/core/auth/actions"
+import { validateInviteCode } from "@/modules/core/iam/actions/invitation-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,15 +12,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle2 } from "lucide-react"
 
 import { ParticlesBackground } from "@/components/ui/particles-background"
-// import { BiometricButton } from "@/modules/core/auth/components/biometric-button" // Removing per user request
 import { useBranding } from "@/components/providers/branding-provider"
 
 import { Turnstile } from "@marsidev/react-turnstile"
 
 export default function RegisterPage() {
+    const searchParams = useSearchParams()
+    const inviteParam = searchParams.get('invite')
     const branding = useBranding()
     const primaryColor = branding?.colors?.primary || "#4f46e5"
 
+    const [isValidatingInvite, setIsValidatingInvite] = useState(true)
+    const [inviteCode, setInviteCode] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [captchaToken, setCaptchaToken] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -29,6 +34,33 @@ export default function RegisterPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
 
+    const [devConfirmLink, setDevConfirmLink] = useState<string | null>(null)
+
+    // Validate invite parameter on mount. If missing or invalid, redirect immediately to contact page.
+    useEffect(() => {
+        let isMounted = true
+        async function checkInvite() {
+            if (!inviteParam) {
+                window.location.href = 'https://pixy.com.co/contact.html'
+                return
+            }
+            const res = await validateInviteCode(inviteParam)
+            if (!isMounted) return
+
+            if (res.isValid && res.invitation) {
+                setInviteCode(res.invitation.code)
+                if (res.invitation.recipient_email) {
+                    setEmail(res.invitation.recipient_email)
+                }
+                setIsValidatingInvite(false)
+            } else {
+                window.location.href = 'https://pixy.com.co/contact.html'
+            }
+        }
+        checkInvite()
+        return () => { isMounted = false }
+    }, [inviteParam])
+
     // Check if captcha is configured
     const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
     const isCaptchaRequired = Boolean(captchaSiteKey && captchaSiteKey.length > 0)
@@ -36,14 +68,21 @@ export default function RegisterPage() {
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
+        if (!inviteCode) {
+            setError("Código de invitación requerido")
+            return
+        }
+
         setIsLoading(true)
         setError(null)
         setSuccessMessage(null)
+        setDevConfirmLink(null)
 
         const formData = new FormData()
         formData.append('fullName', fullName)
         formData.append('email', email)
         formData.append('password', password)
+        formData.append('inviteCode', inviteCode)
         if (captchaToken) formData.append('captchaToken', captchaToken)
 
         try {
@@ -53,15 +92,24 @@ export default function RegisterPage() {
                 setError(result.error)
                 setIsLoading(false)
             } else if (result?.success && result?.message) {
-                // Email confirmation case
                 setSuccessMessage(result.message)
+                if (result.devConfirmLink) {
+                    setDevConfirmLink(result.devConfirmLink)
+                }
                 setIsLoading(false)
             }
-            // If direct redirect happens, execution stops here anyway due to browser nav
         } catch (e: any) {
             setError(e.message || "Error inesperado")
             setIsLoading(false)
         }
+    }
+
+    if (isValidatingInvite) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 text-white">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            </div>
+        )
     }
 
     return (
@@ -97,19 +145,33 @@ export default function RegisterPage() {
                     <CardContent className="space-y-4">
 
                         {successMessage ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 animate-in fade-in">
+                            <div className="flex flex-col items-center justify-center py-6 text-center space-y-4 animate-in fade-in">
                                 <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center ring-1 ring-green-600/20">
                                     <CheckCircle2 className="h-6 w-6" />
                                 </div>
                                 <h3 className="text-lg font-semibold text-gray-900">¡Cuenta creada!</h3>
-                                <p className="text-gray-500 text-sm">{successMessage}</p>
-                                <Button
-                                    className="mt-4 mb-4 text-white"
-                                    style={{ backgroundColor: primaryColor }}
-                                    asChild
-                                >
-                                    <Link href="/login">Ir a Iniciar Sesión</Link>
-                                </Button>
+                                <p className="text-gray-600 text-xs">{successMessage}</p>
+
+                                {devConfirmLink ? (
+                                    <div className="w-full pt-2 space-y-2">
+                                        <Button
+                                            className="w-full text-white font-bold bg-emerald-600 hover:bg-emerald-700 h-11 rounded-xl shadow-md cursor-pointer text-xs"
+                                            asChild
+                                        >
+                                            <a href={devConfirmLink}>
+                                                ⚡ Activar Cuenta e Iniciar Onboarding
+                                            </a>
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        className="mt-4 mb-4 text-white"
+                                        style={{ backgroundColor: primaryColor }}
+                                        asChild
+                                    >
+                                        <Link href="/login">Ir a Iniciar Sesión</Link>
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-4">

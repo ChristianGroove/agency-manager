@@ -76,14 +76,14 @@ export function CatalogItemFlipCard({
                 {/* FRONT FACE */}
                 <div className={cn(
                     "absolute inset-0 backface-hidden",
-                    "bg-white backdrop-blur-xl border border-gray-200/50",
-                    "rounded-2xl shadow-lg overflow-hidden",
+                    "bg-white dark:bg-zinc-900 border border-gray-200/60 dark:border-white/10",
+                    "rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/40 overflow-hidden",
                     "hover:shadow-2xl hover:-translate-y-1 transition-all duration-300",
                     "flex flex-col",
                     "z-10" // Force front face order
                 )} style={{ transform: 'translateZ(1px)' }}>
                     {/* 80% Image Area */}
-                    <div className="h-[80%] relative overflow-hidden bg-gray-100">
+                    <div className="h-[80%] relative overflow-hidden bg-gray-100 dark:bg-zinc-850">
                         {item.image_url ? (
                             <img
                                 src={item.image_url}
@@ -91,16 +91,16 @@ export function CatalogItemFlipCard({
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                         ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-brand-pink/20 via-purple-100 to-blue-100 flex items-center justify-center relative">
+                            <div className="w-full h-full bg-gradient-to-br from-brand-pink/15 via-purple-500/10 to-indigo-500/10 dark:from-brand-pink/20 dark:via-purple-950/40 dark:to-zinc-900 flex items-center justify-center relative">
                                 <div className="absolute inset-0 bg-grid-pattern opacity-20" />
-                                <div className="text-brand-pink/40 animate-pulse text-xs font-bold uppercase tracking-widest">
+                                <div className="text-brand-pink/50 dark:text-brand-pink/60 animate-pulse text-xs font-bold uppercase tracking-widest">
                                     {t('portal.components.flip_card.no_image')}
                                 </div>
                             </div>
                         )}
 
                         {/* Minimalist Integrated Header */}
-                        <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/20 to-transparent z-10 flex cursor-default pointer-events-none">
+                        <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/40 via-black/20 to-transparent z-10 flex cursor-default pointer-events-none">
                             <div className="flex gap-1.5 items-center">
                                 <span className="text-[10px] font-bold text-white uppercase tracking-wider drop-shadow-sm">
                                     {item.category}
@@ -118,28 +118,28 @@ export function CatalogItemFlipCard({
                     </div>
 
                     {/* 20% Content Area */}
-                    <div className="h-[20%] p-3.5 flex flex-col justify-between bg-white">
+                    <div className="h-[20%] p-3.5 flex flex-col justify-between bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-white/5">
                         <div className="flex justify-between items-start gap-2">
-                            <h3 className="text-sm font-bold text-gray-900 line-clamp-1 leading-tight">
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1 leading-tight">
                                 {item.name}
                             </h3>
                         </div>
 
                         <div className="flex items-end justify-between mt-auto">
-                            <div className="flex items-center gap-1.5 text-[9px] text-gray-400 font-semibold pb-0.5">
+                            <div className="flex items-center gap-1.5 text-[9px] text-gray-400 dark:text-gray-500 font-semibold pb-0.5">
                                 <ArrowRight className="h-2 w-2" />
                                 <span>{t('portal.components.flip_card.tap_details')}</span>
                             </div>
 
                             <div className="flex flex-col items-end">
-                                <span className="text-[8px] text-gray-400 uppercase font-bold tracking-tighter mb-0.5 opacity-70">
+                                <span className="text-[8px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter mb-0.5 opacity-70">
                                     {priceLabelType === 'from'
                                         ? t('portal.components.flip_card.from')
                                         : priceLabelType === 'price'
                                             ? t('portal.components.flip_card.price')
                                             : t('portal.components.flip_card.base_price')}
                                 </span>
-                                <span className="text-lg font-extrabold text-gray-900 leading-none">
+                                <span className="text-lg font-extrabold text-gray-900 dark:text-white leading-none">
                                     {formatPrice(item.base_price)}
                                 </span>
                             </div>
@@ -150,33 +150,33 @@ export function CatalogItemFlipCard({
                 {/* BACK FACE */}
                 <div className={cn(
                     "absolute inset-0 backface-hidden rotate-y-180",
-                    "bg-gradient-to-br from-gray-50 to-white",
-                    "border border-gray-200 rounded-2xl shadow-xl overflow-hidden",
+                    "bg-gradient-to-br from-gray-50 to-white dark:from-[#0a0a0a] dark:to-zinc-900",
+                    "border border-gray-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden",
                     "flex flex-col"
                 )} style={{ transform: 'rotateY(180deg) translateZ(1px)' }}>
                     {/* Ultra-compact Header */}
-                    <div className="bg-gray-900 p-3.5 text-white relative overflow-hidden shrink-0">
+                    <div className="bg-gray-900 dark:bg-zinc-950 border-b border-gray-800 dark:border-white/5 p-3.5 text-white relative overflow-hidden shrink-0">
                         <div className="relative z-10 flex items-center justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-bold truncate uppercase tracking-tight">
+                                <h3 className="text-sm font-bold truncate uppercase tracking-tight text-white">
                                     {item.name}
                                 </h3>
                             </div>
                             <div className="text-right shrink-0">
-                                <div className="text-base font-extrabold leading-none">{formatPrice(item.base_price)}</div>
+                                <div className="text-base font-extrabold leading-none text-white">{formatPrice(item.base_price)}</div>
                             </div>
                         </div>
                     </div>
 
                     {/* Scrollable Content - vertical only */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-4 scrollbar-thin scrollbar-thumb-gray-300">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-zinc-700">
                         {/* Detailed Description */}
                         {detailedDescription && (
                             <div>
-                                <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
+                                <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">
                                     {t('portal.components.flip_card.description')}
                                 </h4>
-                                <p className="text-sm text-gray-700 leading-relaxed break-words">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
                                     {detailedDescription}
                                 </p>
                             </div>
@@ -185,13 +185,13 @@ export function CatalogItemFlipCard({
                         {/* Features List */}
                         {features.length > 0 && (
                             <div>
-                                <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
+                                <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">
                                     {t('portal.components.flip_card.features')}
                                 </h4>
                                 <ul className="space-y-2">
                                     {features.map((feature: string, idx: number) => (
-                                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                            <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                                             <span>{feature}</span>
                                         </li>
                                     ))}
@@ -201,13 +201,13 @@ export function CatalogItemFlipCard({
 
                         {/* Highlights */}
                         {highlights.length > 0 && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                <h4 className="text-xs font-bold uppercase text-amber-700 mb-2">
+                            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-xl p-3">
+                                <h4 className="text-xs font-bold uppercase text-amber-700 dark:text-amber-400 mb-2">
                                     {t('portal.components.flip_card.highlights')}
                                 </h4>
                                 <ul className="space-y-1">
                                     {highlights.map((highlight: string, idx: number) => (
-                                        <li key={idx} className="text-sm text-amber-900">
+                                        <li key={idx} className="text-sm text-amber-900 dark:text-amber-200">
                                             • {highlight}
                                         </li>
                                     ))}
@@ -218,14 +218,14 @@ export function CatalogItemFlipCard({
                         {/* Custom Fields (vertical-specific) */}
                         {Object.keys(customFields).length > 0 && (
                             <div>
-                                <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
+                                <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">
                                     {t('portal.components.flip_card.additional_info')}
                                 </h4>
                                 <dl className="space-y-2">
                                     {Object.entries(customFields).map(([key, value]) => (
                                         <div key={key} className="flex justify-between text-sm">
-                                            <dt className="text-gray-500 capitalize">{key.replace(/_/g, ' ')}:</dt>
-                                            <dd className="text-gray-900 font-medium">{String(value)}</dd>
+                                            <dt className="text-gray-500 dark:text-gray-400 capitalize">{key.replace(/_/g, ' ')}:</dt>
+                                            <dd className="text-gray-900 dark:text-white font-medium">{String(value)}</dd>
                                         </div>
                                     ))}
                                 </dl>
@@ -235,14 +235,14 @@ export function CatalogItemFlipCard({
                     </div>
 
                     {/* Action Footer */}
-                    <div className="p-4 border-t border-gray-100 bg-white">
+                    <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#0a0a0a]">
                         {variant === 'portal' ? (
                             <Button
                                 onClick={handleRequest}
                                 className={cn(
-                                    "w-full transition-all shadow-md font-bold uppercase tracking-wide text-xs h-10",
+                                    "w-full transition-all shadow-md font-bold uppercase tracking-wide text-xs h-10 rounded-xl",
                                     isRequested
-                                        ? "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                                        ? "bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-zinc-700"
                                         : "bg-[var(--brand-pink,#F205E2)] hover:opacity-90 text-white"
                                 )}
                                 style={!isRequested ? { backgroundColor: 'var(--brand-pink, #F205E2)' } : {}}
@@ -251,7 +251,8 @@ export function CatalogItemFlipCard({
                                 {ctaType === 'info' && t('portal.components.flip_card.cta_info')}
                                 {ctaType === 'quote' && t('portal.components.flip_card.cta_quote')}
                                 {ctaType === 'appointment' && t('portal.components.flip_card.cta_appointment')}
-                                {ctaType === 'portfolio' && t('portal.components.flip_card.cta_details')}                                {(!ctaType || ctaType === 'whatsapp') && (
+                                {ctaType === 'portfolio' && t('portal.components.flip_card.cta_details')}
+                                {(!ctaType || ctaType === 'whatsapp') && (
                                     <>
                                         <MessageCircle className="h-4 w-4 mr-2" />
                                         {isRequested ? t('portal.components.flip_card.request_again') : t('portal.components.flip_card.request_whatsapp')}
@@ -265,7 +266,7 @@ export function CatalogItemFlipCard({
                                         e.stopPropagation()
                                         onEdit?.(item)
                                     }}
-                                    className="flex-1 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md font-bold text-xs h-9"
+                                    className="flex-1 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md font-bold text-xs h-9 rounded-xl"
                                 >
                                     <Pencil className="h-3.5 w-3.5 mr-2" />
                                     {t('portal.components.flip_card.edit')}
@@ -276,7 +277,7 @@ export function CatalogItemFlipCard({
                                         onDelete?.(item.id)
                                     }}
                                     variant="ghost"
-                                    className="hover:bg-red-50 hover:text-red-600 text-gray-400 h-9 w-9"
+                                    className="hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 text-gray-400 dark:text-gray-500 h-9 w-9 rounded-xl"
                                     size="icon"
                                 >
                                     <Trash2 className="h-4 w-4" />

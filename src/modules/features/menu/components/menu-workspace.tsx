@@ -49,16 +49,25 @@ export function MenuWorkspace({
     });
 
     return (
-        <Tabs defaultValue="catalog" className="flex flex-col flex-1 h-full min-h-0">
-            <div className="flex justify-start mb-6">
-                <TabsList className="bg-white/10 dark:bg-zinc-800/50 backdrop-blur-md border border-gray-100 dark:border-zinc-800">
-                    <TabsTrigger value="catalog" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+        <Tabs defaultValue="catalog" className="flex flex-col flex-1 h-full min-h-0 space-y-6">
+            <div className="flex justify-start">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 sm:w-[620px] h-auto gap-1.5 p-1.5 glass-panel bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-lg shadow-black/10 dark:shadow-black/20 rounded-2xl">
+                    <TabsTrigger 
+                        value="catalog" 
+                        className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all data-[state=active]:bg-white/80 dark:data-[state=active]:bg-white/10 data-[state=active]:text-brand-pink dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    >
                         Catálogo de Platos
                     </TabsTrigger>
-                    <TabsTrigger value="modifiers" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <TabsTrigger 
+                        value="modifiers" 
+                        className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all data-[state=active]:bg-white/80 dark:data-[state=active]:bg-white/10 data-[state=active]:text-brand-pink dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    >
                         Modificadores Globales
                     </TabsTrigger>
-                    <TabsTrigger value="customize" className="data-[state=active]:bg-primary data-[state=active]:text-white flex items-center gap-1.5">
+                    <TabsTrigger 
+                        value="customize" 
+                        className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all data-[state=active]:bg-white/80 dark:data-[state=active]:bg-white/10 data-[state=active]:text-brand-pink dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    >
                         <Palette className="w-3.5 h-3.5" />
                         Personalizar Portal
                     </TabsTrigger>
@@ -80,13 +89,13 @@ export function MenuWorkspace({
                 {/* Toolbar */}
                 <div className="flex items-center justify-between mb-6 gap-4">
                     <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Buscar platos..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-10 pl-9 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none"
+                            className="w-full h-10 pl-9 pr-4 rounded-xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all text-xs outline-none"
                         />
                     </div>
                 </div>
@@ -130,12 +139,12 @@ export function MenuWorkspace({
                                                 <div className="flex justify-between items-start">
                                                     <h4 className="font-bold text-gray-900 dark:text-white line-clamp-1 leading-tight text-sm">{item.name}</h4>
                                                 </div>
-                                                <p className="text-[11px] text-gray-500 line-clamp-2 leading-tight">
+                                                <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 leading-tight">
                                                     {item.description || 'Sin descripción'}
                                                 </p>
                                                 <div className="flex flex-wrap gap-1 mt-2">
                                                     {item.category?.name && (
-                                                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500">
+                                                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-300">
                                                             {item.category.name}
                                                         </span>
                                                     )}
@@ -163,20 +172,20 @@ export function MenuWorkspace({
                                             </div>
                                         </div>
                                         
-                                        <div className="mt-4 pt-3 border-t border-gray-50 dark:border-zinc-800 flex justify-between items-end">
+                                        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/5 flex justify-between items-end">
                                             <div className="flex items-baseline gap-1.5">
                                                 <span className="font-extrabold text-gray-900 dark:text-white text-lg leading-none">
                                                     ${item.base_price.toLocaleString()}
                                                 </span>
                                                 {item.metadata?.promotional_price && (
-                                                    <span className="text-xs text-gray-400 line-through">
+                                                    <span className="text-xs text-gray-400 dark:text-zinc-500 line-through">
                                                         ${item.metadata.promotional_price.toLocaleString()}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${item.is_visible ? 'bg-green-500' : 'bg-gray-300'} shadow-sm`}></span>
-                                                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                                                <span className={`w-2 h-2 rounded-full ${item.is_visible ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'} shadow-sm`}></span>
+                                                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                                     {item.is_visible ? 'Visible' : 'Oculto'}
                                                 </span>
                                             </div>

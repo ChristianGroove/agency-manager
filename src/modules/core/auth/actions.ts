@@ -66,6 +66,15 @@ export async function signup(formData: FormData) {
     const password = formData.get('password') as string
     const fullName = formData.get('fullName') as string
     const captchaToken = formData.get('captchaToken') as string
+    const inviteCode = formData.get('inviteCode') as string
+
+    // 0. Invitation Code Verification
+    const { validateInviteCode } = await import('@/modules/core/iam/actions/invitation-actions')
+    const inviteCheck = await validateInviteCode(inviteCode)
+
+    if (!inviteCheck.isValid) {
+        return { error: inviteCheck.error || "Se requiere una invitación válida para registrarse." }
+    }
 
     // 0. Captcha Verification
     if (process.env.TURNSTILE_SECRET_KEY) {
@@ -96,7 +105,9 @@ export async function signup(formData: FormData) {
     const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
 
     const { getAuthRedirectBase } = await import('@/modules/core/iam/services/auth-utils')
-    const redirectBase = getAuthRedirectBase()
+    const reqHeaders = await headers()
+    const host = reqHeaders.get('host')
+    const redirectBase = getAuthRedirectBase(host)
     const redirectUrl = `${redirectBase}/auth/confirm?next=/onboarding`
 
     try {
@@ -109,7 +120,11 @@ export async function signup(formData: FormData) {
                 redirectTo: redirectUrl,
                 data: {
                     full_name: fullName,
-                    onboarding_completed: false
+                    onboarding_completed: false,
+                    invited_by_code: inviteCheck.invitation?.code,
+                    invited_app_id: inviteCheck.invitation?.target_app_id,
+                    invited_org_type: inviteCheck.invitation?.target_organization_type || 'client',
+                    reseller_org_id: inviteCheck.invitation?.reseller_org_id
                 }
             }
         })
@@ -135,19 +150,35 @@ export async function signup(formData: FormData) {
                     const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
                     const reInviteLink = getSecureAuthLink((reLink as any).properties.action_link, 'signup', redirectBase, '/onboarding')
                     
-                    // Recursive-like block or just handle here. Let's handle here to keep it flat.
-                    const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
-                    const { EmailService } = await import('@/modules/features/notifications/email.service')
-                    const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
-                    const confirmationHtml = getAuthConfirmationEmailHtml(reInviteLink, identity.branding, identity.style)
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log("\n==================================================")
+                        console.log("🔑 [DEV RE-SEND SIGNUP CONFIRMATION LINK]")
+                        console.log("Click or paste this link in your browser to confirm email:")
+                        console.log(reInviteLink)
+                        console.log("==================================================\n")
+                    }
 
-                    await EmailService.send({
-                        to: email,
-                        subject: 'Re: Confirma tu cuenta en Pixy',
-                        html: confirmationHtml,
-                        organizationId: 'PLATFORM'
-                    })
-                    return { success: true, message: "Este correo ya estaba registrado pero no confirmado. Hemos re-enviado el enlace de activación." }
+                    try {
+                        const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
+                        const { EmailService } = await import('@/modules/features/notifications/email.service')
+                        const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+                        const confirmationHtml = getAuthConfirmationEmailHtml(reInviteLink, identity.branding, identity.style)
+
+                        await EmailService.send({
+                            to: email,
+                            subject: 'Re: Confirma tu cuenta en Pixy',
+                            html: confirmationHtml,
+                            organizationId: 'PLATFORM'
+                        })
+                    } catch (e) {
+                        console.warn("[signup] Re-send confirmation email failed:", e)
+                    }
+
+                    const devNote = process.env.NODE_ENV === 'development'
+                        ? " (Entorno Local: Revisa la consola del terminal para el enlace directo de activación)"
+                        : ""
+
+                    return { success: true, message: `Este correo ya estaba registrado pero no confirmado. Hemos re-enviado el enlace de activación.${devNote}` }
                 }
                 
                 return { error: "Este correo ya está registrado y activo. Por favor inicia sesión." }
@@ -166,23 +197,45 @@ export async function signup(formData: FormData) {
         const { getSecureAuthLink } = await import('@/modules/core/iam/services/auth-link-utils')
         const inviteLink = getSecureAuthLink(actionLink, 'signup', redirectBase, '/onboarding')
 
-        // 2. Resolve Template & Branding
-        const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
-        const { EmailService } = await import('@/modules/features/notifications/email.service')
-        
-        const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
-        const confirmationHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
+        // DEV FRIENDLY: Print confirmation link in terminal for instant testing
+        if (process.env.NODE_ENV === 'development') {
+            console.log("\n==================================================")
+            console.log("🔑 [DEV SIGNUP CONFIRMATION LINK]")
+            console.log("Click or paste this link in your browser to confirm email:")
+            console.log(inviteLink)
+            console.log("==================================================\n")
+        }
 
-        await EmailService.send({
-            to: email,
-            subject: 'Confirma tu cuenta en Pixy',
-            html: confirmationHtml,
-            organizationId: 'PLATFORM'
-        })
+        // 2. Resolve Template & Branding
+        try {
+            const { getAuthConfirmationEmailHtml } = await import('@/modules/infrastructure/notifications/services/email-templates')
+            const { EmailService } = await import('@/modules/features/notifications/email.service')
+            
+            const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+            const confirmationHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
+
+            const sendRes = await EmailService.send({
+                to: email,
+                subject: 'Confirma tu cuenta en Pixy',
+                html: confirmationHtml,
+                organizationId: 'PLATFORM'
+            })
+
+            if (!sendRes.success) {
+                console.warn("[signup] Email delivery failed:", sendRes.error)
+            }
+        } catch (emailErr) {
+            console.error("[signup] Failed to dispatch confirmation email:", emailErr)
+        }
+
+        const devNote = process.env.NODE_ENV === 'development' 
+            ? " (Entorno Local: Revisa la consola del terminal para el enlace directo de activación)"
+            : ""
 
         return {
             success: true,
-            message: "Cuenta creada. Por favor revisa tu correo para confirmarla."
+            message: "Cuenta creada. Por favor revisa tu correo para confirmarla.",
+            devConfirmLink: process.env.NODE_ENV === 'development' ? inviteLink : undefined
         }
 
     } catch (e: any) {

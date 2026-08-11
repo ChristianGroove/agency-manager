@@ -107,31 +107,31 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-white border-0 shadow-2xl rounded-2xl max-h-[90vh] flex flex-col">
+            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-white dark:bg-[#0a0a0a] border border-gray-100 dark:border-white/10 shadow-2xl rounded-3xl max-h-[90vh] flex flex-col text-slate-900 dark:text-zinc-100">
 
                 {/* Header with Status Pattern */}
-                <div className={`p-6 border-b border-zinc-100 ${statusColor.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
+                <div className={`p-6 border-b border-gray-100 dark:border-white/5 ${statusColor.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
                     <div className="flex justify-between items-start mb-4">
-                        <div className={`p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${statusColor}`}>
+                        <div className={`p-2.5 rounded-xl bg-white/50 dark:bg-white/10 backdrop-blur-sm shadow-sm ${statusColor}`}>
                             <Activity className="h-6 w-6" />
                         </div>
                         <StatusBadge status={service.status || 'draft'} type="service" className="text-sm px-3 py-1 font-semibold" entity={service} />
                     </div>
-                    <DialogTitle className="text-2xl font-bold text-zinc-900 leading-tight">
+                    <DialogTitle className="text-2xl font-bold text-zinc-900 dark:text-white leading-tight">
                         {service.name}
                     </DialogTitle>
-                    <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm">
+                    <p className="text-slate-500 dark:text-gray-400 mt-1 flex items-center gap-2 text-xs">
                         <Clock className="h-3.5 w-3.5" />
                         Creado el {format(new Date(service.created_at), "d 'de' MMMM, yyyy", { locale: es })}
                     </p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto scrollbar-thin">
                     <Tabs defaultValue="info" className="w-full">
                         <div className="px-6 pt-4">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="info">Información General</TabsTrigger>
-                                <TabsTrigger value="cycles">Suscripción & Ciclos</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-2 dark:bg-zinc-900">
+                                <TabsTrigger value="info" className="dark:data-[state=active]:bg-zinc-800 dark:data-[state=active]:text-white">Información General</TabsTrigger>
+                                <TabsTrigger value="cycles" className="dark:data-[state=active]:bg-zinc-800 dark:data-[state=active]:text-white">Suscripción & Ciclos</TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -140,20 +140,20 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                             <div className="grid grid-cols-2 gap-6">
                                 {/* Financials */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                        <CreditCard className="h-4 w-4" /> Financiero
+                                    <h4 className="text-xs font-semibold text-zinc-400 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                        <CreditCard className="h-4 w-4 text-brand-pink" /> Financiero
                                     </h4>
-                                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 space-y-3">
+                                    <div className="bg-zinc-50 dark:bg-zinc-900/60 p-4 rounded-2xl border border-zinc-100 dark:border-white/5 space-y-3">
                                         <div>
-                                            <p className="text-sm text-zinc-500 mb-1">Monto Recurrente</p>
-                                            <p className="text-xl font-bold text-zinc-900">
+                                            <p className="text-xs text-zinc-500 dark:text-gray-400 mb-1 font-medium">Monto Recurrente</p>
+                                            <p className="text-xl font-bold text-zinc-900 dark:text-white">
                                                 ${service.amount?.toLocaleString()}
                                             </p>
                                         </div>
-                                        <Separator className="bg-zinc-200" />
+                                        <Separator className="bg-zinc-200 dark:bg-white/10" />
                                         <div>
-                                            <p className="text-sm text-zinc-500 mb-1">Frecuencia</p>
-                                            <p className="font-medium text-zinc-900">
+                                            <p className="text-xs text-zinc-500 dark:text-gray-400 mb-1 font-medium">Frecuencia</p>
+                                            <p className="font-bold text-zinc-900 dark:text-white text-sm">
                                                 {frequencyLabels[service.frequency || 'monthly'] || service.frequency}
                                             </p>
                                         </div>
@@ -299,8 +299,8 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                     </Tabs>
                 </div>
 
-                <DialogFooter className="bg-zinc-50 p-4 border-t border-zinc-100 flex-none">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                <DialogFooter className="px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-end z-20 flex-none">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-6 text-xs font-semibold">
                         Cerrar Detalle
                     </Button>
                 </DialogFooter>

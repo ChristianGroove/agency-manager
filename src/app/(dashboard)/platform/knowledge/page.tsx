@@ -83,8 +83,8 @@ export default function KnowledgePage() {
                 subtitle="Administra la información que tus agentes de IA utilizan para responder a los clientes."
                 icon={BrainCircuit}
                 action={
-                    <Button onClick={openCreate} className="bg-[var(--brand-pink)] hover:bg-[var(--brand-pink)]/90 text-white shadow-lg shadow-[var(--brand-pink)]/20">
-                        <Plus className="mr-2 h-4 w-4" /> Agregar Entrada
+                    <Button onClick={openCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <Plus className="h-4 w-4" /> Agregar Entrada
                     </Button>
                 }
             />

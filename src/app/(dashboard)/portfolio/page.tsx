@@ -128,9 +128,9 @@ export default function PortfolioPage() {
                         <CategoryManager />
                         <Button
                             onClick={handleCreateService}
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-zinc-200"
+                            className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                         >
-                            <Plus className="mr-2 h-4 w-4" /> {isAgency ? t('catalog.buttons.new_service') : 'Nuevo Plato'}
+                            <Plus className="h-4 w-4" /> {isAgency ? t('catalog.buttons.new_service') : 'Nuevo Plato'}
                         </Button>
                     </div>
                 }
@@ -145,7 +145,7 @@ export default function PortfolioPage() {
                         searchPlaceholder={isAgency ? 'Buscar por nombre...' : '¿Qué buscas?'}
                         filters={isAgency ? [
                             { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
-                            { id: 'one_off', label: 'Pago Ãšnico', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
+                            { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
                             { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
                         ] : [
                             { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
@@ -174,7 +174,7 @@ export default function PortfolioPage() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="h-48 bg-zinc-100 rounded-xl animate-pulse" />
+                            <div key={i} className="h-48 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse" />
                         ))}
                     </div>
                 ) : (

@@ -95,9 +95,14 @@ export function ClientManagementSheet({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
                 side="right"
-                className="sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden bg-white/95 dark:bg-slate-950/80 backdrop-blur-xl"
+                className="
+                    sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
+                    mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                    data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                    bg-transparent
+                "
             >
-                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     <SheetHeader className="sr-only">
                         <SheetTitle>Gestión de Contacto: {management.client.name}</SheetTitle>
                     </SheetHeader>
@@ -106,7 +111,7 @@ export function ClientManagementSheet({
 
                     <div className="flex-1 overflow-hidden flex flex-col">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-8 border-b bg-white/50 dark:bg-white/5 backdrop-blur-sm sticky top-0 z-10">
+                            <div className="px-8 border-b border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
                                 <TabsList className="bg-transparent p-0 w-full justify-start h-auto gap-8">
                                     {config.management.visibleTabs.includes('info') && (
                                         <TabsTrigger value="info" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
@@ -191,28 +196,37 @@ export function ClientManagementSheet({
                             </div>
                         </Tabs>
 
-                        <SheetFooter className="border-t p-6 bg-white dark:bg-slate-950/80 backdrop-blur-md flex-row justify-between items-center flex-none z-20">
-                            <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cerrar</Button>
+                        {/* Sticky Footer */}
+                        <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold">
+                                Cerrar
+                            </Button>
 
                             {activeTab === 'info' && (
-                                <Button onClick={management.handleUpdateProfile} disabled={management.saving} className="rounded-xl px-8 gap-2">
-                                    {management.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                <Button onClick={management.handleUpdateProfile} disabled={management.saving} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all">
+                                    {management.saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                     Guardar Perfil
                                 </Button>
                             )}
 
                             {activeTab === 'services' && (
-                                <Button onClick={() => { setServiceToEdit(null); setIsServiceSheetOpen(true); }} className="rounded-xl">+ Nuevo Servicio</Button>
+                                <Button onClick={() => { setServiceToEdit(null); setIsServiceSheetOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all">
+                                    + Nuevo Servicio
+                                </Button>
                             )}
 
                             {activeTab === 'billing' && (
-                                <Button onClick={() => setIsInvoiceSheetOpen(true)} className="rounded-xl">+ Crear Factura</Button>
+                                <Button onClick={() => setIsInvoiceSheetOpen(true)} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all">
+                                    + Crear Factura
+                                </Button>
                             )}
 
                             {activeTab === 'hosting' && (
-                                <Button onClick={() => { setHostingToEdit(null); setIsHostingSheetOpen(true); }} className="rounded-xl">+ Activar Hosting</Button>
+                                <Button onClick={() => { setHostingToEdit(null); setIsHostingSheetOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all">
+                                    + Activar Hosting
+                                </Button>
                             )}
-                        </SheetFooter>
+                        </div>
                     </div>
                 </div>
 

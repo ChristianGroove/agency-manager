@@ -8,7 +8,7 @@ interface ClientHeaderProps {
 
 export function ClientHeader({ client }: ClientHeaderProps) {
     return (
-        <div className="bg-white dark:bg-white/5 backdrop-blur-md border-b border-gray-100 dark:border-white/10 px-8 py-6 flex items-start gap-6 flex-none z-10">
+        <div className="sticky top-0 z-20 flex items-start gap-6 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
             <div className="flex-1 pt-1 min-w-0">
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-black text-gray-900 dark:text-white truncate">

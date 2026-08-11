@@ -127,15 +127,15 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
         <div className="w-full flex flex-col xl:flex-row gap-8 min-h-[750px] pb-12">
             
             {/* LEFT COLUMN: Controls Form */}
-            <div className="flex-1 glass-panel bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-gray-100 dark:border-zinc-800 rounded-3xl p-6 shadow-xl flex flex-col">
+            <div className="flex-1 glass-panel bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-lg shadow-black/10 dark:shadow-black/20 rounded-2xl p-6 flex flex-col">
                 
                 {/* Header Actions */}
-                <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-white/5">
                     <div>
-                        <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-primary" /> Personalizar Portal de Menú
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-brand-pink" /> Personalizar Portal de Menú
                         </h2>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                             Ajusta el estilo visual, banner publicitario, horarios y redes sociales de tu carta pública.
                         </p>
                     </div>
@@ -143,7 +143,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-2 active:scale-95 text-sm disabled:opacity-50"
+                        className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                         {saving ? <Sparkles className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {saving ? 'Guardando...' : 'Guardar Cambios'}
@@ -151,12 +151,12 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                 </div>
 
                 {/* Sub-tabs Navigation */}
-                <div className="flex overflow-x-auto gap-2 my-4 p-1 bg-gray-100/60 dark:bg-zinc-800/60 rounded-xl no-scrollbar">
+                <div className="flex overflow-x-auto gap-2 my-4 p-1 bg-gray-100/60 dark:bg-zinc-800/60 rounded-xl scrollbar-none">
                     <button
                         onClick={() => setActiveTab('theme')}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                            activeTab === 'theme' ? "bg-white dark:bg-zinc-900 text-primary shadow-sm" : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            activeTab === 'theme' ? "bg-white dark:bg-zinc-900 text-brand-pink shadow-sm" : "text-slate-500 hover:text-gray-900 dark:hover:text-white"
                         )}
                     >
                         <Palette className="w-4 h-4" /> Tema & Estilo
@@ -166,7 +166,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                         onClick={() => setActiveTab('cards')}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                            activeTab === 'cards' ? "bg-white dark:bg-zinc-900 text-primary shadow-sm" : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            activeTab === 'cards' ? "bg-white dark:bg-zinc-900 text-brand-pink shadow-sm" : "text-slate-500 hover:text-gray-900 dark:hover:text-white"
                         )}
                     >
                         <LayoutGrid className="w-4 h-4" /> Tarjetas de Platos
@@ -176,7 +176,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                         onClick={() => setActiveTab('banner')}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                            activeTab === 'banner' ? "bg-white dark:bg-zinc-900 text-primary shadow-sm" : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            activeTab === 'banner' ? "bg-white dark:bg-zinc-900 text-brand-pink shadow-sm" : "text-slate-500 hover:text-gray-900 dark:hover:text-white"
                         )}
                     >
                         <Megaphone className="w-4 h-4" /> Banner Publicitario
@@ -186,7 +186,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                         onClick={() => setActiveTab('schedule')}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                            activeTab === 'schedule' ? "bg-white dark:bg-zinc-900 text-primary shadow-sm" : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            activeTab === 'schedule' ? "bg-white dark:bg-zinc-900 text-brand-pink shadow-sm" : "text-slate-500 hover:text-gray-900 dark:hover:text-white"
                         )}
                     >
                         <Clock className="w-4 h-4" /> Horarios & Pedidos
@@ -196,7 +196,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                         onClick={() => setActiveTab('social')}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                            activeTab === 'social' ? "bg-white dark:bg-zinc-900 text-primary shadow-sm" : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                            activeTab === 'social' ? "bg-white dark:bg-zinc-900 text-brand-pink shadow-sm" : "text-slate-500 hover:text-gray-900 dark:hover:text-white"
                         )}
                     >
                         <Share2 className="w-4 h-4" /> Redes & Contacto
@@ -217,7 +217,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                     className={cn(
                                         "p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between",
                                         config.theme_id === 'modern_glass'
-                                            ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
+                                            ? "border-brand-pink bg-brand-pink/5 shadow-sm ring-2 ring-brand-pink/20"
                                             : "border-gray-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-gray-300"
                                     )}
                                 >
@@ -285,7 +285,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                         className={cn(
                                             "p-3.5 rounded-2xl border cursor-pointer transition-all text-left",
                                             (config.dock_style || 'floating_glass') === dk.id
-                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                                ? "border-brand-pink bg-brand-pink/5 ring-1 ring-brand-pink/20"
                                                 : "border-gray-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-900/30"
                                         )}
                                     >
@@ -313,7 +313,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                         className={cn(
                                             "p-3.5 rounded-2xl border cursor-pointer transition-all text-left",
                                             (config.category_nav_style || 'glass_cards') === st.id
-                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                                ? "border-brand-pink bg-brand-pink/5 ring-1 ring-brand-pink/20"
                                                 : "border-gray-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-900/30"
                                         )}
                                     >
@@ -342,7 +342,7 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
                                         className={cn(
                                             "p-3 rounded-xl border cursor-pointer transition-all text-left",
                                             (config.logo_variant || 'auto') === lv.id
-                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                                                ? "border-brand-pink bg-brand-pink/5 ring-1 ring-brand-pink/20"
                                                 : "border-gray-200 dark:border-zinc-800 bg-white/30 dark:bg-zinc-900/30"
                                         )}
                                     >
@@ -833,8 +833,8 @@ export function PortalThemeCustomizer({ initialConfig, orgName }: { initialConfi
 
             {/* RIGHT COLUMN: Interactive Smartphone Preview */}
             <div className="w-full xl:w-[420px] shrink-0 flex flex-col items-center">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">
-                    <Smartphone className="w-4 h-4 text-primary" /> Previsualización en Tiempo Real
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-gray-400 mb-3">
+                    <Smartphone className="w-4 h-4 text-brand-pink" /> Previsualización en Tiempo Real
                 </div>
 
                 <PreviewPhone config={config} orgName={config.tenant_name || orgName} />

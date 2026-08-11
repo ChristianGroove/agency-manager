@@ -376,18 +376,23 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
     return (
         <div className={cn(
-            "flex flex-col h-full",
-            mode === 'sheet' ? "bg-white/95 backdrop-blur-xl" : "pb-20 bg-zinc-50/50"
+            "flex flex-col h-full text-slate-900 dark:text-zinc-100",
+            mode === 'sheet' ? "bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl" : "pb-20 bg-zinc-50/50 dark:bg-zinc-950"
         )}>
 
             {/* --- Sticky Header --- */}
             <div className={cn(
                 "sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5",
-                mode === 'sheet' ? "bg-white/40 backdrop-blur-md border-b border-black/5" : "bg-white/80 border-b"
+                mode === 'sheet' ? "bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5" : "bg-white/80 dark:bg-zinc-900/80 border-b dark:border-zinc-800"
             )}>
-                <div>
-                    <h2 className="text-xl font-bold text-zinc-900 tracking-tight">{t('quotes.builder.title')}</h2>
-                    <p className="text-xs text-muted-foreground">{t('quotes.builder.subtitle')}</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-yellow-500/10 rounded-xl text-yellow-600 dark:text-yellow-400 shrink-0">
+                        <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{t('quotes.builder.title')}</h2>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400">{t('quotes.builder.subtitle')}</p>
+                    </div>
                 </div>
             </div>
 

@@ -212,21 +212,20 @@ export function CatalogServiceSheet({
                 side="right"
             >
                 {/* Grid Container */}
-                <div className="grid grid-cols-12 h-full bg-white rounded-3xl overflow-hidden">
+                <div className="grid grid-cols-12 h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     {/* LEFT PANEL: Configuration (60%) */}
-                    {/* LEFT PANEL: Configuration (60%) */}
-                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 relative overflow-hidden">
+                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white dark:bg-[#0a0a0a] border-r border-slate-100 dark:border-white/5 relative overflow-hidden">
                         {/* Header */}
-                        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
+                        <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-brand-pink/10 rounded-lg">
-                                    <Server className="h-5 w-5 text-brand-pink" />
+                                <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                                    <Server className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <SheetTitle className="text-xl font-semibold text-gray-900">
+                                    <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                                         {itemToEdit ? t('catalog.sheet_title_edit') : t('catalog.sheet_title_new')}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                                         {t('catalog.sheet_subtitle')}
                                     </p>
                                 </div>
@@ -234,7 +233,7 @@ export function CatalogServiceSheet({
                         </div>
 
                         {/* Form Content - Scrollable Area */}
-                        <div className="flex-1 overflow-y-auto p-8 pb-32 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-8 pb-32 space-y-6 scrollbar-thin">
                             {/* Basics: Name & Category in Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -286,8 +285,8 @@ export function CatalogServiceSheet({
 
                             {/* Billing & Frequency Grouping — Agency/Cleaning ONLY */}
                             {isAgency && (
-                                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                <div className="bg-slate-50/50 dark:bg-zinc-900/60 p-4 rounded-2xl border border-slate-100 dark:border-white/5 space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500 mb-1">
                                         {t('catalog.section_billing')}
                                     </h3>
 
@@ -481,10 +480,10 @@ export function CatalogServiceSheet({
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50/30">
+                                <div className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-white/5 p-3 bg-gray-50/30 dark:bg-zinc-900/60">
                                     <div className="space-y-0.5">
-                                        <Label className="text-xs font-semibold">{t('catalog.form.visibility_title')}</Label>
-                                        <div className="text-[9px] text-muted-foreground">{t('catalog.form.visibility_desc')}</div>
+                                        <Label className="text-xs font-bold text-gray-900 dark:text-white">{t('catalog.form.visibility_title')}</Label>
+                                        <div className="text-[9px] text-muted-foreground dark:text-gray-400">{t('catalog.form.visibility_desc')}</div>
                                     </div>
                                     <Switch
                                         checked={formData.is_visible_in_portal}
@@ -684,14 +683,14 @@ export function CatalogServiceSheet({
 
 
                         {/* Footer - Fixed at bottom of flex column */}
-                        <div className="flex-none bg-white/80 backdrop-blur-md border-t border-gray-100 px-8 py-4 flex items-center justify-between z-30">
-                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
+                        <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold">
                                 {t('catalog.buttons.cancel')}
                             </Button>
                             <Button
                                 onClick={handleSubmit}
                                 disabled={loading}
-                                className="bg-brand-pink hover:bg-brand-pink/90 text-white px-10 shadow-lg shadow-brand-pink/20 font-bold uppercase text-[10px] tracking-widest h-11"
+                                className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
                             >
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {itemToEdit ? t('catalog.buttons.save') : t('catalog.buttons.create')}
@@ -700,7 +699,7 @@ export function CatalogServiceSheet({
                     </div>
 
                     {/* RIGHT PANEL: Live Preview (40%) */}
-                    <div className="hidden md:flex col-span-5 flex-col h-full bg-slate-50/50 p-10 overflow-y-auto items-center justify-center border-l border-slate-100">
+                    <div className="hidden md:flex col-span-5 flex-col h-full bg-slate-50/50 dark:bg-zinc-950/80 p-10 overflow-y-auto items-center justify-center border-l border-slate-100 dark:border-white/5">
                         <div className="w-full max-w-sm space-y-6">
                             <div className="text-center space-y-1.5 mb-8">
                                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">

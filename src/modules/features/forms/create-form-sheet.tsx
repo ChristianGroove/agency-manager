@@ -162,42 +162,42 @@ export function CreateFormSheet({
                     <SheetTitle>Nuevo Formulario</SheetTitle>
                     <SheetDescription>Genera un enlace único para recopilar información.</SheetDescription>
                 </SheetHeader>
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
 
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
+                            <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
                                 <Sparkles className="h-5 w-5" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">Nuevo Formulario</h2>
-                                <p className="text-xs text-muted-foreground">Genera un enlace único para recopilar información.</p>
+                                <SheetTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Nuevo Formulario</SheetTitle>
+                                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Genera un enlace único para recopilar información.</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Split View Grid */}
                     <div className="flex-1 overflow-hidden">
-                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-zinc-100/50">
+                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-slate-200/80 dark:divide-white/5">
 
                             {/* LEFT: Form (5/12) */}
-                            <div className="lg:col-span-5 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-zinc-200">
+                            <div className="lg:col-span-5 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800 bg-white/50 dark:bg-transparent">
                                 {loading ? (
-                                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-zinc-400">
-                                        <Loader2 className="h-8 w-8 animate-spin" />
-                                        <p className="text-sm">Cargando plantillas...</p>
+                                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-slate-400 dark:text-zinc-500">
+                                        <Loader2 className="h-8 w-8 animate-spin text-brand-pink" />
+                                        <p className="text-sm font-semibold">Cargando plantillas...</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
                                         {/* Template Select */}
                                         <div className="space-y-3">
-                                            <Label className="flex items-center gap-2">
-                                                <LayoutTemplate className="h-4 w-4 text-indigo-500" />
+                                            <Label className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
+                                                <LayoutTemplate className="h-4 w-4 text-brand-pink" />
                                                 Plantilla
                                             </Label>
                                             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                                                <SelectTrigger className="w-full h-11">
+                                                <SelectTrigger className="w-full h-11 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white rounded-xl shadow-xs">
                                                     <SelectValue placeholder="Selecciona una plantilla" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -216,15 +216,15 @@ export function CreateFormSheet({
                                                 </SelectContent>
                                             </Select>
                                             {activeTemplate && (
-                                                <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 mt-2">
-                                                    <p className="text-xs text-indigo-700 leading-relaxed">
+                                                <div className="bg-brand-pink/10 dark:bg-brand-pink/20 p-4 rounded-2xl border border-brand-pink/30 mt-2 space-y-2">
+                                                    <p className="text-xs text-slate-800 dark:text-zinc-200 leading-relaxed font-medium">
                                                         {activeTemplate.description || "Sin descripción"}
                                                     </p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <Badge variant="secondary" className="bg-white text-indigo-600 text-[10px] border-indigo-100">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="secondary" className="bg-white dark:bg-zinc-800 text-brand-pink text-[10px] border-none font-bold">
                                                             {new Set(activeTemplate.structure?.map(f => f.step_title || 'General') || []).size} pasos
                                                         </Badge>
-                                                        <Badge variant="secondary" className="bg-white text-indigo-600 text-[10px] border-indigo-100">
+                                                        <Badge variant="secondary" className="bg-white dark:bg-zinc-800 text-brand-pink text-[10px] border-none font-bold">
                                                             {activeTemplate.structure?.length || 0} campos
                                                         </Badge>
                                                     </div>
@@ -232,11 +232,11 @@ export function CreateFormSheet({
                                             )}
                                         </div>
 
-                                        <Separator />
+                                        <Separator className="dark:bg-white/5" />
 
                                         {/* Client Select */}
                                         <div className="space-y-3">
-                                            <Label className="flex items-center gap-2">
+                                            <Label className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-zinc-200">
                                                 <User className="h-4 w-4 text-emerald-500" />
                                                 Cliente (Opcional)
                                             </Label>
@@ -246,8 +246,8 @@ export function CreateFormSheet({
                                                         variant="outline"
                                                         role="combobox"
                                                         className={cn(
-                                                            "w-full justify-between h-11",
-                                                            !selectedClientId || selectedClientId === "none" ? "text-muted-foreground" : ""
+                                                            "w-full justify-between h-11 bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white rounded-xl shadow-xs",
+                                                            !selectedClientId || selectedClientId === "none" ? "text-slate-400 dark:text-zinc-500" : ""
                                                         )}
                                                     >
                                                         {selectedClientId && selectedClientId !== "none"
@@ -301,8 +301,8 @@ export function CreateFormSheet({
                                                     </Command>
                                                 </PopoverContent>
                                             </Popover>
-                                            <p className="text-[11px] text-zinc-400 leading-tight">
-                                                Si no seleccionas un cliente, podrás compartir el enlace púbicamente y asignar el cliente después.
+                                            <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-tight">
+                                                Si no seleccionas un cliente, podrás compartir el enlace públicamente y asignar el cliente después.
                                             </p>
                                         </div>
                                     </div>
@@ -312,27 +312,27 @@ export function CreateFormSheet({
                             </div>
 
                             {/* RIGHT: Preview (7/12) */}
-                            <div className="hidden lg:flex lg:col-span-7 bg-slate-100/50 p-8 flex-col relative overflow-hidden">
-                                <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none" />
+                            <div className="hidden lg:flex lg:col-span-7 bg-slate-50/70 dark:bg-zinc-900/30 p-8 flex-col relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] opacity-50 pointer-events-none" />
 
                                 <div className="relative z-10 h-full flex flex-col">
                                     <div className="mb-6">
-                                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                            <FileText className="h-4 w-4" />Vista Previa del Formulario
+                                        <h3 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-brand-pink" />Vista Previa del Formulario
                                         </h3>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-200">
+                                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
                                         {activeTemplate ? (
                                             <div className="max-w-xl mx-auto space-y-8 pb-20">
                                                 {/* Mock Form Header */}
                                                 <div className="text-center space-y-4 mb-10">
-                                                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 mb-2">
+                                                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-pink/10 text-brand-pink mb-2 shadow-sm">
                                                         <FileText className="h-6 w-6" />
                                                     </div>
-                                                    <h1 className="text-2xl font-bold text-zinc-900">{activeTemplate.name}</h1>
+                                                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{activeTemplate.name}</h1>
                                                     {activeTemplate.description && (
-                                                        <p className="text-zinc-500 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
+                                                        <p className="text-slate-500 dark:text-zinc-400 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
                                                     )}
                                                 </div>
 
@@ -353,26 +353,26 @@ export function CreateFormSheet({
                                                     }, []);
 
                                                     return groupedSteps.map((step, index: number) => (
-                                                        <div key={index} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden opacity-90">
-                                                            <div className="bg-zinc-50/80 px-4 py-3 border-b border-zinc-100 flex items-center gap-3">
-                                                                <Badge variant="outline" className="bg-white h-6 w-6 flex items-center justify-center p-0 rounded-full shrink-0">
+                                                        <div key={index} className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden opacity-95">
+                                                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-4 py-3 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
+                                                                <Badge variant="outline" className="bg-white dark:bg-zinc-900 h-6 w-6 flex items-center justify-center p-0 rounded-full shrink-0 font-bold border-slate-200 dark:border-zinc-700">
                                                                     {index + 1}
                                                                 </Badge>
-                                                                <h4 className="font-semibold text-zinc-900 text-sm">{step.title}</h4>
+                                                                <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{step.title}</h4>
                                                             </div>
                                                             <div className="p-4 space-y-4">
                                                                 {step.fields?.map((field: any) => (
                                                                     <div key={field.id} className="space-y-1.5 pointer-events-none select-none">
                                                                         <div className="flex items-center justify-between">
-                                                                            <Label className="text-xs text-zinc-600">{field.label}</Label>
+                                                                            <Label className="text-xs text-slate-600 dark:text-zinc-300 font-medium">{field.label}</Label>
                                                                             {field.required && <span className="text-red-400 text-[10px]">*</span>}
                                                                         </div>
                                                                         {/* Mock Input based on type */}
-                                                                        <div className="h-9 w-full bg-zinc-50 rounded-md border border-zinc-100" />
+                                                                        <div className="h-9 w-full bg-slate-50 dark:bg-zinc-800/60 rounded-xl border border-slate-200 dark:border-zinc-700/60" />
                                                                     </div>
                                                                 ))}
                                                                 {(!step.fields || step.fields.length === 0) && (
-                                                                    <p className="text-xs text-zinc-400 italic text-center py-2">Sin campos en este paso</p>
+                                                                    <p className="text-xs text-slate-400 italic text-center py-2">Sin campos en este paso</p>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -380,11 +380,11 @@ export function CreateFormSheet({
                                                 })()}
                                             </div>
                                         ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 space-y-4 min-h-[400px]">
-                                                <div className="p-4 bg-zinc-100 rounded-full">
-                                                    <LayoutTemplate className="h-8 w-8 text-zinc-300" />
+                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-zinc-500 space-y-4 min-h-[400px]">
+                                                <div className="p-4 bg-slate-100 dark:bg-zinc-800/80 rounded-2xl">
+                                                    <LayoutTemplate className="h-8 w-8 text-slate-300 dark:text-zinc-600" />
                                                 </div>
-                                                <p className="max-w-xs text-center text-sm">
+                                                <p className="max-w-xs text-center text-sm font-medium">
                                                     Selecciona una plantilla a la izquierda para ver su estructura y preguntas.
                                                 </p>
                                             </div>
@@ -397,14 +397,14 @@ export function CreateFormSheet({
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-zinc-100 flex items-center justify-between z-20">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-zinc-500 hover:text-red-500">
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSubmit}
                             disabled={submitting || !selectedTemplateId || loading}
-                            className="bg-black text-white hover:bg-zinc-800 shadow-xl shadow-black/10 px-8 rounded-xl h-11"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 cursor-pointer font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? (
                                 <>

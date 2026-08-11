@@ -143,18 +143,24 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                     bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-slate-50/95 backdrop-blur-xl">
-                    <SheetHeader className="px-6 py-4 bg-white/80 border-b border-gray-100 flex-shrink-0 backdrop-blur-md sticky top-0 z-10">
-                        <SheetTitle>Gobernanza del Portal</SheetTitle>
-                        <p className="text-sm text-gray-500">Configura qué módulos ve este cliente en su portal.</p>
-                    </SheetHeader>
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                            <Shield className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Gobernanza del Portal</SheetTitle>
+                            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Configura qué módulos ve este cliente en su portal.</p>
+                        </div>
+                    </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {/* Master Switch */}
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm flex items-center justify-between">
                             <div>
-                                <p className="font-semibold text-gray-900">Estado del Portal</p>
-                                <p className="text-xs text-gray-500">{config.enabled ? 'El cliente tiene acceso' : 'Modo Mantenimiento (Sin acceso)'}</p>
+                                <p className="font-bold text-sm text-gray-900 dark:text-white">Estado del Portal</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">{config.enabled ? 'El cliente tiene acceso' : 'Modo Mantenimiento (Sin acceso)'}</p>
                             </div>
                             <Switch
                                 checked={config.enabled !== false}
@@ -163,21 +169,21 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                         </div>
 
                         {/* Token Security Section */}
-                        <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm space-y-4">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 shadow-sm space-y-4">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-amber-50">
-                                    <Shield className="h-4 w-4 text-amber-600" />
+                                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                                    <Shield className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-gray-900">Seguridad del Enlace</p>
-                                    <p className="text-xs text-gray-500">Configura la expiración del token de acceso</p>
+                                    <p className="font-bold text-sm text-gray-900 dark:text-white">Seguridad del Enlace</p>
+                                    <p className="text-xs text-slate-500 dark:text-gray-400">Configura la expiración del token de acceso</p>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-xl border border-slate-100 dark:border-white/5">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-700">Enlace permanente</p>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs font-bold text-gray-800 dark:text-zinc-200">Enlace permanente</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-gray-400">
                                         {tokenNeverExpires ? 'El enlace nunca expira' : 'El enlace tiene fecha límite'}
                                     </p>
                                 </div>
@@ -190,7 +196,7 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
 
                             {!tokenNeverExpires && (
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
                                         <Calendar className="h-3 w-3" />
                                         Fecha de expiración
                                     </Label>
@@ -199,11 +205,11 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                                         value={tokenExpiresAt}
                                         onChange={(e) => handleExpirationDateChange(e.target.value)}
                                         min={new Date().toISOString().split('T')[0]}
-                                        className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                        className="w-full p-2 text-sm border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                         disabled={isSavingExpiration}
                                     />
                                     {tokenExpiresAt && (
-                                        <p className="text-xs text-amber-600">
+                                        <p className="text-xs text-amber-600 dark:text-amber-400">
                                             ⚠️ El cliente perderá acceso después de esta fecha
                                         </p>
                                     )}
@@ -211,30 +217,30 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                             )}
                         </div>
 
-                        <Separator />
+                        <Separator className="dark:bg-white/5" />
 
                         {/* Modules Grid */}
                         <div className="space-y-3">
-                            <Label className="uppercase text-xs font-bold text-gray-500 tracking-wider">Módulos Visibles</Label>
+                            <Label className="uppercase text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider">Módulos Visibles</Label>
                             {modules.map((module) => {
                                 const globalEnabled = isGloballyEnabled(module.key)
                                 const currentMode = config.modules?.[module.key]?.mode || 'auto'
 
                                 return (
                                     <div key={module.key} className={cn(
-                                        "flex items-center justify-between p-3 rounded-xl border transition-all",
-                                        globalEnabled ? "bg-white border-gray-100 shadow-sm" : "bg-gray-50 border-gray-100 opacity-70"
+                                        "flex items-center justify-between p-3 rounded-2xl border transition-all",
+                                        globalEnabled ? "bg-white dark:bg-zinc-900 border-gray-100 dark:border-white/10 shadow-sm" : "bg-gray-50 dark:bg-zinc-900/40 border-gray-100 dark:border-white/5 opacity-70"
                                     )}>
                                         <div className="flex items-center gap-3">
-                                            <div className={cn("p-2 rounded-lg", globalEnabled ? "bg-indigo-50 text-indigo-600" : "bg-gray-100 text-gray-400")}>
+                                            <div className={cn("p-2 rounded-xl", globalEnabled ? "bg-brand-pink/10 text-brand-pink" : "bg-gray-100 dark:bg-zinc-800 text-gray-400")}>
                                                 <module.icon className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-sm text-gray-900">{module.label}</p>
+                                                <p className="font-bold text-sm text-gray-900 dark:text-white">{module.label}</p>
                                                 {!globalEnabled ? (
                                                     <span className="text-[10px] text-red-500 font-medium">Deshabilitado por Agencia</span>
                                                 ) : (
-                                                    <p className="text-[10px] text-gray-500">{module.description}</p>
+                                                    <p className="text-[10px] text-slate-500 dark:text-gray-400">{module.description}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -244,10 +250,10 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                                             onValueChange={(val) => handleModuleChange(module.key, val)}
                                             disabled={!globalEnabled || !config.enabled}
                                         >
-                                            <SelectTrigger className="w-[100px] h-8 text-xs bg-gray-50 border-0 focus:ring-0">
+                                            <SelectTrigger className="w-[100px] h-8 text-xs bg-gray-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-900 dark:text-white rounded-xl">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                                                 <SelectItem value="auto">Auto</SelectItem>
                                                 <SelectItem value="on">Visible</SelectItem>
                                                 <SelectItem value="off">Oculto</SelectItem>
@@ -259,13 +265,17 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                         </div>
                     </div>
 
-                    <div className="p-6 bg-white border-t border-gray-100 flex-shrink-0">
+                    {/* Footer */}
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                        <Button variant="ghost" className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold" onClick={() => setOpen(false)}>
+                            Cerrar
+                        </Button>
                         <Button
-                            className="w-full bg-black text-white hover:bg-gray-800"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
                             onClick={() => window.open(`/portal/${client.portal_short_token || client.portal_token}`, '_blank')}
                         >
                             <ExternalLink className="mr-2 h-4 w-4" />
-                            Ver portal del cliente
+                            Ver Portal del Cliente
                         </Button>
                     </div>
                 </div>

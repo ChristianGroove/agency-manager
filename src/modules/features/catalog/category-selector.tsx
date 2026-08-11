@@ -18,10 +18,10 @@ export function CategorySelector({ categories, activeCategory, onSelect, classNa
                 <button
                     onClick={() => onSelect('all')}
                     className={cn(
-                        "inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        "inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer",
                         activeCategory === 'all'
-                            ? "bg-gray-900 text-white shadow-md hover:bg-black"
-                            : "bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-900 border border-gray-200 shadow-sm"
+                            ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md hover:bg-black dark:hover:bg-gray-100"
+                            : "bg-white dark:bg-zinc-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-white/10 shadow-sm"
                     )}
                 >
                     Todo
@@ -31,10 +31,10 @@ export function CategorySelector({ categories, activeCategory, onSelect, classNa
                         key={category.id}
                         onClick={() => onSelect(category.name)}
                         className={cn(
-                            "inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                            "inline-flex items-center justify-center rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer",
                             activeCategory === category.name
-                                ? "bg-white text-gray-900 shadow-md ring-2 ring-gray-900" // Styled active state
-                                : "bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-cool-gray-200"
+                                ? "bg-white dark:bg-zinc-800 text-gray-900 dark:text-white shadow-md ring-2 ring-brand-pink border-transparent"
+                                : "bg-white dark:bg-zinc-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-white/10"
                         )}
                         style={activeCategory === category.name ? { borderColor: 'transparent' } : { borderLeftColor: getColorHex(category.color) }}
                     >

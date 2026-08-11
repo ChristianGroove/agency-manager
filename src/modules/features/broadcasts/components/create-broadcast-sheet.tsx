@@ -201,9 +201,9 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 dark:bg-[#0a0a0a]/60 dark:border-l dark:border-white/5 backdrop-blur-2xl rounded-3xl overflow-hidden">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-transparent backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                         <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                             <Radio className="h-5 w-5" />
                         </div>
@@ -555,7 +555,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                     </ScrollArea>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-transparent backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
                         <Button variant="ghost" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => onOpenChange(false)}>
                             {t("marketing.create_broadcast.cancel")}
                         </Button>

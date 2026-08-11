@@ -155,8 +155,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 </SheetTrigger>
             ) : (
                 <SheetTrigger asChild>
-                    <Button className="h-9 px-4 bg-primary hover:bg-primary/90 shadow-md text-white border-0 transition-all hover:scale-105 active:scale-95">
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <Plus className="h-4 w-4" />
                         Nuevo Contacto
                     </Button>
                 </SheetTrigger>
@@ -168,19 +168,24 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-white/95 dark:bg-slate-950/80 backdrop-blur-xl
+                    bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     <SheetHeader className="sr-only">
                         <SheetTitle>Crear Contacto</SheetTitle>
                         <SheetDescription>Completa la información del nuevo contacto.</SheetDescription>
                     </SheetHeader>
 
                     {/* Header */}
-                    <div className="bg-white dark:bg-white/5 backdrop-blur-md border-b border-gray-100 dark:border-white/10 px-8 py-6 flex-none z-10">
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Crear Contacto</h2>
-                        <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">Completa los datos del nuevo contacto para tu base de datos.</p>
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                            <UserCircle className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Crear Contacto</h2>
+                            <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5">Completa los datos del nuevo contacto para tu base de datos.</p>
+                        </div>
                     </div>
 
                     {/* Form Body */}
@@ -329,23 +334,23 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     </div>
 
                     {/* Footer Actions */}
-                    <SheetFooter className="border-t border-gray-100 dark:border-white/10 p-6 bg-white dark:bg-slate-950/80 backdrop-blur-md flex-row justify-between items-center sm:justify-between flex-none z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             onClick={() => setOpen(false)}
-                            className="h-10 text-xs font-semibold rounded-xl dark:bg-white/5 dark:border-white/10 dark:text-white"
+                            className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold"
                         >
                             {t('clients.form.buttons.cancel')}
                         </Button>
                         <Button
                             onClick={handleCreateClient}
                             disabled={saving}
-                            className="bg-primary text-white hover:bg-primary/90 rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-8 gap-2 border-0"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
                         >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             {saving ? "Creando..." : "Crear Contacto"}
                         </Button>
-                    </SheetFooter>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>

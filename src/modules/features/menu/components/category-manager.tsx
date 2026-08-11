@@ -217,7 +217,7 @@ export function MenuCategoryManager({
             <div className="flex flex-col gap-3 mb-4">
                 <div className="flex items-baseline gap-2">
                     <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">Categorías</h3>
-                    <p className="text-[11px] text-gray-500">Organiza tu menú</p>
+                    <p className="text-[11px] text-slate-500 dark:text-gray-400">Organiza tu menú</p>
                 </div>
 
                 <div className="flex items-center gap-2 w-full">
@@ -226,23 +226,23 @@ export function MenuCategoryManager({
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
                         placeholder="Nueva..."
-                        className="h-8 text-xs flex-1 bg-gray-50 dark:bg-zinc-800 border-transparent focus:border-primary focus:ring-primary/20"
+                        className="h-9 text-xs flex-1 bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white rounded-xl"
                         onKeyDown={e => e.key === 'Enter' && handleCreate()}
                     />
                     <Button 
                         size="icon"
                         onClick={handleCreate} 
                         disabled={loading || !newCategoryName.trim()} 
-                        className="h-8 w-8 bg-primary hover:bg-primary/90 text-white rounded-lg shrink-0"
+                        className="h-9 w-9 bg-brand-pink hover:bg-brand-pink/90 text-white rounded-xl shrink-0 shadow-sm"
                     >
                         <Plus className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 -m-4 space-y-1.5 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 -m-4 space-y-1.5 scrollbar-thin">
                 {localCategories.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed border-gray-100 dark:border-zinc-800 rounded-xl">
+                    <div className="text-center py-8 text-slate-400 dark:text-gray-400 text-xs border-2 border-dashed border-gray-100 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-zinc-900/40">
                         No hay categorías aún.
                     </div>
                 ) : (

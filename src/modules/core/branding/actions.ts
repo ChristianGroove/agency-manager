@@ -130,7 +130,7 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
             .from("organization_settings")
             .select("*")
             .eq("organization_id", orgId)
-            .single()
+            .maybeSingle()
     ])
 
     const { data: org } = orgResult

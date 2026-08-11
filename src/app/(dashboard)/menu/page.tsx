@@ -47,8 +47,8 @@ export default async function MenuPage({ searchParams }: { searchParams: { [key:
                 icon={UtensilsCrossed}
                 action={
                     <MenuSheetTrigger orgId={orgId}>
-                        <button className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95 whitespace-nowrap">
-                            <Plus className="w-5 h-5" />
+                        <button className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                            <Plus className="h-4 w-4" />
                             Nuevo Plato
                         </button>
                     </MenuSheetTrigger>

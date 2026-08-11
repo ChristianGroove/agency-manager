@@ -108,8 +108,8 @@ export default function HostingPage() {
                 subtitle="Gestión técnica de servidores y dominios."
                 icon={Server}
                 action={
-                    <Button onClick={() => { setSelectedAccount(null); setIsCreateOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90">
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button onClick={() => { setSelectedAccount(null); setIsCreateOpen(true); }} className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <Plus className="h-4 w-4" />
                         Nuevo Hosting
                     </Button>
                 }

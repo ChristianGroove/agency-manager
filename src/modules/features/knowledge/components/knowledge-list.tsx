@@ -43,12 +43,12 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
 
     if (data.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg border-dashed bg-muted/20">
-                <div className="h-12 w-12 rounded-full bg-[var(--brand-pink)]/10 dark:bg-[var(--brand-pink)]/20 flex items-center justify-center mb-4">
-                    <BrainCircuit className="h-6 w-6 text-[var(--brand-pink)]" />
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-gray-100 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-zinc-900/40">
+                <div className="h-12 w-12 rounded-2xl bg-brand-pink/10 text-brand-pink flex items-center justify-center mb-4">
+                    <BrainCircuit className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-semibold">Tu Base de Conocimiento está vacía</h3>
-                <p className="text-sm text-muted-foreground max-w-sm mt-2 mb-4">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">Tu Base de Conocimiento está vacía</h3>
+                <p className="text-xs text-slate-500 dark:text-gray-400 max-w-sm mt-1 mb-4">
                     Comienza a agregar preguntas frecuentes manualmente o usa la IA para extraerlas de tus chats.
                 </p>
             </div>
@@ -71,42 +71,42 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
             <div className="glass-card rounded-2xl overflow-hidden relative">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Pregunta / Respuesta</TableHead>
-                            <TableHead>Categoría</TableHead>
-                            <TableHead>Fuente</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                        <TableRow className="bg-zinc-50/50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                            <TableHead className="font-bold text-xs">Pregunta / Respuesta</TableHead>
+                            <TableHead className="font-bold text-xs">Categoría</TableHead>
+                            <TableHead className="font-bold text-xs">Fuente</TableHead>
+                            <TableHead className="text-right font-bold text-xs">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={4} className="h-24 text-center text-slate-500 dark:text-gray-400 text-xs">
                                     No se encontraron resultados para "{filter}"
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filtered.map((item) => (
-                                <TableRow key={item.id} className="group cursor-pointer hover:bg-muted/30" onClick={() => onEdit(item)}>
+                                <TableRow key={item.id} className="group cursor-pointer hover:bg-zinc-50/60 dark:hover:bg-white/5 border-b border-gray-100 dark:border-white/5" onClick={() => onEdit(item)}>
                                     <TableCell className="max-w-[400px]">
-                                        <div className="font-medium text-sm line-clamp-1 mb-1">{item.question}</div>
-                                        <div className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                        <div className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1 mb-1">{item.question}</div>
+                                        <div className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
                                             {item.answer}
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="font-normal border-transparent bg-zinc-100 text-zinc-700 dark:bg-white/5 dark:text-zinc-300">
+                                        <Badge variant="outline" className="font-medium text-xs border-transparent bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-zinc-300 rounded-lg">
                                             {item.category}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2" title={format(new Date(item.created_at), "PPpp", { locale: es })}>
                                             {item.source === 'ai_extracted' ? (
-                                                <Badge variant="secondary" className="bg-[var(--brand-pink)]/10 text-[var(--brand-pink)] border-[var(--brand-pink)]/20 gap-1 px-2 py-0.5">
+                                                <Badge variant="secondary" className="bg-brand-pink/10 text-brand-pink border border-brand-pink/20 gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold">
                                                     <Bot className="h-3 w-3" /> IA
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="gap-1 px-2 py-0.5">
+                                                <Badge variant="secondary" className="gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold dark:bg-zinc-800 dark:text-gray-300">
                                                     <User className="h-3 w-3" /> Manual
                                                 </Badge>
                                             )}

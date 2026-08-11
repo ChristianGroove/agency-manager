@@ -191,250 +191,248 @@ export function MenuSheet({ open, onOpenChange, itemToEdit, onSuccess }: MenuShe
                 "
                 side="right"
             >
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-3xl overflow-hidden">
-                    <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-5 sticky top-0 z-20 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-500/10 rounded-xl">
-                                <Server className="h-5 w-5 text-orange-600" />
-                            </div>
-                            <div>
-                                <SheetTitle className="text-xl font-bold text-gray-900">
-                                    {itemToEdit ? "Editar Item" : "Nuevo Item de Menú"}
-                                </SheetTitle>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Agrega platos o bebidas a tu menú digital
-                                </p>
-                            </div>
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                            <Server className="h-5 w-5" />
                         </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
-                    {/* Disponibilidad Rapida (Top level) */}
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
                         <div>
-                            <Label className="text-sm font-bold text-gray-900">Disponible (Stock)</Label>
-                            <p className="text-xs text-gray-500">Apágalo si se agota en cocina</p>
+                            <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                {itemToEdit ? "Editar Item" : "Nuevo Item de Menú"}
+                            </SheetTitle>
+                            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                                Agrega platos o bebidas a tu menú digital
+                            </p>
                         </div>
-                        <Switch 
-                            checked={formData.is_available}
-                            onCheckedChange={(c) => setFormData({...formData, is_available: c})}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin">
+                        {/* Disponibilidad Rapida (Top level) */}
+                        <div className="bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+                            <div>
+                                <Label className="text-sm font-bold text-gray-900 dark:text-white">Disponible (Stock)</Label>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">Apágalo si se agota en cocina</p>
+                            </div>
+                            <Switch 
+                                checked={formData.is_available}
+                                onCheckedChange={(c) => setFormData({...formData, is_available: c})}
+                            />
+                        </div>
+
+                        <ItemModifierLinker 
+                            availableGroups={modifierGroups}
+                            selectedGroupIds={selectedModifierIds}
+                            onChange={setSelectedModifierIds}
                         />
-                    </div>
 
-                    <ItemModifierLinker 
-                        availableGroups={modifierGroups}
-                        selectedGroupIds={selectedModifierIds}
-                        onChange={setSelectedModifierIds}
-                    />
-
-                    <div className="space-y-4 bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Nombre del Plato/Bebida *</Label>
-                            <Input
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="Ej. Hamburguesa Doble"
-                                className="font-medium"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4 bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Categoría *</Label>
-                                <Select
-                                    value={formData.category_id}
-                                    onValueChange={(val) => setFormData({ ...formData, category_id: val })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map(cat => (
-                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Tipo *</Label>
-                                <Select
-                                    value={formData.type}
-                                    onValueChange={(val: any) => setFormData({ ...formData, type: val })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="food">Comida</SelectItem>
-                                        <SelectItem value="beverage">Bebida</SelectItem>
-                                        <SelectItem value="combo">Combo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase text-gray-400">Precio Base *</Label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        value={formData.base_price}
-                                        onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
-                                        className="pl-7 font-bold"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
-                                    <BadgePercent className="w-3 h-3 text-brand-pink" /> Promo (Opcional)
-                                </Label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        value={formData.metadata?.promotional_price || ""}
-                                        onChange={(e) => updateMetadata('promotional_price', e.target.value ? Number(e.target.value) : undefined)}
-                                        className="pl-7"
-                                        placeholder="Ej. 15000"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400">Descripción</Label>
-                            <Textarea
-                                value={formData.description || ""}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                placeholder="Describe los ingredientes principales..."
-                                rows={2}
-                                className="resize-none"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
-                                <ImageIcon className="w-3 h-3 text-gray-400" /> Imagen del Plato
-                            </Label>
-                            <div className="flex gap-2">
+                                <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400">Nombre del Plato/Bebida *</Label>
                                 <Input
-                                    value={formData.image_url || ""}
-                                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                                    placeholder="https://... o sube un archivo"
-                                    className="flex-1"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploading}
-                                    className="shrink-0"
-                                >
-                                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                </Button>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleFileUpload}
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Ej. Hamburguesa Doble"
+                                    className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white font-medium"
                                 />
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Insignias Gastronómicas */}
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Insignias del Menú</h4>
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${formData.metadata?.is_spicy ? 'bg-red-50 border-red-200 text-red-700' : 'hover:bg-slate-50 border-slate-100 text-slate-600'}`} onClick={() => updateMetadata('is_spicy', !formData.metadata?.is_spicy)}>
-                                <Flame className="w-4 h-4" />
-                                <span className="text-xs font-bold">Picante</span>
-                            </div>
-                            <div className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${formData.metadata?.is_vegan ? 'bg-green-50 border-green-200 text-green-700' : 'hover:bg-slate-50 border-slate-100 text-slate-600'}`} onClick={() => updateMetadata('is_vegan', !formData.metadata?.is_vegan)}>
-                                <Leaf className="w-4 h-4" />
-                                <span className="text-xs font-bold">Vegano</span>
-                            </div>
-                            <div className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${formData.metadata?.is_gluten_free ? 'bg-amber-50 border-amber-200 text-amber-700' : 'hover:bg-slate-50 border-slate-100 text-slate-600'}`} onClick={() => updateMetadata('is_gluten_free', !formData.metadata?.is_gluten_free)}>
-                                <WheatOff className="w-4 h-4" />
-                                <span className="text-xs font-bold">Sin Gluten</span>
-                            </div>
-                        </div>
-
-                        {formData.type === 'beverage' && (
-                            <div className="pt-2">
-                                <Label className="text-xs font-bold text-gray-500">% Alcohol (ABV)</Label>
-                                <Input 
-                                    type="number" 
-                                    className="h-8 w-24 mt-1" 
-                                    placeholder="Ej: 5.5"
-                                    value={formData.metadata?.alcohol_abv || ""}
-                                    onChange={(e) => updateMetadata('alcohol_abv', Number(e.target.value))}
-                                />
-                            </div>
-                        )}
-                    </div>
-                    
-                    {/* Disponibilidad por Días */}
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 space-y-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3" /> Días Disponibles
-                        </h4>
-                        <p className="text-xs text-gray-500 mb-3">Desmarca días para hacer el producto exclusivo (ej. Solo Fines de Semana).</p>
-                        
-                        <div className="flex justify-between gap-1">
-                            {WEEKDAYS.map(day => {
-                                const isSelected = formData.metadata?.available_days ? formData.metadata.available_days.includes(day.value) : true;
-                                return (
-                                    <button
-                                        key={day.value}
-                                        type="button"
-                                        onClick={() => {
-                                            const currentDays = formData.metadata?.available_days || [0,1,2,3,4,5,6];
-                                            let newDays;
-                                            if (isSelected) {
-                                                newDays = currentDays.filter(d => d !== day.value);
-                                            } else {
-                                                newDays = [...currentDays, day.value].sort();
-                                            }
-                                            // Limpiar a undefined si seleccionó los 7 días
-                                            if (newDays.length === 7) newDays = undefined;
-                                            updateMetadata('available_days', newDays);
-                                        }}
-                                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                                            isSelected 
-                                            ? 'bg-orange-100 text-orange-700 border-2 border-orange-200' 
-                                            : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-gray-100'
-                                        }`}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400">Categoría *</Label>
+                                    <Select
+                                        value={formData.category_id}
+                                        onValueChange={(val) => setFormData({ ...formData, category_id: val })}
                                     >
-                                        {day.label}
-                                    </button>
-                                )
-                            })}
+                                        <SelectTrigger className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white">
+                                            <SelectValue placeholder="Selecciona..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+                                            {categories.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400">Tipo *</Label>
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(val: any) => setFormData({ ...formData, type: val })}
+                                    >
+                                        <SelectTrigger className="bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+                                            <SelectItem value="food">Comida</SelectItem>
+                                            <SelectItem value="beverage">Bebida</SelectItem>
+                                            <SelectItem value="combo">Combo</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400">Precio Base *</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-slate-400">$</span>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.base_price}
+                                            onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
+                                            className="pl-7 font-bold bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400 flex items-center gap-1">
+                                        <BadgePercent className="w-3 h-3 text-brand-pink" /> Promo (Opcional)
+                                    </Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-slate-400">$</span>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.metadata?.promotional_price || ""}
+                                            onChange={(e) => updateMetadata('promotional_price', e.target.value ? Number(e.target.value) : undefined)}
+                                            className="pl-7 bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
+                                            placeholder="Ej. 15000"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400">Descripción</Label>
+                                <Textarea
+                                    value={formData.description || ""}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Describe los ingredientes principales..."
+                                    rows={2}
+                                    className="resize-none bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 rounded-xl dark:text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold uppercase text-slate-400 dark:text-gray-400 flex items-center gap-1">
+                                    <ImageIcon className="w-3 h-3 text-slate-400" /> Imagen del Plato
+                                </Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={formData.image_url || ""}
+                                        onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                        placeholder="https://... o sube un archivo"
+                                        className="flex-1 bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 h-10 rounded-xl dark:text-white"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading}
+                                        className="shrink-0 border-slate-200 dark:border-white/10 dark:bg-zinc-800 dark:text-white rounded-xl h-10 w-10"
+                                    >
+                                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                    </Button>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleFileUpload}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Insignias Gastronómicas */}
+                        <div className="bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4 shadow-sm">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-gray-400 mb-2">Insignias del Menú</h4>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${formData.metadata?.is_spicy ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400' : 'bg-white dark:bg-black/20 hover:bg-slate-50 dark:hover:bg-white/5 border-slate-100 dark:border-white/10 text-slate-600 dark:text-gray-300'}`} onClick={() => updateMetadata('is_spicy', !formData.metadata?.is_spicy)}>
+                                    <Flame className="w-4 h-4 text-red-500" />
+                                    <span className="text-xs font-bold">Picante</span>
+                                </div>
+                                <div className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${formData.metadata?.is_vegan ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400' : 'bg-white dark:bg-black/20 hover:bg-slate-50 dark:hover:bg-white/5 border-slate-100 dark:border-white/10 text-slate-600 dark:text-gray-300'}`} onClick={() => updateMetadata('is_vegan', !formData.metadata?.is_vegan)}>
+                                    <Leaf className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-xs font-bold">Vegano</span>
+                                </div>
+                                <div className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${formData.metadata?.is_gluten_free ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' : 'bg-white dark:bg-black/20 hover:bg-slate-50 dark:hover:bg-white/5 border-slate-100 dark:border-white/10 text-slate-600 dark:text-gray-300'}`} onClick={() => updateMetadata('is_gluten_free', !formData.metadata?.is_gluten_free)}>
+                                    <WheatOff className="w-4 h-4 text-amber-500" />
+                                    <span className="text-xs font-bold">Sin Gluten</span>
+                                </div>
+                            </div>
+
+                            {formData.type === 'beverage' && (
+                                <div className="pt-2">
+                                    <Label className="text-xs font-bold text-slate-500 dark:text-gray-400">% Alcohol (ABV)</Label>
+                                    <Input 
+                                        type="number" 
+                                        className="h-9 w-28 mt-1 bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 rounded-xl dark:text-white text-xs" 
+                                        placeholder="Ej: 5.5"
+                                        value={formData.metadata?.alcohol_abv || ""}
+                                        onChange={(e) => updateMetadata('alcohol_abv', Number(e.target.value))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Disponibilidad por Días */}
+                        <div className="bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4 shadow-sm">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                                <Calendar className="w-3 h-3 text-brand-pink" /> Días Disponibles
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-gray-400 mb-3">Desmarca días para hacer el producto exclusivo (ej. Solo Fines de Semana).</p>
+                            
+                            <div className="flex justify-between gap-1">
+                                {WEEKDAYS.map(day => {
+                                    const isSelected = formData.metadata?.available_days ? formData.metadata.available_days.includes(day.value) : true;
+                                    return (
+                                        <button
+                                            key={day.value}
+                                            type="button"
+                                            onClick={() => {
+                                                const currentDays = formData.metadata?.available_days || [0,1,2,3,4,5,6];
+                                                let newDays;
+                                                if (isSelected) {
+                                                    newDays = currentDays.filter(d => d !== day.value);
+                                                } else {
+                                                    newDays = [...currentDays, day.value].sort();
+                                                }
+                                                if (newDays.length === 7) newDays = undefined;
+                                                updateMetadata('available_days', newDays);
+                                            }}
+                                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                                                isSelected 
+                                                ? 'bg-brand-pink/10 text-brand-pink border-2 border-brand-pink/30 dark:bg-brand-pink/20' 
+                                                : 'bg-gray-50 dark:bg-zinc-800 text-slate-400 dark:text-gray-500 border border-gray-100 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                                            }`}
+                                        >
+                                            {day.label}
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
-                    
-                </div>
 
-                <div className="bg-white border-t border-gray-100 p-5 flex items-center justify-between sticky bottom-0 shrink-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-xs uppercase font-bold text-gray-400">
-                        Cancelar
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="bg-orange-600 hover:bg-orange-700 text-white px-8 uppercase font-bold text-xs"
-                    >
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {itemToEdit ? "Guardar Cambios" : "Crear Plato"}
-                    </Button>
-                </div>
+                    {/* Sticky Footer */}
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                        <Button variant="ghost" className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold" onClick={() => onOpenChange(false)} disabled={loading}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 font-semibold text-xs rounded-xl h-10 px-6 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {itemToEdit ? "Guardar Cambios" : "Crear Plato"}
+                        </Button>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>

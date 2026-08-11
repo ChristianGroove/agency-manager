@@ -237,8 +237,8 @@ export default function ServicesPage() {
                         <CreateServiceSheet
                             onSuccess={fetchServices}
                             trigger={
-                                <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                                    <Plus className="mr-2 h-4 w-4" />
+                                <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                    <Plus className="h-4 w-4" />
                                     Nuevo Contrato
                                 </Button>
                             }

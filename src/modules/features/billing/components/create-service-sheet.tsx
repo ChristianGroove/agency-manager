@@ -373,20 +373,20 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                         {serviceToEdit ? t('services.sheet_title_edit') : t('services.sheet_title_new')}
                     </SheetTitle>
                 </SheetHeader>
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
+                <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-6 py-4 bg-white/40 backdrop-blur-md border-b border-black/5">
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                         <div className="flex items-center gap-4">
                             {step === 'form' && !serviceToEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => setStep('catalog')} className="rounded-full h-8 w-8 -ml-2 hover:bg-white/50">
+                                <Button variant="ghost" size="icon" onClick={() => setStep('catalog')} className="rounded-full h-8 w-8 -ml-2 hover:bg-white/50 dark:hover:bg-white/10 dark:text-white">
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             )}
                             <div>
-                                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
+                                <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
                                     {serviceToEdit ? t('services.sheet_title_edit') : t('services.sheet_title_new')}
                                 </h2>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                                     {step === 'catalog' ? t('services.sheet_desc_new') : t('services.sheet_desc_edit')}
                                 </p>
                             </div>
@@ -708,10 +708,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                         </div>
                     </div>
 
-                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-zinc-100 flex items-center justify-between z-20">
-                        <Button variant="ghost" onClick={() => setOpen(false)}>{t('services.buttons.cancel')}</Button>
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                        <Button variant="ghost" className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold" onClick={() => setOpen(false)}>{t('services.buttons.cancel')}</Button>
                         {step === 'form' && (
-                            <Button onClick={() => handleSave(null)} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-zinc-800">
+                            <Button onClick={() => handleSave(null)} disabled={loading} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {serviceToEdit ? t('services.buttons.save_edit') : t('services.buttons.save_new')}
                             </Button>

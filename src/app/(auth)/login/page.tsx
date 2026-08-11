@@ -186,9 +186,14 @@ export default function LoginPage() {
 
                         <div className="text-center text-sm pt-2">
                             <span className="text-gray-400">¿No tienes cuenta? </span>
-                            <Link href="/register" className="text-white font-medium hover:underline">
-                                Regístrate
-                            </Link>
+                            <a 
+                                href="https://pixy.com.co/contact.html" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-white font-medium hover:underline"
+                            >
+                                Solicitar Demo
+                            </a>
                         </div>
 
                     </CardContent>

@@ -94,7 +94,7 @@ export function CategoryManager() {
         <>
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="outline">
+                    <Button variant="outline" className="bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 rounded-xl h-10 px-4 text-xs font-semibold">
                         {t('catalog.buttons.manage_categories')}
                     </Button>
                 </SheetTrigger>
@@ -112,16 +112,16 @@ export function CategoryManager() {
                         <SheetDescription>{t('catalog.categories.sheet_desc')}</SheetDescription>
                     </SheetHeader>
 
-                    <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
+                    <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                         {/* Header */}
-                        <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                        <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
+                                <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
                                     <LucideIcons.FolderOpen className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{t('catalog.categories.manager_title')}</h2>
-                                    <p className="text-xs text-muted-foreground">{t('catalog.categories.manager_subtitle')}</p>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t('catalog.categories.manager_title')}</h2>
+                                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{t('catalog.categories.manager_subtitle')}</p>
                                 </div>
                             </div>
                         </div>
@@ -133,20 +133,20 @@ export function CategoryManager() {
                                     {loading ? (
                                         <div className="flex items-center justify-center py-20">
                                             <div className="animate-pulse flex flex-col items-center">
-                                                <div className="h-12 w-12 bg-gray-100 rounded-full mb-4"></div>
-                                                <div className="h-4 w-32 bg-gray-100 rounded"></div>
+                                                <div className="h-12 w-12 bg-gray-100 dark:bg-zinc-800 rounded-full mb-4"></div>
+                                                <div className="h-4 w-32 bg-gray-100 dark:bg-zinc-800 rounded"></div>
                                             </div>
                                         </div>
                                     ) : categories.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
+                                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center border-2 border-dashed border-gray-100 dark:border-zinc-800 rounded-2xl bg-gray-50/50 dark:bg-zinc-900/40">
                                             <LucideIcons.FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                                            <p className="text-sm font-medium text-gray-900 mb-1">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                                                 {t('catalog.categories.empty_title')}
                                             </p>
                                             <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
                                                 {t('catalog.categories.empty_desc')}
                                             </p>
-                                            <Button onClick={handleCreateNew} variant="outline">
+                                            <Button onClick={handleCreateNew} variant="outline" className="dark:bg-zinc-800 dark:text-white dark:border-zinc-700">
                                                 {t('catalog.categories.create_first')}
                                             </Button>
                                         </div>
@@ -160,27 +160,27 @@ export function CategoryManager() {
                                                 return (
                                                     <div
                                                         key={category.id}
-                                                        className="group flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-200"
+                                                        className="group flex items-center justify-between p-4 rounded-2xl border border-gray-100 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md hover:border-brand-pink/30 transition-all duration-200"
                                                     >
                                                         <div className="flex items-center gap-4 min-w-0">
-                                                            <div className="cursor-grab text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="cursor-grab text-gray-300 dark:text-zinc-600 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <GripVertical className="h-4 w-4" />
                                                             </div>
 
-                                                            <div className={`p-3 rounded-xl ${colors.bg}`}>
+                                                            <div className={`p-3 rounded-xl ${colors.bg} dark:bg-white/10`}>
                                                                 <IconComponent className={`h-5 w-5 ${colors.text}`} />
                                                             </div>
 
                                                             <div className="min-w-0">
-                                                                <div className="font-semibold text-gray-900 truncate">
+                                                                <div className="font-bold text-gray-900 dark:text-white truncate text-sm">
                                                                     {category.name}
                                                                 </div>
                                                                 <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-gray-100 text-gray-500 border-transparent">
+                                                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-300 border-transparent">
                                                                         {category.color}
                                                                     </Badge>
                                                                     <span>•</span>
-                                                                    <span className="font-mono">{category.icon}</span>
+                                                                    <span className="font-mono text-[11px]">{category.icon}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -189,7 +189,7 @@ export function CategoryManager() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-9 w-9 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
+                                                                className="h-9 w-9 text-gray-400 hover:text-brand-pink hover:bg-brand-pink/10 rounded-xl"
                                                                 onClick={() => handleEdit(category)}
                                                             >
                                                                 <Pencil className="h-4 w-4" />
@@ -197,7 +197,7 @@ export function CategoryManager() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                                                className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl"
                                                                 onClick={() => handleDelete(category.id, category.name)}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
@@ -212,13 +212,14 @@ export function CategoryManager() {
                             </ScrollArea>
                         </div>
 
-                        {/* Footer */}
-                        <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
-                            <Button variant="ghost" onClick={() => setOpen(false)}>{t('common.actions.back')}</Button>
+                        {/* Sticky Footer */}
+                        <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
+                            <Button variant="ghost" className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold" onClick={() => setOpen(false)}>
+                                {t('common.actions.back')}
+                            </Button>
                             <Button
                                 onClick={handleCreateNew}
-                                size="sm"
-                                className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-lg shadow-gray-200"
+                                className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 {t('catalog.categories.new_title')}

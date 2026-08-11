@@ -157,15 +157,20 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                     sm:max-w-[850px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-white/95 backdrop-blur-xl
+                    bg-transparent
                 "
             >
-                <div className="flex flex-col h-full relative">
+                <div className="flex flex-col h-full relative bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     {/* Header */}
-                    <div className="px-8 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
-                        <div>
-                            <SheetTitle className="text-xl font-bold text-gray-900">Ecosistema Digital</SheetTitle>
-                            <p className="text-sm text-gray-500">Gestiona conexiones y visibilidad del portal.</p>
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                                <Zap className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Ecosistema Digital</SheetTitle>
+                                <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Gestiona conexiones y visibilidad del portal.</p>
+                            </div>
                         </div>
                         {controlMode === 'auto' && (
                             <div className="flex items-center gap-2 h-8 px-3 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-full text-xs font-semibold border border-indigo-100">
@@ -177,10 +182,10 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
 
                     <div className="flex-1 flex overflow-hidden">
                         {/* Left: Configuration Panel */}
-                        <div className="w-full lg:w-7/12 flex flex-col border-r border-gray-100 bg-gray-50/30 overflow-hidden">
+                        <div className="w-full lg:w-7/12 flex flex-col border-r border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-zinc-950/40 overflow-hidden">
                             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                                 <div className="px-6 pt-6 pb-2">
-                                    <TabsList className="w-full justify-start h-auto p-1 bg-gray-200/50 rounded-xl">
+                                    <TabsList className="w-full justify-start h-auto p-1 bg-gray-200/50 dark:bg-zinc-800 rounded-xl">
                                         <CustomTab value="meta" label="Meta & Social" icon={Globe} active={activeTab === 'meta'} />
                                         <CustomTab value="google" label="Google Ecosystem" icon={Globe} active={activeTab === 'google'} disabled badge="Pronto" />
                                     </TabsList>
@@ -192,54 +197,54 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                         {/* 1. Connection Section */}
                                         <section className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Conexión API</h3>
+                                                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Conexión API</h3>
                                                 {isMetaConnected ? (
-                                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-1">
                                                         <CheckCircle2 className="w-3 h-3" /> Conectado
                                                     </span>
                                                 ) : (
-                                                    <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">No conectado</span>
+                                                    <span className="text-xs font-medium text-gray-400 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">No conectado</span>
                                                 )}
                                             </div>
 
-                                            <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
+                                            <Card className="border border-gray-100 dark:border-white/10 shadow-sm bg-white dark:bg-zinc-900 overflow-hidden group hover:shadow-md transition-shadow rounded-2xl">
                                                 <CardContent className="p-5">
                                                     {loadingConfig ? (
-                                                        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-300 w-6 h-6" /></div>
+                                                        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-300 dark:text-zinc-600 w-6 h-6" /></div>
                                                     ) : (
                                                         <div className="space-y-4">
                                                             {!isMetaConnected ? (
                                                                 <div className="text-center py-6 space-y-4">
-                                                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-blue-600">
+                                                                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 rounded-full flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
                                                                         <Globe className="w-6 h-6" />
                                                                     </div>
                                                                     <div>
-                                                                        <h4 className="text-sm font-semibold text-gray-900">Conectar con Meta</h4>
-                                                                        <p className="text-xs text-gray-500 mt-1 max-w-[250px] mx-auto">
+                                                                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Conectar con Meta</h4>
+                                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-[250px] mx-auto">
                                                                             Inicia sesión para seleccionar tus cuentas publicitarias y páginas de Facebook.
                                                                         </p>
                                                                     </div>
                                                                     <Button
                                                                         onClick={handleConnectMeta}
-                                                                        className="bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-md shadow-blue-200/50"
+                                                                        className="bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-md shadow-blue-200/50 dark:shadow-none font-bold rounded-xl"
                                                                     >
                                                                         Continuar con Facebook
                                                                     </Button>
                                                                     <div className="pt-2">
-                                                                        <p className="text-[10px] text-gray-400">
+                                                                        <p className="text-[10px] text-gray-400 dark:text-zinc-500">
                                                                             Se abrirá una ventana emergente segura.
                                                                         </p>
                                                                     </div>
                                                                 </div>
                                                             ) : (
                                                                 <form action={handleSaveMetaConnection} className="space-y-4">
-                                                                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 flex items-center gap-3">
-                                                                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                                                    <div className="bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-xl p-3 flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                                                             <CheckCircle2 className="w-4 h-4" />
                                                                         </div>
                                                                         <div className="flex-1">
-                                                                            <p className="text-xs font-medium text-emerald-900">Cuenta de Meta Conectada</p>
-                                                                            <p className="text-[10px] text-emerald-600 truncate max-w-[200px]">Token activo y válido</p>
+                                                                            <p className="text-xs font-medium text-emerald-900 dark:text-emerald-200">Cuenta de Meta Conectada</p>
+                                                                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 truncate max-w-[200px]">Token activo y válido</p>
                                                                         </div>
                                                                         <Button
                                                                             type="button"
@@ -342,47 +347,47 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                         {/* 2. Permissions Section */}
                                         <section className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Permisos del Portal</h3>
-                                                <div className="flex bg-gray-200/50 p-0.5 rounded-lg">
-                                                    <button onClick={() => setControlMode('auto')} className={cn("px-2 py-0.5 text-[10px] font-bold rounded-md transition-all", controlMode === 'auto' ? "bg-white shadow-sm text-indigo-600" : "text-gray-500 hover:text-gray-700")}>Auto</button>
-                                                    <button onClick={() => setControlMode('manual')} className={cn("px-2 py-0.5 text-[10px] font-bold rounded-md transition-all", controlMode === 'manual' ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>Manual</button>
+                                                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Permisos del Portal</h3>
+                                                <div className="flex bg-gray-200/50 dark:bg-zinc-800 p-0.5 rounded-lg">
+                                                    <button onClick={() => setControlMode('auto')} className={cn("px-2 py-0.5 text-[10px] font-bold rounded-md transition-all", controlMode === 'auto' ? "bg-white dark:bg-zinc-900 shadow-sm text-indigo-600 dark:text-indigo-400" : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white")}>Auto</button>
+                                                    <button onClick={() => setControlMode('manual')} className={cn("px-2 py-0.5 text-[10px] font-bold rounded-md transition-all", controlMode === 'manual' ? "bg-white dark:bg-zinc-900 shadow-sm text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white")}>Manual</button>
                                                 </div>
                                             </div>
 
-                                            <Card className="border-none shadow-sm bg-white overflow-hidden">
+                                            <Card className="border border-gray-100 dark:border-white/10 shadow-sm bg-white dark:bg-zinc-900 overflow-hidden rounded-2xl">
                                                 <CardContent className="p-0">
                                                     {controlMode === 'auto' ? (
-                                                        <div className="p-8 text-center space-y-2 bg-gradient-to-b from-indigo-50/50 to-transparent">
-                                                            <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto text-indigo-500 mb-3 border border-indigo-50">
-                                                                <Zap className="w-5 h-5 fill-indigo-100" />
+                                                        <div className="p-8 text-center space-y-2 bg-gradient-to-b from-indigo-50/50 dark:from-indigo-950/20 to-transparent">
+                                                            <div className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-xl shadow-sm flex items-center justify-center mx-auto text-indigo-500 dark:text-indigo-400 mb-3 border border-indigo-50 dark:border-indigo-900/30">
+                                                                <Zap className="w-5 h-5 fill-indigo-100 dark:fill-indigo-900/40" />
                                                             </div>
-                                                            <h4 className="text-sm font-semibold text-gray-900">Gestión Inteligente</h4>
-                                                            <p className="text-xs text-gray-500 max-w-[250px] mx-auto leading-relaxed">
+                                                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Gestión Inteligente</h4>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[250px] mx-auto leading-relaxed">
                                                                 Visible automáticamente si el cliente tiene servicios de Paid Media o Social Media activos.
                                                             </p>
                                                         </div>
                                                     ) : (
-                                                        <div className="divide-y divide-gray-50">
+                                                        <div className="divide-y divide-gray-50 dark:divide-white/5">
                                                             {/* Master Toggle */}
                                                             <div className="p-4 flex items-center justify-between">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isForceEnabled ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400")}>
+                                                                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors", isForceEnabled ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" : "bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500")}>
                                                                         <Settings2 className="w-4 h-4" />
                                                                     </div>
                                                                     <div>
-                                                                        <span className="text-sm font-medium text-gray-900 block">Mostrar Pestaña</span>
-                                                                        <span className="text-[10px] text-gray-500">Habilitar vista en portal</span>
+                                                                        <span className="text-sm font-medium text-gray-900 dark:text-white block">Mostrar Pestaña</span>
+                                                                        <span className="text-[10px] text-gray-500 dark:text-gray-400">Habilitar vista en portal</span>
                                                                     </div>
                                                                 </div>
                                                                 <Switch checked={isForceEnabled} onCheckedChange={setIsForceEnabled} />
                                                             </div>
 
                                                             {/* Granular Permissions */}
-                                                            <div className={cn("transition-all duration-300 bg-gray-50/30", isForceEnabled ? "opacity-100" : "opacity-40 pointer-events-none grayscale")}>
-                                                                <div className="p-3 pl-14 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                            <div className={cn("transition-all duration-300 bg-gray-50/30 dark:bg-zinc-950/20", isForceEnabled ? "opacity-100" : "opacity-40 pointer-events-none grayscale")}>
+                                                                <div className="p-3 pl-14 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-800/40 transition-colors">
                                                                     <div className="flex items-center gap-2">
                                                                         <BarChart3 className="w-4 h-4 text-blue-500" />
-                                                                        <span className="text-xs font-medium text-gray-700">Métricas de Ads</span>
+                                                                        <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">Métricas de Ads</span>
                                                                     </div>
                                                                     <Switch
                                                                         checked={accessLevel === 'ALL' || accessLevel === 'ADS'}
@@ -390,10 +395,10 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                                                         className="scale-75"
                                                                     />
                                                                 </div>
-                                                                <div className="p-3 pl-14 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                                <div className="p-3 pl-14 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-800/40 transition-colors">
                                                                     <div className="flex items-center gap-2">
                                                                         <LayoutGrid className="w-4 h-4 text-brand-pink" />
-                                                                        <span className="text-xs font-medium text-gray-700">Feed Orgánico</span>
+                                                                        <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">Feed Orgánico</span>
                                                                     </div>
                                                                     <Switch
                                                                         checked={accessLevel === 'ALL' || accessLevel === 'ORGANIC'}
@@ -406,7 +411,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                                     )}
                                                 </CardContent>
                                             </Card>
-                                            <Button onClick={handleSavePortalPermissions} variant="outline" size="sm" className="w-full text-xs hover:bg-white hover:border-gray-300">
+                                            <Button onClick={handleSavePortalPermissions} variant="outline" size="sm" className="w-full text-xs font-bold rounded-xl dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:hover:bg-zinc-700">
                                                 Actualizar Permisos
                                             </Button>
                                         </section>
@@ -416,7 +421,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                         </div>
 
                         {/* Right: Preview Panel (Hidden on small, visible lg) */}
-                        <div className="hidden lg:flex w-5/12 bg-gray-100 relative items-center justify-center p-8 bg-grid-gray-200/50">
+                        <div className="hidden lg:flex w-5/12 bg-gray-100 dark:bg-zinc-950/80 relative items-center justify-center p-8 border-l border-gray-100 dark:border-white/5">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />
                             <div className="relative z-10 scale-[0.85] origin-center shadow-2xl rounded-[2.5rem]">
                                 <MobilePreview className="h-[600px] w-[300px] border-gray-800 ring-4 ring-black/10">
@@ -468,13 +473,13 @@ function CustomTab({ value, label, icon: Icon, active, disabled, badge }: any) {
             disabled={disabled}
             className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all",
-                active ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100/50",
+                active ? "bg-white dark:bg-zinc-900 text-brand-pink dark:text-brand-pink shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-zinc-800/50",
                 disabled && "opacity-50 cursor-not-allowed"
             )}
         >
             <Icon className="w-3.5 h-3.5" />
             {label}
-            {badge && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-[9px] font-bold text-gray-500">{badge}</span>}
+            {badge && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-[9px] font-bold text-gray-500 dark:text-zinc-400">{badge}</span>}
         </TabsTrigger>
     )
 }

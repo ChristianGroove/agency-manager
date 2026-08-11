@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2, Check, Building2, LayoutGrid } from "lucide-react"
-import { createClientOrganization } from "@/modules/core/organizations/organization-actions"
+import { createOrganization } from "@/modules/core/organizations/organization-actions"
 import { getAvailableApps } from "@/modules/core/saas/saas-actions"
 
 import { useBranding } from "@/components/providers/branding-provider"
@@ -51,16 +51,21 @@ export function OnboardingWizard() {
         }
     }, [])
 
-    // Load Apps
+    // Load Apps & User Metadata
     useEffect(() => {
-        async function loadApps() {
+        async function loadInitialData() {
             try {
+                const { supabase } = await import("@/modules/core/database/supabase")
+                const { data: { user } } = await supabase.auth.getUser()
+
                 const data = await getAvailableApps()
                 setApps(data || [])
-                // Pre-select Agency
-                setApps(data || [])
-                // Pre-select first available app
-                if (data && data.length > 0) {
+                
+                // Pre-select invited app if specified in user_metadata, otherwise default to first app
+                const invitedAppId = user?.user_metadata?.invited_app_id
+                if (invitedAppId && data?.some((a: any) => a.id === invitedAppId)) {
+                    setFormData(prev => ({ ...prev, app_id: invitedAppId }))
+                } else if (data && data.length > 0) {
                     setFormData(prev => ({ ...prev, app_id: data[0].id }))
                 }
             } catch (e) {
@@ -70,7 +75,7 @@ export function OnboardingWizard() {
                 setIsAppsLoading(false)
             }
         }
-        loadApps()
+        loadInitialData()
     }, [])
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,10 +94,15 @@ export function OnboardingWizard() {
         }
         setIsLoading(true)
         try {
-            const result = await createClientOrganization({
+            const { supabase } = await import("@/modules/core/database/supabase")
+            const { data: { user } } = await supabase.auth.getUser()
+            const invitedOrgType = user?.user_metadata?.invited_org_type || 'client'
+
+            const result = await createOrganization({
                 name: formData.name,
                 slug: formData.slug,
-                app_id: formData.app_id
+                app_id: formData.app_id,
+                organization_type: invitedOrgType
             })
             if (result.success) {
                 toast.success("Organización creada exitosamente")

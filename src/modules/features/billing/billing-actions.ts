@@ -175,7 +175,7 @@ export async function getOrganizationSubscription() {
         .from('saas_subscriptions')
         .select('*')
         .eq('organization_id', orgId)
-        .single()
+        .maybeSingle()
 
     return subscription
 }
