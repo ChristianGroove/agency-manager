@@ -66,9 +66,9 @@ function PaymentBadge({
                 onClick={(e) => { e.stopPropagation(); onCobrar(row) }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-full 
                     bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/40
-                    animate-pulse hover:scale-105 transition-all duration-200 cursor-pointer"
+                    animate-shadow-pulse-slow-amber hover:scale-105 transition-all duration-200 cursor-pointer"
             >
-                <BellRing className="w-3.5 h-3.5 animate-bounce" />
+                <BellRing className="w-3.5 h-3.5" />
                 Pidió Cuenta
             </button>
         )

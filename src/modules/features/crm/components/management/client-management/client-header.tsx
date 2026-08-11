@@ -16,7 +16,7 @@ export function ClientHeader({ client }: ClientHeaderProps) {
                     </h2>
                     <div className="flex items-center gap-3">
                         {client.total_debt && client.total_debt > 0 ? (
-                            <Badge variant="destructive" className="animate-pulse bg-red-500 text-white border-none shadow-lg shadow-red-200 px-4 h-7 rounded-full text-xs font-bold">
+                            <Badge variant="destructive" className="animate-pulse-slow bg-red-500 text-white border-none shadow-lg shadow-red-200 px-4 h-7 rounded-full text-xs font-bold">
                                 Deuda: ${client.total_debt.toLocaleString()}
                             </Badge>
                         ) : (

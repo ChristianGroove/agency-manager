@@ -89,7 +89,7 @@ export function WaiterTablesView({ tables, activeSessions, zones, staffId }: Wai
                 <div className={cn(
                     "p-3 rounded-2xl border transition-all flex flex-col justify-between",
                     totalBillingCount > 0
-                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 animate-pulse shadow-sm shadow-amber-500/10"
+                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 animate-shadow-pulse-slow-amber shadow-sm shadow-amber-500/10"
                         : "bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800"
                 )}>
                     <span className={cn(
@@ -101,7 +101,7 @@ export function WaiterTablesView({ tables, activeSessions, zones, staffId }: Wai
                             "text-xl font-black",
                             totalBillingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"
                         )}>{totalBillingCount}</span>
-                        <BellRing className={cn("w-4 h-4", totalBillingCount > 0 ? "text-amber-500 animate-bounce" : "text-slate-400")} />
+                        <BellRing className={cn("w-4 h-4", totalBillingCount > 0 ? "text-amber-500" : "text-slate-400")} />
                     </div>
                 </div>
             </div>
@@ -150,7 +150,7 @@ export function WaiterTablesView({ tables, activeSessions, zones, staffId }: Wai
                                         </div>
 
                                         {isBilling ? (
-                                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs animate-pulse flex items-center gap-1">
+                                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs animate-shadow-pulse-slow-amber flex items-center gap-1">
                                                 <BellRing className="w-2.5 h-2.5" /> Cuenta
                                             </span>
                                         ) : isOccupied ? (

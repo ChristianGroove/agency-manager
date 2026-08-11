@@ -60,13 +60,35 @@
   }
 }
 
+@keyframes shadow-pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(239, 68, 68, 0.25), inset 0 0 0 1px rgba(239, 68, 68, 0.5);
+  }
+}
+
+@keyframes shadow-pulse-amber {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), inset 0 0 0 1px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(245, 158, 11, 0.25), inset 0 0 0 1px rgba(245, 158, 11, 0.5);
+  }
+}
+
 @layer utilities {
   .animate-shadow-pulse-slow-red {
-    animation: shadow-pulse-red 4s ease-in-out infinite;
+    animation: shadow-pulse-red 5s ease-in-out infinite !important;
   }
 
   .animate-shadow-pulse-slow-amber {
-    animation: shadow-pulse-amber 4s ease-in-out infinite;
+    animation: shadow-pulse-amber 5s ease-in-out infinite !important;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .animate-float-sidebar {
@@ -102,7 +124,7 @@
   }
 
   .glass-card {
-    @apply relative bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-xl rounded-xl transition-all duration-150 ease-out;
+    @apply relative bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-xl rounded-xl transition-[transform,background-color] duration-200 ease-out;
   }
 
   .glass-card:hover {
@@ -242,33 +264,7 @@
   }
 }
 
-@keyframes shadow-pulse-red {
 
-  0%,
-  100% {
-    box-shadow: 0 0 5px 0 rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 20px 2px rgba(239, 68, 68, 0.4);
-    border-color: rgba(239, 68, 68, 0.6);
-  }
-}
-
-@keyframes shadow-pulse-amber {
-
-  0%,
-  100% {
-    box-shadow: 0 0 5px 0 rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 20px 2px rgba(245, 158, 11, 0.4);
-    border-color: rgba(245, 158, 11, 0.6);
-  }
-}
 
 :root {
   --background: oklch(1 0 0);

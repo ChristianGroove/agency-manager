@@ -79,7 +79,7 @@ export function ClientsGrid({
                 return (
                     <div key={client.id || `client-${index}`} className="group relative">
                         <Card className={cn(
-                            "glass-card relative h-full flex flex-col hover:-translate-y-1 transition-all duration-300",
+                            "glass-card relative h-full flex flex-col hover:-translate-y-1 transition-transform duration-200",
                             debt > 0 ? "animate-shadow-pulse-slow-red" : futureDebt > 0 ? "animate-shadow-pulse-slow-amber" : ""
                         )}>
                             <CardHeader className="pb-3 pt-5 px-5 relative">

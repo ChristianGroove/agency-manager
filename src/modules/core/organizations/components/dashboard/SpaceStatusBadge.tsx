@@ -116,7 +116,7 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                     ))}
                 </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-white dark:bg-slate-950">
+            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-2xl border border-gray-200/50 dark:border-white/10 shadow-2xl bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-zinc-100">
                 {selectedTransaction ? (
                     <SubscriptionTicket
                         transaction={selectedTransaction}
@@ -125,196 +125,184 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                     />
                 ) : (
                     <>
-                        <div className="relative h-28 w-full overflow-hidden flex items-center px-8" style={{
-                            background: `linear-gradient(135deg, ${finalBtnColor}20 0%, ${finalBtnColor}05 100%)`
-                        }}>
-                            {/* Decorative Background Element */}
-                            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl opacity-20" style={{ backgroundColor: finalBtnColor }}></div>
-
-                            <div className="relative flex items-center gap-5 z-10">
-                                <div className="p-3 bg-white dark:bg-white/10 rounded-[1.2rem] shadow-xl text-primary border border-white/20" style={{ color: finalBtnColor }}>
-                                    <Package className="h-8 w-8" />
+                        {/* Header */}
+                        <div className="relative p-6 px-8 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5 flex items-center gap-4">
+                            <div className="p-3 bg-brand-pink/10 rounded-xl text-brand-pink border border-brand-pink/20 shrink-0">
+                                <Package className="h-6 w-6" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white truncate">{displayApp.name}</h2>
+                                    {isActive && <Crown className="h-4 w-4 text-amber-400 fill-amber-400 shrink-0" />}
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{displayApp.name}</h2>
-                                        {isActive && <Crown className="h-5 w-5 text-amber-400 fill-amber-400" />}
-                                    </div>
-                                    <p className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-                                        <span className="p-1 bg-slate-100 dark:bg-white/5 rounded-md text-[10px] uppercase tracking-widest">{orgName}</span>
-                                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                                        <span className="text-[10px] uppercase tracking-widest opacity-70">Portal de Gestión</span>
-                                    </p>
+                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400">
+                                    <span className="font-semibold text-brand-pink uppercase text-[10px] tracking-wider">{orgName}</span>
+                                    <span>•</span>
+                                    <span>PORTAL DE GESTIÓN</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-1">
-                            <Tabs defaultValue="plan" className="w-full">
-                                <div className="px-6 pt-0">
-                                    <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl h-10">
-                                        <TabsTrigger value="plan" className="rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
-                                            <Package className="h-3.5 w-3.5 mr-2" />
-                                            Mi Plan
-                                        </TabsTrigger>
-                                        <TabsTrigger value="billing" className="rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all">
-                                            <History className="h-3.5 w-3.5 mr-2" />
-                                            Facturación
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </div>
+                        <div className="p-6 space-y-6">
+                            <Tabs defaultValue="plan" className="w-full space-y-6">
+                                <TabsList className="grid w-full grid-cols-2 h-auto gap-1.5 p-1.5 bg-gray-100/60 dark:bg-white/5 backdrop-blur-md border border-gray-200/50 dark:border-white/10 rounded-2xl">
+                                    <TabsTrigger 
+                                        value="plan" 
+                                        className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-brand-pink dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                    >
+                                        <Package className="h-3.5 w-3.5" />
+                                        Mi Plan
+                                    </TabsTrigger>
+                                    <TabsTrigger 
+                                        value="billing" 
+                                        className="flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-brand-pink dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                    >
+                                        <History className="h-3.5 w-3.5" />
+                                        Facturación
+                                    </TabsTrigger>
+                                </TabsList>
 
-                                <TabsContent value="plan" className="p-4 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
-                                                    <div className={cn(
-                                                        "p-1.5 rounded-xl mb-0.5",
-                                                        isActive ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
-                                                    )}>
-                                                        <CheckCircle2 className="h-4 w-4" />
-                                                    </div>
-                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Estatus</span>
-                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
-                                                        {isBypass ? 'PRO CORTESÍA' : (isActive ? 'ACTIVO' : 'SUSPENDIDO')}
-                                                    </span>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
-                                                    <div className="p-1.5 rounded-xl mb-0.5 bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                                                        <Clock className="h-4 w-4" />
-                                                    </div>
-                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Renovación</span>
-                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
-                                                        {daysRemaining !== null ? `${daysRemaining} días` : 'Ilimitado'}
-                                                    </span>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
-                                                <CardContent className="p-4 flex flex-col items-center gap-1.5">
-                                                    <div className="p-1.5 rounded-xl mb-0.5 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                                                        <Receipt className="h-4 w-4" />
-                                                    </div>
-                                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest text-center">Valor Space</span>
-                                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
-                                                        {subscription?.saas_apps?.price_monthly
-                                                            ? (subscription.saas_apps.price_monthly / 100).toLocaleString('es-CO', {
-                                                                style: 'currency',
-                                                                currency: 'USD',
-                                                                minimumFractionDigits: 0
-                                                            }) + ' / mes'
-                                                            : '$0 / mes'}
-                                                    </span>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-
-                                        <div className="bg-slate-50/50 dark:bg-white/5 p-4 rounded-3xl border border-slate-100 dark:border-white/5">
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Beneficios del Plan</h3>
-                                            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-                                                {(displayApp.features || ["Gestión Completa", "Soporte Prioritario", "Multi-Agente", "Personalización"]).map((feature: string, i: number) => (
-                                                    <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                                                        <div className="h-4 w-4 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-                                                        </div>
-                                                        <span className="truncate" title={feature}>{feature}</span>
-                                                    </div>
-                                                ))}
+                                <TabsContent value="plan" className="space-y-6 mt-0">
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <Card className="border-none bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-gray-100 dark:border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 text-center shadow-sm">
+                                            <div className={cn(
+                                                "p-2 rounded-xl",
+                                                isActive ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400"
+                                            )}>
+                                                <CheckCircle2 className="h-4 w-4" />
                                             </div>
-                                        </div>
+                                            <span className="text-[10px] text-slate-400 dark:text-gray-400 uppercase font-extrabold tracking-wider">Estatus</span>
+                                            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                                                {isBypass ? 'PRO CORTESÍA' : (isActive ? 'ACTIVO' : 'SUSPENDIDO')}
+                                            </span>
+                                        </Card>
 
-                                        {isBypass && (
-                                            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex gap-3 items-center">
-                                                <div className="p-1.5 bg-amber-500 rounded-md text-white shrink-0">
-                                                    <AlertCircle className="h-4 w-4" />
-                                                </div>
-                                                <p className="font-medium leading-relaxed">Tu organización tiene un beneficio de **Cortesía**. Sin cobros automáticos activos.</p>
+                                        <Card className="border-none bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-gray-100 dark:border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 text-center shadow-sm">
+                                            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                                <Clock className="h-4 w-4" />
                                             </div>
-                                        )}
+                                            <span className="text-[10px] text-slate-400 dark:text-gray-400 uppercase font-extrabold tracking-wider">Renovación</span>
+                                            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                                                {daysRemaining !== null ? `${daysRemaining} días` : 'Ilimitado'}
+                                            </span>
+                                        </Card>
+
+                                        <Card className="border-none bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-gray-100 dark:border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 text-center shadow-sm">
+                                            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                                <Receipt className="h-4 w-4" />
+                                            </div>
+                                            <span className="text-[10px] text-slate-400 dark:text-gray-400 uppercase font-extrabold tracking-wider">Valor Space</span>
+                                            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                                                {subscription?.saas_apps?.price_monthly
+                                                    ? (subscription.saas_apps.price_monthly / 100).toLocaleString('es-CO', {
+                                                        style: 'currency',
+                                                        currency: 'USD',
+                                                        minimumFractionDigits: 0
+                                                    }) + ' / mes'
+                                                    : '$0 / mes'}
+                                            </span>
+                                        </Card>
                                     </div>
+
+                                    <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-gray-100 dark:border-white/10 rounded-2xl p-5 space-y-3 shadow-sm">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Beneficios del Plan</h3>
+                                        <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                                            {(displayApp.features || ["Gestión Completa", "Soporte Prioritario", "Multi-Agente", "Personalización"]).map((feature: string, i: number) => (
+                                                <div key={i} className="flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-gray-200">
+                                                    <div className="h-4 w-4 rounded-full bg-brand-pink/10 text-brand-pink flex items-center justify-center shrink-0">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                    </div>
+                                                    <span className="truncate" title={feature}>{feature}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {isBypass && (
+                                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex gap-3 items-center">
+                                            <div className="p-1.5 bg-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
+                                                <AlertCircle className="h-4 w-4" />
+                                            </div>
+                                            <p className="font-semibold leading-relaxed">Tu organización tiene un beneficio de <strong>Cortesía</strong>. Sin cobros automáticos activos.</p>
+                                        </div>
+                                    )}
                                 </TabsContent>
 
-                                <TabsContent value="billing" className="p-6 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Historial de Transacciones</h3>
-                                            <Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                                                <Download className="h-3 w-3 mr-2" />
-                                                Exportar
-                                            </Button>
-                                        </div>
+                                <TabsContent value="billing" className="space-y-4 mt-0">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Historial de Transacciones</h3>
+                                        <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs font-semibold text-slate-600 dark:text-gray-300 border-gray-200 dark:border-white/10">
+                                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                                            Exportar
+                                        </Button>
+                                    </div>
 
-                                        <div className="rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
+                                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 overflow-hidden bg-white/40 dark:bg-white/5 backdrop-blur-xl">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="border-b border-gray-100 dark:border-white/5 hover:bg-transparent">
+                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Fecha</TableHead>
+                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Concepto</TableHead>
+                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Monto</TableHead>
+                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Estado</TableHead>
+                                                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Recibo</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="text-xs">
+                                                {isLoadingHistory ? (
                                                     <TableRow>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Fecha</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Concepto</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Monto</TableHead>
-                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Estado</TableHead>
-                                                        <TableHead className="text-right text-[10px] font-black uppercase tracking-widest h-10">Recibo</TableHead>
+                                                        <TableCell colSpan={5} className="text-center py-8 text-slate-400">Cargando transacciones...</TableCell>
                                                     </TableRow>
-                                                </TableHeader>
-                                                <TableBody className="text-xs">
-                                                    {isLoadingHistory ? (
-                                                        <TableRow>
-                                                            <TableCell colSpan={5} className="text-center py-10 text-slate-400">Cargando transacciones...</TableCell>
-                                                        </TableRow>
-                                                    ) : history.length === 0 ? (
-                                                        <TableRow>
-                                                            <TableCell colSpan={5} className="text-center py-10 text-slate-400">No hay pagos registrados.</TableCell>
-                                                        </TableRow>
-                                                    ) : history.map((row: any) => (
-                                                        <TableRow key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                                                            <TableCell className="font-medium text-slate-500">
-                                                                {format(parseISO(row.created_at), 'dd MMM, yyyy', { locale: es })}
-                                                            </TableCell>
-                                                            <TableCell className="font-bold text-slate-700 dark:text-slate-200">
-                                                                {row.metadata?.concept || 'Suscripción'}
-                                                            </TableCell>
-                                                            <TableCell className="font-bold">
-                                                                {(row.amount_in_cents / 100).toLocaleString('es-CO', { style: 'currency', currency: 'USD' })}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="outline" className="text-[10px] uppercase font-bold bg-emerald-50 text-emerald-600 border-emerald-100">
-                                                                    {row.status}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5"
-                                                                    onClick={() => setSelectedTransaction(row)}
-                                                                >
-                                                                    <Receipt className="h-4 w-4" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                                ) : history.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center py-8 text-slate-400">No hay pagos registrados.</TableCell>
+                                                    </TableRow>
+                                                ) : history.map((row: any) => (
+                                                    <TableRow key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5">
+                                                        <TableCell className="font-medium text-slate-500 dark:text-gray-400">
+                                                            {format(parseISO(row.created_at), 'dd MMM, yyyy', { locale: es })}
+                                                        </TableCell>
+                                                        <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                            {row.metadata?.concept || 'Suscripción'}
+                                                        </TableCell>
+                                                        <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                            {(row.amount_in_cents / 100).toLocaleString('es-CO', { style: 'currency', currency: 'USD' })}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className="text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none rounded-lg">
+                                                                {row.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 rounded-xl text-slate-400 hover:text-brand-pink hover:bg-brand-pink/10"
+                                                                onClick={() => setSelectedTransaction(row)}
+                                                            >
+                                                                <Receipt className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </TabsContent>
                             </Tabs>
                         </div>
 
-                        <div className="p-4 pt-3 pb-4 border-t border-slate-50 dark:border-white/10 bg-slate-50/30 dark:bg-transparent flex gap-3">
+                        {/* Footer */}
+                        <div className="p-4 px-8 border-t border-gray-100 dark:border-white/5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md flex items-center justify-between gap-3">
                             <Button
                                 variant="ghost"
-                                className="flex-1 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs h-10 hover:bg-slate-100 dark:hover:bg-white/5"
+                                className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold"
                                 onClick={() => setIsOpen(false)}
                             >
                                 Volver
                             </Button>
                             <Button
-                                className="flex-1 rounded-xl font-black uppercase tracking-widest text-[10px] sm:text-xs h-10 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-white"
-                                style={{ backgroundColor: finalBtnColor }}
+                                className="bg-brand-pink text-white hover:bg-brand-pink/90 font-semibold text-xs rounded-xl h-10 px-6 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 {isActive ? 'Mejorar Plan' : 'Reactivar Ahora'}
                             </Button>
