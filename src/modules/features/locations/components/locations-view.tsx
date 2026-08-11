@@ -115,9 +115,9 @@ export function LocationsView({ initialLocations, staffList, initialTrackers }: 
                                 setSelectedLocation(null)
                                 setIsSheetOpen(true)
                             }}
-                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl px-6"
+                            className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                         >
-                            <Plus className="w-4 h-4 mr-2" /> Nueva Sede
+                            <Plus className="w-4 h-4" /> Nueva Sede
                         </Button>
                     </div>
                 }

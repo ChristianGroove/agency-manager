@@ -50,15 +50,15 @@ export function LocationCard({ location, staffMembers = [], onEdit, onDelete, on
         <TooltipProvider>
             <Card
                 className={cn(
-                    "group relative overflow-hidden flex flex-col transition-all duration-500",
-                    "bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-slate-200/50 dark:border-white/10",
-                    "hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]",
-                    "hover:-translate-y-2 cursor-pointer rounded-[24px]"
+                    "group relative overflow-hidden flex flex-col transition-all duration-300",
+                    "glass-panel bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-200/50 dark:border-white/10",
+                    "shadow-lg shadow-black/10 dark:shadow-black/20 hover:border-brand-pink/50 dark:hover:border-brand-pink/50",
+                    "hover:-translate-y-1 cursor-pointer rounded-2xl"
                 )}
                 onClick={() => onClick && onClick(location)}
             >
                 {/* Visual Glass Reflection Overlay */}
-                <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
 
                 <div className="p-4 flex-1 flex flex-col relative z-20">
                     {/* Header: Name & Status */}
@@ -96,7 +96,7 @@ export function LocationCard({ location, staffMembers = [], onEdit, onDelete, on
 
                     {/* Operational Stats Grid - More Compact */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="bg-slate-50/70 dark:bg-white/5 p-2 px-3 rounded-xl border border-slate-100/50 dark:border-white/5 flex flex-col gap-0.5 transition-all">
+                        <div className="bg-white/20 dark:bg-white/5 p-2 px-3 rounded-xl border border-gray-200/50 dark:border-white/5 flex flex-col gap-0.5 transition-all">
                             <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
                                 <Clock className="w-2.5 h-2.5" /> TURNO HOY
                             </span>
@@ -104,7 +104,7 @@ export function LocationCard({ location, staffMembers = [], onEdit, onDelete, on
                                 {todaySchedule}
                             </span>
                         </div>
-                        <div className="bg-slate-50/70 dark:bg-white/5 p-2 px-3 rounded-xl border border-slate-100/50 dark:border-white/5 flex flex-col gap-0.5 transition-all">
+                        <div className="bg-white/20 dark:bg-white/5 p-2 px-3 rounded-xl border border-gray-200/50 dark:border-white/5 flex flex-col gap-0.5 transition-all">
                             <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
                                 <Smartphone className="w-2.5 h-2.5" /> GEOFENCE
                             </span>

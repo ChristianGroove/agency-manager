@@ -148,8 +148,8 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                             <Download className="w-4 h-4 mr-2" /> Exportar CSV
                         </Button>
                         {activeTab === 'staff' && onNewStaffClick && (
-                            <Button onClick={onNewStaffClick} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl">
-                                <UserPlus className="w-4 h-4 mr-2" /> Nuevo Colaborador
+                            <Button onClick={onNewStaffClick} className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                <UserPlus className="w-4 h-4" /> Nuevo Colaborador
                             </Button>
                         )}
                     </div>

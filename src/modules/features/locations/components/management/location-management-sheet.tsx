@@ -230,57 +230,58 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
                     bg-transparent
                 "
+                side="right"
             >
-                <form onSubmit={handleSubmit} className="flex flex-col h-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl rounded-3xl overflow-hidden border border-white/20 dark:border-white/5">
-                    {/* Header Premium */}
-                    <div className="sticky top-0 z-20 flex items-center gap-4 shrink-0 px-8 py-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-100 dark:border-white/5">
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600 dark:text-emerald-400">
-                            <Navigation className="h-6 w-6" />
+                <form onSubmit={handleSubmit} className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
+                        <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
+                            <Navigation className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
-                            <SheetTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <SheetTitle className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
                                 {isEdit ? 'Editar Sede' : 'Nueva Sede'}
                             </SheetTitle>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                                 Configura la ubicación operativa y geocerca de tu sucursal.
                             </p>
                         </div>
                     </div>
 
                     <ScrollArea className="flex-1 overflow-y-auto">
-                        <div className="px-8 py-8 space-y-8 pb-32">
+                        <div className="px-8 py-8 space-y-8 pb-12">
 
                             {/* Información Básica */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
+                                    <Badge variant="outline" className="bg-brand-pink/10 text-brand-pink border-brand-pink/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
                                         Identidad
                                     </Badge>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nombre Comercial</Label>
+                                    <Label htmlFor="name" className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider ml-1">Nombre Comercial</Label>
                                     <Input
                                         id="name"
                                         placeholder="Ej: Tienda Centro Comercial Andino"
                                         value={name}
                                         onChange={e => setName(e.target.value)}
-                                        className="h-11 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 focus:ring-emerald-500"
+                                        className="h-10 rounded-xl bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white"
                                         required
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-5">
                                     <div className="space-y-2">
-                                        <Label htmlFor="state" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Departamento</Label>
+                                        <Label htmlFor="state" className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider ml-1">Departamento</Label>
                                         <Select value={state} onValueChange={(val) => {
                                             setState(val)
                                             setCity('')
                                         }}>
-                                            <SelectTrigger id="state" className="h-11 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5">
+                                            <SelectTrigger id="state" className="h-10 rounded-xl bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white">
                                                 <SelectValue placeholder="Elegir..." />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-2xl">
+                                            <SelectContent className="rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                                                 {COLOMBIA_DEPARTMENTS.map(dept => (
                                                     <SelectItem key={dept.id} value={dept.name}>
                                                         {dept.name}
@@ -290,12 +291,12 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="city" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Ciudad</Label>
+                                        <Label htmlFor="city" className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider ml-1">Ciudad</Label>
                                         <Select value={city} onValueChange={setCity} disabled={!state}>
-                                            <SelectTrigger id="city" className="h-11 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5">
+                                            <SelectTrigger id="city" className="h-10 rounded-xl bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white">
                                                 <SelectValue placeholder={state ? "Elegir..." : "Elige depto."} />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-2xl">
+                                            <SelectContent className="rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                                                 {state && COLOMBIA_DEPARTMENTS.find(d => d.name === state)?.cities.map(cityName => (
                                                     <SelectItem key={cityName} value={cityName}>
                                                         {cityName}
@@ -307,20 +308,20 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="address" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Dirección Física</Label>
+                                    <Label htmlFor="address" className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider ml-1">Dirección Física</Label>
                                     <div className="relative group">
                                         <Input
                                             id="address"
                                             placeholder="Ej: Carrera 11 # 82 - 71"
                                             value={address}
                                             onChange={e => setAddress(e.target.value)}
-                                            className="h-11 pr-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 focus:ring-emerald-500"
+                                            className="h-10 pr-12 rounded-xl bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white"
                                         />
                                         <Button
                                             type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="absolute right-1 top-1 h-9 w-9 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                            className="absolute right-1 top-1 h-8 w-8 rounded-lg text-slate-400 hover:text-brand-pink hover:bg-brand-pink/10 dark:hover:bg-brand-pink/20 transition-colors"
                                             onClick={handleSearchAddress}
                                             disabled={isSearching}
                                         >
@@ -331,14 +332,14 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                             </div>
 
                             {/* Mapa Interactivo */}
-                            <div className="space-y-4">
+                            <div className="space-y-4 bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
                                 <div className="flex items-center justify-between">
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
+                                    <Badge variant="outline" className="bg-brand-pink/10 text-brand-pink border-brand-pink/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
                                         Geolocalización
                                     </Badge>
                                     <span className="text-[10px] text-slate-400 italic">Haz click en el mapa para ajustar</span>
                                 </div>
-                                <div className="rounded-3xl overflow-hidden border border-slate-200 dark:border-white/5 shadow-inner">
+                                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-inner">
                                     <LocationPickerMap
                                         lat={lat}
                                         lng={lng}
@@ -359,7 +360,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                         <span className="text-xs font-mono text-slate-600 dark:text-slate-300">{lng.toFixed(6)}</span>
                                     </div>
                                     <div className="flex-1 space-y-1.5 pl-4 border-l border-slate-100 dark:border-white/5">
-                                        <Label htmlFor="radius" className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Radio Geocerca (m)</Label>
+                                        <Label htmlFor="radius" className="text-[9px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider">Radio Geocerca (m)</Label>
                                         <Input
                                             id="radius"
                                             type="number"
@@ -367,18 +368,18 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                             max="100000"
                                             value={radius}
                                             onChange={e => setRadius(e.target.value)}
-                                            className="h-8 py-0 px-2 text-xs font-bold rounded-lg"
+                                            className="h-8 py-0 px-2 text-xs font-bold rounded-lg bg-white dark:bg-black/20 border-slate-200 dark:border-white/10 dark:text-white"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Estado y Horarios */}
-                            <div className="space-y-6 pt-2">
-                                <div className="flex items-center justify-between p-4 rounded-3xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/5">
+                            <div className="space-y-6 bg-white dark:bg-zinc-900/60 p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
+                                <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20">
                                     <div className="space-y-0.5">
                                         <Label className="text-sm font-bold text-slate-900 dark:text-white">Operatividad</Label>
-                                        <p className="text-[11px] text-slate-500">Activa o desactiva la sede globalmente</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-gray-400">Activa o desactiva la sede globalmente</p>
                                     </div>
                                     <Switch
                                         checked={isActive}
@@ -388,7 +389,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
 
                                 <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
+                                        <Badge variant="outline" className="bg-brand-pink/10 text-brand-pink border-brand-pink/20 px-2 py-0.5 text-[10px] uppercase font-bold tracking-widest">
                                             Horario Comercial
                                         </Badge>
                                     </div>
@@ -401,8 +402,8 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                                 <div key={day.key} className={cn(
                                                     "p-4 rounded-2xl border transition-all duration-300",
                                                     schedule.is_closed
-                                                        ? "bg-slate-50/50 border-slate-100 dark:bg-slate-900/30 dark:border-slate-800/50 opacity-60"
-                                                        : "bg-white border-slate-200 dark:bg-slate-900/80 dark:border-white/10 shadow-sm"
+                                                        ? "bg-slate-50/50 border-slate-100 dark:bg-black/20 dark:border-white/5 opacity-60"
+                                                        : "bg-white border-slate-200 dark:bg-black/40 dark:border-white/10 shadow-sm"
                                                 )}>
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div className="flex items-center gap-3">
@@ -417,7 +418,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                                                     type="button"
                                                                     variant="ghost" 
                                                                     size="sm" 
-                                                                    className="h-6 px-2 text-[10px] text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 gap-1 rounded-full font-bold"
+                                                                    className="h-6 px-2 text-[10px] text-brand-pink hover:text-brand-pink hover:bg-brand-pink/10 dark:hover:bg-brand-pink/20 gap-1 rounded-full font-bold"
                                                                     onClick={() => handleReplicateSchedule(dayKey)}
                                                                 >
                                                                     <Clock className="w-3 h-3" /> Aplicar a todos
@@ -443,7 +444,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                                                     type="time"
                                                                     value={schedule.open}
                                                                     onChange={e => handleTimeChange(dayKey, 'open', e.target.value)}
-                                                                    className="h-9 bg-white dark:bg-slate-950 text-sm font-medium border-slate-200 dark:border-white/10 rounded-xl"
+                                                                    className="h-9 bg-white dark:bg-black/20 text-sm font-medium border-slate-200 dark:border-white/10 rounded-xl dark:text-white"
                                                                 />
                                                             </div>
                                                             <div className="space-y-1.5">
@@ -452,7 +453,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                                                                     type="time"
                                                                     value={schedule.close}
                                                                     onChange={e => handleTimeChange(dayKey, 'close', e.target.value)}
-                                                                    className="h-9 bg-white dark:bg-slate-950 text-sm font-medium border-slate-200 dark:border-white/10 rounded-xl"
+                                                                    className="h-9 bg-white dark:bg-black/20 text-sm font-medium border-slate-200 dark:border-white/10 rounded-xl dark:text-white"
                                                                 />
                                                             </div>
                                                         </div>
@@ -467,21 +468,21 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                         </div>
                     </ScrollArea>
 
-                    {/* Footer Premium */}
-                    <div className="sticky bottom-0 z-20 px-8 py-5 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+                    {/* Footer */}
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20 shrink-0">
                         <Button
                             type="button"
                             variant="ghost"
                             onClick={() => onOpenChange(false)}
                             disabled={isLoading}
-                            className="rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
+                            className="text-slate-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold"
                         >
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px] h-11 rounded-2xl shadow-lg shadow-emerald-500/20 font-bold transition-all hover:scale-[1.02]"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 font-semibold text-xs rounded-xl h-10 px-6 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                         >
                             {isLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
