@@ -283,6 +283,11 @@ export interface AdminOrganization {
     status: string
     subscription_status: string
     owner_id: string
+    owner_email?: string | null
+    owner_name?: string | null
+    member_count?: number
+    client_count?: number
+    connected_channels?: string[]
     created_at: string
     next_billing_date: string | null
     base_app_slug: string | null
@@ -300,7 +305,10 @@ export interface AdminOrganization {
         current_period_end: string
         bypass_until?: string | null
         saas_apps?: {
+            id?: string
             name: string
+            space_category?: string
+            price_monthly?: number
         }
     }
 }
@@ -318,7 +326,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
             branding_tier_id,
             active_app_id,
             app_activated_at,
-            saas_subscriptions(status, current_period_end, bypass_until, saas_apps(name))
+            saas_subscriptions(status, current_period_end, bypass_until, saas_apps(id, name, space_category, price_monthly))
         `)
         .order('created_at', { ascending: false })
 
@@ -327,11 +335,108 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
         return []
     }
 
-    // Unpack single subscription if array is returned
-    const parsedData = (data || []).map((org: any) => ({
-        ...org,
-        saas_subscriptions: Array.isArray(org.saas_subscriptions) ? org.saas_subscriptions[0] : org.saas_subscriptions
-    }))
+    const orgs = data || []
+    if (orgs.length === 0) return []
+
+    const orgIds = orgs.map((org: any) => org.id)
+
+    // 1. Build a global Auth User Email map from Supabase Auth Admin API & Profiles
+    const userEmailMap: Record<string, { email: string, full_name?: string }> = {}
+
+    try {
+        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+        const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+        if (users) {
+            users.forEach(u => {
+                if (u.id && u.email) {
+                    userEmailMap[u.id] = {
+                        email: u.email,
+                        full_name: u.user_metadata?.full_name || u.user_metadata?.name || undefined
+                    }
+                }
+            })
+        }
+    } catch (e) {
+        console.error("[getAdminOrganizations] Error fetching auth users fallback:", e)
+    }
+
+    // Secondary fallback: query profiles table
+    try {
+        const { data: profiles } = await (await createClient())
+            .from('profiles')
+            .select('id, email, full_name')
+        if (profiles) {
+            profiles.forEach(p => {
+                if (p.id && p.email && (!userEmailMap[p.id] || !userEmailMap[p.id].email)) {
+                    userEmailMap[p.id] = { email: p.email, full_name: p.full_name }
+                }
+            })
+        }
+    } catch (e) {
+        console.error("[getAdminOrganizations] Error fetching profiles:", e)
+    }
+
+    // 2. Fetch Organization Members to map org -> owner user_id
+    const orgOwnerMap: Record<string, string> = {}
+    const memberCountMap: Record<string, number> = {}
+    const clientCountMap: Record<string, number> = {}
+    const connectedChannelsMap: Record<string, string[]> = {}
+
+    try {
+        const [membersRes, clientsRes, channelsRes] = await Promise.all([
+            (await createClient()).from('organization_members').select('organization_id, user_id, role').in('organization_id', orgIds),
+            (await createClient()).from('leads').select('organization_id').in('organization_id', orgIds),
+            (await createClient()).from('channels').select('organization_id, provider, is_active').in('organization_id', orgIds)
+        ])
+
+        if (membersRes.data) {
+            membersRes.data.forEach(m => {
+                memberCountMap[m.organization_id] = (memberCountMap[m.organization_id] || 0) + 1
+                if (m.role === 'owner' || (!orgOwnerMap[m.organization_id] && m.role === 'admin')) {
+                    orgOwnerMap[m.organization_id] = m.user_id
+                } else if (!orgOwnerMap[m.organization_id]) {
+                    orgOwnerMap[m.organization_id] = m.user_id
+                }
+            })
+        }
+
+        if (clientsRes.data) {
+            clientsRes.data.forEach(c => {
+                clientCountMap[c.organization_id] = (clientCountMap[c.organization_id] || 0) + 1
+            })
+        }
+
+        if (channelsRes.data) {
+            channelsRes.data.forEach((ch: any) => {
+                if (ch.is_active !== false) {
+                    if (!connectedChannelsMap[ch.organization_id]) {
+                        connectedChannelsMap[ch.organization_id] = []
+                    }
+                    if (!connectedChannelsMap[ch.organization_id].includes(ch.provider)) {
+                        connectedChannelsMap[ch.organization_id].push(ch.provider)
+                    }
+                }
+            })
+        }
+    } catch (e) {
+        console.error("[getAdminOrganizations] Error fetching metrics/members/channels:", e)
+    }
+
+    const parsedData = orgs.map((org: any) => {
+        const sub = Array.isArray(org.saas_subscriptions) ? org.saas_subscriptions[0] : org.saas_subscriptions
+        const ownerUserId = org.owner_id || orgOwnerMap[org.id]
+        const ownerProfile = ownerUserId ? userEmailMap[ownerUserId] : null
+
+        return {
+            ...org,
+            owner_email: ownerProfile?.email || null,
+            owner_name: ownerProfile?.full_name || null,
+            member_count: memberCountMap[org.id] || 0,
+            client_count: clientCountMap[org.id] || 0,
+            connected_channels: connectedChannelsMap[org.id] || [],
+            saas_subscriptions: sub
+        }
+    })
 
     return parsedData as AdminOrganization[]
 }

@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import { useDebouncedCallback } from "use-debounce"
 
 interface OrganizationsClientViewProps {
-    data: Organization[]
+    data: (Organization & { saas_subscriptions?: any })[]
     count: number
     page: number
     limit: number
@@ -219,6 +219,7 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                 <TableHead className="pl-6 w-[400px]">Identidad / Jerarquía</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Estado</TableHead>
+                                <TableHead>Plan / Membresía</TableHead>
                                 <TableHead>Creada</TableHead>
                                 <TableHead className="text-right pr-6">Acciones</TableHead>
                             </TableRow>
@@ -226,55 +227,87 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                         <TableBody>
                             {data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center text-gray-500">
+                                    <TableCell colSpan={7} className="h-24 text-center text-gray-500">
                                         No se encontraron organizaciones.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                data.map((org) => (
-                                    <TableRow key={org.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selectedIds.has(org.id)}
-                                                onCheckedChange={() => toggleSelection(org.id)}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="pl-6">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9 rounded-lg border shadow-sm">
-                                                    <AvatarImage src={org.logo_url || undefined} className="object-cover" />
-                                                    <AvatarFallback><Building2 className="h-4 w-4 text-gray-400" /></AvatarFallback>
-                                                </Avatar>
+                                data.map((org) => {
+                                    const sub = Array.isArray(org.saas_subscriptions) ? org.saas_subscriptions[0] : org.saas_subscriptions
+                                    const planName = sub?.saas_apps?.name || org.base_app_slug || 'Plan Estándar'
+
+                                    return (
+                                        <TableRow key={org.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedIds.has(org.id)}
+                                                    onCheckedChange={() => toggleSelection(org.id)}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="pl-6">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-9 w-9 rounded-lg border shadow-sm">
+                                                        <AvatarImage src={org.logo_url || undefined} className="object-cover" />
+                                                        <AvatarFallback><Building2 className="h-4 w-4 text-gray-400" /></AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-gray-900 dark:text-gray-100">{org.name}</span>
+                                                        <span className="text-xs text-gray-400 mb-1">{org.slug}</span>
+                                                        
+
+                                                        {/* Parent Organization */}
+                                                        {org.parent_organization?.name && (
+                                                            <span className="text-[11px] text-blue-600/80 dark:text-blue-400/80 flex items-center gap-1 mt-1 font-medium bg-blue-50 dark:bg-blue-900/20 w-fit px-1.5 py-0.5 rounded">
+                                                                <CornerDownRight className="h-3 w-3" /> Padre: {org.parent_organization.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className={cn(
+                                                    "w-fit capitalize border-transparent font-medium",
+                                                    org.organization_type === 'platform' ? 'bg-purple-100 text-purple-700' :
+                                                        org.organization_type === 'reseller' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                )}>
+                                                    {org.organization_type || 'Client'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "w-fit capitalize border shadow-none font-bold text-xs rounded-lg px-2.5 py-0.5",
+                                                        org.status === 'active' || org.status === 'Active'
+                                                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                                            : org.status === 'suspended'
+                                                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                    )}
+                                                >
+                                                    {org.status === 'active' || org.status === 'Active' ? 'Activo' : org.status === 'suspended' ? 'Suspendido' : org.status || 'Activo'}
+                                                </Badge>
+                                            </TableCell>
+
+                                            {/* Plan / Membresía Column */}
+                                            <TableCell className="py-3">
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium text-gray-900 dark:text-gray-100">{org.name}</span>
-                                                    <span className="text-xs text-gray-400 mb-1">{org.slug}</span>
-                                                    
-
-
-                                                    {/* Parent Organization */}
-                                                    {org.parent_organization?.name && (
-                                                        <span className="text-[11px] text-blue-600/80 dark:text-blue-400/80 flex items-center gap-1 mt-1 font-medium bg-blue-50 dark:bg-blue-900/20 w-fit px-1.5 py-0.5 rounded">
-                                                            <CornerDownRight className="h-3 w-3" /> Padre: {org.parent_organization.name}
+                                                    <span className="text-xs font-bold text-slate-800 dark:text-gray-200 capitalize">
+                                                        {planName}
+                                                    </span>
+                                                    {sub?.bypass_until && new Date(sub.bypass_until) > new Date() ? (
+                                                        <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Beneficio Cortesía</span>
+                                                    ) : sub?.status === 'active' || sub?.status === 'legacy_manual' ? (
+                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                            {sub.status === 'legacy_manual' ? 'Manual: ' : 'Renueva: '}
+                                                            {sub.current_period_end ? format(new Date(sub.current_period_end), 'dd MMM yyyy', { locale: es }) : '-'}
                                                         </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground">Plan Licenciado</span>
                                                     )}
                                                 </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={cn(
-                                                "w-fit capitalize border-transparent",
-                                                org.organization_type === 'platform' ? 'bg-purple-100 text-purple-700' :
-                                                    org.organization_type === 'reseller' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-gray-100 text-gray-700'
-                                            )}>
-                                                {org.organization_type || 'Client'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={org.status === 'active' ? 'default' : 'destructive'} className="w-fit capitalize shadow-none">
-                                                {org.status || 'Active'}
-                                            </Badge>
-                                        </TableCell>
+                                            </TableCell>
                                         <TableCell className="text-gray-500">
                                             {format(new Date(org.created_at), "d MMM, yyyy", { locale: es })}
                                         </TableCell>
@@ -322,7 +355,8 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
+                                    )
+                                })
                             )}
                         </TableBody>
                     </Table>

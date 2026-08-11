@@ -47,7 +47,8 @@ export async function getOrganizationsPaginated(params: {
         .from('organizations')
         .select(`
             *,
-            parent_organization:organizations!parent_organization_id(name)
+            parent_organization:organizations!parent_organization_id(name),
+            saas_subscriptions(status, current_period_end, bypass_until, saas_apps(id, name, space_category, price_monthly))
         `, { count: 'exact' })
         .order('created_at', { ascending: false })
 

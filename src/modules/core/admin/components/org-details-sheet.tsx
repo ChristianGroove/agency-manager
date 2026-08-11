@@ -135,7 +135,14 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                     <div className="space-y-1.5">
                                         <SheetTitle className="text-3xl font-bold flex items-center gap-3">
                                             {orgData.name}
-                                            <Badge variant={orgData.status === 'active' ? 'default' : 'destructive'} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 h-6">
+                                            <Badge 
+                                                variant="outline" 
+                                                className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 h-6 rounded-lg border shadow-none ${
+                                                    orgData.status === 'active' 
+                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                                                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                                }`}
+                                            >
                                                 {orgData.status}
                                             </Badge>
                                         </SheetTitle>
@@ -433,9 +440,12 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                                     <p className="text-xs text-red-700/70 dark:text-red-400/70">Invalida los tokens de todos los dispositivos de los miembros.</p>
                                                                 </div>
                                                             </div>
-                                                            <Button variant="destructive" className="w-full mt-2" onClick={() => {
-                                                                toast.info("Pronto se unificará esta acción a Auth Admin.")
-                                                            }}>
+                                                            <Button 
+                                                                className="w-full mt-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-xs shadow-rose-500/20" 
+                                                                onClick={() => {
+                                                                    toast.info("Pronto se unificará esta acción a Auth Admin.")
+                                                                }}
+                                                            >
                                                                 Destruir Sesiones Activas
                                                             </Button>
                                                         </CardContent>

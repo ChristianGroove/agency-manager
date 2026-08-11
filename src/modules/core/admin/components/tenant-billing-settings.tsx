@@ -102,7 +102,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
             case 'active': return 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
             case 'legacy_manual': return 'bg-blue-500/10 text-blue-700 border-blue-500/20'
             case 'past_due': return 'bg-amber-500/10 text-amber-700 border-amber-500/20'
-            case 'canceled': case 'suspended': return 'bg-red-500/10 text-red-700 border-red-500/20'
+            case 'canceled': case 'suspended': return 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20 font-bold'
             default: return 'bg-gray-500/10 text-gray-700'
         }
     }
@@ -111,7 +111,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
         switch (status) {
             case 'paid': return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             case 'pending': return <Clock className="h-4 w-4 text-amber-500" />
-            case 'overdue': return <AlertCircle className="h-4 w-4 text-red-500" />
+            case 'overdue': return <AlertCircle className="h-4 w-4 text-rose-500" />
             default: return <AlertCircle className="h-4 w-4 text-gray-400" />
         }
     }
@@ -148,10 +148,10 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                                 <Button variant="outline" onClick={() => handleAdminUpdate({ status: 'active' })}>
                                     Activar Acceso
                                 </Button>
-                                <Button variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" onClick={() => handleAdminUpdate({ status: 'past_due' })}>
+                                <Button variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 font-semibold" onClick={() => handleAdminUpdate({ status: 'past_due' })}>
                                     Marcar Mora
                                 </Button>
-                                <Button variant="destructive" onClick={() => handleAdminUpdate({ status: 'canceled' })}>
+                                <Button variant="outline" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 font-semibold" onClick={() => handleAdminUpdate({ status: 'canceled' })}>
                                     Suspender
                                 </Button>
                             </div>
