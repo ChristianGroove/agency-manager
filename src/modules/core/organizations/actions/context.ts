@@ -11,6 +11,7 @@ const LIMITS_PERMISSION_ERROR = "No tienes permiso para gestionar limites de est
 
 /**
  * Switch the active organization context.
+ * Supports direct membership, hierarchical Reseller→Child access, and SuperAdmin bypass.
  */
 export async function switchOrganization(organizationId: string) {
     const cookieStore = await cookies()
@@ -21,6 +22,7 @@ export async function switchOrganization(organizationId: string) {
         throw new Error("Unauthorized")
     }
 
+    // 1. Check direct membership
     const { data: member } = await supabase
         .from('organization_members')
         .select('organization_id')
@@ -30,7 +32,37 @@ export async function switchOrganization(organizationId: string) {
         .single()
 
     if (!member) {
-        throw new Error("User is not a member of this organization")
+        // 2. Check hierarchical access: Reseller (parent) → Child tenant
+        let hasHierarchicalAccess = false
+
+        const { data: targetOrg } = await supabase
+            .from('organizations')
+            .select('parent_organization_id')
+            .eq('id', organizationId)
+            .single()
+
+        if (targetOrg?.parent_organization_id) {
+            const { data: parentMembership } = await supabase
+                .from('organization_members')
+                .select('role')
+                .eq('organization_id', targetOrg.parent_organization_id)
+                .eq('user_id', user.id)
+                .neq('status', 'blocked')
+                .single()
+
+            if (parentMembership && ['owner', 'admin'].includes(parentMembership.role)) {
+                hasHierarchicalAccess = true
+            }
+        }
+
+        // 3. SuperAdmin bypass (consistent with getCurrentOrganizationId)
+        if (!hasHierarchicalAccess) {
+            hasHierarchicalAccess = await isSuperAdmin(user.id)
+        }
+
+        if (!hasHierarchicalAccess) {
+            throw new Error("User is not a member of this organization")
+        }
     }
 
     cookieStore.set('pixy_org_id', organizationId, {

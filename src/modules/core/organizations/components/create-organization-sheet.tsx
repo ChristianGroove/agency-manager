@@ -141,7 +141,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
                 onSuccess?.()
                 onOpenChange(false)
-                window.location.reload()
+                router.refresh()
             } else {
                 toast.error(result.error || "Error al crear la organización")
                 setIsLoading(false)

@@ -4,17 +4,29 @@ export type Organization = {
     slug: string
     logo_url?: string
 
+    // Ownership & Provisioning
+    owner_id?: string | null
+    provisioned_by?: string | null
+
+    // App & Product
+    active_app_id?: string | null
+    base_app_slug?: string | null
+    subscription_product_id?: string
+    subscription_status: 'active' | 'past_due' | 'canceled'
+
     // V2 Hierarchy fields
     organization_type?: 'platform' | 'reseller' | 'operator' | 'client'
     parent_organization_id?: string | null
     parent_organization?: { name: string } // Joined
 
+    // Reseller acquisition
+    acquired_by_reseller_id?: string | null
+    acquisition_date?: string | null
+
     // V2 Status fields
     status?: 'active' | 'limited' | 'suspended'
     payment_status?: 'good_standing' | 'past_due'
 
-    subscription_product_id?: string
-    subscription_status: 'active' | 'past_due' | 'canceled'
     created_at: string
 }
 
@@ -23,6 +35,7 @@ export type OrganizationMember = {
     user_id: string
     role: 'owner' | 'admin' | 'member'
     status?: 'active' | 'blocked'
+    permissions?: Record<string, any>
     created_at: string
     organization?: Organization
     user?: {

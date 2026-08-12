@@ -171,20 +171,55 @@ export async function createOrganization(formData: {
             }
         }
 
-        const shouldAddCreator = !formData.admin_email;
+        // Track who provisioned this organization (always)
+        await supabaseAdmin.from('organizations')
+            .update({ provisioned_by: user.id })
+            .eq('id', newOrg.id)
+
+        const shouldAddCreator = !formData.admin_email
 
         if (shouldAddCreator) {
-            const { error: memberError } = await supabaseAdmin
-                .from('organization_members')
-                .insert({
-                    organization_id: newOrg.id,
-                    user_id: user.id,
-                    role: 'owner',
-                    permissions: { is_support_proxy: true }
-                })
+            // Determine if the creator is a privileged user (SuperAdmin/Reseller)
+            // who is provisioning on behalf of someone else, vs a self-service user
+            let creatorType: string | null = null
+            if (creatorOrgId) {
+                const { data: cOrg } = await supabaseAdmin
+                    .from('organizations')
+                    .select('organization_type')
+                    .eq('id', creatorOrgId)
+                    .single()
+                creatorType = cOrg?.organization_type || null
+            }
 
-            if (memberError) throw memberError
-            await supabaseAdmin.from('organizations').update({ owner_id: user.id }).eq('id', newOrg.id)
+            const isPrivilegedCreator = creatorType === 'platform' || creatorType === 'reseller'
+
+            if (isPrivilegedCreator) {
+                // SuperAdmin/Reseller: add as admin proxy, NOT as owner
+                // The real owner will be assigned when they accept or are invited
+                const { error: memberError } = await supabaseAdmin
+                    .from('organization_members')
+                    .insert({
+                        organization_id: newOrg.id,
+                        user_id: user.id,
+                        role: 'admin',
+                        permissions: { is_support_proxy: true, provisioner: true }
+                    })
+                if (memberError) throw memberError
+                // owner_id stays null — no real owner yet
+            } else {
+                // Self-service user: they ARE the owner of the organization
+                const { error: memberError } = await supabaseAdmin
+                    .from('organization_members')
+                    .insert({
+                        organization_id: newOrg.id,
+                        user_id: user.id,
+                        role: 'owner'
+                    })
+                if (memberError) throw memberError
+                await supabaseAdmin.from('organizations')
+                    .update({ owner_id: user.id })
+                    .eq('id', newOrg.id)
+            }
         }
 
         try {
@@ -205,13 +240,17 @@ export async function createOrganization(formData: {
         }
 
         try {
-            await supabaseAdmin.from('saas_subscriptions').insert({
-                organization_id: newOrg.id,
-                plan_id: formData.app_id || 'resto_space',
-                status: 'active',
-                payment_gateway: 'manual',
-                current_period_start: new Date().toISOString()
-            })
+            if (!formData.app_id) {
+                console.error("Warning: No app_id provided for saas_subscription, skipping subscription seed")
+            } else {
+                await supabaseAdmin.from('saas_subscriptions').insert({
+                    organization_id: newOrg.id,
+                    plan_id: formData.app_id,
+                    status: 'active',
+                    payment_gateway: 'manual',
+                    current_period_start: new Date().toISOString()
+                })
+            }
         } catch (e) {
             console.error("Warning: Failed to seed saas_subscriptions", e)
         }
@@ -275,12 +314,27 @@ export async function createOrganization(formData: {
                     }
 
                     if (invitedUser && inviteLink) {
+                        // Add invited user as the real owner
                         await supabaseAdmin.from('organization_members').insert({
                             organization_id: newOrg.id,
                             user_id: invitedUser.id,
                             role: 'owner'
                         })
-                        await supabaseAdmin.from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
+                        await supabaseAdmin.from('organizations')
+                            .update({ owner_id: invitedUser.id })
+                            .eq('id', newOrg.id)
+
+                        // Add the creator (SuperAdmin/Reseller) as admin proxy
+                        // so they can manage/switch to this tenant
+                        if (user.id !== invitedUser.id) {
+                            await supabaseAdmin.from('organization_members').upsert({
+                                organization_id: newOrg.id,
+                                user_id: user.id,
+                                role: 'admin',
+                                permissions: { is_support_proxy: true, provisioner: true }
+                            }, { onConflict: 'organization_id,user_id' })
+                        }
+
                         await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
                             user_metadata: { 
                                 full_name: 'Admin',
@@ -335,14 +389,27 @@ export async function createOrganization(formData: {
             console.error("Warning: CRM Init failed", initErr)
         }
 
+        // Only auto-switch to the new org if the creator is a self-service user
+        // (i.e., they're the actual owner, not a SuperAdmin/Reseller provisioning on behalf of someone)
         if (shouldAddCreator) {
-            await switchOrganization(newOrg.id)
+            let creatorType: string | null = null
+            if (creatorOrgId) {
+                const { data: cOrgSwitch } = await supabaseAdmin
+                    .from('organizations')
+                    .select('organization_type')
+                    .eq('id', creatorOrgId)
+                    .single()
+                creatorType = cOrgSwitch?.organization_type || null
+            }
+            const isSelfService = creatorType !== 'platform' && creatorType !== 'reseller'
+            if (isSelfService) {
+                await switchOrganization(newOrg.id)
+                await supabaseAdmin.auth.admin.updateUserById(
+                    user.id,
+                    { user_metadata: { onboarding_completed: true } }
+                )
+            }
         }
-
-        await supabaseAdmin.auth.admin.updateUserById(
-            user.id,
-            { user_metadata: { onboarding_completed: true } }
-        )
 
         return {
             success: true,
