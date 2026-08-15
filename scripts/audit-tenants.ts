@@ -32,7 +32,7 @@ async function main() {
     // 2. Fetch all organization members
     const { data: members, error: membersErr } = await supabase
         .from('organization_members')
-        .select('organization_id, user_id, role, status, permissions')
+        .select('organization_id, user_id, role, permissions')
 
     if (membersErr || !members) {
         console.error('❌ Error fetching members:', membersErr)
