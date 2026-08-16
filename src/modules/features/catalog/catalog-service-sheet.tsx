@@ -118,7 +118,7 @@ export function CatalogServiceSheet({
         try {
             const result = await generateCatalogImage({
                 name: formData.name,
-                description: formData.description,
+                description: formData.description || undefined,
                 category: formData.category
             })
             if (result.success) {
@@ -309,7 +309,7 @@ export function CatalogServiceSheet({
                                             <div className="space-y-2">
                                                 <Label className="text-xs">{t('catalog.form.frequency_label')}</Label>
                                                 <Select
-                                                    value={formData.frequency}
+                                                    value={formData.frequency || undefined}
                                                     onValueChange={(val: any) => setFormData({ ...formData, frequency: val })}
                                                 >
                                                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>

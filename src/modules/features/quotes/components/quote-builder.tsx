@@ -307,7 +307,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
             price: service.base_price || 0,
             catalog_item_id: service.id,
             is_recurring: service.type === 'recurring',
-            frequency: service.frequency
+            frequency: service.frequency || undefined
         }
         setItems(newItems)
     }

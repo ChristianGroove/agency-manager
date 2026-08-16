@@ -90,7 +90,7 @@ export function QuoteEditor({ quote: initialQuote }: QuoteEditorProps) {
             price: service.base_price,
             catalog_item_id: service.id,
             is_recurring: service.type === 'recurring',
-            frequency: service.frequency
+            frequency: service.frequency || undefined
         }
         setItems(newItems)
     }

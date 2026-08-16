@@ -11,6 +11,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { getPortalCatalog } from "@/modules/features/portal/services/portal-service"
 import { registerServiceInterest } from "@/modules/features/portal/services/business-service"
 import { CatalogItemFlipCard } from "./catalog-item-flip-card"
+import { ProductDetailModal } from "./product-detail-modal"
 import { PortalHeader } from "./portal-header"
 import { motion } from "framer-motion"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
@@ -22,6 +23,12 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("all")
     const [requestedItems, setRequestedItems] = useState<string[]>([]) // Track requested/interested items locally
+
+    // Detail Modal State & URL Deep Linking
+    const [selectedDetailItem, setSelectedDetailItem] = useState<ServiceCatalogItem | null>(null)
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [initialVariantId, setInitialVariantId] = useState<string | null>(null)
+    const [initialAddonIds, setInitialAddonIds] = useState<string[]>([])
 
     const containerRef = useRef<HTMLDivElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
@@ -45,12 +52,45 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
     const loadCatalog = async () => {
         try {
             const data = await getPortalCatalog(token)
-            setItems(data || [])
+            const loadedItems = data || []
+            setItems(loadedItems)
+
+            // Check URL search params for deep-linked item
+            if (typeof window !== "undefined") {
+                const params = new URLSearchParams(window.location.search)
+                const itemId = params.get("item")
+                const variantId = params.get("variant")
+                const addonsParam = params.get("addons")
+
+                if (itemId) {
+                    const matched = loadedItems.find(i => i.id === itemId)
+                    if (matched) {
+                        setSelectedDetailItem(matched)
+                        setInitialVariantId(variantId || null)
+                        setInitialAddonIds(addonsParam ? addonsParam.split(",") : [])
+                        setIsDetailModalOpen(true)
+                    }
+                }
+            }
         } catch (error) {
             console.error("Error loading catalog:", error)
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleOpenDetail = (item: ServiceCatalogItem) => {
+        setSelectedDetailItem(item)
+        setInitialVariantId(null)
+        setInitialAddonIds([])
+        setIsDetailModalOpen(true)
+    }
+
+    const handleCloseDetail = () => {
+        setIsDetailModalOpen(false)
+        setSelectedDetailItem(null)
+        setInitialVariantId(null)
+        setInitialAddonIds([])
     }
 
     const handleRequestInterest = async (item: ServiceCatalogItem) => {
@@ -65,9 +105,6 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
         window.open(whatsappUrl, '_blank')
 
         // 3. Log event in background (Server Action)
-        // We need the portal token. Since we don't have it explicitly in props, we can rely on client ID or pass token.
-        // For security, server actions usually act on session or verified token. 
-        // We will assume 'client.portal_short_token' or 'client.portal_token' is available in the client prop we just added.
         if (client?.portal_short_token || client?.portal_token) {
             await registerServiceInterest(client.portal_short_token || client.portal_token || '', item.id, item.name)
         }
@@ -157,11 +194,24 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                             variant="portal"
                             isRequested={isRequested}
                             onRequestInterest={handleRequestInterest}
+                            onViewDetail={handleOpenDetail}
                             settings={settings}
                         />
                     )
                 })}
             </div>
+
+            {/* Interactive Product Detail Modal */}
+            <ProductDetailModal
+                item={selectedDetailItem}
+                isOpen={isDetailModalOpen}
+                onClose={handleCloseDetail}
+                initialVariantId={initialVariantId}
+                initialAddonIds={initialAddonIds}
+                portalToken={token}
+                settings={settings}
+                currency="COP"
+            />
         </div>
     )
 }

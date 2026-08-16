@@ -1,0 +1,395 @@
+"use client"
+
+import React from "react"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import {
+    Sparkles,
+    Flame,
+    AlertTriangle,
+    Clock,
+    CheckCircle2,
+    TrendingDown,
+    Tag,
+    XCircle,
+    Package
+} from "lucide-react"
+import { CatalogVariant, UniversalCatalogItem } from "@/types/catalog"
+
+export type StorefrontBadgeType =
+    | "in_stock"
+    | "low_stock"
+    | "sold_out"
+    | "out_of_stock"
+    | "pre_order"
+    | "preorder"
+    | "backorder"
+    | "new"
+    | "novedad"
+    | "featured"
+    | "destacado"
+    | "discount"
+    | "custom"
+
+export interface StorefrontStatusBadgeProps {
+    type?: StorefrontBadgeType | string
+    label?: string
+    stockQuantity?: number | null
+    discountPercentage?: number | null
+    discountPercent?: number | null
+    className?: string
+    icon?: React.ReactNode
+}
+
+export type StatusBadgeProps = StorefrontStatusBadgeProps
+
+export interface PriceBreakdownResult {
+    basePrice: number
+    variantDelta: number
+    variantUnitPrice: number
+    addonsTotal: number
+    unitPrice: number
+    bundleTotalPrice: number
+    compareAtUnitPrice?: number | null
+    savingsAmount?: number
+    savingsPercentage?: number
+    formattedUnitPrice: string
+    formattedTotalPrice: string
+    formattedCompareAt?: string
+    formattedSavings?: string
+}
+
+export interface SelectedAddonSummary {
+    name?: string
+    priceDelta?: number
+    price?: number
+    quantity?: number
+}
+
+/**
+ * Normalizes and formats COP currency with Colombian locale
+ */
+export function formatCOPCurrency(price: number): string {
+    const integerCOP = Math.max(0, Math.round(price))
+    return `$${integerCOP.toLocaleString('es-CO')} COP`
+}
+
+/**
+ * Converts price in COP to Wompi cents (integer multiplied by 100)
+ */
+export function convertCOPToWompiCents(price: number): number {
+    const integerCOP = Math.max(0, Math.round(price))
+    return integerCOP * 100
+}
+
+/**
+ * Helper to compute badge styling and icons
+ */
+export function getBadgeStyle(badgeName: string): { label: string; bgClass: string; icon: string } {
+    switch (badgeName) {
+        case "Destacado":
+            return { label: "Destacado", bgClass: "bg-amber-500 text-white", icon: "Sparkles" }
+        case "Novedad":
+            return { label: "Novedad", bgClass: "bg-emerald-500 text-white", icon: "Flame" }
+        case "Pocas Unidades":
+            return { label: "Pocas Unidades", bgClass: "bg-rose-500 text-white", icon: "AlertTriangle" }
+        default:
+            return { label: badgeName, bgClass: "bg-primary text-primary-foreground", icon: "Tag" }
+    }
+}
+
+/**
+ * Evaluates whether an item was created within the last 30 days
+ */
+export function isNewItem(createdAtIso: string, referenceDateIso: string = new Date().toISOString()): boolean {
+    if (!createdAtIso) return false
+    const created = new Date(createdAtIso).getTime()
+    const reference = new Date(referenceDateIso).getTime()
+    if (isNaN(created) || isNaN(reference)) return false
+    const diffDays = (reference - created) / (1000 * 60 * 60 * 24)
+    return diffDays >= 0 && diffDays <= 30
+}
+
+/**
+ * Determines whether the low stock badge should be triggered
+ */
+export function shouldShowLowStockBadge(
+    inventoryQuantity: number,
+    lowStockThreshold: number,
+    trackInventory: boolean
+): boolean {
+    if (!trackInventory) return false
+    return inventoryQuantity > 0 && inventoryQuantity <= lowStockThreshold
+}
+
+/**
+ * Calculates discount badge text based on base and compare-at prices
+ */
+export function calculateDiscountBadge(basePrice: number, compareAtPrice?: number): string | null {
+    if (!compareAtPrice || compareAtPrice <= basePrice) return null
+    const discountPercent = Math.round(((compareAtPrice - basePrice) / compareAtPrice) * 100)
+    return `-${discountPercent}%`
+}
+
+/**
+ * Enforces maximum badge display limit for clean visual UI
+ */
+export function getDisplayedBadges(allBadges: string[], maxLimit: number = 3): string[] {
+    return (allBadges || []).slice(0, maxLimit)
+}
+
+/**
+ * Evaluates dynamic badges array based on item properties and inventory state
+ */
+export function evaluateDynamicBadges(
+    item: UniversalCatalogItem | { base_price: number; compare_at_price?: number | null; created_at?: string | null; badges?: any[]; track_inventory?: boolean; inventory_quantity?: number | null; low_stock_threshold?: number },
+    selectedVariant?: CatalogVariant | null
+): string[] {
+    const evaluated: string[] = []
+
+    // 1. Explicit badges from item (manual)
+    if (Array.isArray(item.badges)) {
+        for (const b of item.badges) {
+            if (typeof b === "string" && b.trim()) {
+                evaluated.push(b.trim())
+            } else if (b && typeof b === "object" && b.label) {
+                evaluated.push(b.label)
+            }
+        }
+    }
+
+    // 2. Discount Badge (only if compare_at_price > base_price)
+    const basePrice = selectedVariant?.price_override ?? (item.base_price || 0)
+    const compareAt = item.compare_at_price
+    if (compareAt && compareAt > basePrice) {
+        const discountText = calculateDiscountBadge(basePrice, compareAt)
+        if (discountText) {
+            evaluated.push(`Descuento ${discountText}`)
+        }
+    }
+
+    // 3. New / Novedad badge
+    if (item.created_at && isNewItem(item.created_at)) {
+        if (!evaluated.includes("Novedad")) {
+            evaluated.push("Novedad")
+        }
+    }
+
+    // 4. Low stock badge
+    const trackInventory = selectedVariant?.track_inventory ?? item.track_inventory ?? false
+    const stockQty = selectedVariant?.inventory_quantity ?? item.inventory_quantity ?? 0
+    const threshold = item.low_stock_threshold ?? 5
+    if (shouldShowLowStockBadge(stockQty, threshold, trackInventory)) {
+        if (!evaluated.includes("Pocas Unidades")) {
+            evaluated.push("Pocas Unidades")
+        }
+    }
+
+    // Return deduplicated and capped
+    return Array.from(new Set(evaluated))
+}
+
+/**
+ * Comprehensive pricing engine: variant overrides, modifiers, add-on totals, quantity, discounts, and currency formatting
+ */
+export function calculateStorefrontPricing(
+    item: UniversalCatalogItem | { base_price: number; compare_at_price?: number | null },
+    selectedVariant: CatalogVariant | null | undefined,
+    selectedAddons: SelectedAddonSummary[] | null | undefined,
+    quantity: number = 1,
+    currency: string = "COP"
+): PriceBreakdownResult {
+    const basePrice = Number(item.base_price || 0)
+    let variantDelta = 0
+
+    if (selectedVariant) {
+        if (selectedVariant.price_override !== undefined && selectedVariant.price_override !== null && selectedVariant.price_override >= 0) {
+            variantDelta = selectedVariant.price_override - basePrice
+        } else if (selectedVariant.price_type === 'fixed' || selectedVariant.price_modifier_type === 'fixed' || selectedVariant.price_type === 'absolute') {
+            variantDelta = Number(selectedVariant.price_modifier || 0) - basePrice
+        } else if (selectedVariant.price_type === 'percentage' || selectedVariant.price_modifier_type === 'percentage' || selectedVariant.price_type === 'offset_percentage') {
+            variantDelta = (basePrice * Number(selectedVariant.price_modifier || 0)) / 100
+        } else {
+            // Offset / default
+            variantDelta = Number(selectedVariant.price_modifier || 0)
+        }
+    }
+
+    const variantUnitPrice = Math.max(0, basePrice + variantDelta)
+    const addonsTotal = (selectedAddons || []).reduce((acc, a) => {
+        const delta = Number(a.priceDelta ?? a.price ?? 0)
+        const qty = Number(a.quantity ?? 1)
+        return acc + (delta * qty)
+    }, 0)
+
+    const unitPrice = Math.max(0, variantUnitPrice + addonsTotal)
+    const safeQuantity = Math.max(1, quantity)
+    const bundleTotalPrice = Math.max(0, unitPrice * safeQuantity)
+
+    const compareAt = item.compare_at_price ? Number(item.compare_at_price) : null
+    let savingsAmount: number | undefined
+    let savingsPercentage: number | undefined
+
+    if (compareAt && compareAt > unitPrice) {
+        savingsAmount = (compareAt - unitPrice) * safeQuantity
+        savingsPercentage = Math.round(((compareAt - unitPrice) / compareAt) * 100)
+    }
+
+    const formatFn = (amt: number) => {
+        if (currency === "USD") {
+            return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(amt)
+        }
+        if (currency === "EUR") {
+            return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }).format(amt)
+        }
+        return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(amt)
+    }
+
+    return {
+        basePrice,
+        variantDelta,
+        variantUnitPrice,
+        addonsTotal,
+        unitPrice,
+        bundleTotalPrice,
+        compareAtUnitPrice: compareAt,
+        savingsAmount,
+        savingsPercentage,
+        formattedUnitPrice: formatFn(unitPrice),
+        formattedTotalPrice: formatFn(bundleTotalPrice),
+        formattedCompareAt: compareAt ? formatFn(compareAt * safeQuantity) : undefined,
+        formattedSavings: savingsAmount ? formatFn(savingsAmount) : undefined,
+    }
+}
+
+/**
+ * Calculates raw effective total price with zero-floor protection
+ */
+export function calculateEffectiveTotalPrice(
+    item: { base_price: number },
+    selectedVariant?: CatalogVariant | null,
+    selectedAddons?: SelectedAddonSummary[] | null,
+    quantity: number = 1
+): number {
+    const result = calculateStorefrontPricing(item, selectedVariant, selectedAddons, quantity)
+    return result.bundleTotalPrice
+}
+
+/**
+ * Calculates item price with variant modifiers, add-on totals, quantity, and floor protection
+ */
+export function calculateCatalogItemPrice(
+    basePriceOrItem: number | { base_price: number },
+    variant?: CatalogVariant | null,
+    selectedAddons?: Array<{ priceDelta?: number; price_delta?: number; price?: number; name?: string; quantity?: number }> | null,
+    quantity: number = 1
+): number {
+    const base = typeof basePriceOrItem === "number" ? { base_price: basePriceOrItem } : basePriceOrItem
+    const normalizedAddons: SelectedAddonSummary[] = (selectedAddons || []).map(a => ({
+        name: a.name,
+        priceDelta: a.priceDelta ?? a.price_delta ?? a.price ?? 0,
+        quantity: a.quantity ?? 1
+    }))
+    return calculateEffectiveTotalPrice(base, variant, normalizedAddons, quantity)
+}
+
+/**
+ * Visual Status Badge Component
+ */
+export function StatusBadge({
+    type = "custom",
+    label,
+    stockQuantity,
+    discountPercentage,
+    discountPercent,
+    className,
+    icon
+}: StorefrontStatusBadgeProps) {
+    const effectiveDiscount = discountPercentage ?? discountPercent
+
+    // Normalized badge type identification
+    let normalizedType = (type || "").toLowerCase().replace(/[\s-]/g, "_")
+    let displayLabel = label || ""
+    let badgeClass = "bg-primary text-primary-foreground"
+    let renderIcon = icon
+
+    switch (normalizedType) {
+        case "destacado":
+        case "featured":
+            displayLabel = displayLabel || "Destacado"
+            badgeClass = "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-amber-500/20"
+            renderIcon = renderIcon || <Sparkles className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "novedad":
+        case "new":
+            displayLabel = displayLabel || "Novedad"
+            badgeClass = "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-500/20"
+            renderIcon = renderIcon || <Flame className="h-3 w-3 mr-1 shrink-0 text-yellow-300" />
+            break
+
+        case "low_stock":
+        case "pocas_unidades":
+            displayLabel = displayLabel || (stockQuantity !== undefined && stockQuantity !== null ? `¡Solo quedan ${stockQuantity}!` : "Pocas Unidades")
+            badgeClass = "bg-gradient-to-r from-rose-500 to-red-600 text-white animate-pulse shadow-rose-500/30"
+            renderIcon = renderIcon || <AlertTriangle className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "sold_out":
+        case "out_of_stock":
+        case "agotado":
+            displayLabel = displayLabel || "Agotado"
+            badgeClass = "bg-zinc-700 text-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+            renderIcon = renderIcon || <XCircle className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "pre_order":
+        case "preorder":
+            displayLabel = displayLabel || "Pre-Orden"
+            badgeClass = "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+            renderIcon = renderIcon || <Clock className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "backorder":
+        case "bajo_pedido":
+            displayLabel = displayLabel || "Bajo Pedido"
+            badgeClass = "bg-gradient-to-r from-sky-600 to-blue-600 text-white"
+            renderIcon = renderIcon || <Package className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "discount":
+        case "descuento":
+        case "on_sale":
+            displayLabel = displayLabel || (effectiveDiscount ? `-${effectiveDiscount}% OFF` : "Descuento")
+            badgeClass = "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-red-500/25"
+            renderIcon = renderIcon || <TrendingDown className="h-3 w-3 mr-1 shrink-0" />
+            break
+
+        case "in_stock":
+        case "disponible":
+            displayLabel = displayLabel || "En Stock"
+            badgeClass = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+            renderIcon = renderIcon || <CheckCircle2 className="h-3 w-3 mr-1 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            break
+
+        default:
+            displayLabel = displayLabel || type || "Etiqueta"
+            renderIcon = renderIcon || <Tag className="h-3 w-3 mr-1 shrink-0 opacity-80" />
+            break
+    }
+
+    return (
+        <Badge
+            className={cn(
+                "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-sm backdrop-blur-sm border border-white/20 transition-all",
+                badgeClass,
+                className
+            )}
+        >
+            {renderIcon}
+            <span>{displayLabel}</span>
+        </Badge>
+    )
+}
+
+export const StorefrontStatusBadge = StatusBadge

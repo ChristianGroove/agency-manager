@@ -12,6 +12,7 @@ interface CatalogItemFlipCardProps {
     variant?: 'portal' | 'admin'  // New: admin or portal variant
     isRequested?: boolean
     onRequestInterest?: (item: ServiceCatalogItem) => void
+    onViewDetail?: (item: ServiceCatalogItem) => void
     onEdit?: (item: ServiceCatalogItem) => void  // New: for admin variant
     onDelete?: (id: string) => void  // New: for admin variant
     settings?: { agency_phone?: string }
@@ -24,6 +25,7 @@ export function CatalogItemFlipCard({
     variant = 'portal',
     isRequested = false,
     onRequestInterest,
+    onViewDetail,
     onEdit,
     onDelete,
     settings = {}
@@ -54,6 +56,10 @@ export function CatalogItemFlipCard({
     const handleFlip = (e: React.MouseEvent) => {
         // Don't flip if clicking the button
         if ((e.target as HTMLElement).closest('button')) return
+        if (onViewDetail) {
+            onViewDetail(item)
+            return
+        }
         setIsFlipped(!isFlipped)
     }
 

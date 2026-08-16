@@ -1,214 +1,111 @@
-"use client"
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
+import { createClient } from "@/modules/core/database/supabase-server"
+import { requireOrgRole, getCurrentOrgRole } from "@/modules/core/iam/services/org-roles"
+import {
+  getCurrentOrganizationId,
+  getCurrentOrgName,
+} from "@/modules/core/organizations/organization-actions"
+import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
+import { getCatalogItemsAction } from "@/modules/features/catalog/actions"
+import { getCategories } from "@/modules/features/catalog/categories-actions"
+import { getAttributeGroupsAction } from "@/modules/features/catalog/attributes-actions"
+import { getStorefrontThemeConfigAction } from "@/modules/features/catalog/customizer-actions"
+import { CatalogWorkspace, WorkspaceTabKey } from "@/modules/features/catalog/components/catalog-workspace"
 
-/**
- * NOMENCLATURA: Este módulo muestra "Catálogo" en la UI.
- * Backend usa tabla 'service_catalog' (NO cambiar nombres técnicos).
- * "Catálogo" = Plantillas/oferta de servicios que el negocio ofrece.
- * Ver: /NOMENCLATURE.md para más info.
- */
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Plus, Store } from "lucide-react"
-import { SectionHeader } from "@/components/layout/section-header"
-import { CatalogList } from "@/modules/features/catalog/catalog-list"
-import { CatalogServiceSheet } from "@/modules/features/catalog/catalog-service-sheet"
-import { CategoryManager } from "@/modules/features/catalog/components/category-manager"
-import { getCatalogItems, deleteCatalogItem } from "@/modules/features/catalog/actions"
-import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
-import { ServiceCatalogItem } from "@/types"
-import { BriefingTemplate } from "@/types/briefings"
-import { toast } from "sonner"
-import { cn } from "@/modules/infrastructure/utils/utils"
-import { SplitText } from "@/components/ui/split-text"
-import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
-import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
-import { CategorySelector } from "@/modules/features/catalog/category-selector"
-import { TemplateImporter } from "@/modules/features/catalog/template-importer"
-import { useTranslation } from "@/modules/core/i18n/use-translation"
-
-
-export default function PortfolioPage() {
-    const { t } = useTranslation()
-    const [activeTab, setActiveTab] = useState<string>("services")
-
-    // Services state
-    const [items, setItems] = useState<ServiceCatalogItem[]>([])
-    const [categories, setCategories] = useState<ServiceCategory[]>([])
-    const [loading, setLoading] = useState(true)
-    const [isFormOpen, setIsFormOpen] = useState(false)
-    const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
-    const [currentOrgName, setCurrentOrgName] = useState<string>('')
-    const [spaceType, setSpaceType] = useState<string>('agency')
-
-    // Filter & View State
-    const [searchTerm, setSearchTerm] = useState("")
-    const [activeCategory, setActiveCategory] = useState("all")
-    const [activePaymentFilter, setActivePaymentFilter] = useState("all")
-    const [viewMode, setViewMode] = useState<ViewMode>('grid')
-
-    const isAgency = spaceType === 'agency' || spaceType === 'cleaning' || spaceType === 'platform'
-
-    /**
-     * Fetch current organization name
-     * Uses server action to avoid next/headers import in client component
-     */
-    const fetchOrgName = async () => {
-        try {
-            const { getCurrentOrgName } = await import('@/modules/core/organizations/organization-actions')
-            const { getOrgSpaceCategory } = await import('@/modules/core/organizations/space-helpers')
-            const [name, category] = await Promise.all([
-                getCurrentOrgName(),
-                getOrgSpaceCategory()
-            ])
-            setCurrentOrgName(name || '')
-            setSpaceType(category)
-        } catch (error) {
-            console.error('Error fetching org:', error)
-        }
-    }
-
-    /**
-     * Fetch portfolio services for current organization
-     */
-    const fetchServices = async () => {
-        setLoading(true)
-        try {
-            const [data, cats] = await Promise.all([
-                getCatalogItems(),
-                getCategories()
-            ])
-            setItems(data)
-            setCategories(cats)
-        } catch (error) {
-            console.error(error)
-            toast.error("Error al cargar el portafolio")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    useEffect(() => {
-        fetchOrgName()
-        fetchServices()
-    }, [])
-
-    const handleCreateService = () => {
-        setItemToEdit(null)
-        setIsFormOpen(true)
-    }
-
-    const handleEditService = (item: ServiceCatalogItem) => {
-        setItemToEdit(item)
-        setIsFormOpen(true)
-    }
-
-    const handleDeleteService = async (id: string) => {
-        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
-        try {
-            await deleteCatalogItem(id)
-            toast.success("Servicio eliminado")
-            fetchServices()
-        } catch (error) {
-            toast.error("Error al eliminar el servicio")
-        }
-    }
-
-    return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Title Row with Actions */}
-            {/* Standardized Header */}
-            <SectionHeader
-                title={isAgency ? 'Catálogo' : 'Menú'}
-                subtitle={isAgency ? 'Servicios y productos que ofrece tu negocio.' : 'Platos y productos de tu establecimiento.'}
-                icon={Store}
-                action={
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <TemplateImporter onSuccess={fetchServices} />
-                        <CategoryManager />
-                        <Button
-                            onClick={handleCreateService}
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            <Plus className="h-4 w-4" /> {isAgency ? t('catalog.buttons.new_service') : 'Nuevo Plato'}
-                        </Button>
-                    </div>
-                }
-            />
-
-            {/* Filter & View Bar */}
-            <div className="space-y-4 sticky top-4 z-30">
-                <div className="flex flex-col md:flex-row gap-3">
-                    <SearchFilterBar
-                        searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
-                        searchPlaceholder={isAgency ? 'Buscar por nombre...' : '¿Qué buscas?'}
-                        filters={isAgency ? [
-                            { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
-                            { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
-                            { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
-                        ] : [
-                            { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
-                        ]}
-                        activeFilter={activePaymentFilter}
-                        onFilterChange={setActivePaymentFilter}
-                    />
-                    <ViewToggle
-                        view={viewMode}
-                        onViewChange={setViewMode}
-                        showCompact={false}
-                    />
-                </div>
-
-                <div className="flex items-center">
-                    <CategorySelector
-                        categories={categories}
-                        activeCategory={activeCategory}
-                        onSelect={setActiveCategory}
-                    />
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="mt-0">
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="h-48 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse" />
-                        ))}
-                    </div>
-                ) : (
-                    <CatalogList
-                        items={items.filter(item => {
-                            // 1. Search (Name only now, or maybe description)
-                            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
-
-                            // 2. Category
-                            const matchesCategory = activeCategory === 'all' ? true : item.category === activeCategory
-
-                            // 3. Payment Type
-                            const matchesPayment = activePaymentFilter === 'all' ? true : item.type === activePaymentFilter
-
-                            return matchesSearch && matchesCategory && matchesPayment
-                        })}
-                        viewMode={viewMode}
-                        onEdit={handleEditService}
-                        onDelete={handleDeleteService}
-                    />
-                )}
-            </div>
-
-            {/* Sheets */}
-            <CatalogServiceSheet
-                open={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                itemToEdit={itemToEdit}
-                onSuccess={fetchServices}
-                spaceType={spaceType}
-            />
-        </div>
-    )
+export async function generateMetadata() {
+  const orgName = (await getCurrentOrgName()) || "Pixy"
+  return {
+    title: `Catálogo & Portal de Servicios | ${orgName}`,
+    description: `Explora el catálogo comercial y portafolio de servicios de ${orgName}.`,
+    robots: "index, follow",
+  }
 }
 
+function CatalogWorkspaceSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Header skeleton */}
+      <div className="h-16 rounded-3xl bg-zinc-100 dark:bg-zinc-900" />
+      {/* Navigation tabs skeleton */}
+      <div className="h-12 w-96 rounded-2xl bg-zinc-100 dark:bg-zinc-900" />
+      {/* Filter bar skeleton */}
+      <div className="h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900" />
+      {/* Cards grid skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-64 rounded-3xl bg-zinc-100 dark:bg-zinc-900" />
+        ))}
+      </div>
+    </div>
+  )
+}
 
+export default async function PortfolioPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }> | { tab?: string }
+}) {
+  // 1. Session verification
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login?redirect=/portfolio")
+  }
+
+  // 2. IAM Role check: require at least 'member'
+  await requireOrgRole("member")
+
+  // 3. Organization context resolution
+  const orgId = await getCurrentOrganizationId()
+  if (!orgId) {
+    redirect("/login")
+  }
+
+  // 4. Resolve search params tab if provided
+  const resolvedParams = searchParams ? await Promise.resolve(searchParams) : {}
+  const rawTab = resolvedParams?.tab as WorkspaceTabKey | undefined
+  const initialTab: WorkspaceTabKey =
+    rawTab === "attributes" || rawTab === "customizer" ? rawTab : "catalog"
+
+  // 5. Parallel Server-Side Data Fetching
+  const [
+    itemsRes,
+    categories,
+    attributeGroups,
+    themeConfig,
+    orgName,
+    spaceType,
+    userRole,
+  ] = await Promise.all([
+    getCatalogItemsAction({ includeInactive: true }),
+    getCategories(orgId),
+    getAttributeGroupsAction(orgId),
+    getStorefrontThemeConfigAction({ orgId }),
+    getCurrentOrgName(),
+    getOrgSpaceCategory(orgId),
+    getCurrentOrgRole(orgId),
+  ])
+
+  return (
+    <Suspense fallback={<CatalogWorkspaceSkeleton />}>
+      <CatalogWorkspace
+        initialItems={itemsRes.data || []}
+        initialCategories={categories || []}
+        initialAttributeGroups={attributeGroups || []}
+        initialThemeConfig={themeConfig}
+        organization={{
+          id: orgId,
+          name: orgName || "Mi Negocio",
+          spaceType: spaceType || "agency",
+          currency: "COP",
+        }}
+        userRole={userRole || "member"}
+        initialTab={initialTab}
+      />
+    </Suspense>
+  )
+}
