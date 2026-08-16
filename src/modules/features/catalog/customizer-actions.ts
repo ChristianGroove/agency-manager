@@ -12,43 +12,11 @@ import { createClient } from '@/modules/core/database/supabase-server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { revalidatePath } from 'next/cache'
-import { StorefrontThemeConfig } from '@/types/catalog'
+import { StorefrontThemeConfig, DEFAULT_STOREFRONT_THEME_CONFIG } from '@/types/catalog'
 import {
   storefrontThemeConfigSchema,
   StorefrontThemeConfigInput,
 } from './schemas/catalog.schema'
-
-export const DEFAULT_STOREFRONT_THEME_CONFIG: StorefrontThemeConfig = {
-  theme: 'modern',
-  primary_color: '#4F46E5',
-  secondary_color: '#EC4899',
-  accent_color: '#10B981',
-  color_mode: 'auto',
-  background_style: 'solid',
-  hero: {
-    enabled: true,
-    title: 'Descubre Nuestras Soluciones',
-    subtitle: 'Calidad superior, innovación y servicio personalizado.',
-    cta_text: 'Explorar Catálogo',
-    cta_url: '#catalog',
-    bg_gradient: 'from-indigo-900 via-slate-900 to-black',
-    badge_text: 'Portafolio 2026',
-  },
-  navigation_style: 'pills',
-  card_layout: 'grid',
-  enable_search: true,
-  enable_whatsapp_checkout: true,
-  enable_quote_request: true,
-  enable_qr_code: true,
-  faq: [],
-  testimonials: [],
-  social_links: {},
-  business_hours: {
-    monday_friday: '08:00 - 18:00',
-    saturday: '09:00 - 14:00',
-    sunday: 'Cerrado',
-  },
-}
 
 /**
  * 1. Retrieve Storefront Theme Config (Admin session or Public Portal Token)

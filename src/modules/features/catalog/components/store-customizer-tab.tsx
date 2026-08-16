@@ -4,12 +4,12 @@ import React, { useState, useEffect } from "react"
 import {
   StorefrontThemeConfig,
   UniversalCatalogItem,
+  DEFAULT_STOREFRONT_THEME_CONFIG,
 } from "@/types/catalog"
 import {
   getStorefrontThemeConfigAction,
   updateStorefrontThemeConfigAction,
   resetStorefrontThemeConfigAction,
-  DEFAULT_STOREFRONT_THEME_CONFIG,
 } from "@/modules/features/catalog/customizer-actions"
 import { LivePreviewFrame } from "./live-preview-frame"
 import { Button } from "@/components/ui/button"

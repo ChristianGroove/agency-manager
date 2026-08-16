@@ -291,6 +291,38 @@ export interface StorefrontThemeConfig {
   business_hours_text?: string;
 }
 
+export const DEFAULT_STOREFRONT_THEME_CONFIG: StorefrontThemeConfig = {
+  theme: 'modern',
+  primary_color: '#4F46E5',
+  secondary_color: '#EC4899',
+  accent_color: '#10B981',
+  color_mode: 'auto',
+  background_style: 'solid',
+  hero: {
+    enabled: true,
+    title: 'Descubre Nuestras Soluciones',
+    subtitle: 'Calidad superior, innovación y servicio personalizado.',
+    cta_text: 'Explorar Catálogo',
+    cta_url: '#catalog',
+    bg_gradient: 'from-indigo-900 via-slate-900 to-black',
+    badge_text: 'Portafolio 2026',
+  },
+  navigation_style: 'pills',
+  card_layout: 'grid',
+  enable_search: true,
+  enable_whatsapp_checkout: true,
+  enable_quote_request: true,
+  enable_qr_code: true,
+  faq: [],
+  testimonials: [],
+  social_links: {},
+  business_hours: {
+    monday_friday: '08:00 - 18:00',
+    saturday: '09:00 - 14:00',
+    sunday: 'Cerrado',
+  },
+};
+
 /**
  * Storefront Multi-Channel Action Payload
  */
