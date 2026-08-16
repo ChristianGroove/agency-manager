@@ -1011,7 +1011,7 @@ export async function duplicateCatalogItemAction(
       order_index: idx,
     }))
 
-    const createPayload: CreateCatalogItemInput = {
+    const createPayload: any = {
       name: newTitle,
       description: item.description || '',
       category: item.category,
@@ -1045,10 +1045,10 @@ export async function duplicateCatalogItemAction(
       seo_description: item.seo_description || undefined,
       seo_metadata: item.seo_metadata || { search_tags: [] },
       classification_metadata: item.classification_metadata,
-      physical_details: item.physical_details,
-      digital_details: item.digital_details,
-      service_details: item.service_details,
-      subscription_details: item.subscription_details,
+      physical_details: item.physical_details as any,
+      digital_details: item.digital_details as any,
+      service_details: item.service_details as any,
+      subscription_details: item.subscription_details as any,
       is_visible_in_portal: item.is_visible_in_portal ?? true,
       is_active: item.is_active ?? true,
       cta_type: item.cta_type || 'whatsapp',

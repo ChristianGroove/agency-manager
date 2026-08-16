@@ -546,7 +546,7 @@ export const storefrontTestimonialItemSchema = z.object({
   company: z.string().max(100).optional().nullable(),
   avatar_url: z.string().optional().nullable(),
   quote: z.string().min(1, 'El testimonio es requerido').max(1000),
-  rating: z.number().int().min(1).max(5).default(5),
+  rating: z.number().int().min(1).max(5).default(5).optional(),
 });
 
 export const storefrontThemeConfigSchema = z.object({

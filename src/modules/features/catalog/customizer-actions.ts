@@ -123,8 +123,13 @@ export async function getStorefrontThemeConfigAction(params?: {
         settings?.portal_secondary_color ||
         DEFAULT_STOREFRONT_THEME_CONFIG.secondary_color,
       hero: {
-        ...DEFAULT_STOREFRONT_THEME_CONFIG.hero,
+        ...DEFAULT_STOREFRONT_THEME_CONFIG.hero!,
         ...(rawConfig.hero || {}),
+        enabled: rawConfig.hero?.enabled ?? DEFAULT_STOREFRONT_THEME_CONFIG.hero!.enabled,
+        title: rawConfig.hero?.title || DEFAULT_STOREFRONT_THEME_CONFIG.hero!.title,
+        subtitle: rawConfig.hero?.subtitle || DEFAULT_STOREFRONT_THEME_CONFIG.hero!.subtitle,
+        cta_text: rawConfig.hero?.cta_text || DEFAULT_STOREFRONT_THEME_CONFIG.hero!.cta_text,
+        cta_url: rawConfig.hero?.cta_url || DEFAULT_STOREFRONT_THEME_CONFIG.hero!.cta_url,
       },
       business_hours: {
         ...DEFAULT_STOREFRONT_THEME_CONFIG.business_hours,
