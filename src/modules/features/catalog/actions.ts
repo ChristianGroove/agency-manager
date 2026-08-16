@@ -1056,7 +1056,7 @@ export async function duplicateCatalogItemAction(
       metadata: item.metadata || {},
     }
 
-    return createCatalogItemAction(createPayload)
+    return createCatalogItemAction(createPayload as any)
   } catch (err: any) {
     console.error('duplicateCatalogItemAction error:', err)
     return { success: false, error: err.message || 'Error al duplicar item' }

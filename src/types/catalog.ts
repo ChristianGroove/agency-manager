@@ -274,8 +274,8 @@ export interface StorefrontThemeConfig {
   enable_whatsapp_checkout?: boolean;
   enable_quote_request?: boolean;
   enable_qr_code?: boolean;
-  faq?: Array<{ id?: string; question: string; answer: string; category?: string }>;
-  testimonials?: Array<{ id?: string; name: string; role: string; company?: string; avatar_url?: string; quote: string; rating?: number }>;
+  faq?: Array<{ id?: string; question: string; answer: string; category?: string | null }>;
+  testimonials?: Array<{ id?: string; name: string; role?: string | null; company?: string | null; avatar_url?: string | null; quote: string; rating?: number }>;
   social_links?: {
     instagram?: string;
     facebook?: string;

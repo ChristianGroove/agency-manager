@@ -180,7 +180,7 @@ export const catalogAttributeOptionSchema = z
   });
 
 export const catalogAttributeGroupSchema = z.object({
-  id: z.string().min(1).default(generateFallbackUUID),
+  id: z.string().min(1).default(generateFallbackUUID).optional(),
   organization_id: z.string().uuid().optional(),
   name: z.string().min(1, 'El nombre del grupo de atributos es requerido').max(100, 'Máximo 100 caracteres'),
   slug: z
@@ -192,8 +192,8 @@ export const catalogAttributeGroupSchema = z.object({
   display_type: catalogSwatchTypeSchema.optional(),
   type: catalogSwatchTypeSchema.optional(),
   options: z.array(catalogAttributeOptionSchema).min(1, 'Debe incluir al menos una opción en el grupo de atributos'),
-  order_index: z.number().int().min(0).default(0),
-  is_active: z.boolean().default(true),
+  order_index: z.number().int().min(0).default(0).optional(),
+  is_active: z.boolean().default(true).optional(),
 });
 
 // ------------------------------------------------------------------------------
@@ -533,14 +533,14 @@ export const storefrontActionPayloadSchema = z
 // ------------------------------------------------------------------------------
 
 export const storefrontFaqItemSchema = z.object({
-  id: z.string().min(1).default(generateFallbackUUID),
+  id: z.string().min(1).default(generateFallbackUUID).optional(),
   question: z.string().min(1, 'La pregunta es requerida').max(255),
   answer: z.string().min(1, 'La respuesta es requerida').max(2000),
   category: z.string().max(100).optional().nullable(),
 });
 
 export const storefrontTestimonialItemSchema = z.object({
-  id: z.string().min(1).default(generateFallbackUUID),
+  id: z.string().min(1).default(generateFallbackUUID).optional(),
   name: z.string().min(1, 'El nombre es requerido').max(100),
   role: z.string().max(100).optional().nullable(),
   company: z.string().max(100).optional().nullable(),
