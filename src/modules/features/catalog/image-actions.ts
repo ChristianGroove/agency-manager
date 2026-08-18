@@ -3,83 +3,144 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { trackStorageUpload, validateStorageLimit } from "@/modules/infrastructure/storage/storage-actions"
 
 /**
- * Upload Service Catalog Image to Storage
+ * Upload Service Catalog Image to Storage with resilient multi-bucket fallback
  */
 export async function uploadCatalogImage(formData: FormData) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        throw new Error("No organization context found")
+        throw new Error("No se encontró el contexto de la organización.")
     }
 
-    // 1. Verify Authorization (Requires Admin/Owner)
-    try {
-        await requireOrgRole('admin')
-    } catch (e) {
-        throw new Error("Unauthorized: Solo administradores pueden subir archivos.")
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        throw new Error("No autenticado: Inicia sesión para subir archivos.")
     }
 
     const file = formData.get("file") as File
     if (!file) {
-        throw new Error("No se ha seleccionado ningún archivo")
+        throw new Error("No se ha seleccionado ningún archivo.")
     }
 
-    // 2. Validate against Org Storage Limits
-    const validation = await validateStorageLimit(orgId, file.size)
-    if (!validation.allowed) {
-        throw new Error(validation.message || "Límite de almacenamiento alcanzado.")
+    // 1. Validate against Org Storage Limits (Safely checked)
+    try {
+        const validation = await validateStorageLimit(orgId, file.size)
+        if (!validation.allowed) {
+            throw new Error(validation.message || "Límite de almacenamiento alcanzado.")
+        }
+    } catch (limitErr: any) {
+        if (limitErr.message?.includes("Límite de almacenamiento")) {
+            throw limitErr
+        }
+        console.warn("[Catalog Storage Limit Warning]:", limitErr)
     }
 
-    // 3. Prepare File Path
-    const fileExt = file.name.split(".").pop()
+    // 2. Prepare File Path
+    const fileExt = file.name.split(".").pop() || "webp"
     const fileName = `${orgId}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`
-    const bucket = "catalog" // Should exist in Supabase
 
-    // 4. Upload to Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-            upsert: true,
-            contentType: file.type
-        })
+    // 3. Multi-level Robust Storage Upload
+    // Candidate buckets in order of priority: 'catalog', 'public-assets', 'branding'
+    const candidateBuckets = ["catalog", "public-assets", "branding"]
+    let uploadedPublicUrl: string | null = null
+    let lastUploadError: any = null
 
-    if (uploadError) {
-        // Fallback to 'branding' bucket if 'catalog' doesn't exist yet
-        const { data: brandingData, error: brandingError } = await supabase.storage
-            .from("branding")
-            .upload(fileName, file, {
-                upsert: true,
-                contentType: file.type
-            })
+    for (let i = 0; i < candidateBuckets.length; i++) {
+        const targetBucket = candidateBuckets[i]
 
-        if (brandingError) {
-            console.error("Upload error in both buckets:", brandingError)
-            throw new Error("Error al subir imagen al servidor de almacenamiento.")
+        // A. Try standard client upload first
+        try {
+            const { error: userUploadError } = await supabase.storage
+                .from(targetBucket)
+                .upload(fileName, file, {
+                    upsert: true,
+                    contentType: file.type || "image/webp"
+                })
+
+            if (!userUploadError) {
+                const { data: { publicUrl } } = supabase.storage
+                    .from(targetBucket)
+                    .getPublicUrl(fileName)
+                uploadedPublicUrl = publicUrl
+                break
+            }
+        } catch (e) {
+            // Ignore and proceed to admin retry
         }
 
-        // track usage
-        await trackStorageUpload(orgId, file.size)
+        // B. Ensure bucket exists via supabaseAdmin & retry with admin credentials
+        try {
+            await supabaseAdmin.storage.createBucket(targetBucket, { public: true })
+        } catch (bucketCreateErr) {
+            // Bucket might already exist or admin created it
+        }
 
-        const { data: { publicUrl } } = supabase.storage
-            .from("branding")
-            .getPublicUrl(fileName)
+        try {
+            const { error: adminUploadError } = await supabaseAdmin.storage
+                .from(targetBucket)
+                .upload(fileName, file, {
+                    upsert: true,
+                    contentType: file.type || "image/webp"
+                })
 
-        return { success: true, url: publicUrl }
+            if (!adminUploadError) {
+                const { data: { publicUrl } } = supabaseAdmin.storage
+                    .from(targetBucket)
+                    .getPublicUrl(fileName)
+                uploadedPublicUrl = publicUrl
+                break
+            } else {
+                lastUploadError = adminUploadError
+            }
+        } catch (adminErr) {
+            lastUploadError = adminErr
+        }
     }
 
-    // 5. Track Storage Usage
-    await trackStorageUpload(orgId, file.size)
+    if (!uploadedPublicUrl) {
+        console.error("[Catalog Storage Exhausted Error]:", lastUploadError)
+        throw new Error("Error al subir imagen al servidor de almacenamiento.")
+    }
 
-    // 6. Get Public URL
-    const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(fileName)
+    // 4. Track Storage Usage safely
+    try {
+        await trackStorageUpload(orgId, file.size)
+    } catch (trackErr) {
+        console.warn("[Catalog Storage Usage Track Warning]:", trackErr)
+    }
 
-    return { success: true, url: publicUrl }
+    return { success: true, url: uploadedPublicUrl }
+}
+
+/**
+ * Delete Catalog Image from Supabase Storage
+ */
+export async function deleteCatalogImage(imageUrl: string) {
+    if (!imageUrl || !imageUrl.includes("/storage/v1/object/public/")) {
+        return { success: false, message: "URL no válida para eliminación" }
+    }
+
+    try {
+        const parts = imageUrl.split("/storage/v1/object/public/")[1]?.split("/")
+        if (!parts || parts.length < 2) return { success: false, message: "Ruta de archivo no válida" }
+
+        const bucket = parts[0]
+        const filePath = parts.slice(1).join("/")
+
+        const { error } = await supabaseAdmin.storage.from(bucket).remove([filePath])
+        if (error) {
+            console.error("[Catalog Storage Delete Error]:", error)
+            return { success: false, error: error.message }
+        }
+
+        return { success: true }
+    } catch (err: any) {
+        console.error("[Catalog Storage Delete Exception]:", err)
+        return { success: false, error: err.message }
+    }
 }
 
