@@ -92,6 +92,9 @@ export interface CatalogVariant {
   track_inventory?: boolean;
   track_stock?: boolean; // Alias for track_inventory
   allow_backorders?: boolean;
+  low_stock_threshold?: number;
+  cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio' | 'add_to_cart' | 'cart' | 'booking';
+  price_label_type?: 'price' | 'base_price' | 'from';
   image_url?: string | null;
   attributes: Record<string, string | { name: string; value: string; label?: string }>; // e.g. { "Color": "Negro", "Talla": "L" }
   is_default?: boolean;
@@ -246,6 +249,38 @@ export interface ClassificationMetadata {
   minimum_commitment_months?: number;
 }
 
+export interface StorefrontHeroSlide {
+  id: string;
+  image_url: string;
+  title?: string | null;
+  subtitle?: string | null;
+  badge_text?: string | null;
+  cta_text?: string | null;
+  cta_url?: string | null;
+  link_url?: string | null;
+}
+
+export interface StorefrontHeroConfig {
+  enabled: boolean;
+  background_type?: 'gradient' | 'image' | 'slideshow';
+  title?: string | null;
+  subtitle?: string | null;
+  cta_text?: string | null;
+  cta_url?: string | null;
+  cta_enabled?: boolean;
+  whatsapp_cta_enabled?: boolean;
+  whatsapp_cta_text?: string | null;
+  bg_gradient?: string;
+  bg_image_url?: string | null;
+  slides?: StorefrontHeroSlide[];
+  slide_interval?: number;
+  badge_text?: string | null;
+  text_align?: 'left' | 'center' | 'right';
+  hide_text?: boolean;
+  overlay_opacity?: number;
+  banner_height?: 'compact' | 'medium' | 'tall' | 'full';
+}
+
 /**
  * Storefront Customizer Theme Configuration
  */
@@ -257,16 +292,8 @@ export interface StorefrontThemeConfig {
   accent_color?: string;
   color_mode?: 'dark' | 'light' | 'auto';
   background_style?: 'solid' | 'gradient' | 'mesh' | 'mesh_3d';
-  hero?: {
-    enabled: boolean;
-    title: string;
-    subtitle: string;
-    cta_text: string;
-    cta_url: string;
-    bg_gradient?: string;
-    bg_image_url?: string | null;
-    badge_text?: string;
-  };
+  primary_cta?: 'whatsapp' | 'cart' | 'buy' | 'quote' | 'booking';
+  hero?: StorefrontHeroConfig;
   navigation_style?: 'pills' | 'tabs' | 'sidebar' | 'grid' | 'glass_cards' | 'underline_tabs' | 'floating_dock';
   category_nav_style?: string; // Legacy alias
   card_layout?: 'grid' | 'masonry' | 'list';
@@ -298,14 +325,26 @@ export const DEFAULT_STOREFRONT_THEME_CONFIG: StorefrontThemeConfig = {
   accent_color: '#10B981',
   color_mode: 'auto',
   background_style: 'solid',
+  primary_cta: 'whatsapp',
   hero: {
     enabled: true,
+    background_type: 'gradient',
     title: 'Descubre Nuestras Soluciones',
     subtitle: 'Calidad superior, innovación y servicio personalizado.',
     cta_text: 'Explorar Catálogo',
     cta_url: '#catalog',
+    cta_enabled: true,
+    whatsapp_cta_enabled: true,
+    whatsapp_cta_text: 'WhatsApp Directo',
     bg_gradient: 'from-indigo-900 via-slate-900 to-black',
+    bg_image_url: null,
+    slides: [],
+    slide_interval: 5000,
     badge_text: 'Portafolio 2026',
+    text_align: 'center',
+    hide_text: false,
+    overlay_opacity: 40,
+    banner_height: 'medium',
   },
   navigation_style: 'pills',
   card_layout: 'grid',
@@ -437,7 +476,7 @@ export interface UniversalCatalogItem<TMetadata = Record<string, any>> {
   is_visible_in_portal: boolean;
   is_active?: boolean;
   order_index?: number;
-  cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio' | 'add_to_cart';
+  cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio' | 'add_to_cart' | 'cart' | 'booking';
   price_label_type?: 'price' | 'base_price' | 'from';
 
   // === Legacy Compatibility Fields ===
@@ -459,3 +498,133 @@ export interface UniversalCatalogItem<TMetadata = Record<string, any>> {
  * ServiceCatalogItem Alias for 100% Backwards Compatibility
  */
 export type ServiceCatalogItem<TMetadata = Record<string, any>> = UniversalCatalogItem<TMetadata>;
+
+/**
+ * Customer Profile Information for Storefront Cart & Multi-Channel Actions
+ */
+export interface StorefrontCustomerProfile {
+  name?: string;
+  phone?: string; // WhatsApp phone number (e.g. "573001234567")
+  email?: string;
+  company_name?: string;
+  companyName?: string; // Alias
+  address?: string;
+  delivery_address?: string;
+  deliveryAddress?: string; // Alias
+  delivery_method?: 'pickup' | 'delivery';
+  deliveryMethod?: 'pickup' | 'delivery'; // Alias
+  notes?: string;
+}
+
+/**
+ * Item in the Storefront Multi-Item Cart
+ */
+export interface StorefrontCartItem {
+  id: string; // Unique cart line id: `${item_id}:${variant_id || 'base'}`
+  catalog_item_id: string;
+  itemId?: string; // Backwards compatible alias
+  name: string;
+  category?: string;
+  classification?: CatalogClassification;
+  thumbnail_url?: string;
+  imageUrl?: string | null; // Backwards compatible alias
+  base_price: number;
+  basePrice?: number; // Alias
+  unit_price: number;
+  unitPrice?: number; // Alias
+  final_price: number;
+  totalPrice?: number; // Alias
+  quantity: number;
+
+  // Selected variant details
+  variantId?: string | null;
+  selected_variant?: {
+    id: string;
+    name: string;
+    title?: string;
+    sku?: string | null;
+    barcode?: string | null;
+    price_override?: number | null;
+    price_modifier?: number;
+    price_type?: string;
+    attributes: Record<string, string | { name: string; value: string; label?: string }>;
+  } | null;
+  selectedVariant?: CatalogVariant | null; // Alias
+
+  // Selected add-on options
+  selected_addons: Array<{
+    id: string;
+    name: string;
+    price: number;
+    priceDelta?: number;
+    groupId?: string;
+    optionId?: string;
+    quantity?: number;
+    skuSuffix?: string | null;
+  }>;
+  selectedAddons?: Array<{
+    groupId: string;
+    optionId: string;
+    name: string;
+    priceDelta: number;
+    quantity?: number;
+    skuSuffix?: string | null;
+  }>;
+
+  custom_notes?: string;
+  track_inventory?: boolean;
+  trackInventory?: boolean;
+  stock_quantity?: number | null;
+  stockQuantity?: number | null;
+  inventory_quantity?: number | null;
+  allow_backorders?: boolean;
+  allowBackorders?: boolean;
+  low_stock_threshold?: number;
+  sku?: string | null;
+  isOutOfStock?: boolean;
+  deepLinkUrl?: string;
+  organization_id?: string | null;
+  organizationId?: string | null;
+}
+
+/**
+ * Storefront Cart Store State Model
+ */
+export interface StorefrontCartState {
+  organization_id: string;
+  organizationId?: string | null;
+  portalToken?: string | null;
+  items: StorefrontCartItem[];
+  delivery_method: 'pickup' | 'delivery';
+  deliveryMethod?: 'pickup' | 'delivery';
+  customer_profile: {
+    name: string;
+    phone: string;
+    address?: string;
+    notes?: string;
+    email?: string;
+    company_name?: string;
+    delivery_address?: string;
+    delivery_method?: 'pickup' | 'delivery';
+  };
+  customerProfile?: StorefrontCustomerProfile;
+  is_drawer_open: boolean;
+  isOpen?: boolean;
+  addItem: (item: Omit<StorefrontCartItem, 'id' | 'final_price'> | any) => void;
+  removeItem: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
+  setDeliveryMethod: (method: 'pickup' | 'delivery') => void;
+  updateCustomerProfile: (profile: Partial<StorefrontCartState['customer_profile']> | Partial<StorefrontCustomerProfile>) => void;
+  setCustomerProfile?: (profile: Partial<StorefrontCustomerProfile>) => void;
+  setDrawerOpen: (open: boolean) => void;
+  openDrawer?: () => void;
+  closeDrawer?: () => void;
+  toggleDrawer?: () => void;
+  clearCart: () => void;
+  getTotalItems: () => number;
+  getItemCount?: () => number;
+  getSubtotal: () => number;
+  getTotal: () => number;
+  hasOutOfStockItems?: () => boolean;
+}
+

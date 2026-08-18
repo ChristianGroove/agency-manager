@@ -94,6 +94,9 @@ export default function PortalPage() {
                 setOrganization(data.organization || null)
                 setSettings(data.settings || {})
                 setActiveModules(data.activePortalModules || [])
+                setCatalog(data.catalog || [])
+                setServices(data.services || data.catalog || [])
+                setPaymentMethods(data.paymentMethods || [])
             } else {
                 setPortalType('client')
                 setClient(data.client || null)
@@ -212,12 +215,13 @@ export default function PortalPage() {
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
 
     // Branding Colors Injection + White-Label Phase 3
+    const isStorefrontGuest = portalType === 'guest' || (settings.portal_template === 'storefront')
     const brandingStyles = {
         '--portal-primary': settings.portal_primary_color || '#F205E2',
         '--portal-secondary': settings.portal_secondary_color || '#00E0FF',
         '--primary': settings.portal_primary_color || '#F205E2', // Override Shadcn primary
-        backgroundColor: settings.portal_login_background_color || '#F3F4F6',
-        backgroundImage: settings.portal_login_background_url ? `url(${settings.portal_login_background_url})` : undefined,
+        backgroundColor: !isStorefrontGuest ? (settings.portal_login_background_color || '#F3F4F6') : undefined,
+        backgroundImage: !isStorefrontGuest && settings.portal_login_background_url ? `url(${settings.portal_login_background_url})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
@@ -293,7 +297,9 @@ export default function PortalPage() {
     // Por el momento tomamos el template directamente de settings si lo exponen allí 
     // O asumimos b2b_dashboard si no viene. Modificaremos API / portalData si settings no lo tiene.
     // Vamos a usar el default router (getPublicPortalTemplate)
-    const portalConfig = settings.portal_template || 'b2b_dashboard'
+    const portalConfig = portalType === 'guest'
+        ? (settings.portal_template || 'storefront')
+        : (settings.portal_template || 'b2b_dashboard')
     const PortalLayoutComponent = getPublicPortalTemplate(portalConfig)
 
     return (
@@ -301,12 +307,14 @@ export default function PortalPage() {
             <PortalLayoutComponent
                 token={params.token as string}
                 client={client}
+                organization={organization}
                 invoices={invoices}
                 quotes={quotes}
                 briefings={briefings}
                 events={events}
                 services={services}
                 settings={settings}
+                themeConfig={settings.portal_theme_config}
                 activeModules={activeModules}
                 hostingAccounts={hostingAccounts}
                 catalog={catalog} // NEW: Pass pre-fetched catalog
@@ -315,11 +323,11 @@ export default function PortalPage() {
                 onViewQuote={setViewQuote}
                 insightsAccess={insightsAccess} // NEW
 
-                // Props adiciones esperadas por RestoLayout
+                // Props adiciones esperadas por RestoLayout y Storefront
                 user={client}
                 currentOrgId={client?.organization_id || organization?.id || ""}
                 isAdmin={false}
-                orgData={{ name: client?.organization?.name || organization?.name || "Restaurante" }}
+                orgData={{ name: client?.organization?.name || organization?.name || "Tienda Comercial" }}
             />
 
             {/* Payment Options Modal */}

@@ -372,15 +372,29 @@ export async function getPortalData(token: string) {
         }
 
         // 4. Guest Flow
-        let orgQuery = supabaseAdmin.from('organizations').select('*')
-        
+        let org: any = null
         if (isUuid) {
-            orgQuery = orgQuery.or(`id.eq.${token},slug.eq.${token}`)
+            const { data } = await supabaseAdmin.from('organizations').select('*').or(`id.eq.${token},slug.eq.${token}`).maybeSingle()
+            org = data
         } else {
-            orgQuery = orgQuery.eq('slug', token)
+            const { data } = await supabaseAdmin.from('organizations').select('*').or(`slug.eq.${token},custom_portal_domain.eq.${token}`).maybeSingle()
+            org = data
+            if (!org) {
+                const { data: settingMatch } = await supabaseAdmin
+                    .from('organization_settings')
+                    .select('organization_id')
+                    .eq('custom_domain', token)
+                    .maybeSingle()
+                if (settingMatch?.organization_id) {
+                    const { data: matchedOrg } = await supabaseAdmin
+                        .from('organizations')
+                        .select('*')
+                        .eq('id', settingMatch.organization_id)
+                        .maybeSingle()
+                    org = matchedOrg
+                }
+            }
         }
-        
-        const { data: org } = await orgQuery.maybeSingle()
 
         if (org) {
             const { data: rawSettings } = await supabaseAdmin
@@ -406,12 +420,27 @@ export async function getPortalData(token: string) {
                 .eq('id', org.active_app_id || '')
                 .maybeSingle()
 
-            const portalTemplate = appData?.portal_template || 'b2b_dashboard'
+            // Determine Portal Template:
+            // 1. If resto space or b2c_commerce -> b2c_commerce (Digital Menu)
+            // 2. Otherwise for storefront guest visit -> storefront (UniversalStorefrontLayout)
+            let portalTemplate = 'storefront'
+            if (appData?.portal_template === 'b2c_commerce') {
+                portalTemplate = 'b2c_commerce'
+            } else if (rawSettings?.portal_template && rawSettings.portal_template !== 'b2b_dashboard') {
+                portalTemplate = rawSettings.portal_template
+            }
             settings.portal_template = portalTemplate
 
-            const [ { data: appPortalConfig }, { data: catalogItems } ] = await Promise.all([
+            // Load theme configuration
+            let themeConfig = rawSettings?.portal_theme_config || null
+            if (themeConfig && typeof themeConfig === 'string') {
+                try { themeConfig = JSON.parse(themeConfig) } catch {}
+            }
+            settings.portal_theme_config = themeConfig
+
+            const [ { data: appPortalConfig }, catalogItems ] = await Promise.all([
                 supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'guest').order('display_order', { ascending: true }),
-                (portalTemplate === 'b2c_commerce') ? supabaseAdmin.from('resto_menu_items').select('*, category:resto_menu_categories(id, name, order_index)').eq('organization_id', org.id).eq('is_visible', true).is('deleted_at', null) : Promise.resolve({ data: [] })
+                getPortalCatalog(token).catch(() => [])
             ])
 
             let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
@@ -468,13 +497,24 @@ export async function getPortalMetadata(token: string) {
         }
 
         if (!organizationId) {
-            let orgQuery = supabaseAdmin.from('organizations').select('id')
+            let org: any = null
             if (isUuid) {
-                orgQuery = orgQuery.or(`id.eq.${token},slug.eq.${token}`)
+                const { data } = await supabaseAdmin.from('organizations').select('id').or(`id.eq.${token},slug.eq.${token}`).maybeSingle()
+                org = data
             } else {
-                orgQuery = orgQuery.eq('slug', token)
+                const { data } = await supabaseAdmin.from('organizations').select('id').or(`slug.eq.${token},custom_portal_domain.eq.${token}`).maybeSingle()
+                org = data
+                if (!org) {
+                    const { data: settingMatch } = await supabaseAdmin
+                        .from('organization_settings')
+                        .select('organization_id')
+                        .eq('custom_domain', token)
+                        .maybeSingle()
+                    if (settingMatch?.organization_id) {
+                        org = { id: settingMatch.organization_id }
+                    }
+                }
             }
-            const { data: org } = await orgQuery.maybeSingle()
             if (org) organizationId = org.id
         }
 
@@ -525,7 +565,6 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
         .eq('client_id', client.id)
         .eq('organization_id', client.organization_id)
         .single()
-
     if (briefingError || !briefing) throw new Error('Unauthorized')
 
     const { data, error } = await supabaseAdmin.from('briefing_responses').select('*').eq('briefing_id', briefing.id)
@@ -542,13 +581,55 @@ export async function getPortalCatalog(token: string) {
 
     let organizationId: string | null = client?.organization_id || null
     if (!organizationId) {
-        const { data: org } = await supabaseAdmin.from('organizations').select('id').eq('slug', token).maybeSingle()
+        let org: any = null
+        if (isUuid) {
+            const { data } = await supabaseAdmin.from('organizations').select('id, active_app_id').or(`id.eq.${token},slug.eq.${token}`).maybeSingle()
+            org = data
+        } else {
+            const { data } = await supabaseAdmin.from('organizations').select('id, active_app_id').or(`slug.eq.${token},custom_portal_domain.eq.${token}`).maybeSingle()
+            org = data
+            if (!org) {
+                const { data: settingMatch } = await supabaseAdmin
+                    .from('organization_settings')
+                    .select('organization_id')
+                    .eq('custom_domain', token)
+                    .maybeSingle()
+                if (settingMatch?.organization_id) {
+                    org = { id: settingMatch.organization_id }
+                }
+            }
+        }
         if (org) organizationId = org.id
     }
 
     if (!organizationId) throw new Error('Unauthorized')
 
-    const { data: catalogItems, error } = await supabaseAdmin
+    // 1. Fetch universal service_catalog items
+    const { data: universalItems } = await supabaseAdmin
+        .from('service_catalog')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_visible_in_portal', true)
+        .is('deleted_at', null)
+        .order('order_index', { ascending: true })
+
+    if (universalItems && universalItems.length > 0) {
+        const { data: categories } = await supabaseAdmin
+            .from('service_categories')
+            .select('id, name')
+            .eq('organization_id', organizationId)
+
+        const catMap: Record<string, string> = {}
+        for (const c of categories || []) {
+            catMap[c.id] = c.name
+        }
+
+        const { normalizeCatalogItem } = await import('@/modules/features/catalog/utils/normalize-catalog-item')
+        return universalItems.map((row: any) => normalizeCatalogItem(row, catMap))
+    }
+
+    // 2. Fallback to resto menu items for resto spaces
+    const { data: catalogItems } = await supabaseAdmin
         .from('resto_menu_items')
         .select('*, category:resto_menu_categories(id, name, order_index), resto_item_modifier_groups(order_index, resto_modifier_groups(*))')
         .eq('organization_id', organizationId)

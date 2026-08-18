@@ -361,6 +361,118 @@ export async function POST(request: Request) {
                     }
                 }
 
+            } else if (reference.startsWith('ORD-')) {
+                logWompiWebhookInfo('[WompiWebhook] Detected storefront order payment', { reference })
+
+                const supabase = await createClient()
+
+                // 1. Find transaction record
+                const { data: paymentTx, error: txError } = await supabase
+                    .from('payment_transactions')
+                    .select('*')
+                    .eq('reference', reference)
+                    .maybeSingle()
+
+                if (txError) {
+                    logWompiWebhookError('[WompiWebhook] Error querying payment transaction for order:', txError, { reference })
+                }
+
+                if (paymentTx) {
+                    if (paymentTx.organization_id) {
+                        await updateWompiSyncStatus(
+                            paymentTx.organization_id,
+                            environment || (transaction.redirect_url?.includes('sandbox') ? 'sandbox' : 'production')
+                        )
+                    }
+
+                    // 2. Mark Transaction as APPROVED
+                    await supabase
+                        .from('payment_transactions')
+                        .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
+                        .eq('id', paymentTx.id)
+
+                    // 3. Atomically decrement stock for all purchased items
+                    const metadata = (paymentTx.metadata as any) || {}
+                    const itemsSnapshot = metadata.items || metadata.items_snapshot || []
+
+                    if (Array.isArray(itemsSnapshot) && itemsSnapshot.length > 0 && paymentTx.organization_id) {
+                        const itemsToDecrement = itemsSnapshot.map((item: any) => ({
+                            catalogItemId: item.catalog_item_id || item.itemId || item.id,
+                            variantId: item.variant_id || item.variantId || null,
+                            quantity: Math.max(1, Number(item.quantity || 1)),
+                        }))
+
+                        try {
+                            const { decrementStockAction } = await import('@/modules/features/catalog/actions')
+                            const decrementResult = await decrementStockAction(
+                                {
+                                    organizationId: paymentTx.organization_id,
+                                    items: itemsToDecrement,
+                                },
+                                { organizationId: paymentTx.organization_id }
+                            )
+
+                            logWompiWebhookInfo('[WompiWebhook] Decremented stock for storefront order', {
+                                reference,
+                                success: decrementResult.success,
+                                decrementedCount: decrementResult.decrementedItems?.length || 0,
+                                error: decrementResult.error,
+                            })
+                        } catch (stockErr) {
+                            logWompiWebhookError('[WompiWebhook] Failed to decrement stock for storefront order:', stockErr, { reference })
+                        }
+                    }
+
+                    // 4. Send Internal Admin Notifications
+                    if (paymentTx.organization_id) {
+                        const { data: members } = await supabase
+                            .from('organization_members')
+                            .select('user_id')
+                            .eq('organization_id', paymentTx.organization_id)
+
+                        if (members && members.length > 0) {
+                            const totalFormatted = (paymentTx.amount_in_cents / 100).toLocaleString('es-CO')
+                            const customerName = metadata.customer?.name || 'Cliente'
+
+                            const notifications = members.map(member => ({
+                                user_id: member.user_id,
+                                organization_id: paymentTx.organization_id,
+                                type: 'order_paid',
+                                title: '🛒 Nuevo Pedido Pagado (Wompi)',
+                                message: `Pedido ${reference} de ${customerName} por $${totalFormatted} COP aprobado exitosamente.`,
+                                read: false,
+                            }))
+
+                            const { error: notifError } = await supabase
+                                .from('notifications')
+                                .insert(notifications)
+
+                            if (notifError) logWompiWebhookError('Error creating order notifications:', notifError)
+                            else logWompiWebhookInfo('[WompiWebhook] Order notifications sent to agency members', { membersCount: members.length })
+                        }
+
+                        // 5. Log Domain Event (Audit)
+                        await logDomainEvent({
+                            entity_type: 'order',
+                            entity_id: paymentTx.id,
+                            event_type: 'order.paid',
+                            payload: {
+                                reference: reference,
+                                amount_in_cents: paymentTx.amount_in_cents,
+                                currency: paymentTx.currency,
+                                method: 'wompi_online',
+                                items_count: itemsSnapshot.length,
+                            },
+                            triggered_by: 'webhook',
+                            actor_id: 'wompi'
+                        })
+                    }
+                } else {
+                    logWompiWebhookInfo('[WompiWebhook] Order reference not pre-registered in payment_transactions, skipping DB updates', { reference })
+                }
+
+                return NextResponse.json({ success: true }, { status: 200 })
+
             } else {
                 logWompiWebhookInfo('[WompiWebhook] Detected legacy/direct payment')
                 let invoiceNumber = reference;

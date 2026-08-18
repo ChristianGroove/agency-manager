@@ -57,6 +57,7 @@ import {
   Layers,
   CheckCircle2,
   Package,
+  Zap,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -97,7 +98,7 @@ export function CatalogItemsTab({
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedClassification, setSelectedClassification] = useState<string>("all")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "low_stock">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "low_stock" | "out_of_stock">("all")
 
   // Sheet & Dialog states
   const [isFormSheetOpen, setIsFormSheetOpen] = useState(false)
@@ -147,7 +148,13 @@ export function CatalogItemsTab({
       }
       if (statusFilter === "low_stock") {
         const qty = item.inventory_quantity ?? 0
-        if (!item.track_inventory || qty > (item.low_stock_threshold || 5)) {
+        if (!item.track_inventory || qty <= 0 || qty > (item.low_stock_threshold || 5)) {
+          return false
+        }
+      }
+      if (statusFilter === "out_of_stock") {
+        const qty = item.inventory_quantity ?? 0
+        if (!item.track_inventory || qty > 0) {
           return false
         }
       }
@@ -181,11 +188,11 @@ export function CatalogItemsTab({
   }
 
   const handleDelete = async (item: UniversalCatalogItem) => {
-    if (!confirm(`¿Eliminar "${item.name}" del catálogo?`)) return
+    if (!confirm(`¿Estás seguro de eliminar "${item.name}"?`)) return
     try {
       const res = await deleteCatalogItemAction(item.id)
       if (res.success) {
-        toast.success("Item eliminado correctamente")
+        toast.success("Producto / servicio eliminado")
         await onRefresh()
       } else {
         toast.error(res.error || "Error al eliminar")
@@ -196,47 +203,42 @@ export function CatalogItemsTab({
   }
 
   const handleToggleVisibility = async (item: UniversalCatalogItem) => {
-    const nextVal = !item.is_visible_in_portal
+    const newVisibility = !item.is_visible_in_portal
     try {
       const res = await updateCatalogItemAction(item.id, {
-        is_visible_in_portal: nextVal,
+        is_visible_in_portal: newVisibility,
       })
       if (res.success) {
-        toast.success(nextVal ? "Visible en portal" : "Oculto en portal")
+        toast.success(newVisibility ? "Visible en la tienda" : "Oculto de la tienda")
         await onRefresh()
       } else {
-        toast.error(res.error || "Error al cambiar visibilidad")
+        toast.error(res.error || "Error al actualizar visibilidad")
       }
     } catch (err: any) {
-      toast.error(err.message || "Error al actualizar")
+      toast.error(err.message || "Error al actualizar visibilidad")
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Top Action Bar & Summary Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
-              Catálogo de Productos & Servicios
-            </h2>
-            <Badge variant="secondary" className="text-xs font-semibold">
-              {filteredItems.length} items
-            </Badge>
-          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
+            Catálogo de Productos & Servicios
+          </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Administra tus servicios, productos físicos, descargables y planes de suscripción
+            Gestiona productos físicos, digitales, suscripciones, stock en tiempo real y precios.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setIsCategoryDrawerOpen(true)}
-            className="rounded-xl h-10 text-xs font-semibold gap-1.5"
+            className="rounded-2xl text-xs font-bold gap-2 h-10 border-zinc-200 dark:border-zinc-800"
           >
             <FolderOpen className="h-4 w-4" />
             Categorías
@@ -244,8 +246,9 @@ export function CatalogItemsTab({
 
           <Button
             type="button"
+            size="sm"
             onClick={handleCreate}
-            className="bg-brand-pink hover:bg-brand-pink/90 text-white rounded-xl h-10 px-4 text-xs font-bold shadow-sm gap-1.5"
+            className="rounded-2xl bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-bold gap-2 h-10 shadow-md shadow-brand-pink/20"
           >
             <Plus className="h-4 w-4" />
             Nuevo Item
@@ -267,9 +270,9 @@ export function CatalogItemsTab({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
             {/* Status Filter Buttons */}
-            <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl text-xs">
+            <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl text-xs shrink-0">
               <button
                 type="button"
                 onClick={() => setStatusFilter("all")}
@@ -289,6 +292,28 @@ export function CatalogItemsTab({
                 )}
               >
                 Activos
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("low_stock")}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                  statusFilter === "low_stock" ? "bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-xs font-bold" : "text-zinc-500"
+                )}
+              >
+                <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                Bajo Stock
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("out_of_stock")}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                  statusFilter === "out_of_stock" ? "bg-white dark:bg-zinc-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold" : "text-zinc-500"
+                )}
+              >
+                <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
+                Agotados
               </button>
               <button
                 type="button"
@@ -350,7 +375,7 @@ export function CatalogItemsTab({
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer",
                     isSelected
                       ? "bg-brand-pink text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
                   )}
                 >
                   {IconComp && <IconComp className="h-3.5 w-3.5" />}
@@ -430,6 +455,17 @@ export function CatalogItemsTab({
                 : (rawBadges[0] as any).label || (rawBadges[0] as any).type
               : null
 
+            const isTracking = Boolean(item.track_inventory)
+            const stockQty = Number(item.inventory_quantity ?? 0)
+            const hasVariants = Boolean(item.has_variants && item.variants && item.variants.length > 0)
+            const totalVariantStock = hasVariants
+              ? item.variants!.reduce((acc, v) => acc + Number(v.inventory_quantity ?? 0), 0)
+              : 0
+            const threshold = Number(item.low_stock_threshold ?? 5)
+            const isLow = isTracking && stockQty > 0 && stockQty <= threshold
+            const isOut = isTracking && stockQty <= 0 && !item.allow_backorders
+            const isBackorder = isTracking && stockQty <= 0 && item.allow_backorders
+
             return (
               <div
                 key={item.id}
@@ -454,7 +490,7 @@ export function CatalogItemsTab({
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-60" />
 
                   {/* Badges on image */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[70%]">
                     <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-md text-[10px] border-none font-bold">
                       {item.category}
                     </Badge>
@@ -465,8 +501,30 @@ export function CatalogItemsTab({
                     )}
                   </div>
 
-                  {/* Quick Action Dropdown */}
-                  <div className="absolute top-3 right-3">
+                  {/* Quick Stock Top-Right Pill + Action Dropdown */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    {/* Floating Stock Badge */}
+                    {hasVariants ? (
+                      <Badge className="bg-indigo-600/90 text-white text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm">
+                        📦 {totalVariantStock} uds
+                      </Badge>
+                    ) : isTracking ? (
+                      <Badge
+                        className={cn(
+                          "text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm",
+                          isOut
+                            ? "bg-rose-600 text-white"
+                            : isBackorder
+                            ? "bg-sky-600 text-white"
+                            : isLow
+                            ? "bg-amber-500 text-white animate-pulse"
+                            : "bg-emerald-600 text-white"
+                        )}
+                      >
+                        {isOut ? "🚫 Agotado" : isBackorder ? "📦 Bajo Pedido" : isLow ? `⚠️ ¡${stockQty} uds!` : `📦 ${stockQty} uds`}
+                      </Badge>
+                    ) : null}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -524,13 +582,55 @@ export function CatalogItemsTab({
 
                 {/* Card Content */}
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <h3 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1 group-hover:text-brand-pink transition-colors">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
-                      {item.description || "Sin descripción adicional."}
-                    </p>
+                  <div className="space-y-2">
+                    <div>
+                      <h3 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1 group-hover:text-brand-pink transition-colors">
+                        {item.name}
+                      </h3>
+                      {item.description && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Highly Visible Stock and SKU Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {hasVariants ? (
+                        <Badge variant="outline" className="text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 gap-1 py-0.5 rounded-lg">
+                          <Layers className="h-3 w-3 text-indigo-500" />
+                          <span>{totalVariantStock} en stock ({item.variants?.length} vars)</span>
+                        </Badge>
+                      ) : isTracking ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[11px] font-bold gap-1 py-0.5 rounded-lg",
+                            isOut
+                              ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900"
+                              : isBackorder
+                              ? "bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-900"
+                              : isLow
+                              ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 animate-pulse"
+                              : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900"
+                          )}
+                        >
+                          <Package className="h-3 w-3" />
+                          <span>{isOut ? "Agotado (0 uds)" : isBackorder ? "Bajo Pedido (0 uds)" : isLow ? `Bajo Stock (${stockQty} uds)` : `${stockQty} uds en stock`}</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 gap-1 py-0.5 rounded-lg">
+                          <Zap className="h-3 w-3 text-zinc-400" />
+                          <span>{item.classification === "subscription" ? "Suscripción" : item.classification === "digital" ? "Digital (Ilimitado)" : "Servicio"}</span>
+                        </Badge>
+                      )}
+
+                      {item.sku && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700">
+                          SKU: {item.sku}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Footer Stats & Actions */}
@@ -543,7 +643,7 @@ export function CatalogItemsTab({
                         )}
                       />
                       <span className="text-[11px] text-zinc-400">
-                        {item.is_visible_in_portal ? "Visible" : "Oculto"}
+                        {item.is_visible_in_portal ? "Visible en tienda" : "Oculto"}
                       </span>
                     </div>
 
@@ -551,7 +651,7 @@ export function CatalogItemsTab({
                       variant="secondary"
                       size="sm"
                       onClick={() => handleEdit(item)}
-                      className="h-8 px-3 rounded-xl text-xs font-semibold hover:bg-brand-pink hover:text-white transition-colors"
+                      className="h-8 px-3.5 rounded-xl text-xs font-bold hover:bg-brand-pink hover:text-white transition-colors"
                     >
                       Editar
                     </Button>
@@ -572,99 +672,136 @@ export function CatalogItemsTab({
                 <TableHead className="min-w-[120px]">SKU</TableHead>
                 <TableHead className="min-w-[120px]">Precio Base</TableHead>
                 <TableHead className="min-w-[100px]">Variantes</TableHead>
-                <TableHead className="min-w-[100px]">Stock</TableHead>
+                <TableHead className="min-w-[140px]">Stock Disponible</TableHead>
                 <TableHead className="w-[90px] text-center">Visible</TableHead>
                 <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.map((item) => (
-                <TableRow key={item.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/50">
-                  <TableCell>
-                    <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0">
-                      {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-zinc-400">
-                          <Box className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
+              {filteredItems.map((item) => {
+                const isTracking = Boolean(item.track_inventory)
+                const stockQty = Number(item.inventory_quantity ?? 0)
+                const hasVariants = Boolean(item.has_variants && item.variants && item.variants.length > 0)
+                const totalVariantStock = hasVariants
+                  ? item.variants!.reduce((acc, v) => acc + Number(v.inventory_quantity ?? 0), 0)
+                  : 0
+                const threshold = Number(item.low_stock_threshold ?? 5)
+                const isLow = isTracking && stockQty > 0 && stockQty <= threshold
+                const isOut = isTracking && stockQty <= 0 && !item.allow_backorders
 
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
-                      <span className="text-[11px] text-zinc-400">{item.category}</span>
-                    </div>
-                  </TableCell>
+                return (
+                  <TableRow key={item.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/50">
+                    <TableCell>
+                      <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden shrink-0">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-zinc-400">
+                            <Box className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
 
-                  <TableCell>
-                    <span className="text-xs font-mono text-zinc-500">{item.sku || "—"}</span>
-                  </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
+                        <span className="text-[11px] text-zinc-400">{item.category}</span>
+                      </div>
+                    </TableCell>
 
-                  <TableCell>
-                    <span className="font-extrabold text-xs text-zinc-900 dark:text-white">
-                      ${item.base_price?.toLocaleString()} COP
-                    </span>
-                  </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-mono font-semibold text-zinc-600 dark:text-zinc-400">{item.sku || "—"}</span>
+                    </TableCell>
 
-                  <TableCell>
-                    {item.has_variants ? (
-                      <Badge variant="secondary" className="text-[10px] font-semibold">
-                        {item.variants?.length || 0} vars
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-zinc-400">No</span>
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {item.track_inventory ? (
-                      <span className={cn("text-xs font-bold", (item.inventory_quantity ?? 0) <= 5 ? "text-amber-500" : "text-emerald-500")}>
-                        {item.inventory_quantity ?? 0} uds
+                    <TableCell>
+                      <span className="font-extrabold text-xs text-zinc-900 dark:text-white">
+                        ${item.base_price?.toLocaleString()} COP
                       </span>
-                    ) : (
-                      <span className="text-xs text-zinc-400">Ilimitado</span>
-                    )}
-                  </TableCell>
+                    </TableCell>
 
-                  <TableCell className="text-center">
-                    <Switch
-                      checked={item.is_visible_in_portal ?? true}
-                      onCheckedChange={() => handleToggleVisibility(item)}
-                    />
-                  </TableCell>
+                    <TableCell>
+                      {item.has_variants ? (
+                        <Badge variant="secondary" className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                          {item.variants?.length || 0} vars
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-zinc-400">No</span>
+                      )}
+                    </TableCell>
 
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-zinc-400 hover:text-zinc-900">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1.5 shadow-xl">
-                        <DropdownMenuItem onClick={() => handleEdit(item)} className="rounded-xl text-xs gap-2">
-                          <Pencil className="h-3.5 w-3.5" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(item)} className="rounded-xl text-xs gap-2">
-                          <Copy className="h-3.5 w-3.5" /> Duplicar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setQrItem(item)} className="rounded-xl text-xs gap-2">
-                          <QrCode className="h-3.5 w-3.5" /> Código QR
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(item)}
-                          className="rounded-xl text-xs gap-2 text-red-600 focus:text-red-600"
+                    <TableCell>
+                      {hasVariants ? (
+                        <Badge variant="outline" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 bg-indigo-50/50">
+                          📦 {totalVariantStock} uds
+                        </Badge>
+                      ) : isTracking ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-bold",
+                            isOut
+                              ? "text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 bg-rose-50/50"
+                              : isLow
+                              ? "text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 bg-amber-50/50 animate-pulse"
+                              : "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900 bg-emerald-50/50"
+                          )}
                         >
-                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          {isOut ? "🚫 Agotado" : isLow ? `⚠️ ${stockQty} uds` : `📦 ${stockQty} uds`}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-zinc-400">Ilimitado</span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="text-center">
+                      <Switch
+                        checked={item.is_visible_in_portal ?? true}
+                        onCheckedChange={() => handleToggleVisibility(item)}
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1.5 shadow-xl">
+                          <DropdownMenuItem onClick={() => handleEdit(item)} className="rounded-xl text-xs gap-2">
+                            <Pencil className="h-3.5 w-3.5" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(item)} className="rounded-xl text-xs gap-2">
+                            <Copy className="h-3.5 w-3.5" /> Duplicar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setQrItem(item)} className="rounded-xl text-xs gap-2">
+                            <QrCode className="h-3.5 w-3.5" /> Generar Código QR
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleVisibility(item)} className="rounded-xl text-xs gap-2">
+                            {item.is_visible_in_portal ? (
+                              <>
+                                <EyeOff className="h-3.5 w-3.5" /> Ocultar de Tienda
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-3.5 w-3.5" /> Mostrar en Tienda
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(item)}
+                            className="rounded-xl text-xs gap-2 text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>

@@ -49,8 +49,17 @@ export async function proxy(request: NextRequest) {
     const requestHeaders = new Headers(request.headers)
 
     if (!isMainDomain) {
-        // We are on a Tenant Subdomain
+        // We are on a Tenant Subdomain or Custom Domain
         requestHeaders.set('x-tenant-slug', currentHost)
+
+        // If accessing root of a custom domain / tenant subdomain, rewrite to portal
+        if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '') {
+            const url = request.nextUrl.clone()
+            url.pathname = `/portal/${currentHost}`
+            return NextResponse.rewrite(url, {
+                request: { headers: requestHeaders },
+            })
+        }
     } else {
         // We are on Main Domain
         requestHeaders.delete('x-tenant-slug')

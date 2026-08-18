@@ -130,7 +130,16 @@ export async function discoverAllSuites(baseDir: string = __dirname): Promise<{
 
     const testFiles = fs
       .readdirSync(fullDirPath)
-      .filter((f) => (f.endsWith('.test.ts') || f.endsWith('.test.js')) && !f.endsWith('.d.ts'))
+      .filter(
+        (f) =>
+          (f.endsWith('.test.ts') ||
+            f.endsWith('.test.js') ||
+            f.endsWith('.e2e.ts') ||
+            f.endsWith('.e2e.js') ||
+            f.endsWith('.spec.ts') ||
+            f.endsWith('.spec.js')) &&
+          !f.endsWith('.d.ts')
+      )
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
     for (const file of testFiles) {

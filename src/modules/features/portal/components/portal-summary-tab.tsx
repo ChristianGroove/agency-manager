@@ -34,7 +34,7 @@ function PendingTasksAnimation() {
 }
 
 interface PortalSummaryTabProps {
-    client: Client
+    client?: Client | null
     invoices: Invoice[]
     quotes: Quote[]
     briefings: Briefing[]
@@ -45,20 +45,21 @@ interface PortalSummaryTabProps {
 
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
-export function PortalSummaryTab({ client, invoices, quotes, briefings, events, onViewQuote, onViewBriefing }: PortalSummaryTabProps) {
+export function PortalSummaryTab({ client, invoices = [], quotes = [], briefings = [], events = [], onViewQuote, onViewBriefing }: PortalSummaryTabProps) {
     const { t } = useTranslation()
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
     const openQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'draft')
     const pendingBriefings = briefings.filter(b => b.status === 'sent' || b.status === 'in_progress' || b.status === 'draft')
 
     const hasPending = pendingInvoices.length > 0 || openQuotes.length > 0 || pendingBriefings.length > 0
+    const displayName = client?.name?.trim() || client?.company_name?.trim() || 'Cliente'
 
     return (
         <div className="max-w-4xl mx-auto w-full pb-16 space-y-8 animate-in fade-in duration-500">
 
             {/* Header Greeting */}
             <PortalHeader
-                title={`${t('portal.dashboard.welcome').replace('{name}', (client.name?.trim() || client.company_name?.trim() || 'Cliente').split(' ')[0])} 👋`}
+                title={`${t('portal.dashboard.welcome').replace('{name}', displayName.split(' ')[0])} 👋`}
                 subtitle={t('portal.summary.subtitle')}
             />
 

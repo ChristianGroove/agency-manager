@@ -59,30 +59,50 @@ export const suite = {
       },
     },
     {
-      name: 'Toggles hero banner layout options (full_width, split, card) and updates headlines',
+      name: 'Toggles hero banner background modes, multi-slides, text alignment and CTA options',
       fn: () => {
         interface HeroBannerConfig {
-          layout: 'full_width' | 'split' | 'card';
-          title: string;
-          subtitle: string;
-          ctaText: string;
-          imageUrl?: string;
-        }
-
-        function updateHeroLayout(config: HeroBannerConfig, newLayout: 'full_width' | 'split' | 'card'): HeroBannerConfig {
-          return { ...config, layout: newLayout };
+          enabled: boolean;
+          background_type: 'gradient' | 'image' | 'slideshow';
+          title?: string | null;
+          subtitle?: string | null;
+          text_align: 'left' | 'center' | 'right';
+          hide_text: boolean;
+          cta_enabled: boolean;
+          whatsapp_cta_enabled: boolean;
+          bg_image_url?: string | null;
+          slides?: Array<{ id: string; image_url: string; title?: string; link_url?: string }>;
         }
 
         const initial: HeroBannerConfig = {
-          layout: 'split',
+          enabled: true,
+          background_type: 'gradient',
           title: 'Colección Verano 2026',
           subtitle: 'Prendas esenciales con estilo atemporal',
-          ctaText: 'Ver Catálogo',
+          text_align: 'center',
+          hide_text: false,
+          cta_enabled: true,
+          whatsapp_cta_enabled: true,
         };
 
-        const updated = updateHeroLayout(initial, 'full_width');
-        assertEqual(updated.layout, 'full_width');
-        assertEqual(updated.title, 'Colección Verano 2026');
+        // Switch to slideshow with multi-banners
+        const updated: HeroBannerConfig = {
+          ...initial,
+          background_type: 'slideshow',
+          text_align: 'left',
+          hide_text: true,
+          whatsapp_cta_enabled: false,
+          slides: [
+            { id: 's1', image_url: 'https://images.unsplash.com/photo-1.jpg', link_url: '#promo' },
+            { id: 's2', image_url: 'https://images.unsplash.com/photo-2.jpg', link_url: '#new' },
+          ],
+        };
+
+        assertEqual(updated.background_type, 'slideshow');
+        assertEqual(updated.text_align, 'left');
+        assertTrue(updated.hide_text);
+        assertFalse(updated.whatsapp_cta_enabled);
+        assertArrayLength(updated.slides || [], 2);
       },
     },
     {

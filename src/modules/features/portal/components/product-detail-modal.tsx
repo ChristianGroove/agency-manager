@@ -14,10 +14,11 @@ import { GalleryCarousel } from "./gallery-carousel"
 import { VariantSelector } from "./variant-selector"
 import { AddonSelector, SelectedAddon } from "./addon-selector"
 import { SpecificationTabs } from "./specification-tabs"
-import { StatusBadge, calculateStorefrontPricing, evaluateDynamicBadges } from "./status-badge"
+import { StatusBadge, calculateStorefrontPricing, evaluateDynamicBadges, isOutOfStockGuard } from "./status-badge"
 import { ActionHubButtons } from "./action-hub-buttons"
+import { useStorefrontCart } from "@/hooks/use-storefront-cart"
 import { Button } from "@/components/ui/button"
-import { X, Plus, Minus, Shield, Sparkles, Check, Share2 } from "lucide-react"
+import { X, Plus, Minus, Shield, Sparkles, Check, Share2, ShoppingCart } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface ProductDetailModalProps {
@@ -235,15 +236,101 @@ export function ProductDetailModal({
     if (!item) return null
 
     // Stock resolution
-    const effectiveStock = selectedVariant?.track_inventory ?? selectedVariant?.track_stock
-        ? (selectedVariant.inventory_quantity ?? selectedVariant.stock_quantity ?? 0)
-        : (item.track_inventory ?? item.track_stock ? (item.inventory_quantity ?? item.stock_quantity ?? 0) : null)
+    const trackInventory = Boolean(
+        selectedVariant?.track_inventory ??
+        selectedVariant?.track_stock ??
+        item.track_inventory ??
+        item.track_stock ??
+        false
+    )
 
-    const isOutOfStock = effectiveStock !== null && effectiveStock <= 0 && !item.allow_backorders
-    const isLowStock = effectiveStock !== null && effectiveStock > 0 && effectiveStock <= (item.low_stock_threshold || 5)
+    const allowBackorders = Boolean(
+        selectedVariant?.allow_backorders ??
+        item.allow_backorders ??
+        false
+    )
+
+    const rawStock =
+        selectedVariant?.stock_quantity ??
+        selectedVariant?.inventory_quantity ??
+        item.stock_quantity ??
+        item.inventory_quantity ??
+        null
+
+    const effectiveStock = rawStock !== null ? Number(rawStock) : null
+    const isOutOfStock = isOutOfStockGuard(effectiveStock, trackInventory, allowBackorders)
+    const isLowStock = !isOutOfStock && effectiveStock !== null && effectiveStock > 0 && effectiveStock <= (item.low_stock_threshold || 5)
 
     // Current deep link URL
     const currentDeepLink = typeof window !== "undefined" ? window.location.href : ""
+
+    const handleAddToCartModal = () => {
+        if (isOutOfStock) return
+        const payload: StorefrontActionPayload = {
+            actionType: "cart",
+            itemId: item.id,
+            variantId: selectedVariant?.id || null,
+            selectedVariant: selectedVariant || null,
+            selectedAddons: selectedAddons.map(a => ({
+                groupId: a.groupId,
+                optionId: a.optionId,
+                name: a.name,
+                priceDelta: a.priceDelta,
+                quantity: a.quantity || 1
+            })),
+            calculatedTotalPrice: pricing.bundleTotalPrice,
+            quantity,
+            deepLinkUrl: currentDeepLink,
+            portalToken: portalToken || null,
+            organizationId: organizationId || item.organization_id || null,
+            currency: currency || "COP"
+        }
+
+        if (onAddToCart) {
+            onAddToCart(payload)
+        } else {
+            const cover = item.gallery_images?.[0]?.url || item.image_url || null
+            useStorefrontCart.getState().addItem({
+                catalog_item_id: item.id,
+                itemId: item.id,
+                name: item.name,
+                category: item.category,
+                classification: item.classification,
+                thumbnail_url: cover,
+                base_price: item.base_price,
+                quantity,
+                selected_variant: selectedVariant ? {
+                    id: selectedVariant.id,
+                    name: selectedVariant.title || selectedVariant.name || "Variante",
+                    title: selectedVariant.title || selectedVariant.name || "Variante",
+                    sku: selectedVariant.sku || null,
+                    barcode: selectedVariant.barcode || null,
+                    price_override: selectedVariant.price_override ?? null,
+                    price_modifier: selectedVariant.price_modifier ?? 0,
+                    price_type: selectedVariant.price_type,
+                    attributes: selectedVariant.attributes || {}
+                } : null,
+                selectedVariant,
+                selected_addons: selectedAddons.map(a => ({
+                    id: a.optionId,
+                    name: a.name,
+                    price: a.priceDelta,
+                    priceDelta: a.priceDelta,
+                    groupId: a.groupId,
+                    optionId: a.optionId,
+                    quantity: a.quantity || 1,
+                })),
+                selectedAddons,
+                deepLinkUrl: currentDeepLink,
+                track_inventory: trackInventory,
+                stock_quantity: effectiveStock,
+                allow_backorders: allowBackorders,
+                organization_id: organizationId || item.organization_id,
+            })
+            useStorefrontCart.getState().setDrawerOpen(true)
+        }
+        handleClose()
+    }
 
     // --------------------------------------------------------------------------
     // SHARED CONTENT INTERIOR (Information Column)
@@ -296,21 +383,33 @@ export function ProductDetailModal({
                     )}
                 </div>
 
-                {/* Stock Indicator */}
-                {isOutOfStock ? (
-                    <div className="mt-2 text-xs font-bold text-rose-600 flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-rose-600" />
-                        <span>Agotado temporalmente</span>
-                    </div>
-                ) : isLowStock ? (
-                    <div className="mt-2 text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-amber-600 animate-ping" />
-                        <span>¡Pocas unidades disponibles! (Solo quedan {effectiveStock})</span>
-                    </div>
+                {/* Stock & Availability Indicator Box */}
+                {trackInventory ? (
+                    isOutOfStock ? (
+                        <div className="mt-2.5 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-rose-600 shrink-0" />
+                            <span>🚫 Agotado temporalmente {selectedVariant ? `(${selectedVariant.name})` : "(Sin existencias)"}</span>
+                        </div>
+                    ) : effectiveStock !== null && effectiveStock <= 0 && allowBackorders ? (
+                        <div className="mt-2.5 px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-900 text-xs font-bold text-sky-700 dark:text-sky-300 flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shrink-0" />
+                            <span>📦 Disponible bajo pedido (Envío programado)</span>
+                        </div>
+                    ) : isLowStock ? (
+                        <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2 animate-pulse">
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+                            <span>⚠️ ¡Pocas unidades disponibles! (Solo quedan {effectiveStock} unidades en stock)</span>
+                        </div>
+                    ) : (
+                        <div className="mt-2.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span>✓ {effectiveStock !== null ? `${effectiveStock} unidades disponibles en stock` : "En stock para entrega inmediata"}</span>
+                        </div>
+                    )
                 ) : (
-                    <div className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        <span>Disponible para entrega inmediata</span>
+                    <div className="mt-2.5 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Disponible para contratación inmediata</span>
                     </div>
                 )}
             </div>
@@ -390,7 +489,7 @@ export function ProductDetailModal({
                     themeConfig={themeConfig}
                     deepLinkUrl={currentDeepLink}
                     isOutOfStock={isOutOfStock}
-                    onAddToCart={onAddToCart}
+                    onAddToCart={handleAddToCartModal}
                     onRequestQuote={onRequestQuote}
                     onWompiCheckout={onWompiCheckout}
                 />
@@ -500,31 +599,11 @@ export function ProductDetailModal({
                         <Button
                             type="button"
                             disabled={isOutOfStock}
-                            onClick={() => {
-                                // Default action trigger
-                                const payload: StorefrontActionPayload = {
-                                    itemId: item.id,
-                                    variantId: selectedVariant?.id || null,
-                                    selectedVariant: selectedVariant || null,
-                                    selectedAddons: selectedAddons.map(a => ({
-                                        groupId: a.groupId,
-                                        optionId: a.optionId,
-                                        name: a.name,
-                                        priceDelta: a.priceDelta,
-                                        quantity: a.quantity || 1
-                                    })),
-                                    calculatedTotalPrice: pricing.bundleTotalPrice,
-                                    quantity,
-                                    deepLinkUrl: currentDeepLink,
-                                    portalToken: portalToken || null,
-                                    organizationId: organizationId || item.organization_id || null,
-                                    currency: currency || "COP"
-                                }
-                                if (onAddToCart) onAddToCart(payload)
-                            }}
-                            className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/25 text-xs"
+                            onClick={handleAddToCartModal}
+                            className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/25 text-xs flex items-center justify-center gap-2"
                         >
-                            {isOutOfStock ? "Agotado" : "Ordenar Ahora"}
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>{isOutOfStock ? "Agotado" : "Añadir al Carrito"}</span>
                         </Button>
                     </div>
                 </div>
@@ -532,3 +611,4 @@ export function ProductDetailModal({
         </Drawer>
     )
 }
+

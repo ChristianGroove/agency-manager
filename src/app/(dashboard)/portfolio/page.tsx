@@ -6,11 +6,13 @@ import {
   getCurrentOrganizationId,
   getCurrentOrgName,
 } from "@/modules/core/organizations/organization-actions"
+import { getCurrentOrgDetails } from "@/modules/core/organizations/actions/crud"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import { getCatalogItemsAction } from "@/modules/features/catalog/actions"
 import { getCategories } from "@/modules/features/catalog/categories-actions"
 import { getAttributeGroupsAction } from "@/modules/features/catalog/attributes-actions"
 import { getStorefrontThemeConfigAction } from "@/modules/features/catalog/customizer-actions"
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { CatalogWorkspace, WorkspaceTabKey } from "@/modules/features/catalog/components/catalog-workspace"
 
 export async function generateMetadata() {
@@ -77,7 +79,8 @@ export default async function PortfolioPage({
     categories,
     attributeGroups,
     themeConfig,
-    orgName,
+    orgDetails,
+    branding,
     spaceType,
     userRole,
   ] = await Promise.all([
@@ -85,7 +88,8 @@ export default async function PortfolioPage({
     getCategories(orgId),
     getAttributeGroupsAction(orgId),
     getStorefrontThemeConfigAction({ orgId }),
-    getCurrentOrgName(),
+    getCurrentOrgDetails(orgId),
+    getEffectiveBranding(orgId),
     getOrgSpaceCategory(orgId),
     getCurrentOrgRole(orgId),
   ])
@@ -99,9 +103,16 @@ export default async function PortfolioPage({
         initialThemeConfig={themeConfig}
         organization={{
           id: orgId,
-          name: orgName || "Mi Negocio",
+          name: orgDetails?.name || branding?.name || "Mi Negocio",
+          slug: orgDetails?.slug || orgId,
+          customDomain: orgDetails?.custom_portal_domain || branding?.custom_domain || null,
+          customDomainStatus: (orgDetails as any)?.custom_domain_status || (orgDetails?.custom_portal_domain ? 'active' : 'unconfigured'),
           spaceType: spaceType || "agency",
           currency: "COP",
+          logos: {
+            dark: branding?.logos?.main || null,
+            light: branding?.logos?.main_light || null,
+          },
         }}
         userRole={userRole || "member"}
         initialTab={initialTab}

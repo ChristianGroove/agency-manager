@@ -19,7 +19,7 @@ import { PortalHostingTab } from "./portal-hosting-tab"
 
 interface PortalLayoutProps {
     token: string
-    client: Client
+    client?: Client | null
     invoices: Invoice[]
     quotes: Quote[]
     briefings: Briefing[]
@@ -65,42 +65,44 @@ type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hos
 
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
-export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
+export function PortalLayout({ token, client, invoices = [], quotes = [], briefings = [], events = [], services = [], hostingAccounts = [], settings = {}, activeModules = [], onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
     const { t } = useTranslation()
+    const isGuest = !client
+
     // Determine which tabs to show based on active modules (Deduplicated Logic)
-    const showServices = activeModules.some(m => ['core_services', 'module_briefings', 'module_projects'].includes(m.slug))
-    const showBilling = activeModules.some(m => ['module_invoicing', 'core_billing', 'payments', 'module_payments'].includes(m.slug))
-    const showExplore = activeModules.some(m => ['module_catalog', 'core_catalog'].includes(m.slug))
-    const showInsights = activeModules.some(m => ['meta_insights', 'module_insights'].includes(m.slug)) && insightsAccess?.show === true
+    const showServices = isGuest || activeModules.some(m => ['core_services', 'module_briefings', 'module_projects'].includes(m.slug))
+    const showBilling = !isGuest && activeModules.some(m => ['module_invoicing', 'core_billing', 'payments', 'module_payments'].includes(m.slug))
+    const showExplore = isGuest || activeModules.some(m => ['module_catalog', 'core_catalog'].includes(m.slug)) || true
+    const showInsights = !isGuest && activeModules.some(m => ['meta_insights', 'module_insights'].includes(m.slug)) && insightsAccess?.show === true
 
     const dynamicTabs = [
-        // 1. Summary (Always shown)
-        {
+        // 1. Explore/Catalog (First and primary for guests)
+        ...(showExplore ? [{
+            key: 'explore',
+            component: 'explore',
+            label: isGuest ? 'Catálogo & Tienda' : t('portal.nav.explore'),
+            icon: Search
+        }] : []),
+        // 2. Summary (Client Dashboard)
+        ...(!isGuest ? [{
             key: 'summary',
             component: 'summary',
             label: t('portal.nav.summary'),
             icon: LayoutDashboard
-        },
-        // 2. Services (If any service-related module is active)
-        ...(showServices ? [{
+        }] : []),
+        // 3. Services (If client has service-related modules active)
+        ...(showServices && !isGuest ? [{
             key: 'services',
             component: 'services',
             label: t('portal.nav.services'),
             icon: Layers
         }] : []),
-        // 3. Billing (If invoicing/payments is active)
+        // 4. Billing (If invoicing/payments is active)
         ...(showBilling ? [{
             key: 'billing',
             component: 'billing',
             label: t('portal.nav.billing'),
             icon: CreditCard
-        }] : []),
-        // 4. Explore/Catalog
-        ...(showExplore ? [{
-            key: 'explore',
-            component: 'explore',
-            label: t('portal.nav.explore'),
-            icon: Search
         }] : []),
         // 5. Insights
         ...(showInsights ? [{
@@ -118,7 +120,10 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
         }] : [])
     ]
 
-    const [activeTab, setActiveTab] = useState(dynamicTabs[0]?.key || 'summary')
+    const [activeTab, setActiveTab] = useState(() => {
+        if (isGuest && dynamicTabs.some(t => t.key === 'explore')) return 'explore'
+        return dynamicTabs[0]?.key || 'summary'
+    })
     const [viewQuote, setViewQuote] = useState<Quote | null>(null)
     const [targetBriefingId, setTargetBriefingId] = useState<string | null>(null)
     const [showBillingAlert, setShowBillingAlert] = useState(true)
@@ -186,11 +191,11 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                 <div className="p-4 border-t">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                         <Avatar className="h-10 w-10 border">
-                            <AvatarFallback>{client?.name ? client.name[0] : 'C'}</AvatarFallback>
+                            <AvatarFallback>{client?.name ? client.name[0] : (settings?.agency_name ? settings.agency_name[0] : 'P')}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate">{client?.name || 'Cliente'}</p>
-                            <p className="text-xs text-gray-500 truncate">{client?.company_name || 'Empresa'}</p>
+                            <p className="text-sm font-bold truncate">{client?.name || settings?.agency_name || 'Tienda Oficial'}</p>
+                            <p className="text-xs text-gray-500 truncate">{client?.company_name || 'Portal Público'}</p>
                         </div>
                     </div>
                 </div>

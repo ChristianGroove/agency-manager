@@ -66,157 +66,87 @@ export interface AdjustInventoryResult {
   error?: string
 }
 
+export interface DecrementStockItemInput {
+  catalogItemId?: string
+  itemId?: string
+  item_id?: string
+  variantId?: string | null
+  variant_id?: string | null
+  quantity: number
+  allowBackordersOverride?: boolean
+  allow_backorders_override?: boolean
+}
+
+export interface DecrementStockParams {
+  organizationId?: string
+  items: DecrementStockItemInput[]
+}
+
+export interface DecrementStockItemResult {
+  itemId: string
+  catalogItemId?: string
+  variantId?: string | null
+  previousStock: number
+  newStock: number
+  decrementedQuantity: number
+  trackInventory: boolean
+}
+
+export interface DecrementStockResult {
+  success: boolean
+  decrementedItems?: DecrementStockItemResult[]
+  updatedItems?: any[]
+  error?: string
+}
+
+export interface RestoreStockItemInput {
+  catalogItemId?: string
+  itemId?: string
+  item_id?: string
+  variantId?: string | null
+  variant_id?: string | null
+  quantity: number
+}
+
+export interface RestoreStockParams {
+  organizationId?: string
+  items: RestoreStockItemInput[]
+}
+
+export interface RestoreStockItemResult {
+  itemId: string
+  catalogItemId?: string
+  variantId?: string | null
+  previousStock: number
+  newStock: number
+  restoredQuantity: number
+}
+
+export interface RestoreStockResult {
+  success: boolean
+  restoredItems?: RestoreStockItemResult[]
+  error?: string
+}
+
+export interface UpdateItemStockInput {
+  organizationId?: string
+  catalogItemId?: string
+  itemId?: string
+  variantId?: string | null
+  stockQuantity?: number
+  quantity?: number
+  mode?: 'set' | 'delta'
+  trackInventory?: boolean
+  allowBackorders?: boolean
+  lowStockThreshold?: number
+  sku?: string | null
+  barcode?: string | null
+}
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// ------------------------------------------------------------------------------
-// HELPER: Normalize Universal Catalog Item
-// ------------------------------------------------------------------------------
+import { normalizeCatalogItem } from './utils/normalize-catalog-item'
 
-function normalizeCatalogItem(
-  row: any,
-  categoryMap: Record<string, string> = {}
-): UniversalCatalogItem {
-  // 1. Category Resolution
-  let categoryName = row.category || 'General'
-  let categoryId = row.category_id || null
-
-  if (UUID_REGEX.test(categoryName)) {
-    categoryId = categoryName
-    categoryName = categoryMap[categoryName] || 'General'
-  } else if (!categoryId && row.category && categoryMap[row.category]) {
-    // If row.category is a name, check if mapped
-    categoryId = row.category_id || null
-  }
-
-  // 2. Gallery Images & Cover Photo Resolution
-  let galleryImages: CatalogGalleryImage[] = Array.isArray(row.gallery_images)
-    ? row.gallery_images
-    : Array.isArray(row.images)
-    ? row.images
-    : []
-
-  if (galleryImages.length === 0 && row.image_url) {
-    galleryImages = [
-      {
-        id: 'cover-0',
-        url: row.image_url,
-        is_cover: true,
-        order_index: 0,
-        alt_text: row.name,
-      },
-    ]
-  }
-
-  // Ensure cover photo exists
-  const hasCover = galleryImages.some((img) => img.is_cover)
-  if (!hasCover && galleryImages.length > 0) {
-    galleryImages = galleryImages.map((img, idx) => ({
-      ...img,
-      is_cover: idx === 0,
-    }))
-  }
-
-  const coverImg = galleryImages.find((img) => img.is_cover)
-  const coverUrl = coverImg?.url || galleryImages[0]?.url || row.image_url || null
-
-  // 3. Classification Resolution
-  let classification: CatalogClassification = row.classification || 'service'
-  if (!row.classification && row.type) {
-    if (row.type === 'product' || row.type === 'physical') {
-      classification = 'physical'
-    } else if (row.type === 'recurring' || row.type === 'subscription') {
-      classification = 'subscription'
-    } else if (row.type === 'digital') {
-      classification = 'digital'
-    } else {
-      classification = 'service'
-    }
-  }
-
-  // 4. Badges Normalization
-  const rawBadges = Array.isArray(row.badges) ? row.badges : []
-  const badges = rawBadges.map((b: any) => (typeof b === 'string' ? b : b.label || b.id || ''))
-  const structuredBadges = Array.isArray(row.structured_badges)
-    ? row.structured_badges
-    : rawBadges.filter((b: any) => typeof b === 'object' && b !== null)
-
-  // 5. Metadata and UI types
-  const metadata = row.metadata || {}
-  const ctaType = row.cta_type || metadata.cta_type || 'whatsapp'
-  const priceLabelType = row.price_label_type || metadata.price_label_type || 'price'
-
-  return {
-    id: row.id,
-    organization_id: row.organization_id,
-    name: row.name || '',
-    description: row.description || '',
-    category: categoryName,
-    category_id: categoryId,
-    base_price: Number(row.base_price || 0),
-    compare_at_price:
-      row.compare_at_price !== null && row.compare_at_price !== undefined
-        ? Number(row.compare_at_price)
-        : null,
-    type: row.type || 'one_off',
-    classification,
-    frequency: row.frequency || null,
-    image_url: coverUrl,
-    gallery_images: galleryImages,
-    images: galleryImages,
-    video_url: row.video_url || null,
-    sku: row.sku || null,
-    barcode: row.barcode || null,
-    inventory_quantity: Number(row.inventory_quantity ?? row.stock_quantity ?? 0),
-    stock_quantity: Number(row.stock_quantity ?? row.inventory_quantity ?? 0),
-    track_inventory: Boolean(row.track_inventory ?? row.track_stock ?? false),
-    track_stock: Boolean(row.track_stock ?? row.track_inventory ?? false),
-    allow_backorders: Boolean(row.allow_backorders ?? false),
-    low_stock_threshold: Number(row.low_stock_threshold ?? 5),
-    has_variants: Boolean(row.has_variants ?? (Array.isArray(row.variants) && row.variants.length > 0)),
-    variant_attributes: Array.isArray(row.variant_attributes) ? row.variant_attributes : [],
-    variants: Array.isArray(row.variants) ? row.variants : [],
-    variants_config: row.variants_config || { attributes: [] },
-    addon_groups: Array.isArray(row.addon_groups)
-      ? row.addon_groups
-      : Array.isArray(row.add_ons)
-      ? row.add_ons
-      : [],
-    add_ons: Array.isArray(row.add_ons)
-      ? row.add_ons
-      : Array.isArray(row.addon_groups)
-      ? row.addon_groups
-      : [],
-    badges,
-    structured_badges: structuredBadges,
-    featured_badge: row.featured_badge || null,
-    specifications: row.specifications || {},
-    specs_tabs: Array.isArray(row.specs_tabs) ? row.specs_tabs : [],
-    spec_tabs: row.spec_tabs || {},
-    seo_title: row.seo_title || null,
-    seo_description: row.seo_description || null,
-    seo_metadata: row.seo_metadata || { search_tags: [] },
-    classification_metadata: row.classification_metadata || {},
-    physical_details: row.physical_details || row.classification_metadata?.physical,
-    digital_details: row.digital_details || row.classification_metadata?.digital,
-    service_details: row.service_details || row.classification_metadata?.service,
-    subscription_details: row.subscription_details || row.classification_metadata?.subscription,
-    is_visible_in_portal: Boolean(row.is_visible_in_portal ?? true),
-    is_active: Boolean(row.is_active ?? true),
-    order_index: row.order_index ?? 0,
-    cta_type: ctaType,
-    price_label_type: priceLabelType,
-    is_system_template: row.is_system_template ?? null,
-    ai_generated_image: row.ai_generated_image ?? null,
-    insights_access: row.insights_access ?? null,
-    service_start_date: row.service_start_date ?? null,
-    billing_cycle_start_date: row.billing_cycle_start_date ?? null,
-    briefing_template_id: row.briefing_template_id ?? null,
-    metadata,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    deleted_at: row.deleted_at || null,
-  }
-}
 
 // ------------------------------------------------------------------------------
 // 1. GET CATALOG ITEMS (New Action & Legacy Compat)
@@ -582,14 +512,11 @@ export async function createCatalogItemAction(
       frequency: validated.frequency || null,
       image_url: coverUrl,
       gallery_images: galleryImages,
-      images: galleryImages,
       video_url: validated.video_url || null,
       sku: validated.sku || null,
       barcode: validated.barcode || null,
       inventory_quantity: validated.inventory_quantity ?? 0,
-      stock_quantity: validated.stock_quantity ?? validated.inventory_quantity ?? 0,
       track_inventory: validated.track_inventory ?? false,
-      track_stock: validated.track_stock ?? validated.track_inventory ?? false,
       allow_backorders: validated.allow_backorders ?? false,
       low_stock_threshold: validated.low_stock_threshold ?? 5,
       has_variants: validated.has_variants || (validated.variants && validated.variants.length > 0),
@@ -597,12 +524,10 @@ export async function createCatalogItemAction(
       variants: validated.variants || [],
       variants_config: validated.variants_config || { attributes: validated.variant_attributes || [] },
       addon_groups: validated.addon_groups || [],
-      add_ons: validated.addon_groups || [],
       badges: validated.badges || [],
       featured_badge: validated.featured_badge || null,
       specifications: validated.specifications || {},
       specs_tabs: validated.specs_tabs || [],
-      spec_tabs: validated.spec_tabs || {},
       seo_title: validated.seo_title || null,
       seo_description: validated.seo_description || null,
       seo_metadata: validated.seo_metadata || { search_tags: [] },
@@ -641,9 +566,7 @@ export async function createCatalogItemAction(
         price_modifier: v.price_modifier ?? 0,
         price_type: v.price_type || 'fixed',
         inventory_quantity: Math.max(0, Math.floor(v.inventory_quantity ?? 0)),
-        stock_quantity: v.stock_quantity ?? v.inventory_quantity ?? 0,
         track_inventory: v.track_inventory ?? false,
-        track_stock: v.track_stock ?? v.track_inventory ?? false,
         is_active: v.is_active ?? true,
         order_index: v.order_index ?? idx,
         attributes: v.attributes || {},
@@ -781,7 +704,6 @@ export async function updateCatalogItemAction(
     }
 
     const updatePayload: any = {
-      updated_at: new Date().toISOString(),
       metadata: safeMetadata,
       image_url: coverUrl,
     }
@@ -797,18 +719,15 @@ export async function updateCatalogItemAction(
     if (validated.frequency !== undefined) updatePayload.frequency = validated.frequency
     if (validated.gallery_images !== undefined) {
       updatePayload.gallery_images = galleryImages
-      updatePayload.images = galleryImages
     }
     if (validated.video_url !== undefined) updatePayload.video_url = validated.video_url
     if (validated.sku !== undefined) updatePayload.sku = validated.sku
     if (validated.barcode !== undefined) updatePayload.barcode = validated.barcode
     if (validated.inventory_quantity !== undefined) {
       updatePayload.inventory_quantity = validated.inventory_quantity
-      updatePayload.stock_quantity = validated.inventory_quantity
     }
     if (validated.track_inventory !== undefined) {
       updatePayload.track_inventory = validated.track_inventory
-      updatePayload.track_stock = validated.track_inventory
     }
     if (validated.allow_backorders !== undefined) updatePayload.allow_backorders = validated.allow_backorders
     if (validated.low_stock_threshold !== undefined) updatePayload.low_stock_threshold = validated.low_stock_threshold
@@ -818,13 +737,11 @@ export async function updateCatalogItemAction(
     if (validated.variants_config !== undefined) updatePayload.variants_config = validated.variants_config
     if (validated.addon_groups !== undefined) {
       updatePayload.addon_groups = validated.addon_groups
-      updatePayload.add_ons = validated.addon_groups
     }
     if (validated.badges !== undefined) updatePayload.badges = validated.badges
     if (validated.featured_badge !== undefined) updatePayload.featured_badge = validated.featured_badge
     if (validated.specifications !== undefined) updatePayload.specifications = validated.specifications
     if (validated.specs_tabs !== undefined) updatePayload.specs_tabs = validated.specs_tabs
-    if (validated.spec_tabs !== undefined) updatePayload.spec_tabs = validated.spec_tabs
     if (validated.seo_title !== undefined) updatePayload.seo_title = validated.seo_title
     if (validated.seo_description !== undefined) updatePayload.seo_description = validated.seo_description
     if (validated.seo_metadata !== undefined) updatePayload.seo_metadata = validated.seo_metadata
@@ -1277,7 +1194,530 @@ export async function adjustInventoryAction(
 }
 
 // ------------------------------------------------------------------------------
-// 9. TEMPLATE SEEDING & APP DATA ACTIONS (Legacy Compat)
+// 9. ATOMIC STOCK ACTIONS (DECREMENT, RESTORE, REAL-TIME UPDATE)
+// ------------------------------------------------------------------------------
+
+/**
+ * Atomic multi-item stock decrement server action.
+ * Attempts Supabase RPC 'decrement_catalog_stock' first; falls back to transactional Node.js mutation.
+ */
+export async function decrementStockAction(
+  paramsOrItems: DecrementStockParams | DecrementStockItemInput[] | { organizationId?: string; items: DecrementStockItemInput[] },
+  options?: { organizationId?: string }
+): Promise<DecrementStockResult> {
+  try {
+    const supabase = await createClient()
+
+    let rawItems: DecrementStockItemInput[] = []
+    let passedOrgId: string | undefined
+
+    if (Array.isArray(paramsOrItems)) {
+      rawItems = paramsOrItems
+      passedOrgId = options?.organizationId
+    } else if (paramsOrItems && typeof paramsOrItems === 'object') {
+      rawItems = paramsOrItems.items || []
+      passedOrgId = (paramsOrItems as any).organizationId || options?.organizationId
+    }
+
+    const orgId = passedOrgId || (await getCurrentOrganizationId())
+    if (!orgId) {
+      return { success: false, error: 'No se encontró contexto de organización' }
+    }
+
+    if (!rawItems || rawItems.length === 0) {
+      return { success: true, decrementedItems: [], updatedItems: [] }
+    }
+
+    // Prepare RPC payload
+    const rpcPayload = rawItems.map((i) => ({
+      item_id: i.catalogItemId || i.itemId || i.item_id,
+      variant_id: i.variantId || i.variant_id || null,
+      quantity: Math.max(1, Math.floor(i.quantity)),
+      allow_backorders_override: i.allowBackordersOverride ?? i.allow_backorders_override ?? false,
+    }))
+
+    let rpcSuccess = false
+    let decrementedResult: DecrementStockItemResult[] = []
+
+    try {
+      const { data, error } = await supabase.rpc('decrement_catalog_stock', {
+        p_organization_id: orgId,
+        p_items: rpcPayload,
+      })
+
+      if (!error && data?.success) {
+        rpcSuccess = true
+        decrementedResult = (data.decremented_items || []).map((di: any) => ({
+          itemId: di.item_id || di.catalog_item_id,
+          catalogItemId: di.catalog_item_id || di.item_id,
+          variantId: di.variant_id || null,
+          previousStock: di.previous_stock ?? 0,
+          newStock: di.new_stock ?? 0,
+          decrementedQuantity: di.decremented_quantity ?? 1,
+          trackInventory: di.track_inventory ?? true,
+        }))
+      } else if (error) {
+        if (
+          error.message &&
+          (error.message.includes('ERR_INSUFFICIENT_STOCK') ||
+            error.message.includes('ERR_VARIANT_NOT_FOUND') ||
+            error.message.includes('ERR_ITEM_NOT_FOUND'))
+        ) {
+          return { success: false, error: error.message }
+        }
+        console.warn('RPC decrement_catalog_stock failed, engaging Node.js fallback:', error.message)
+      }
+    } catch (rpcErr: any) {
+      if (rpcErr.message && rpcErr.message.includes('ERR_INSUFFICIENT_STOCK')) {
+        return { success: false, error: rpcErr.message }
+      }
+      console.warn('RPC decrement_catalog_stock error, engaging Node.js fallback:', rpcErr)
+    }
+
+    // Node.js fallback if RPC not executed
+    if (!rpcSuccess) {
+      for (const item of rawItems) {
+        const itemId = item.catalogItemId || item.itemId || item.item_id
+        if (!itemId) throw new Error('ID de producto no especificado')
+        const variantId = item.variantId || item.variant_id || null
+        const reqQty = Math.max(1, Math.floor(item.quantity))
+        const allowBackordersOverride = item.allowBackordersOverride ?? item.allow_backorders_override ?? false
+
+        if (variantId) {
+          const { data: variant, error: varError } = await supabase
+            .from('service_catalog_variants')
+            .select('*')
+            .eq('id', variantId)
+            .eq('catalog_item_id', itemId)
+            .eq('organization_id', orgId)
+            .single()
+
+          if (varError || !variant) throw new Error(`Variante con ID ${variantId} no encontrada`)
+
+          const { data: parentItem } = await supabase
+            .from('service_catalog')
+            .select('name, track_inventory, allow_backorders, variants')
+            .eq('id', itemId)
+            .eq('organization_id', orgId)
+            .single()
+
+          const trackInventory = Boolean(
+            variant.track_inventory ?? variant.track_stock ?? parentItem?.track_inventory ?? false
+          )
+          const allowBackorders = allowBackordersOverride || Boolean(parentItem?.allow_backorders ?? false)
+          const currentStock = Number(variant.inventory_quantity ?? variant.stock_quantity ?? 0)
+
+          if (trackInventory && !allowBackorders && currentStock < reqQty) {
+            return {
+              success: false,
+              error: `Stock insuficiente para "${parentItem?.name || 'Producto'}" (${variant.name || 'Variante'}). Disponibles: ${currentStock}, Solicitadas: ${reqQty}.`,
+            }
+          }
+
+          let newStock = currentStock - reqQty
+          if (trackInventory && !allowBackorders && newStock < 0) {
+            newStock = 0
+          }
+
+          await supabase
+            .from('service_catalog_variants')
+            .update({
+              inventory_quantity: newStock,
+            })
+            .eq('id', variantId)
+            .eq('organization_id', orgId)
+
+          if (parentItem?.variants && Array.isArray(parentItem.variants)) {
+            const updatedVariantsJson = parentItem.variants.map((v: any) =>
+              v.id === variantId ? { ...v, inventory_quantity: newStock, stock_quantity: newStock } : v
+            )
+            await supabase
+              .from('service_catalog')
+              .update({ variants: updatedVariantsJson })
+              .eq('id', itemId)
+              .eq('organization_id', orgId)
+          }
+
+          decrementedResult.push({
+            itemId,
+            catalogItemId: itemId,
+            variantId,
+            previousStock: currentStock,
+            newStock,
+            decrementedQuantity: reqQty,
+            trackInventory,
+          })
+        } else {
+          const { data: catItem, error: itemError } = await supabase
+            .from('service_catalog')
+            .select('*')
+            .eq('id', itemId)
+            .eq('organization_id', orgId)
+            .single()
+
+          if (itemError || !catItem) throw new Error(`Item con ID ${itemId} no encontrado`)
+
+          const trackInventory = Boolean(catItem.track_inventory ?? catItem.track_stock ?? false)
+          const allowBackorders = allowBackordersOverride || Boolean(catItem.allow_backorders ?? false)
+          const currentStock = Number(catItem.inventory_quantity ?? catItem.stock_quantity ?? 0)
+
+          if (trackInventory && !allowBackorders && currentStock < reqQty) {
+            return {
+              success: false,
+              error: `Stock insuficiente para "${catItem.name}". Disponibles: ${currentStock}, Solicitadas: ${reqQty}.`,
+            }
+          }
+
+          let newStock = currentStock - reqQty
+          if (trackInventory && !allowBackorders && newStock < 0) {
+            newStock = 0
+          }
+
+          await supabase
+            .from('service_catalog')
+            .update({
+              inventory_quantity: newStock,
+            })
+            .eq('id', itemId)
+            .eq('organization_id', orgId)
+
+          decrementedResult.push({
+            itemId,
+            catalogItemId: itemId,
+            variantId: null,
+            previousStock: currentStock,
+            newStock,
+            decrementedQuantity: reqQty,
+            trackInventory,
+          })
+        }
+      }
+    }
+
+    revalidatePath('/portfolio')
+    revalidatePath('/portal')
+    revalidatePath('/services')
+
+    return {
+      success: true,
+      decrementedItems: decrementedResult,
+      updatedItems: decrementedResult,
+    }
+  } catch (err: any) {
+    console.error('decrementStockAction error:', err)
+    return { success: false, error: err.message || 'Error al descontar stock' }
+  }
+}
+
+/**
+ * Atomic multi-item stock restoration server action.
+ * Attempts Supabase RPC 'restore_catalog_stock' first; falls back to transactional Node.js mutation.
+ */
+export async function restoreStockAction(
+  paramsOrItems: RestoreStockParams | RestoreStockItemInput[] | { organizationId?: string; items: RestoreStockItemInput[] },
+  options?: { organizationId?: string }
+): Promise<RestoreStockResult> {
+  try {
+    const supabase = await createClient()
+
+    let rawItems: RestoreStockItemInput[] = []
+    let passedOrgId: string | undefined
+
+    if (Array.isArray(paramsOrItems)) {
+      rawItems = paramsOrItems
+      passedOrgId = options?.organizationId
+    } else if (paramsOrItems && typeof paramsOrItems === 'object') {
+      rawItems = paramsOrItems.items || []
+      passedOrgId = (paramsOrItems as any).organizationId || options?.organizationId
+    }
+
+    const orgId = passedOrgId || (await getCurrentOrganizationId())
+    if (!orgId) {
+      return { success: false, error: 'No se encontró contexto de organización' }
+    }
+
+    if (!rawItems || rawItems.length === 0) {
+      return { success: true, restoredItems: [] }
+    }
+
+    const rpcPayload = rawItems.map((i) => ({
+      item_id: i.catalogItemId || i.itemId || i.item_id,
+      variant_id: i.variantId || i.variant_id || null,
+      quantity: Math.max(1, Math.floor(i.quantity)),
+    }))
+
+    let rpcSuccess = false
+    let restoredResult: RestoreStockItemResult[] = []
+
+    try {
+      const { data, error } = await supabase.rpc('restore_catalog_stock', {
+        p_organization_id: orgId,
+        p_items: rpcPayload,
+      })
+
+      if (!error && data?.success) {
+        rpcSuccess = true
+        restoredResult = (data.restored_items || []).map((ri: any) => ({
+          itemId: ri.item_id || ri.catalog_item_id,
+          catalogItemId: ri.catalog_item_id || ri.item_id,
+          variantId: ri.variant_id || null,
+          previousStock: ri.previous_stock ?? 0,
+          newStock: ri.new_stock ?? 0,
+          restoredQuantity: ri.restored_quantity ?? 1,
+        }))
+      } else if (error) {
+        console.warn('RPC restore_catalog_stock failed, engaging Node.js fallback:', error.message)
+      }
+    } catch (rpcErr: any) {
+      console.warn('RPC restore_catalog_stock error, engaging Node.js fallback:', rpcErr)
+    }
+
+    // Node.js fallback
+    if (!rpcSuccess) {
+      for (const item of rawItems) {
+        const itemId = item.catalogItemId || item.itemId || item.item_id
+        if (!itemId) continue
+        const variantId = item.variantId || item.variant_id || null
+        const reqQty = Math.max(1, Math.floor(item.quantity))
+
+        if (variantId) {
+          const { data: variant } = await supabase
+            .from('service_catalog_variants')
+            .select('*')
+            .eq('id', variantId)
+            .eq('catalog_item_id', itemId)
+            .eq('organization_id', orgId)
+            .single()
+
+          if (variant) {
+            const currentStock = Number(variant.inventory_quantity ?? variant.stock_quantity ?? 0)
+            const newStock = currentStock + reqQty
+
+            await supabase
+              .from('service_catalog_variants')
+              .update({
+                inventory_quantity: newStock,
+              })
+              .eq('id', variantId)
+              .eq('organization_id', orgId)
+
+            const { data: parentItem } = await supabase
+              .from('service_catalog')
+              .select('variants')
+              .eq('id', itemId)
+              .eq('organization_id', orgId)
+              .single()
+
+            if (parentItem?.variants && Array.isArray(parentItem.variants)) {
+              const updatedVariantsJson = parentItem.variants.map((v: any) =>
+                v.id === variantId ? { ...v, inventory_quantity: newStock, stock_quantity: newStock } : v
+              )
+              await supabase
+                .from('service_catalog')
+                .update({ variants: updatedVariantsJson })
+                .eq('id', itemId)
+                .eq('organization_id', orgId)
+            }
+
+            restoredResult.push({
+              itemId,
+              catalogItemId: itemId,
+              variantId,
+              previousStock: currentStock,
+              newStock,
+              restoredQuantity: reqQty,
+            })
+          }
+        } else {
+          const { data: catItem } = await supabase
+            .from('service_catalog')
+            .select('*')
+            .eq('id', itemId)
+            .eq('organization_id', orgId)
+            .single()
+
+          if (catItem) {
+            const currentStock = Number(catItem.inventory_quantity ?? catItem.stock_quantity ?? 0)
+            const newStock = currentStock + reqQty
+
+            await supabase
+              .from('service_catalog')
+              .update({
+                inventory_quantity: newStock,
+              })
+              .eq('id', itemId)
+              .eq('organization_id', orgId)
+
+            restoredResult.push({
+              itemId,
+              catalogItemId: itemId,
+              variantId: null,
+              previousStock: currentStock,
+              newStock,
+              restoredQuantity: reqQty,
+            })
+          }
+        }
+      }
+    }
+
+    revalidatePath('/portfolio')
+    revalidatePath('/portal')
+    revalidatePath('/services')
+
+    return {
+      success: true,
+      restoredItems: restoredResult,
+    }
+  } catch (err: any) {
+    console.error('restoreStockAction error:', err)
+    return { success: false, error: err.message || 'Error al restaurar stock' }
+  }
+}
+
+/**
+ * Real-time stock and inventory configuration action for Admin Workspace.
+ */
+export async function updateItemStockAction(
+  input: UpdateItemStockInput
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const orgId = input.organizationId || (await getCurrentOrganizationId())
+    if (!orgId) throw new Error('No se encontró contexto de organización')
+
+    const itemId = input.catalogItemId || input.itemId
+    if (!itemId) throw new Error('ID de producto no especificado')
+
+    const targetQty = input.stockQuantity ?? input.quantity ?? 0
+    const mode = input.mode || 'set'
+
+    if (input.variantId) {
+      const { data: variant, error: varError } = await supabase
+        .from('service_catalog_variants')
+        .select('*')
+        .eq('id', input.variantId)
+        .eq('catalog_item_id', itemId)
+        .eq('organization_id', orgId)
+        .single()
+
+      if (varError || !variant) throw new Error('Variante no encontrada')
+
+      const prevQty = Number(variant.inventory_quantity ?? variant.stock_quantity ?? 0)
+      const calculatedQty =
+        mode === 'set'
+          ? Math.max(0, Math.floor(targetQty))
+          : Math.max(0, prevQty + Math.floor(targetQty))
+
+      const updateFields: any = {
+        inventory_quantity: calculatedQty,
+      }
+
+      if (input.trackInventory !== undefined) {
+        updateFields.track_inventory = input.trackInventory
+      }
+      if (input.allowBackorders !== undefined) {
+        updateFields.allow_backorders = input.allowBackorders
+      }
+      if (input.lowStockThreshold !== undefined) {
+        updateFields.low_stock_threshold = input.lowStockThreshold
+      }
+      if (input.sku !== undefined) updateFields.sku = input.sku
+      if (input.barcode !== undefined) updateFields.barcode = input.barcode
+
+      const { error: updateError } = await supabase
+        .from('service_catalog_variants')
+        .update(updateFields)
+        .eq('id', input.variantId)
+        .eq('organization_id', orgId)
+
+      if (updateError) throw updateError
+
+      // Refresh parent variants JSONB array
+      const { data: allVariants } = await supabase
+        .from('service_catalog_variants')
+        .select('*')
+        .eq('catalog_item_id', itemId)
+        .eq('organization_id', orgId)
+        .order('order_index', { ascending: true })
+
+      await supabase
+        .from('service_catalog')
+        .update({ variants: allVariants || [] })
+        .eq('id', itemId)
+        .eq('organization_id', orgId)
+
+      revalidatePath('/portfolio')
+      revalidatePath('/portal')
+
+      return {
+        success: true,
+        data: {
+          itemId,
+          variantId: input.variantId,
+          previousQuantity: prevQty,
+          newQuantity: calculatedQty,
+          trackInventory: updateFields.track_inventory ?? variant.track_inventory,
+        },
+      }
+    } else {
+      // Parent item inventory
+      const { data: item, error: itemError } = await supabase
+        .from('service_catalog')
+        .select('*')
+        .eq('id', itemId)
+        .eq('organization_id', orgId)
+        .single()
+
+      if (itemError || !item) throw new Error('Item no encontrado')
+
+      const prevQty = Number(item.inventory_quantity ?? item.stock_quantity ?? 0)
+      const calculatedQty =
+        mode === 'set'
+          ? Math.max(0, Math.floor(targetQty))
+          : Math.max(0, prevQty + Math.floor(targetQty))
+
+      const updateFields: any = {
+        inventory_quantity: calculatedQty,
+      }
+
+      if (input.trackInventory !== undefined) {
+        updateFields.track_inventory = input.trackInventory
+      }
+      if (input.allowBackorders !== undefined) updateFields.allow_backorders = input.allowBackorders
+      if (input.lowStockThreshold !== undefined) updateFields.low_stock_threshold = input.lowStockThreshold
+      if (input.sku !== undefined) updateFields.sku = input.sku
+      if (input.barcode !== undefined) updateFields.barcode = input.barcode
+
+      const { error: updateError } = await supabase
+        .from('service_catalog')
+        .update(updateFields)
+        .eq('id', itemId)
+        .eq('organization_id', orgId)
+
+      if (updateError) throw updateError
+
+      revalidatePath('/portfolio')
+      revalidatePath('/portal')
+
+      return {
+        success: true,
+        data: {
+          itemId,
+          previousQuantity: prevQty,
+          newQuantity: calculatedQty,
+          trackInventory: updateFields.track_inventory ?? item.track_inventory,
+        },
+      }
+    }
+  } catch (err: any) {
+    console.error('updateItemStockAction error:', err)
+    return { success: false, error: err.message || 'Error al actualizar stock' }
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 10. TEMPLATE SEEDING & APP DATA ACTIONS (Legacy Compat)
 // ------------------------------------------------------------------------------
 
 export async function seedCatalogFromTemplate(templateId: string) {

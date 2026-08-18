@@ -81,7 +81,7 @@ export function ActionHubButtons({
     onWompiCheckout,
     className
 }: ActionHubButtonsProps) {
-    const effectiveCta = ctaType || item.cta_type || "whatsapp"
+    const effectiveCta = ctaType || item.cta_type || themeConfig?.primary_cta || "whatsapp"
     const safeDeepLinkUrl = deepLinkUrl || (typeof window !== "undefined" ? window.location.href : "")
 
     // Dialog state for 1-Click Quote
@@ -268,18 +268,18 @@ export function ActionHubButtons({
                     </Button>
                 )}
 
-                {effectiveCta === "appointment" && (
+                {(effectiveCta === "appointment" || effectiveCta === "booking") && (
                     <Button
                         type="button"
                         onClick={handleAppointmentBooking}
                         className="flex-1 h-12 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 text-sm transition-all"
                     >
                         <Calendar className="h-4 w-4" />
-                        <span>Agendar Cita / Test Drive</span>
+                        <span>Agendar Cita / Reserva</span>
                     </Button>
                 )}
 
-                {effectiveCta === "add_to_cart" && (
+                {(effectiveCta === "add_to_cart" || effectiveCta === "cart") && (
                     <Button
                         type="button"
                         disabled={isOutOfStock}
@@ -292,7 +292,7 @@ export function ActionHubButtons({
                 )}
 
                 {/* Default: WhatsApp Direct Checkout */}
-                {(!effectiveCta || effectiveCta === "whatsapp" || effectiveCta === "info") && (
+                {(!effectiveCta || effectiveCta === "whatsapp" || effectiveCta === "info" || effectiveCta === "portfolio") && (
                     <Button
                         type="button"
                         onClick={handleWhatsAppCheckout}

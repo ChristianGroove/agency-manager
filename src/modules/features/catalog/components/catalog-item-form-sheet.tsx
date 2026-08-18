@@ -152,7 +152,7 @@ export function CatalogItemFormSheet({
   const [galleryImages, setGalleryImages] = useState<CatalogGalleryImage[]>([])
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null)
 
-  // Physical Fields
+  // Physical & Stock Fields
   const [weightKg, setWeightKg] = useState<number>(0)
   const [lengthCm, setLengthCm] = useState<number>(0)
   const [widthCm, setWidthCm] = useState<number>(0)
@@ -163,6 +163,10 @@ export function CatalogItemFormSheet({
   const [trackInventory, setTrackInventory] = useState(false)
   const [inventoryQuantity, setInventoryQuantity] = useState<number>(0)
   const [allowBackorders, setAllowBackorders] = useState(false)
+  const [lowStockThreshold, setLowStockThreshold] = useState<number>(5)
+  const [bulkVariantStock, setBulkVariantStock] = useState("")
+  const [bulkVariantTrack, setBulkVariantTrack] = useState(true)
+  const [bulkVariantBackorders, setBulkVariantBackorders] = useState(false)
 
   // Digital Fields
   const [deliveryType, setDeliveryType] = useState<"download" | "license_key" | "access_link">("download")
@@ -192,11 +196,66 @@ export function CatalogItemFormSheet({
   // Store & Badges & SEO
   const [selectedBadges, setSelectedBadges] = useState<string[]>([])
   const [isVisibleInPortal, setIsVisibleInPortal] = useState(true)
-  const [ctaType, setCtaType] = useState<"whatsapp" | "buy" | "info" | "quote" | "appointment" | "add_to_cart">("whatsapp")
+  const [ctaType, setCtaType] = useState<"whatsapp" | "buy" | "info" | "quote" | "appointment" | "add_to_cart" | "cart" | "booking">("whatsapp")
   const [priceLabelType, setPriceLabelType] = useState<"price" | "base_price" | "from">("price")
   const [seoTitle, setSeoTitle] = useState("")
   const [seoDescription, setSeoDescription] = useState("")
   const [searchTagsInput, setSearchTagsInput] = useState("")
+
+  const handleUpdateVariantInventory = (index: number, patch: Partial<CatalogVariant>) => {
+    setVariants((prev) => {
+      const next = [...prev]
+      const curr = next[index]
+      next[index] = {
+        ...curr,
+        ...patch,
+        stock_quantity:
+          patch.inventory_quantity !== undefined
+            ? patch.inventory_quantity
+            : patch.stock_quantity !== undefined
+            ? patch.stock_quantity
+            : curr.stock_quantity,
+        inventory_quantity:
+          patch.stock_quantity !== undefined
+            ? patch.stock_quantity
+            : patch.inventory_quantity !== undefined
+            ? patch.inventory_quantity
+            : curr.inventory_quantity,
+        track_inventory:
+          patch.track_stock !== undefined
+            ? patch.track_stock
+            : patch.track_inventory !== undefined
+            ? patch.track_inventory
+            : curr.track_inventory,
+        track_stock:
+          patch.track_inventory !== undefined
+            ? patch.track_inventory
+            : patch.track_stock !== undefined
+            ? patch.track_stock
+            : curr.track_stock,
+      }
+      return next
+    })
+  }
+
+  const handleApplyBulkVariantStock = () => {
+    const qty = parseInt(bulkVariantStock, 10)
+    if (isNaN(qty)) {
+      toast.error("Ingrese una cantidad entera válida para las variantes")
+      return
+    }
+    setVariants((prev) =>
+      prev.map((v) => ({
+        ...v,
+        inventory_quantity: Math.max(0, qty),
+        stock_quantity: Math.max(0, qty),
+        track_inventory: bulkVariantTrack,
+        track_stock: bulkVariantTrack,
+        allow_backorders: bulkVariantBackorders,
+      }))
+    )
+    toast.success(`Stock actualizado en ${variants.length} variantes`)
+  }
 
   // Load itemToEdit into state
   useEffect(() => {
@@ -213,7 +272,7 @@ export function CatalogItemFormSheet({
       setGalleryImages(images)
       setCoverImageUrl(itemToEdit.image_url || (images[0]?.url ?? null))
 
-      // Physical
+      // Physical & Inventory
       const phys = itemToEdit.physical_details || itemToEdit.classification_metadata?.physical
       setWeightKg(phys?.weight_kg || 0)
       setLengthCm(phys?.dimensions?.length || 0)
@@ -222,9 +281,10 @@ export function CatalogItemFormSheet({
       setShippingRequired(phys?.shipping_required ?? true)
       setSku(itemToEdit.sku || "")
       setBarcode(itemToEdit.barcode || "")
-      setTrackInventory(itemToEdit.track_inventory || false)
-      setInventoryQuantity(itemToEdit.inventory_quantity || 0)
+      setTrackInventory(itemToEdit.track_inventory || itemToEdit.track_stock || false)
+      setInventoryQuantity(itemToEdit.inventory_quantity ?? itemToEdit.stock_quantity ?? 0)
       setAllowBackorders(itemToEdit.allow_backorders || false)
+      setLowStockThreshold(itemToEdit.low_stock_threshold ?? 5)
 
       // Digital
       const dig = itemToEdit.digital_details || itemToEdit.classification_metadata?.digital
@@ -286,6 +346,10 @@ export function CatalogItemFormSheet({
       setTrackInventory(false)
       setInventoryQuantity(0)
       setAllowBackorders(false)
+      setLowStockThreshold(5)
+      setBulkVariantStock("")
+      setBulkVariantTrack(true)
+      setBulkVariantBackorders(false)
       setDeliveryType("download")
       setDownloadUrl("")
       setFileSizeMb(0)
@@ -387,15 +451,14 @@ export function CatalogItemFormSheet({
         frequency: classification === "subscription" ? billingFrequency : null,
         image_url: finalImageUrl,
         gallery_images: galleryImages,
-        images: galleryImages,
         video_url: videoUrl.trim() || null,
         sku: sku.trim() || null,
         barcode: barcode.trim() || null,
-        inventory_quantity: trackInventory ? Number(inventoryQuantity) : null,
-        stock_quantity: trackInventory ? Number(inventoryQuantity) : null,
+        inventory_quantity: trackInventory ? Number(inventoryQuantity) : 0,
+        stock_quantity: trackInventory ? Number(inventoryQuantity) : 0,
         track_inventory: trackInventory,
-        track_stock: trackInventory,
         allow_backorders: allowBackorders,
+        low_stock_threshold: Number(lowStockThreshold) || 5,
         has_variants: hasVariants,
         variants: hasVariants ? variants : [],
         badges: selectedBadges,
@@ -561,12 +624,15 @@ export function CatalogItemFormSheet({
           {/* Form Tabs Body */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6 pt-3 border-b border-zinc-100 dark:border-white/5 bg-white dark:bg-zinc-950">
-              <TabsList className="grid grid-cols-4 h-10 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl">
+              <TabsList className="grid grid-cols-5 h-10 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl">
                 <TabsTrigger value="general" className="rounded-xl text-xs font-semibold">
                   General & Media
                 </TabsTrigger>
                 <TabsTrigger value="details" className="rounded-xl text-xs font-semibold">
                   Detalles & Specs
+                </TabsTrigger>
+                <TabsTrigger value="inventory" className="rounded-xl text-xs font-semibold">
+                  Inventario & Stock
                 </TabsTrigger>
                 <TabsTrigger value="variants" className="rounded-xl text-xs font-semibold">
                   Variantes {hasVariants && `(${variants.length})`}
@@ -911,62 +977,6 @@ export function CatalogItemFormSheet({
                   </div>
                 )}
 
-                {/* SKU, Barcode & Stock Management */}
-                <div className="p-4 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-3">
-                  <div className="font-bold text-xs text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Package className="h-4 w-4 text-brand-pink" />
-                    Identificadores & Control de Stock
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold">SKU (Código Interno)</Label>
-                      <Input
-                        placeholder="PIX-PROD-001"
-                        value={sku}
-                        onChange={(e) => setSku(e.target.value)}
-                        className="h-8 text-xs font-mono rounded-xl"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold">Código de Barras (EAN/UPC)</Label>
-                      <Input
-                        placeholder="770000000000"
-                        value={barcode}
-                        onChange={(e) => setBarcode(e.target.value)}
-                        className="h-8 text-xs font-mono rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                    <div>
-                      <span className="text-xs font-semibold block">Rastrear Inventario</span>
-                      <span className="text-[10px] text-zinc-400">Controla stock disponible para este producto</span>
-                    </div>
-                    <Switch checked={trackInventory} onCheckedChange={setTrackInventory} />
-                  </div>
-
-                  {trackInventory && (
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-bold">Cantidad en Stock</Label>
-                        <Input
-                          type="number"
-                          value={inventoryQuantity}
-                          onChange={(e) => setInventoryQuantity(parseInt(e.target.value, 10) || 0)}
-                          className="h-8 text-xs rounded-xl"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between pt-4">
-                        <span className="text-xs font-medium">Permitir pedidos sin stock</span>
-                        <Switch checked={allowBackorders} onCheckedChange={setAllowBackorders} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Visual Badges Selector */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold">Etiquetas Visuales (Badges)</Label>
@@ -991,6 +1001,296 @@ export function CatalogItemFormSheet({
                     })}
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* TAB 3: INVENTARIO & STOCK */}
+              <TabsContent value="inventory" className="space-y-5 m-0">
+                {/* Summary / Header Status Card */}
+                <div className="p-4 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-brand-pink/10 text-brand-pink shrink-0">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                        Estado General de Inventario
+                        {hasVariants ? (
+                          <Badge variant="outline" className="text-[10px] bg-white dark:bg-zinc-800">
+                            {variants.length} variantes
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        {trackInventory ? (
+                          hasVariants ? (
+                            <>
+                              Stock total acumulado en variantes:{" "}
+                              <span className="font-bold text-zinc-900 dark:text-white">
+                                {variants.reduce(
+                                  (acc, v) => acc + Number(v.inventory_quantity ?? v.stock_quantity ?? 0),
+                                  0
+                                )}{" "}
+                                unidades
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              Stock disponible para venta:{" "}
+                              <span className="font-bold text-zinc-900 dark:text-white">
+                                {inventoryQuantity} unidades
+                              </span>
+                            </>
+                          )
+                        ) : (
+                          "Control de inventario desactivado (Venta libre e ilimitada)"
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Status Badge */}
+                  <div>
+                    {!trackInventory ? (
+                      <Badge variant="secondary" className="text-xs px-3 py-1 font-semibold">
+                        Sin Control de Stock
+                      </Badge>
+                    ) : hasVariants ? (
+                      (() => {
+                        const totalQty = variants.reduce(
+                          (acc, v) => acc + Number(v.inventory_quantity ?? v.stock_quantity ?? 0),
+                          0
+                        )
+                        if (totalQty <= 0 && !allowBackorders) {
+                          return (
+                            <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 text-xs px-3 py-1 font-bold">
+                              Agotado
+                            </Badge>
+                          )
+                        }
+                        if (totalQty <= 0 && allowBackorders) {
+                          return (
+                            <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs px-3 py-1 font-bold">
+                              Disponible bajo pedido
+                            </Badge>
+                          )
+                        }
+                        if (totalQty <= lowStockThreshold) {
+                          return (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs px-3 py-1 font-bold">
+                              ¡Últimas {totalQty} unidades!
+                            </Badge>
+                          )
+                        }
+                        return (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1 font-bold">
+                            En Stock ({totalQty})
+                          </Badge>
+                        )
+                      })()
+                    ) : (
+                      (() => {
+                        if (inventoryQuantity <= 0 && !allowBackorders) {
+                          return (
+                            <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 text-xs px-3 py-1 font-bold">
+                              Agotado
+                            </Badge>
+                          )
+                        }
+                        if (inventoryQuantity <= 0 && allowBackorders) {
+                          return (
+                            <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs px-3 py-1 font-bold">
+                              Disponible bajo pedido
+                            </Badge>
+                          )
+                        }
+                        if (inventoryQuantity <= lowStockThreshold) {
+                          return (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs px-3 py-1 font-bold">
+                              ¡Últimas {inventoryQuantity} unidades!
+                            </Badge>
+                          )
+                        }
+                        return (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1 font-bold">
+                            En Stock ({inventoryQuantity})
+                          </Badge>
+                        )
+                      })()
+                    )}
+                  </div>
+                </div>
+
+                {/* Control Toggles */}
+                <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-bold text-zinc-900 dark:text-white block cursor-pointer">
+                        Controlar Inventario (Rastrear Existencias)
+                      </Label>
+                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Descuenta automáticamente existencias y previene sobreventas en la tienda pública.
+                      </span>
+                    </div>
+                    <Switch checked={trackInventory} onCheckedChange={setTrackInventory} />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                    <div>
+                      <Label className="text-xs font-bold text-zinc-900 dark:text-white block cursor-pointer">
+                        Permitir Pedidos sin Stock / Bajo Pedido (Backorders)
+                      </Label>
+                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Los clientes podrán seguir ordenando con la insignia &ldquo;Disponible bajo pedido&rdquo; cuando el stock llegue a 0.
+                      </span>
+                    </div>
+                    <Switch checked={allowBackorders} onCheckedChange={setAllowBackorders} />
+                  </div>
+                </div>
+
+                {/* Threshold & Identifiers */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold">Umbral de Stock Bajo</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="5"
+                      value={lowStockThreshold}
+                      onChange={(e) => setLowStockThreshold(parseInt(e.target.value, 10) || 0)}
+                      className="h-9 text-xs rounded-xl"
+                    />
+                    <span className="text-[10px] text-zinc-400 block">
+                      Insignia &ldquo;¡Últimas X unidades!&rdquo; si stock &le; {lowStockThreshold}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold">Código SKU</Label>
+                    <Input
+                      placeholder="PIX-PROD-001"
+                      value={sku}
+                      onChange={(e) => setSku(e.target.value)}
+                      className="h-9 text-xs font-mono rounded-xl"
+                    />
+                    <span className="text-[10px] text-zinc-400 block">Código interno de inventario</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold">Código de Barras (EAN/UPC)</Label>
+                    <Input
+                      placeholder="770000000000"
+                      value={barcode}
+                      onChange={(e) => setBarcode(e.target.value)}
+                      className="h-9 text-xs font-mono rounded-xl"
+                    />
+                    <span className="text-[10px] text-zinc-400 block">Identificador de barras comercial</span>
+                  </div>
+                </div>
+
+                {/* Simple Product Stock Stepper */}
+                {!hasVariants && (
+                  <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-zinc-900 dark:text-white">
+                        Cantidad en Stock
+                      </Label>
+                      <span className="text-xs font-extrabold text-brand-pink">
+                        {inventoryQuantity} unidades
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        type="number"
+                        min={0}
+                        disabled={!trackInventory}
+                        placeholder="0"
+                        value={inventoryQuantity}
+                        onChange={(e) => setInventoryQuantity(parseInt(e.target.value, 10) || 0)}
+                        className="h-10 text-sm font-bold rounded-xl max-w-[150px]"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!trackInventory}
+                          onClick={() => setInventoryQuantity((q) => Math.max(0, q + 5))}
+                          className="h-9 text-xs rounded-xl"
+                        >
+                          +5
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!trackInventory}
+                          onClick={() => setInventoryQuantity((q) => Math.max(0, q + 10))}
+                          className="h-9 text-xs rounded-xl"
+                        >
+                          +10
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!trackInventory}
+                          onClick={() => setInventoryQuantity((q) => Math.max(0, q + 50))}
+                          className="h-9 text-xs rounded-xl"
+                        >
+                          +50
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={!trackInventory}
+                          onClick={() => setInventoryQuantity(0)}
+                          className="h-9 text-xs text-zinc-400 hover:text-red-500 rounded-xl"
+                        >
+                          Poner en 0
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* When item has variants, show clean consolidated summary and shortcut to Tab 4 */}
+                {hasVariants && (
+                  <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-brand-pink" />
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">Control de Inventario por Variantes</span>
+                      </div>
+                      <Badge className="bg-brand-pink/10 text-brand-pink border-brand-pink/20 text-[10px] font-bold">
+                        {variants.length} variantes
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Este producto utiliza variantes independientes. Puedes configurar el stock, SKU, código de barras y modo bajo pedido de cada combinación en la pestaña de <strong className="text-zinc-900 dark:text-white">Variantes</strong>.
+                    </p>
+                    <div className="pt-2 flex items-center justify-between">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-300">
+                        Stock total acumulado:{" "}
+                        <span className="font-extrabold text-zinc-900 dark:text-white">
+                          {variants.reduce(
+                            (acc, v) => acc + Number(v.inventory_quantity ?? v.stock_quantity ?? 0),
+                            0
+                          )}{" "}
+                          unidades
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setActiveTab("variants")}
+                        className="h-8 text-xs font-bold rounded-xl bg-brand-pink hover:bg-brand-pink/90 text-white shadow-xs cursor-pointer"
+                      >
+                        Ir a pestaña Variantes →
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               {/* TAB 3: VARIANTS & ATTRIBUTES */}
@@ -1056,11 +1356,11 @@ export function CatalogItemFormSheet({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="whatsapp">Pedir por WhatsApp</SelectItem>
-                        <SelectItem value="quote">Solicitar Cotización</SelectItem>
-                        <SelectItem value="buy">Comprar Ahora</SelectItem>
-                        <SelectItem value="appointment">Agendar Cita</SelectItem>
-                        <SelectItem value="add_to_cart">Agregar al Carrito</SelectItem>
+                        <SelectItem value="whatsapp">💬 WhatsApp (Pedir por Chat)</SelectItem>
+                        <SelectItem value="cart">🛒 Carrito de Compras (Slide-Over Drawer)</SelectItem>
+                        <SelectItem value="buy">💳 Compra Directa Online (Wompi / Tarjetas)</SelectItem>
+                        <SelectItem value="quote">📋 Cotización Formal (1-Click CRM)</SelectItem>
+                        <SelectItem value="booking">📅 Agendar Cita (Reserva de Horario)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

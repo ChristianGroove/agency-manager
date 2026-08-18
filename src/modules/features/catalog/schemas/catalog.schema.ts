@@ -382,7 +382,7 @@ export const universalCatalogItemSchema = z
     is_visible_in_portal: z.boolean().default(true),
     is_active: z.boolean().default(true),
     order_index: z.number().int().optional(),
-    cta_type: z.enum(['whatsapp', 'buy', 'info', 'quote', 'appointment', 'portfolio', 'add_to_cart']).default('whatsapp'),
+    cta_type: z.enum(['whatsapp', 'buy', 'info', 'quote', 'appointment', 'portfolio', 'add_to_cart', 'cart', 'booking']).default('whatsapp'),
     price_label_type: z.enum(['price', 'base_price', 'from']).default('price'),
     is_system_template: z.boolean().optional().nullable(),
     ai_generated_image: z.boolean().optional().nullable(),
@@ -549,6 +549,38 @@ export const storefrontTestimonialItemSchema = z.object({
   rating: z.number().int().min(1).max(5).default(5).optional(),
 });
 
+export const storefrontHeroSlideSchema = z.object({
+  id: z.string().min(1).default(generateFallbackUUID),
+  image_url: z.string().default(''),
+  title: z.string().optional().nullable(),
+  subtitle: z.string().optional().nullable(),
+  badge_text: z.string().optional().nullable(),
+  cta_text: z.string().optional().nullable(),
+  cta_url: z.string().optional().nullable(),
+  link_url: z.string().optional().nullable(),
+});
+
+export const storefrontHeroSchema = z.object({
+  enabled: z.boolean().default(true),
+  background_type: z.enum(['gradient', 'image', 'slideshow']).default('gradient').optional(),
+  title: z.string().optional().default('Descubre Nuestras Soluciones'),
+  subtitle: z.string().optional().default('Calidad superior, innovación y servicio personalizado.'),
+  cta_text: z.string().optional().default('Explorar Catálogo'),
+  cta_url: z.string().optional().default('#catalog'),
+  cta_enabled: z.boolean().default(true).optional(),
+  whatsapp_cta_enabled: z.boolean().default(true).optional(),
+  whatsapp_cta_text: z.string().default('WhatsApp Directo').optional(),
+  bg_gradient: z.string().default('from-indigo-900 via-slate-900 to-black').optional(),
+  bg_image_url: z.string().optional().nullable(),
+  slides: z.array(storefrontHeroSlideSchema).default([]).optional(),
+  slide_interval: z.number().int().positive().default(5000).optional(),
+  badge_text: z.string().default('Portafolio 2026').optional(),
+  text_align: z.enum(['left', 'center', 'right']).default('center').optional(),
+  hide_text: z.boolean().default(false).optional(),
+  overlay_opacity: z.number().min(0).max(100).default(40).optional(),
+  banner_height: z.enum(['compact', 'medium', 'tall', 'full']).default('medium').optional(),
+});
+
 export const storefrontThemeConfigSchema = z.object({
   theme: z
     .enum([
@@ -570,26 +602,27 @@ export const storefrontThemeConfigSchema = z.object({
   accent_color: z.string().regex(HEX_COLOR_REGEX, 'Color de acento inválido').default('#10B981'),
   color_mode: z.enum(['dark', 'light', 'auto']).default('auto'),
   background_style: z.enum(['solid', 'gradient', 'mesh', 'mesh_3d']).default('solid'),
-  hero: z
-    .object({
-      enabled: z.boolean().default(true),
-      title: z.string().default('Descubre Nuestras Soluciones'),
-      subtitle: z.string().default('Calidad superior, innovación y servicio personalizado.'),
-      cta_text: z.string().default('Explorar Catálogo'),
-      cta_url: z.string().default('#catalog'),
-      bg_gradient: z.string().default('from-indigo-900 via-slate-900 to-black').optional(),
-      bg_image_url: z.string().optional().nullable(),
-      badge_text: z.string().default('Portafolio 2026').optional(),
-    })
-    .default({
-      enabled: true,
-      title: 'Descubre Nuestras Soluciones',
-      subtitle: 'Calidad superior, innovación y servicio personalizado.',
-      cta_text: 'Explorar Catálogo',
-      cta_url: '#catalog',
-      bg_gradient: 'from-indigo-900 via-slate-900 to-black',
-      badge_text: 'Portafolio 2026',
-    }),
+  primary_cta: z.enum(['whatsapp', 'cart', 'buy', 'quote', 'booking']).default('whatsapp').optional(),
+  hero: storefrontHeroSchema.default({
+    enabled: true,
+    background_type: 'gradient',
+    title: 'Descubre Nuestras Soluciones',
+    subtitle: 'Calidad superior, innovación y servicio personalizado.',
+    cta_text: 'Explorar Catálogo',
+    cta_url: '#catalog',
+    cta_enabled: true,
+    whatsapp_cta_enabled: true,
+    whatsapp_cta_text: 'WhatsApp Directo',
+    bg_gradient: 'from-indigo-900 via-slate-900 to-black',
+    bg_image_url: null,
+    slides: [],
+    slide_interval: 5000,
+    badge_text: 'Portafolio 2026',
+    text_align: 'center',
+    hide_text: false,
+    overlay_opacity: 40,
+    banner_height: 'medium',
+  }),
   navigation_style: z
     .enum(['pills', 'tabs', 'sidebar', 'grid', 'glass_cards', 'underline_tabs', 'floating_dock'])
     .default('pills'),

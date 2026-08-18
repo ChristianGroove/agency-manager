@@ -41,8 +41,14 @@ export interface CatalogWorkspaceProps {
     id: string
     name: string
     slug?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
     spaceType?: string
     currency?: string
+    logos?: {
+      dark?: string | null
+      light?: string | null
+    }
   }
   userRole: OrganizationRole
   initialTab?: WorkspaceTabKey
@@ -112,6 +118,11 @@ export function CatalogWorkspace({
   }, [organization.id])
 
   const isResto = organization.spaceType === "resto"
+  const storeSlug = organization.slug || organization.id
+  const hasActiveCustomDomain = organization.customDomain && organization.customDomainStatus === 'active'
+  const liveStoreUrl = hasActiveCustomDomain
+    ? `https://${organization.customDomain}`
+    : `/portal/${storeSlug}`
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -157,8 +168,9 @@ export function CatalogWorkspace({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => window.open("/portal", "_blank")}
+            onClick={() => window.open(liveStoreUrl, "_blank")}
             className="rounded-xl h-10 px-4 text-xs font-bold gap-1.5 bg-white dark:bg-zinc-900 border-brand-pink/30 hover:bg-brand-pink/10 text-brand-pink"
+            title={liveStoreUrl}
           >
             <ExternalLink className="h-4 w-4" />
             Ver Tienda en Vivo
@@ -200,7 +212,7 @@ export function CatalogWorkspace({
           </TabsList>
         </div>
 
-        {/* TAB 1: CATALOG ITEMS */}
+        {/* TAB 1: CATALOG ITEMS & CATEGORIES WORKSPACE */}
         <TabsContent value="catalog" className="m-0 focus-visible:outline-none focus-visible:ring-0">
           <CatalogItemsTab
             items={items}
@@ -213,7 +225,7 @@ export function CatalogWorkspace({
           />
         </TabsContent>
 
-        {/* TAB 2: ATTRIBUTES & VARIANTS */}
+        {/* TAB 2: CENTRAL ATTRIBUTES & VARIANTS MANAGER */}
         <TabsContent value="attributes" className="m-0 focus-visible:outline-none focus-visible:ring-0">
           <AttributesVariantsTab
             initialAttributeGroups={attributeGroups}
@@ -228,6 +240,7 @@ export function CatalogWorkspace({
             sampleItems={items}
             orgName={organization.name}
             organizationId={organization.id}
+            organization={organization}
           />
         </TabsContent>
       </Tabs>

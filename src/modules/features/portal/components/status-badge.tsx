@@ -86,6 +86,15 @@ export function convertCOPToWompiCents(price: number): number {
  * Helper to compute badge styling and icons
  */
 export function getBadgeStyle(badgeName: string): { label: string; bgClass: string; icon: string } {
+    if (badgeName === "Agotado" || badgeName.toLowerCase().includes("agotado") || badgeName === "Sold Out") {
+        return { label: "Agotado", bgClass: "bg-zinc-700 text-zinc-200 dark:bg-zinc-800 dark:text-zinc-400", icon: "XCircle" }
+    }
+    if (badgeName === "Disponible bajo pedido" || badgeName.toLowerCase().includes("bajo pedido") || badgeName === "Bajo Pedido") {
+        return { label: "Disponible bajo pedido", bgClass: "bg-gradient-to-r from-sky-600 to-blue-600 text-white", icon: "Package" }
+    }
+    if (badgeName.startsWith("¡Últimas") || badgeName.startsWith("¡Solo quedan") || badgeName === "Pocas Unidades") {
+        return { label: badgeName, bgClass: "bg-gradient-to-r from-rose-500 to-red-600 text-white animate-pulse shadow-rose-500/30", icon: "AlertTriangle" }
+    }
     switch (badgeName) {
         case "Destacado":
             return { label: "Destacado", bgClass: "bg-amber-500 text-white", icon: "Sparkles" }
@@ -123,6 +132,19 @@ export function shouldShowLowStockBadge(
 }
 
 /**
+ * Determines whether an item or variant is completely out of stock and cannot be purchased
+ */
+export function isOutOfStockGuard(
+    stockQuantity: number | null | undefined,
+    trackInventory: boolean | undefined,
+    allowBackorders: boolean | undefined
+): boolean {
+    if (!trackInventory) return false
+    const qty = Number(stockQuantity ?? 0)
+    return qty <= 0 && !allowBackorders
+}
+
+/**
  * Calculates discount badge text based on base and compare-at prices
  */
 export function calculateDiscountBadge(basePrice: number, compareAtPrice?: number): string | null {
@@ -142,23 +164,75 @@ export function getDisplayedBadges(allBadges: string[], maxLimit: number = 3): s
  * Evaluates dynamic badges array based on item properties and inventory state
  */
 export function evaluateDynamicBadges(
-    item: UniversalCatalogItem | { base_price: number; compare_at_price?: number | null; created_at?: string | null; badges?: any[]; track_inventory?: boolean; inventory_quantity?: number | null; low_stock_threshold?: number },
+    item: UniversalCatalogItem | {
+        base_price: number;
+        compare_at_price?: number | null;
+        created_at?: string | null;
+        badges?: any[];
+        track_inventory?: boolean;
+        track_stock?: boolean;
+        inventory_quantity?: number | null;
+        stock_quantity?: number | null;
+        low_stock_threshold?: number;
+        allow_backorders?: boolean;
+    },
     selectedVariant?: CatalogVariant | null
 ): string[] {
     const evaluated: string[] = []
 
-    // 1. Explicit badges from item (manual)
+    // Inventory attributes
+    const trackInventory = Boolean(
+        selectedVariant?.track_inventory ??
+        selectedVariant?.track_stock ??
+        item.track_inventory ??
+        (item as any).track_stock ??
+        false
+    )
+
+    const rawStock =
+        selectedVariant?.stock_quantity ??
+        selectedVariant?.inventory_quantity ??
+        item.stock_quantity ??
+        item.inventory_quantity ??
+        0
+
+    const stockQty = Number(rawStock ?? 0)
+    const allowBackorders = Boolean(
+        selectedVariant?.allow_backorders ??
+        item.allow_backorders ??
+        false
+    )
+    const threshold = Number(
+        selectedVariant?.low_stock_threshold ??
+        item.low_stock_threshold ??
+        5
+    )
+
+    // 1. Strict Stock Badges
+    if (trackInventory) {
+        if (stockQty <= 0 && !allowBackorders) {
+            evaluated.push("Agotado")
+        } else if (stockQty > 0 && stockQty <= threshold) {
+            evaluated.push(`¡Últimas ${stockQty} unidades!`)
+        } else if (allowBackorders && stockQty <= 0) {
+            evaluated.push("Disponible bajo pedido")
+        }
+    } else if (allowBackorders) {
+        evaluated.push("Disponible bajo pedido")
+    }
+
+    // 2. Explicit badges from item (manual)
     if (Array.isArray(item.badges)) {
         for (const b of item.badges) {
             if (typeof b === "string" && b.trim()) {
                 evaluated.push(b.trim())
-            } else if (b && typeof b === "object" && b.label) {
-                evaluated.push(b.label)
+            } else if (b && typeof b === "object" && (b as any).label) {
+                evaluated.push((b as any).label)
             }
         }
     }
 
-    // 2. Discount Badge (only if compare_at_price > base_price)
+    // 3. Discount Badge (only if compare_at_price > base_price)
     const basePrice = selectedVariant?.price_override ?? (item.base_price || 0)
     const compareAt = item.compare_at_price
     if (compareAt && compareAt > basePrice) {
@@ -168,20 +242,10 @@ export function evaluateDynamicBadges(
         }
     }
 
-    // 3. New / Novedad badge
+    // 4. New / Novedad badge
     if (item.created_at && isNewItem(item.created_at)) {
         if (!evaluated.includes("Novedad")) {
             evaluated.push("Novedad")
-        }
-    }
-
-    // 4. Low stock badge
-    const trackInventory = selectedVariant?.track_inventory ?? item.track_inventory ?? false
-    const stockQty = selectedVariant?.inventory_quantity ?? item.inventory_quantity ?? 0
-    const threshold = item.low_stock_threshold ?? 5
-    if (shouldShowLowStockBadge(stockQty, threshold, trackInventory)) {
-        if (!evaluated.includes("Pocas Unidades")) {
-            evaluated.push("Pocas Unidades")
         }
     }
 
@@ -330,7 +394,8 @@ export function StatusBadge({
 
         case "low_stock":
         case "pocas_unidades":
-            displayLabel = displayLabel || (stockQuantity !== undefined && stockQuantity !== null ? `¡Solo quedan ${stockQuantity}!` : "Pocas Unidades")
+        case "ultimas_unidades":
+            displayLabel = displayLabel || (stockQuantity !== undefined && stockQuantity !== null ? (stockQuantity === 1 ? "¡Última 1 unidad!" : `¡Últimas ${stockQuantity} unidades!`) : "Pocas Unidades")
             badgeClass = "bg-gradient-to-r from-rose-500 to-red-600 text-white animate-pulse shadow-rose-500/30"
             renderIcon = renderIcon || <AlertTriangle className="h-3 w-3 mr-1 shrink-0" />
             break
@@ -352,7 +417,8 @@ export function StatusBadge({
 
         case "backorder":
         case "bajo_pedido":
-            displayLabel = displayLabel || "Bajo Pedido"
+        case "disponible_bajo_pedido":
+            displayLabel = displayLabel || "Disponible bajo pedido"
             badgeClass = "bg-gradient-to-r from-sky-600 to-blue-600 text-white"
             renderIcon = renderIcon || <Package className="h-3 w-3 mr-1 shrink-0" />
             break
