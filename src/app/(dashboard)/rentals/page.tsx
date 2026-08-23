@@ -109,6 +109,7 @@ export default async function RentalsPage({
       .from("leads")
       .select("id, name, email, phone, metadata, company_name, status")
       .eq("organization_id", orgId)
+      .eq("contact_type", "client")
       .is("deleted_at", null)
       .order("name"),
     getCurrentOrgDetails(orgId),

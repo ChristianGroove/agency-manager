@@ -14,16 +14,36 @@ export function ClientHeader({ client }: ClientHeaderProps) {
                     <h2 className="text-2xl font-black text-gray-900 dark:text-white truncate">
                         {client.name}
                     </h2>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        {(client as any).metadata?.role === 'tenant' && (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-3 h-7 rounded-full text-xs font-bold">
+                                ● Inquilino
+                            </Badge>
+                        )}
+                        {(client as any).metadata?.role === 'owner' && (
+                            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/20 px-3 h-7 rounded-full text-xs font-bold">
+                                ● Propietario
+                            </Badge>
+                        )}
+                        {(client as any).metadata?.role === 'buyer' && (
+                            <Badge className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 px-3 h-7 rounded-full text-xs font-bold">
+                                ● Comprador
+                            </Badge>
+                        )}
+                        {(client as any).metadata?.role === 'seller' && (
+                            <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 px-3 h-7 rounded-full text-xs font-bold">
+                                ● Vendedor
+                            </Badge>
+                        )}
                         {client.total_debt && client.total_debt > 0 ? (
                             <Badge variant="destructive" className="animate-pulse-slow bg-red-500 text-white border-none shadow-lg shadow-red-200 px-4 h-7 rounded-full text-xs font-bold">
                                 Deuda: ${client.total_debt.toLocaleString()}
                             </Badge>
-                        ) : (
-                            <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-none px-4 h-7 rounded-full text-xs font-bold">
+                        ) : !(client as any).metadata?.role ? (
+                            <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-none px-4 h-7 rounded-full text-xs font-bold">
                                 Al Día
                             </Badge>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 

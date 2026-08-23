@@ -21,6 +21,18 @@ export interface EditFormState {
     twitter: string
     category_id: string | null
     notes: string
+    // Real Estate & Custom Metadata
+    role?: string
+    city?: string
+    occupation?: string
+    bank?: string
+    account_type?: "savings" | "checking"
+    account_number?: string
+    account_holder?: string
+    id_number?: string
+    credit_status?: string
+    monthly_income?: number | string
+    metadata?: Record<string, any>
 }
 
 export function useClientManagement(clientId: string | null, open: boolean, initialData?: Client) {
@@ -48,7 +60,18 @@ export function useClientManagement(clientId: string | null, open: boolean, init
         youtube: "",
         twitter: "",
         category_id: null,
-        notes: ""
+        notes: "",
+        role: "tenant",
+        city: "",
+        occupation: "",
+        bank: "Bancolombia",
+        account_type: "savings",
+        account_number: "",
+        account_holder: "",
+        id_number: "",
+        credit_status: "approved",
+        monthly_income: "",
+        metadata: {}
     })
 
     const fetchClientData = useCallback(async () => {
@@ -76,6 +99,9 @@ export function useClientManagement(clientId: string | null, open: boolean, init
             
             setClient(data)
 
+            const meta = data.metadata || {}
+            const bankDetails = meta.bank_details || {}
+
             // Sync Edit Form
             setEditForm({
                 name: data.name || "",
@@ -93,15 +119,27 @@ export function useClientManagement(clientId: string | null, open: boolean, init
                 youtube: data.metadata?.youtube || data.youtube || "",
                 twitter: data.metadata?.twitter || data.twitter || "",
                 category_id: data.category_id || null,
-                notes: data.notes || ""
+                notes: data.notes || "",
+                role: meta.role || "other",
+                city: meta.city || "",
+                occupation: meta.occupation || "",
+                bank: bankDetails.bank || "Bancolombia",
+                account_type: bankDetails.account_type || "savings",
+                account_number: bankDetails.account_number || "",
+                account_holder: bankDetails.account_holder || data.name || "",
+                id_number: bankDetails.id_number || data.nit || "",
+                credit_status: meta.credit_status || "approved",
+                monthly_income: meta.monthly_income || "",
+                metadata: meta
             })
 
             // Settings
             const { data: settingsData } = await supabase.from('user_settings').select('*').single()
-            setSettings(settingsData || {})
+            if (settingsData) setSettings(settingsData)
 
-        } catch (error: any) {
-            console.error("Fetch Error:", error)
+        } catch (error) {
+            console.error("Error fetching client details:", error)
+            toast.error("Error al cargar detalles")
         } finally {
             setLoading(false)
         }
@@ -115,9 +153,29 @@ export function useClientManagement(clientId: string | null, open: boolean, init
 
     // Mutators
     const handleUpdateProfile = async () => {
-        if (!client) return
+        if (!client) return false
         setSaving(true)
         try {
+            const currentMeta = client.metadata || {}
+            const updatedMeta: Record<string, any> = {
+                ...currentMeta,
+                ...(editForm.role ? { role: editForm.role } : {}),
+                ...(editForm.city !== undefined ? { city: editForm.city } : {}),
+                ...(editForm.occupation !== undefined ? { occupation: editForm.occupation } : {}),
+                ...(editForm.credit_status ? { credit_status: editForm.credit_status } : {}),
+                ...(editForm.monthly_income ? { monthly_income: Number(editForm.monthly_income) } : {}),
+            }
+
+            if (editForm.bank && editForm.account_number) {
+                updatedMeta.bank_details = {
+                    bank: editForm.bank,
+                    account_type: editForm.account_type || "savings",
+                    account_number: editForm.account_number,
+                    account_holder: editForm.account_holder || editForm.name,
+                    id_number: editForm.id_number || editForm.nit
+                }
+            }
+
             const { error } = await supabase
                 .from('leads')
                 .update({
@@ -136,7 +194,8 @@ export function useClientManagement(clientId: string | null, open: boolean, init
                     youtube: editForm.youtube,
                     twitter: editForm.twitter,
                     category_id: editForm.category_id,
-                    notes: editForm.notes
+                    notes: editForm.notes,
+                    metadata: updatedMeta
                 })
                 .eq('id', client.id)
 

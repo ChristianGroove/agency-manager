@@ -55,3 +55,27 @@ El sistema utiliza un mecanismo de **Eliminación Suave (Soft-Delete)**:
 1. El usuario crea un **Contacto Maestro** en la Agenda (`contact_type='client'`).
 2. Cuando surge una oportunidad, se crea un **Lead** (`contact_type='lead'`) vinculado al `master_contact_id` de ese cliente.
 3. El Pipeline avanza el Lead. Los módulos de Hosting/Cotizaciones consumen los datos del **Master Contact** para asegurar consistencia.
+
+---
+
+## 4. Adaptabilidad Multi-Space y Roles Especializados (JSONB Metadata)
+
+Para soportar industrias verticales como **Real Estate (`real_estate`)** sin fragmentar el modelo relacional ni contaminar otros espacios (`agency`, `resto`, `retail`, `saas`):
+
+### Perfil Inmobiliario & Dispersión Bancaria
+- Los campos especializados se almacenan en la columna `metadata` JSONB de `public.leads`:
+  - `role`: `'tenant' | 'owner' | 'buyer' | 'seller' | 'other'`
+  - `city`: Ciudad / Sector principal del contacto.
+  - `occupation`: Profesión / Actividad económica.
+  - `bank_details`: Objeto `{ bank, account_type, account_number, account_holder, id_number }` utilizado para liquidaciones de rentas en RentFlow Pro.
+  - `credit_status`: Estado de fianza / estudio de aseguradora (`'approved' | 'in_review' | 'rejected' | 'exempt'`).
+  - `monthly_income`: Ingreso mensual verificado.
+
+### Filtrado y Búsqueda Multi-Capa
+El CRM opera con dos capas de segmentación independientes y combinables:
+1. **Capa 1 — Categorías de Cartera**: Segmentación comercial libre (`CategorySelector` / Tira de píldoras).
+2. **Capa 2 — Filtros de Rol / Estado (`SearchFilterBar`)**:
+   - En `real_estate`: Filtra por roles activos (`🏢 Inquilinos`, `🔑 Propietarios`, `🛡️ Compradores`, `💼 Vendedores`).
+   - En otros espacios: Filtra por estado financiero (`Todos`, `En Mora`, `Urgente`, `Al Día`, `Inactivo`).
+3. **Motor de Búsqueda Universal**: Indexa y busca instantáneamente en memoria por nombre, empresa, email, teléfono, ciudad, banco, rol y número de cuenta.
+

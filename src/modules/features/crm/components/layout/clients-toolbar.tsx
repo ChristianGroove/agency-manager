@@ -26,10 +26,19 @@ export function ClientsToolbar({
         setActiveFilter, 
         viewMode, 
         setViewMode,
+        spaceType,
         applyFilters 
     } = useClients()
 
-    const filterOptions: FilterOption[] = [
+    const isRealEstate = spaceType === 'real_estate'
+
+    const filterOptions: FilterOption[] = isRealEstate ? [
+        { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
+        { id: 'tenant', label: '🏢 Inquilinos', count: counts.tenant ?? 0, color: 'emerald' },
+        { id: 'owner', label: '🔑 Propietarios', count: counts.owner ?? 0, color: 'amber' },
+        { id: 'buyer', label: '🛡️ Compradores', count: counts.buyer ?? 0, color: 'blue' },
+        { id: 'seller', label: '💼 Vendedores', count: counts.seller ?? 0, color: 'indigo' },
+    ] : [
         { id: 'all', label: t('clients.tabs.all'), count: counts.all, color: 'gray' },
         { id: 'overdue', label: t('clients.tabs.overdue'), count: counts.overdue, color: 'red' },
         { id: 'urgent', label: t('clients.tabs.urgent'), count: counts.urgent, color: 'amber' },
@@ -46,7 +55,7 @@ export function ClientsToolbar({
                         setSearchTerm(val)
                         applyFilters(val, activeFilter)
                     }}
-                    searchPlaceholder="Buscar contactos..."
+                    searchPlaceholder={isRealEstate ? "Buscar por nombre, rol, ciudad, banco, teléfono..." : "Buscar contactos..."}
                     filters={filterOptions}
                     activeFilter={activeFilter}
                     onFilterChange={(val) => {

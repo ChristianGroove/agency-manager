@@ -239,3 +239,21 @@ export const DEFAULT_REAL_ESTATE_CATEGORIES = [
     { name: 'Lotes & Fincas', slug: 'lotes-fincas', icon: 'Trees', color: 'emerald', order_index: 3, scope: 'tenant' as const, is_active: true },
     { name: 'Proyectos Sobre Planos', slug: 'proyectos-planos', icon: 'FileSpreadsheet', color: 'amber', order_index: 4, scope: 'tenant' as const, is_active: true }
 ];
+
+export const COLOMBIAN_BANKS = [
+    "Bancolombia",
+    "Davivienda",
+    "Banco de Bogotá",
+    "BBVA Colombia",
+    "Banco de Occidente",
+    "Banco Popular",
+    "Banco Caja Social",
+    "Banco AV Villas",
+    "Banco Itaú",
+    "Scotiabank Colpatria",
+    "Nequi",
+    "Daviplata",
+    "Lulo Bank",
+    "Nu Colombia",
+    "Otro",
+];

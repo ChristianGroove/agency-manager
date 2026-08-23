@@ -279,15 +279,6 @@ export function LeasesTab({
               <List className="h-4 w-4" />
             </button>
           </div>
-
-          <Button
-            type="button"
-            onClick={onNewLease}
-            className="rounded-xl h-10 px-4 text-xs font-bold bg-brand-pink hover:bg-brand-pink/90 text-white gap-1.5 shadow-md shadow-brand-pink/20"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Nuevo Contrato</span>
-          </Button>
         </div>
       </div>
 
@@ -318,163 +309,176 @@ export function LeasesTab({
 
       {/* GRID VIEW */}
       {viewMode === "grid" && filteredLeases.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredLeases.map((lease) => {
             const property = lease.property;
             const tenant = lease.tenant;
             const owner = lease.owner;
-            const thumb =
-              property?.images?.[0] ||
-              property?.gallery_images?.[0]?.url ||
-              "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=600&q=80";
 
             return (
               <div
                 key={lease.id}
-                className="group relative overflow-hidden rounded-3xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                className="group relative rounded-2xl bg-white dark:bg-zinc-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-brand-pink/40 dark:hover:border-brand-pink/40 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between p-5 space-y-4"
               >
-                <div>
-                  {/* Property Image Header */}
-                  <div className="relative h-40 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                    <img
-                      src={thumb}
-                      alt={property?.name || "Inmueble"}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    
-                    {/* Status & Preaviso badge on top right */}
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                {/* Header: Property name, Neighborhood, Status Badge */}
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-2 rounded-xl bg-brand-pink/10 text-brand-pink shrink-0 mt-0.5">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-snug line-clamp-1 group-hover:text-brand-pink transition-colors">
+                          {property?.name || "Inmueble en Arriendo"}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                            {property?.real_estate_details?.neighborhood || "Ibagué"}
+                          </span>
+                          {property?.real_estate_details?.city && (
+                            <>
+                              <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                              <span className="text-[11px] text-zinc-400">
+                                {property.real_estate_details.city}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 shrink-0">
                       {getStatusBadge(lease.status)}
                       {isRenewalPreaviso(lease) && (
-                        <Badge className="bg-amber-500/90 text-white dark:bg-amber-500/20 dark:text-amber-400 border border-amber-300 dark:border-amber-500/20 text-[10px] font-bold shadow-sm backdrop-blur-md gap-1">
-                          <AlertTriangle className="h-3 w-3 text-white dark:text-amber-400" />
-                          Por Renovar (90 días)
+                        <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-500/20 text-[9px] font-bold gap-1 px-1.5 py-0">
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          90d
                         </Badge>
                       )}
                     </div>
-
-                    {/* Neighborhood tag on top left */}
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold">
-                        {property?.real_estate_details?.neighborhood || "Ibagué"}
-                      </span>
-                    </div>
-
-                    {/* Property Title & Rent on bottom */}
-                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <h4 className="font-bold text-sm leading-snug line-clamp-1">
-                        {property?.name || "Inmueble en Arriendo"}
-                      </h4>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="font-mono text-base font-black text-white">
-                          {formatCOP(Number(lease.monthly_rent) || 0)}
-                          <span className="text-[10px] font-normal text-white/80">/mes</span>
-                        </span>
-                        {lease.admin_fee > 0 && (
-                          <span className="text-[10px] text-white/90 font-medium">
-                            +Admon: {formatCOP(Number(lease.admin_fee))} ({lease.admin_paid_by === "agency" ? "Agencia" : "Directo"})
-                          </span>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Card Body Details */}
-                  <div className="p-4 space-y-3 text-xs">
-                    {/* Tenant & Landlord rows */}
-                    <div className="space-y-1.5 pb-3 border-b border-zinc-100 dark:border-white/5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5 text-emerald-500" />
-                          Inquilino:
-                        </span>
-                        <span className="font-bold text-zinc-900 dark:text-white">
-                          {tenant?.name || "Sin inquilino"}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                          <Landmark className="h-3.5 w-3.5 text-amber-500" />
-                          Propietario:
-                        </span>
-                        <span className="font-bold text-zinc-900 dark:text-white">
-                          {owner?.name || "Sin propietario"}
-                        </span>
+                  {/* Financial Banner */}
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-white/5 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold block">Canon Mensual</span>
+                      <div className="font-mono text-base font-black text-zinc-900 dark:text-white">
+                        {formatCOP(Number(lease.monthly_rent) || 0)}
+                        <span className="text-[11px] font-normal text-zinc-400 ml-1">/mes</span>
                       </div>
                     </div>
-
-                    {/* Financial Terms & Days */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600 dark:text-zinc-400">
-                      <div>
-                        <span className="block text-zinc-400">Comisión Agencia:</span>
-                        <span className="font-bold text-zinc-900 dark:text-white font-mono">
-                          {lease.commission_percentage}% {lease.vat_on_commission ? "(+IVA)" : ""}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-zinc-400">Día Límite / Giro:</span>
-                        <span className="font-bold text-zinc-900 dark:text-white font-mono">
-                          Día {lease.payment_day} / Día {lease.payout_day}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Guarantee & Validity */}
-                    <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-white/5 space-y-1.5 text-[11px]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 flex items-center gap-1">
-                          <ShieldCheck className="h-3 w-3 text-brand-pink" />
-                          {getGuaranteeLabel(lease.guarantee_type)}:
-                        </span>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                          {lease.guarantee_details?.provider || "Directa"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-400">
-                        <span>Vigencia:</span>
-                        <span className="font-mono font-medium">
-                          {formatColombianDate(lease.start_date)} al {formatColombianDate(lease.end_date)}
-                        </span>
-                      </div>
-                      {isRenewalPreaviso(lease) && (
-                        <div className="pt-1 flex items-center justify-between text-[10px] text-amber-700 dark:text-amber-400 font-bold border-t border-amber-300/40 dark:border-amber-500/20">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" /> Preaviso Ley 820:
+                    {lease.admin_fee > 0 && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-zinc-400 block">Administración</span>
+                        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 font-mono">
+                          +{formatCOP(Number(lease.admin_fee))}
+                          <span className="text-[10px] text-zinc-400 font-normal ml-1">
+                            ({lease.admin_paid_by === "agency" ? "Agencia" : "Directo"})
                           </span>
-                          <span className="font-mono">Por Renovar (90 días)</span>
-                        </div>
-                      )}
-                    </div>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Card Footer Quick Actions */}
-                <div className="p-3 bg-zinc-50/80 dark:bg-zinc-900/60 border-t border-zinc-200/80 dark:border-white/10 flex items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEditLease(lease)}
-                    className="rounded-xl h-8 px-3 text-xs font-semibold gap-1 hover:border-brand-pink/40 hover:text-brand-pink"
-                  >
-                    <Edit3 className="h-3 w-3" />
-                    Editar
-                  </Button>
+                {/* Parties (Inquilino / Propietario) */}
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-zinc-100 dark:border-white/5">
+                  <div className="p-2.5 rounded-xl bg-zinc-50/70 dark:bg-zinc-800/30 border border-zinc-100 dark:border-white/5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mb-1">
+                      <Users className="h-3 w-3" />
+                      Inquilino
+                    </span>
+                    <p className="font-bold text-zinc-900 dark:text-white text-xs truncate" title={tenant?.name || ""}>
+                      {tenant?.name || "Sin inquilino"}
+                    </p>
+                    {tenant?.phone && (
+                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
+                        {tenant.phone}
+                      </p>
+                    )}
+                  </div>
 
-                  {lease.status !== "terminated" && (
+                  <div className="p-2.5 rounded-xl bg-zinc-50/70 dark:bg-zinc-800/30 border border-zinc-100 dark:border-white/5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1 mb-1">
+                      <Landmark className="h-3 w-3" />
+                      Propietario
+                    </span>
+                    <p className="font-bold text-zinc-900 dark:text-white text-xs truncate" title={owner?.name || ""}>
+                      {owner?.name || "Sin propietario"}
+                    </p>
+                    {owner?.phone && (
+                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
+                        {owner.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Legal & Terms Metadata */}
+                <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-brand-pink" />
+                      Garantía:
+                    </span>
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {getGuaranteeLabel(lease.guarantee_type)} ({lease.guarantee_details?.provider || "Directa"})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+                      Corte / Giro:
+                    </span>
+                    <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300">
+                      Límite Día {lease.payment_day} • Pago Día {lease.payout_day}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-zinc-400" />
+                      Vigencia:
+                    </span>
+                    <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400">
+                      {formatColombianDate(lease.start_date)} al {formatColombianDate(lease.end_date)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Card Actions Footer */}
+                <div className="pt-3 border-t border-zinc-100 dark:border-white/5 flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-mono text-zinc-400">
+                    Comisión: <span className="font-bold text-zinc-700 dark:text-zinc-300">{lease.commission_percentage}%</span> {lease.vat_on_commission ? "+IVA" : ""}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => setTerminatingLease(lease)}
-                      className="rounded-xl h-8 px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700"
+                      onClick={() => onEditLease(lease)}
+                      className="rounded-xl h-8 px-3 text-xs font-semibold gap-1 hover:border-brand-pink/40 hover:text-brand-pink"
                     >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Terminar
+                      <Edit3 className="h-3 w-3" />
+                      Editar
                     </Button>
-                  )}
+
+                    {lease.status !== "terminated" && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTerminatingLease(lease)}
+                        className="rounded-xl h-8 px-2.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700"
+                        title="Terminar contrato"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:inline sm:ml-1">Terminar</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

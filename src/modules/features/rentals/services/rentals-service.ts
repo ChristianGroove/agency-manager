@@ -187,7 +187,31 @@ export async function createLease(
       await updatePropertyRentalStatus(supabase, input.property_id, orgId, 'rented');
     }
 
-    safeRevalidate(['/rentals', '/portfolio']);
+    // Sync contact metadata for owner and tenant if provided
+    try {
+      if (input.owner_id) {
+        const { data: currentOwner } = await supabase.from('leads').select('metadata').eq('id', input.owner_id).single();
+        const ownerMeta = currentOwner?.metadata || {};
+        const updatedOwnerMeta = {
+          ...ownerMeta,
+          role: ownerMeta.role || 'owner',
+          ...(input.bank_payout_details?.account_number ? { bank_details: input.bank_payout_details } : {})
+        };
+        await supabase.from('leads').update({ metadata: updatedOwnerMeta }).eq('id', input.owner_id);
+      }
+
+      if (input.tenant_id) {
+        const { data: currentTenant } = await supabase.from('leads').select('metadata').eq('id', input.tenant_id).single();
+        const tenantMeta = currentTenant?.metadata || {};
+        if (!tenantMeta.role || tenantMeta.role === 'other') {
+          await supabase.from('leads').update({ metadata: { ...tenantMeta, role: 'tenant' } }).eq('id', input.tenant_id);
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[RENTALS_SERVICE] Non-critical error syncing contact metadata:', syncErr);
+    }
+
+    safeRevalidate(['/rentals', '/portfolio', '/crm/clients']);
 
     return { success: true, data: data as PropertyLease };
   } catch (err) {

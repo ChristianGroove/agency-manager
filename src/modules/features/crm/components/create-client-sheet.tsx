@@ -15,24 +15,39 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, Plus, Upload, UserCircle, Mail, Globe, Save } from "lucide-react"
+import { Loader2, Plus, Upload, UserCircle, Mail, Globe, Save, Building2, Landmark, ShieldCheck, MapPin, Briefcase } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/modules/core/database/supabase"
 import { toast } from "sonner"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { CategorySelector } from "./category-selector"
+import { COLOMBIAN_BANKS } from "@/modules/core/organizations/vertical-registry"
+import { useClients } from "../context/clients-context"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface CreateClientSheetProps {
     onSuccess?: () => void
     open?: boolean
     onOpenChange?: (open: boolean) => void
     trigger?: React.ReactNode
+    spaceType?: string
 }
 
-export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChange: setControlledOpen, trigger }: CreateClientSheetProps) {
+export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChange: setControlledOpen, trigger, spaceType: explicitSpaceType }: CreateClientSheetProps) {
     const { t } = useTranslation()
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
+
+    let detectedSpaceType = explicitSpaceType
+    try {
+        const clientsCtx = useClients()
+        if (!detectedSpaceType && clientsCtx?.spaceType) {
+            detectedSpaceType = clientsCtx.spaceType
+        }
+    } catch (_) {}
+
+    const isRealEstate = detectedSpaceType === 'real_estate'
 
     const setOpen = (val: boolean) => {
         if (!isControlled) setInternalOpen(val)
@@ -43,7 +58,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Form State - ALL fields including social media
+    // Form State - ALL fields including social media and space-specific metadata
     const [form, setForm] = useState({
         name: "",
         company_name: "",
@@ -59,7 +74,18 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         linkedin: "",
         youtube: "",
         twitter: "",
-        category_id: null as string | null
+        category_id: null as string | null,
+        // Real Estate Specific Fields
+        role: "tenant" as "tenant" | "owner" | "buyer" | "seller" | "other",
+        city: "",
+        occupation: "",
+        bank: "Bancolombia",
+        account_type: "savings" as "savings" | "checking",
+        account_number: "",
+        account_holder: "",
+        id_number: "",
+        credit_status: "approved" as "approved" | "in_review" | "rejected" | "exempt",
+        monthly_income: "",
     })
 
     // File Upload State
@@ -109,13 +135,46 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 finalLogoUrl = publicUrl
             }
 
+            const meta: Record<string, any> = {}
+            if (isRealEstate) {
+                meta.role = form.role
+                if (form.city) meta.city = form.city
+                if (form.occupation) meta.occupation = form.occupation
+                if (form.role === 'tenant') {
+                    meta.credit_status = form.credit_status
+                    if (form.monthly_income) meta.monthly_income = Number(form.monthly_income)
+                }
+                if (form.role === 'owner' || form.account_number) {
+                    meta.bank_details = {
+                        bank: form.bank,
+                        account_type: form.account_type,
+                        account_number: form.account_number,
+                        account_holder: form.account_holder || form.name,
+                        id_number: form.id_number || form.nit
+                    }
+                }
+            }
+
             const { error } = await supabase.from('leads').insert({
-                ...form,
+                name: form.name,
+                company_name: form.company_name,
+                nit: form.nit,
+                email: form.email,
+                phone: form.phone,
+                address: form.address,
+                website: form.website,
+                instagram: form.instagram,
+                facebook: form.facebook,
+                tiktok: form.tiktok,
+                linkedin: form.linkedin,
+                youtube: form.youtube,
+                twitter: form.twitter,
                 contact_type: 'client',
                 organization_id: orgId,
                 logo_url: finalLogoUrl,
                 user_id: user.id,
                 category_id: form.category_id,
+                metadata: meta,
                 // Generate Portal Tokens
                 portal_token: crypto.randomUUID(),
                 portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -131,7 +190,10 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             setForm({
                 name: "", company_name: "", nit: "", email: "", phone: "", address: "",
                 logo_url: "", website: "", instagram: "", facebook: "",
-                tiktok: "", linkedin: "", youtube: "", twitter: "", category_id: null
+                tiktok: "", linkedin: "", youtube: "", twitter: "", category_id: null,
+                role: "tenant", city: "", occupation: "", bank: "Bancolombia",
+                account_type: "savings", account_number: "", account_holder: "",
+                id_number: "", credit_status: "approved", monthly_income: ""
             })
             setSelectedFile(null)
             setPreviewUrl(null)
@@ -173,23 +235,169 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             >
                 <div className="flex flex-col h-full bg-white dark:bg-[#0a0a0a] dark:border dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl text-slate-900 dark:text-zinc-100">
                     <SheetHeader className="sr-only">
-                        <SheetTitle>Crear Contacto</SheetTitle>
+                        <SheetTitle>{isRealEstate ? "Crear Contacto Inmobiliario" : "Crear Contacto"}</SheetTitle>
                         <SheetDescription>Completa la información del nuevo contacto.</SheetDescription>
                     </SheetHeader>
 
                     {/* Header */}
                     <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5">
                         <div className="p-2.5 bg-brand-pink/10 rounded-xl text-brand-pink shrink-0">
-                            <UserCircle className="h-5 w-5" />
+                            {isRealEstate ? <Building2 className="h-5 w-5" /> : <UserCircle className="h-5 w-5" />}
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Crear Contacto</h2>
-                            <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5">Completa los datos del nuevo contacto para tu base de datos.</p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                {isRealEstate ? "Nuevo Contacto Inmobiliario" : "Crear Contacto"}
+                            </h2>
+                            <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5">
+                                {isRealEstate
+                                    ? "Registra inquilinos, propietarios, compradores y sus datos financieros o de dispersión bancaria."
+                                    : "Completa los datos del nuevo contacto para tu base de datos."}
+                            </p>
                         </div>
                     </div>
 
                     {/* Form Body */}
                     <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin scrollbar-thumb-gray-200">
+                        {/* REAL ESTATE SPECIALIZED PROFILE BLOCK */}
+                        {isRealEstate && (
+                            <div className="bg-white dark:bg-white/5 p-6 sm:p-8 rounded-2xl border border-brand-pink/20 dark:border-brand-pink/10 shadow-sm space-y-6">
+                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-4">
+                                    <h4 className="text-sm font-bold text-brand-pink uppercase tracking-widest flex items-center gap-2">
+                                        <Building2 className="h-4 w-4" /> Perfil Inmobiliario & Rol
+                                    </h4>
+                                    <span className="text-xs text-zinc-500 font-medium">Configuración de Rol y Dispersión</span>
+                                </div>
+
+                                {/* Role Selector Pills */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-gray-700 dark:text-gray-200">Tipo de Contacto Inmobiliario *</Label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                        {[
+                                            { key: "tenant", label: "Inquilino / Arrendatario", icon: Building2, color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/30" },
+                                            { key: "owner", label: "Propietario / Arrendador", icon: Landmark, color: "text-amber-600 bg-amber-500/10 border-amber-500/30" },
+                                            { key: "buyer", label: "Comprador / Prospecto", icon: ShieldCheck, color: "text-sky-600 bg-sky-500/10 border-sky-500/30" },
+                                            { key: "seller", label: "Vendedor / Propietario", icon: Briefcase, color: "text-indigo-600 bg-indigo-500/10 border-indigo-500/30" },
+                                        ].map((item) => (
+                                            <button
+                                                key={item.key}
+                                                type="button"
+                                                onClick={() => setForm({ ...form, role: item.key as any })}
+                                                className={cn(
+                                                    "p-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-1.5 text-center cursor-pointer",
+                                                    form.role === item.key
+                                                        ? `${item.color} shadow-sm ring-1 ring-brand-pink/30`
+                                                        : "border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-300"
+                                                )}
+                                            >
+                                                <item.icon className="h-4 w-4" />
+                                                <span>{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Ciudad / Sector</Label>
+                                        <Input
+                                            className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-11 dark:text-white"
+                                            placeholder="Ej: Ibagué - El Vergel"
+                                            value={form.city}
+                                            onChange={(e) => setForm({ ...form, city: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Ocupación / Profesión</Label>
+                                        <Input
+                                            className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-11 dark:text-white"
+                                            placeholder="Ej: Médico / Ingeniero / Comerciante"
+                                            value={form.occupation}
+                                            onChange={(e) => setForm({ ...form, occupation: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* If Owner: Bank Payout Details */}
+                                {form.role === "owner" && (
+                                    <div className="p-4 rounded-2xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-300/40 dark:border-amber-500/20 space-y-4">
+                                        <h5 className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                            <Landmark className="h-4 w-4 text-amber-600" /> Datos Bancarios para Dispersión de Rentas (Liquidación)
+                                        </h5>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Banco</Label>
+                                                <Select value={form.bank} onValueChange={(val) => setForm({ ...form, bank: val })}>
+                                                    <SelectTrigger className="h-10 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="max-h-60">
+                                                        {COLOMBIAN_BANKS.map((b) => (
+                                                            <SelectItem key={b} value={b} className="text-xs">{b}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Tipo de Cuenta</Label>
+                                                <Select value={form.account_type} onValueChange={(val: any) => setForm({ ...form, account_type: val })}>
+                                                    <SelectTrigger className="h-10 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="savings" className="text-xs">Ahorros</SelectItem>
+                                                        <SelectItem value="checking" className="text-xs">Corriente</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Número de Cuenta</Label>
+                                                <Input
+                                                    className="h-10 text-xs font-mono font-bold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+                                                    placeholder="Ej: 245-098765-12"
+                                                    value={form.account_number}
+                                                    onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* If Tenant: Financial Capacity */}
+                                {form.role === "tenant" && (
+                                    <div className="p-4 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 space-y-4">
+                                        <h5 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                                            <ShieldCheck className="h-4 w-4 text-emerald-600" /> Estudio de Crédito & Capacidad Financiera
+                                        </h5>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Estado de Estudio de Fianza / Aseguradora</Label>
+                                                <Select value={form.credit_status} onValueChange={(val: any) => setForm({ ...form, credit_status: val })}>
+                                                    <SelectTrigger className="h-10 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="approved" className="text-xs">🛡️ Aprobado</SelectItem>
+                                                        <SelectItem value="in_review" className="text-xs">⏳ En Estudio</SelectItem>
+                                                        <SelectItem value="rejected" className="text-xs">❌ Rechazado</SelectItem>
+                                                        <SelectItem value="exempt" className="text-xs">🤝 Exento / Garantía Directa</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Ingreso Mensual Estimado (COP)</Label>
+                                                <Input
+                                                    type="number"
+                                                    className="h-10 text-xs font-mono bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+                                                    placeholder="Ej: 8000000"
+                                                    value={form.monthly_income}
+                                                    onChange={(e) => setForm({ ...form, monthly_income: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {/* Avatar Upload Section */}
                         <div className="flex items-center gap-6 bg-white dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
                             <div className="relative group">

@@ -154,6 +154,7 @@ export function ClientManagementSheet({
                                         setEditForm={management.setEditForm} 
                                         onLogoUpload={management.handleLogoUpload} 
                                         visibleSections={config.management.profileSections}
+                                        spaceType={spaceType}
                                     />
                                 </TabsContent>
                                 

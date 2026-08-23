@@ -63,9 +63,12 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
         selectedIds, 
         setSelectedIds, 
         isDeleting, 
-        setIsDeleting 
+        setIsDeleting,
+        searchTerm,
+        activeFilter
     } = useClients()
     const config = VERTICAL_REGISTRY[spaceType]
+    const isRealEstate = spaceType === 'real_estate'
 
     // Category Tabs State
     const [activeCategoryTab, setActiveCategoryTab] = useState("all")
@@ -171,12 +174,113 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
         })
     }, [initialData, getNextPayment, getDaysDiff])
 
-    const filteredClients = useMemo(() => {
-        if (activeCategoryTab === 'all') return clients
-        return clients.filter((c: any) => c.category_id === activeCategoryTab)
-    }, [clients, activeCategoryTab])
+    const counts = useMemo(() => {
+        if (isRealEstate) {
+            let tenants = 0
+            let owners = 0
+            let buyers = 0
+            let sellers = 0
 
-    const counts = useMemo(() => initialData?.counts || { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 }, [initialData])
+            clients.forEach((c: any) => {
+                const role = (c.metadata?.role || '').toLowerCase()
+                if (role === 'tenant' || role === 'inquilino' || role === 'arrendatario') tenants++
+                else if (role === 'owner' || role === 'propietario' || role === 'arrendador') owners++
+                else if (role === 'buyer' || role === 'comprador') buyers++
+                else if (role === 'seller' || role === 'vendedor') sellers++
+            })
+
+            return {
+                all: clients.length,
+                tenant: tenants,
+                owner: owners,
+                buyer: buyers,
+                seller: sellers,
+                overdue: 0,
+                urgent: 0,
+                active: clients.length,
+                inactive: 0
+            }
+        }
+
+        return initialData?.counts || { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 }
+    }, [clients, isRealEstate, initialData])
+
+    const filteredClients = useMemo(() => {
+        return clients.filter((c: any) => {
+            // 1. Filter by Category tab (Layer 1)
+            if (activeCategoryTab !== 'all' && c.category_id !== activeCategoryTab) {
+                return false
+            }
+
+            // 2. Filter by Active Filter (Layer 2: Real Estate Role or Status)
+            if (activeFilter && activeFilter !== 'all') {
+                if (isRealEstate) {
+                    const role = (c.metadata?.role || '').toLowerCase()
+                    if (activeFilter === 'tenant') {
+                        if (role !== 'tenant' && role !== 'inquilino' && role !== 'arrendatario') return false
+                    } else if (activeFilter === 'owner') {
+                        if (role !== 'owner' && role !== 'propietario' && role !== 'arrendador') return false
+                    } else if (activeFilter === 'buyer') {
+                        if (role !== 'buyer' && role !== 'comprador') return false
+                    } else if (activeFilter === 'seller') {
+                        if (role !== 'seller' && role !== 'vendedor') return false
+                    }
+                } else {
+                    if (activeFilter === 'overdue' && (c.debt || 0) <= 0) return false
+                    if (activeFilter === 'urgent' && (!c.daysToPay || c.daysToPay > 3)) return false
+                    if (activeFilter === 'active' && c.status === 'inactive') return false
+                    if (activeFilter === 'inactive' && c.status !== 'inactive') return false
+                }
+            }
+
+            // 3. Search Term Matching across all text & metadata fields
+            if (searchTerm && searchTerm.trim()) {
+                const q = searchTerm.trim().toLowerCase()
+                const name = (c.name || '').toLowerCase()
+                const company = (c.companyName || c.company_name || '').toLowerCase()
+                const email = (c.email || '').toLowerCase()
+                const phone = (c.phone || '').toLowerCase()
+                const nit = (c.nit || '').toLowerCase()
+                const notes = (c.notes || '').toLowerCase()
+                
+                // Space & Real Estate Metadata
+                const meta = c.metadata || {}
+                const city = (meta.city || '').toLowerCase()
+                const occupation = (meta.occupation || '').toLowerCase()
+                const role = (meta.role || '').toLowerCase()
+                const bank = (meta.bank_details?.bank || '').toLowerCase()
+                const accountNumber = (meta.bank_details?.account_number || '').toLowerCase()
+                const accountHolder = (meta.bank_details?.account_holder || '').toLowerCase()
+                const creditStatus = (meta.credit_status || '').toLowerCase()
+
+                const isMatch = (
+                    name.includes(q) ||
+                    company.includes(q) ||
+                    email.includes(q) ||
+                    phone.includes(q) ||
+                    nit.includes(q) ||
+                    notes.includes(q) ||
+                    city.includes(q) ||
+                    occupation.includes(q) ||
+                    role.includes(q) ||
+                    bank.includes(q) ||
+                    accountNumber.includes(q) ||
+                    accountHolder.includes(q) ||
+                    creditStatus.includes(q) ||
+                    (q.includes('inquilin') && (role === 'tenant' || role === 'inquilino' || role === 'arrendatario')) ||
+                    (q.includes('arrendatari') && (role === 'tenant' || role === 'inquilino' || role === 'arrendatario')) ||
+                    (q.includes('propietari') && (role === 'owner' || role === 'propietario' || role === 'arrendador')) ||
+                    (q.includes('arrendador') && (role === 'owner' || role === 'propietario' || role === 'arrendador')) ||
+                    (q.includes('comprador') && (role === 'buyer' || role === 'comprador')) ||
+                    (q.includes('vendedor') && (role === 'seller' || role === 'vendedor'))
+                )
+
+                if (!isMatch) return false
+            }
+
+            return true
+        })
+    }, [clients, activeCategoryTab, activeFilter, isRealEstate, searchTerm])
 
     const handleBulkDelete = async () => {
         const confirmMsg = t('clients.toasts.bulk_delete_confirm').replace('{count}', selectedIds.size.toString())
@@ -260,6 +364,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                             <CreateClientSheet 
                                 open={createClientOpen}
                                 onOpenChange={setCreateClientOpen}
+                                spaceType={spaceType}
                                 onSuccess={() => {
                                     setCreateClientOpen(false)
                                     router.refresh()
