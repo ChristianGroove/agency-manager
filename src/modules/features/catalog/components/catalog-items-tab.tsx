@@ -38,6 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Plus,
   Search,
@@ -65,6 +66,8 @@ import {
   Tag,
   Key,
   CalendarRange,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -80,16 +83,13 @@ export interface CatalogItemsTabProps {
   organizationId?: string | null
   themeConfig?: StorefrontThemeConfig
   industryPreset?: StorefrontIndustryPreset | string
+  isFormSheetOpen?: boolean
+  setIsFormSheetOpen?: (open: boolean) => void
+  editingItem?: UniversalCatalogItem | null
+  setEditingItem?: (item: UniversalCatalogItem | null) => void
+  isCategoryDrawerOpen?: boolean
+  setIsCategoryDrawerOpen?: (open: boolean) => void
 }
-
-const CLASSIFICATION_FILTERS: Array<{ id: string; label: string; icon?: any }> = [
-  { id: "all", label: "Todos" },
-  { id: "real_estate", label: "Inmuebles", icon: Building2 },
-  { id: "service", label: "Servicios", icon: Briefcase },
-  { id: "physical", label: "Físicos", icon: Box },
-  { id: "digital", label: "Digitales", icon: FileCode2 },
-  { id: "subscription", label: "Suscripciones", icon: Repeat },
-]
 
 export function CatalogItemsTab({
   items = [],
@@ -102,48 +102,37 @@ export function CatalogItemsTab({
   organizationId,
   themeConfig,
   industryPreset,
+  isFormSheetOpen: propsFormOpen,
+  setIsFormSheetOpen: propsSetFormOpen,
+  editingItem: propsEditingItem,
+  setEditingItem: propsSetEditingItem,
+  isCategoryDrawerOpen: propsCategoryDrawerOpen,
+  setIsCategoryDrawerOpen: propsSetCategoryDrawerOpen,
 }: CatalogItemsTabProps) {
   const activePreset = industryPreset || themeConfig?.industry_preset
-
-  const dynamicClassificationFilters = useMemo(() => {
-    let priorityId: string = "service"
-    if (activePreset === "real_estate") {
-      priorityId = "real_estate"
-    } else if (activePreset === "physical_retail") {
-      priorityId = "physical"
-    } else if (activePreset === "digital_software") {
-      priorityId = "digital"
-    } else if (activePreset === "professional_services") {
-      priorityId = "service"
-    } else if (spaceType === "resto") {
-      priorityId = "physical"
-    }
-
-    const allFilter: { id: string; label: string; icon?: any } = { id: "all", label: "Todos" }
-    const rest = [...CLASSIFICATION_FILTERS.filter((f) => f.id !== "all")]
-    rest.sort((a, b) => {
-      if (a.id === priorityId) return -1
-      if (b.id === priorityId) return 1
-      return 0
-    })
-    return [allFilter, ...rest]
-  }, [activePreset, spaceType])
 
   // View mode
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedClassification, setSelectedClassification] = useState<string>("all")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "low_stock" | "out_of_stock">("all")
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false)
 
-  // Sheet & Dialog states
-  const [isFormSheetOpen, setIsFormSheetOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<UniversalCatalogItem | null>(null)
-  const [isCategoryDrawerOpen, setIsCategoryDrawerOpen] = useState(false)
+  // Sheet & Dialog states fallback
+  const [internalFormOpen, setInternalFormOpen] = useState(false)
+  const [internalEditingItem, setInternalEditingItem] = useState<UniversalCatalogItem | null>(null)
+  const [internalCategoryDrawerOpen, setInternalCategoryDrawerOpen] = useState(false)
   const [qrItem, setQrItem] = useState<UniversalCatalogItem | null>(null)
   const [aiItem, setAiItem] = useState<UniversalCatalogItem | null>(null)
+
+  const isFormSheetOpen = propsFormOpen !== undefined ? propsFormOpen : internalFormOpen
+  const setIsFormSheetOpen = propsSetFormOpen || setInternalFormOpen
+  const editingItem = propsEditingItem !== undefined ? propsEditingItem : internalEditingItem
+  const setEditingItem = propsSetEditingItem || setInternalEditingItem
+  const isCategoryDrawerOpen = propsCategoryDrawerOpen !== undefined ? propsCategoryDrawerOpen : internalCategoryDrawerOpen
+  const setIsCategoryDrawerOpen = propsSetCategoryDrawerOpen || setInternalCategoryDrawerOpen
 
   // Filtered items logic
   const filteredItems = useMemo(() => {
@@ -169,24 +158,12 @@ export function CatalogItemsTab({
         }
       }
 
-      // 2. Classification
-      if (selectedClassification !== "all") {
-        const itemClass =
-          item.classification ||
-          (item.type === "recurring"
-            ? "subscription"
-            : item.type === "product"
-            ? "physical"
-            : "service")
-        if (itemClass !== selectedClassification) return false
-      }
-
-      // 3. Category
+      // 2. Category Filter
       if (selectedCategory !== "all" && item.category !== selectedCategory) {
         return false
       }
 
-      // 4. Status Filter
+      // 3. Status Filter
       if (statusFilter === "active" && item.is_visible_in_portal === false) {
         return false
       }
@@ -208,7 +185,7 @@ export function CatalogItemsTab({
 
       return true
     })
-  }, [items, searchTerm, selectedClassification, selectedCategory, statusFilter])
+  }, [items, searchTerm, selectedCategory, statusFilter])
 
   const handleCreate = () => {
     setEditingItem(null)
@@ -268,201 +245,196 @@ export function CatalogItemsTab({
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Catálogo de Productos & Servicios
-          </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Gestiona productos físicos, digitales, suscripciones, stock en tiempo real y precios.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCategoryDrawerOpen(true)}
-            className="rounded-2xl text-xs font-bold gap-2 h-10 border-zinc-200 dark:border-zinc-800"
-          >
-            <FolderOpen className="h-4 w-4" />
-            Categorías
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleCreate}
-            className="rounded-2xl bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-bold gap-2 h-10 shadow-md shadow-brand-pink/20"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo Item
-          </Button>
-        </div>
-      </div>
-
-      {/* Filter & View Switcher Bar */}
-      <div className="space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      {/* Integrated Search & Category Combobox Toolbar */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        {/* Left: Search input + Category Combobox Popover */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
           {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
               placeholder="Buscar por nombre, SKU, código, sector, ciudad..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10 text-xs rounded-2xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-xs"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              >
+                Limpiar
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {/* Status Filter Buttons */}
-            <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl text-xs shrink-0">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer",
-                  statusFilter === "all" ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs font-bold" : "text-zinc-500"
-                )}
-              >
-                Todos
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("active")}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer",
-                  statusFilter === "active" ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold" : "text-zinc-500"
-                )}
-              >
-                Activos
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("low_stock")}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                  statusFilter === "low_stock" ? "bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-xs font-bold" : "text-zinc-500"
-                )}
-              >
-                <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                Bajo Stock
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("out_of_stock")}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                  statusFilter === "out_of_stock" ? "bg-white dark:bg-zinc-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold" : "text-zinc-500"
-                )}
-              >
-                <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
-                Agotados
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("hidden")}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer",
-                  statusFilter === "hidden" ? "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 shadow-xs font-bold" : "text-zinc-500"
-                )}
-              >
-                Ocultos
-              </button>
-            </div>
-
-            {/* Grid / Table Mode Switcher */}
-            <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
+          {/* Integrated Category Combobox Popover */}
+          <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+            <PopoverTrigger asChild>
               <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                className={cn(
-                  "h-8 w-8 rounded-xl transition-all",
-                  viewMode === "grid" ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs" : "text-zinc-500"
-                )}
-                title="Vista en cuadrícula"
+                variant="outline"
+                role="combobox"
+                className="h-10 px-3 justify-between text-xs font-semibold rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shrink-0 min-w-[175px]"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <div className="flex items-center gap-2 truncate">
+                  <Tag className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                  <span className="truncate">
+                    {selectedCategory === "all" ? "Todas las Categorías" : selectedCategory}
+                  </span>
+                </div>
+                <ChevronsUpDown className="h-3.5 w-3.5 ml-2 shrink-0 opacity-50" />
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setViewMode("table")}
-                className={cn(
-                  "h-8 w-8 rounded-xl transition-all",
-                  viewMode === "table" ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs" : "text-zinc-500"
-                )}
-                title="Vista en tabla"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Classification & Category Pill Filters */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {/* Classification Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {dynamicClassificationFilters.map((cf) => {
-              const isSelected = selectedClassification === cf.id
-              const IconComp = cf.icon
-              return (
+            </PopoverTrigger>
+            <PopoverContent className="w-[230px] p-1.5 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900" align="start">
+              <div className="space-y-1">
                 <button
-                  key={cf.id}
                   type="button"
-                  onClick={() => setSelectedClassification(cf.id)}
+                  onClick={() => {
+                    setSelectedCategory("all")
+                    setIsCategoryPopoverOpen(false)
+                  }}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer",
-                    isSelected
-                      ? "bg-brand-pink text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                    "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer",
+                    selectedCategory === "all"
+                      ? "bg-brand-pink text-white font-bold"
+                      : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
                   )}
                 >
-                  {IconComp && <IconComp className="h-3.5 w-3.5" />}
-                  {cf.label}
+                  <span>Todas las Categorías</span>
+                  {selectedCategory === "all" && <Check className="h-3.5 w-3.5" />}
                 </button>
-              )
-            })}
-          </div>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat.name)
+                      setIsCategoryPopoverOpen(false)
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer",
+                      selectedCategory === cat.name
+                        ? "bg-brand-pink text-white font-bold"
+                        : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: cat.color || "#888" }}
+                      />
+                      <span className="truncate">{cat.name}</span>
+                    </div>
+                    {selectedCategory === cat.name && <Check className="h-3.5 w-3.5 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
-          <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">|</span>
-
-          {/* Category Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {/* Right: Status Filters + View Toggle */}
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 lg:pb-0">
+          {/* Status Filters Pill Bar */}
+          <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl text-xs shrink-0 border border-zinc-200/60 dark:border-zinc-700/50">
             <button
               type="button"
-              onClick={() => setSelectedCategory("all")}
+              onClick={() => setStatusFilter("all")}
               className={cn(
-                "px-3 py-1 rounded-full text-xs transition-all whitespace-nowrap cursor-pointer",
-                selectedCategory === "all"
-                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold"
-                  : "bg-zinc-50 dark:bg-zinc-900 text-zinc-500 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400"
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                statusFilter === "all"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs font-bold"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
               )}
             >
-              Todas las Categorías
+              Todos ({items.length})
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.name)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs transition-all whitespace-nowrap cursor-pointer",
-                  selectedCategory === cat.name
-                    ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold"
-                    : "bg-zinc-50 dark:bg-zinc-900 text-zinc-500 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400"
-                )}
-              >
-                {cat.name}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => setStatusFilter("active")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+                statusFilter === "active"
+                  ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              )}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              Activos
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("low_stock")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+                statusFilter === "low_stock"
+                  ? "bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-xs font-bold"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              )}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+              Bajo Stock
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("out_of_stock")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+                statusFilter === "out_of_stock"
+                  ? "bg-white dark:bg-zinc-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              )}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+              Agotados
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter("hidden")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                statusFilter === "hidden"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs font-bold"
+                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              )}
+            >
+              Ocultos
+            </button>
+          </div>
+
+          {/* Grid / Table Mode Switcher */}
+          <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "h-7 w-7 rounded-lg transition-all",
+                viewMode === "grid"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs"
+                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              )}
+              title="Vista en cuadrícula"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "h-7 w-7 rounded-lg transition-all",
+                viewMode === "table"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs"
+                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              )}
+              title="Vista en tabla"
+            >
+              <List className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       </div>
