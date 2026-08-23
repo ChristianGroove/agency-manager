@@ -4,7 +4,7 @@
  * Defines how the CRM UI adapts to different industry verticals (Spaces).
  */
 
-export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform';
+export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform' | 'real_estate';
 
 export interface VerticalConfig {
     crmTemplateId: string; // Link to CRMTemplates configuration
@@ -202,5 +202,40 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         rules: {
             allowedChannels: ['email', 'sms']
         }
+    },
+    real_estate: {
+        crmTemplateId: 'real_estate',
+        terminology: {
+            client: 'Cliente / Comprador',
+            clients: 'Clientes / Prospectos',
+            project: 'Inmueble / Propiedad',
+            sale: 'Cierre / Negocio',
+            action_new: 'Nuevo Prospecto'
+        },
+        insights: {
+            primary: { label: 'Inmuebles de Interés', key: 'interested_properties' },
+            secondary: { label: 'Presupuesto', key: 'budget' }
+        },
+        management: {
+            visibleTabs: ['info', 'activity', 'services', 'billing'],
+            profileSections: ['identity', 'communication', 'digital_presence'],
+            actions: {
+                showBilling: true,
+                showHosting: false,
+                showServices: true,
+                showOrders: false
+            }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email', 'sms']
+        }
     }
 };
+
+export const DEFAULT_REAL_ESTATE_CATEGORIES = [
+    { name: 'Apartamentos', slug: 'apartamentos', icon: 'Building', color: 'sky', order_index: 0, scope: 'tenant' as const, is_active: true },
+    { name: 'Casas', slug: 'casas', icon: 'Home', color: 'blue', order_index: 1, scope: 'tenant' as const, is_active: true },
+    { name: 'Oficinas & Locales Comerciales', slug: 'oficinas-locales', icon: 'Briefcase', color: 'indigo', order_index: 2, scope: 'tenant' as const, is_active: true },
+    { name: 'Lotes & Fincas', slug: 'lotes-fincas', icon: 'Trees', color: 'emerald', order_index: 3, scope: 'tenant' as const, is_active: true },
+    { name: 'Proyectos Sobre Planos', slug: 'proyectos-planos', icon: 'FileSpreadsheet', color: 'amber', order_index: 4, scope: 'tenant' as const, is_active: true }
+];

@@ -714,8 +714,8 @@ export function ProductDetailModal({
         <div className="flex flex-col gap-5 p-4 sm:p-6 text-zinc-900 dark:text-zinc-100 overflow-y-auto">
             {/* Header: Title, Badges, SKU, and Dynamic Price */}
             <div>
-                {/* Badges Ribbon */}
-                {badgesList.length > 0 && (
+                {/* Badges Ribbon (Hidden for Real Estate) */}
+                {!isRealEstate && badgesList.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-2.5">
                         {badgesList.map((badgeStr, i) => (
                             <StatusBadge key={i} type={badgeStr} label={badgeStr} />

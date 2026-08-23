@@ -682,6 +682,7 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                                                     <SelectContent>
                                                                         <SelectItem value="agency">Agency (Service Business)</SelectItem>
                                                                         <SelectItem value="resto">Resto (F&B / Digital Menu)</SelectItem>
+                                                                        <SelectItem value="real_estate">Real Estate (Bienes Raíces / PropTech)</SelectItem>
                                                                         <SelectItem value="cleaning">Cleaning (Appointments)</SelectItem>
                                                                         <SelectItem value="retail">Retail (Commerce)</SelectItem>
                                                                         <SelectItem value="saas">SaaS (Software Subscriptions)</SelectItem>

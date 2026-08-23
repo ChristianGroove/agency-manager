@@ -5,7 +5,7 @@
  * Pixy Platform
  *
  * Resilient Dynamic Discovery & Execution Architecture:
- * - Dynamic asynchronous module loading across all 4 Tiers (Tier 1-4).
+ * - Dynamic asynchronous module loading across all 5 Tiers (Tier 1-5).
  * - Zero silent error swallowing: module load failures generate synthetic failed test suites.
  * - Comprehensive support for 'suite' objects, 'suites' arrays, and 'runSuite'/'run' functions.
  * - Deterministic alphabetical execution order per tier.
@@ -16,7 +16,18 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
+import dotenv from 'dotenv';
 import { getAssertionCount, resetAssertionCount } from './harness/assertions';
+
+// Load environment variables for full database and backend mocking
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock-supabase-e2e.pixy.internal';
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key-for-e2e-testing';
+}
 
 // Resolve __dirname in ESM / TSX environments
 const __filename = fileURLToPath(import.meta.url);
@@ -297,7 +308,7 @@ export async function main(): Promise<void> {
   const { suites, loadErrorsCount } = await discoverAllSuites(__dirname);
   const discoveryDuration = Math.round(performance.now() - discoveryStartTime);
 
-  console.log(`  Discovered ${suites.length} test suites across 4 Tiers in ${discoveryDuration}ms.`);
+  console.log(`  Discovered ${suites.length} test suites across 5 Tiers in ${discoveryDuration}ms.`);
   if (loadErrorsCount > 0) {
     console.error(`  \x1b[31m[WARNING] ${loadErrorsCount} suite(s) failed during discovery and recorded as synthetic failures.\x1b[0m`);
   }

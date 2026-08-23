@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { 
     Lock, Sparkles, ArrowRight, ArrowLeft, Check, 
     Rocket, Briefcase, Package, ShoppingCart, 
-    Utensils, Brush, Monitor, Layout
+    Utensils, Brush, Monitor, Layout, Building2
 } from "lucide-react"
 
 /**
@@ -21,7 +21,8 @@ const IconMap: Record<string, any> = {
     'Utensils': Utensils,
     'Brush': Brush,
     'Monitor': Monitor,
-    'Layout': Layout
+    'Layout': Layout,
+    'Building2': Building2
 }
 
 interface App {

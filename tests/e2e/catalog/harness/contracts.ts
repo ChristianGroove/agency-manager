@@ -210,13 +210,13 @@ export function validateUniversalCatalogItem(item: any): { isValid: boolean; err
   if (typeof item.base_price !== 'number' || item.base_price < 0) {
     errors.push('Item base_price must be a non-negative number');
   }
-  const validClassifications = ['physical', 'digital', 'service', 'subscription'];
+  const validClassifications = ['physical', 'digital', 'service', 'subscription', 'real_estate'];
   if (!validClassifications.includes(item.classification)) {
-    errors.push('classification must be one of: physical, digital, service, subscription');
+    errors.push('classification must be one of: physical, digital, service, subscription, real_estate');
   }
-  const validTypes = ['product', 'one_off', 'recurring'];
+  const validTypes = ['product', 'one_off', 'recurring', 'real_estate'];
   if (!validTypes.includes(item.type)) {
-    errors.push('type must be one of: product, one_off, recurring');
+    errors.push('type must be one of: product, one_off, recurring, real_estate');
   }
 
   if (Array.isArray(item.gallery_images)) {

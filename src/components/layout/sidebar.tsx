@@ -329,7 +329,10 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
     const [dragStartX, setDragStartX] = React.useState(0)
     const dragThreshold = 50
 
-    const handleDragStart = (clientX: number) => {
+    const handleDragStart = (clientX: number, target?: EventTarget | null) => {
+        if (target && (target as HTMLElement)?.closest?.('button, a, input, select, textarea, [role="button"]')) {
+            return
+        }
         setIsDragging(true)
         setDragStartX(clientX)
     }
@@ -349,7 +352,9 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
     }
 
     const handleDragEnd = () => {
-        setIsDragging(false)
+        if (isDragging) {
+            setIsDragging(false)
+        }
     }
 
     const shadowStyle = resolvedTheme === 'dark'
@@ -364,11 +369,11 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
                     "shadow-lg shadow-black/10 dark:shadow-black/20",
                     isCollapsed ? "w-16" : "w-64"
                 )}
-                onMouseDown={(e) => handleDragStart(e.clientX)}
+                onMouseDown={(e) => handleDragStart(e.clientX, e.target)}
                 onMouseMove={(e) => handleDragMove(e.clientX)}
                 onMouseUp={handleDragEnd}
                 onMouseLeave={handleDragEnd}
-                onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+                onTouchStart={(e) => handleDragStart(e.touches[0].clientX, e.target)}
                 onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
                 onTouchEnd={handleDragEnd}
             >

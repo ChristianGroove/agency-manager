@@ -207,5 +207,27 @@ export const CRMTemplates: Record<string, CRMTemplate> = {
             { name: 'Contract', key: 'contract', color: 'bg-emerald-400', icon: 'FileCheck', mapToProcessKey: 'closing' },
             { name: 'Success', key: 'success', color: 'bg-green-600', icon: 'Award', mapToProcessKey: 'closed_won' }
         ]
+    },
+    real_estate: {
+        id: 'real_estate',
+        name: 'Real Estate Funnel',
+        description: 'Embudo de ventas inmobiliario: Prospecto, Contactado, Visita / Demostración, Oferta / Negociación, Cierre Ganado y Perdido.',
+        industry: 'real_estate',
+        processStates: [
+            { type: 'sale', key: 'lead', name: 'Prospecto', is_initial: true, allowed_next_states: ['contacted', 'lost'], suggested_actions: ['call', 'whatsapp'] },
+            { type: 'sale', key: 'contacted', name: 'Contactado', allowed_next_states: ['visit', 'lost'], suggested_actions: ['schedule_visit', 'send_brochure'] },
+            { type: 'sale', key: 'visit', name: 'Visita / Demostración', allowed_next_states: ['negotiation', 'lost'], suggested_actions: ['conduct_visit', 'send_property_sheet'] },
+            { type: 'sale', key: 'negotiation', name: 'Oferta / Negociación', allowed_next_states: ['closed_won', 'lost'], suggested_actions: ['send_quote', 'review_terms'] },
+            { type: 'sale', key: 'closed_won', name: 'Cierre Ganado', is_terminal: true, auto_tags: ['buyer_client', 'property_sold'] },
+            { type: 'sale', key: 'lost', name: 'Perdido', is_terminal: true }
+        ],
+        pipelineStages: [
+            { name: 'Prospecto', key: 'lead', color: 'bg-blue-500', icon: 'UserPlus', mapToProcessKey: 'lead' },
+            { name: 'Contactado', key: 'contacted', color: 'bg-cyan-500', icon: 'PhoneCall', mapToProcessKey: 'contacted' },
+            { name: 'Visita / Demostración', key: 'visit', color: 'bg-amber-500', icon: 'Eye', mapToProcessKey: 'visit' },
+            { name: 'Oferta / Negociación', key: 'negotiation', color: 'bg-indigo-500', icon: 'FileText', mapToProcessKey: 'negotiation' },
+            { name: 'Cierre Ganado', key: 'closed_won', color: 'bg-emerald-500', icon: 'CheckCircle', mapToProcessKey: 'closed_won' },
+            { name: 'Perdido', key: 'lost', color: 'bg-rose-500', icon: 'XCircle', mapToProcessKey: 'lost' }
+        ]
     }
 }

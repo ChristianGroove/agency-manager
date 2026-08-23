@@ -13,11 +13,11 @@ export function normalizeItemClassification(item: Partial<UniversalCatalogItem>)
   validationWarnings: string[];
 } {
   const warnings: string[] = [];
-  const validClassifications: CatalogClassification[] = ['physical', 'digital', 'service', 'subscription'];
+  const validClassifications: CatalogClassification[] = ['physical', 'digital', 'service', 'subscription', 'real_estate'];
 
   let classification: CatalogClassification = item.classification as CatalogClassification;
   if (!classification || !validClassifications.includes(classification)) {
-    classification = item.type === 'recurring' ? 'subscription' : 'physical';
+    classification = item.type === 'recurring' ? 'subscription' : (item.type === 'real_estate' ? 'real_estate' : 'physical');
     warnings.push(`Invalid classification fallback to "${classification}"`);
   }
 
@@ -46,6 +46,11 @@ export function normalizeItemClassification(item: Partial<UniversalCatalogItem>)
     const deliverables = item.specifications?.deliverables;
     if (!deliverables || deliverables.length === 0) {
       warnings.push('Service item has no deliverables defined');
+    }
+  } else if (classification === 'real_estate') {
+    const area = item.real_estate_details?.area_total_m2;
+    if (!area || area <= 0) {
+      warnings.push('Real estate property missing valid area_total_m2');
     }
   }
 
@@ -133,6 +138,21 @@ export const suite = {
         const result = normalizeItemClassification(item);
         expect(result.classification).toBe('subscription');
         expect(result.validationWarnings[0]).toContain('fallback to "subscription"');
+      },
+    },
+    {
+      name: 'Real estate item with missing or 0 area_total_m2 records validation warning',
+      fn: async () => {
+        const item: Partial<UniversalCatalogItem> = {
+          classification: 'real_estate',
+          real_estate_details: { area_total_m2: 0 },
+          is_active: true,
+        };
+
+        const result = normalizeItemClassification(item);
+        expect(result.classification).toBe('real_estate');
+        expect(result.isPurchasable).toBe(true);
+        expect(result.validationWarnings).toContain('Real estate property missing valid area_total_m2');
       },
     },
   ],

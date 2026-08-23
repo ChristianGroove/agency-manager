@@ -9,6 +9,7 @@ import { getAuthInviteEmailHtml, getAuthConfirmationEmailHtml } from "@/modules/
 import { EmailService } from "@/modules/features/notifications/email.service"
 import { getCurrentOrganizationId, getUserOrganizations, getCurrentOrgDetails } from "./crud"
 import { switchOrganization } from "./context"
+import { DEFAULT_REAL_ESTATE_CATEGORIES } from "../vertical-registry"
 
 /**
  * Create a new Organization (Tenant Provisioning)
@@ -118,6 +119,24 @@ export async function createOrganization(formData: {
             .maybeSingle();
         
         subscriptionProductId = defaultProduct?.id;
+
+        // Determine space category from app
+        let appCategory: string | null = null
+        if (formData.app_id) {
+            const { data: appData } = await supabaseAdmin
+                .from('saas_apps')
+                .select('category, space_category, slug')
+                .or(`id.eq.${formData.app_id},slug.eq.${formData.app_id}`)
+                .maybeSingle()
+            appCategory = (appData as any)?.space_category || (appData as any)?.category || null
+            if (!appCategory && ((appData as any)?.slug === 'real-estate-pro' || (appData as any)?.slug === 'real_estate')) {
+                appCategory = 'real_estate'
+            }
+        }
+        const isRealEstate = appCategory === 'real_estate' || 
+            formData.app_id === 'app_real_estate_pro' || 
+            formData.app_id === 'real-estate-pro' ||
+            formData.app_id === 'real_estate'
 
         const resellerOrgIdFromMeta = user?.user_metadata?.reseller_org_id
         const inviteCodeFromMeta = user?.user_metadata?.invited_by_code
@@ -231,12 +250,46 @@ export async function createOrganization(formData: {
 
         // Seed default organization_settings and saas_subscriptions
         try {
+            const defaultPortalThemeConfig = isRealEstate ? {
+                industry_preset: 'real_estate',
+                widget_config: {
+                    show_real_estate_filters: true,
+                    show_mortgage_calculator: true,
+                    show_cart_drawer: false,
+                    show_whatsapp_button: true,
+                    show_category_nav: true,
+                    show_search_bar: true,
+                    show_stock_badges: false
+                }
+            } : undefined
+
             await supabaseAdmin.from('organization_settings').insert({
                 organization_id: newOrg.id,
-                agency_name: newOrg.name
+                agency_name: newOrg.name,
+                ...(defaultPortalThemeConfig ? { portal_theme_config: defaultPortalThemeConfig } : {})
             })
         } catch (e) {
             console.error("Warning: Failed to seed organization_settings", e)
+        }
+
+        // Seed default Real Estate categories if applicable
+        if (isRealEstate) {
+            try {
+                const categoriesToInsert = DEFAULT_REAL_ESTATE_CATEGORIES.map(cat => ({
+                    organization_id: newOrg.id,
+                    name: cat.name,
+                    slug: cat.slug,
+                    icon: cat.icon,
+                    color: cat.color,
+                    order_index: cat.order_index,
+                    scope: cat.scope,
+                    is_active: cat.is_active
+                }))
+
+                await supabaseAdmin.from('service_categories').insert(categoriesToInsert)
+            } catch (catErr) {
+                console.error("Warning: Failed to seed default service categories for real estate", catErr)
+            }
         }
 
         try {
@@ -384,7 +437,8 @@ export async function createOrganization(formData: {
 
         try {
             const { initializeOrganizationCRM } = await import('@/modules/features/crm/services/process-engine/init')
-            await initializeOrganizationCRM(newOrg.id)
+            const crmTemplateId = isRealEstate ? 'real_estate' : (appCategory || 'agency')
+            await initializeOrganizationCRM(newOrg.id, crmTemplateId)
         } catch (initErr) {
             console.error("Warning: CRM Init failed", initErr)
         }

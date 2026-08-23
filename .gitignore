@@ -65,3 +65,6 @@ env.production
 *restore*.sql
 *dump*.sql
 pixy-local-data-restore-fixed.sql
+
+# Agent working trees
+.agents/

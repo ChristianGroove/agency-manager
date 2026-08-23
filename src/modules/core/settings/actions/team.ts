@@ -223,7 +223,6 @@ export async function inviteMember(email: string, roleId: string) {
             .from('profiles')
             .upsert({
                 id: userId,
-                email: email,
                 platform_role: 'user',
                 updated_at: new Date().toISOString()
             }, { onConflict: 'id', ignoreDuplicates: true })
@@ -557,18 +556,15 @@ export async function createUserManually(data: {
 
         if (createError) {
             if (createError.message?.includes("already been registered")) {
-                const { data: profile } = await supabaseAdmin
-                    .from('profiles')
-                    .select('id')
-                    .eq('email', data.email)
-                    .single()
+                const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+                const existingUser = users?.find(u => u.email?.toLowerCase() === data.email.toLowerCase())
 
-                if (!profile) {
+                if (!existingUser) {
                     return { success: false, error: "El correo está registrado pero no pudimos recuperar el usuario." }
                 }
 
                 const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                    profile.id,
+                    existingUser.id,
                     {
                         password: data.password,
                         user_metadata: { full_name: data.fullName },

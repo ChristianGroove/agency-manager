@@ -244,7 +244,6 @@ export async function adminUpdateUser(userId: string, orgId: string | null, upda
 
         // 2. Update Profile
         const profileUpdates: any = {}
-        if (updates.email) profileUpdates.email = updates.email
         if (updates.full_name !== undefined) profileUpdates.full_name = updates.full_name
         if (updates.platform_role) profileUpdates.platform_role = updates.platform_role
         profileUpdates.updated_at = new Date().toISOString()
@@ -364,11 +363,11 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     try {
         const { data: profiles } = await (await createClient())
             .from('profiles')
-            .select('id, email, full_name')
+            .select('id, full_name')
         if (profiles) {
             profiles.forEach(p => {
-                if (p.id && p.email && (!userEmailMap[p.id] || !userEmailMap[p.id].email)) {
-                    userEmailMap[p.id] = { email: p.email, full_name: p.full_name }
+                if (p.id && p.full_name && userEmailMap[p.id] && !userEmailMap[p.id].full_name) {
+                    userEmailMap[p.id].full_name = p.full_name
                 }
             })
         }
@@ -386,7 +385,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
         const [membersRes, clientsRes, channelsRes] = await Promise.all([
             (await createClient()).from('organization_members').select('organization_id, user_id, role').in('organization_id', orgIds),
             (await createClient()).from('leads').select('organization_id').in('organization_id', orgIds),
-            (await createClient()).from('channels').select('organization_id, provider, is_active').in('organization_id', orgIds)
+            (await createClient()).from('channels').select('organization_id, provider, status').in('organization_id', orgIds)
         ])
 
         if (membersRes.data) {
@@ -408,7 +407,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
 
         if (channelsRes.data) {
             channelsRes.data.forEach((ch: any) => {
-                if (ch.is_active !== false) {
+                if (ch.status === 'connected' || ch.status === 'active' || ch.status !== 'disconnected') {
                     if (!connectedChannelsMap[ch.organization_id]) {
                         connectedChannelsMap[ch.organization_id] = []
                     }
@@ -544,11 +543,6 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
 
         const { error: authError } = await (await createClient()).auth.admin.updateUserById(org.owner_id, authUpdates)
         if (authError) throw new Error(`Auth Error: ${authError.message}`)
-
-        if (options.new_email) {
-            const { error: profileError } = await (await createClient()).from('profiles').update({ email: options.new_email }).eq('id', org.owner_id)
-            if (profileError) throw new Error("Error actualizando perfil")
-        }
     }
 
     revalidatePath('/platform/admin/organizations')

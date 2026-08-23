@@ -159,7 +159,7 @@ export function CreateAppSheet({ open, onOpenChange, onSuccess }: CreateAppSheet
                                                     <SelectItem value="general">General</SelectItem>
                                                     <SelectItem value="agency">Agencia</SelectItem>
                                                     <SelectItem value="ecommerce">E-commerce</SelectItem>
-                                                    <SelectItem value="real-estate">Real Estate</SelectItem>
+                                                    <SelectItem value="real_estate">Real Estate (Bienes Raíces / PropTech)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

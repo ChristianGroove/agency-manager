@@ -34,7 +34,7 @@ export async function getDashboardData(supabase: any, orgId: string) {
 // Fallback function si la RPC falla
 async function getDashboardDataFallback(orgId: string, supabase: any) {
     const [clientsRes, invoicesRes, servicesRes, settingsRes] = await Promise.all([
-        supabase.from('leads').select('id, status, created_at, organization_id, first_name, last_name, company_name, logo_url, avatar_url').is('deleted_at', null).eq('organization_id', orgId),
+        supabase.from('leads').select('id, status, created_at, organization_id, name, company_name').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('invoices').select('id, status, total, client_id, due_date, created_at, organization_id').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('services').select('id, status, type, frequency, amount, organization_id').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle()
@@ -97,12 +97,17 @@ export async function getDashboardPayload() {
     if (orgDetails?.active_app_id) {
         const { data: appData } = await supabase
             .from('saas_apps')
-            .select('space_category')
+            .select('space_category, category')
             .eq('id', orgDetails.active_app_id)
             .maybeSingle()
-        spaceCategory = appData?.space_category || 'agency'
+        spaceCategory = (appData as any)?.space_category || (appData as any)?.category || 'agency'
     }
 
+    const isRealEstate = spaceCategory === 'real_estate' ||
+        modules.includes('module_real_estate') ||
+        modules.includes('vertical_real_estate') ||
+        orgDetails?.active_app_id === 'app_real_estate_pro' ||
+        orgDetails?.organization_type === 'real_estate'
     const isCleaning = spaceCategory === 'cleaning' || modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
     const isPlatform = orgDetails?.organization_type === 'platform'
     const isReseller = orgDetails?.organization_type === 'reseller'
@@ -115,7 +120,7 @@ export async function getDashboardPayload() {
         orgDetails?.slug?.toLowerCase().includes('retail')
     const isSaaS = spaceCategory === 'saas' || modules.includes('module_saas') || modules.includes('vertical_saas')
 
-    const orgType = isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : (isSaaS ? 'saas' : ((isPlatform || isReseller) ? 'reseller' : 'agency'))))
+    const orgType = isRealEstate ? 'real_estate' : (isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : (isSaaS ? 'saas' : ((isPlatform || isReseller) ? 'reseller' : 'agency')))))
 
     // Step 2: Fetch vertical data AND banner in parallel (was sequential)
     const bannerSpaceType = orgDetails?.organization_type === 'platform' ? 'platform' : orgType
@@ -131,7 +136,50 @@ export async function getDashboardPayload() {
     let dashboardData: any = null
     let extraData: any = null
 
-    if (orgType === 'resto') {
+    if (orgType === 'real_estate') {
+        const [settingsRes, bannerRes, catalogRes, leadsRes, quotesRes] = await Promise.all([
+            supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
+            bannerPromise,
+            supabase.from('service_catalog').select('id, name, base_price, is_active, is_visible_in_portal, classification, real_estate_details, type').eq('organization_id', orgId).is('deleted_at', null),
+            supabase.from('leads').select('id, status, created_at, organization_id, name, company_name').eq('organization_id', orgId).is('deleted_at', null),
+            supabase.from('quotes').select('id, total, status, created_at').eq('organization_id', orgId).is('deleted_at', null)
+        ])
+
+        const catalogItems = catalogRes.data || []
+        const leads = leadsRes.data || []
+        const quotes = quotesRes.data || []
+
+        const activeProperties = catalogItems.filter((item: any) => item.is_active !== false)
+        const activePropertiesCount = activeProperties.length
+        const totalPropertiesCount = catalogItems.length
+        const portfolioValue = activeProperties.reduce((sum: number, item: any) => sum + (Number(item.base_price) || 0), 0)
+        const buyerLeadsCount = leads.length
+        const visitsCount = quotes.length
+        const quotesCount = quotes.length
+
+        dashboardData = {
+            settings: settingsRes.data,
+            bannerConfig: bannerRes.data || null,
+            catalog: catalogItems,
+            leads,
+            quotes
+        }
+        extraData = {
+            orgDetails,
+            realEstateMetrics: {
+                activePropertiesCount,
+                totalPropertiesCount,
+                portfolioValue,
+                buyerLeadsCount,
+                propertyVisitsCount: visitsCount,
+                quotesCount,
+                activeProperties: activePropertiesCount,
+                portfolioValueFormatted: `$${portfolioValue.toLocaleString('es-CO')}`,
+                buyerLeads: buyerLeadsCount,
+                visitsCount
+            }
+        }
+    } else if (orgType === 'resto') {
         const today = new Date().toISOString().split('T')[0]
         const [settingsRes, bannerRes, ordersRes, tablesRes] = await Promise.all([
             supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
@@ -235,7 +283,7 @@ export async function getDashboardPayload() {
 
     const normalizedRole = userRole?.toLowerCase()
     const canMonitorAgents = ['admin', 'owner'].includes(normalizedRole || '')
-    const isTargetSpace = ['saas', 'retail'].includes(orgType)
+    const isTargetSpace = ['saas', 'retail', 'real_estate'].includes(orgType)
 
     if (canMonitorAgents && isTargetSpace) {
         const { data: agentStats, error: rpcError } = await supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
@@ -314,6 +362,9 @@ export async function getDashboardPayload() {
             delete payload.extraData.cleaningRevenue
             if (payload.extraData.cleaningMetrics) {
                 payload.extraData.cleaningMetrics.revenue = 0
+            }
+            if (payload.extraData.realEstateMetrics) {
+                payload.extraData.realEstateMetrics.portfolioValue = 0
             }
             delete payload.extraData.agentStats
         }

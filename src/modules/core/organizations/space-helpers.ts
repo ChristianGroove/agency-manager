@@ -10,7 +10,7 @@ import { getCurrentOrgDetails, getCurrentOrganizationId } from "./actions/crud"
  * Drives UI rendering, card layouts, and feature visibility.
  * Stored in saas_apps.space_category column.
  */
-export type SpaceCategory = 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas'
+export type SpaceCategory = 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas' | 'real_estate'
 
 /**
  * Get the space category for the current organization.
@@ -27,11 +27,11 @@ export async function getOrgSpaceCategory(orgId?: string): Promise<SpaceCategory
 
         const { data: appData } = await (await createClient())
             .from('saas_apps')
-            .select('space_category')
+            .select('space_category, category')
             .eq('id', orgDetails.active_app_id)
             .maybeSingle()
 
-        return (appData?.space_category as SpaceCategory) || 'agency'
+        return (((appData as any)?.space_category || (appData as any)?.category) as SpaceCategory) || 'agency'
     } catch (error) {
         console.error('[SpaceCategory] Error resolving space category:', error)
         return 'agency'

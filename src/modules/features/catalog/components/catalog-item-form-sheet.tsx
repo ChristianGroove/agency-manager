@@ -169,12 +169,14 @@ const BADGE_OPTIONS = [
   "Recomendado",
 ]
 
+const DEFAULT_EMPTY_ARRAY: any[] = []
+
 export function CatalogItemFormSheet({
   open,
   onOpenChange,
   itemToEdit,
-  categories = [],
-  attributeGroups = [],
+  categories = DEFAULT_EMPTY_ARRAY,
+  attributeGroups = DEFAULT_EMPTY_ARRAY,
   onSuccess,
   spaceType = "agency",
   portalToken,
@@ -394,8 +396,10 @@ export function CatalogItemFormSheet({
     setCustomCommonAreaInput("")
   }
 
-  // Load itemToEdit into state
+  // Load itemToEdit into state only when sheet opens or itemToEdit changes
   useEffect(() => {
+    if (!open) return
+
     if (itemToEdit) {
       setName(itemToEdit.name || "")
       setDescription(itemToEdit.description || "")
@@ -562,7 +566,7 @@ export function CatalogItemFormSheet({
       setSearchTagsInput("")
       setActiveTab("general")
     }
-  }, [itemToEdit, categories, open])
+  }, [open, itemToEdit?.id, itemToEdit?.updated_at])
 
   const handleApplyAiCopy = (copy: {
     name: string
@@ -1733,30 +1737,32 @@ export function CatalogItemFormSheet({
                   </div>
                 )}
 
-                {/* Visual Badges Selector */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Etiquetas Visuales (Badges)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {BADGE_OPTIONS.map((badge) => {
-                      const isSelected = selectedBadges.includes(badge)
-                      return (
-                        <button
-                          key={badge}
-                          type="button"
-                          onClick={() => handleToggleBadge(badge)}
-                          className={cn(
-                            "px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
-                            isSelected
-                              ? "bg-brand-pink text-white border-brand-pink shadow-xs"
-                              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
-                          )}
-                        >
-                          {badge}
-                        </button>
-                      )
-                    })}
+                {/* Visual Badges Selector (Hidden for Real Estate) */}
+                {classification !== "real_estate" && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold">Etiquetas Visuales (Badges)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {BADGE_OPTIONS.map((badge) => {
+                        const isSelected = selectedBadges.includes(badge)
+                        return (
+                          <button
+                            key={badge}
+                            type="button"
+                            onClick={() => handleToggleBadge(badge)}
+                            className={cn(
+                              "px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-brand-pink text-white border-brand-pink shadow-xs"
+                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                            )}
+                          >
+                            {badge}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </TabsContent>
 
               {/* TAB 3: INVENTARIO & STOCK */}

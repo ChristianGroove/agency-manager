@@ -79,10 +79,24 @@ export async function getStorefrontThemeConfigAction(params?: {
 
     const rawConfig = (settings?.portal_theme_config || {}) as Partial<StorefrontThemeConfig>
 
+    // Dynamic fallback: If preset is auto or undefined, check if org space category is real_estate
+    let effectiveIndustryPreset = rawConfig.industry_preset || DEFAULT_STOREFRONT_THEME_CONFIG.industry_preset || 'auto'
+    if (effectiveIndustryPreset === 'auto' && targetOrgId) {
+      try {
+        const { getOrgSpaceCategory } = await import('@/modules/core/organizations/space-helpers')
+        const spaceCategory = await getOrgSpaceCategory(targetOrgId)
+        if (spaceCategory === 'real_estate') {
+          effectiveIndustryPreset = 'real_estate'
+        }
+      } catch (err) {
+        // Safe fallback
+      }
+    }
+
     return {
       ...DEFAULT_STOREFRONT_THEME_CONFIG,
       ...rawConfig,
-      industry_preset: rawConfig.industry_preset || DEFAULT_STOREFRONT_THEME_CONFIG.industry_preset || 'auto',
+      industry_preset: effectiveIndustryPreset,
       widget_config: {
         ...DEFAULT_STOREFRONT_THEME_CONFIG.widget_config,
         ...(rawConfig.widget_config || {}),

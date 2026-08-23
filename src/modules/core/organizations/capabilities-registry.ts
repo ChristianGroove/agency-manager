@@ -87,11 +87,11 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
     capabilities: [
       'crm.core', 
       'crm.advanced', 
-      'crm_quotes', 
+      'crm.quotes', 
       'messaging.standard', 
       'billing.management', 
       'hosting.management'
-    ] as any
+    ]
   },
   resto: {
     terminology: {
@@ -119,7 +119,163 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
     capabilities: [
       'crm.core', 
       'messaging.standard'
-    ] as any
+    ]
+  },
+  real_estate: {
+    terminology: {
+      client: 'Cliente / Comprador',
+      clients: 'Clientes / Prospectos',
+      project: 'Inmueble / Propiedad',
+      sale: 'Cierre / Negocio',
+      action_new: 'Nuevo Prospecto'
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: true,
+      showOrders: false,
+      allowedChannels: ['whatsapp', 'email', 'sms'],
+      defaultDashboard: 'real_estate'
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      profileSections: ['contact_info', 'business_details', 'preferences']
+    },
+    rules: {
+      allowedChannels: ['whatsapp', 'email', 'sms']
+    },
+    capabilities: [
+      'crm.core',
+      'crm.advanced',
+      'crm.quotes',
+      'messaging.standard',
+      'messaging.ai_agent',
+      'billing.management',
+      'automation.engine'
+    ]
+  },
+  cleaning: {
+    terminology: {
+      client: 'Cliente',
+      clients: 'Clientes',
+      project: 'Servicio',
+      sale: 'Orden',
+      action_new: 'Nuevo Cliente'
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: true,
+      showOrders: false,
+      allowedChannels: ['whatsapp', 'email', 'sms']
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      profileSections: ['contact_info', 'preferences']
+    },
+    rules: {
+      allowedChannels: ['whatsapp', 'email', 'sms']
+    },
+    capabilities: [
+      'crm.core',
+      'crm.advanced',
+      'messaging.standard',
+      'billing.management'
+    ]
+  },
+  retail: {
+    terminology: {
+      client: 'Cliente',
+      clients: 'Clientes',
+      project: 'Compra',
+      sale: 'Venta',
+      action_new: 'Nuevo Cliente'
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: false,
+      showOrders: false,
+      allowedChannels: ['whatsapp', 'email', 'sms']
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'billing'],
+      profileSections: ['contact_info', 'preferences']
+    },
+    rules: {
+      allowedChannels: ['whatsapp', 'email', 'sms']
+    },
+    capabilities: [
+      'crm.core',
+      'messaging.standard',
+      'billing.management'
+    ]
+  },
+  saas: {
+    terminology: {
+      client: 'Usuario',
+      clients: 'Usuarios',
+      project: 'Suscripción',
+      sale: 'Plan',
+      action_new: 'Nuevo Usuario'
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: true,
+      showOrders: false,
+      allowedChannels: ['email', 'whatsapp']
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      profileSections: ['contact_info', 'business_details', 'preferences']
+    },
+    rules: {
+      allowedChannels: ['email', 'whatsapp']
+    },
+    capabilities: [
+      'crm.core',
+      'crm.advanced',
+      'messaging.standard',
+      'billing.management',
+      'automation.engine'
+    ]
+  },
+  platform: {
+    terminology: {
+      client: 'Tenant',
+      clients: 'Tenants',
+      project: 'Infraestructura',
+      sale: 'Suscripción',
+      action_new: 'Nuevo Tenant'
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: true,
+      showOrders: false,
+      allowedChannels: ['email', 'sms']
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'services', 'billing'],
+      profileSections: ['contact_info', 'business_details', 'preferences']
+    },
+    rules: {
+      allowedChannels: ['email', 'sms']
+    },
+    capabilities: [
+      'crm.core',
+      'crm.advanced',
+      'messaging.standard',
+      'billing.management',
+      'automation.engine',
+      'whitelabel.branding',
+      'whitelabel.domain_custom'
+    ]
   }
-  // ... more presets can be added here or fetched from DB
 };

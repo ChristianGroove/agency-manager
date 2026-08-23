@@ -80,6 +80,54 @@ export const suite = {
       },
     },
     {
+      name: 'Validates Real Estate classification contract with property details, operation type, and Colombian metrics',
+      fn: () => {
+        const mockRealEstateTestItem = {
+          id: 'item_re_test_01',
+          organization_id: 'tenant-test-re',
+          name: 'Apartamento de Lujo en El Poblado',
+          description: 'Exclusivo apartamento de 145m2 con vista panorámica',
+          base_price: 1250000000,
+          type: 'real_estate' as const,
+          classification: 'real_estate' as const,
+          gallery_images: [
+            { id: 're-img-1', url: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9', is_cover: true, order_index: 0 },
+          ],
+          inventory_quantity: 1,
+          track_inventory: false,
+          allow_backorders: false,
+          low_stock_threshold: 1,
+          has_variants: false,
+          variant_attributes: [],
+          variants: [],
+          addon_groups: [],
+          badges: ['Destacado', 'Novedad'],
+          specifications: {},
+          is_visible_in_portal: true,
+          is_active: true,
+          created_at: '2026-08-22T00:00:00Z',
+          real_estate_details: {
+            operation_type: 'sale',
+            property_type: 'apartment',
+            area_total_m2: 145,
+            bedrooms: 3,
+            bathrooms: 4,
+            stratum: '6',
+            city: 'Medellín',
+            neighborhood: 'El Poblado',
+          },
+        };
+
+        assertEqual(mockRealEstateTestItem.classification, 'real_estate');
+        assertEqual(mockRealEstateTestItem.type, 'real_estate');
+        assertEqual(mockRealEstateTestItem.real_estate_details.operation_type, 'sale');
+        assertEqual(mockRealEstateTestItem.real_estate_details.area_total_m2, 145);
+
+        const res = validateUniversalCatalogItem(mockRealEstateTestItem);
+        assertTrue(res.isValid, `Real estate item failed validation: ${res.errors.join(', ')}`);
+      },
+    },
+    {
       name: 'Rejects invalid classification enum values and malformed schema structures',
       fn: () => {
         const invalidItem = {
@@ -91,7 +139,7 @@ export const suite = {
         assertFalse(res.isValid);
         assertTrue(
           res.errors.some((err) =>
-            err.includes('classification must be one of: physical, digital, service, subscription')
+            err.includes('classification must be one of: physical, digital, service, subscription, real_estate')
           )
         );
       },

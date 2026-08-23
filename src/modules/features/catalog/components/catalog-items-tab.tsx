@@ -110,6 +110,7 @@ export function CatalogItemsTab({
   setIsCategoryDrawerOpen: propsSetCategoryDrawerOpen,
 }: CatalogItemsTabProps) {
   const activePreset = industryPreset || themeConfig?.industry_preset
+  const isRealEstate = spaceType === "real_estate" || activePreset === "real_estate"
 
   // View mode
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
@@ -253,7 +254,11 @@ export function CatalogItemsTab({
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
-              placeholder="Buscar por nombre, SKU, código, sector, ciudad..."
+              placeholder={
+                isRealEstate
+                  ? "Buscar por título, sector, ciudad, barrio, tipo de inmueble..."
+                  : "Buscar por nombre, SKU, código, sector, ciudad..."
+              }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 h-10 text-xs rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-xs"
@@ -450,17 +455,19 @@ export function CatalogItemsTab({
         <div className="flex flex-col items-center justify-center p-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-zinc-50/50 dark:bg-zinc-900/20">
           <Package className="h-12 w-12 text-zinc-400 mb-3" />
           <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1">
-            No se encontraron productos o servicios
+            {isRealEstate ? "No se encontraron propiedades o inmuebles" : "No se encontraron productos o servicios"}
           </h3>
           <p className="text-xs text-zinc-500 max-w-md mb-5">
-            Prueba ajustando los filtros de búsqueda o crea un nuevo elemento para empezar a vender.
+            {isRealEstate
+              ? "Prueba ajustando los filtros de búsqueda o registra una nueva propiedad para tu portafolio."
+              : "Prueba ajustando los filtros de búsqueda o crea un nuevo elemento para empezar a vender."}
           </p>
           <Button
             onClick={handleCreate}
             className="rounded-2xl bg-brand-pink text-white text-xs font-bold px-6 h-10 shadow-md"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Crear Producto / Servicio
+            {isRealEstate ? "Nueva Propiedad" : "Crear Producto / Servicio"}
           </Button>
         </div>
       ) : viewMode === "grid" ? (
@@ -510,7 +517,7 @@ export function CatalogItemsTab({
 
                   {/* Badges on image */}
                   <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[75%] z-10">
-                    {item.classification === "real_estate" && (() => {
+                    {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) && (() => {
                       const re = item.real_estate_details || item.classification_metadata?.real_estate
                       const op = re?.operation_type || "sale"
                       const isRent = op === "rent"
@@ -528,7 +535,7 @@ export function CatalogItemsTab({
                     <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-md text-[10px] border-none font-bold">
                       {item.category}
                     </Badge>
-                    {firstBadge && (
+                    {firstBadge && item.classification !== "real_estate" && !isRealEstate && (
                       <Badge className="bg-brand-pink text-white text-[10px] border-none font-bold shadow-xs">
                         {firstBadge}
                       </Badge>
@@ -625,7 +632,7 @@ export function CatalogItemsTab({
                       </h3>
 
                       {/* Real Estate Subtitle in Admin Card */}
-                      {item.classification === "real_estate" && (() => {
+                      {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) && (() => {
                         const re = item.real_estate_details || item.classification_metadata?.real_estate
                         const propType = re?.property_type || "apartment"
                         const typeMap: Record<string, string> = {
@@ -670,7 +677,7 @@ export function CatalogItemsTab({
 
                     {/* Highly Visible Stock, Real Estate Specs and SKU Badges */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {item.classification === "real_estate" ? (() => {
+                      {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) ? (() => {
                         const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
                         const pills: string[] = []
                         if (re.area_total_m2) pills.push(`📐 ${re.area_total_m2} m²`)
@@ -761,12 +768,12 @@ export function CatalogItemsTab({
             <TableHeader className="bg-zinc-50 dark:bg-zinc-900/80">
               <TableRow>
                 <TableHead className="w-[60px]">Foto</TableHead>
-                <TableHead className="min-w-[200px]">Nombre & Categoría</TableHead>
-                <TableHead className="min-w-[120px]">SKU</TableHead>
-                <TableHead className="min-w-[120px]">Precio Base</TableHead>
-                <TableHead className="min-w-[100px]">Variantes</TableHead>
-                <TableHead className="min-w-[140px]">Stock Disponible</TableHead>
-                <TableHead className="w-[90px] text-center">Visible</TableHead>
+                <TableHead className="min-w-[200px]">{isRealEstate ? "Inmueble & Categoría" : "Nombre & Categoría"}</TableHead>
+                <TableHead className="min-w-[120px]">{isRealEstate ? "Código / Ref" : "SKU"}</TableHead>
+                <TableHead className="min-w-[120px]">{isRealEstate ? "Precio de Oferta" : "Precio Base"}</TableHead>
+                <TableHead className="min-w-[100px]">{isRealEstate ? "Tipo / Specs" : "Variantes"}</TableHead>
+                <TableHead className="min-w-[140px]">{isRealEstate ? "Área / Estado" : "Stock Disponible"}</TableHead>
+                <TableHead className="w-[90px] text-center">{isRealEstate ? "En Portal" : "Visible"}</TableHead>
                 <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -800,12 +807,12 @@ export function CatalogItemsTab({
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
-                          {item.classification === "real_estate" && (() => {
+                          {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) && (() => {
                             const re = item.real_estate_details || item.classification_metadata?.real_estate
                             const op = re?.operation_type || "sale"
                             const isRent = op === "rent"
                             const isTemp = op === "temporary_rent"
-                            const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
+                            const opLabel = isRent ? "Arriendo" : isTemp ? "Arriendo Temp." : "Venta"
                             const OpIcon = isRent ? Key : isTemp ? CalendarRange : Tag
                             const opColor = op === "rent" ? "bg-blue-600 text-white" : op === "temporary_rent" ? "bg-purple-600 text-white" : "bg-emerald-600 text-white"
                             return (
@@ -831,7 +838,27 @@ export function CatalogItemsTab({
                     </TableCell>
 
                     <TableCell>
-                      {item.has_variants ? (
+                      {(item.classification === "real_estate" || isRealEstate) ? (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate
+                        const propType = re?.property_type || "apartment"
+                        const typeMap: Record<string, string> = {
+                          apartment: "Apartamento",
+                          house: "Casa",
+                          studio: "Apartaestudio",
+                          office: "Oficina",
+                          commercial: "Local Comercial",
+                          warehouse: "Bodega",
+                          land: "Lote",
+                          country_house: "Finca",
+                          medical_office: "Consultorio",
+                          building: "Edificio",
+                        }
+                        return (
+                          <Badge variant="secondary" className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                            {typeMap[propType] || "Inmueble"}
+                          </Badge>
+                        )
+                      })() : item.has_variants ? (
                         <Badge variant="secondary" className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
                           {item.variants?.length || 0} vars
                         </Badge>
@@ -841,7 +868,7 @@ export function CatalogItemsTab({
                     </TableCell>
 
                     <TableCell>
-                      {item.classification === "real_estate" ? (() => {
+                      {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) ? (() => {
                         const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
                         return (
                           <Badge variant="outline" className="text-[10px] font-bold bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 gap-1">

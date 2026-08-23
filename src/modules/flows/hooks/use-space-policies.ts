@@ -31,7 +31,7 @@ export function useSpacePolicies(
     // Normalize spaceType to VerticalType
     const verticalKey = useMemo((): VerticalType => {
         const type = spaceType.toLowerCase();
-        const validTypes = ['agency', 'resto', 'cleaning', 'retail', 'saas', 'platform'];
+        const validTypes = ['agency', 'resto', 'cleaning', 'retail', 'saas', 'platform', 'real_estate'];
         return (validTypes.includes(type) ? type : 'agency') as VerticalType;
     }, [spaceType]);
 

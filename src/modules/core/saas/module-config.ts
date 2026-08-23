@@ -477,9 +477,11 @@ export function filterRoutesByModules(
     return MODULE_ROUTES.filter(route => {
         const { access, isCore, key, parentModule } = route
 
-        // 1. NUCLEAR BLOCKERS (Org Type restrictions)
+        // 1. NUCLEAR BLOCKERS (Org Type & Space restrictions)
         if (orgType && access?.excludedOrgTypes?.includes(orgType)) return false
         if (orgType && access?.allowedOrgTypes && !access.allowedOrgTypes.includes(orgType)) return false
+        if (vertical && access?.excludedSpaces?.includes(vertical)) return false
+        if (vertical && access?.allowedSpaces && !access.allowedSpaces.includes(vertical)) return false
         if (key === 'reseller_tenants' && orgType === 'client') return false
 
         // 2. CAPABILITY CHECK (New)

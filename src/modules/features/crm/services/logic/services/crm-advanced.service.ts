@@ -185,13 +185,13 @@ export class CRMAdvancedService {
 
         // 2. Persist record
         // We need user's email for the record
-        const { data: profile } = await this.supabase.from('profiles').select('email').eq('id', this.userId).single()
+        const { data: { user } } = await this.supabase.auth.getUser()
 
         await this.repo.insertEmail({
             organization_id: this.orgId,
             lead_id: input.lead_id,
             direction: 'outbound',
-            from_email: profile?.email || 'unknown@system.com',
+            from_email: user?.email || 'unknown@system.com',
             to_email: input.to_email,
             cc_emails: input.cc_emails || [],
             subject: input.subject,

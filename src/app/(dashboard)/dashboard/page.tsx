@@ -9,6 +9,7 @@ import { CleaningDashboard } from "@/modules/core/dashboard/components/cleaning-
 import { ResellerDashboard } from "@/modules/core/dashboard/components/reseller-dashboard"
 import { RestoDashboard } from "@/modules/core/dashboard/components/resto-dashboard"
 import { RetailDashboard } from "@/modules/core/dashboard/components/retail-dashboard"
+import { RealEstateDashboard } from "@/modules/core/dashboard/components/real-estate-dashboard"
 import { DefaultDashboard } from "@/modules/core/dashboard/components/default-dashboard"
 
 export default async function DashboardPage() {
@@ -32,10 +33,11 @@ export default async function DashboardPage() {
                 {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'retail' && <RetailDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
+                {orgType === 'real_estate' && <RealEstateDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'saas' && <DefaultDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
 
                 {/* Fallback de Seguridad */}
-                {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas'].includes(orgType) && (
+                {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas', 'real_estate'].includes(orgType) && (
                     <AgencyDashboard dashboardData={dashboardData} extraData={extraData} />
                 )}
             </Suspense>

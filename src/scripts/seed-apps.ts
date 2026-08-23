@@ -57,6 +57,22 @@ async function seedApps() {
                 is_active: true,
                 is_featured: false,
                 sort_order: 3
+            },
+            {
+                id: 'app_real_estate_pro',
+                name: 'Real Estate & PropTech Pro',
+                slug: 'real-estate-pro',
+                description: 'Gestión de propiedades, prospectos inmobiliarios y comercialización PropTech',
+                long_description: 'Solución integral para agencias inmobiliarias y empresas PropTech con catálogo de propiedades, cotizaciones, CRM de prospectos, mensajería y automatización.',
+                category: 'real_estate',
+                vertical_compatibility: ['real_estate', 'proptech', 'agency'],
+                icon: 'Building2',
+                color: '#0284c7',
+                price_monthly: 99,
+                trial_days: 14,
+                is_active: true,
+                is_featured: true,
+                sort_order: 4
             }
         ];
 
@@ -94,7 +110,16 @@ async function seedApps() {
             { app_id: 'app_consulting_essential', module_key: 'core_settings', auto_enable: true, is_core: true, is_optional: false, sort_order: 2 },
             { app_id: 'app_consulting_essential', module_key: 'module_quotes', auto_enable: true, is_core: false, is_optional: false, sort_order: 3 },
             { app_id: 'app_consulting_essential', module_key: 'module_briefings', auto_enable: true, is_core: false, is_optional: false, sort_order: 4 },
-            { app_id: 'app_consulting_essential', module_key: 'module_appointments', auto_enable: false, is_core: false, is_optional: true, sort_order: 5 }
+            { app_id: 'app_consulting_essential', module_key: 'module_appointments', auto_enable: false, is_core: false, is_optional: true, sort_order: 5 },
+
+            // Real Estate Pro
+            { app_id: 'app_real_estate_pro', module_key: 'core_crm', auto_enable: true, is_core: true, is_optional: false, sort_order: 1 },
+            { app_id: 'app_real_estate_pro', module_key: 'core_clients', auto_enable: true, is_core: true, is_optional: false, sort_order: 2 },
+            { app_id: 'app_real_estate_pro', module_key: 'core_locations', auto_enable: true, is_core: false, is_optional: false, sort_order: 3 },
+            { app_id: 'app_real_estate_pro', module_key: 'module_messaging', auto_enable: true, is_core: false, is_optional: false, sort_order: 4 },
+            { app_id: 'app_real_estate_pro', module_key: 'module_quotes', auto_enable: true, is_core: false, is_optional: false, sort_order: 5 },
+            { app_id: 'app_real_estate_pro', module_key: 'module_catalog', auto_enable: true, is_core: false, is_optional: false, sort_order: 6 },
+            { app_id: 'app_real_estate_pro', module_key: 'module_automation', auto_enable: true, is_core: false, is_optional: false, sort_order: 7 }
         ];
 
         console.log(`🔗 Seeding ${modules.length} module links...`);

@@ -1363,7 +1363,7 @@ export function UniversalStorefrontLayout({
                         )}>
                           {item.name}
                         </h3>
-                        {dynamicBadges.map((badgeStr, idx) => (
+                        {item.classification !== "real_estate" && dynamicBadges.map((badgeStr, idx) => (
                           <StatusBadge key={idx} type={badgeStr} label={badgeStr} />
                         ))}
                       </div>
@@ -1665,8 +1665,8 @@ export function UniversalStorefrontLayout({
                       </div>
                     )}
 
-                    {/* Dynamic Badges ("Destacado", "Novedad", "Agotado", "¡Últimas X unidades!") */}
-                    {dynamicBadges.length > 0 && (
+                    {/* Dynamic Badges ("Destacado", "Novedad", "Agotado", "¡Últimas X unidades!") (Hidden for Real Estate) */}
+                    {item.classification !== "real_estate" && dynamicBadges.length > 0 && (
                       <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
                         {dynamicBadges.map((badgeStr, idx) => (
                           <StatusBadge key={idx} type={badgeStr} label={badgeStr} />

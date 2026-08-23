@@ -88,7 +88,7 @@ export class ContactRepository {
             contact.assigned_to
                 ? this.supabase
                     .from('profiles')
-                    .select('id, email, full_name, avatar_url')
+                    .select('id, full_name, avatar_url')
                     .eq('id', contact.assigned_to)
                     .single()
                 : Promise.resolve({ data: null }),

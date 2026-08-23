@@ -9,6 +9,7 @@ export type SystemModule = {
 }
 
 import { DynamicSpaceConfig } from "@/modules/core/organizations/capabilities-registry"
+import { SpaceCategory } from "@/modules/core/organizations/space-helpers"
 
 export interface SaasApp {
     id: string
@@ -32,7 +33,7 @@ export interface SaasApp {
     ui_config?: DynamicSpaceConfig
     created_at: string
     status?: string
-    space_category?: 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas'
+    space_category?: SpaceCategory
 }
 
 export interface AppModule {

@@ -28,6 +28,7 @@ import {
   Sparkles,
   FolderOpen,
   Plus,
+  Building2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -130,6 +131,7 @@ export function CatalogWorkspace({
   }, [organization.id])
 
   const isResto = organization.spaceType === "resto"
+  const isRealEstate = organization.spaceType === "real_estate" || initialThemeConfig?.industry_preset === "real_estate"
   const storeSlug = organization.slug || organization.id
   const hasActiveCustomDomain = organization.customDomain && organization.customDomainStatus === 'active'
   const liveStoreUrl = hasActiveCustomDomain
@@ -142,19 +144,21 @@ export function CatalogWorkspace({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl bg-brand-pink/10 text-brand-pink">
-            <Store className="h-6 w-6" />
+            {isRealEstate ? <Building2 className="h-6 w-6" /> : <Store className="h-6 w-6" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-                {isResto ? "Menú & Catálogo Comercial" : "Catálogo Comercial & Portafolio"}
+                {isResto ? "Menú & Catálogo Comercial" : isRealEstate ? "Propiedades & Inmuebles" : "Catálogo Comercial & Portafolio"}
               </h1>
               <Badge variant="outline" className="text-xs uppercase font-mono px-2.5 py-0.5">
                 {organization.name}
               </Badge>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Plataforma de inventario omnicanal, matriz de variantes y personalizador de tienda en vivo
+              {isRealEstate
+                ? "Gestión de inmuebles, fichas técnicas, precios de oferta y vitrina inmobiliaria en vivo"
+                : "Plataforma de inventario omnicanal, matriz de variantes y personalizador de tienda en vivo"}
             </p>
           </div>
         </div>
@@ -183,8 +187,8 @@ export function CatalogWorkspace({
             title={liveStoreUrl}
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Ver Tienda en Vivo</span>
-            <span className="sm:hidden">Tienda</span>
+            <span className="hidden sm:inline">{isRealEstate ? "Ver Portal en Vivo" : "Ver Tienda en Vivo"}</span>
+            <span className="sm:hidden">{isRealEstate ? "Portal" : "Tienda"}</span>
           </Button>
         </div>
       </div>
@@ -198,8 +202,8 @@ export function CatalogWorkspace({
               value="catalog"
               className="flex items-center justify-center gap-2 rounded-lg py-2 px-3 text-xs font-semibold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-zinc-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
             >
-              <ShoppingBag className="h-3.5 w-3.5" />
-              <span>{isResto ? "Platos & Items" : "Productos & Servicios"}</span>
+              {isRealEstate ? <Building2 className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
+              <span>{isResto ? "Platos & Items" : isRealEstate ? "Propiedades & Inmuebles" : "Productos & Servicios"}</span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-0.5">
                 {items.length}
               </Badge>
@@ -218,7 +222,7 @@ export function CatalogWorkspace({
               className="flex items-center justify-center gap-2 rounded-lg py-2 px-3 text-xs font-semibold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-zinc-900 dark:data-[state=active]:text-white data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
             >
               <Palette className="h-3.5 w-3.5 text-brand-pink" />
-              <span>Personalizar Tienda</span>
+              <span>{isRealEstate ? "Personalizar Portal" : "Personalizar Tienda"}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -233,7 +237,7 @@ export function CatalogWorkspace({
                 className="rounded-xl text-xs font-bold gap-2 h-10 border-zinc-200 dark:border-zinc-800"
               >
                 <FolderOpen className="h-4 w-4" />
-                Categorías
+                {isRealEstate ? "Categorías / Tipos" : "Categorías"}
               </Button>
 
               <Button
@@ -243,7 +247,7 @@ export function CatalogWorkspace({
                 className="rounded-xl bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-bold gap-2 h-10 shadow-sm shadow-brand-pink/20"
               >
                 <Plus className="h-4 w-4" />
-                Nuevo Item
+                {isRealEstate ? "Nueva Propiedad" : isResto ? "Nuevo Plato" : "Nuevo Item"}
               </Button>
             </div>
           )}
