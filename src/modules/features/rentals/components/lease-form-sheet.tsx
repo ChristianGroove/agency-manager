@@ -17,7 +17,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -106,6 +109,33 @@ export function LeaseFormSheet({
   const [tenantId, setTenantId] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [coSignerId, setCoSignerId] = useState<string | null>(null);
+  const [onlyRentals, setOnlyRentals] = useState(true);
+
+  // Group properties into rental-available and others
+  const { rentalAvailableProperties, otherProperties, selectedProperty } = React.useMemo(() => {
+    const rentalAvail: any[] = [];
+    const others: any[] = [];
+
+    properties.forEach((p) => {
+      const op = p.real_estate_details?.operation || "rent";
+      const status = p.real_estate_details?.rental_status || "available";
+      const isCurrentLeaseProp = lease?.property_id === p.id;
+
+      if ((op === "rent" || op === "rent_to_own") && (status !== "rented" || isCurrentLeaseProp)) {
+        rentalAvail.push(p);
+      } else {
+        others.push(p);
+      }
+    });
+
+    const currentSelected = properties.find((p) => p.id === propertyId) || null;
+
+    return {
+      rentalAvailableProperties: rentalAvail,
+      otherProperties: others,
+      selectedProperty: currentSelected,
+    };
+  }, [properties, lease, propertyId]);
 
   const [monthlyRent, setMonthlyRent] = useState<number>(0);
   const [adminFee, setAdminFee] = useState<number>(0);
@@ -167,8 +197,9 @@ export function LeaseFormSheet({
       setCoveragePercentage(Number(gDetails.coverage_percentage) || 100);
       setNotes(lease.notes || "");
     } else {
-      // Defaults for new lease
-      setPropertyId(properties[0]?.id || "");
+      // Defaults for new lease - pick first available rental if exists
+      const firstAvailable = rentalAvailableProperties[0]?.id || properties[0]?.id || "";
+      setPropertyId(firstAvailable);
       setTenantId("");
       setOwnerId("");
       setCoSignerId(null);
@@ -211,9 +242,13 @@ export function LeaseFormSheet({
     clearError("propertyId");
     const selectedProp = properties.find((p) => p.id === newPropertyId);
     if (selectedProp) {
-      if (monthlyRent === 0 && selectedProp.base_price) {
-        setMonthlyRent(Number(selectedProp.base_price));
-        clearError("monthlyRent");
+      const op = selectedProp.real_estate_details?.operation || "rent";
+      // Auto-fill monthly rent only if it's a rental item or if rent is not yet configured
+      if (op === "rent" || op === "rent_to_own") {
+        if (monthlyRent === 0 && selectedProp.base_price) {
+          setMonthlyRent(Number(selectedProp.base_price));
+          clearError("monthlyRent");
+        }
       }
       if (selectedProp.real_estate_details?.admin_fee && adminFee === 0) {
         setAdminFee(Number(selectedProp.real_estate_details.admin_fee));
@@ -531,41 +566,234 @@ export function LeaseFormSheet({
           {activeSection === "parties" && (
             <div className="space-y-5 animate-in fade-in duration-300">
               {/* Property Selection */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
-                  <Building2 className="h-4 w-4 text-brand-pink" />
-                  Inmueble / Propiedad *
-                </Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-brand-pink" />
+                    Inmueble / Propiedad *
+                  </Label>
+                  <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-lg text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setOnlyRentals(true)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all text-[11px] cursor-pointer",
+                        onlyRentals
+                          ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
+                          : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      🟢 Solo Arriendos ({rentalAvailableProperties.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOnlyRentals(false)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all text-[11px] cursor-pointer",
+                        !onlyRentals
+                          ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs font-semibold"
+                          : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      Ver Todos ({properties.length})
+                    </button>
+                  </div>
+                </div>
+
                 <Select value={propertyId} onValueChange={handlePropertyChange}>
                   <SelectTrigger
                     className={cn(
-                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
+                      "rounded-xl h-12 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
                       errors.propertyId && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
                     )}
                   >
                     <SelectValue placeholder="Seleccionar inmueble del catálogo..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl max-h-72">
-                    {properties.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-xs py-2.5">
-                        <div className="flex flex-col text-left">
-                          <span className="font-bold text-zinc-900 dark:text-white">{p.name}</span>
-                          <span className="text-[11px] text-zinc-500">
-                            {p.real_estate_details?.neighborhood || p.real_estate_details?.city || "Inmueble"} • Canon Base: {formatCOP(Number(p.base_price) || 0)}
-                          </span>
+                  <SelectContent className="rounded-2xl max-h-80">
+                    {onlyRentals ? (
+                      rentalAvailableProperties.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-zinc-500">
+                          No hay inmuebles disponibles para arriendo. Cambia a "Ver Todos" para seleccionar otros inmuebles.
                         </div>
-                      </SelectItem>
-                    ))}
+                      ) : (
+                        rentalAvailableProperties.map((p) => {
+                          const op = p.real_estate_details?.operation || "rent";
+                          const status = p.real_estate_details?.rental_status || "available";
+                          const isRented = status === "rented" && lease?.property_id !== p.id;
+                          return (
+                            <SelectItem key={p.id} value={p.id} className="text-xs py-2.5 px-3">
+                              <div className="flex flex-col text-left w-full gap-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-zinc-900 dark:text-white">{p.name}</span>
+                                  {op === "rent" ? (
+                                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
+                                      🟢 Arriendo
+                                    </span>
+                                  ) : op === "rent_to_own" ? (
+                                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/20">
+                                      🟡 Arriendo c/ Opción
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded-md border border-sky-200 dark:border-sky-500/20">
+                                      🔵 Venta
+                                    </span>
+                                  )}
+                                  {isRented ? (
+                                    <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-200 dark:border-rose-500/20">
+                                      🔒 Arrendado
+                                    </span>
+                                  ) : status === "reserved" ? (
+                                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/20">
+                                      ⏳ Reservado
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <span className="text-[11px] text-zinc-500">
+                                  {p.real_estate_details?.neighborhood || p.real_estate_details?.city || "Inmueble"} • {op === "sale" ? "Precio Venta" : "Canon Base"}: {formatCOP(Number(p.base_price) || 0)}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })
+                      )
+                    ) : (
+                      <>
+                        <SelectGroup>
+                          <SelectLabel className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider px-3 pt-2">
+                            🏢 Inmuebles en Arriendo & Disponibles ({rentalAvailableProperties.length})
+                          </SelectLabel>
+                          {rentalAvailableProperties.map((p) => {
+                            const op = p.real_estate_details?.operation || "rent";
+                            const status = p.real_estate_details?.rental_status || "available";
+                            const isRented = status === "rented" && lease?.property_id !== p.id;
+                            return (
+                              <SelectItem key={p.id} value={p.id} className="text-xs py-2.5 px-3">
+                                <div className="flex flex-col text-left w-full gap-0.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-zinc-900 dark:text-white">{p.name}</span>
+                                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
+                                      🟢 Arriendo
+                                    </span>
+                                    {isRented && (
+                                      <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-200 dark:border-rose-500/20">
+                                        🔒 Arrendado
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[11px] text-zinc-500">
+                                    {p.real_estate_details?.neighborhood || p.real_estate_details?.city || "Inmueble"} • Canon Base: {formatCOP(Number(p.base_price) || 0)}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectGroup>
+                        {otherProperties.length > 0 && (
+                          <>
+                            <SelectSeparator className="my-1" />
+                            <SelectGroup>
+                              <SelectLabel className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-3 pt-2">
+                                🏷️ Otros Inmuebles (Venta / Ocupados) ({otherProperties.length})
+                              </SelectLabel>
+                              {otherProperties.map((p) => {
+                                const op = p.real_estate_details?.operation || "sale";
+                                const status = p.real_estate_details?.rental_status || "available";
+                                const isRented = status === "rented" && lease?.property_id !== p.id;
+                                return (
+                                  <SelectItem key={p.id} value={p.id} className="text-xs py-2.5 px-3">
+                                    <div className="flex flex-col text-left w-full gap-0.5">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-zinc-900 dark:text-white">{p.name}</span>
+                                        {op === "sale" ? (
+                                          <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded-md border border-sky-200 dark:border-sky-500/20">
+                                            🔵 Venta
+                                          </span>
+                                        ) : op === "rent_to_own" ? (
+                                          <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/20">
+                                            🟡 Arriendo c/ Opción
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
+                                            🟢 Arriendo
+                                          </span>
+                                        )}
+                                        {isRented && (
+                                          <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-200 dark:border-rose-500/20">
+                                            🔒 Arrendado
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[11px] text-zinc-500">
+                                        {p.real_estate_details?.neighborhood || p.real_estate_details?.city || "Inmueble"} • {op === "sale" ? "Precio Venta" : "Canon Base"}: {formatCOP(Number(p.base_price) || 0)}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectGroup>
+                          </>
+                        )}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
-                {errors.propertyId ? (
+
+                {errors.propertyId && (
                   <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" /> {errors.propertyId}
                   </p>
-                ) : (
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    Selecciona el inmueble del catálogo. El canon base y la administración se auto-completarán.
-                  </p>
+                )}
+
+                {/* Selected Property Preview & Warning Context */}
+                {selectedProperty && (
+                  <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-brand-pink" />
+                        <span className="font-bold text-zinc-900 dark:text-white">{selectedProperty.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {selectedProperty.real_estate_details?.operation === "sale" ? (
+                          <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30 text-[10px]">
+                            🔵 Catalogado en Venta
+                          </Badge>
+                        ) : selectedProperty.real_estate_details?.operation === "rent_to_own" ? (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]">
+                            🟡 Arriendo con Opción
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
+                            🟢 Catalogado en Arriendo
+                          </Badge>
+                        )}
+                        {selectedProperty.real_estate_details?.rental_status === "rented" && lease?.property_id !== selectedProperty.id && (
+                          <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]">
+                            🔒 Ocupado
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Warning if Sale */}
+                    {selectedProperty.real_estate_details?.operation === "sale" && (
+                      <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/40 text-sky-800 dark:text-sky-300 text-[11px] flex items-start gap-2">
+                        <Info className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Inmueble en Venta:</strong> Este inmueble tiene un precio de venta registrado ({formatCOP(Number(selectedProperty.base_price) || 0)}). Especifica en la pestaña <strong>2. Términos Financieros</strong> el canon mensual pactado.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Warning if already rented */}
+                    {selectedProperty.real_estate_details?.rental_status === "rented" && lease?.property_id !== selectedProperty.id && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-[11px] flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Inmueble Ocupado:</strong> Actualmente figura con otro contrato de arrendamiento activo.
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
