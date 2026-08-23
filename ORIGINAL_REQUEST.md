@@ -57,4 +57,75 @@ Integrity mode: development
 ### Quality, Security & Compatibility
 - [ ] Zero cross-tenant data leakage and strict multi-tenant isolation enforced.
 - [ ] Zero TypeScript compilation errors (`tsc --noEmit`).
-- [ ] 100% of automated test suites in `tests/e2e/catalog/runner.ts` pass with 0 errors.
+
+## 2026-08-23T19:23:40Z
+
+Build and deliver the complete, production-grade RentFlow Pro (module_rentals) Property Management & Rent Settlement module for Pixy on the Real Estate Space, transforming /rentals into a high-performance rental lifecycle, WhatsApp billing, and owner payout engine with zero impact on other spaces and 100% CRM integrity.
+
+Working directory: g:/Pixy/agency-manager
+Integrity mode: development
+
+## Requirements
+
+### R1. Database Schema & Multi-Tenant Isolation
+- Create idempotent migration `supabase/migrations/20260823000000_property_leases_and_settlements.sql`:
+  - `public.property_leases`: Stores active leases linking `property_id` (`service_catalog.id`), `tenant_id` (`leads.id`), `owner_id` (`leads.id`), `co_signer_id` (`leads.id` optional), `monthly_rent`, `admin_fee`, `admin_paid_by` (`'agency' | 'tenant'`), `commission_percentage` (default 8.00%), `vat_on_commission` (boolean, default true), `deposit_amount`, `payment_day` (1-31), `payout_day` (1-31), `start_date`, `end_date`, `status` (`'active' | 'pending' | 'expired' | 'defaulted' | 'terminated'`), `guarantee_type` (`'direct' | 'insurance' | 'bond' | 'deposit' | 'promissory_note'`), `guarantee_details` (JSONB), `bank_payout_details` (JSONB: bank, account_type, account_number, account_holder, id_number), `notes`.
+  - `public.property_lease_settlements`: Stores monthly billing and owner payout records (`lease_id`, `period` e.g. "2026-09", `invoice_id`, `rent_amount`, `admin_fee_amount`, `gross_collected`, `commission_amount`, `vat_amount`, `deductions_amount`, `net_owner_payout`, `tenant_payment_status` (`'pending' | 'paid' | 'partial' | 'late'`), `tenant_paid_at`, `owner_payout_status` (`'pending' | 'paid' | 'held'`), `owner_paid_at`, `deductions` JSONB, `statement_pdf_url`, `payment_proof_url`, `receipt_number`).
+  - Strict RLS policies enforcing `organization_id` isolation.
+  - Zero structural changes to `public.leads` or other core tables.
+
+### R2. Core Mathematical Engine & Server Actions
+- Implement `src/modules/features/rentals/services/settlement-calculator.ts` with exact financial formulas:
+  - Gross Collected = Monthly Rent + (Admin Fee if collected by agency)
+  - Commission Amount = Monthly Rent * (Commission Rate / 100)
+  - VAT Amount = Commission Amount * 0.19 (if vat_on_commission = true)
+  - Net Owner Payout = Monthly Rent - Commission Amount - VAT Amount - (Admin Fee if paid by agency) - Approved Deductions
+- Implement Server Actions:
+  - `leases.ts`: `createLeaseAction`, `updateLeaseAction`, `terminateLeaseAction`, `getLeasesAction`, `getLeaseByIdAction`.
+  - `settlements.ts`: `generateMonthlySettlementsAction`, `recordTenantPaymentAction`, `recordOwnerPayoutAction`, `addDeductionAction`, `getSettlementsAction`.
+  - `whatsapp-notifier.ts`: Generates structured WhatsApp messages for tenant payment requests with PSE/Wompi links and owner payout statement links.
+
+### R3. Admin Workspace & Reactive UI (/rentals)
+- Create SSR-protected page `src/app/(dashboard)/rentals/page.tsx` with IAM checks, active only for `real_estate` space organizations.
+- Build `RentalsWorkspace` (`src/modules/features/rentals/components/rentals-workspace.tsx`):
+  - **KPI Header**: Total Active Leases, Monthly Expected Revenue, Past-due / Delinquency Sum, Pending Owner Payouts.
+  - **Tab 1: Contratos Activos**: Interactive card/list view of active leases with property thumbnail, tenant, owner, rent, payment day, status badges, and quick actions (Edit, Terminate, View History).
+  - **Tab 2: Control de Cobranza (Inquilinos)**: Real-time collection semáforo (Al Día, Por Vencer, En Mora, Siniestro Aseguradora) with 1-click WhatsApp payment reminders and payment logging.
+  - **Tab 3: Liquidaciones a Propietarios**: Monthly owner payout ledger with live financial breakdown, deduction inspector, and "Marcar como Pagado & Enviar Extracto".
+  - **LeaseFormSheet**: Multi-step drawer with search in properties (`service_catalog`) and contacts (`leads`), financial terms, bank account details, and guarantee setup.
+  - **SettlementModal**: Interactive dialog to review the monthly statement, add maintenance deductions with receipt attachments, and generate statement links.
+
+### R4. Sidebar & Space System Integration
+- Register `module_rentals` in `src/modules/core/saas/module-config.ts` and `capabilities-registry.ts` as standard module for `real_estate`.
+- Update `src/components/layout/sidebar.tsx` to render "Gestión de Arriendos" (`/rentals`) with `KeyRound` icon exclusively for `real_estate` organizations.
+
+### R5. Realistic Seeding for Praxis Inmobiliaria
+- Create and execute seeding script `src/scripts/seed-praxis-rentals.ts` for `Praxis Inmobiliaria` (`c41dcf16-f94d-499d-a1f8-bc9027206495`):
+  - Seed 5 real estate contacts in `leads` (3 Inquilinos, 2 Propietarios with complete Colombian bank details).
+  - Seed 4 active leases linking to existing rental properties in Ibagué (El Vergel, Calambeo, Piedra Pintada, Santa Ana).
+  - Seed monthly settlements for current and previous month across different statuses (1 Paid on time, 1 Pending/Upcoming, 1 Late/Mora with reminder, 1 with a plumbing maintenance deduction).
+
+### R6. Comprehensive Automated E2E Test Suite & Zero Regressions
+- Expand `tests/e2e/catalog/runner.ts` with dedicated test suites:
+  - Math & Tax Calculation Unit Tests (Gross, Commission, VAT, Deductions, Net Payouts).
+  - Multi-Tenant RLS Boundaries & Isolation.
+  - Lease State Machine & Lifecycle (Active -> Leased -> Terminated -> Available).
+  - Cross-module non-interference test ensuring `leads`, `quotes`, `invoices`, and non-real-estate spaces operate with 0 side-effects.
+- Guarantee 0 TypeScript compilation errors (`tsc --noEmit`).
+
+## Acceptance Criteria
+
+### Data Model & Mathematical Engine
+- [ ] `property_leases` and `property_lease_settlements` execute cleanly in PostgreSQL with foreign keys and multi-tenant RLS.
+- [ ] Financial calculations compute gross collection, 8% commission, 19% VAT, admin fees, and net owner payouts accurately down to the cent.
+- [ ] Zero schema alterations made to `public.leads` or unrelated tables.
+
+### User Interface & Workspace
+- [ ] Navigating to `/rentals` displays the 3-Tab workspace with live KPIs, active lease cards, collection semáforo, and owner payout table.
+- [ ] Creating a lease via `LeaseFormSheet` correctly saves all financial parameters, assigns tenant and landlord, and marks the property as rented.
+- [ ] The sidebar displays "Gestión de Arriendos" for Real Estate tenants and is hidden for other spaces.
+
+### Seeding & Real-World Validation
+- [ ] `Praxis Inmobiliaria` has 5 seeded contacts, 4 active leases, and monthly settlements reflecting real-world property management in Ibagué.
+- [ ] 100% of automated tests pass in `tests/e2e/catalog/runner.ts`.
+- [ ] `tsc --noEmit` returns 0 compilation errors.

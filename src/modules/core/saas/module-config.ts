@@ -31,7 +31,8 @@ import {
     Utensils,
     ClipboardList,
     Wrench,
-    Building2
+    Building2,
+    KeyRound
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -275,6 +276,17 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: Store,
         category: 'operations',
         parentModule: 'module_catalog'
+    },
+    {
+        key: 'module_rentals',
+        label: 'Gestión de Arriendos',
+        href: '/rentals',
+        icon: KeyRound,
+        category: 'operations',
+        parentModule: 'module_rentals',
+        access: {
+            allowedSpaces: ['real_estate']
+        }
     },
     // HIDDEN FOR REGULAR USERS
     {
@@ -545,3 +557,86 @@ export function filterRoutesByModules(
 export function getModuleRoute(moduleKey: string): ModuleRoute | undefined {
     return MODULE_ROUTES.find(r => r.key === moduleKey)
 }
+
+/**
+ * All module routes alias
+ */
+export const ALL_MODULE_ROUTES = MODULE_ROUTES;
+
+/**
+ * Module metadata registry
+ */
+export interface ModuleMetadata {
+    key: string;
+    name: string;
+    description: string;
+    category: ModuleCategory;
+    icon?: any;
+    allowedSpaces?: string[];
+}
+
+export const MODULE_METADATA: Record<string, ModuleMetadata> = {
+    core_crm: {
+        key: 'core_crm',
+        name: 'CRM Core',
+        description: 'Gestión centralizada de contactos, embudos y tratos comerciales',
+        category: 'crm'
+    },
+    core_clients: {
+        key: 'core_clients',
+        name: 'Contactos & Clientes',
+        description: 'Directorio centralizado de clientes y prospectos',
+        category: 'crm'
+    },
+    module_messaging: {
+        key: 'module_messaging',
+        name: 'Mensajería & WhatsApp',
+        description: 'Bandeja omnicanal e integraciones de mensajería',
+        category: 'crm'
+    },
+    module_quotes: {
+        key: 'module_quotes',
+        name: 'Cotizaciones',
+        description: 'Generación y envío de propuestas comerciales',
+        category: 'operations'
+    },
+    module_catalog: {
+        key: 'module_catalog',
+        name: 'Catálogo de Servicios / Inmuebles',
+        description: 'Gestión de inventario de productos, servicios e inmuebles',
+        category: 'operations'
+    },
+    module_automation: {
+        key: 'module_automation',
+        name: 'Automatizaciones & Flujos',
+        description: 'Workflows automáticos y triggers basados en eventos',
+        category: 'operations'
+    },
+    core_locations: {
+        key: 'core_locations',
+        name: 'Sedes & Ubicaciones',
+        description: 'Gestión de sucursales y ubicaciones físicas',
+        category: 'operations'
+    },
+    module_invoicing: {
+        key: 'module_invoicing',
+        name: 'Facturación',
+        description: 'Centro de facturación y cobros electrónicos',
+        category: 'finance'
+    },
+    module_payments: {
+        key: 'module_payments',
+        name: 'Pagos',
+        description: 'Pasarelas de pago y conciliación bancaria',
+        category: 'finance'
+    },
+    module_rentals: {
+        key: 'module_rentals',
+        name: 'Gestión de Arriendos',
+        description: 'Administración de contratos de arrendamiento, cobranza y liquidaciones a propietarios',
+        category: 'operations',
+        icon: KeyRound,
+        allowedSpaces: ['real_estate']
+    }
+};
+

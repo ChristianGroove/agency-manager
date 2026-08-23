@@ -76,6 +76,7 @@ export const en = {
         module_resto_orders: "Order Manager",
         module_resto_staff: "Operations Staff",
         module_whitelabel: "White Label",
+        module_rentals: "Rental Management",
         // Categories
         cat_core: "Main",
         cat_crm: "CRM",
@@ -1785,5 +1786,18 @@ export const en = {
         reinforce_qualification: "Reinforce prospect qualification",
         optimize_distribution: "Optimize agent distribution and load",
         automate_responses: "Automate initial responses"
+    },
+    rentals: {
+        title: "Rental Management",
+        subtitle: "Lease contract management, payment collection tracking, and owner settlement payouts",
+        leases: "Lease Contracts",
+        active_leases: "Active Leases",
+        collections: "Collection Control",
+        settlements: "Owner Settlements",
+        new_lease: "New Lease",
+        new_settlement: "Generate Settlement",
+        monthly_expected_revenue: "Monthly Expected Revenue",
+        delinquency_sum: "Past Due / Delinquency",
+        pending_payouts: "Pending Owner Payouts",
     }
 } as const

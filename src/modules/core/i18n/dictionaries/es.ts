@@ -76,6 +76,7 @@ export const es = {
         module_resto_orders: "Gestor de Pedidos",
         module_resto_staff: "Personal Operativo",
         module_whitelabel: "Marca Blanca",
+        module_rentals: "Gestión de Arriendos",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",
@@ -1786,5 +1787,18 @@ export const es = {
         reinforce_qualification: "Reforzar calificación de prospectos",
         optimize_distribution: "Optimizar distribución y carga de agentes",
         automate_responses: "Automatizar respuestas iniciales"
+    },
+    rentals: {
+        title: "Gestión de Arriendos",
+        subtitle: "Administración de contratos de arrendamiento, control de cobranza y liquidaciones a propietarios",
+        leases: "Contratos de Arrendamiento",
+        active_leases: "Contratos Activos",
+        collections: "Control de Cobranza",
+        settlements: "Liquidaciones a Propietarios",
+        new_lease: "Nuevo Contrato",
+        new_settlement: "Generar Liquidación",
+        monthly_expected_revenue: "Ingresos Esperados del Mes",
+        delinquency_sum: "Cartera en Mora",
+        pending_payouts: "Liquidaciones Pendientes",
     }
 } as const

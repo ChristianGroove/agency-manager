@@ -19,7 +19,8 @@ export type UICapability =
   | 'automation.ai_analyzer'
   | 'notifications.smtp_custom'
   | 'whitelabel.branding'
-  | 'whitelabel.domain_custom';
+  | 'whitelabel.domain_custom'
+  | 'module_rentals';
 
 export interface TerminologyConfig {
   client: string;
@@ -54,6 +55,7 @@ export interface DynamicSpaceConfig {
   management: SpaceManagementPolicy;
   rules: SpaceRulesPolicy;
   capabilities: UICapability[];
+  modules?: string[];
 }
 
 /**
@@ -153,6 +155,16 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
       'messaging.ai_agent',
       'billing.management',
       'automation.engine'
+    ],
+    modules: [
+      'core_crm',
+      'core_clients',
+      'module_messaging',
+      'module_quotes',
+      'module_catalog',
+      'module_automation',
+      'core_locations',
+      'module_rentals'
     ]
   },
   cleaning: {
@@ -279,3 +291,15 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
     ]
   }
 };
+
+export const REAL_ESTATE_DEFAULT_MODULES = [
+  'core_crm',
+  'core_clients',
+  'module_messaging',
+  'module_quotes',
+  'module_catalog',
+  'module_automation',
+  'core_locations',
+  'module_rentals'
+];
+

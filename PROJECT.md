@@ -1,62 +1,170 @@
-# Project: Pixy Real Estate Space (`real_estate`) Integration
+# Project: Pixy RentFlow Pro (module_rentals)
 
 ## Architecture
-Pixy's multi-tenant architecture uses a modular Space category pattern (`SpaceCategory = 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas' | 'real_estate'`). Each Space defines:
-1. **Capabilities & Terminology Preset**: Registered in `capabilities-registry.ts` and resolved by `space-helpers.ts` to control dynamic UI labels, navigation tabs, channels, and atomic feature permissions.
-2. **SaaS App & Module Bundles**: Registered in `saas_apps` and `saas_app_modules` with vertical icons (`Building2`), pricing models, and required modules (`core_crm`, `core_clients`, `module_messaging`, `module_quotes`, `module_catalog`, `module_automation`, `core_locations`).
-3. **Tenant Provisioning Lifecycle**: Automated initialization in `provisioning.ts` seeding default PropTech categories into `service_categories`, initializing `portal_theme_config` in `organization_settings`, auto-assigning modules via `assign_app_to_organization`, and initializing the Real Estate sales pipeline in the CRM process engine.
-4. **Workspace & Dashboard UI**: Dynamic metric computation and rendering in `dashboard-actions.ts` / `RealEstateDashboard`, plus dynamic PropTech terminology and search placeholders in `catalog-workspace.tsx` and `catalog-items-tab.tsx`.
-5. **Quality Assurance**: Automated multi-tier E2E test runner (`tests/e2e/catalog/runner.ts`) verifying space resolution, provisioning, multi-tenant isolation, backwards compatibility, and zero TypeScript compilation errors (`tsc --noEmit`).
+RentFlow Pro is a high-performance Property Management and Rent Settlement module designed for Pixy's Real Estate Space (`real_estate`). It operates within Pixy's multi-tenant Next.js / Supabase architecture, providing a complete rental contract lifecycle, automated monthly billing, collection semáforo with 1-click WhatsApp payment reminders, maintenance deduction management, and landlord payout settlement calculations with 100% CRM integrity.
+
+```
+                  ┌────────────────────────────────────────────────────────┐
+                  │                 Next.js SSR App Router                 │
+                  │              /rentals (IAM & Space Check)              │
+                  └───────────────────────────┬────────────────────────────┘
+                                              │
+                                              ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           RentalsWorkspace (React / Tailwind UI)                                 │
+│  ├── KPI Header (Active Leases, Expected Revenue, Delinquency Sum, Pending Payouts)               │
+│  ├── Tab 1: Contratos Activos (Card/List, Status badges, LeaseFormSheet drawer)                   │
+│  ├── Tab 2: Control de Cobranza (Semáforo, 1-Click WhatsApp PSE/Wompi, Payment Logging)          │
+│  └── Tab 3: Liquidaciones a Propietarios (Ledger, Deduction Inspector, SettlementModal, Payouts) │
+└─────────────────────────────────────────────┬─────────────────────────────────────────────────────┘
+                                              │ Server Actions / Services
+                                              ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            Rentals Domain Engine & Services                                       │
+│  ├── settlement-calculator.ts (Gross, 8% Commission, 19% VAT, Admin Fees, Deductions, Net Payout)│
+│  ├── leases.ts (Create, Update, Terminate, Query with property/tenant/owner joins)               │
+│  ├── settlements.ts (Generate Monthly Settlements, Record Payment, Record Payout, Deductions)    │
+│  └── whatsapp-notifier.ts (Normalized phone formatting, PSE payment links, Payout extract links) │
+└─────────────────────────────────────────────┬─────────────────────────────────────────────────────┘
+                                              │ Supabase Client / SQL Migrations
+                                              ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                PostgreSQL & Supabase Database                                     │
+│  ├── property_leases (Multi-tenant contract registry, links service_catalog & leads)              │
+│  ├── property_lease_settlements (Monthly financial ledger, deductions JSONB, status tracking)    │
+│  └── RLS Policies (Strict organization_id tenant boundary isolation)                             │
+└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Space Category & Helpers | Extend `SpaceCategory` in `space-helpers.ts`, `types/saas.ts`, `vertical-registry.ts`, and `use-space-policies.ts` to include `'real_estate'` | M1 (DONE) | Survey Miner 1 |
-| 2 | Capabilities Registry Preset | Register `DynamicSpaceConfig` preset for `real_estate` with Spanish terminology, tabs, channels, and capabilities in `capabilities-registry.ts` | M1 (DONE) | Survey Miner 1 |
-| 3 | Route & Module Config | Update `module-config.ts` ensuring `/portfolio` and CRM subroutes map correctly for `real_estate` | M1 (DONE) | Survey Miner 1 |
-| 4 | Super Admin UI & App Slider | Add Real Estate space category to `create-app-dialog.tsx`, `app-details-sheet.tsx`, `create-app-sheet.tsx`, and add `Building2` icon to `app-slider.tsx` | M2 (DONE) | Survey Miner 1 |
-| 5 | Seed `app_real_estate_pro` | Provide idempotent migration/seed registering `app_real_estate_pro` in `saas_apps` and linking 7 system modules in `saas_app_modules` | M2 (DONE) | Survey Miner 1 |
-| 6 | Tenant Provisioning Action | In `provisioning.ts`, auto-seed default categories (*Apartamentos*, *Casas*, etc.), set `portal_theme_config` preset, auto-enable modules, and configure CRM pipeline | M3 (DONE) | Survey Explorer 1 |
-| 7 | Dashboard & Workspace UI | In `dashboard-actions.ts`, compute `realEstateMetrics`, create `RealEstateDashboard`, and adapt `catalog-workspace.tsx` / `catalog-items-tab.tsx` terminology | M4 (DONE) | Survey Explorer 2 |
-| 8 | E2E Test Suite & Zero Debt | Add Real Estate test suites across Tiers 1-5 in `tests/e2e/catalog/`, update `contracts.ts`, ensure 100% test pass rate and 0 `tsc --noEmit` errors | M5 (DONE) | Survey Explorer 2 |
+| 1 | Database Migration & Tables | `property_leases`, `property_lease_settlements`, indexes, updated_at triggers, RLS policies | M1 | ORIGINAL_REQUEST §R1 |
+| 2 | Pure Mathematical Engine | `settlement-calculator.ts`: Gross, 8% Commission, 19% VAT on commission, Admin fee logic, Deductions, Net Payout | M2 | ORIGINAL_REQUEST §R2 |
+| 3 | Lease Management Server Actions | `leases.ts`: `createLeaseAction`, `updateLeaseAction`, `terminateLeaseAction`, `getLeasesAction`, `getLeaseByIdAction` | M2 | ORIGINAL_REQUEST §R2 |
+| 4 | Monthly Settlement Server Actions | `settlements.ts`: `generateMonthlySettlementsAction`, `recordTenantPaymentAction`, `recordOwnerPayoutAction`, `addDeductionAction`, `getSettlementsAction` | M2 | ORIGINAL_REQUEST §R2 |
+| 5 | WhatsApp Notification Engine | `whatsapp-notifier.ts`: Tenant payment reminder links with PSE/Wompi, Landlord payout settlement extract links | M2 | ORIGINAL_REQUEST §R2 |
+| 6 | SSR Page & IAM Protection | `src/app/(dashboard)/rentals/page.tsx` with session check, `requireOrgRole("member")`, and `real_estate` space gate | M3 | ORIGINAL_REQUEST §R3 |
+| 7 | Reactive Rentals Workspace | `rentals-workspace.tsx` with KPI Header and 3 interactive tabs (Contratos, Cobranzas, Liquidaciones) | M3 | ORIGINAL_REQUEST §R3 |
+| 8 | Interactive Forms & Modals | `LeaseFormSheet` (multi-step lease creator) and `SettlementModal` (deduction inspector & payout manager) | M3 | ORIGINAL_REQUEST §R3 |
+| 9 | Sidebar & Space Navigation | Register `module_rentals` in `module-config.ts`, `capabilities-registry.ts`, `sidebar.tsx` with `KeyRound` icon | M4 | ORIGINAL_REQUEST §R4 |
+| 10 | Praxis Inmobiliaria Seeding | `seed-praxis-rentals.ts`: 5 contacts in `leads`, 4 active leases in Ibagué, monthly settlements across diverse statuses | M5 | ORIGINAL_REQUEST §R5 |
+| 11 | Automated E2E Test Suite | Expand `tests/e2e/catalog/runner.ts` with Math, RLS, Lifecycle, Non-interference tests & guarantee 0 `tsc --noEmit` errors | M6 | ORIGINAL_REQUEST §R6 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Core Space Architecture & Registry | `space-helpers.ts`, `types/saas.ts`, `capabilities-registry.ts`, `vertical-registry.ts`, `use-space-policies.ts`, `module-config.ts` | none | DONE |
-| M2 | Super Admin & SaaS Engine App Provisioning | `create-app-dialog.tsx`, `app-details-sheet.tsx`, `create-app-sheet.tsx`, `app-slider.tsx`, `seed_real_estate_app.sql`, `seed-apps.ts` | M1 | DONE |
-| M3 | Tenant Lifecycle & Automated PropTech Initialization | `provisioning.ts`, `templates-shared.ts`, default category seeding, `portal_theme_config` preset | M1, M2 | DONE |
-| M4 | Workspace & Dashboard PropTech Adaptation | `dashboard-actions.ts`, `real-estate-dashboard.tsx`, `dashboard/page.tsx`, `catalog-workspace.tsx`, `catalog-items-tab.tsx` | M1, M3 | DONE |
-| M5 | Comprehensive E2E Test Suite & Zero Tech Debt | `tests/e2e/catalog/`, `contracts.ts`, `tsc --noEmit` clean, 100% test pass rate | M1, M2, M3, M4 | DONE |
+| M1 | Database Schema & Multi-Tenant Isolation | SQL Migration `20260823000000_property_leases_and_settlements.sql`, RLS policies, indexes, system_modules registration | none | DONE |
+| M2 | Core Mathematical Engine & Server Actions | `settlement-calculator.ts`, `leases.ts`, `settlements.ts`, `whatsapp-notifier.ts`, `rentals.types.ts`, `rentals.schema.ts` | M1 | DONE |
+| M3 | Admin Workspace & Reactive UI (/rentals) | `src/app/(dashboard)/rentals/page.tsx`, `rentals-workspace.tsx`, `LeaseFormSheet`, `SettlementModal`, KPI cards | M2 | DONE |
+| M4 | Sidebar & Space System Integration | `src/modules/core/saas/module-config.ts`, `capabilities-registry.ts`, `sidebar.tsx`, i18n dictionaries | M3 | DONE |
+| M5 | Realistic Seeding for Praxis Inmobiliaria | `src/scripts/seed-praxis-rentals.ts` with 5 contacts, 4 active leases, monthly settlements | M1, M2 | DONE |
+| M6 | Comprehensive Automated E2E Test Suite & Zero Regressions | `tests/e2e/catalog/runner.ts` expansion (Tier 1-4 tests for RentFlow Pro), 0 `tsc --noEmit` errors | M1, M2, M3, M4, M5 | IN_PROGRESS |
 
 ## Interface Contracts
-### Space Helpers & Capabilities ↔ SaaS & Provisioning
-- `SpaceCategory` includes `'real_estate'`.
-- `CAPABILITY_PRESETS['real_estate']` provides:
-  - Terminology: `client: 'Cliente / Comprador'`, `clients: 'Clientes / Prospectos'`, `project: 'Inmueble / Propiedad'`, `sale: 'Cierre / Negocio'`, `action_new: 'Nuevo Prospecto'`.
-  - Visible tabs: `['info', 'activity', 'services', 'billing']`.
-  - Enabled channels: `['whatsapp', 'email', 'sms']`.
-  - Capabilities: `['crm.core', 'crm.advanced', 'crm.quotes', 'messaging.standard', 'messaging.ai_agent', 'billing.management', 'automation.engine']`.
+### `settlement-calculator.ts`
+```typescript
+export interface CalculationInput {
+    monthlyRent: number;
+    adminFee: number;
+    adminPaidBy: 'agency' | 'tenant';
+    commissionPercentage: number;
+    vatOnCommission: boolean;
+    deductions?: Array<{ amount: number }>;
+}
 
-### SaaS App Seeding ↔ Provisioning Action
-- `saas_apps` entry: `id: 'app_real_estate_pro'`, `name: 'Real Estate & PropTech Pro'`, `slug: 'real-estate-pro'`, `category: 'real_estate'`, `icon: 'Building2'`, `price_monthly: 99.00`.
-- Linked modules in `saas_app_modules`: `core_crm`, `core_clients`, `module_messaging`, `module_quotes`, `module_catalog`, `module_automation`, `core_locations`.
+export interface CalculationResult {
+    rentAmount: number;
+    adminFeeAmount: number;
+    grossCollected: number;
+    commissionAmount: number;
+    vatAmount: number;
+    totalAgencyFee: number;
+    deductionsAmount: number;
+    netOwnerPayout: number;
+}
 
-### Provisioning ↔ Catalog & Portal Theme
-- Seeded default categories in `service_categories`:
-  - *Apartamentos* (`slug: 'apartamentos'`, `icon: 'Building'`, `order_index: 0`)
-  - *Casas* (`slug: 'casas'`, `icon: 'Home'`, `order_index: 1`)
-  - *Oficinas & Locales Comerciales* (`slug: 'oficinas-locales'`, `icon: 'Briefcase'`, `order_index: 2`)
-  - *Lotes & Fincas* (`slug: 'lotes-fincas'`, `icon: 'Trees'`, `order_index: 3`)
-  - *Proyectos Sobre Planos* (`slug: 'proyectos-planos'`, `icon: 'FileSpreadsheet'`, `order_index: 4`)
-- `portal_theme_config`: `{ industry_preset: 'real_estate', widget_config: { show_real_estate_filters: true, show_mortgage_calculator: true } }`.
+export function calculateSettlement(input: CalculationInput): CalculationResult;
+export function formatCOP(amount: number): string;
+```
+
+### `leases.ts` (Server Actions)
+```typescript
+export async function createLeaseAction(input: CreateLeaseInput): Promise<ActionResponse<PropertyLease>>;
+export async function updateLeaseAction(id: string, updates: Partial<CreateLeaseInput>): Promise<ActionResponse<PropertyLease>>;
+export async function terminateLeaseAction(id: string, notes?: string): Promise<ActionResponse<PropertyLease>>;
+export async function getLeasesAction(filters?: { status?: LeaseStatus; propertyId?: string }): Promise<ActionResponse<PropertyLease[]>>;
+export async function getLeaseByIdAction(id: string): Promise<ActionResponse<PropertyLease | null>>;
+```
+
+### `settlements.ts` (Server Actions)
+```typescript
+export async function generateMonthlySettlementsAction(period: string, leaseIds?: string[]): Promise<ActionResponse<PropertyLeaseSettlement[]>>;
+export async function recordTenantPaymentAction(input: RecordTenantPaymentInput): Promise<ActionResponse<PropertyLeaseSettlement>>;
+export async function recordOwnerPayoutAction(input: RecordOwnerPayoutInput): Promise<ActionResponse<PropertyLeaseSettlement>>;
+export async function addDeductionAction(settlementId: string, deduction: DeductionInput): Promise<ActionResponse<PropertyLeaseSettlement>>;
+export async function getSettlementsAction(filters?: { period?: string; tenantStatus?: string; ownerStatus?: string }): Promise<ActionResponse<PropertyLeaseSettlement[]>>;
+```
+
+### `whatsapp-notifier.ts`
+```typescript
+export function generateTenantPaymentWhatsAppLink(params: TenantPaymentReminderParams): string;
+export function generateOwnerPayoutWhatsAppLink(params: OwnerPayoutNotificationParams): string;
+```
 
 ## Code Layout
-- Space Core: `src/modules/core/organizations/space-helpers.ts`, `src/types/saas.ts`, `src/modules/core/organizations/capabilities-registry.ts`, `src/modules/core/organizations/vertical-registry.ts`, `src/modules/flows/hooks/use-space-policies.ts`
-- SaaS Routing: `src/modules/core/saas/module-config.ts`
-- Super Admin UI: `src/app/(dashboard)/platform/admin/apps/_components/create-app-dialog.tsx`, `src/app/(dashboard)/platform/admin/apps/_components/app-details-sheet.tsx`, `src/modules/core/saas/create-app-sheet.tsx`, `src/modules/core/lifecycle/components/onboarding/app-slider.tsx`
-- Database Migrations / Seeds: `supabase/migrations/20260822000001_seed_real_estate_app.sql`
-- Provisioning: `src/modules/core/organizations/actions/provisioning.ts`, `src/modules/features/crm/services/logic/templates-shared.ts`
-- Dashboard: `src/modules/core/dashboard/dashboard-actions.ts`, `src/modules/core/dashboard/components/real-estate-dashboard.tsx`, `src/app/(dashboard)/dashboard/page.tsx`
-- Catalog Workspace: `src/modules/features/catalog/components/catalog-workspace.tsx`, `src/modules/features/catalog/components/catalog-items-tab.tsx`
-- E2E Tests: `tests/e2e/catalog/`
+```
+supabase/migrations/
+└── 20260823000000_property_leases_and_settlements.sql
+
+src/
+├── app/(dashboard)/
+│   └── rentals/
+│       └── page.tsx
+├── components/layout/
+│   └── sidebar.tsx
+├── modules/
+│   ├── core/
+│   │   ├── i18n/dictionaries/
+│   │   │   ├── es.ts
+│   │   │   └── en.ts
+│   │   ├── organizations/
+│   │   │   └── capabilities-registry.ts
+│   │   └── saas/
+│   │       └── module-config.ts
+│   └── features/
+│       └── rentals/
+│           ├── actions/
+│           │   ├── leases.ts
+│           │   └── settlements.ts
+│           ├── components/
+│           │   ├── rentals-workspace.tsx
+│           │   ├── lease-form-sheet.tsx
+│           │   ├── settlement-modal.tsx
+│           │   ├── leases-tab.tsx
+│           │   ├── collections-tab.tsx
+│           │   ├── settlements-tab.tsx
+│           │   └── rentals-kpis.tsx
+│           ├── schemas/
+│           │   └── rentals.schema.ts
+│           ├── services/
+│           │   ├── settlement-calculator.ts
+│           │   ├── rentals-service.ts
+│           │   └── whatsapp-notifier.ts
+│           └── types/
+│               └── rentals.types.ts
+├── scripts/
+│   └── seed-praxis-rentals.ts
+└── types/
+    └── rentals.ts
+
+tests/e2e/catalog/
+├── tier1-features/
+│   └── t1-28-rentflow-pro-engine.test.ts
+├── tier2-boundaries/
+│   └── t2-28-rentflow-calculations-boundaries.test.ts
+├── tier3-pairwise/
+│   └── t3-11-rentals-real-estate-integration.test.ts
+└── tier4-scenarios/
+    └── t4-14-praxis-rentals-lifecycle-scenario.test.ts
+```

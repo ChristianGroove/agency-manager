@@ -258,3 +258,4 @@ export type WorkOrder = {
 }
 export * from './resto-menu'
 export * from './catalog'
+export * from './rentals'
