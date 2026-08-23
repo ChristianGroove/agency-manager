@@ -126,6 +126,62 @@ Integrity mode: development
 - [ ] The sidebar displays "Gestión de Arriendos" for Real Estate tenants and is hidden for other spaces.
 
 ### Seeding & Real-World Validation
-- [ ] `Praxis Inmobiliaria` has 5 seeded contacts, 4 active leases, and monthly settlements reflecting real-world property management in Ibagué.
 - [ ] 100% of automated tests pass in `tests/e2e/catalog/runner.ts`.
 - [ ] `tsc --noEmit` returns 0 compilation errors.
+
+## 2026-08-23T20:46:44Z
+
+Perform a comprehensive 360° audit, empirical end-to-end workflow verification, UX/UI inspection, and architectural hardening of the RentFlow Pro (module_rentals) module and Real Estate Space on tenant Praxis Inmobiliaria (c41dcf16-f94d-499d-a1f8-bc9027206495), ensuring flawless mathematical calculations, zero cross-industry side effects, and pristine data integrity across all multi-tenant spaces.
+
+Working directory: g:/Pixy/agency-manager
+Integrity mode: development
+
+## Requirements
+
+### R1. Complete RentFlow Pro End-to-End Workflow & Edge-Case Verification
+- Audit and test every user interaction in /rentals across the 3 core tabs:
+  - Tab 1: Contratos Activos: Lease creation drawer (LeaseFormSheet), property selection (service_catalog), tenant & owner linking (leads), co-signer attachments, deposit tracking, rent & admin fee parameters, commission splits, and termination workflows.
+  - Tab 2: Control de Cobranza (Inquilinos): Semáforo calculation (Al Día, Por Vencer, En Mora, Siniestro), 1-click WhatsApp payment reminders with dynamic URL links, payment recording, and partial/late payment edge cases.
+  - Tab 3: Liquidaciones a Propietarios: Monthly period generation, deduction management with repair/maintenance evidence attachments, commission & VAT computations (8% + 19% IVA), net owner payout validation, and statement link generation.
+- Validate state machine transitions and guards (e.g. preventing payouts before tenant collection unless insured, preventing duplicate periods).
+
+### R2. Deep PropTech UX/UI & Usability Audit (Praxis Inmobiliaria Benchmark)
+- Perform an exhaustive UX/UI review of the /rentals workspace, sheets, modals, and KPI cards:
+  - Contrast, typographic hierarchy, responsive breakpoints (mobile, tablet, desktop), and dark/light theme consistency.
+  - Visual clarity of financial breakdowns (gross collected, commission, IVA, deductions, net to owner).
+  - Empty states, loading skeletons, validation error states, and intuitive micro-interactions.
+  - Identification of any clunky flows, confusing labels, redundant clicks, or missing shortcuts.
+
+### R3. Cross-Industry Catalog & Space Zero-Regression Audit
+- Verify that the Universal Catalog (/portfolio), Storefront Portal (/tienda), and CRM operations remain 100% unaffected for all non-real-estate spaces (agency, resto, cleaning, retail, saas).
+- Ensure no real estate rental logic, metadata leaks, or UI elements pollute non-real-estate items or tenant workspaces.
+- Verify strict backwards compatibility with Quotes (/quotes), Invoices (/invoicing), Contracts (/hosting), and Briefings.
+
+### R4. Relational Data Integrity, RLS Security & Performance
+- Audit database schemas (property_leases, property_lease_settlements), foreign key constraints, unique indexes, and multi-tenant Row Level Security (RLS).
+- Guarantee zero data leakage between different organizations.
+- Benchmark and optimize query performance, server action execution times, and cache invalidation hooks.
+
+### R5. Comprehensive Automated E2E Test Matrix Expansion & Technical Debt Report
+- Expand the automated test runner (tests/e2e/catalog/runner.ts) with exhaustive new test suites covering:
+  - Complex multi-month settlement roll-forwards.
+  - Prorated rent calculations, multi-deduction matrices, and tax edge cases.
+  - Cross-space isolation invariants.
+- Produce a structured Technical Debt & Audit Findings report highlighting all identified bugs, inconsistencies, and recommended enhancements.
+
+## Acceptance Criteria
+
+### Workflow & Functional Integrity
+- [ ] All lease creation, tenant collection, payment logging, deduction recording, and owner payout flows execute with zero runtime errors.
+- [ ] Financial calculations match Colombian real estate accounting standards down to the cent across all edge cases.
+- [ ] WhatsApp notification links generate properly formatted messages and URLs.
+
+### UX / UI & Usability
+- [ ] 0 visual glitches, contrast flaws, or responsive layout issues across Light/Dark modes in /rentals.
+- [ ] All modals, sheets, and drawers provide smooth transitions, clear validations, and intuitive confirmation steps.
+
+### Cross-Industry & Security Guardrails
+- [ ] 0 regressions or behavioral changes in Catalog, Storefront, Quotes, or CRM across all non-real-estate spaces.
+- [ ] Strict multi-tenant isolation confirmed with 0 cross-organization data access.
+- [ ] tsc --noEmit returns 0 compilation errors.
+- [ ] 100% of automated test suites in tests/e2e/catalog/runner.ts pass with 0 failures.

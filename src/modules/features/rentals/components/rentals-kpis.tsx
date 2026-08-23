@@ -74,8 +74,8 @@ export function RentalsKPIs({ leases = [], settlements = [] }: RentalsKPIsProps)
       value: formatCOP(pendingPayoutSum),
       subtext: `${pendingPayoutCount} desembolsos a propietarios`,
       icon: Clock,
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/20",
+      color: "text-amber-700 dark:text-amber-400",
+      bgColor: "bg-amber-500/10 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/20",
     },
   ];
 

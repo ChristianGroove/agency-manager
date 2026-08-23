@@ -6,7 +6,14 @@
 
 export * from './types/rentals.types';
 export * from './schemas/rentals.schema';
-export * from './services/settlement-calculator';
+export {
+  calculateSettlement,
+  calculateProratedRent,
+  formatCOP,
+  roundCurrency,
+  type SettlementInput,
+  type SettlementOutput,
+} from './services/settlement-calculator';
 export * from './services/whatsapp-notifier';
 export * as RentalsService from './services/rentals-service';
 export * from './actions/leases';

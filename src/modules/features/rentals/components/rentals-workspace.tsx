@@ -247,7 +247,7 @@ export function RentalsWorkspace({
               <Receipt className="h-4 w-4" />
               <span>Liquidaciones Propietarios</span>
               {pendingPayoutsCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-mono">
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300/60 dark:border-amber-500/20 text-[10px] font-mono">
                   {pendingPayoutsCount}
                 </span>
               )}

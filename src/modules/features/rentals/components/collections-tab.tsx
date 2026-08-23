@@ -38,6 +38,8 @@ import {
   CreditCard,
   Banknote,
   Send,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCOP } from "../services/settlement-calculator";
@@ -203,6 +205,50 @@ export function CollectionsTab({
     });
   };
 
+  const formatColombianDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "";
+    try {
+      const cleanStr = dateStr.split("T")[0];
+      const parts = cleanStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return cleanStr;
+        const dd = String(day).padStart(2, "0");
+        const mm = String(month + 1).padStart(2, "0");
+        return `${dd}/${mm}/${year}`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr || "";
+    }
+  };
+
+  const stepMonth = (currentPeriod: string, delta: number): string => {
+    try {
+      const [yearStr, monthStr] = currentPeriod.split("-");
+      let y = parseInt(yearStr, 10);
+      let m = parseInt(monthStr, 10);
+      if (isNaN(y) || isNaN(m)) {
+        const now = new Date();
+        y = now.getFullYear();
+        m = now.getMonth() + 1;
+      }
+      m += delta;
+      if (m > 12) {
+        y += 1;
+        m = 1;
+      } else if (m < 1) {
+        y -= 1;
+        m = 12;
+      }
+      return `${y}-${String(m).padStart(2, "0")}`;
+    } catch {
+      return currentPeriod;
+    }
+  };
+
   const getStatusBadge = (status: TenantPaymentStatus) => {
     switch (status) {
       case "paid":
@@ -225,7 +271,7 @@ export function CollectionsTab({
         );
       case "partial":
         return (
-          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[11px] font-bold">
+          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/20 text-[11px] font-bold">
             ● Abono Parcial
           </Badge>
         );
@@ -326,19 +372,44 @@ export function CollectionsTab({
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <Input
-              type="text"
-              value={targetPeriod}
-              onChange={(e) => setTargetPeriod(e.target.value)}
-              placeholder="YYYY-MM"
-              className="w-24 h-10 rounded-xl text-xs font-mono text-center border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80"
-            />
+            <div className="flex items-center rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 p-0.5 shadow-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setTargetPeriod((prev) => stepMonth(prev, -1))}
+                className="h-8 w-8 p-0 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                title="Mes anterior"
+                aria-label="Mes anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Input
+                type="text"
+                value={targetPeriod}
+                onChange={(e) => setTargetPeriod(e.target.value)}
+                placeholder="YYYY-MM"
+                className="w-20 h-8 rounded-none text-xs font-mono font-bold text-center border-0 bg-transparent shadow-none focus-visible:ring-0 px-1 text-zinc-900 dark:text-white"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setTargetPeriod((prev) => stepMonth(prev, 1))}
+                className="h-8 w-8 p-0 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                title="Mes siguiente"
+                aria-label="Mes siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
             <Button
               type="button"
               variant="outline"
               disabled={isGenerating}
               onClick={handleGeneratePeriodSettlements}
-              className="rounded-xl h-10 px-3.5 text-xs font-bold border-brand-pink/30 hover:bg-brand-pink/10 text-brand-pink gap-1.5"
+              className="rounded-xl h-10 px-3.5 text-xs font-bold border-brand-pink/30 hover:bg-brand-pink/10 text-brand-pink gap-1.5 shadow-sm"
             >
               {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
               Generar Mes
@@ -455,7 +526,7 @@ export function CollectionsTab({
                             </Button>
                           ) : (
                             <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-mono px-2 py-0.5">
-                              Pagado ({s.tenant_paid_at ? s.tenant_paid_at.split("T")[0] : "OK"})
+                              Pagado ({s.tenant_paid_at ? formatColombianDate(s.tenant_paid_at) : "OK"})
                             </Badge>
                           )}
                         </div>

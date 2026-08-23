@@ -6,6 +6,8 @@
 
 import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
+import { requireOrgRole } from '@/modules/core/iam/services/org-roles';
+import { revalidatePath } from 'next/cache';
 import { calculateSettlement } from './settlement-calculator';
 import type {
   PropertyLease,
@@ -31,6 +33,45 @@ function getErrorMessage(error: unknown, fallback: string): string {
     return (error as any).message;
   }
   return fallback;
+}
+
+/**
+ * Safe wrapper around revalidatePath that will not fail in standalone script environments
+ */
+function safeRevalidate(paths: string[] = ['/rentals', '/portfolio']) {
+  try {
+    for (const p of paths) {
+      revalidatePath(p);
+    }
+  } catch (_) {
+    // Gracefully ignore when invoked outside of active Next.js server request lifecycle
+  }
+}
+
+/**
+ * Validates active organization ID and IAM role
+ */
+async function resolveOrganizationAndRole(
+  explicitOrgId?: string,
+  inputOrgId?: string
+): Promise<{ orgId: string | null; error?: string }> {
+  const orgId = explicitOrgId || inputOrgId || await getCurrentOrganizationId();
+  if (!orgId) {
+    return { orgId: null, error: 'No se encontró la organización activa' };
+  }
+
+  // If executing in a live user session without explicit override, enforce member role
+  if (!explicitOrgId && !inputOrgId) {
+    try {
+      await requireOrgRole('member');
+    } catch (roleErr: any) {
+      if (roleErr?.message?.includes('Unauthorized')) {
+        return { orgId: null, error: 'No tienes permisos suficientes en esta organización' };
+      }
+    }
+  }
+
+  return { orgId };
 }
 
 /**
@@ -94,9 +135,9 @@ export async function createLease(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLease>> {
   try {
-    const orgId = explicitOrgId || input.organization_id || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId, input.organization_id);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -146,6 +187,8 @@ export async function createLease(
       await updatePropertyRentalStatus(supabase, input.property_id, orgId, 'rented');
     }
 
+    safeRevalidate(['/rentals', '/portfolio']);
+
     return { success: true, data: data as PropertyLease };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in createLease:', err);
@@ -162,9 +205,9 @@ export async function updateLease(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLease>> {
   try {
-    const orgId = explicitOrgId || updates.organization_id || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId, updates.organization_id);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -236,6 +279,8 @@ export async function updateLease(
       await updatePropertyRentalStatus(supabase, existing.property_id, orgId, 'available');
     }
 
+    safeRevalidate(['/rentals', '/portfolio']);
+
     return { success: true, data: data as PropertyLease };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in updateLease:', err);
@@ -252,9 +297,9 @@ export async function terminateLease(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLease>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -299,6 +344,8 @@ export async function terminateLease(
     // Set property back to 'available'
     await updatePropertyRentalStatus(supabase, existing.property_id, orgId, 'available');
 
+    safeRevalidate(['/rentals', '/portfolio']);
+
     return { success: true, data: data as PropertyLease };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in terminateLease:', err);
@@ -314,9 +361,9 @@ export async function getLeases(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLease[]>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -372,9 +419,9 @@ export async function getLeaseById(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLease | null>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -414,9 +461,9 @@ export async function generateMonthlySettlements(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLeaseSettlement[]>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     // Validate period format (YYYY-MM)
@@ -512,6 +559,8 @@ export async function generateMonthlySettlements(
       }
     }
 
+    safeRevalidate(['/rentals']);
+
     // 4. Return all settlements for this period
     return await getSettlements({ period }, orgId);
   } catch (err) {
@@ -528,9 +577,9 @@ export async function recordTenantPayment(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLeaseSettlement>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -569,6 +618,8 @@ export async function recordTenantPayment(
       return { success: false, error: getErrorMessage(error, 'No se pudo registrar el pago del inquilino') };
     }
 
+    safeRevalidate(['/rentals']);
+
     return { success: true, data: data as PropertyLeaseSettlement };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in recordTenantPayment:', err);
@@ -584,9 +635,9 @@ export async function recordOwnerPayout(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLeaseSettlement>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -622,6 +673,8 @@ export async function recordOwnerPayout(
       return { success: false, error: getErrorMessage(error, 'No se pudo registrar la transferencia al propietario') };
     }
 
+    safeRevalidate(['/rentals']);
+
     return { success: true, data: data as PropertyLeaseSettlement };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in recordOwnerPayout:', err);
@@ -638,9 +691,9 @@ export async function addDeduction(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLeaseSettlement>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -714,6 +767,8 @@ export async function addDeduction(
       return { success: false, error: getErrorMessage(error, 'No se pudo agregar la deducción') };
     }
 
+    safeRevalidate(['/rentals']);
+
     return { success: true, data: data as PropertyLeaseSettlement };
   } catch (err) {
     console.error('[RENTALS_SERVICE] Unexpected error in addDeduction:', err);
@@ -729,9 +784,9 @@ export async function getSettlements(
   explicitOrgId?: string
 ): Promise<ActionResponse<PropertyLeaseSettlement[]>> {
   try {
-    const orgId = explicitOrgId || await getCurrentOrganizationId();
-    if (!orgId) {
-      return { success: false, error: 'No se encontró la organización activa' };
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
     const supabase = await createClient();
@@ -780,3 +835,20 @@ export async function getSettlements(
     return { success: false, error: getErrorMessage(err, 'Error inesperado al obtener las liquidaciones') };
   }
 }
+
+// ==============================================================================
+// SERVER ACTION ALIASES FOR DIRECT SERVICE LAYER INTEGRATION
+// ==============================================================================
+export {
+  createLease as createLeaseAction,
+  updateLease as updateLeaseAction,
+  terminateLease as terminateLeaseAction,
+  getLeases as getLeasesAction,
+  getLeaseById as getLeaseByIdAction,
+  generateMonthlySettlements as generateMonthlySettlementsAction,
+  recordTenantPayment as recordTenantPaymentAction,
+  recordOwnerPayout as recordOwnerPayoutAction,
+  addDeduction as addDeductionAction,
+  getSettlements as getSettlementsAction,
+};
+

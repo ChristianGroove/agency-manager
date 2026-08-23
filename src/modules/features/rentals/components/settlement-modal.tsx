@@ -65,6 +65,26 @@ export function SettlementModal({
 }: SettlementModalProps) {
   const [isPending, startTransition] = useTransition();
 
+  const formatColombianDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "";
+    try {
+      const cleanStr = dateStr.split("T")[0];
+      const parts = cleanStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return cleanStr;
+        const dd = String(day).padStart(2, "0");
+        const mm = String(month + 1).padStart(2, "0");
+        return `${dd}/${mm}/${year}`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr || "";
+    }
+  };
+
   // Deduction Form state
   const [showAddDeduction, setShowAddDeduction] = useState(false);
   const [concept, setConcept] = useState("");
@@ -222,7 +242,7 @@ export function SettlementModal({
                       PAGADO AL PROPIETARIO
                     </Badge>
                   ) : (
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold">
+                    <Badge className="bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold">
                       PENDIENTE DE DISPERSIÓN
                     </Badge>
                   )}
@@ -368,7 +388,7 @@ export function SettlementModal({
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-zinc-500">
-                        <span>{ded.date || "Fecha no especificada"}</span>
+                        <span>{ded.date ? formatColombianDate(ded.date) : "Fecha no especificada"}</span>
                         {ded.notes && <span>• {ded.notes}</span>}
                         {ded.receipt_url && (
                           <a

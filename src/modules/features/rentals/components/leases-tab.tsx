@@ -118,6 +118,53 @@ export function LeasesTab({
     });
   };
 
+  const formatColombianDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "";
+    try {
+      const cleanStr = dateStr.split("T")[0];
+      const parts = cleanStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return cleanStr;
+        const dd = String(day).padStart(2, "0");
+        const mm = String(month + 1).padStart(2, "0");
+        return `${dd}/${mm}/${year}`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr || "";
+    }
+  };
+
+  const getDaysUntilExpiry = (endDateStr?: string | null): number | null => {
+    if (!endDateStr) return null;
+    try {
+      const cleanStr = endDateStr.split("T")[0];
+      const parts = cleanStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const endDate = new Date(year, month, day);
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const diffMs = endDate.getTime() - todayStart.getTime();
+        return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const isRenewalPreaviso = (lease: PropertyLease): boolean => {
+    if (lease.status !== "active" || !lease.end_date) return false;
+    const daysLeft = getDaysUntilExpiry(lease.end_date);
+    return daysLeft !== null && daysLeft >= 0 && daysLeft <= 90;
+  };
+
   const getStatusBadge = (status: LeaseStatus) => {
     switch (status) {
       case "active":
@@ -128,7 +175,7 @@ export function LeasesTab({
         );
       case "pending":
         return (
-          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[11px] font-bold">
+          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/20 text-[11px] font-bold">
             ● Pendiente
           </Badge>
         );
@@ -194,7 +241,7 @@ export function LeasesTab({
             <SelectContent className="rounded-xl">
               <SelectItem value="all" className="text-xs">Todos los estados</SelectItem>
               <SelectItem value="active" className="text-xs font-semibold text-emerald-600">Activos</SelectItem>
-              <SelectItem value="pending" className="text-xs font-semibold text-amber-600">Pendientes</SelectItem>
+              <SelectItem value="pending" className="text-xs font-semibold text-amber-700 dark:text-amber-400">Pendientes</SelectItem>
               <SelectItem value="defaulted" className="text-xs font-semibold text-rose-600">En Mora</SelectItem>
               <SelectItem value="expired" className="text-xs font-semibold text-zinc-500">Vencidos</SelectItem>
               <SelectItem value="terminated" className="text-xs font-semibold text-gray-400">Terminados</SelectItem>
@@ -296,9 +343,15 @@ export function LeasesTab({
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     
-                    {/* Status badge on top right */}
-                    <div className="absolute top-3 right-3">
+                    {/* Status & Preaviso badge on top right */}
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
                       {getStatusBadge(lease.status)}
+                      {isRenewalPreaviso(lease) && (
+                        <Badge className="bg-amber-500/90 text-white dark:bg-amber-500/20 dark:text-amber-400 border border-amber-300 dark:border-amber-500/20 text-[10px] font-bold shadow-sm backdrop-blur-md gap-1">
+                          <AlertTriangle className="h-3 w-3 text-white dark:text-amber-400" />
+                          Por Renovar (90 días)
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Neighborhood tag on top left */}
@@ -369,7 +422,7 @@ export function LeasesTab({
                     </div>
 
                     {/* Guarantee & Validity */}
-                    <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-white/5 space-y-1 text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-white/5 space-y-1.5 text-[11px]">
                       <div className="flex items-center justify-between">
                         <span className="text-zinc-500 flex items-center gap-1">
                           <ShieldCheck className="h-3 w-3 text-brand-pink" />
@@ -379,13 +432,20 @@ export function LeasesTab({
                           {lease.guarantee_details?.provider || "Directa"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-400">
                         <span>Vigencia:</span>
-                        <span>
-                          {lease.start_date ? lease.start_date.split("T")[0] : ""} al{" "}
-                          {lease.end_date ? lease.end_date.split("T")[0] : ""}
+                        <span className="font-mono font-medium">
+                          {formatColombianDate(lease.start_date)} al {formatColombianDate(lease.end_date)}
                         </span>
                       </div>
+                      {isRenewalPreaviso(lease) && (
+                        <div className="pt-1 flex items-center justify-between text-[10px] text-amber-700 dark:text-amber-400 font-bold border-t border-amber-300/40 dark:border-amber-500/20">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" /> Preaviso Ley 820:
+                          </span>
+                          <span className="font-mono">Por Renovar (90 días)</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -449,6 +509,11 @@ export function LeasesTab({
                       <div>{lease.property?.name || "Inmueble"}</div>
                       <div className="text-[10px] font-normal text-zinc-400">
                         {lease.property?.real_estate_details?.neighborhood || "Ibagué"}
+                        {lease.start_date && (
+                          <span className="font-mono ml-1">
+                            • {formatColombianDate(lease.start_date)} al {formatColombianDate(lease.end_date)}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-4">
@@ -479,7 +544,16 @@ export function LeasesTab({
                     <td className="py-3 px-4 font-mono text-[11px]">
                       Pago: Día {lease.payment_day} • Giro: Día {lease.payout_day}
                     </td>
-                    <td className="py-3 px-4">{getStatusBadge(lease.status)}</td>
+                    <td className="py-3 px-4">
+                      <div className="space-y-1">
+                        {getStatusBadge(lease.status)}
+                        {isRenewalPreaviso(lease) && (
+                          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/20 text-[9px] font-bold block w-fit whitespace-nowrap">
+                            Por Renovar (90 días)
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button

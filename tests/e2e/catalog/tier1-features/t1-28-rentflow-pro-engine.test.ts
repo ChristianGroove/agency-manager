@@ -1,7 +1,7 @@
 /**
  * Tier 1 Test Suite: F28 - RentFlow Pro Pure Mathematical Engine & Financial Validation
  * Suite: t1-28-rentflow-pro-engine
- * Feature: Real Estate Lease Settlements, Colombian Statutory Tax (IVA 19%), Cent Precision, WhatsApp Links
+ * Feature: Real Estate Lease Settlements, Colombian Statutory Tax (IVA 19%), Cent Precision, Schemas, Co-Signer & WhatsApp Links
  */
 
 import {
@@ -10,6 +10,10 @@ import {
   assertFalse,
   assertDefined,
   assertContains,
+  assertThrows,
+  assertMatches,
+  TestRegistry,
+  TestSuiteResult,
 } from '../harness/assertions';
 import {
   calculateSettlement,
@@ -28,7 +32,18 @@ import {
   deductionItemSchema,
   recordTenantPaymentSchema,
   recordOwnerPayoutSchema,
+  addDeductionSchema,
 } from '../../../../src/modules/features/rentals/schemas/rentals.schema';
+import type { GuaranteeType, LeaseStatus } from '../../../../src/types/rentals';
+
+/**
+ * Receipt Number Generator Helper: Produces sequential references `LIQ-YYYYMM-XXXX`
+ */
+export function generateReceiptNumber(period: string, sequenceNumber: number): string {
+  const cleanPeriod = period.replace('-', '');
+  const paddedSeq = String(sequenceNumber).padStart(4, '0');
+  return `LIQ-${cleanPeriod}-${paddedSeq}`;
+}
 
 export const suite = {
   name: 'T1-28: RentFlow Pro Mathematical Engine, Schemas & WhatsApp Generator',
@@ -262,5 +277,241 @@ export const suite = {
         assertTrue(validLease.vat_on_commission, 'Default vat_on_commission true applied');
       },
     },
+    {
+      name: '10. Co-Signer Attachment Schema & Validation (co_signer_id linking CRM leads)',
+      fn: () => {
+        const coSignerUuid = 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44';
+
+        // 1. Valid lease with co-signer attached
+        const leaseWithCoSigner = createLeaseSchema.parse({
+          property_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          tenant_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+          owner_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+          co_signer_id: coSignerUuid,
+          monthly_rent: 2800000,
+          admin_fee: 320000,
+          admin_paid_by: 'agency',
+          start_date: '2026-09-01',
+          end_date: '2027-08-31',
+          bank_payout_details: {
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '300-456789-01',
+            account_holder: 'Alberto Gómez',
+            id_number: '14.285.901',
+            id_type: 'CC',
+          },
+        });
+        assertEqual(leaseWithCoSigner.co_signer_id, coSignerUuid, 'co_signer_id successfully attached to lease');
+
+        // 2. Valid lease with co-signer as null (optional)
+        const leaseWithoutCoSigner = createLeaseSchema.parse({
+          property_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          tenant_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+          owner_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+          co_signer_id: null,
+          monthly_rent: 2800000,
+          start_date: '2026-09-01',
+          end_date: '2027-08-31',
+          bank_payout_details: {
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '300-456789-01',
+            account_holder: 'Alberto Gómez',
+            id_number: '14.285.901',
+          },
+        });
+        assertEqual(leaseWithoutCoSigner.co_signer_id, null, 'co_signer_id allows null value');
+
+        // 3. Invalid non-UUID co_signer_id rejected by schema
+        assertThrows(() => {
+          createLeaseSchema.parse({
+            property_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+            tenant_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+            owner_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+            co_signer_id: 'not-a-valid-uuid',
+            monthly_rent: 2800000,
+            start_date: '2026-09-01',
+            end_date: '2027-08-31',
+            bank_payout_details: {
+              bank: 'Bancolombia',
+              account_type: 'savings',
+              account_number: '300-456789-01',
+              account_holder: 'Alberto Gómez',
+              id_number: '14.285.901',
+            },
+          });
+        }, 'Invalid UUID', 'Rejects malformed co_signer_id');
+      },
+    },
+    {
+      name: '11. Guarantee Type Enumeration Validation (direct, insurance, bond, deposit, promissory_note)',
+      fn: () => {
+        const guaranteeTypes: GuaranteeType[] = [
+          'direct',
+          'insurance',
+          'bond',
+          'deposit',
+          'promissory_note',
+        ];
+
+        for (const gType of guaranteeTypes) {
+          const parsed = createLeaseSchema.parse({
+            property_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+            tenant_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+            owner_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+            monthly_rent: 2000000,
+            start_date: '2026-09-01',
+            end_date: '2027-08-31',
+            guarantee_type: gType,
+            guarantee_details: {
+              provider: gType === 'insurance' ? 'Seguros Bolívar' : gType === 'bond' ? 'Fianzas de Colombia' : 'Direct Guarantee',
+              policy_number: `POL-${gType.toUpperCase()}-2026`,
+              coverage_percentage: 100,
+            },
+            bank_payout_details: {
+              bank: 'BBVA Colombia',
+              account_type: 'savings',
+              account_number: '0013-123456',
+              account_holder: 'Carlos Propietario',
+              id_number: '79.123.456',
+            },
+          });
+
+          assertEqual(parsed.guarantee_type, gType, `Guarantee type '${gType}' correctly accepted`);
+          assertEqual(parsed.guarantee_details?.coverage_percentage, 100, 'Coverage percentage parsed');
+        }
+
+        // Invalid guarantee type rejected
+        assertThrows(() => {
+          createLeaseSchema.parse({
+            property_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+            tenant_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+            owner_id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+            monthly_rent: 2000000,
+            start_date: '2026-09-01',
+            end_date: '2027-08-31',
+            guarantee_type: 'bitcoin_collateral' as any,
+            bank_payout_details: {
+              bank: 'BBVA',
+              account_type: 'savings',
+              account_number: '123',
+              account_holder: 'Carlos',
+              id_number: '79123',
+            },
+          });
+        }, undefined, 'Invalid guarantee type throws error');
+      },
+    },
+    {
+      name: '12. Bank Payout Details Schema Validation (Colombian Banks, Account Types & ID Types)',
+      fn: () => {
+        // 1. Valid Colombian Banks and Formats
+        const banks = ['Bancolombia', 'Davivienda', 'BBVA Colombia', 'Banco de Bogotá', 'Nequi', 'Daviplata', 'Scotiabank Colpatria'];
+        const accountTypes = ['savings', 'checking', 'ahorros', 'corriente'] as const;
+        const idTypes = ['CC', 'NIT', 'CE', 'PP', 'TI', 'PAS'] as const;
+
+        for (const bank of banks) {
+          const parsed = bankPayoutDetailsSchema.parse({
+            bank,
+            account_type: 'savings',
+            account_number: '123-456789-00',
+            account_holder: 'Inversiones Inmobiliarias S.A.S.',
+            id_number: '901.234.567-8',
+            id_type: 'NIT',
+          });
+          assertEqual(parsed.bank, bank, `Bank ${bank} parsed successfully`);
+          assertEqual(parsed.id_type, 'NIT', 'ID type NIT parsed');
+        }
+
+        // 2. Reject missing bank name
+        assertThrows(() => {
+          bankPayoutDetailsSchema.parse({
+            bank: '',
+            account_type: 'savings',
+            account_number: '123456789',
+            account_holder: 'Juan Pérez',
+            id_number: '10203040',
+          });
+        }, 'El banco es requerido', 'Rejects empty bank name');
+
+        // 3. Reject short account number (< 3 characters)
+        assertThrows(() => {
+          bankPayoutDetailsSchema.parse({
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '12',
+            account_holder: 'Juan Pérez',
+            id_number: '10203040',
+          });
+        }, 'Número de cuenta inválido', 'Rejects short account number');
+
+        // 4. Reject short ID number (< 4 characters)
+        assertThrows(() => {
+          bankPayoutDetailsSchema.parse({
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '123456789',
+            account_holder: 'Juan Pérez',
+            id_number: '12',
+          });
+        }, 'Documento de identidad requerido', 'Rejects short ID number');
+      },
+    },
+    {
+      name: '13. Receipt Numbering Formatting & Sequential Format Validation (LIQ-YYYYMM-XXXX)',
+      fn: () => {
+        // Format standard: LIQ-YYYYMM-XXXX
+        const regex = /^LIQ-\d{6}-\d{4}$/;
+
+        const receipt1 = generateReceiptNumber('2026-09', 1);
+        assertEqual(receipt1, 'LIQ-202609-0001', 'First receipt of September 2026 formatted correctly');
+        assertMatches(receipt1, regex, 'Receipt 1 matches LIQ-YYYYMM-XXXX pattern');
+
+        const receipt42 = generateReceiptNumber('2026-10', 42);
+        assertEqual(receipt42, 'LIQ-202610-0042', 'Receipt 42 of October 2026 formatted correctly');
+        assertMatches(receipt42, regex, 'Receipt 42 matches LIQ-YYYYMM-XXXX pattern');
+
+        const receipt999 = generateReceiptNumber('2027-01', 999);
+        assertEqual(receipt999, 'LIQ-202701-0999', 'Receipt 999 formatted correctly');
+        assertMatches(receipt999, regex, 'Receipt 999 matches pattern');
+
+        // Record payout schema accepts valid receipt number
+        const payoutRecord = recordOwnerPayoutSchema.parse({
+          settlement_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          paid_at: '2026-09-10T12:00:00Z',
+          receipt_number: receipt1,
+          statement_pdf_url: 'https://pixy.app/statements/liq-202609-0001.pdf',
+        });
+        assertEqual(payoutRecord.receipt_number, 'LIQ-202609-0001', 'Receipt number recorded in payout schema');
+      },
+    },
   ],
 };
+
+export async function runSuite(): Promise<TestSuiteResult> {
+  const registry = new TestRegistry();
+  registry.setSuite(suite.name, 'tier1');
+  for (const t of suite.tests) {
+    registry.addTest(t.name, t.fn);
+  }
+  return registry.runSuite();
+}
+
+export async function run() {
+  let passed = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const t of suite.tests) {
+    try {
+      await t.fn();
+      passed++;
+    } catch (err: any) {
+      failed++;
+      errors.push(`${t.name}: ${err.message}`);
+    }
+  }
+
+  return { passed, failed, errors };
+}

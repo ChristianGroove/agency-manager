@@ -103,6 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_property_leases_owner ON public.property_leases U
 CREATE INDEX IF NOT EXISTS idx_property_leases_co_signer ON public.property_leases USING btree (co_signer_id);
 CREATE INDEX IF NOT EXISTS idx_property_leases_dates ON public.property_leases USING btree (organization_id, start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_property_leases_payment_day ON public.property_leases USING btree (organization_id, payment_day);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_property_lease ON public.property_leases (organization_id, property_id) WHERE status = 'active' AND deleted_at IS NULL;
 
 -- property_lease_settlements indexes
 CREATE INDEX IF NOT EXISTS idx_lease_settlements_org ON public.property_lease_settlements USING btree (organization_id);

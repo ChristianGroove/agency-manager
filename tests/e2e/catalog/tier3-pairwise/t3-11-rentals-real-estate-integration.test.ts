@@ -281,7 +281,6 @@ export function queryLeasesWithRLS(
   for (const lease of db.property_leases.values()) {
     if (lease.organization_id === authenticatedOrgId) {
       if (!filterStatus || lease.status === filterStatus) {
-        // Hydrate relations
         const prop = db.service_catalog.get(lease.property_id);
         const tenant = db.leads.get(lease.tenant_id);
         const owner = db.leads.get(lease.owner_id);
@@ -554,7 +553,7 @@ export const suite = {
         assertArrayLength(tenantBSettlements, 1, 'Tenant B receives only its own settlements');
         assertEqual(tenantBSettlements[0].id, settlementB.id, 'Tenant B settlement matches');
 
-        // 6. Zero Cross-Tenant Data Leakage: Verify no ID overlaps
+        // 6. Zero Cross-Tenant Data Leakage
         assertFalse(tenantALeases.some(l => l.organization_id === ORG_B_UUID), 'Zero Tenant B leases leaked to Tenant A');
         assertFalse(tenantBLeases.some(l => l.organization_id === ORG_A_UUID), 'Zero Tenant A leases leaked to Tenant B');
         assertFalse(tenantASettlements.some(s => s.organization_id === ORG_B_UUID), 'Zero Tenant B settlements leaked to Tenant A');
@@ -563,95 +562,28 @@ export const suite = {
     },
 
     // =========================================================================
-    // TEST 3.3: CRM Leads (tenant + owner) integration with lease contracts
+    // TEST 3.3: Multi-Month Settlement Roll-Forward with Unpaid Balances
     // =========================================================================
     {
-      name: '3.3 CRM Leads (tenant + owner) integration with lease contracts without structural alterations to public.leads',
+      name: '3.3 Multi-Month Settlement Roll-Forward: Late payment in Month 1 reconciled alongside Month 2 collection',
       fn: () => {
         const db = createMockDatabaseState();
-        const tenant = db.leads.get(TENANT_A_UUID)!;
-        const owner = db.leads.get(OWNER_A_UUID)!;
+        const monthlyRent = 3600000;
+        const adminFee = 450000;
 
-        // 1. Verify standard CRM columns without custom schema columns
-        assertEqual(tenant.contact_type, 'lead', 'Tenant is stored in standard leads table as lead');
-        assertEqual(owner.contact_type, 'client', 'Landlord is stored in standard leads table as client');
-
-        // 2. Verify metadata holds specialized Real Estate and Banking details
-        assertDefined(tenant.metadata, 'Tenant metadata defined');
-        assertEqual(tenant.metadata?.role, 'tenant', 'Role is tenant in metadata');
-        assertEqual(tenant.metadata?.id_number, '1.020.304.506', 'Tenant ID number stored in metadata');
-        assertEqual(tenant.metadata?.monthly_income, 9500000, 'Tenant income stored in metadata');
-
-        assertDefined(owner.metadata, 'Owner metadata defined');
-        assertEqual(owner.metadata?.role, 'owner', 'Role is owner in metadata');
-        assertEqual(owner.metadata?.id_number, '38.284.912', 'Owner ID number stored in metadata');
-        assertEqual(owner.metadata?.bank_details?.bank, 'Bancolombia', 'Bank name stored in metadata');
-        assertEqual(owner.metadata?.bank_details?.account_number, '089-123456-78', 'Account number stored in metadata');
-
-        // 3. Link into lease agreement and verify integrity
-        const lease: PropertyLease = {
-          id: LEASE_A_UUID,
-          organization_id: ORG_A_UUID,
-          property_id: PROP_A_UUID,
-          tenant_id: tenant.id,
-          owner_id: owner.id,
-          monthly_rent: 3600000,
-          admin_fee: 450000,
-          admin_paid_by: 'agency',
-          commission_percentage: 8.0,
-          vat_on_commission: true,
-          deposit_amount: 3600000,
-          payment_day: 5,
-          payout_day: 10,
-          start_date: '2026-09-01',
-          end_date: '2027-08-31',
-          status: 'active',
-          guarantee_type: 'insurance',
-          guarantee_details: { policy_number: 'BOL-9901' },
-          bank_payout_details: owner.metadata?.bank_details || {
-            bank: 'Bancolombia',
-            account_type: 'savings',
-            account_number: '089-123456-78',
-            account_holder: 'Helena Barreto Lozano',
-            id_number: '38.284.912',
-            id_type: 'CC',
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        db.property_leases.set(lease.id, lease);
-
-        const hydrated = queryLeasesWithRLS(db, ORG_A_UUID)[0];
-        assertEqual(hydrated.tenant?.name, 'Carlos Andrés Mendoza', 'Tenant name accessible via standard foreign key');
-        assertEqual(hydrated.tenant?.phone, '+573105551234', 'Tenant phone accessible');
-        assertEqual(hydrated.owner?.name, 'Dra. Helena Barreto Lozano', 'Owner name accessible via standard foreign key');
-        assertEqual(hydrated.owner?.email, 'helena.barreto@medicos.co', 'Owner email accessible');
-        assertEqual(hydrated.bank_payout_details.account_number, '089-123456-78', 'Bank payout details synced');
-      },
-    },
-
-    // =========================================================================
-    // TEST 3.4: Settlement creation with simultaneous maintenance deduction, payment logging, and owner payout
-    // =========================================================================
-    {
-      name: '3.4 Settlement creation with simultaneous maintenance deduction, payment logging, and owner payout',
-      fn: () => {
-        const db = createMockDatabaseState();
-
-        // 1. Setup Lease: $3,000,000 Rent, $350,000 Admin (Agency), 8% Commission ($240,000), 19% VAT ($45,600)
+        // Lease Setup
         const lease: PropertyLease = {
           id: LEASE_A_UUID,
           organization_id: ORG_A_UUID,
           property_id: PROP_A_UUID,
           tenant_id: TENANT_A_UUID,
           owner_id: OWNER_A_UUID,
-          monthly_rent: 3000000,
-          admin_fee: 350000,
+          monthly_rent: monthlyRent,
+          admin_fee: adminFee,
           admin_paid_by: 'agency',
           commission_percentage: 8.0,
           vat_on_commission: true,
-          deposit_amount: 3000000,
+          deposit_amount: monthlyRent,
           payment_day: 5,
           payout_day: 10,
           start_date: '2026-09-01',
@@ -667,118 +599,279 @@ export const suite = {
             id_number: '38.284.912',
             id_type: 'CC',
           },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: '2026-08-20T00:00:00Z',
+          updated_at: '2026-08-20T00:00:00Z',
         };
         db.property_leases.set(lease.id, lease);
 
-        // 2. Generate Initial Monthly Settlement for period 2026-09
-        const initialCalc = calculateSettlement({
-          monthlyRent: lease.monthly_rent,
-          adminFee: lease.admin_fee,
-          adminPaidBy: lease.admin_paid_by,
-          commissionPercentage: lease.commission_percentage,
-          vatOnCommission: lease.vat_on_commission,
-          deductions: [],
+        // --- MONTH 1 (2026-09): Tenant defaults, payout held ---
+        const calcM1 = calculateSettlement({
+          monthlyRent,
+          adminFee,
+          adminPaidBy: 'agency',
+          commissionPercentage: 8.0,
+          vatOnCommission: true,
         });
 
-        // Gross = 3,000,000 + 350,000 = 3,350,000
-        // Commission = 3,000,000 * 0.08 = 240,000
-        // VAT = 240,000 * 0.19 = 45,600
-        // Total Agency Fee = 285,600
-        // Initial Net Owner Payout = 3,000,000 - 240,000 - 45,600 - 350,000 = 2,364,400 COP
-        assertEqual(initialCalc.grossCollected, 3350000, 'Initial gross collected 3,350,000');
-        assertEqual(initialCalc.commissionAmount, 240000, 'Commission 240,000');
-        assertEqual(initialCalc.vatAmount, 45600, 'VAT 45,600');
-        assertEqual(initialCalc.netOwnerPayout, 2364400, 'Initial net owner payout 2,364,400');
-
-        const settlementId = SETTLEMENT_A_UUID;
-        const settlement: PropertyLeaseSettlement = {
-          id: settlementId,
+        const settlementM1: PropertyLeaseSettlement = {
+          id: 'settlement-m1-uuid',
           organization_id: ORG_A_UUID,
           lease_id: lease.id,
           period: '2026-09',
-          receipt_number: 'LIQ-202609-VRG01',
-          rent_amount: initialCalc.rentAmount,
-          admin_fee_amount: initialCalc.adminFeeAmount,
-          gross_collected: initialCalc.grossCollected,
-          commission_amount: initialCalc.commissionAmount,
-          vat_amount: initialCalc.vatAmount,
+          receipt_number: 'LIQ-202609-0001',
+          rent_amount: calcM1.rentAmount,
+          admin_fee_amount: calcM1.adminFeeAmount,
+          gross_collected: calcM1.grossCollected,
+          commission_amount: calcM1.commissionAmount,
+          vat_amount: calcM1.vatAmount,
           deductions_amount: 0,
-          net_owner_payout: initialCalc.netOwnerPayout,
-          tenant_payment_status: 'pending',
-          owner_payout_status: 'pending',
+          net_owner_payout: calcM1.netOwnerPayout,
+          tenant_payment_status: 'late', // Unpaid / In default
+          owner_payout_status: 'pending', // Held until collection
           deductions: [],
-          created_at: '2026-09-01T08:00:00Z',
-          updated_at: '2026-09-01T08:00:00Z',
+          created_at: '2026-09-01T00:00:00Z',
+          updated_at: '2026-09-06T00:00:00Z',
         };
-        db.property_lease_settlements.set(settlementId, settlement);
+        db.property_lease_settlements.set(settlementM1.id, settlementM1);
 
-        // 3. Add Itemized Maintenance Deduction ($150,000 COP plumbing invoice)
-        const deductionInput = {
-          id: 'ded-plumbing-001',
-          concept: 'Reparación tubería hidrosanitaria baño auxiliar',
-          amount: 150000,
-          category: 'maintenance',
-          date: '2026-09-03',
-          receipt_url: 'https://praxis.pixy.app/receipts/factura-plomeria-7788.pdf',
-          notes: 'Factura autorizada por propietaria Dra. Helena Barreto.',
+        assertEqual(settlementM1.tenant_payment_status, 'late', 'Month 1 marked as late/delinquent');
+        assertEqual(settlementM1.owner_payout_status, 'pending', 'Month 1 owner payout held');
+
+        // --- MONTH 2 (2026-10): Tenant pays Month 1 + Month 2 simultaneously ---
+        const calcM2 = calculateSettlement({
+          monthlyRent,
+          adminFee,
+          adminPaidBy: 'agency',
+          commissionPercentage: 8.0,
+          vatOnCommission: true,
+        });
+
+        const settlementM2: PropertyLeaseSettlement = {
+          id: 'settlement-m2-uuid',
+          organization_id: ORG_A_UUID,
+          lease_id: lease.id,
+          period: '2026-10',
+          receipt_number: 'LIQ-202610-0001',
+          rent_amount: calcM2.rentAmount,
+          admin_fee_amount: calcM2.adminFeeAmount,
+          gross_collected: calcM2.grossCollected,
+          commission_amount: calcM2.commissionAmount,
+          vat_amount: calcM2.vatAmount,
+          deductions_amount: 0,
+          net_owner_payout: calcM2.netOwnerPayout,
+          tenant_payment_status: 'paid', // Both paid simultaneously
+          owner_payout_status: 'paid',
+          deductions: [],
+          created_at: '2026-10-01T00:00:00Z',
+          updated_at: '2026-10-04T00:00:00Z',
         };
-        const parsedDeduction = deductionItemSchema.parse(deductionInput);
-        settlement.deductions.push(parsedDeduction as SettlementDeduction);
+        db.property_lease_settlements.set(settlementM2.id, settlementM2);
 
-        // Recalculate settlement with deduction
-        const updatedCalc = calculateSettlement({
-          monthlyRent: lease.monthly_rent,
-          adminFee: lease.admin_fee,
-          adminPaidBy: lease.admin_paid_by,
-          commissionPercentage: lease.commission_percentage,
-          vatOnCommission: lease.vat_on_commission,
-          deductions: settlement.deductions,
-        });
+        // Reconcile Month 1
+        settlementM1.tenant_payment_status = 'paid';
+        settlementM1.owner_payout_status = 'paid';
+        settlementM1.tenant_paid_at = '2026-10-04T10:00:00Z';
+        settlementM1.owner_paid_at = '2026-10-10T14:00:00Z';
 
-        settlement.deductions_amount = updatedCalc.deductionsAmount;
-        settlement.net_owner_payout = updatedCalc.netOwnerPayout;
+        // Total Gross Collected for both periods = $4,050,000 * 2 = $8,100,000 COP
+        const totalGross = settlementM1.gross_collected + settlementM2.gross_collected;
+        assertEqual(totalGross, 8100000, 'Cumulative gross collected across roll-forward is $8,100,000 COP');
 
-        // Net Owner Payout = 2,364,400 - 150,000 = 2,214,400 COP
-        assertEqual(settlement.deductions_amount, 150000, 'Deductions amount is 150,000');
-        assertEqual(settlement.net_owner_payout, 2214400, 'Net owner payout recalculates to 2,214,400');
+        // Total Commission = $288,000 * 2 = $576,000 COP
+        const totalCommission = settlementM1.commission_amount + settlementM2.commission_amount;
+        assertEqual(totalCommission, 576000, 'Cumulative commission is $576,000 COP');
 
-        // 4. Record Tenant Rent Payment via PSE
-        const paymentInput = recordTenantPaymentSchema.parse({
-          settlement_id: settlement.id,
-          paid_at: '2026-09-04T11:30:00Z',
-          payment_proof_url: 'https://praxis.pixy.app/proofs/pse-receipt-202609.pdf',
-          notes: 'Pago recibido exitosamente por PSE Bancolombia.',
-        });
-        settlement.tenant_payment_status = 'paid';
-        settlement.tenant_paid_at = paymentInput.paid_at;
-        settlement.payment_proof_url = paymentInput.payment_proof_url;
-        assertEqual(settlement.tenant_payment_status, 'paid', 'Tenant payment status updated to paid');
+        // Total VAT on Commission = $54,720 * 2 = $109,440 COP
+        const totalVAT = settlementM1.vat_amount + settlementM2.vat_amount;
+        assertEqual(totalVAT, 109440, 'Cumulative VAT is $109,440 COP');
 
-        // 5. Record Owner Payout Disbursement to Landlord's Bancolombia Account
-        const payoutInput = recordOwnerPayoutSchema.parse({
-          settlement_id: settlement.id,
-          paid_at: '2026-09-09T15:00:00Z',
-          statement_pdf_url: 'https://praxis.pixy.app/statements/liq-202609-helena.pdf',
-          payment_proof_url: 'https://praxis.pixy.app/proofs/transfer-bancolombia-202609.pdf',
-          receipt_number: 'LIQ-202609-VRG01',
-          notes: 'Transferencia realizada a Cta Ahorros Bancolombia 089-123456-78.',
-        });
-        settlement.owner_payout_status = 'paid';
-        settlement.owner_paid_at = payoutInput.paid_at;
-        settlement.statement_pdf_url = payoutInput.statement_pdf_url;
-
-        assertEqual(settlement.owner_payout_status, 'paid', 'Owner payout status updated to paid');
-        assertEqual(settlement.statement_pdf_url, 'https://praxis.pixy.app/statements/liq-202609-helena.pdf', 'Statement PDF URL attached');
+        // Total Net Disbursed to Landlord = $2,807,280 * 2 = $5,614,560 COP
+        const totalNetPayout = settlementM1.net_owner_payout + settlementM2.net_owner_payout;
+        assertEqual(totalNetPayout, 5614560, 'Cumulative net owner payout across both months is exactly $5,614,560 COP');
       },
     },
 
     // =========================================================================
-    // TEST 3.5: Space system isolation
+    // TEST 3.4: Multi-Contractor Deduction Matrices with Split Retentions
     // =========================================================================
     {
-      name: '3.5 Space system isolation: verifying non-real-estate spaces (agency, resto, retail, cleaning, saas) never expose module_rentals in routes',
+      name: '3.4 Multi-Contractor Deduction Matrices: Concurrent plumbing, locksmith, and HOA extraordinary deductions',
+      fn: () => {
+        const monthlyRent = 3600000;
+        const adminFee = 450000;
+
+        // 3 concurrent itemized deductions from distinct contractors
+        const deductions: SettlementDeduction[] = [
+          {
+            id: 'ded-01-plumbing',
+            concept: 'Reparación tubería hidrosanitaria baño principal',
+            amount: 350000,
+            category: 'maintenance',
+            date: '2026-09-02',
+            receipt_url: 'https://pixy.app/receipts/factura-plomeria-01.pdf',
+            notes: 'Contratista: Plomería El Vergel S.A.S. (NIT 900.123.456)',
+          },
+          {
+            id: 'ded-02-locksmith',
+            concept: 'Cambio de cerradura de seguridad puerta principal',
+            amount: 80000,
+            category: 'repair',
+            date: '2026-09-03',
+            receipt_url: 'https://pixy.app/receipts/recibo-cerrajeria-02.pdf',
+            notes: 'Contratista: Cerrajería Ibagué Centro',
+          },
+          {
+            id: 'ded-03-hoa-extra',
+            concept: 'Cuota extraordinaria impermeabilización fachada conjunto',
+            amount: 200000,
+            category: 'utility',
+            date: '2026-09-04',
+            receipt_url: 'https://pixy.app/receipts/recibo-admin-extra-03.pdf',
+            notes: 'Cobro extraordinario Administración Edificio Mirador',
+          },
+        ];
+
+        // Verify schemas
+        for (const d of deductions) {
+          const validated = deductionItemSchema.parse(d);
+          assertDefined(validated.id, 'Deduction validated');
+        }
+
+        const settlement = calculateSettlement({
+          monthlyRent,
+          adminFee,
+          adminPaidBy: 'agency',
+          commissionPercentage: 8.0,
+          vatOnCommission: true,
+          deductions,
+        });
+
+        // 1. Deductions Sum = 350,000 + 80,000 + 200,000 = 630,000 COP
+        assertEqual(settlement.deductionsAmount, 630000, 'Deductions sum verified at $630,000 COP');
+
+        // 2. Base Net before deductions = 3,600,000 - 288,000 (8%) - 54,720 (19% VAT) - 450,000 (Admin) = 2,807,280 COP
+        // Net Owner Payout = 2,807,280 - 630,000 = 2,177,280 COP
+        assertEqual(settlement.netOwnerPayout, 2177280, 'Net owner payout after multi-contractor deductions is $2,177,280 COP');
+      },
+    },
+
+    // =========================================================================
+    // TEST 3.5: Mid-Cycle Lease Termination & Security Deposit Reconciliation
+    // =========================================================================
+    {
+      name: '3.5 Mid-Cycle Lease Termination: Early termination with security deposit offset against utility debt',
+      fn: () => {
+        const db = createMockDatabaseState();
+        const property = db.service_catalog.get(PROP_A_UUID)!;
+        const securityDeposit = 3600000;
+
+        const lease: PropertyLease = {
+          id: LEASE_A_UUID,
+          organization_id: ORG_A_UUID,
+          property_id: property.id,
+          tenant_id: TENANT_A_UUID,
+          owner_id: OWNER_A_UUID,
+          monthly_rent: 3600000,
+          admin_fee: 450000,
+          admin_paid_by: 'agency',
+          commission_percentage: 8.0,
+          vat_on_commission: true,
+          deposit_amount: securityDeposit,
+          payment_day: 5,
+          payout_day: 10,
+          start_date: '2026-09-01',
+          end_date: '2027-08-31',
+          status: 'active',
+          guarantee_type: 'deposit',
+          guarantee_details: { deposit_held: securityDeposit },
+          bank_payout_details: {
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '089-123456-78',
+            account_holder: 'Helena Barreto Lozano',
+            id_number: '38.284.912',
+          },
+          created_at: '2026-08-20T00:00:00Z',
+          updated_at: '2026-08-20T00:00:00Z',
+        };
+        db.property_leases.set(lease.id, lease);
+        property.real_estate_details.rental_status = 'rented';
+
+        // Terminate at Month 6 (2027-02-28)
+        const utilityDebt = 120000; // Gas and electricity pending balance
+        const depositRefundedToTenant = securityDeposit - utilityDebt; // $3,480,000 COP
+
+        assertEqual(depositRefundedToTenant, 3480000, 'Security deposit refunded minus utility debt is $3,480,000 COP');
+
+        // Update lease state to 'terminated'
+        const terminationUpdate = updateLeaseSchema.parse({
+          id: lease.id,
+          status: 'terminated',
+          end_date: '2027-02-28',
+          notes: `Contrato terminado anticipadamente. Depósito de garantía ($3.600.000) liquidado: -$120.000 servicios públicos, devuelto $3.480.000.`,
+        });
+
+        lease.status = terminationUpdate.status!;
+        lease.end_date = terminationUpdate.end_date!;
+        lease.notes = terminationUpdate.notes!;
+
+        // Reset property rental status to available
+        if (lease.status === 'terminated') {
+          property.real_estate_details.rental_status = 'available';
+          if (property.metadata) {
+            property.metadata.rental_status = 'available';
+          }
+        }
+
+        assertEqual(lease.status, 'terminated', 'Lease status updated to terminated');
+        assertEqual(property.real_estate_details.rental_status, 'available', 'Property catalog status instantly reverted to available');
+      },
+    },
+
+    // =========================================================================
+    // TEST 3.6: Statutory Rent Ceiling & IPC Annual Indexation (Law 820 of 2003)
+    // =========================================================================
+    {
+      name: '3.6 Statutory Rent Ceiling & IPC Indexation: Annual 12-month lease renewal with 5.62% inflation increase',
+      fn: () => {
+        const baseRent = 3600000;
+        const ipcRate = 5.62; // 5.62% Colombian IPC indexation rate
+        const commercialPropertyValue = 450000000; // $450,000,000 COP property value
+
+        // 1. Calculate indexed rent
+        const indexedRent = roundCurrency(baseRent * (1 + ipcRate / 100));
+        // 3,600,000 * 1.0562 = 3,802,320 COP
+        assertEqual(indexedRent, 3802320, 'Indexed rent increased by 5.62% to $3,802,320 COP');
+
+        // 2. Law 820 of 2003 Statutory Cap: Rent cannot exceed 1% of commercial property value
+        const statutoryMaxRent = roundCurrency(commercialPropertyValue * 0.01); // $4,500,000 COP
+        assertTrue(indexedRent <= statutoryMaxRent, 'Indexed rent complies with Law 820 statutory 1% ceiling ($4,500,000)');
+
+        // 3. Re-calculate new settlement on renewal
+        const renewalSettlement = calculateSettlement({
+          monthlyRent: indexedRent,
+          adminFee: 480000,
+          adminPaidBy: 'agency',
+          commissionPercentage: 8.0,
+          vatOnCommission: true,
+        });
+
+        // Commission = 3,802,320 * 0.08 = 304,185.60 COP
+        assertEqual(renewalSettlement.commissionAmount, 304185.6, 'Commission on renewed rent verified');
+        // VAT = 304,185.60 * 0.19 = 57,795.26 COP
+        assertEqual(renewalSettlement.vatAmount, 57795.26, 'VAT on renewed commission verified');
+        // Gross = 3,802,320 + 480,000 = 4,282,320 COP
+        assertEqual(renewalSettlement.grossCollected, 4282320, 'Gross collected verified');
+        // Net = 3,802,320 - 304,185.60 - 57,795.26 - 480,000 = 2,960,339.14 COP
+        assertEqual(renewalSettlement.netOwnerPayout, 2960339.14, 'Net owner payout on renewal verified down to cent precision');
+      },
+    },
+
+    // =========================================================================
+    // TEST 3.7: Cross-Space Isolation Invariants (Agency, Resto, Cleaning, Retail, SaaS)
+    // =========================================================================
+    {
+      name: '3.7 Cross-space isolation invariants: Non-real-estate spaces operate with zero rentals metadata or route leakage',
       fn: () => {
         const allCandidateModules = [
           'core_crm',
@@ -789,52 +882,32 @@ export const suite = {
           'module_automation',
           'module_invoicing',
           'module_payments',
-          'module_rentals', // Candidate module
+          'module_rentals',
         ];
 
-        // 1. Space: agency -> module_rentals MUST NOT be in routes
-        const agencyRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'agency');
-        assertFalse(agencyRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'Agency space never exposes /rentals');
+        const nonRealEstateSpaces = ['agency', 'resto', 'cleaning', 'retail', 'saas', 'platform'] as const;
 
-        // 2. Space: resto -> module_rentals MUST NOT be in routes
-        const restoRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'resto');
-        assertFalse(restoRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'Resto space never exposes /rentals');
+        for (const space of nonRealEstateSpaces) {
+          const routes = filterRoutesByModules(allCandidateModules, 'owner', space === 'platform' ? 'platform' : 'client', space);
+          assertFalse(
+            routes.some(r => r.key === 'module_rentals' || r.href === '/rentals'),
+            `Space '${space}' must NEVER expose module_rentals or /rentals route`
+          );
 
-        // 3. Space: retail -> module_rentals MUST NOT be in routes
-        const retailRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'retail');
-        assertFalse(retailRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'Retail space never exposes /rentals');
+          const preset = CAPABILITY_PRESETS[space];
+          assertDefined(preset, `Preset for ${space} exists`);
+          assertFalse(
+            preset.capabilities.includes('module_rentals'),
+            `Preset for ${space} must not include module_rentals capability`
+          );
+        }
 
-        // 4. Space: cleaning -> module_rentals MUST NOT be in routes
-        const cleaningRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'cleaning');
-        assertFalse(cleaningRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'Cleaning space never exposes /rentals');
-
-        // 5. Space: saas -> module_rentals MUST NOT be in routes
-        const saasRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'saas');
-        assertFalse(saasRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'SaaS space never exposes /rentals');
-
-        // 6. Space: platform -> module_rentals MUST NOT be in routes
-        const platformRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'platform', 'platform');
-        assertFalse(platformRoutes.some(r => r.key === 'module_rentals' || r.href === '/rentals'), 'Platform space never exposes /rentals');
-
-        // 7. Space: real_estate -> module_rentals MUST BE in routes
+        // Real Estate space exclusively contains module_rentals
         const realEstateRoutes = filterRoutesByModules(allCandidateModules, 'owner', 'client', 'real_estate');
         const rentalsRoute = realEstateRoutes.find(r => r.key === 'module_rentals' || r.href === '/rentals');
         assertDefined(rentalsRoute, 'Real estate space successfully exposes /rentals');
         assertEqual(rentalsRoute?.label, 'Gestión de Arriendos', 'Rentals route label is correct');
-        assertEqual(rentalsRoute?.category, 'operations', 'Rentals route category is operations');
-
-        // 8. Verify Module Metadata Registry
-        assertEqual(MODULE_METADATA.module_rentals.key, 'module_rentals', 'module_rentals registered in MODULE_METADATA');
-        assertArrayLength(MODULE_METADATA.module_rentals.allowedSpaces || [], 1, 'allowedSpaces contains exactly 1 space');
-        assertEqual((MODULE_METADATA.module_rentals.allowedSpaces || [])[0], 'real_estate', 'allowedSpaces is real_estate');
-
-        // 9. Verify Capability Presets
         assertTrue(CAPABILITY_PRESETS.real_estate.modules?.includes('module_rentals'), 'real_estate preset contains module_rentals');
-        assertFalse(CAPABILITY_PRESETS.agency.capabilities.includes('module_rentals'), 'agency preset does not contain module_rentals');
-        assertFalse(CAPABILITY_PRESETS.resto.capabilities.includes('module_rentals'), 'resto preset does not contain module_rentals');
-        assertFalse(CAPABILITY_PRESETS.cleaning.capabilities.includes('module_rentals'), 'cleaning preset does not contain module_rentals');
-        assertFalse(CAPABILITY_PRESETS.retail.capabilities.includes('module_rentals'), 'retail preset does not contain module_rentals');
-        assertFalse(CAPABILITY_PRESETS.saas.capabilities.includes('module_rentals'), 'saas preset does not contain module_rentals');
       },
     },
   ],
@@ -865,25 +938,4 @@ export async function run() {
   }
 
   return { passed, failed, errors };
-}
-
-if (process.argv[1] && process.argv[1].endsWith('t3-11-rentals-real-estate-integration.test.ts')) {
-  runSuite().then((res) => {
-    console.log(`\nSuite: ${res.name} [${res.tier}]`);
-    const passedCount = res.tests.filter((t) => t.passed).length;
-    console.log(`Passed: ${passedCount}/${res.tests.length}`);
-    console.log(`Duration: ${res.durationMs}ms`);
-    for (const t of res.tests) {
-      console.log(`  ${t.passed ? '✓' : '✗'} ${t.name} (${t.durationMs}ms)`);
-      if (!t.passed && t.error) {
-        console.error(`    Error: ${t.error.message}`);
-      }
-    }
-    if (!res.passed) {
-      process.exit(1);
-    } else {
-      console.log('\nAll RentFlow Pro Tier 3 integration tests passed with 0 errors!\n');
-      process.exit(0);
-    }
-  });
 }

@@ -167,6 +167,26 @@ export function SettlementsTab({
     window.open(waLink, "_blank");
   };
 
+  const formatColombianDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "";
+    try {
+      const cleanStr = dateStr.split("T")[0];
+      const parts = cleanStr.split("-");
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return cleanStr;
+        const dd = String(day).padStart(2, "0");
+        const mm = String(month + 1).padStart(2, "0");
+        return `${dd}/${mm}/${year}`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr || "";
+    }
+  };
+
   const getStatusBadge = (status: OwnerPayoutStatus) => {
     switch (status) {
       case "paid":
@@ -177,7 +197,7 @@ export function SettlementsTab({
         );
       case "pending":
         return (
-          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[11px] font-bold">
+          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/20 text-[11px] font-bold">
             ● Pendiente
           </Badge>
         );
@@ -227,7 +247,7 @@ export function SettlementsTab({
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="all" className="text-xs">Todos los estados</SelectItem>
-              <SelectItem value="pending" className="text-xs font-semibold text-amber-600">Pendientes</SelectItem>
+              <SelectItem value="pending" className="text-xs font-semibold text-amber-700 dark:text-amber-400">Pendientes</SelectItem>
               <SelectItem value="paid" className="text-xs font-semibold text-emerald-600">Pagados</SelectItem>
               <SelectItem value="held" className="text-xs font-semibold text-rose-600">Retenidos</SelectItem>
             </SelectContent>

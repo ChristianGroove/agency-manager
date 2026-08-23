@@ -1,28 +1,47 @@
-# E2E Test Suite Ready — Pixy RentFlow Pro (`module_rentals`)
+# TEST READY: RentFlow Pro & Real Estate E2E Test Matrix Expansion (Milestone 3 / Track B)
 
-## Test Runner
-- **Command**: `npx tsx tests/e2e/catalog/runner.ts`
-- **Typecheck Command**: `npx tsc --noEmit`
-- **Expected Outcome**: All 105 test suites pass with exit code 0 (591/591 tests, 2,667 assertions), and 0 TypeScript compilation errors.
+**Date**: 2026-08-23  
+**Status**: Ready for Verification & Tier 5 Adversarial Audit  
+**Target Space**: `real_estate` (RentFlow Pro / `module_rentals`)  
+**Target Organization Benchmark**: Praxis Inmobiliaria (`c41dcf16-f94d-499d-a1f8-bc9027206495` — Ibagué, Tolima)  
 
-## Coverage Summary
-| Tier | Suites | Tests Passed | Description |
-|------|-------:|-------------:|-------------|
-| **1. Feature Coverage** | 32 | 168 | Core formulas, lease creation, settlement engine, WhatsApp link generation, RLS isolation, CRM integrity (`t1-28-rentflow-pro-engine.test.ts`) |
-| **2. Boundary & Corner** | 29 | 161 | Extreme values, $0 rent/admin, 0% vs 100% commission, non-negative clamping on large deductions, cent float precision, phone formats (`t2-28-rentflow-calculations-boundaries.test.ts`) |
-| **3. Cross-Feature Combinations** | 13 | 68 | Multi-tenant isolation, CRM leads non-interference, property-to-contract sync, space route protection (`t3-11-rentals-real-estate-integration.test.ts`) |
-| **4. Real-World Application Scenarios** | 19 | 94 | Complete 10-step property management lifecycle for Praxis Inmobiliaria in Ibagué (`t4-14-praxis-rentals-lifecycle-scenario.test.ts`) |
-| **5. Adversarial Coverage Hardening** | 12 | 100 | White-box stress tests, injection protection, concurrent billing race conditions |
-| **Total** | **105** | **591** | **100% Pass Rate (0 Failures, 0 Regressions, 0 tsc Errors)** |
+---
 
-## Feature Checklist
-| Feature | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Status |
-|---------|:------:|:------:|:------:|:------:|:------:|
-| R1: Database Schema & Multi-Tenant RLS | ✓ (4 tests) | ✓ (3 tests) | ✓ | ✓ | **PASSED** |
-| R2: Core Math Engine (Gross, 8% Comm, 19% IVA, Net Payout) | ✓ (5 tests) | ✓ (6 tests) | ✓ | ✓ | **PASSED** |
-| R2: Server Actions & Lifecycle (leases.ts, settlements.ts) | ✓ (4 tests) | ✓ (4 tests) | ✓ | ✓ | **PASSED** |
-| R2: WhatsApp Notification Links (PSE/Wompi, Payouts) | ✓ (3 tests) | ✓ (3 tests) | ✓ | ✓ | **PASSED** |
-| R3: Admin Workspace & Reactive UI (/rentals) | ✓ (3 tests) | ✓ (2 tests) | ✓ | ✓ | **PASSED** |
-| R4: Sidebar & Space System Integration | ✓ (3 tests) | ✓ (2 tests) | ✓ | ✓ | **PASSED** |
-| R5: Realistic Seeding for Praxis Inmobiliaria | ✓ (3 tests) | ✓ (2 tests) | ✓ | ✓ | **PASSED** |
-| R6: Comprehensive Automated E2E Suite & 0 Regressions | ✓ | ✓ | ✓ | ✓ | **PASSED** |
+## 1. Test Execution Commands
+
+To execute the automated end-to-end test suite and type check:
+
+```powershell
+# Run full E2E Test Runner across all 5 Tiers
+npx tsx tests/e2e/catalog/runner.ts
+
+# Run static type checking verification
+npx tsc --noEmit
+```
+
+---
+
+## 2. Test Suite Inventory & Coverage Matrix
+
+| Tier | Suite Identifier | File Path | Tests | Coverage Scope |
+| :--- | :--- | :--- | :---: | :--- |
+| **Tier 1** | `T1-28: RentFlow Pro Mathematical Engine, Schemas & WhatsApp Generator` | `tests/e2e/catalog/tier1-features/t1-28-rentflow-pro-engine.test.ts` | 13 | Colombian residential lease math (8% + 19% IVA), admin fee handling (agency vs tenant), float cent precision, non-negative net payout clamping, `formatCOP`, WhatsApp tenant & owner link generators, Zod schemas (`createLeaseSchema`, `bankPayoutDetailsSchema`, `deductionItemSchema`), co-signer attachment (`co_signer_id`), guarantee type enumeration (`direct`, `insurance`, `bond`, `deposit`, `promissory_note`), Colombian bank account schemas, and sequential receipt numbering (`LIQ-YYYYMM-XXXX`). |
+| **Tier 2** | `T2-28: RentFlow Pro Mathematical Engine Extreme Boundaries & Edge Cases` | `tests/e2e/catalog/tier2-boundaries/t2-28-rentflow-calculations-boundaries.test.ts` | 20 | `calculateProratedRent` (mid-month start, 1-day start, 30-day full month), calendar day clamps (Feb 28, Feb 29 leap year, 30/31 days), 100% deduction saturation with zero payout clamping, unrecovered deficit balance tracking, Colombian tax matrix (residential exempt, 19% commercial rent IVA + 19% commission IVA, retefuente 3.5%, simplified non-VAT regime), zero/neutral inputs, high-precision float rounding, multi-deduction arrays (100 items), malformed item sanitization, negative inputs, `roundCurrency`, `formatCOP`, and `normalizePhone` edge cases. |
+| **Tier 3** | `T3-11: RentFlow Pro Real Estate Cross-Feature Integration Suite` | `tests/e2e/catalog/tier3-pairwise/t3-11-rentals-real-estate-integration.test.ts` | 7 | Catalog property linking & rental status sync (`available` <-> `rented`), multi-tenant RLS isolation between Org A (Ibagué) and Org B (Bogotá), multi-month settlement roll-forward with unpaid balances, multi-contractor deduction matrices with split invoices, mid-cycle lease termination with security deposit reconciliation, Law 820 IPC statutory indexation (5.62%), and cross-space isolation invariants across `agency`, `resto`, `cleaning`, `retail`, `saas`, and `platform`. |
+| **Tier 4** | `T4-14: Praxis Inmobiliaria Complete Rentals & Payouts Lifecycle Scenario` | `tests/e2e/catalog/tier4-scenarios/t4-14-praxis-rentals-lifecycle-scenario.test.ts` | 3 | **Scenario 1**: 10-step full lifecycle for El Vergel Apartment (Onboarding -> Lease Creation -> Status Sync -> Monthly Settlement -> WhatsApp Reminder -> Plumbing Deduction -> PSE Payment -> Bancolombia Payout -> Landlord Statement -> Termination).<br>**Scenario 2**: 12-Month Multi-Unit Portfolio Simulation (48 periods across 4 properties in Ibagué: El Vergel, Calambeo, Piedra Pintada, Santa Ana) with mid-month proration, maintenance deductions, and global accounting reconciliation.<br>**Scenario 3**: Insured Default Claim & Siniestro Aseguradora Workflow with Seguros Bolívar. |
+
+---
+
+## 3. Mathematical & Accounting Guarantees
+
+1. **Cent-Precision Calculation Engine**:
+   - `Gross Collected` = `Rent` + (`Admin Fee` if agency collected).
+   - `Agency Commission` = `Rent` × 8.00%.
+   - `VAT on Commission` = `Agency Commission` × 19% IVA.
+   - `Total Agency Fee` = `Agency Commission` + `VAT` (effective 9.52% on rent).
+   - `Net Owner Payout` = `Rent` - `Commission` - `VAT` - (`Admin Fee` if agency paid) - `Deductions` (clamped to ≥ $0.00).
+2. **Prorated Rent Accounting (Law 820 of 2003 / 30-Day Financial Month)**:
+   - `Prorated Rent` = `roundCurrency((Monthly Rent / 30) * (30 - Start Day + 1))`.
+3. **Multi-Tenant RLS & Zero Cross-Space Pollution**:
+   - `module_rentals` and `/rentals` are strictly isolated to `real_estate` organizations.
+   - Core tables (`public.leads`, `public.service_catalog`, `public.invoices`) remain 100% untouched structurally.

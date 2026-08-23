@@ -33,6 +33,9 @@ import {
   Loader2,
   FileText,
   Percent,
+  AlertCircle,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createLeaseAction, updateLeaseAction } from "../actions/leases";
@@ -85,6 +88,18 @@ export function LeaseFormSheet({
 
   // Active form section tab
   const [activeSection, setActiveSection] = useState<"parties" | "financials" | "banking" | "guarantee">("parties");
+
+  // Validation errors state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   // Form state
   const [propertyId, setPropertyId] = useState("");
@@ -186,16 +201,19 @@ export function LeaseFormSheet({
       setCoveragePercentage(100);
       setNotes("");
     }
+    setErrors({});
     setActiveSection("parties");
   }, [open, lease, properties]);
 
   // When property changes, auto-fill base price if empty
   const handlePropertyChange = (newPropertyId: string) => {
     setPropertyId(newPropertyId);
+    clearError("propertyId");
     const selectedProp = properties.find((p) => p.id === newPropertyId);
     if (selectedProp) {
       if (monthlyRent === 0 && selectedProp.base_price) {
         setMonthlyRent(Number(selectedProp.base_price));
+        clearError("monthlyRent");
       }
       if (selectedProp.real_estate_details?.admin_fee && adminFee === 0) {
         setAdminFee(Number(selectedProp.real_estate_details.admin_fee));
@@ -206,50 +224,151 @@ export function LeaseFormSheet({
   // When owner changes, try to auto-fill bank details from owner metadata if available
   const handleOwnerChange = (newOwnerId: string) => {
     setOwnerId(newOwnerId);
+    clearError("ownerId");
     const selectedOwner = contacts.find((c) => c.id === newOwnerId);
     if (selectedOwner) {
-      if (!accountHolder) setAccountHolder(selectedOwner.name || "");
+      if (!accountHolder) {
+        setAccountHolder(selectedOwner.name || "");
+        clearError("accountHolder");
+      }
       const meta = selectedOwner.metadata || {};
       if (meta.bank_details) {
-        if (meta.bank_details.bank) setBank(meta.bank_details.bank);
+        if (meta.bank_details.bank) {
+          setBank(meta.bank_details.bank);
+          clearError("bank");
+        }
         if (meta.bank_details.account_type) setAccountType(meta.bank_details.account_type);
-        if (meta.bank_details.account_number) setAccountNumber(meta.bank_details.account_number);
-        if (meta.bank_details.id_number) setIdNumber(meta.bank_details.id_number);
+        if (meta.bank_details.account_number) {
+          setAccountNumber(meta.bank_details.account_number);
+          clearError("accountNumber");
+        }
+        if (meta.bank_details.id_number) {
+          setIdNumber(meta.bank_details.id_number);
+          clearError("idNumber");
+        }
       }
+    }
+  };
+
+  const validateStep = (current: "parties" | "financials" | "banking" | "guarantee"): boolean => {
+    const newErrors: Record<string, string> = { ...errors };
+    let isValid = true;
+
+    if (current === "parties") {
+      delete newErrors.propertyId;
+      delete newErrors.tenantId;
+      delete newErrors.ownerId;
+
+      if (!propertyId) {
+        newErrors.propertyId = "Selecciona un inmueble del catálogo";
+        isValid = false;
+      }
+      if (!tenantId) {
+        newErrors.tenantId = "Selecciona el inquilino arrendatario";
+        isValid = false;
+      }
+      if (!ownerId) {
+        newErrors.ownerId = "Selecciona el propietario arrendador";
+        isValid = false;
+      }
+    } else if (current === "financials") {
+      delete newErrors.monthlyRent;
+      delete newErrors.startDate;
+      delete newErrors.endDate;
+
+      if (monthlyRent <= 0) {
+        newErrors.monthlyRent = "El canon mensual debe ser mayor a $ 0 COP";
+        isValid = false;
+      }
+      if (!startDate) {
+        newErrors.startDate = "Ingresa la fecha de inicio del contrato";
+        isValid = false;
+      }
+      if (!endDate) {
+        newErrors.endDate = "Ingresa la fecha de finalización";
+        isValid = false;
+      }
+      if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+        newErrors.endDate = "La fecha de fin debe ser posterior a la de inicio";
+        isValid = false;
+      }
+    } else if (current === "banking") {
+      delete newErrors.bank;
+      delete newErrors.accountNumber;
+      delete newErrors.accountHolder;
+      delete newErrors.idNumber;
+
+      if (!bank) {
+        newErrors.bank = "Selecciona el banco de destino";
+        isValid = false;
+      }
+      if (!accountNumber.trim()) {
+        newErrors.accountNumber = "Ingresa el número de cuenta bancaria";
+        isValid = false;
+      }
+      if (!accountHolder.trim()) {
+        newErrors.accountHolder = "Ingresa el nombre del titular de la cuenta";
+        isValid = false;
+      }
+      if (!idNumber.trim()) {
+        newErrors.idNumber = "Ingresa el documento / NIT del titular";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    if (!isValid) {
+      toast.error("Por favor completa los campos requeridos destacados en rojo");
+    }
+    return isValid;
+  };
+
+  const handleNextSection = () => {
+    if (activeSection === "parties") {
+      if (validateStep("parties")) setActiveSection("financials");
+    } else if (activeSection === "financials") {
+      if (validateStep("financials")) setActiveSection("banking");
+    } else if (activeSection === "banking") {
+      if (validateStep("banking")) setActiveSection("guarantee");
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!propertyId) {
-      toast.error("Debe seleccionar un inmueble");
+    const newErrors: Record<string, string> = {};
+
+    if (!propertyId) newErrors.propertyId = "Selecciona un inmueble del catálogo";
+    if (!tenantId) newErrors.tenantId = "Selecciona el inquilino arrendatario";
+    if (!ownerId) newErrors.ownerId = "Selecciona el propietario arrendador";
+
+    if (monthlyRent <= 0) newErrors.monthlyRent = "El canon mensual debe ser mayor a $ 0 COP";
+    if (!startDate) newErrors.startDate = "Ingresa la fecha de inicio del contrato";
+    if (!endDate) newErrors.endDate = "Ingresa la fecha de finalización";
+    if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+      newErrors.endDate = "La fecha de fin debe ser posterior a la fecha de inicio";
+    }
+
+    if (!bank) newErrors.bank = "Selecciona el banco de destino";
+    if (!accountNumber.trim()) newErrors.accountNumber = "Ingresa el número de cuenta bancaria";
+    if (!accountHolder.trim()) newErrors.accountHolder = "Ingresa el nombre del titular";
+    if (!idNumber.trim()) newErrors.idNumber = "Ingresa el documento / NIT";
+
+    setErrors(newErrors);
+
+    if (newErrors.propertyId || newErrors.tenantId || newErrors.ownerId) {
       setActiveSection("parties");
+      toast.error("Completa los datos del inmueble e involucrados");
       return;
     }
-    if (!tenantId) {
-      toast.error("Debe seleccionar el inquilino");
-      setActiveSection("parties");
-      return;
-    }
-    if (!ownerId) {
-      toast.error("Debe seleccionar el propietario");
-      setActiveSection("parties");
-      return;
-    }
-    if (monthlyRent <= 0) {
-      toast.error("El canon mensual debe ser mayor a 0");
+    if (newErrors.monthlyRent || newErrors.startDate || newErrors.endDate) {
       setActiveSection("financials");
+      toast.error("Completa los términos financieros del contrato");
       return;
     }
-    if (!startDate || !endDate) {
-      toast.error("Debe ingresar las fechas de inicio y fin");
-      setActiveSection("financials");
-      return;
-    }
-    if (!bank || !accountNumber || !accountHolder || !idNumber) {
-      toast.error("Debe completar todos los datos bancarios del propietario");
+    if (newErrors.bank || newErrors.accountNumber || newErrors.accountHolder || newErrors.idNumber) {
       setActiveSection("banking");
+      toast.error("Completa los datos bancarios para las liquidaciones");
       return;
     }
 
@@ -339,40 +458,49 @@ export function LeaseFormSheet({
               type="button"
               onClick={() => setActiveSection("parties")}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all",
+                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all relative",
                 activeSection === "parties"
                   ? "bg-brand-pink text-white shadow-sm"
                   : "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700/60"
               )}
             >
               <Users className="h-3.5 w-3.5" />
-              1. Partes & Inmueble
+              <span>1. Partes & Inmueble</span>
+              {!!(errors.propertyId || errors.tenantId || errors.ownerId) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
             </button>
             <button
               type="button"
               onClick={() => setActiveSection("financials")}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all",
+                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all relative",
                 activeSection === "financials"
                   ? "bg-brand-pink text-white shadow-sm"
                   : "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700/60"
               )}
             >
               <DollarSign className="h-3.5 w-3.5" />
-              2. Términos Financieros
+              <span>2. Términos Financieros</span>
+              {!!(errors.monthlyRent || errors.startDate || errors.endDate) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
             </button>
             <button
               type="button"
               onClick={() => setActiveSection("banking")}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all",
+                "px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all relative",
                 activeSection === "banking"
                   ? "bg-brand-pink text-white shadow-sm"
                   : "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700/60"
               )}
             >
               <Landmark className="h-3.5 w-3.5" />
-              3. Datos Bancarios
+              <span>3. Datos Bancarios</span>
+              {!!(errors.bank || errors.accountNumber || errors.accountHolder || errors.idNumber) && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              )}
             </button>
             <button
               type="button"
@@ -385,7 +513,7 @@ export function LeaseFormSheet({
               )}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              4. Garantía & Póliza
+              <span>4. Garantía & Póliza</span>
             </button>
           </div>
         </SheetHeader>
@@ -396,13 +524,18 @@ export function LeaseFormSheet({
           {activeSection === "parties" && (
             <div className="space-y-5 animate-in fade-in duration-300">
               {/* Property Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                   <Building2 className="h-4 w-4 text-brand-pink" />
                   Inmueble / Propiedad *
                 </Label>
                 <Select value={propertyId} onValueChange={handlePropertyChange}>
-                  <SelectTrigger className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                  <SelectTrigger
+                    className={cn(
+                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
+                      errors.propertyId && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                    )}
+                  >
                     <SelectValue placeholder="Seleccionar inmueble del catálogo..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl max-h-72">
@@ -418,16 +551,30 @@ export function LeaseFormSheet({
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.propertyId ? (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {errors.propertyId}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                    Selecciona el inmueble del catálogo. El canon base y la administración se auto-completarán.
+                  </p>
+                )}
               </div>
 
               {/* Tenant Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-emerald-500" />
                   Arrendatario / Inquilino (Lead CRM) *
                 </Label>
-                <Select value={tenantId} onValueChange={setTenantId}>
-                  <SelectTrigger className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <Select value={tenantId} onValueChange={(val) => { setTenantId(val); clearError("tenantId"); }}>
+                  <SelectTrigger
+                    className={cn(
+                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
+                      errors.tenantId && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                    )}
+                  >
                     <SelectValue placeholder="Seleccionar inquilino registrado..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl max-h-72">
@@ -441,16 +588,30 @@ export function LeaseFormSheet({
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.tenantId ? (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {errors.tenantId}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                    Contacto arrendatario para el envío de recordatorios de cobro y links PSE por WhatsApp.
+                  </p>
+                )}
               </div>
 
               {/* Landlord Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                   <Landmark className="h-4 w-4 text-amber-500" />
                   Propietario / Arrendador *
                 </Label>
                 <Select value={ownerId} onValueChange={handleOwnerChange}>
-                  <SelectTrigger className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                  <SelectTrigger
+                    className={cn(
+                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
+                      errors.ownerId && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                    )}
+                  >
                     <SelectValue placeholder="Seleccionar propietario registrado..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl max-h-72">
@@ -464,10 +625,19 @@ export function LeaseFormSheet({
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.ownerId ? (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {errors.ownerId}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                    Propietario titular para liquidaciones mensuales y reportes de rentabilidad.
+                  </p>
+                )}
               </div>
 
               {/* Co-signer (Optional) */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-zinc-400" />
                   Coarrendatario / Fiador (Opcional)
@@ -494,7 +664,7 @@ export function LeaseFormSheet({
               </div>
 
               {/* Lease Status */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                   Estado del Contrato
                 </Label>
@@ -506,7 +676,7 @@ export function LeaseFormSheet({
                     <SelectItem value="active" className="text-xs py-2 font-semibold text-emerald-600">
                       ● Activo (En vigencia)
                     </SelectItem>
-                    <SelectItem value="pending" className="text-xs py-2 font-semibold text-amber-600">
+                    <SelectItem value="pending" className="text-xs py-2 font-semibold text-amber-700 dark:text-amber-400">
                       ● Pendiente (En firma / legalización)
                     </SelectItem>
                     <SelectItem value="expired" className="text-xs py-2 font-semibold text-zinc-600">
@@ -529,7 +699,7 @@ export function LeaseFormSheet({
             <div className="space-y-5 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Monthly Rent */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Canon de Arrendamiento Mensual (COP) *
                   </Label>
@@ -540,16 +710,28 @@ export function LeaseFormSheet({
                       min={0}
                       step={10000}
                       value={monthlyRent || ""}
-                      onChange={(e) => setMonthlyRent(Number(e.target.value))}
+                      onChange={(e) => {
+                        setMonthlyRent(Number(e.target.value));
+                        clearError("monthlyRent");
+                      }}
                       placeholder="Ej: 2500000"
-                      className="rounded-xl pl-9 h-11 border-zinc-200 dark:border-zinc-800 font-mono font-bold"
+                      className={cn(
+                        "rounded-xl pl-9 h-11 border-zinc-200 dark:border-zinc-800 font-mono font-bold",
+                        errors.monthlyRent && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                      )}
                     />
                   </div>
-                  <p className="text-[11px] text-zinc-500">{formatCOP(monthlyRent)}</p>
+                  {errors.monthlyRent ? (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {errors.monthlyRent}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-zinc-500 font-medium">{formatCOP(monthlyRent)}</p>
+                  )}
                 </div>
 
                 {/* Admin Fee */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Cuota de Administración (COP)
                   </Label>
@@ -565,7 +747,7 @@ export function LeaseFormSheet({
                       className="rounded-xl pl-9 h-11 border-zinc-200 dark:border-zinc-800 font-mono"
                     />
                   </div>
-                  <p className="text-[11px] text-zinc-500">{formatCOP(adminFee)}</p>
+                  <p className="text-[11px] text-zinc-500 font-medium">{formatCOP(adminFee)}</p>
                 </div>
               </div>
 
@@ -611,7 +793,7 @@ export function LeaseFormSheet({
 
               {/* Commission Rate & VAT */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-white/10">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1">
                     <Percent className="h-3.5 w-3.5 text-brand-pink" />
                     Comisión Inmobiliaria (%)
@@ -630,14 +812,14 @@ export function LeaseFormSheet({
                   </p>
                 </div>
 
-                <div className="space-y-2 flex flex-col justify-between">
+                <div className="space-y-1.5 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                         IVA 19% sobre Comisión
                       </Label>
                       <p className="text-[11px] text-zinc-500">
-                        Grava el 19% sobre la comisión de corretaje
+                        Grava el 19% estatutario sobre la comisión
                       </p>
                     </div>
                     <Switch
@@ -645,7 +827,7 @@ export function LeaseFormSheet({
                       onCheckedChange={setVatOnCommission}
                     />
                   </div>
-                  <p className="text-[11px] text-zinc-500 font-mono">
+                  <p className="text-[11px] text-zinc-500 font-mono font-medium">
                     {vatOnCommission
                       ? `IVA: ${formatCOP(((monthlyRent * commissionPercentage) / 100) * 0.19)}`
                       : "Exento de IVA"}
@@ -655,7 +837,7 @@ export function LeaseFormSheet({
 
               {/* Payment & Payout Days */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Día Límite de Pago Inquilino
                   </Label>
@@ -667,10 +849,10 @@ export function LeaseFormSheet({
                     onChange={(e) => setPaymentDay(Number(e.target.value))}
                     className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono"
                   />
-                  <p className="text-[10px] text-zinc-500">Ej: Día 5 de cada mes</p>
+                  <p className="text-[10px] text-zinc-500">Día {paymentDay} de cada mes</p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Día de Giro a Propietario
                   </Label>
@@ -682,35 +864,62 @@ export function LeaseFormSheet({
                     onChange={(e) => setPayoutDay(Number(e.target.value))}
                     className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono"
                   />
-                  <p className="text-[10px] text-zinc-500">Ej: Día 10 de cada mes</p>
+                  <p className="text-[10px] text-zinc-500">Día {payoutDay} de cada mes</p>
                 </div>
               </div>
 
               {/* Start & End Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
-                    Fecha de Inicio *
-                  </Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                      Fecha de Inicio *
+                    </Label>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        clearError("startDate");
+                      }}
+                      className={cn(
+                        "rounded-xl h-11 border-zinc-200 dark:border-zinc-800",
+                        errors.startDate && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                      )}
+                    />
+                    {errors.startDate && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" /> {errors.startDate}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
-                    Fecha de Finalización *
-                  </Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800"
-                  />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                      Fecha de Finalización *
+                    </Label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        clearError("endDate");
+                      }}
+                      className={cn(
+                        "rounded-xl h-11 border-zinc-200 dark:border-zinc-800",
+                        errors.endDate && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                      )}
+                    />
+                    {errors.endDate && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" /> {errors.endDate}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                  Vigencia legal del contrato. Ley 820 de 2003 estipula preaviso de no renovación con 90 días de antelación.
+                </p>
               </div>
             </div>
           )}
@@ -718,18 +927,29 @@ export function LeaseFormSheet({
           {/* SECTION 3: BANKING DETAILS */}
           {activeSection === "banking" && (
             <div className="space-y-5 animate-in fade-in duration-300">
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
                 💡 Estos datos se utilizan para realizar las transferencias mensuales y generar el comprobante de liquidación del propietario.
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Bank Name */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Banco Destino *
                   </Label>
-                  <Select value={bank} onValueChange={setBank}>
-                    <SelectTrigger className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                  <Select
+                    value={bank}
+                    onValueChange={(val) => {
+                      setBank(val);
+                      clearError("bank");
+                    }}
+                  >
+                    <SelectTrigger
+                      className={cn(
+                        "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50",
+                        errors.bank && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                      )}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl max-h-72">
@@ -740,10 +960,15 @@ export function LeaseFormSheet({
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.bank && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {errors.bank}
+                    </p>
+                  )}
                 </div>
 
                 {/* Account Type */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Tipo de Cuenta *
                   </Label>
@@ -764,43 +989,76 @@ export function LeaseFormSheet({
               </div>
 
               {/* Account Number */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                   Número de Cuenta *
                 </Label>
                 <Input
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
+                  onChange={(e) => {
+                    setAccountNumber(e.target.value);
+                    clearError("accountNumber");
+                  }}
                   placeholder="Ej: 245-098765-12"
-                  className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono font-bold"
+                  className={cn(
+                    "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono font-bold",
+                    errors.accountNumber && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                  )}
                 />
+                {errors.accountNumber && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {errors.accountNumber}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Account Holder */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Titular de la Cuenta *
                   </Label>
                   <Input
                     value={accountHolder}
-                    onChange={(e) => setAccountHolder(e.target.value)}
+                    onChange={(e) => {
+                      setAccountHolder(e.target.value);
+                      clearError("accountHolder");
+                    }}
                     placeholder="Nombre completo o Razón Social"
-                    className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800"
+                    className={cn(
+                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800",
+                      errors.accountHolder && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                    )}
                   />
+                  {errors.accountHolder && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {errors.accountHolder}
+                    </p>
+                  )}
                 </div>
 
                 {/* ID Number */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Número de Documento / Cédula / NIT *
                   </Label>
                   <Input
                     value={idNumber}
-                    onChange={(e) => setIdNumber(e.target.value)}
+                    onChange={(e) => {
+                      setIdNumber(e.target.value);
+                      clearError("idNumber");
+                    }}
                     placeholder="Ej: 1020304050"
-                    className="rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono"
+                    className={cn(
+                      "rounded-xl h-11 border-zinc-200 dark:border-zinc-800 font-mono",
+                      errors.idNumber && "border-rose-500 ring-1 ring-rose-500/40 bg-rose-50/10"
+                    )}
                   />
+                  {errors.idNumber && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {errors.idNumber}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -810,7 +1068,7 @@ export function LeaseFormSheet({
           {activeSection === "guarantee" && (
             <div className="space-y-5 animate-in fade-in duration-300">
               {/* Guarantee Type */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                   Mecanismo de Respaldo / Garantía
                 </Label>
@@ -840,7 +1098,7 @@ export function LeaseFormSheet({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Guarantee Provider */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Aseguradora / Entidad
                   </Label>
@@ -853,7 +1111,7 @@ export function LeaseFormSheet({
                 </div>
 
                 {/* Policy Number */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                     Nº de Póliza / Radicado
                   </Label>
@@ -867,7 +1125,7 @@ export function LeaseFormSheet({
               </div>
 
               {/* Coverage Percentage */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                   Porcentaje de Cobertura (%)
                 </Label>
@@ -882,7 +1140,7 @@ export function LeaseFormSheet({
               </div>
 
               {/* Notes */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                   Notas y Cláusulas Especiales
                 </Label>
@@ -919,11 +1177,7 @@ export function LeaseFormSheet({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    if (activeSection === "parties") setActiveSection("financials");
-                    else if (activeSection === "financials") setActiveSection("banking");
-                    else if (activeSection === "banking") setActiveSection("guarantee");
-                  }}
+                  onClick={handleNextSection}
                   className="rounded-xl text-xs font-semibold text-brand-pink border-brand-pink/30 hover:bg-brand-pink/10"
                 >
                   Siguiente

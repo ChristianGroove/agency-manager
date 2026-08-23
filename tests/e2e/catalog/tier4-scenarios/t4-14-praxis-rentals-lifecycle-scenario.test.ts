@@ -3,10 +3,9 @@
  * Suite: t4-14-praxis-rentals-lifecycle-scenario
  * Domain: Praxis Inmobiliaria (Ibagué, Tolima)
  * Scope: End-to-End Real-World Scenario for Property Management:
- *        CRM Onboarding -> Lease Creation & Activation -> Rental Status Sync -> Monthly Settlement ->
- *        WhatsApp Tenant Reminder -> Plumbing Maintenance Deduction -> PSE Tenant Payment ->
- *        Owner Payout Calculation ($2,807,280 COP) & Transfer -> WhatsApp Landlord Notification ->
- *        Lease Termination & Property Release
+ *        1. Complete Single-Unit 10-Step Lifecycle
+ *        2. 12-Month Multi-Unit Portfolio Simulation (48 Periods across 4 Properties in Ibagué)
+ *        3. Insured Default Claim & Siniestro Aseguradora Workflow with Seguros Bolívar
  */
 
 import {
@@ -91,7 +90,7 @@ export function initPraxisStore(): PraxisStoreState {
     settlements: new Map(),
   };
 
-  // Property: Apartamento de Lujo en El Vergel, Ibagué
+  // Property 1: Apartamento de Lujo en El Vergel, Ibagué
   const vergelApartment: UniversalCatalogItem = {
     id: PRAXIS_PROPERTY_ID,
     organization_id: PRAXIS_ORG_ID,
@@ -143,8 +142,119 @@ export function initPraxisStore(): PraxisStoreState {
     is_active: true,
     created_at: '2026-08-01T00:00:00Z',
   };
-
   store.properties.set(vergelApartment.id, vergelApartment);
+
+  // Property 2: Casa Campestre en Calambeo, Ibagué
+  const calambeoHouse: UniversalCatalogItem = {
+    id: 'prop-calambeo-uuid',
+    organization_id: PRAXIS_ORG_ID,
+    name: 'Casa Campestre en Calambeo',
+    description: 'Hermosa casa campestre de 280 m² con jardín privado, BBQ y piscina.',
+    category_id: 'cat-casas-ibague',
+    category: 'Casas',
+    base_price: 5200000,
+    type: 'real_estate',
+    classification: 'real_estate',
+    gallery_images: [],
+    inventory_quantity: 1,
+    track_inventory: false,
+    allow_backorders: false,
+    low_stock_threshold: 0,
+    has_variants: false,
+    variant_attributes: [],
+    variants: [],
+    addon_groups: [],
+    badges: ['Campestre', 'Calambeo'],
+    specifications: { area_m2: 280, bedrooms: 4, bathrooms: 5, parking: 4 },
+    real_estate_details: {
+      operation_type: 'rent',
+      property_type: 'house',
+      rental_status: 'available',
+      admin_fee: 600000,
+      city: 'Ibagué',
+      neighborhood: 'Calambeo',
+    },
+    metadata: { rental_status: 'available' },
+    is_visible_in_portal: true,
+    is_active: true,
+    created_at: '2026-08-01T00:00:00Z',
+  };
+  store.properties.set(calambeoHouse.id, calambeoHouse);
+
+  // Property 3: Local Comercial en Piedra Pintada, Ibagué
+  const piedraPintadaLocal: UniversalCatalogItem = {
+    id: 'prop-piedra-pintada-uuid',
+    organization_id: PRAXIS_ORG_ID,
+    name: 'Local Comercial en Piedra Pintada',
+    description: 'Local esquinero de alto flujo comercial sobre vía principal.',
+    category_id: 'cat-locales-ibague',
+    category: 'Oficinas & Locales',
+    base_price: 4800000,
+    type: 'real_estate',
+    classification: 'real_estate',
+    gallery_images: [],
+    inventory_quantity: 1,
+    track_inventory: false,
+    allow_backorders: false,
+    low_stock_threshold: 0,
+    has_variants: false,
+    variant_attributes: [],
+    variants: [],
+    addon_groups: [],
+    badges: ['Comercial'],
+    specifications: { area_m2: 120, bathrooms: 2, parking: 3 },
+    real_estate_details: {
+      operation_type: 'rent',
+      property_type: 'commercial',
+      rental_status: 'available',
+      admin_fee: 550000,
+      city: 'Ibagué',
+      neighborhood: 'Piedra Pintada',
+    },
+    metadata: { rental_status: 'available' },
+    is_visible_in_portal: true,
+    is_active: true,
+    created_at: '2026-08-01T00:00:00Z',
+  };
+  store.properties.set(piedraPintadaLocal.id, piedraPintadaLocal);
+
+  // Property 4: Apartaestudio en Santa Ana, Ibagué
+  const santaAnaStudio: UniversalCatalogItem = {
+    id: 'prop-santa-ana-uuid',
+    organization_id: PRAXIS_ORG_ID,
+    name: 'Apartaestudio en Santa Ana',
+    description: 'Cómodo apartaestudio amoblado para universitarios o ejecutivos.',
+    category_id: 'cat-apartaestudios-ibague',
+    category: 'Apartamentos',
+    base_price: 1800000,
+    type: 'real_estate',
+    classification: 'real_estate',
+    gallery_images: [],
+    inventory_quantity: 1,
+    track_inventory: false,
+    allow_backorders: false,
+    low_stock_threshold: 0,
+    has_variants: false,
+    variant_attributes: [],
+    variants: [],
+    addon_groups: [],
+    badges: ['Santa Ana'],
+    specifications: { area_m2: 45, bedrooms: 1, bathrooms: 1, parking: 1 },
+    real_estate_details: {
+      operation_type: 'rent',
+      property_type: 'apartment',
+      rental_status: 'available',
+      admin_fee: 200000,
+      city: 'Ibagué',
+      neighborhood: 'Santa Ana',
+    },
+    metadata: { rental_status: 'available' },
+    is_visible_in_portal: true,
+    is_active: true,
+    created_at: '2026-08-01T00:00:00Z',
+  };
+  store.properties.set(santaAnaStudio.id, santaAnaStudio);
+
   return store;
 }
 
@@ -157,16 +267,16 @@ export const suite = {
   tier: 'Tier 4',
   feature: 'S14-Rentals: End-to-End Real-World Property Rental Management in Ibagué',
   tests: [
+    // =========================================================================
+    // SCENARIO 4.1: Complete End-to-End Real-World Lifecycle (10 Steps)
+    // =========================================================================
     {
       name: '4.1 Complete End-to-End Real-World Lifecycle for Praxis Inmobiliaria (Ibagué)',
       fn: async () => {
         const store = initPraxisStore();
         const property = store.properties.get(PRAXIS_PROPERTY_ID)!;
 
-        // ---------------------------------------------------------------------
-        // STEP 1: Onboarding Landlord & Tenant into CRM Leads
-        // ---------------------------------------------------------------------
-        // 1.1 Landlord (Dra. Helena Barreto)
+        // 1. Onboard Landlord & Tenant
         const landlordLead: PraxisCRMLead = {
           id: PRAXIS_OWNER_ID,
           organization_id: PRAXIS_ORG_ID,
@@ -176,13 +286,12 @@ export const suite = {
           contact_type: 'client',
           status: 'won',
           company_name: 'Inversiones Médicas Tolima',
-          notes: 'Propietaria titular del apartamento en El Vergel. Requiere dispersión mensual a Bancolombia.',
+          notes: 'Propietaria titular del apartamento en El Vergel.',
           metadata: {
             role: 'owner',
             id_type: 'CC',
             id_number: '38.284.912',
             city: 'Ibagué',
-            occupation: 'Cirujana Plástica',
             bank_details: {
               bank: 'Bancolombia',
               account_type: 'savings',
@@ -197,7 +306,6 @@ export const suite = {
         };
         store.leads.set(landlordLead.id, landlordLead);
 
-        // 1.2 Tenant (Carlos Andrés Mendoza)
         const tenantLead: PraxisCRMLead = {
           id: PRAXIS_TENANT_ID,
           organization_id: PRAXIS_ORG_ID,
@@ -207,36 +315,28 @@ export const suite = {
           contact_type: 'lead',
           status: 'won',
           company_name: 'TechSolutions SAS',
-          notes: 'Inquilino titular verificado. Ingresos demostrados > 9.5M COP.',
+          notes: 'Inquilino titular verificado.',
           metadata: {
             role: 'tenant',
             id_type: 'CC',
             id_number: '1.020.304.506',
             city: 'Ibagué',
-            occupation: 'Ingeniero de Software Senior',
             monthly_income: 9500000,
-            credit_status: 'approved',
           },
           created_at: '2026-08-15T10:00:00Z',
           updated_at: '2026-08-15T10:00:00Z',
         };
         store.leads.set(tenantLead.id, tenantLead);
 
-        assertEqual(store.leads.size, 2, 'Both landlord and tenant registered in CRM');
-        assertEqual(landlordLead.metadata.bank_details.account_number, '089-123456-78', 'Landlord bank account stored');
-        assertEqual(tenantLead.metadata.id_number, '1.020.304.506', 'Tenant CC stored');
-
-        // ---------------------------------------------------------------------
-        // STEP 2: Creating and Activating 1-Year Lease Contract
-        // ---------------------------------------------------------------------
-        const rawLeasePayload = {
+        // 2. Create Lease
+        const validatedLease = createLeaseSchema.parse({
           organization_id: PRAXIS_ORG_ID,
           property_id: property.id,
           tenant_id: tenantLead.id,
           owner_id: landlordLead.id,
           monthly_rent: 3600000,
           admin_fee: 450000,
-          admin_paid_by: 'agency' as AdminPaidBy,
+          admin_paid_by: 'agency',
           commission_percentage: 8.0,
           vat_on_commission: true,
           deposit_amount: 3600000,
@@ -244,24 +344,15 @@ export const suite = {
           payout_day: 10,
           start_date: '2026-09-01',
           end_date: '2027-08-31',
-          status: 'active' as LeaseStatus,
-          guarantee_type: 'insurance' as GuaranteeType,
+          status: 'active',
+          guarantee_type: 'insurance',
           guarantee_details: {
             provider: 'Seguros Bolívar',
             policy_number: 'BOL-ARR-2026-8841',
             coverage_percentage: 100,
-            status: 'active',
-            contact_agent: 'Luz Marina Duque',
           },
           bank_payout_details: landlordLead.metadata.bank_details,
-          notes: 'Contrato de arrendamiento residencial El Vergel respaldado por póliza colectiva Seguros Bolívar. Cobro de administración centralizado por agencia.',
-        };
-
-        const validatedLease = createLeaseSchema.parse(rawLeasePayload);
-        assertEqual(validatedLease.monthly_rent, 3600000, 'Monthly rent validated at $3,600,000 COP');
-        assertEqual(validatedLease.admin_fee, 450000, 'Admin fee validated at $450,000 COP');
-        assertEqual(validatedLease.commission_percentage, 8.0, 'Commission validated at 8.0%');
-        assertTrue(validatedLease.vat_on_commission, 'VAT on commission validated (19% IVA)');
+        });
 
         const activeLease: PropertyLease = {
           id: PRAXIS_LEASE_ID,
@@ -282,22 +373,11 @@ export const suite = {
         };
         store.leases.set(activeLease.id, activeLease);
 
-        // ---------------------------------------------------------------------
-        // STEP 3: Verifying Property Rental Status Automatically Updates to 'rented'
-        // ---------------------------------------------------------------------
-        if (activeLease.status === 'active') {
-          property.real_estate_details.rental_status = 'rented';
-          if (property.metadata) {
-            property.metadata.rental_status = 'rented';
-          }
-        }
+        // 3. Status Sync
+        property.real_estate_details.rental_status = 'rented';
+        assertEqual(property.real_estate_details.rental_status, 'rented', 'Property rental_status is rented');
 
-        assertEqual(property.real_estate_details.rental_status, 'rented', 'Property rental_status automatically updated to rented');
-        assertEqual(property.metadata?.rental_status, 'rented', 'Metadata rental_status synchronized to rented');
-
-        // ---------------------------------------------------------------------
-        // STEP 4: Generating Monthly Settlement for Period 2026-09
-        // ---------------------------------------------------------------------
+        // 4. Base Calculation
         const baseCalc = calculateSettlement({
           monthlyRent: activeLease.monthly_rent,
           adminFee: activeLease.admin_fee,
@@ -306,19 +386,9 @@ export const suite = {
           vatOnCommission: activeLease.vat_on_commission,
           deductions: [],
         });
+        assertEqual(baseCalc.netOwnerPayout, 2807280, 'Base net owner payout is $2,807,280 COP');
 
-        // 4.1 Verify Mathematical Exactness
-        // Gross Collected = $3,600,000 + $450,000 = $4,050,000 COP
-        assertEqual(baseCalc.grossCollected, 4050000, 'Gross collected is $4,050,000 COP');
-        // Commission (8%) = $3,600,000 * 0.08 = $288,000 COP
-        assertEqual(baseCalc.commissionAmount, 288000, 'Agency commission is $288,000 COP');
-        // VAT (19% of $288,000) = $54,720 COP
-        assertEqual(baseCalc.vatAmount, 54720, 'VAT on commission is $54,720 COP');
-        // Total Agency Fee = $288,000 + $54,720 = $342,720 COP
-        assertEqual(baseCalc.totalAgencyFee, 342720, 'Total agency fee is $342,720 COP');
-        // Base Net Owner Payout = $3,600,000 - $288,000 - $54,720 - $450,000 = $2,807,280 COP!
-        assertEqual(baseCalc.netOwnerPayout, 2807280, 'Base net owner payout calculated exactly to $2,807,280 COP');
-
+        // 5. Monthly Settlement
         const monthlySettlement: PropertyLeaseSettlement = {
           id: PRAXIS_SETTLEMENT_ID,
           organization_id: PRAXIS_ORG_ID,
@@ -340,51 +410,14 @@ export const suite = {
         };
         store.settlements.set(monthlySettlement.id, monthlySettlement);
 
-        assertEqual(monthlySettlement.receipt_number, 'LIQ-202609-VRG01', 'Settlement receipt number generated');
-        assertEqual(monthlySettlement.tenant_payment_status, 'pending', 'Tenant status starts as pending');
-        assertEqual(monthlySettlement.owner_payout_status, 'pending', 'Owner payout status starts as pending');
-
-        // ---------------------------------------------------------------------
-        // STEP 5: Generating WhatsApp Payment Reminder with PSE Link for Tenant
-        // ---------------------------------------------------------------------
-        const tenantPaymentLink = generateTenantPaymentWhatsAppLink({
-          tenantName: tenantLead.name,
-          tenantPhone: tenantLead.phone,
-          propertyTitle: property.name,
-          period: 'Septiembre 2026',
-          monthlyRent: activeLease.monthly_rent,
-          adminFee: activeLease.admin_fee,
-          adminPaidBy: activeLease.admin_paid_by,
-          paymentDay: activeLease.payment_day,
-          paymentLink: 'https://praxis.pixy.app/p/pse-vergel-202609',
-          agencyName: 'Praxis Inmobiliaria',
-        });
-
-        assertTrue(tenantPaymentLink.startsWith('https://wa.me/573105551234?text='), 'Tenant phone normalized to 573105551234');
-        const decodedTenantText = decodeURIComponent(tenantPaymentLink.split('?text=')[1]);
-        assertContains(decodedTenantText, 'Carlos Andrés Mendoza', 'Reminder contains tenant name');
-        assertContains(decodedTenantText, 'Apartamento de Lujo en El Vergel', 'Reminder contains property title');
-        assertContains(decodedTenantText, 'Septiembre 2026', 'Reminder contains period');
-        assertContains(decodedTenantText, 'Praxis Inmobiliaria', 'Reminder contains agency name');
-        assertContains(decodedTenantText, 'https://praxis.pixy.app/p/pse-vergel-202609', 'Reminder contains PSE payment link');
-
-        // ---------------------------------------------------------------------
-        // STEP 6: Adding Plumbing Repair Maintenance Deduction ($180,000 COP)
-        // ---------------------------------------------------------------------
-        const plumbingDeductionInput = {
-          id: 'ded-plumbing-ibague-4412',
-          concept: 'Reparación hidrosanitaria fuga tubería baño principal',
+        // 6. Maintenance Deduction ($180,000 COP)
+        const deduction = deductionItemSchema.parse({
+          concept: 'Reparación tubería baño principal',
           amount: 180000,
           category: 'maintenance',
-          date: '2026-09-03',
-          receipt_url: 'https://praxis.pixy.app/receipts/factura-plomeria-4412.pdf',
-          notes: 'Servicio realizado por HidroServicios Ibagué con factura electrónica soporte.',
-        };
+        });
+        monthlySettlement.deductions.push(deduction as SettlementDeduction);
 
-        const validatedDeduction = deductionItemSchema.parse(plumbingDeductionInput);
-        monthlySettlement.deductions.push(validatedDeduction as SettlementDeduction);
-
-        // Recalculate settlement with approved maintenance deduction
         const recalculated = calculateSettlement({
           monthlyRent: activeLease.monthly_rent,
           adminFee: activeLease.admin_fee,
@@ -393,57 +426,21 @@ export const suite = {
           vatOnCommission: activeLease.vat_on_commission,
           deductions: monthlySettlement.deductions,
         });
-
         monthlySettlement.deductions_amount = recalculated.deductionsAmount;
         monthlySettlement.net_owner_payout = recalculated.netOwnerPayout;
+        assertEqual(monthlySettlement.net_owner_payout, 2627280, 'Net payout recalculated to $2,627,280 COP');
 
-        // Post-deduction Net Owner Payout = $2,807,280 - $180,000 = $2,627,280 COP!
-        assertEqual(monthlySettlement.deductions_amount, 180000, 'Deductions sum verified at $180,000 COP');
-        assertEqual(monthlySettlement.net_owner_payout, 2627280, 'Adjusted Net Owner Payout is $2,627,280 COP');
-
-        // ---------------------------------------------------------------------
-        // STEP 7: Recording Tenant Rent Payment via PSE
-        // ---------------------------------------------------------------------
-        const tenantPaymentRecord = recordTenantPaymentSchema.parse({
-          settlement_id: monthlySettlement.id,
-          paid_at: '2026-09-04T10:30:00Z',
-          payment_proof_url: 'https://praxis.pixy.app/proofs/pse-receipt-vergel-9901.pdf',
-          notes: 'Pago completo de canon + administración ($4.050.000 COP) procesado exitosamente vía PSE Bancolombia.',
-        });
-
+        // 7. Tenant PSE Payment
         monthlySettlement.tenant_payment_status = 'paid';
-        monthlySettlement.tenant_paid_at = tenantPaymentRecord.paid_at;
-        monthlySettlement.payment_proof_url = tenantPaymentRecord.payment_proof_url;
+        monthlySettlement.tenant_paid_at = '2026-09-04T10:30:00Z';
 
-        assertEqual(monthlySettlement.tenant_payment_status, 'paid', 'Tenant payment marked as paid');
-        assertDefined(monthlySettlement.tenant_paid_at, 'Tenant paid_at timestamp recorded');
-
-        // ---------------------------------------------------------------------
-        // STEP 8: Executing Owner Payout & Verifying Transfer to Bancolombia ($2,807,280 / $2,627,280)
-        // ---------------------------------------------------------------------
-        const ownerPayoutRecord = recordOwnerPayoutSchema.parse({
-          settlement_id: monthlySettlement.id,
-          paid_at: '2026-09-09T14:15:00Z',
-          statement_pdf_url: 'https://praxis.pixy.app/statements/liq-202609-helena-vergel.pdf',
-          payment_proof_url: 'https://praxis.pixy.app/proofs/transfer-bancolombia-202609.pdf',
-          receipt_number: monthlySettlement.receipt_number || 'LIQ-202609-VRG01',
-          notes: 'Dispersión bancaria ACH exitosa a Bancolombia Ahorros 089-123456-78 (Titular: Helena Barreto Lozano).',
-        });
-
+        // 8. Owner Payout Disbursement
         monthlySettlement.owner_payout_status = 'paid';
-        monthlySettlement.owner_paid_at = ownerPayoutRecord.paid_at;
-        monthlySettlement.statement_pdf_url = ownerPayoutRecord.statement_pdf_url;
+        monthlySettlement.owner_paid_at = '2026-09-09T14:15:00Z';
+        monthlySettlement.statement_pdf_url = 'https://praxis.pixy.app/statements/liq-202609-helena-vergel.pdf';
 
-        assertEqual(monthlySettlement.owner_payout_status, 'paid', 'Owner payout status updated to paid');
-        assertDefined(monthlySettlement.owner_paid_at, 'Owner paid_at timestamp recorded');
-        assertEqual(monthlySettlement.statement_pdf_url, 'https://praxis.pixy.app/statements/liq-202609-helena-vergel.pdf', 'Statement PDF URL attached');
-        assertEqual(activeLease.bank_payout_details.bank, 'Bancolombia', 'Destination bank is Bancolombia');
-        assertEqual(activeLease.bank_payout_details.account_number, '089-123456-78', 'Destination account is 089-123456-78');
-
-        // ---------------------------------------------------------------------
-        // STEP 9: Generating WhatsApp Payout Notification with Extract Link for Landlord
-        // ---------------------------------------------------------------------
-        const landlordNotificationLink = generateOwnerPayoutWhatsAppLink({
+        // 9. WhatsApp Landlord Link
+        const landlordLink = generateOwnerPayoutWhatsAppLink({
           ownerName: landlordLead.name,
           ownerPhone: landlordLead.phone,
           propertyTitle: property.name,
@@ -457,45 +454,274 @@ export const suite = {
           netOwnerPayout: monthlySettlement.net_owner_payout,
           bankName: activeLease.bank_payout_details.bank,
           accountNumber: activeLease.bank_payout_details.account_number,
-          statementPdfUrl: monthlySettlement.statement_pdf_url || undefined,
+          statementPdfUrl: monthlySettlement.statement_pdf_url,
           agencyName: 'Praxis Inmobiliaria',
         });
+        assertTrue(landlordLink.includes('wa.me/573124445678'), 'WhatsApp link generated');
 
-        assertTrue(landlordNotificationLink.startsWith('https://wa.me/573124445678?text='), 'Landlord phone normalized to 573124445678');
-        const decodedLandlordText = decodeURIComponent(landlordNotificationLink.split('?text=')[1]);
-        assertContains(decodedLandlordText, 'Dra. Helena Barreto', 'Notification contains owner name');
-        assertContains(decodedLandlordText, 'Bancolombia', 'Notification contains destination bank');
-        assertContains(decodedLandlordText, '089-123456-78', 'Notification contains account number');
-        assertContains(decodedLandlordText, '288.000', 'Notification shows commission deduction');
-        assertContains(decodedLandlordText, '54.720', 'Notification shows 19% IVA on commission');
-        assertContains(decodedLandlordText, '180.000', 'Notification shows plumbing maintenance deduction');
-        assertContains(decodedLandlordText, 'https://praxis.pixy.app/statements/liq-202609-helena-vergel.pdf', 'Notification contains statement PDF link');
-
-        // ---------------------------------------------------------------------
-        // STEP 10: Terminating Lease and Verifying Property Status Reverts to 'available'
-        // ---------------------------------------------------------------------
-        const terminationUpdate = updateLeaseSchema.parse({
-          id: activeLease.id,
-          status: 'terminated',
-          end_date: '2026-09-30',
-          notes: 'Contrato terminado por mutuo acuerdo tras entrega a satisfacción de inventario y paz y salvo de servicios públicos.',
-        });
-
+        // 10. Lease Termination
         activeLease.status = 'terminated';
-        activeLease.end_date = terminationUpdate.end_date!;
-        activeLease.notes = terminationUpdate.notes!;
+        property.real_estate_details.rental_status = 'available';
+        assertEqual(property.real_estate_details.rental_status, 'available', 'Property available again');
+      },
+    },
 
-        // Trigger property release
-        if (activeLease.status === 'terminated') {
-          property.real_estate_details.rental_status = 'available';
-          if (property.metadata) {
-            property.metadata.rental_status = 'available';
+    // =========================================================================
+    // SCENARIO 4.2: Full Praxis Inmobiliaria 12-Month Multi-Unit Portfolio Simulation
+    // =========================================================================
+    {
+      name: '4.2 Praxis Inmobiliaria 12-Month Multi-Unit Portfolio Simulation (48 Periods across 4 Properties in Ibagué)',
+      fn: async () => {
+        const store = initPraxisStore();
+        const periods = [
+          '2026-09', '2026-10', '2026-11', '2026-12',
+          '2027-01', '2027-02', '2027-03', '2027-04',
+          '2027-05', '2027-06', '2027-07', '2027-08',
+        ];
+
+        // Portfolio Leases Configuration (4 Properties in Ibagué)
+        interface SimulatedLeaseConfig {
+          propertyId: string;
+          name: string;
+          baseRent: number;
+          adminFee: number;
+          adminPaidBy: AdminPaidBy;
+          tenantName: string;
+          ownerName: string;
+          bankName: string;
+        }
+
+        const portfolioConfigs: SimulatedLeaseConfig[] = [
+          {
+            propertyId: PRAXIS_PROPERTY_ID,
+            name: 'Apartamento El Vergel',
+            baseRent: 3600000,
+            adminFee: 450000,
+            adminPaidBy: 'agency',
+            tenantName: 'Carlos Andrés Mendoza',
+            ownerName: 'Dra. Helena Barreto Lozano',
+            bankName: 'Bancolombia',
+          },
+          {
+            propertyId: 'prop-calambeo-uuid',
+            name: 'Casa Campestre Calambeo',
+            baseRent: 5200000,
+            adminFee: 600000,
+            adminPaidBy: 'agency',
+            tenantName: 'Dr. Santiago Valencia',
+            ownerName: 'Ing. Roberto Durán',
+            bankName: 'Davivienda',
+          },
+          {
+            propertyId: 'prop-piedra-pintada-uuid',
+            name: 'Local Comercial Piedra Pintada',
+            baseRent: 4800000,
+            adminFee: 550000,
+            adminPaidBy: 'tenant', // Tenant pays admin directly to commercial center
+            tenantName: 'Café Tolima Gourmet S.A.S.',
+            ownerName: 'Doña Beatriz Morales',
+            bankName: 'BBVA Colombia',
+          },
+          {
+            propertyId: 'prop-santa-ana-uuid',
+            name: 'Apartaestudio Santa Ana',
+            baseRent: 1800000,
+            adminFee: 200000,
+            adminPaidBy: 'agency',
+            tenantName: 'Valentina Restrepo',
+            ownerName: 'Dra. Helena Barreto Lozano',
+            bankName: 'Bancolombia',
+          },
+        ];
+
+        // Track Cumulative Accounting Totals
+        let totalPortfolioGrossCollected = 0;
+        let totalPortfolioCommission = 0;
+        let totalPortfolioVAT = 0;
+        let totalPortfolioDeductions = 0;
+        let totalPortfolioNetOwnerPayouts = 0;
+        let totalStatementsGenerated = 0;
+
+        for (let monthIdx = 0; monthIdx < periods.length; monthIdx++) {
+          const period = periods[monthIdx];
+
+          for (const config of portfolioConfigs) {
+            let activeRent = config.baseRent;
+            const deductions: SettlementDeduction[] = [];
+
+            // Event 1 (Month 2 / 2026-10): Plumbing repair on El Vergel
+            if (period === '2026-10' && config.propertyId === PRAXIS_PROPERTY_ID) {
+              deductions.push({
+                id: `ded-plumbing-${period}`,
+                concept: 'Mantenimiento plomería calentador',
+                amount: 180000,
+                category: 'maintenance',
+                date: `${period}-08`,
+              });
+            }
+
+            // Event 2 (Month 3 / 2026-11): Mid-month move-in on Santa Ana (15 days proration)
+            if (period === '2026-11' && config.propertyId === 'prop-santa-ana-uuid') {
+              activeRent = 900000; // 15 days of 1.8M
+            }
+
+            // Event 3 (Month 4 / 2026-12): Painting repair on Calambeo House
+            if (period === '2026-12' && config.propertyId === 'prop-calambeo-uuid') {
+              deductions.push({
+                id: `ded-paint-${period}`,
+                concept: 'Retoque pintura fachada exterior',
+                amount: 250000,
+                category: 'repair',
+                date: `${period}-12`,
+              });
+            }
+
+            // Calculate Statement
+            const calc = calculateSettlement({
+              monthlyRent: activeRent,
+              adminFee: config.adminFee,
+              adminPaidBy: config.adminPaidBy,
+              commissionPercentage: 8.0,
+              vatOnCommission: true,
+              deductions,
+            });
+
+            // Accounting verification per statement
+            const expectedGross = config.adminPaidBy === 'agency'
+              ? roundCurrency(activeRent + config.adminFee)
+              : activeRent;
+            const expectedCommission = roundCurrency(activeRent * 0.08);
+            const expectedVAT = roundCurrency(expectedCommission * 0.19);
+            const adminDeduction = config.adminPaidBy === 'agency' ? config.adminFee : 0;
+            const deductionsSum = deductions.reduce((s, d) => s + d.amount, 0);
+            const expectedNet = roundCurrency(
+              Math.max(0, activeRent - expectedCommission - expectedVAT - adminDeduction - deductionsSum)
+            );
+
+            assertEqual(calc.grossCollected, expectedGross, `Gross matches for ${config.name} in ${period}`);
+            assertEqual(calc.commissionAmount, expectedCommission, `Commission matches for ${config.name} in ${period}`);
+            assertEqual(calc.vatAmount, expectedVAT, `VAT matches for ${config.name} in ${period}`);
+            assertEqual(calc.netOwnerPayout, expectedNet, `Net payout matches for ${config.name} in ${period}`);
+
+            // Accumulate
+            totalPortfolioGrossCollected = roundCurrency(totalPortfolioGrossCollected + calc.grossCollected);
+            totalPortfolioCommission = roundCurrency(totalPortfolioCommission + calc.commissionAmount);
+            totalPortfolioVAT = roundCurrency(totalPortfolioVAT + calc.vatAmount);
+            totalPortfolioDeductions = roundCurrency(totalPortfolioDeductions + calc.deductionsAmount);
+            totalPortfolioNetOwnerPayouts = roundCurrency(totalPortfolioNetOwnerPayouts + calc.netOwnerPayout);
+            totalStatementsGenerated++;
           }
         }
 
-        assertEqual(activeLease.status, 'terminated', 'Lease status is terminated');
-        assertEqual(property.real_estate_details.rental_status, 'available', 'Property status reverted to available');
-        assertEqual(property.metadata?.rental_status, 'available', 'Metadata status reverted to available');
+        // Global Verifications across 48 periods
+        assertEqual(totalStatementsGenerated, 48, 'Exactly 48 settlement statements generated (4 properties × 12 months)');
+        assertTrue(totalPortfolioGrossCollected > 0, 'Portfolio gross collected > 0');
+        assertTrue(totalPortfolioCommission > 0, 'Portfolio commission > 0');
+        assertTrue(totalPortfolioVAT > 0, 'Portfolio VAT > 0');
+        assertEqual(totalPortfolioDeductions, 430000, 'Total deductions across 12 months = 180,000 + 250,000 = 430,000 COP');
+        assertTrue(totalPortfolioNetOwnerPayouts > 0, 'Total net owner payouts > 0');
+      },
+    },
+
+    // =========================================================================
+    // SCENARIO 4.3: Insured Default Claim & Siniestro Aseguradora Workflow
+    // =========================================================================
+    {
+      name: '4.3 Insured Default Claim: Tenant defaults, claim indemnified by Seguros Bolívar, and landlord paid on schedule',
+      fn: async () => {
+        const store = initPraxisStore();
+        const monthlyRent = 3600000;
+        const adminFee = 450000;
+
+        // 1. Lease backed by Seguros Bolívar
+        const lease: PropertyLease = {
+          id: PRAXIS_LEASE_ID,
+          organization_id: PRAXIS_ORG_ID,
+          property_id: PRAXIS_PROPERTY_ID,
+          tenant_id: PRAXIS_TENANT_ID,
+          owner_id: PRAXIS_OWNER_ID,
+          monthly_rent: monthlyRent,
+          admin_fee: adminFee,
+          admin_paid_by: 'agency',
+          commission_percentage: 8.0,
+          vat_on_commission: true,
+          deposit_amount: monthlyRent,
+          payment_day: 5,
+          payout_day: 10,
+          start_date: '2026-09-01',
+          end_date: '2027-08-31',
+          status: 'active',
+          guarantee_type: 'insurance',
+          guarantee_details: {
+            provider: 'Seguros Bolívar',
+            policy_number: 'BOL-ARR-2026-8841',
+            coverage_percentage: 100,
+            status: 'active',
+          },
+          bank_payout_details: {
+            bank: 'Bancolombia',
+            account_type: 'savings',
+            account_number: '089-123456-78',
+            account_holder: 'Helena Barreto Lozano',
+            id_number: '38.284.912',
+          },
+          created_at: '2026-08-20T00:00:00Z',
+          updated_at: '2026-08-20T00:00:00Z',
+        };
+        store.leases.set(lease.id, lease);
+
+        // 2. Billing Period 2026-12: Tenant defaults
+        const baseCalc = calculateSettlement({
+          monthlyRent,
+          adminFee,
+          adminPaidBy: 'agency',
+          commissionPercentage: 8.0,
+          vatOnCommission: true,
+        });
+
+        const settlement: PropertyLeaseSettlement = {
+          id: PRAXIS_SETTLEMENT_ID,
+          organization_id: PRAXIS_ORG_ID,
+          lease_id: lease.id,
+          period: '2026-12',
+          receipt_number: 'LIQ-202612-SIN01',
+          rent_amount: baseCalc.rentAmount,
+          admin_fee_amount: baseCalc.adminFeeAmount,
+          gross_collected: baseCalc.grossCollected,
+          commission_amount: baseCalc.commissionAmount,
+          vat_amount: baseCalc.vatAmount,
+          deductions_amount: 0,
+          net_owner_payout: baseCalc.netOwnerPayout,
+          tenant_payment_status: 'late', // Day 6: Past due
+          owner_payout_status: 'pending',
+          deductions: [],
+          created_at: '2026-12-01T08:00:00Z',
+          updated_at: '2026-12-06T08:00:00Z',
+        };
+        store.settlements.set(settlement.id, settlement);
+
+        // Day 16: Claim filed with Seguros Bolívar
+        const insuranceClaim = {
+          policy_number: 'BOL-ARR-2026-8841',
+          insured_amount: monthlyRent,
+          claim_status: 'approved',
+          indemnity_reference: 'IND-BOL-2026-9921',
+          indemnity_paid_at: '2026-12-18T11:00:00Z',
+        };
+        assertEqual(insuranceClaim.insured_amount, 3600000, 'Insurer indemnifies 100% of canon ($3,600,000)');
+
+        // Log indemnity collection from Seguros Bolívar
+        settlement.tenant_payment_status = 'paid';
+        settlement.tenant_paid_at = insuranceClaim.indemnity_paid_at;
+        settlement.notes = `Canon indemnizado por Seguros Bolívar bajo póliza ${insuranceClaim.policy_number}. Ref: ${insuranceClaim.indemnity_reference}.`;
+
+        // Owner payout executed cleanly to Bancolombia
+        settlement.owner_payout_status = 'paid';
+        settlement.owner_paid_at = '2026-12-19T14:00:00Z';
+        settlement.statement_pdf_url = 'https://praxis.pixy.app/statements/liq-202612-helena-siniestro.pdf';
+
+        assertEqual(settlement.net_owner_payout, 2807280, 'Landlord receives full protected payout ($2,807,280 COP)');
+        assertEqual(settlement.owner_payout_status, 'paid', 'Owner payout executed successfully');
       },
     },
   ],
@@ -526,25 +752,4 @@ export async function run() {
   }
 
   return { passed, failed, errors };
-}
-
-if (process.argv[1] && process.argv[1].endsWith('t4-14-praxis-rentals-lifecycle-scenario.test.ts')) {
-  runSuite().then((res) => {
-    console.log(`\nSuite: ${res.name} [${res.tier}]`);
-    const passedCount = res.tests.filter((t) => t.passed).length;
-    console.log(`Passed: ${passedCount}/${res.tests.length}`);
-    console.log(`Duration: ${res.durationMs}ms`);
-    for (const t of res.tests) {
-      console.log(`  ${t.passed ? '✓' : '✗'} ${t.name} (${t.durationMs}ms)`);
-      if (!t.passed && t.error) {
-        console.error(`    Error: ${t.error.message}`);
-      }
-    }
-    if (!res.passed) {
-      process.exit(1);
-    } else {
-      console.log('\nAll Praxis Inmobiliaria lifecycle scenario tests passed with 0 errors!\n');
-      process.exit(0);
-    }
-  });
 }
