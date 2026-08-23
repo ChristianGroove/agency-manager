@@ -7,7 +7,7 @@
 /**
  * Universal Item Classifications
  */
-export type CatalogClassification = 'physical' | 'digital' | 'service' | 'subscription';
+export type CatalogClassification = 'physical' | 'digital' | 'service' | 'subscription' | 'real_estate';
 export type ItemClassification = CatalogClassification; // Direct alias
 
 /**
@@ -229,11 +229,56 @@ export interface SubscriptionProductDetails {
   auto_renew?: boolean;
 }
 
+export type RealEstateOperationType = 'sale' | 'rent' | 'temporary_rent';
+export type RealEstatePropertyType =
+  | 'apartment'
+  | 'house'
+  | 'studio'
+  | 'office'
+  | 'commercial'
+  | 'warehouse'
+  | 'land'
+  | 'country_house'
+  | 'medical_office'
+  | 'building'
+  | 'other';
+export type RealEstateParkingType = 'covered' | 'uncovered' | 'mixed' | 'communal' | 'none';
+
+export interface RealEstateProductDetails {
+  operation_type?: RealEstateOperationType;
+  property_type?: RealEstatePropertyType;
+  area_total_m2?: number | null;
+  area_built_m2?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  floor_number?: number | null;
+  stratum?: string | number | null; // Estrato 1 a 6, Comercial, Rural
+  admin_fee?: number | null; // Valor mensual de administración
+  antiquity?: string | null; // A estrenar, 1-5 años, etc.
+  kitchen_type?: string | null; // Integral, Semi-integral, Americana/Abierta, Isla, Tradicional, Sin Cocina
+  // Parking details (moto & carro & cubierto/intemperie)
+  parking_cars?: number | null;
+  parking_motorcycles?: number | null;
+  parking_type?: RealEstateParkingType | null;
+  // Location
+  city?: string | null;
+  neighborhood?: string | null;
+  address?: string | null;
+  hide_exact_address?: boolean | null;
+  // Common Areas (Áreas Comunes)
+  common_areas?: string[];
+  // Multimedia & Tools
+  virtual_tour_url?: string | null; // Recorrido 360° / Matterport / YouTube
+  brochure_pdf_url?: string | null; // Ficha Técnica PDF
+  show_mortgage_calculator?: boolean | null; // Simulador de crédito hipotecario
+}
+
 export interface ClassificationMetadata {
   physical?: PhysicalProductDetails;
   digital?: DigitalProductDetails;
   service?: ServiceProductDetails;
   subscription?: SubscriptionProductDetails;
+  real_estate?: RealEstateProductDetails;
   // Flattened fallbacks
   weight_kg?: number;
   dimensions?: { length: number; width: number; height: number; unit: 'cm' | 'in' | 'mm' | 'm' };
@@ -247,6 +292,27 @@ export interface ClassificationMetadata {
   billing_frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly';
   trial_days?: number;
   minimum_commitment_months?: number;
+  // Real Estate flattened fields
+  operation_type?: RealEstateOperationType;
+  property_type?: RealEstatePropertyType;
+  area_total_m2?: number;
+  area_built_m2?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  floor_number?: number;
+  stratum?: string | number;
+  admin_fee?: number;
+  antiquity?: string;
+  parking_cars?: number;
+  parking_motorcycles?: number;
+  parking_type?: RealEstateParkingType;
+  city?: string;
+  neighborhood?: string;
+  address?: string;
+  hide_exact_address?: boolean;
+  common_areas?: string[];
+  virtual_tour_url?: string;
+  brochure_pdf_url?: string;
 }
 
 export interface StorefrontHeroSlide {
@@ -281,12 +347,32 @@ export interface StorefrontHeroConfig {
   banner_height?: 'compact' | 'medium' | 'tall' | 'full';
 }
 
+export type StorefrontIndustryPreset =
+  | 'auto'
+  | 'real_estate'
+  | 'physical_retail'
+  | 'professional_services'
+  | 'digital_software'
+  | 'hybrid';
+
+export interface StorefrontWidgetConfig {
+  show_real_estate_filters?: boolean;
+  show_cart_drawer?: boolean;
+  show_mortgage_calculator?: boolean;
+  show_whatsapp_button?: boolean;
+  show_category_nav?: boolean;
+  show_search_bar?: boolean;
+  show_stock_badges?: boolean;
+}
+
 /**
  * Storefront Customizer Theme Configuration
  */
 export interface StorefrontThemeConfig {
   theme: 'modern' | 'minimal' | 'dark_luxe' | 'vibrant' | 'editorial' | 'neo_brutalist' | 'swiss' | 'modern_glass' | 'gourmet_elegance' | 'cyber_glass_3d';
   theme_id?: string; // Legacy alias
+  industry_preset?: StorefrontIndustryPreset;
+  widget_config?: StorefrontWidgetConfig;
   primary_color: string;
   secondary_color: string;
   accent_color?: string;
@@ -320,6 +406,16 @@ export interface StorefrontThemeConfig {
 
 export const DEFAULT_STOREFRONT_THEME_CONFIG: StorefrontThemeConfig = {
   theme: 'modern',
+  industry_preset: 'auto',
+  widget_config: {
+    show_real_estate_filters: true,
+    show_cart_drawer: true,
+    show_mortgage_calculator: true,
+    show_whatsapp_button: true,
+    show_category_nav: true,
+    show_search_bar: true,
+    show_stock_badges: true,
+  },
   primary_color: '#4F46E5',
   secondary_color: '#EC4899',
   accent_color: '#10B981',
@@ -415,7 +511,7 @@ export interface UniversalCatalogItem<TMetadata = Record<string, any>> {
 
   // === Universal Item Classification ===
   classification?: CatalogClassification;
-  type: 'recurring' | 'one_off' | 'product' | 'physical' | 'digital' | 'service' | 'subscription';
+  type: 'recurring' | 'one_off' | 'product' | 'physical' | 'digital' | 'service' | 'subscription' | 'real_estate';
   frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly' | null;
 
   // === Multi-Photo Gallery & Media ===
@@ -461,6 +557,7 @@ export interface UniversalCatalogItem<TMetadata = Record<string, any>> {
   digital_details?: DigitalProductDetails;
   service_details?: ServiceProductDetails;
   subscription_details?: SubscriptionProductDetails;
+  real_estate_details?: RealEstateProductDetails;
 
   // === SEO & Discoverability ===
   seo_title?: string | null;

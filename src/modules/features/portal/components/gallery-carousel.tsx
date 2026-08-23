@@ -617,11 +617,6 @@ export function GalleryCarousel({
 
                 {/* FLOATING TOP-LEFT BADGES */}
                 <div className="absolute top-3 left-3 z-20 flex flex-wrap gap-1.5 pointer-events-none">
-                    {discountPercent && discountPercent > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-600 text-white shadow-md">
-                            -{discountPercent}% OFF
-                        </span>
-                    )}
                     {badges.slice(0, 2).map((b, i) => (
                         <span key={i} className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/20 shadow-md">
                             {b}

@@ -53,6 +53,16 @@ import {
   Image as ImageIcon,
   Share2,
   Package,
+  MapPin,
+  Building2,
+  Zap,
+  Tag,
+  Key,
+  CalendarRange,
+  Home,
+  Bed,
+  ArrowUpDown,
+  SlidersHorizontal,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -386,26 +396,158 @@ export function UniversalStorefrontLayout({
     setInitialAddonIds([])
   }
 
-  // Categories list
-  const categories = useMemo(() => {
-    const raw = items.map((i) => i.category).filter(Boolean) as string[]
-    return ["all", ...Array.from(new Set(raw))]
+  // Multi-Industry Classification Detection
+  const availableClassifications = useMemo(() => {
+    const set = new Set<string>()
+    items.forEach((i) => set.add(i.classification || "service"))
+    return Array.from(set)
   }, [items])
 
-  // Filtered items
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const matchesSearch =
-        !searchTerm.trim() ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  const [selectedClassification, setSelectedClassification] = useState<string>("all")
 
+  // Real Estate Filter States
+  const [reOperationFilter, setReOperationFilter] = useState<string>("all")
+  const [reTypeFilter, setReTypeFilter] = useState<string>("all")
+  const [reBedroomsFilter, setReBedroomsFilter] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<string>("default")
+
+  // Categories list (Scoped to active classification if selected)
+  const categories = useMemo(() => {
+    const scopedItems = selectedClassification === "all"
+      ? items
+      : items.filter((i) => i.classification === selectedClassification)
+    const raw = scopedItems.map((i) => i.category).filter(Boolean) as string[]
+    return ["all", ...Array.from(new Set(raw))]
+  }, [items, selectedClassification])
+
+  // Industry Preset & Modular Widget Config
+  const industryPreset = theme.industry_preset || "auto"
+  const widgetConfig = theme.widget_config || {}
+
+  const isCartEnabled = useMemo(() => {
+    if (widgetConfig.show_cart_drawer === false) return false
+    if (industryPreset === "real_estate") return false
+    return true
+  }, [widgetConfig.show_cart_drawer, industryPreset])
+
+  const showIndustrySwitcher = useMemo(() => {
+    if (industryPreset === "hybrid") return availableClassifications.length > 1
+    if (industryPreset === "auto") return availableClassifications.length > 1
+    return false
+  }, [industryPreset, availableClassifications])
+
+  // Determines whether the user is currently viewing Real Estate listings
+  const isRealEstateContext = useMemo(() => {
+    // If widget explicitly disabled by admin, return false
+    if (widgetConfig.show_real_estate_filters === false) return false
+
+    // Explicit Preset enforcement
+    if (industryPreset === "real_estate") return true
+    if (industryPreset === "physical_retail" || industryPreset === "professional_services" || industryPreset === "digital_software") {
+      return false
+    }
+
+    // Auto / Hybrid detection
+    if (selectedClassification === "real_estate") return true
+    if (activeCategory !== "all") {
+      const itemsInCat = items.filter((i) => i.category === activeCategory)
+      return itemsInCat.length > 0 && itemsInCat.every((i) => i.classification === "real_estate")
+    }
+    return items.length > 0 && items.every((i) => i.classification === "real_estate")
+  }, [widgetConfig.show_real_estate_filters, industryPreset, selectedClassification, activeCategory, items])
+
+  // Dynamic Industry-Adaptive Search Placeholder
+  const searchPlaceholder = useMemo(() => {
+    if (isRealEstateContext || selectedClassification === "real_estate" || industryPreset === "real_estate") {
+      return "Buscar inmuebles por sector, barrio, ciudad o tipo..."
+    }
+    if (industryPreset === "physical_retail" || selectedClassification === "physical") {
+      return "Buscar productos por nombre, referencia o SKU..."
+    }
+    if (industryPreset === "professional_services" || selectedClassification === "service") {
+      return "Buscar servicios, asesorías o soluciones..."
+    }
+    if (industryPreset === "digital_software" || selectedClassification === "digital") {
+      return "Buscar productos digitales, licencias o recursos..."
+    }
+    return "Buscar en el catálogo..."
+  }, [isRealEstateContext, selectedClassification, industryPreset])
+
+  // Filtered items (Strict classification isolation)
+  const filteredItems = useMemo(() => {
+    let result = items.filter((item) => {
+      // 1. Classification Scope Filter
+      if (selectedClassification !== "all" && item.classification !== selectedClassification) {
+        return false
+      }
+
+      // 2. Search Text (Universal multi-field match)
+      const term = searchTerm.toLowerCase().trim()
+      let matchesSearch =
+        !term ||
+        item.name.toLowerCase().includes(term) ||
+        item.description?.toLowerCase().includes(term) ||
+        item.category?.toLowerCase().includes(term) ||
+        (item.sku && item.sku.toLowerCase().includes(term))
+
+      // Also search Real Estate specific metadata when available
+      if (!matchesSearch && (item.classification === "real_estate" || item.real_estate_details || item.classification_metadata?.real_estate)) {
+        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+        if (
+          (re.neighborhood && re.neighborhood.toLowerCase().includes(term)) ||
+          (re.city && re.city.toLowerCase().includes(term)) ||
+          (re.address && re.address.toLowerCase().includes(term)) ||
+          (re.property_type && re.property_type.toLowerCase().includes(term)) ||
+          (Array.isArray(re.common_areas) && re.common_areas.some((a: string) => a.toLowerCase().includes(term)))
+        ) {
+          matchesSearch = true
+        }
+      }
+
+      // 3. Category
       const matchesCat = activeCategory === "all" || item.category === activeCategory
 
-      return matchesSearch && matchesCat
+      if (!matchesSearch || !matchesCat) return false
+
+      // 4. Real Estate Specific Filters (ONLY apply when in Real Estate Context)
+      if (isRealEstateContext && item.classification === "real_estate") {
+        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+        
+        if (reOperationFilter !== "all") {
+          const op = re.operation_type || "sale"
+          if (op !== reOperationFilter) return false
+        }
+
+        if (reTypeFilter !== "all") {
+          const type = re.property_type || "apartment"
+          if (type !== reTypeFilter) return false
+        }
+
+        if (reBedroomsFilter !== "all") {
+          const minBeds = Number(reBedroomsFilter)
+          const itemBeds = Number(re.bedrooms) || 0
+          if (itemBeds < minBeds) return false
+        }
+      }
+
+      return true
     })
-  }, [items, searchTerm, activeCategory])
+
+    // 5. Sorting
+    if (sortBy === "price_asc") {
+      result = [...result].sort((a, b) => (a.base_price || 0) - (b.base_price || 0))
+    } else if (sortBy === "price_desc") {
+      result = [...result].sort((a, b) => (b.base_price || 0) - (a.base_price || 0))
+    } else if (sortBy === "area_desc") {
+      result = [...result].sort((a, b) => {
+        const areaA = a.classification === "real_estate" ? (a.real_estate_details || a.classification_metadata?.real_estate)?.area_total_m2 || 0 : 0
+        const areaB = b.classification === "real_estate" ? (b.real_estate_details || b.classification_metadata?.real_estate)?.area_total_m2 || 0 : 0
+        return areaB - areaA
+      })
+    }
+
+    return result
+  }, [items, selectedClassification, searchTerm, activeCategory, isRealEstateContext, reOperationFilter, reTypeFilter, reBedroomsFilter, sortBy])
 
   const formatPrice = (price?: number) => {
     if (!price || price === 0) return "Consultar precio"
@@ -419,9 +561,18 @@ export function UniversalStorefrontLayout({
   const handleWhatsAppQuickContact = (item?: UniversalCatalogItem) => {
     const cleanPhone = orgPhone.replace(/\D/g, "")
     const targetPhone = cleanPhone || "573000000000"
-    const text = item
-      ? `Hola ${orgName}, estoy interesado en: *${item.name}* (Precio: ${formatPrice(item.base_price)}). ¿Podrían brindarme más información?`
-      : `Hola ${orgName}, me gustaría conocer más información sobre sus servicios y catálogo.`
+    let text = `Hola ${orgName}, me gustaría conocer más información sobre sus servicios y catálogo.`
+    if (item) {
+      if (item.classification === "real_estate" || item.real_estate_details) {
+        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+        const op = re.operation_type === "rent" ? "arriendo" : re.operation_type === "temporary_rent" ? "arriendo temporal" : "venta"
+        const location = re.neighborhood ? `${re.neighborhood}, ${re.city || ""}` : re.city || ""
+        const area = re.area_total_m2 ? `${re.area_total_m2} m²` : ""
+        text = `Hola ${orgName}, estoy interesado en el inmueble en *${op}*: *${item.name}* ${location ? `en ${location}` : ""} ${area ? `(${area})` : ""} (Precio: ${formatPrice(item.base_price)}). ¿Podrían brindarme información y agendar una visita?`
+      } else {
+        text = `Hola ${orgName}, estoy interesado en: *${item.name}* (Precio: ${formatPrice(item.base_price)}). ¿Podrían brindarme más información?`
+      }
+    }
     const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`
     window.open(url, "_blank")
   }
@@ -514,60 +665,64 @@ export function UniversalStorefrontLayout({
           </div>
 
           {/* Quick Search on Desktop */}
-          <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <Input
-                type="text"
-                placeholder="Buscar productos, servicios, características..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={cn(
-                  "pl-10 h-10 text-xs rounded-full border shadow-inner",
-                  isDarkTheme
-                    ? "bg-zinc-900/90 border-zinc-800 focus:border-zinc-600"
-                    : "bg-zinc-100/80 border-zinc-200 focus:border-zinc-300"
+          {widgetConfig.show_search_bar !== false && theme.enable_search !== false && (
+            <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <Input
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={cn(
+                    "pl-10 h-10 text-xs rounded-full border shadow-inner",
+                    isDarkTheme
+                      ? "bg-zinc-900/90 border-zinc-800 focus:border-zinc-600"
+                      : "bg-zinc-100/80 border-zinc-200 focus:border-zinc-300"
+                  )}
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600"
+                  >
+                    Limpiar
+                  </button>
                 )}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600"
-                >
-                  Limpiar
-                </button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Header Actions: Cart Pill & WhatsApp Contact */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Header Cart Pill Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDrawerOpen(true)}
-              className={cn(
-                "rounded-full h-10 px-3 sm:px-4 text-xs font-bold gap-2 relative border shadow-sm transition-transform hover:scale-105",
-                isDarkTheme
-                  ? "bg-zinc-900/90 border-zinc-800 text-white hover:bg-zinc-800"
-                  : "bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
-              )}
-              aria-label="Abrir carrito de compras"
-            >
-              <div className="relative">
-                <ShoppingCart className="h-4 w-4 text-primary" />
-                {totalCartItems > 0 && (
-                  <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center animate-in zoom-in">
-                    {totalCartItems}
-                  </span>
+            {isCartEnabled && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDrawerOpen(true)}
+                className={cn(
+                  "rounded-full h-10 px-3 sm:px-4 text-xs font-bold gap-2 relative border shadow-sm transition-transform hover:scale-105",
+                  isDarkTheme
+                    ? "bg-zinc-900/90 border-zinc-800 text-white hover:bg-zinc-800"
+                    : "bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50"
                 )}
-              </div>
-              <span className="hidden sm:inline">
-                {totalCartItems > 0 ? formatPrice(cartSubtotal) : "Carrito"}
-              </span>
-            </Button>
+                aria-label="Abrir carrito de compras"
+              >
+                <div className="relative">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  {totalCartItems > 0 && (
+                    <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center animate-in zoom-in">
+                      {totalCartItems}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden sm:inline">
+                  {totalCartItems > 0 ? formatPrice(cartSubtotal) : "Carrito"}
+                </span>
+              </Button>
+            )}
 
             {/* Contact / WhatsApp Header Action */}
             <Button
@@ -598,26 +753,157 @@ export function UniversalStorefrontLayout({
       {/* 3. CATALOG & SHOWCASE MAIN CONTAINER */}
       <main id="catalog" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         {/* Mobile Search */}
-        <div className="md:hidden">
-          <div className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <Input
-              type="text"
-              placeholder="Buscar productos o servicios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={cn(
-                "pl-10 h-10 text-xs rounded-2xl border shadow-inner",
-                isDarkTheme
-                  ? "bg-zinc-900 border-zinc-800"
-                  : "bg-white border-zinc-200"
-              )}
-            />
+        {widgetConfig.show_search_bar !== false && theme.enable_search !== false && (
+          <div className="md:hidden">
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Input
+                type="text"
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={cn(
+                  "pl-10 h-10 text-xs rounded-2xl border shadow-inner",
+                  isDarkTheme
+                    ? "bg-zinc-900 border-zinc-800"
+                    : "bg-white border-zinc-200"
+                )}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Category Navigation System with Multi-Style Support */}
-        {categories.length > 1 && (
+        {/* Multi-Industry Classification Switcher (Only visible when store has multiple catalog types and hybrid/auto mode) */}
+        {showIndustrySwitcher && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none mb-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedClassification("all")
+                setActiveCategory("all")
+              }}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                selectedClassification === "all"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                  : isDarkTheme
+                  ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                  : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+              )}
+            >
+              <Globe className="h-3.5 w-3.5 text-brand-pink" />
+              <span>Todos ({items.length})</span>
+            </button>
+
+            {availableClassifications.includes("physical") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClassification("physical")
+                  setActiveCategory("all")
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                  selectedClassification === "physical"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                    : isDarkTheme
+                    ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+                )}
+              >
+                <Package className="h-3.5 w-3.5 text-blue-500" />
+                <span>Productos ({items.filter(i => i.classification === "physical").length})</span>
+              </button>
+            )}
+
+            {availableClassifications.includes("real_estate") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClassification("real_estate")
+                  setActiveCategory("all")
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                  selectedClassification === "real_estate"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                    : isDarkTheme
+                    ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+                )}
+              >
+                <Building2 className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Inmuebles ({items.filter(i => i.classification === "real_estate").length})</span>
+              </button>
+            )}
+
+            {availableClassifications.includes("service") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClassification("service")
+                  setActiveCategory("all")
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                  selectedClassification === "service"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                    : isDarkTheme
+                    ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+                )}
+              >
+                <Briefcase className="h-3.5 w-3.5 text-purple-500" />
+                <span>Servicios ({items.filter(i => i.classification === "service").length})</span>
+              </button>
+            )}
+
+            {availableClassifications.includes("digital") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClassification("digital")
+                  setActiveCategory("all")
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                  selectedClassification === "digital"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                    : isDarkTheme
+                    ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+                )}
+              >
+                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <span>Digital ({items.filter(i => i.classification === "digital").length})</span>
+              </button>
+            )}
+
+            {availableClassifications.includes("subscription") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClassification("subscription")
+                  setActiveCategory("all")
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border",
+                  selectedClassification === "subscription"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs border-transparent font-black"
+                    : isDarkTheme
+                    ? "bg-zinc-900/90 text-zinc-400 hover:text-white border-zinc-800"
+                    : "bg-white text-zinc-600 hover:bg-zinc-100 border-zinc-200"
+                )}
+              >
+                <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                <span>Suscripciones ({items.filter(i => i.classification === "subscription").length})</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Category Navigation System with Multi-Style Support (Hidden in Real Estate Mode to avoid redundancy) */}
+        {widgetConfig.show_category_nav !== false && !isRealEstateContext && categories.length > 1 && (
           <div className="pt-1">
               {/* 1. TABS STYLE */}
               {navStyle === "tabs" && (
@@ -737,17 +1023,15 @@ export function UniversalStorefrontLayout({
                           type="button"
                           onClick={() => setActiveCategory(cat)}
                           className={cn(
-                            "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
+                            "px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0",
                             isSelected
-                              ? "text-white shadow-md scale-105"
-                              : isDarkTheme
-                              ? "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                              : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                              ? "bg-zinc-900 text-white shadow-md font-black"
+                              : isDarkTheme ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
                           )}
                           style={isSelected ? { backgroundColor: theme.primary_color } : {}}
                         >
-                          <span>{cat === "all" ? "Todas las Categorías" : cat}</span>
-                          <span className="text-[10px] opacity-80 font-mono">({count})</span>
+                          <span>{cat === "all" ? "Todas" : cat}</span>
+                          <span className="text-[10px] opacity-70">({count})</span>
                         </button>
                       )
                     })}
@@ -755,8 +1039,8 @@ export function UniversalStorefrontLayout({
                 </div>
               )}
 
-              {/* 5. PILLS STYLE (DEFAULT) */}
-              {(navStyle === "pills" || (!["tabs", "underline_tabs", "glass_cards", "floating_dock"].includes(navStyle))) && (
+              {/* 5. PILLS (DEFAULT) */}
+              {navStyle === "pills" && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
                   {categories.map((cat) => {
                     const count = cat === "all" ? items.length : items.filter((i) => i.category === cat).length
@@ -767,9 +1051,9 @@ export function UniversalStorefrontLayout({
                         type="button"
                         onClick={() => setActiveCategory(cat)}
                         className={cn(
-                          "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer shrink-0",
+                          "px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer shrink-0",
                           isSelected
-                            ? "text-white font-bold shadow-md"
+                            ? "bg-primary text-primary-foreground shadow-md font-black scale-[1.02]"
                             : isDarkTheme
                             ? "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
                             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200/80 border-transparent"
@@ -794,6 +1078,170 @@ export function UniversalStorefrontLayout({
               )}
             </div>
           )}
+
+        {/* Real Estate PropTech Faceted Filter Strip (ONLY rendered in Real Estate Context) */}
+        {isRealEstateContext && (
+          <div className={cn(
+            "p-3.5 rounded-3xl border flex flex-wrap items-center justify-between gap-3.5 text-xs shadow-sm backdrop-blur-md transition-all",
+            isDarkTheme ? "bg-zinc-900/80 border-zinc-800 text-white" : "bg-white/90 border-zinc-200 text-zinc-900"
+          )}>
+            {/* Operation Type Quick Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-[11px] uppercase tracking-wider text-zinc-400 mr-1 flex items-center gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5" style={{ color: theme.primary_color || "#10b981" }} />
+                Filtrar por:
+              </span>
+              {[
+                { id: "all", label: "Todas", icon: null },
+                { id: "sale", label: "En Venta", icon: Tag },
+                { id: "rent", label: "En Arriendo", icon: Key },
+                { id: "temporary_rent", label: "Arriendo Temporal", icon: CalendarRange },
+              ].map((op) => {
+                const isSelected = reOperationFilter === op.id
+                const IconComponent = op.icon
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => setReOperationFilter(op.id)}
+                    style={isSelected ? { color: theme.primary_color || "#10b981" } : undefined}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-xl font-semibold transition-all cursor-pointer text-xs flex items-center gap-1.5 border",
+                      isSelected
+                        ? isDarkTheme
+                          ? "bg-zinc-800/90 border-zinc-700/60 shadow-xs"
+                          : "bg-zinc-100 border-zinc-200/80 shadow-xs"
+                        : isDarkTheme
+                        ? "bg-transparent border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                        : "bg-transparent border-transparent text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                    )}
+                  >
+                    {IconComponent && <IconComponent className="h-3 w-3 shrink-0" />}
+                    <span>{op.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Secondary Filters: Property Type, Bedrooms & Sorting */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Property Type Dropdown */}
+              <div className="relative flex items-center">
+                <select
+                  value={reTypeFilter}
+                  onChange={(e) => setReTypeFilter(e.target.value)}
+                  style={reTypeFilter !== "all" ? { color: theme.primary_color || "#10b981" } : undefined}
+                  className={cn(
+                    "h-8 pl-3 pr-8 rounded-xl font-medium border text-xs outline-none cursor-pointer appearance-none transition-colors",
+                    isDarkTheme
+                      ? reTypeFilter !== "all"
+                        ? "bg-zinc-800/90 border-zinc-700"
+                        : "bg-zinc-800/70 border-zinc-700/60 text-zinc-400 focus:border-zinc-500"
+                      : reTypeFilter !== "all"
+                      ? "bg-zinc-100 border-zinc-300"
+                      : "bg-white border-zinc-200 text-zinc-600 focus:border-zinc-400"
+                  )}
+                >
+                  <option value="all">Tipo de Inmueble</option>
+                  <option value="apartment">Apartamentos</option>
+                  <option value="house">Casas</option>
+                  <option value="studio">Apartaestudios</option>
+                  <option value="office">Oficinas</option>
+                  <option value="commercial">Locales Comerciales</option>
+                  <option value="country_house">Fincas & Campestres</option>
+                  <option value="warehouse">Bodegas</option>
+                  <option value="land">Lotes & Terrenos</option>
+                </select>
+                <ChevronDown
+                  className={cn(
+                    "absolute right-2.5 h-3.5 w-3.5 pointer-events-none transition-colors",
+                    reTypeFilter !== "all" ? "" : "text-zinc-400"
+                  )}
+                  style={reTypeFilter !== "all" ? { color: theme.primary_color || "#10b981" } : undefined}
+                />
+              </div>
+
+              {/* Bedrooms Dropdown */}
+              <div className="relative flex items-center">
+                <select
+                  value={reBedroomsFilter}
+                  onChange={(e) => setReBedroomsFilter(e.target.value)}
+                  style={reBedroomsFilter !== "all" ? { color: theme.primary_color || "#10b981" } : undefined}
+                  className={cn(
+                    "h-8 pl-3 pr-8 rounded-xl font-medium border text-xs outline-none cursor-pointer appearance-none transition-colors",
+                    isDarkTheme
+                      ? reBedroomsFilter !== "all"
+                        ? "bg-zinc-800/90 border-zinc-700"
+                        : "bg-zinc-800/70 border-zinc-700/60 text-zinc-400 focus:border-zinc-500"
+                      : reBedroomsFilter !== "all"
+                      ? "bg-zinc-100 border-zinc-300"
+                      : "bg-white border-zinc-200 text-zinc-600 focus:border-zinc-400"
+                  )}
+                >
+                  <option value="all">Habitaciones</option>
+                  <option value="1">1+ Habitación</option>
+                  <option value="2">2+ Habitaciones</option>
+                  <option value="3">3+ Habitaciones</option>
+                  <option value="4">4+ Habitaciones</option>
+                </select>
+                <ChevronDown
+                  className={cn(
+                    "absolute right-2.5 h-3.5 w-3.5 pointer-events-none transition-colors",
+                    reBedroomsFilter !== "all" ? "" : "text-zinc-400"
+                  )}
+                  style={reBedroomsFilter !== "all" ? { color: theme.primary_color || "#10b981" } : undefined}
+                />
+              </div>
+
+              {/* Sort By Dropdown */}
+              <div className="relative flex items-center">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={sortBy !== "default" ? { color: theme.primary_color || "#10b981" } : undefined}
+                  className={cn(
+                    "h-8 pl-3 pr-8 rounded-xl font-medium border text-xs outline-none cursor-pointer appearance-none transition-colors",
+                    isDarkTheme
+                      ? sortBy !== "default"
+                        ? "bg-zinc-800/90 border-zinc-700"
+                        : "bg-zinc-800/70 border-zinc-700/60 text-zinc-400 focus:border-zinc-500"
+                      : sortBy !== "default"
+                      ? "bg-zinc-100 border-zinc-300"
+                      : "bg-white border-zinc-200 text-zinc-600 focus:border-zinc-400"
+                  )}
+                >
+                  <option value="default">Ordenar: Destacados</option>
+                  <option value="price_asc">Precio: Menor a Mayor</option>
+                  <option value="price_desc">Precio: Mayor a Menor</option>
+                  <option value="area_desc">Área: Mayor a Menor (m²)</option>
+                </select>
+                <ChevronDown
+                  className={cn(
+                    "absolute right-2.5 h-3.5 w-3.5 pointer-events-none transition-colors",
+                    sortBy !== "default" ? "" : "text-zinc-400"
+                  )}
+                  style={sortBy !== "default" ? { color: theme.primary_color || "#10b981" } : undefined}
+                />
+              </div>
+
+              {/* Reset button if active */}
+              {(reOperationFilter !== "all" || reTypeFilter !== "all" || reBedroomsFilter !== "all" || sortBy !== "default") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReOperationFilter("all")
+                    setReTypeFilter("all")
+                    setReBedroomsFilter("all")
+                    setSortBy("default")
+                  }}
+                  className="h-8 px-2.5 rounded-xl text-[11px] font-bold text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 4. SHOWCASE GRID / LIST / MASONRY WITH THEME STYLING */}
         {filteredItems.length === 0 ? (
@@ -876,17 +1324,30 @@ export function UniversalStorefrontLayout({
                     />
 
                     {photoCount > 1 && (
-                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
                         <ImageIcon className="h-3 w-3" />
                         <span>+{photoCount} fotos</span>
                       </div>
                     )}
 
-                    {item.category && (
-                      <div className={cn(
-                        "absolute top-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-extrabold uppercase tracking-wider shadow-sm",
-                        isDarkTheme ? "bg-zinc-900/90 text-white" : "bg-white/90 text-zinc-900"
-                      )}>
+                    {/* Real Estate Operation Badge (En Venta / En Arriendo) */}
+                    {item.classification === "real_estate" && (() => {
+                      const re = item.real_estate_details || item.classification_metadata?.real_estate
+                      const op = re?.operation_type || "sale"
+                      const isRent = op === "rent"
+                      const isTemp = op === "temporary_rent"
+                      const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
+                      const OpIcon = isRent ? Key : isTemp ? CalendarRange : Tag
+                      return (
+                        <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[11px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5 z-10">
+                          <OpIcon className="h-3 w-3 shrink-0" style={{ color: theme.primary_color || "#10b981" }} />
+                          <span>{opLabel}</span>
+                        </div>
+                      )
+                    })()}
+
+                    {item.category && item.classification !== "real_estate" && (
+                      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[10px] font-bold uppercase tracking-wider shadow-sm">
                         {item.category}
                       </div>
                     )}
@@ -906,6 +1367,43 @@ export function UniversalStorefrontLayout({
                           <StatusBadge key={idx} type={badgeStr} label={badgeStr} />
                         ))}
                       </div>
+
+                      {/* Property Subtitle (Tipo & Ubicación) */}
+                      {item.classification === "real_estate" && (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate
+                        const propType = re?.property_type || "apartment"
+                        const typeMap: Record<string, string> = {
+                          apartment: "Apartamento",
+                          house: "Casa",
+                          studio: "Apartaestudio",
+                          office: "Oficina",
+                          commercial: "Local Comercial",
+                          warehouse: "Bodega",
+                          land: "Lote / Terreno",
+                          country_house: "Finca / Casa Campestre",
+                          medical_office: "Consultorio",
+                          building: "Edificio",
+                        }
+                        const typeLabel = typeMap[propType] || "Inmueble"
+                        const loc = re?.neighborhood ? `${re.neighborhood}, ${re.city || ""}` : (re?.city || "")
+                        return (
+                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                            <span className="flex items-center gap-1 font-bold text-zinc-700 dark:text-zinc-300">
+                              <Building2 className="h-3.5 w-3.5 text-brand-pink shrink-0" />
+                              {typeLabel}
+                            </span>
+                            {loc && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-emerald-500 shrink-0" />
+                                  {loc}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
 
                       {item.description && (
                         <p className={cn(
@@ -955,6 +1453,34 @@ export function UniversalStorefrontLayout({
                             SKU: {item.sku}
                           </span>
                         )}
+
+                        {/* Real Estate Property Specs Pill */}
+                        {item.classification === "real_estate" && (() => {
+                          const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+                          const pills: string[] = []
+                          if (re.area_total_m2) pills.push(`${re.area_total_m2} m²`)
+                          if (re.bedrooms) pills.push(`${re.bedrooms} Hab`)
+                          if (re.bathrooms) pills.push(`${re.bathrooms} Baños`)
+                          if (re.parking_cars || re.parking_motorcycles) {
+                            const pType = re.parking_type === "covered" ? "Cubierto" : re.parking_type === "uncovered" ? "Intemperie" : ""
+                            pills.push(`Parq: ${re.parking_cars || 0}${re.parking_motorcycles ? `+${re.parking_motorcycles}M` : ''}${pType ? ` (${pType})` : ''}`)
+                          }
+                          return pills.length > 0 ? (
+                            <div className={cn(
+                              "flex flex-wrap items-center gap-1.5 text-[11px] font-semibold",
+                              isDarkTheme ? "text-zinc-300" : "text-zinc-700"
+                            )}>
+                              {pills.map((p, idx) => (
+                                <span key={idx} className={cn(
+                                  "px-2 py-0.5 rounded-md border",
+                                  isDarkTheme ? "bg-zinc-800/80 border-zinc-700 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-700"
+                                )}>
+                                  {p}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -966,7 +1492,13 @@ export function UniversalStorefrontLayout({
                   )}>
                     <div className="sm:text-right">
                       <span className={cn("text-[10px] uppercase font-bold block", isDarkTheme ? "text-zinc-500" : "text-zinc-400")}>
-                        {item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
+                        {item.classification === "real_estate"
+                          ? (item.real_estate_details?.operation_type === "rent"
+                            ? "Canon Mensual"
+                            : item.real_estate_details?.operation_type === "temporary_rent"
+                            ? "Tarifa Temporal"
+                            : "Precio de Venta")
+                          : item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
                       </span>
                       <span
                         className="text-xl font-black tracking-tight"
@@ -1014,21 +1546,25 @@ export function UniversalStorefrontLayout({
                         className="rounded-xl text-xs font-bold h-9 px-4 text-white shadow-sm"
                         style={{ backgroundColor: !isItemOutOfStock ? theme.primary_color : undefined }}
                       >
-                        {isItemOutOfStock ? "Agotado" : "Ver / Pedir"}
+                        {isItemOutOfStock ? "Agotado" : (item.cta_type === "whatsapp" || theme.primary_cta === "whatsapp" ? "Contactar" : item.cta_type === "quote" ? "Cotizar" : item.cta_type === "booking" ? "Agendar" : "Añadir")}
                       </Button>
 
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
                           openDetail(item)
                         }}
-                        className="rounded-xl text-xs font-bold h-9 px-2.5"
+                        className={cn(
+                          "rounded-xl h-9 w-9 flex items-center justify-center transition-all cursor-pointer border shrink-0",
+                          isDarkTheme
+                            ? "bg-zinc-800/80 border-zinc-700/80 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                            : "bg-zinc-100 border-zinc-200 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
+                        )}
+                        aria-label={`Ver detalles de ${item.name}`}
                       >
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1100,18 +1636,31 @@ export function UniversalStorefrontLayout({
 
                     {/* Multi-photo badge */}
                     {photoCount > 1 && (
-                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
                         <ImageIcon className="h-3 w-3" />
                         <span>+{photoCount} fotos</span>
                       </div>
                     )}
 
+                    {/* Real Estate Operation Badge (En Venta / En Arriendo) */}
+                    {item.classification === "real_estate" && (() => {
+                      const re = item.real_estate_details || item.classification_metadata?.real_estate
+                      const op = re?.operation_type || "sale"
+                      const isRent = op === "rent"
+                      const isTemp = op === "temporary_rent"
+                      const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
+                      const OpIcon = isRent ? Key : isTemp ? CalendarRange : Tag
+                      return (
+                        <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[11px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5 z-10">
+                          <OpIcon className="h-3 w-3 shrink-0" style={{ color: theme.primary_color || "#10b981" }} />
+                          <span>{opLabel}</span>
+                        </div>
+                      )
+                    })()}
+
                     {/* Category pill */}
-                    {item.category && (
-                      <div className={cn(
-                        "absolute top-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-extrabold uppercase tracking-wider shadow-sm",
-                        isDarkTheme ? "bg-zinc-900/90 text-white" : "bg-white/90 text-zinc-900"
-                      )}>
+                    {item.category && item.classification !== "real_estate" && (
+                      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[10px] font-bold uppercase tracking-wider shadow-sm">
                         {item.category}
                       </div>
                     )}
@@ -1135,6 +1684,44 @@ export function UniversalStorefrontLayout({
                       )}>
                         {item.name}
                       </h3>
+
+                      {/* Property Subtitle (Tipo & Ubicación) */}
+                      {item.classification === "real_estate" && (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate
+                        const propType = re?.property_type || "apartment"
+                        const typeMap: Record<string, string> = {
+                          apartment: "Apartamento",
+                          house: "Casa",
+                          studio: "Apartaestudio",
+                          office: "Oficina",
+                          commercial: "Local Comercial",
+                          warehouse: "Bodega",
+                          land: "Lote / Terreno",
+                          country_house: "Finca / Casa Campestre",
+                          medical_office: "Consultorio",
+                          building: "Edificio",
+                        }
+                        const typeLabel = typeMap[propType] || "Inmueble"
+                        const loc = re?.neighborhood ? `${re.neighborhood}, ${re.city || ""}` : (re?.city || "")
+                        return (
+                          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                            <span className="flex items-center gap-1 font-bold text-zinc-700 dark:text-zinc-300">
+                              <Building2 className="h-3.5 w-3.5 text-brand-pink shrink-0" />
+                              {typeLabel}
+                            </span>
+                            {loc && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-emerald-500 shrink-0" />
+                                  {loc}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
+
                       {item.description && (
                         <p className={cn(
                           "text-xs line-clamp-2 leading-relaxed",
@@ -1173,6 +1760,34 @@ export function UniversalStorefrontLayout({
                           <span>{item.variants.length} opciones / variantes</span>
                         </div>
                       ) : null}
+
+                      {/* Real Estate Property Specs Pill */}
+                      {item.classification === "real_estate" && (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+                        const pills: string[] = []
+                        if (re.area_total_m2) pills.push(`${re.area_total_m2} m²`)
+                        if (re.bedrooms) pills.push(`${re.bedrooms} Hab`)
+                        if (re.bathrooms) pills.push(`${re.bathrooms} Baños`)
+                        if (re.parking_cars || re.parking_motorcycles) {
+                          const pType = re.parking_type === "covered" ? "Cubierto" : re.parking_type === "uncovered" ? "Intemperie" : ""
+                          pills.push(`Parq: ${re.parking_cars || 0}${re.parking_motorcycles ? `+${re.parking_motorcycles}M` : ''}${pType ? ` (${pType})` : ''}`)
+                        }
+                        return pills.length > 0 ? (
+                          <div className={cn(
+                            "flex flex-wrap items-center gap-1.5 text-[11px] font-semibold pt-1",
+                            isDarkTheme ? "text-zinc-300" : "text-zinc-700"
+                          )}>
+                            {pills.map((p, idx) => (
+                              <span key={idx} className={cn(
+                                "px-2 py-0.5 rounded-md border",
+                                isDarkTheme ? "bg-zinc-800/80 border-zinc-700 text-zinc-300" : "bg-zinc-100 border-zinc-200 text-zinc-700"
+                              )}>
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
 
                     {/* Price & Action Row */}
@@ -1182,7 +1797,13 @@ export function UniversalStorefrontLayout({
                     )}>
                       <div>
                         <span className={cn("text-[10px] uppercase font-bold block", isDarkTheme ? "text-zinc-500" : "text-zinc-400")}>
-                          {item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
+                          {item.classification === "real_estate"
+                            ? (item.real_estate_details?.operation_type === "rent"
+                              ? "Canon Mensual"
+                              : item.real_estate_details?.operation_type === "temporary_rent"
+                              ? "Tarifa Temporal"
+                              : "Precio de Venta")
+                            : item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
                         </span>
                         <span
                           className="text-lg font-black tracking-tight"
@@ -1236,7 +1857,7 @@ export function UniversalStorefrontLayout({
 
                           if (effectiveCta === "whatsapp") {
                             icon = <MessageCircle className="h-3.5 w-3.5" />
-                            label = isItemOutOfStock ? "Agotado" : "Pedir"
+                            label = isItemOutOfStock ? "Agotado" : "Contactar"
                           } else if (effectiveCta === "buy") {
                             icon = <CreditCard className="h-3.5 w-3.5" />
                             label = isItemOutOfStock ? "Agotado" : "Comprar"
@@ -1270,19 +1891,22 @@ export function UniversalStorefrontLayout({
                           )
                         })()}
 
-                        <Button
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             openDetail(item)
                           }}
-                          className="rounded-xl text-xs font-bold h-9 px-2.5"
+                          className={cn(
+                            "rounded-xl h-9 w-9 flex items-center justify-center transition-all cursor-pointer border shrink-0",
+                            isDarkTheme
+                              ? "bg-zinc-800/80 border-zinc-700/80 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                              : "bg-zinc-100 border-zinc-200 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
+                          )}
                           aria-label={`Ver detalles de ${item.name}`}
                         >
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </Button>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1465,7 +2089,7 @@ export function UniversalStorefrontLayout({
       </footer>
 
       {/* 8. FLOATING MOBILE CART DOCK / PILL */}
-      {totalCartItems > 0 && (
+      {isCartEnabled && totalCartItems > 0 && (
         <aside
           aria-label="Carrito de compras flotante"
           className="fixed bottom-6 right-6 z-40 md:hidden animate-in slide-in-from-bottom-5 duration-300"

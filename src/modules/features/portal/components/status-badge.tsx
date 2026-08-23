@@ -221,35 +221,25 @@ export function evaluateDynamicBadges(
         evaluated.push("Disponible bajo pedido")
     }
 
-    // 2. Explicit badges from item (manual)
+    // 2. Explicit badges from item (manual user configuration)
     if (Array.isArray(item.badges)) {
         for (const b of item.badges) {
             if (typeof b === "string" && b.trim()) {
-                evaluated.push(b.trim())
+                const clean = b.trim()
+                // Prevent duplicate discount text if saved from previous version
+                if (!clean.toLowerCase().startsWith("descuento") && !clean.toLowerCase().includes("% off")) {
+                    evaluated.push(clean)
+                }
             } else if (b && typeof b === "object" && (b as any).label) {
-                evaluated.push((b as any).label)
+                const clean = String((b as any).label).trim()
+                if (!clean.toLowerCase().startsWith("descuento") && !clean.toLowerCase().includes("% off")) {
+                    evaluated.push(clean)
+                }
             }
         }
     }
 
-    // 3. Discount Badge (only if compare_at_price > base_price)
-    const basePrice = selectedVariant?.price_override ?? (item.base_price || 0)
-    const compareAt = item.compare_at_price
-    if (compareAt && compareAt > basePrice) {
-        const discountText = calculateDiscountBadge(basePrice, compareAt)
-        if (discountText) {
-            evaluated.push(`Descuento ${discountText}`)
-        }
-    }
-
-    // 4. New / Novedad badge
-    if (item.created_at && isNewItem(item.created_at)) {
-        if (!evaluated.includes("Novedad")) {
-            evaluated.push("Novedad")
-        }
-    }
-
-    // Return deduplicated and capped
+    // Return deduplicated list strictly respecting user settings
     return Array.from(new Set(evaluated))
 }
 
@@ -374,72 +364,73 @@ export function StatusBadge({
     // Normalized badge type identification
     let normalizedType = (type || "").toLowerCase().replace(/[\s-]/g, "_")
     let displayLabel = label || ""
-    let badgeClass = "bg-primary text-primary-foreground"
+    let badgeClass = "bg-black/60 backdrop-blur-md border-white/15"
     let renderIcon = icon
 
     switch (normalizedType) {
         case "destacado":
         case "featured":
             displayLabel = displayLabel || "Destacado"
-            badgeClass = "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-amber-500/20"
-            renderIcon = renderIcon || <Sparkles className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <Sparkles className="h-3 w-3 mr-1 shrink-0 text-amber-400" />
             break
 
         case "novedad":
         case "new":
             displayLabel = displayLabel || "Novedad"
-            badgeClass = "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-500/20"
-            renderIcon = renderIcon || <Flame className="h-3 w-3 mr-1 shrink-0 text-yellow-300" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <Flame className="h-3 w-3 mr-1 shrink-0 text-emerald-400" />
             break
 
         case "low_stock":
         case "pocas_unidades":
         case "ultimas_unidades":
             displayLabel = displayLabel || (stockQuantity !== undefined && stockQuantity !== null ? (stockQuantity === 1 ? "¡Última 1 unidad!" : `¡Últimas ${stockQuantity} unidades!`) : "Pocas Unidades")
-            badgeClass = "bg-gradient-to-r from-rose-500 to-red-600 text-white animate-pulse shadow-rose-500/30"
-            renderIcon = renderIcon || <AlertTriangle className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <AlertTriangle className="h-3 w-3 mr-1 shrink-0 text-rose-400" />
             break
 
         case "sold_out":
         case "out_of_stock":
         case "agotado":
             displayLabel = displayLabel || "Agotado"
-            badgeClass = "bg-zinc-700 text-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
-            renderIcon = renderIcon || <XCircle className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <XCircle className="h-3 w-3 mr-1 shrink-0 text-zinc-400" />
             break
 
         case "pre_order":
         case "preorder":
             displayLabel = displayLabel || "Pre-Orden"
-            badgeClass = "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
-            renderIcon = renderIcon || <Clock className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <Clock className="h-3 w-3 mr-1 shrink-0 text-purple-400" />
             break
 
         case "backorder":
         case "bajo_pedido":
         case "disponible_bajo_pedido":
             displayLabel = displayLabel || "Disponible bajo pedido"
-            badgeClass = "bg-gradient-to-r from-sky-600 to-blue-600 text-white"
-            renderIcon = renderIcon || <Package className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <Package className="h-3 w-3 mr-1 shrink-0 text-sky-400" />
             break
 
         case "discount":
         case "descuento":
         case "on_sale":
             displayLabel = displayLabel || (effectiveDiscount ? `-${effectiveDiscount}% OFF` : "Descuento")
-            badgeClass = "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-red-500/25"
-            renderIcon = renderIcon || <TrendingDown className="h-3 w-3 mr-1 shrink-0" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <TrendingDown className="h-3 w-3 mr-1 shrink-0 text-rose-400" />
             break
 
         case "in_stock":
         case "disponible":
             displayLabel = displayLabel || "En Stock"
-            badgeClass = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-            renderIcon = renderIcon || <CheckCircle2 className="h-3 w-3 mr-1 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
+            renderIcon = renderIcon || <CheckCircle2 className="h-3 w-3 mr-1 shrink-0 text-emerald-400" />
             break
 
         default:
             displayLabel = displayLabel || type || "Etiqueta"
+            badgeClass = "bg-black/60 backdrop-blur-md text-white border-white/15"
             renderIcon = renderIcon || <Tag className="h-3 w-3 mr-1 shrink-0 opacity-80" />
             break
     }
@@ -447,7 +438,7 @@ export function StatusBadge({
     return (
         <Badge
             className={cn(
-                "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-sm backdrop-blur-sm border border-white/20 transition-all",
+                "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide shadow-sm backdrop-blur-md border border-white/15 transition-all text-white bg-black/60",
                 badgeClass,
                 className
             )}

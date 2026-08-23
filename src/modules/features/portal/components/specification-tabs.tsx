@@ -93,13 +93,15 @@ export function SpecificationTabs({
         Boolean(activeSpecs.vin || activeSpecs.engine || activeSpecs.mileage || activeSpecs.transmission)
 
     // 2. Real estate specs detection
+    const reDetails = (item.real_estate_details || item.classification_metadata?.real_estate || {}) as any
     const isRealEstate =
+        item.classification === "real_estate" ||
         categoryLower.includes("inmueble") ||
         categoryLower.includes("propiedad") ||
         categoryLower.includes("inmobiliaria") ||
         categoryLower.includes("apartamento") ||
         categoryLower.includes("casa") ||
-        Boolean(activeSpecs.total_area || activeSpecs.bedrooms || activeSpecs.strata || activeSpecs.bathrooms)
+        Boolean(reDetails.area_total_m2 || reDetails.bedrooms || activeSpecs.total_area || activeSpecs.bedrooms || activeSpecs.strata)
 
     // 3. Tech / Electronics detection
     const isTech =
@@ -141,25 +143,28 @@ export function SpecificationTabs({
             })
         }
 
-        // Features Tab
-        const features = activeSpecs.features || portalMeta.features || []
-        if (Array.isArray(features) && features.length > 0) {
-            tabs.push({
-                id: "features",
-                label: "Características",
-                icon: <Sparkles className="h-4 w-4 mr-1.5" />,
-                render: () => (
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {features.map((feat: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                                <span>{feat}</span>
-                            </li>
-                        ))}
-                    </ul>
-                )
-            })
+        // Features Tab (Generic items)
+        if (!isRealEstate) {
+            const features = activeSpecs.features || portalMeta.features || []
+            if (Array.isArray(features) && features.length > 0) {
+                tabs.push({
+                    id: "features",
+                    label: "Características",
+                    icon: <Sparkles className="h-4 w-4 mr-1.5" />,
+                    render: () => (
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {features.map((feat: string, idx: number) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                                    <span>{feat}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )
+                })
+            }
         }
+
 
         // Industry Adaptive: Vehicle Specs
         if (isVehicle) {
@@ -207,65 +212,6 @@ export function SpecificationTabs({
                                 </div>
                             )}
                         </div>
-                    </div>
-                )
-            })
-        }
-
-        // Industry Adaptive: Real Estate Specs
-        if (isRealEstate) {
-            tabs.push({
-                id: "property_specs",
-                label: "Propiedad",
-                icon: <Home className="h-4 w-4 mr-1.5" />,
-                render: () => (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {activeSpecs.total_area && (
-                                <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">Área Total</span>
-                                    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{activeSpecs.total_area} m²</span>
-                                </div>
-                            )}
-                            {activeSpecs.bedrooms && (
-                                <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">Habitaciones</span>
-                                    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{activeSpecs.bedrooms}</span>
-                                </div>
-                            )}
-                            {activeSpecs.bathrooms && (
-                                <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">Baños</span>
-                                    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{activeSpecs.bathrooms}</span>
-                                </div>
-                            )}
-                            {activeSpecs.strata && (
-                                <div className="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">Estrato</span>
-                                    <span className="text-base font-bold text-zinc-900 dark:text-zinc-100">{activeSpecs.strata}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {activeSpecs.hoa_fee && (
-                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 rounded-xl flex items-center justify-between text-xs">
-                                <span className="font-semibold text-amber-900 dark:text-amber-300">Administración (HOA):</span>
-                                <span className="font-bold text-amber-950 dark:text-amber-200">{activeSpecs.hoa_fee}</span>
-                            </div>
-                        )}
-
-                        {Array.isArray(activeSpecs.amenities) && activeSpecs.amenities.length > 0 && (
-                            <div>
-                                <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Amenidades</h5>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {activeSpecs.amenities.map((a: string, i: number) => (
-                                        <span key={i} className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs rounded-full font-medium">
-                                            {a}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )
             })
@@ -435,6 +381,20 @@ export function SpecificationTabs({
 
     if (computedTabs.length === 0) {
         return null
+    }
+
+    if (computedTabs.length === 1) {
+        return (
+            <div className={cn("w-full space-y-2 mt-4", className)}>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                    {computedTabs[0].icon}
+                    <span>{computedTabs[0].label}</span>
+                </h4>
+                <div className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {computedTabs[0].render()}
+                </div>
+            </div>
+        )
     }
 
     const initialTab = defaultTab || computedTabs[0]?.id || "description"

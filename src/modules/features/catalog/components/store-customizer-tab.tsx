@@ -54,6 +54,15 @@ import {
   Sliders,
   Eye,
   EyeOff,
+  Wand2,
+  Building2,
+  ShoppingBag,
+  Briefcase,
+  Zap,
+  Calculator,
+  ShoppingCart,
+  Package,
+  SlidersHorizontal,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -77,6 +86,63 @@ const GRADIENT_PRESETS = [
   { label: "Emerald Deep", value: "from-emerald-900 via-teal-950 to-black" },
   { label: "Purple Velvet", value: "from-purple-900 via-fuchsia-950 to-black" },
   { label: "Midnight Noir", value: "from-zinc-900 via-zinc-950 to-black" },
+]
+
+const INDUSTRY_PRESETS = [
+  {
+    id: "auto",
+    title: "Auto (Detección Inteligente)",
+    subtitle: "Adapta la tienda según el tipo de catálogo",
+    icon: Wand2,
+    badge: "Recomendado",
+    color: "text-brand-pink",
+    border: "border-brand-pink/40 bg-brand-pink/5",
+  },
+  {
+    id: "real_estate",
+    title: "Inmobiliaria & PropTech",
+    subtitle: "Filtros por m², habitaciones, canon y visitas",
+    icon: Building2,
+    badge: "PropTech",
+    color: "text-emerald-500",
+    border: "border-emerald-500/40 bg-emerald-500/5",
+  },
+  {
+    id: "physical_retail",
+    title: "Tienda & Retail Físico",
+    subtitle: "Carrito flotante, stock, variantes y checkout",
+    icon: ShoppingBag,
+    badge: "E-Commerce",
+    color: "text-blue-500",
+    border: "border-blue-500/40 bg-blue-500/5",
+  },
+  {
+    id: "professional_services",
+    title: "Servicios & Consultoría B2B",
+    subtitle: "Cotizaciones CRM, entregables, SLA y citas",
+    icon: Briefcase,
+    badge: "B2B / Agencia",
+    color: "text-purple-500",
+    border: "border-purple-500/40 bg-purple-500/5",
+  },
+  {
+    id: "digital_software",
+    title: "Software & Digital",
+    subtitle: "Licenciamiento, descarga directa y accesos",
+    icon: Zap,
+    badge: "Digital",
+    color: "text-amber-500",
+    border: "border-amber-500/40 bg-amber-500/5",
+  },
+  {
+    id: "hybrid",
+    title: "Híbrido Multi-Catálogo",
+    subtitle: "Navegador de clasificaciones para tiendas mixtas",
+    icon: Globe,
+    badge: "Multi-Industria",
+    color: "text-indigo-500",
+    border: "border-indigo-500/40 bg-indigo-500/5",
+  },
 ]
 
 export interface StoreCustomizerTabProps {
@@ -612,7 +678,174 @@ export function StoreCustomizerTab({
               </AccordionContent>
             </AccordionItem>
 
-            {/* 1. Theme Presets & Palette */}
+            {/* 1. Industria & Enfoque de la Tienda (Industry Engine Preset) */}
+            <AccordionItem value="item-industry" className="border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl px-4 bg-emerald-500/5 dark:bg-emerald-500/10">
+              <AccordionTrigger className="text-xs font-bold hover:no-underline py-3">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-emerald-500" />
+                  <span>Industria & Enfoque de la Tienda</span>
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] py-0 capitalize">
+                    {config.industry_preset || "auto"}
+                  </Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-1 pb-4">
+                <p className="text-[11px] text-zinc-500">
+                  Selecciona la especialidad de tu tienda para adaptar automáticamente los filtros, widgets de búsqueda y botones de conversión a tu modelo de negocio.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {INDUSTRY_PRESETS.map((preset) => {
+                    const isSelected = (config.industry_preset || "auto") === preset.id
+                    const IconComp = preset.icon
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            industry_preset: preset.id as any,
+                          }))
+                        }
+                        className={cn(
+                          "p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2",
+                          isSelected
+                            ? cn("border-2 shadow-sm font-bold", preset.border)
+                            : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800", preset.color)}>
+                              <IconComp className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold block text-zinc-900 dark:text-white">
+                                {preset.title}
+                              </span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <Badge className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[9px] px-1.5 py-0">
+                              Activo
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-zinc-500 leading-tight">
+                          {preset.subtitle}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 2. Control Modular de Widgets */}
+            <AccordionItem value="item-widgets" className="border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 bg-zinc-50/50 dark:bg-zinc-900/40">
+              <AccordionTrigger className="text-xs font-bold hover:no-underline py-3">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-brand-pink" />
+                  <span>Widgets & Componentes Activos</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-1 pb-4">
+                <p className="text-[11px] text-zinc-500">
+                  Activa o desactiva módulos individuales en tu portal para adaptar la experiencia de tus clientes.
+                </p>
+
+                {/* 1. Filtros Inmobiliarios */}
+                <div className="flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                      <Building2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Filtros Inmobiliarios (PropTech Strip)
+                    </Label>
+                    <p className="text-[11px] text-zinc-500">
+                      Muestra filtros por operación (Venta/Arriendo), tipo de propiedad, habitaciones y m².
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.widget_config?.show_real_estate_filters ?? true}
+                    onCheckedChange={(checked) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        widget_config: { ...(prev.widget_config || {}), show_real_estate_filters: checked },
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* 2. Carrito de Compras Persistente */}
+                <div className="flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                      <ShoppingCart className="h-3.5 w-3.5 text-blue-500" />
+                      Carrito de Compras y Drawer Desplegable
+                    </Label>
+                    <p className="text-[11px] text-zinc-500">
+                      Habilita el botón flotante y panel de carrito para compras directas.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.widget_config?.show_cart_drawer ?? true}
+                    onCheckedChange={(checked) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        widget_config: { ...(prev.widget_config || {}), show_cart_drawer: checked },
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* 3. Simulador de Crédito Hipotecario */}
+                <div className="flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                      <Calculator className="h-3.5 w-3.5 text-purple-500" />
+                      Simulador de Crédito Hipotecario
+                    </Label>
+                    <p className="text-[11px] text-zinc-500">
+                      Permite a los clientes simular su cuota bancaria en propiedades.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.widget_config?.show_mortgage_calculator ?? true}
+                    onCheckedChange={(checked) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        widget_config: { ...(prev.widget_config || {}), show_mortgage_calculator: checked },
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* 4. Badges de Stock y Disponibilidad */}
+                <div className="flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                      <Package className="h-3.5 w-3.5 text-amber-500" />
+                      Badges de Stock & Disponibilidad
+                    </Label>
+                    <p className="text-[11px] text-zinc-500">
+                      Muestra alertas de "Agotado", "¡Últimas unidades!" y stock en vivo.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config.widget_config?.show_stock_badges ?? true}
+                    onCheckedChange={(checked) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        widget_config: { ...(prev.widget_config || {}), show_stock_badges: checked },
+                      }))
+                    }
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 3. Theme Presets & Palette */}
             <AccordionItem value="item-theme" className="border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 bg-zinc-50/50 dark:bg-zinc-900/40">
               <AccordionTrigger className="text-xs font-bold hover:no-underline py-3">
                 <div className="flex items-center gap-2">

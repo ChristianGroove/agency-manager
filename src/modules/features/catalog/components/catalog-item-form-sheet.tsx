@@ -7,6 +7,10 @@ import {
   CatalogGalleryImage,
   CatalogVariant,
   CatalogAttributeGroup,
+  RealEstateOperationType,
+  RealEstatePropertyType,
+  RealEstateParkingType,
+  StorefrontIndustryPreset,
 } from "@/types/catalog"
 import { ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import {
@@ -58,6 +62,18 @@ import {
   Clock,
   ShieldCheck,
   Zap,
+  Building2,
+  Home,
+  Car,
+  Bike,
+  Key,
+  MapPin,
+  Trees,
+  Video,
+  FileText,
+  Check,
+  X,
+  Calculator,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -72,6 +88,7 @@ export interface CatalogItemFormSheetProps {
   spaceType?: string
   portalToken?: string | null
   organizationId?: string | null
+  industryPreset?: StorefrontIndustryPreset | string
 }
 
 const CLASSIFICATIONS: Array<{
@@ -109,6 +126,38 @@ const CLASSIFICATIONS: Array<{
     desc: "Membresías o servicios recurrentes periódicos",
     color: "text-purple-500 bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800",
   },
+  {
+    id: "real_estate",
+    label: "Inmueble / Propiedad",
+    icon: Building2,
+    desc: "Apartamentos, casas, oficinas o lotes en venta o arriendo",
+    color: "text-teal-600 bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800",
+  },
+]
+
+const DEFAULT_COMMON_AREAS = [
+  "Piscina",
+  "Gimnasio",
+  "Vigilancia 24/7",
+  "Salón Social",
+  "Zona BBQ",
+  "Cancha Múltiple",
+  "Cancha de Squash",
+  "Cancha Sintética",
+  "Parque Infantil",
+  "Zona de Mascotas (Pet Friendly)",
+  "Turco / Sauna",
+  "Ascensor",
+  "Coworking",
+  "Sendero Peatonal",
+  "Portería / Lobby",
+  "Parqueadero de Visitantes",
+  "Planta Eléctrica",
+  "Zona Húmeda",
+  "Vista Panorámica",
+  "Balcón / Terraza",
+  "Depósito / Cuarto Útil",
+  "Circuito Cerrado TV",
 ]
 
 const BADGE_OPTIONS = [
@@ -130,9 +179,57 @@ export function CatalogItemFormSheet({
   spaceType = "agency",
   portalToken,
   organizationId,
+  industryPreset,
 }: CatalogItemFormSheetProps) {
   const [activeTab, setActiveTab] = useState<string>("general")
   const [isSaving, setIsSaving] = useState(false)
+
+  // Dynamically compute default and ordered classifications based on Store Industry Preset or Active Item
+  const defaultClassification: CatalogClassification = React.useMemo(() => {
+    if (itemToEdit?.classification) return itemToEdit.classification
+    if (industryPreset === "real_estate") return "real_estate"
+    if (industryPreset === "physical_retail") return "physical"
+    if (industryPreset === "digital_software") return "digital"
+    if (industryPreset === "professional_services") return "service"
+    if (spaceType === "resto") return "physical"
+    return "service"
+  }, [itemToEdit?.classification, industryPreset, spaceType])
+
+  const orderedClassifications = React.useMemo(() => {
+    let primaryId: CatalogClassification = "service"
+    if (industryPreset === "real_estate" || itemToEdit?.classification === "real_estate") {
+      primaryId = "real_estate"
+    } else if (industryPreset === "physical_retail" || itemToEdit?.classification === "physical") {
+      primaryId = "physical"
+    } else if (industryPreset === "digital_software" || itemToEdit?.classification === "digital") {
+      primaryId = "digital"
+    } else if (industryPreset === "professional_services" || itemToEdit?.classification === "service") {
+      primaryId = "service"
+    } else if (itemToEdit?.classification === "subscription") {
+      primaryId = "subscription"
+    } else if (spaceType === "resto") {
+      primaryId = "physical"
+    }
+
+    if (primaryId === "real_estate") {
+      const order: CatalogClassification[] = ["real_estate", "service", "physical", "digital", "subscription"]
+      return order.map((id) => CLASSIFICATIONS.find((c) => c.id === id)!).filter(Boolean)
+    }
+    if (primaryId === "physical") {
+      const order: CatalogClassification[] = ["physical", "digital", "service", "subscription", "real_estate"]
+      return order.map((id) => CLASSIFICATIONS.find((c) => c.id === id)!).filter(Boolean)
+    }
+    if (primaryId === "digital") {
+      const order: CatalogClassification[] = ["digital", "subscription", "service", "physical", "real_estate"]
+      return order.map((id) => CLASSIFICATIONS.find((c) => c.id === id)!).filter(Boolean)
+    }
+    if (primaryId === "subscription") {
+      const order: CatalogClassification[] = ["subscription", "service", "digital", "physical", "real_estate"]
+      return order.map((id) => CLASSIFICATIONS.find((c) => c.id === id)!).filter(Boolean)
+    }
+    const order: CatalogClassification[] = ["service", "physical", "digital", "subscription", "real_estate"]
+    return order.map((id) => CLASSIFICATIONS.find((c) => c.id === id)!).filter(Boolean)
+  }, [industryPreset, itemToEdit?.classification, spaceType])
 
   // Dialog triggers
   const [isAiOpen, setIsAiOpen] = useState(false)
@@ -145,7 +242,7 @@ export function CatalogItemFormSheet({
   const [category, setCategory] = useState(categories[0]?.name || "General")
   const [basePrice, setBasePrice] = useState<number>(0)
   const [compareAtPrice, setCompareAtPrice] = useState<number | null>(null)
-  const [classification, setClassification] = useState<CatalogClassification>("service")
+  const [classification, setClassification] = useState<CatalogClassification>(defaultClassification)
   const [videoUrl, setVideoUrl] = useState("")
 
   // Gallery
@@ -188,6 +285,31 @@ export function CatalogItemFormSheet({
   const [setupFee, setSetupFee] = useState<number>(0)
   const [commitmentMonths, setCommitmentMonths] = useState<number>(0)
   const [autoRenew, setAutoRenew] = useState(true)
+
+  // Real Estate Fields
+  const [realEstateOperation, setRealEstateOperation] = useState<RealEstateOperationType>("sale")
+  const [realEstatePropertyType, setRealEstatePropertyType] = useState<RealEstatePropertyType>("apartment")
+  const [areaTotalM2, setAreaTotalM2] = useState<number>(0)
+  const [areaBuiltM2, setAreaBuiltM2] = useState<number>(0)
+  const [bedrooms, setBedrooms] = useState<number>(0)
+  const [bathrooms, setBathrooms] = useState<number>(0)
+  const [floorNumber, setFloorNumber] = useState<number>(0)
+  const [stratum, setStratum] = useState<string>("4")
+  const [adminFee, setAdminFee] = useState<number>(0)
+  const [antiquity, setAntiquity] = useState<string>("1 a 5 años")
+  const [kitchenType, setKitchenType] = useState<string>("integral")
+  const [parkingCars, setParkingCars] = useState<number>(0)
+  const [parkingMotorcycles, setParkingMotorcycles] = useState<number>(0)
+  const [parkingType, setParkingType] = useState<RealEstateParkingType>("covered")
+  const [city, setCity] = useState("")
+  const [neighborhood, setNeighborhood] = useState("")
+  const [address, setAddress] = useState("")
+  const [hideExactAddress, setHideExactAddress] = useState(false)
+  const [commonAreas, setCommonAreas] = useState<string[]>([])
+  const [customCommonAreaInput, setCustomCommonAreaInput] = useState("")
+  const [virtualTourUrl, setVirtualTourUrl] = useState("")
+  const [brochurePdfUrl, setBrochurePdfUrl] = useState("")
+  const [showMortgageCalculator, setShowMortgageCalculator] = useState(false)
 
   // Variants
   const [hasVariants, setHasVariants] = useState(false)
@@ -257,6 +379,21 @@ export function CatalogItemFormSheet({
     toast.success(`Stock actualizado en ${variants.length} variantes`)
   }
 
+  const handleToggleCommonArea = (area: string) => {
+    setCommonAreas((prev) =>
+      prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
+    )
+  }
+
+  const handleAddCustomCommonArea = () => {
+    const trimmed = customCommonAreaInput.trim()
+    if (!trimmed) return
+    if (!commonAreas.includes(trimmed)) {
+      setCommonAreas((prev) => [...prev, trimmed])
+    }
+    setCustomCommonAreaInput("")
+  }
+
   // Load itemToEdit into state
   useEffect(() => {
     if (itemToEdit) {
@@ -265,7 +402,7 @@ export function CatalogItemFormSheet({
       setCategory(itemToEdit.category || (categories[0]?.name || "General"))
       setBasePrice(itemToEdit.base_price || 0)
       setCompareAtPrice(itemToEdit.compare_at_price ?? null)
-      setClassification(itemToEdit.classification || (itemToEdit.type === "recurring" ? "subscription" : itemToEdit.type === "product" ? "physical" : "service"))
+      setClassification(itemToEdit.classification || (itemToEdit.type === "recurring" ? "subscription" : itemToEdit.type === "product" ? "physical" : itemToEdit.type === "real_estate" ? "real_estate" : "service"))
       setVideoUrl(itemToEdit.video_url || "")
 
       const images = itemToEdit.gallery_images || itemToEdit.images || []
@@ -310,6 +447,31 @@ export function CatalogItemFormSheet({
       setCommitmentMonths(sub?.minimum_commitment_months || 0)
       setAutoRenew(sub?.auto_renew ?? true)
 
+      // Real Estate
+      const re = itemToEdit.real_estate_details || itemToEdit.classification_metadata?.real_estate
+      setRealEstateOperation(re?.operation_type || "sale")
+      setRealEstatePropertyType(re?.property_type || "apartment")
+      setAreaTotalM2(re?.area_total_m2 || 0)
+      setAreaBuiltM2(re?.area_built_m2 || 0)
+      setBedrooms(re?.bedrooms || 0)
+      setBathrooms(re?.bathrooms || 0)
+      setFloorNumber(re?.floor_number || 0)
+      setStratum(re?.stratum ? String(re.stratum) : "4")
+      setAdminFee(re?.admin_fee || 0)
+      setAntiquity(re?.antiquity || "1 a 5 años")
+      setKitchenType(re?.kitchen_type || "integral")
+      setParkingCars(re?.parking_cars || 0)
+      setParkingMotorcycles(re?.parking_motorcycles || 0)
+      setParkingType(re?.parking_type || "covered")
+      setCity(re?.city || "")
+      setNeighborhood(re?.neighborhood || "")
+      setAddress(re?.address || "")
+      setHideExactAddress(re?.hide_exact_address ?? false)
+      setCommonAreas(Array.isArray(re?.common_areas) ? re.common_areas : [])
+      setVirtualTourUrl(re?.virtual_tour_url || "")
+      setBrochurePdfUrl(re?.brochure_pdf_url || "")
+      setShowMortgageCalculator(Boolean(re?.show_mortgage_calculator))
+
       // Variants
       setHasVariants(itemToEdit.has_variants || (itemToEdit.variants && itemToEdit.variants.length > 0) || false)
       setVariants(itemToEdit.variants || [])
@@ -332,7 +494,7 @@ export function CatalogItemFormSheet({
       setCategory(categories[0]?.name || "General")
       setBasePrice(0)
       setCompareAtPrice(null)
-      setClassification("service")
+      setClassification(defaultClassification)
       setVideoUrl("")
       setGalleryImages([])
       setCoverImageUrl(null)
@@ -365,6 +527,30 @@ export function CatalogItemFormSheet({
       setSetupFee(0)
       setCommitmentMonths(0)
       setAutoRenew(true)
+      // Real Estate Reset
+      setRealEstateOperation("sale")
+      setRealEstatePropertyType("apartment")
+      setAreaTotalM2(0)
+      setAreaBuiltM2(0)
+      setBedrooms(0)
+      setBathrooms(0)
+      setFloorNumber(0)
+      setStratum("4")
+      setAdminFee(0)
+      setAntiquity("1 a 5 años")
+      setKitchenType("integral")
+      setParkingCars(0)
+      setParkingMotorcycles(0)
+      setParkingType("covered")
+      setCity("")
+      setNeighborhood("")
+      setAddress("")
+      setHideExactAddress(false)
+      setCommonAreas([])
+      setCustomCommonAreaInput("")
+      setVirtualTourUrl("")
+      setBrochurePdfUrl("")
+      setShowMortgageCalculator(false)
       setHasVariants(false)
       setVariants([])
       setSelectedBadges([])
@@ -424,6 +610,8 @@ export function CatalogItemFormSheet({
           ? "digital"
           : classification === "subscription"
           ? "recurring"
+          : classification === "real_estate"
+          ? "real_estate"
           : "one_off"
 
       const parsedDeliverables = deliverablesInput
@@ -517,6 +705,90 @@ export function CatalogItemFormSheet({
                 auto_renew: autoRenew,
               }
             : undefined,
+        real_estate_details:
+          classification === "real_estate"
+            ? {
+                operation_type: realEstateOperation,
+                property_type: realEstatePropertyType,
+                area_total_m2: Number(areaTotalM2) || 0,
+                area_built_m2: Number(areaBuiltM2) || 0,
+                bedrooms: Number(bedrooms) || 0,
+                bathrooms: Number(bathrooms) || 0,
+                floor_number: Number(floorNumber) || 0,
+                stratum: stratum || "4",
+                admin_fee: Number(adminFee) || 0,
+                antiquity: antiquity || "1 a 5 años",
+                kitchen_type: kitchenType || "integral",
+                parking_cars: Number(parkingCars) || 0,
+                parking_motorcycles: Number(parkingMotorcycles) || 0,
+                parking_type: parkingType,
+                city: city.trim() || undefined,
+                neighborhood: neighborhood.trim() || undefined,
+                address: address.trim() || undefined,
+                hide_exact_address: hideExactAddress,
+                common_areas: commonAreas,
+                virtual_tour_url: virtualTourUrl.trim() || undefined,
+                brochure_pdf_url: brochurePdfUrl.trim() || undefined,
+                show_mortgage_calculator: showMortgageCalculator,
+              }
+            : undefined,
+        classification_metadata: {
+          physical: classification === "physical" ? {
+            weight_kg: Number(weightKg) || 0,
+            dimensions: {
+              length: Number(lengthCm) || 0,
+              width: Number(widthCm) || 0,
+              height: Number(heightCm) || 0,
+              unit: "cm",
+            },
+            shipping_required: shippingRequired,
+          } : undefined,
+          digital: classification === "digital" ? {
+            delivery_type: deliveryType,
+            delivery_mode: deliveryType,
+            download_url: downloadUrl.trim() || undefined,
+            file_size_mb: Number(fileSizeMb) || 0,
+            license_type: licenseType,
+            access_expiry_days: Number(accessExpiryDays) || 0,
+          } : undefined,
+          service: classification === "service" ? {
+            pricing_model: pricingModel,
+            duration_minutes: Number(durationMinutes) || 60,
+            deliverables: parsedDeliverables,
+            sla_hours: Number(slaHours) || 24,
+            location_type: locationType,
+          } : undefined,
+          subscription: classification === "subscription" ? {
+            billing_frequency: billingFrequency,
+            trial_days: Number(trialDays) || 0,
+            setup_fee: Number(setupFee) || 0,
+            minimum_commitment_months: Number(commitmentMonths) || 0,
+            auto_renew: autoRenew,
+          } : undefined,
+          real_estate: classification === "real_estate" ? {
+            operation_type: realEstateOperation,
+            property_type: realEstatePropertyType,
+            area_total_m2: Number(areaTotalM2) || 0,
+            area_built_m2: Number(areaBuiltM2) || 0,
+            bedrooms: Number(bedrooms) || 0,
+            bathrooms: Number(bathrooms) || 0,
+            floor_number: Number(floorNumber) || 0,
+            stratum: stratum || "4",
+            admin_fee: Number(adminFee) || 0,
+            antiquity: antiquity || "1 a 5 años",
+            parking_cars: Number(parkingCars) || 0,
+            parking_motorcycles: Number(parkingMotorcycles) || 0,
+            parking_type: parkingType,
+            city: city.trim() || undefined,
+            neighborhood: neighborhood.trim() || undefined,
+            address: address.trim() || undefined,
+            hide_exact_address: hideExactAddress,
+            common_areas: commonAreas,
+            virtual_tour_url: virtualTourUrl.trim() || undefined,
+            brochure_pdf_url: brochurePdfUrl.trim() || undefined,
+            show_mortgage_calculator: showMortgageCalculator,
+          } : undefined,
+        },
       }
 
       if (itemToEdit && itemToEdit.id) {
@@ -593,8 +865,8 @@ export function CatalogItemFormSheet({
             </div>
 
             {/* Classification Selector Pill Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-              {CLASSIFICATIONS.map((c) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1">
+              {orderedClassifications.map((c) => {
                 const IconComp = c.icon
                 const isSelected = classification === c.id
                 return (
@@ -685,7 +957,15 @@ export function CatalogItemFormSheet({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold">Precio Base (COP)</Label>
+                    <Label className="text-xs font-bold">
+                      {classification === "real_estate"
+                        ? realEstateOperation === "rent"
+                          ? "Canon Mensual (COP)"
+                          : realEstateOperation === "temporary_rent"
+                          ? "Tarifa Temporal (COP)"
+                          : "Precio de Venta (COP)"
+                        : "Precio Base (COP)"}
+                    </Label>
                     <Input
                       type="number"
                       placeholder="50000"
@@ -706,6 +986,54 @@ export function CatalogItemFormSheet({
                     />
                   </div>
                 </div>
+
+                {/* Quick Real Estate Operation Selector in Tab 1 */}
+                {classification === "real_estate" && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-2">
+                    <Label className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4" />
+                      Tipo de Operación Inmobiliaria (Destacado en primera vista)
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRealEstateOperation("sale")}
+                        className={cn(
+                          "py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                          realEstateOperation === "sale"
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        )}
+                      >
+                        🏷️ En Venta
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRealEstateOperation("rent")}
+                        className={cn(
+                          "py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                          realEstateOperation === "rent"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        )}
+                      >
+                        🔑 En Arriendo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRealEstateOperation("temporary_rent")}
+                        className={cn(
+                          "py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                          realEstateOperation === "temporary_rent"
+                            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
+                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        )}
+                      >
+                        🏖️ Arriendo Temporal
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Multi-Photo Uploader */}
                 <div className="p-4 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10">
@@ -973,6 +1301,434 @@ export function CatalogItemFormSheet({
                     <div className="flex items-center justify-between pt-2 border-t border-purple-500/10">
                       <span className="text-xs font-semibold">Renovación Automática</span>
                       <Switch checked={autoRenew} onCheckedChange={setAutoRenew} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Real Estate Adaptive Fields */}
+                {classification === "real_estate" && (
+                  <div className="space-y-4">
+                    {/* A. Tipo de Negocio y Tipo de Inmueble */}
+                    <div className="p-5 rounded-3xl bg-teal-500/5 border border-teal-500/20 space-y-4">
+                      <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 font-bold text-sm">
+                        <Building2 className="h-4 w-4" />
+                        Ficha Inmobiliaria & Modalidad de Operación
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Tipo de Operación</Label>
+                          <Select value={realEstateOperation} onValueChange={(val: any) => setRealEstateOperation(val)}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sale">🏷️ En Venta (Compraventa)</SelectItem>
+                              <SelectItem value="rent">🔑 En Arriendo (Mensual)</SelectItem>
+                              <SelectItem value="temporary_rent">🏖️ Arriendo Temporal / Vacacional</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Tipo de Propiedad</Label>
+                          <Select value={realEstatePropertyType} onValueChange={(val: any) => setRealEstatePropertyType(val)}>
+                            <SelectTrigger className="h-9 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="apartment">🏢 Apartamento</SelectItem>
+                              <SelectItem value="house">🏡 Casa</SelectItem>
+                              <SelectItem value="studio">🛋️ Apartaestudio</SelectItem>
+                              <SelectItem value="office">💼 Oficina</SelectItem>
+                              <SelectItem value="commercial">🏬 Local Comercial</SelectItem>
+                              <SelectItem value="warehouse">🏭 Bodega</SelectItem>
+                              <SelectItem value="land">🌲 Lote / Terreno</SelectItem>
+                              <SelectItem value="country_house">🚜 Finca / Casa Campestre</SelectItem>
+                              <SelectItem value="medical_office">🩺 Consultorio Médico</SelectItem>
+                              <SelectItem value="building">🏙️ Edificio Completo</SelectItem>
+                              <SelectItem value="other">📦 Otro Inmueble</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* B. Dimensiones, Habitaciones, Baños y Estrato */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                          <Home className="h-4 w-4 text-teal-600" />
+                          Dimensiones, Distribución & Costos
+                        </div>
+                        {areaTotalM2 > 0 && basePrice > 0 && (
+                          <Badge variant="outline" className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800">
+                            💡 ${Math.round(basePrice / areaTotalM2).toLocaleString("es-CO")} COP / m²
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Área Total (m²)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="85"
+                            value={areaTotalM2 || ""}
+                            onChange={(e) => setAreaTotalM2(parseFloat(e.target.value) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Área Constr. (m²)</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="78"
+                            value={areaBuiltM2 || ""}
+                            onChange={(e) => setAreaBuiltM2(parseFloat(e.target.value) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Habitaciones</Label>
+                          <Input
+                            type="number"
+                            placeholder="3"
+                            value={bedrooms || ""}
+                            onChange={(e) => setBedrooms(parseInt(e.target.value, 10) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Baños</Label>
+                          <Input
+                            type="number"
+                            placeholder="2"
+                            value={bathrooms || ""}
+                            onChange={(e) => setBathrooms(parseInt(e.target.value, 10) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Piso / Nivel</Label>
+                          <Input
+                            type="number"
+                            placeholder="5"
+                            value={floorNumber || ""}
+                            onChange={(e) => setFloorNumber(parseInt(e.target.value, 10) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Estrato</Label>
+                          <Select value={stratum} onValueChange={setStratum}>
+                            <SelectTrigger className="h-8 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Estrato 1</SelectItem>
+                              <SelectItem value="2">Estrato 2</SelectItem>
+                              <SelectItem value="3">Estrato 3</SelectItem>
+                              <SelectItem value="4">Estrato 4</SelectItem>
+                              <SelectItem value="5">Estrato 5</SelectItem>
+                              <SelectItem value="6">Estrato 6</SelectItem>
+                              <SelectItem value="Comercial">Comercial</SelectItem>
+                              <SelectItem value="Rural">Rural</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Valor Administración (COP)</Label>
+                          <Input
+                            type="number"
+                            placeholder="280000"
+                            value={adminFee || ""}
+                            onChange={(e) => setAdminFee(parseFloat(e.target.value) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Antigüedad</Label>
+                          <Select value={antiquity} onValueChange={setAntiquity}>
+                            <SelectTrigger className="h-8 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="A estrenar (Nuevo)">A estrenar (Nuevo)</SelectItem>
+                              <SelectItem value="1 a 5 años">1 a 5 años</SelectItem>
+                              <SelectItem value="5 a 10 años">5 a 10 años</SelectItem>
+                              <SelectItem value="10 a 20 años">10 a 20 años</SelectItem>
+                              <SelectItem value="Más de 20 años">Más de 20 años</SelectItem>
+                              <SelectItem value="En construcción (Sobre planos)">En construcción (Sobre planos)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Tipo de Cocina</Label>
+                          <Select value={kitchenType} onValueChange={setKitchenType}>
+                            <SelectTrigger className="h-8 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="integral">🍳 Cocina Integral</SelectItem>
+                              <SelectItem value="semi_integral">🥘 Cocina Semi-Integral</SelectItem>
+                              <SelectItem value="americana">🍸 Cocina Americana / Abierta</SelectItem>
+                              <SelectItem value="isla">🏝️ Cocina con Isla</SelectItem>
+                              <SelectItem value="tradicional">🍲 Cocina Tradicional / Cerrada</SelectItem>
+                              <SelectItem value="sin_cocina">🧱 Sin Cocina / Obra Gris</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* C. Parqueaderos Detallados (Carro, Moto, Cubierto/Intemperie) */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                        <Car className="h-4 w-4 text-indigo-500" />
+                        Parqueaderos & Estacionamiento (Carro & Moto)
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold flex items-center gap-1.5">
+                            <Car className="h-3.5 w-3.5 text-zinc-400" />
+                            Parqueaderos Carro
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="1"
+                            value={parkingCars || ""}
+                            onChange={(e) => setParkingCars(parseInt(e.target.value, 10) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold flex items-center gap-1.5">
+                            <Bike className="h-3.5 w-3.5 text-zinc-400" />
+                            Parqueaderos Moto
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="1"
+                            value={parkingMotorcycles || ""}
+                            onChange={(e) => setParkingMotorcycles(parseInt(e.target.value, 10) || 0)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Tipo de Parqueadero</Label>
+                          <Select value={parkingType} onValueChange={(val: any) => setParkingType(val)}>
+                            <SelectTrigger className="h-8 text-xs rounded-xl">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="covered">🛡️ Cubierto / Techado</SelectItem>
+                              <SelectItem value="uncovered">☀️ Descubierto / Intemperie</SelectItem>
+                              <SelectItem value="mixed">🔄 Mixto (Cubierto + Intemperie)</SelectItem>
+                              <SelectItem value="communal">👥 Comunal / Rotativo</SelectItem>
+                              <SelectItem value="none">🚫 No tiene parqueadero</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* D. Ubicación & Privacidad */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                        <MapPin className="h-4 w-4 text-emerald-500" />
+                        Ubicación Geográfica & Privacidad
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Ciudad / Municipio</Label>
+                          <Input
+                            placeholder="ej. Medellín, Bogotá, Cali..."
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Barrio / Sector</Label>
+                          <Input
+                            placeholder="ej. El Poblado, Chapinero..."
+                            value={neighborhood}
+                            onChange={(e) => setNeighborhood(e.target.value)}
+                            className="h-8 text-xs rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold">Dirección Exacta</Label>
+                          <Input
+                            placeholder="ej. Calle 10 # 43E-20"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            className="h-8 text-xs rounded-xl font-mono text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <span className="text-xs font-bold block">Ocultar dirección exacta en la tienda pública</span>
+                          <span className="text-[11px] text-zinc-400">
+                            Por seguridad, los clientes solo verán la Ciudad y el Barrio/Sector.
+                          </span>
+                        </div>
+                        <Switch checked={hideExactAddress} onCheckedChange={setHideExactAddress} />
+                      </div>
+                    </div>
+
+                    {/* E. Áreas Comunes (Spanish: "Áreas Comunes") */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                          <Trees className="h-4 w-4 text-emerald-600" />
+                          Áreas Comunes ({commonAreas.length} seleccionadas)
+                        </div>
+                        <span className="text-[11px] text-zinc-400">Haz clic para activar o desactivar</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {DEFAULT_COMMON_AREAS.map((area) => {
+                          const isSelected = commonAreas.includes(area)
+                          return (
+                            <button
+                              key={area}
+                              type="button"
+                              onClick={() => handleToggleCommonArea(area)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5",
+                                isSelected
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shadow-xs"
+                                  : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                              )}
+                            >
+                              {isSelected ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Plus className="h-3 w-3 text-zinc-400" />}
+                              {area}
+                            </button>
+                          )
+                        })}
+
+                        {/* Custom common areas */}
+                        {commonAreas
+                          .filter((a) => !DEFAULT_COMMON_AREAS.includes(a))
+                          .map((customArea) => (
+                            <span
+                              key={customArea}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold border bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shadow-xs flex items-center gap-1.5"
+                            >
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              {customArea}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCommonArea(customArea)}
+                                className="hover:text-rose-500 transition-colors ml-1 cursor-pointer"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                      </div>
+
+                      {/* Add Custom Area Input */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <Input
+                          placeholder="Agregar otra área común personalizada (ej. Pista de Bolos)..."
+                          value={customCommonAreaInput}
+                          onChange={(e) => setCustomCommonAreaInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleAddCustomCommonArea()
+                            }
+                          }}
+                          className="h-8 text-xs rounded-xl flex-1"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAddCustomCommonArea}
+                          className="h-8 text-xs rounded-xl px-3 font-semibold bg-zinc-800 text-white dark:bg-zinc-700"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Añadir
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* F. Recorridos 360° & Ficha Técnica PDF */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-4">
+                      <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                        <Video className="h-4 w-4 text-purple-500" />
+                        Multimedia Avanzada & Documentación
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold flex items-center gap-1.5">
+                            <Video className="h-3.5 w-3.5 text-purple-500" />
+                            Recorrido Virtual 360° / Tour URL
+                          </Label>
+                          <Input
+                            placeholder="https://my.matterport.com/show/?m=... o YouTube 360"
+                            value={virtualTourUrl}
+                            onChange={(e) => setVirtualTourUrl(e.target.value)}
+                            className="h-8 text-xs rounded-xl font-mono text-[11px]"
+                          />
+                          <span className="text-[10px] text-zinc-400">Soporta Matterport, Kuula o YouTube</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-bold flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-blue-500" />
+                            Ficha Técnica / Brochure en PDF (URL)
+                          </Label>
+                          <Input
+                            placeholder="https://.../ficha-tecnica-inmueble.pdf"
+                            value={brochurePdfUrl}
+                            onChange={(e) => setBrochurePdfUrl(e.target.value)}
+                            className="h-8 text-xs rounded-xl font-mono text-[11px]"
+                          />
+                          <span className="text-[10px] text-zinc-400">Enlace directo para descarga de clientes</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* G. Herramientas Financieras (Simulador de Crédito) */}
+                    <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold text-xs">
+                          <Calculator className="h-4 w-4 text-emerald-600" />
+                          Activar Simulador de Crédito Hipotecario
+                        </div>
+                        <Switch
+                          checked={showMortgageCalculator}
+                          onCheckedChange={setShowMortgageCalculator}
+                        />
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                        Muestra un simulador financiero interactivo en la ficha pública para que los compradores puedan estimar su cuota mensual según el valor del inmueble, cuota inicial y plazo.
+                      </p>
                     </div>
                   </div>
                 )}

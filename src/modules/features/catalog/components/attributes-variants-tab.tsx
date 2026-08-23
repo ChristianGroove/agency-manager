@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   Info,
   Sliders,
+  Building2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -141,6 +142,35 @@ const ATTRIBUTE_PRESETS: AttributePreset[] = [
           { label: "Deslactosada", value: "deslactosada" },
           { label: "Almendras", value: "almendras" },
           { label: "Avena", value: "avena" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "real_estate",
+    name: "Inmobiliaria & Inmuebles",
+    desc: "Estado de entrega y Tipo de vista",
+    icon: Building2,
+    groups: [
+      {
+        name: "Estado de Entrega",
+        slug: "estado-entrega",
+        swatch_type: "pill",
+        options: [
+          { label: "Obra Gris", value: "obra-gris" },
+          { label: "Obra Blanca", value: "obra-blanca" },
+          { label: "Totalmente Terminado", value: "terminado" },
+          { label: "Amoblado / Equipado", value: "amoblado" },
+        ],
+      },
+      {
+        name: "Tipo de Vista",
+        slug: "tipo-vista",
+        swatch_type: "pill",
+        options: [
+          { label: "Vista Exterior Panorámica", value: "exterior-panoramica" },
+          { label: "Vista Interior", value: "interior" },
+          { label: "Vista a Reserva Natural", value: "reserva-natural" },
         ],
       },
     ],

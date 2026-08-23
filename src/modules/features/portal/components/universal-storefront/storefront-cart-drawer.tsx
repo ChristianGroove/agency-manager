@@ -43,6 +43,7 @@ import {
   Package,
   Sparkles,
   ShieldCheck,
+  Zap,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -144,6 +145,10 @@ export function StorefrontCartDrawer({
   const subtotal = getSubtotal()
   const hasOutOfStock = hasOutOfStockItems()
 
+  const hasPhysicalItems = useMemo(() => {
+    return items.some((i) => i.classification === "physical" || (!i.classification && i.track_inventory))
+  }, [items])
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -164,7 +169,7 @@ export function StorefrontCartDrawer({
       toast.error("Por favor ingresa tu número de WhatsApp / Teléfono")
       return false
     }
-    if (requireAddress && delivery_method === "delivery" && !customer_profile.address?.trim()) {
+    if (requireAddress && hasPhysicalItems && delivery_method === "delivery" && !customer_profile.address?.trim()) {
       toast.error("Por favor ingresa la dirección de entrega para el envío a domicilio")
       return false
     }
@@ -693,74 +698,88 @@ _Generado automáticamente desde Pixy Storefront_`
               </div>
             </div>
 
-            {/* Delivery Method Selector */}
-            <div
-              className={cn(
-                "p-4 rounded-2xl border space-y-3",
-                isDarkTheme ? "bg-zinc-900/60 border-zinc-800" : "bg-zinc-50 border-zinc-200"
-              )}
-            >
-              <Label className="text-xs font-bold">
-                Método de Entrega
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMethod("delivery")}
-                  className={cn(
-                    "p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center transition-all cursor-pointer",
-                    delivery_method === "delivery"
-                      ? "border-transparent text-white font-bold shadow-xs"
-                      : isDarkTheme
-                      ? "border-zinc-800 hover:bg-zinc-800/60 text-zinc-400"
-                      : "border-zinc-200 hover:bg-zinc-100 text-zinc-600"
-                  )}
-                  style={delivery_method === "delivery" ? { backgroundColor: primaryColor } : {}}
-                >
-                  <Truck className="h-4 w-4" />
-                  <span className="text-xs">Envío a Domicilio</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMethod("pickup")}
-                  className={cn(
-                    "p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center transition-all cursor-pointer",
-                    delivery_method === "pickup"
-                      ? "border-transparent text-white font-bold shadow-xs"
-                      : isDarkTheme
-                      ? "border-zinc-800 hover:bg-zinc-800/60 text-zinc-400"
-                      : "border-zinc-200 hover:bg-zinc-100 text-zinc-600"
-                  )}
-                  style={delivery_method === "pickup" ? { backgroundColor: primaryColor } : {}}
-                >
-                  <Store className="h-4 w-4" />
-                  <span className="text-xs">Retiro en Tienda</span>
-                </button>
-              </div>
-
-              {delivery_method === "delivery" && (
-                <div className="pt-2 animate-in fade-in duration-200">
-                  <Label className={cn("text-[11px] font-semibold", isDarkTheme ? "text-zinc-400" : "text-zinc-600")}>
-                    Dirección de entrega *
-                  </Label>
-                  <Input
-                    required
-                    value={customer_profile.address || ""}
-                    onChange={(e) =>
-                      updateCustomerProfile({ address: e.target.value })
-                    }
-                    placeholder="Calle, Carrera, Número, Barrio, Ciudad"
+            {/* Delivery Method Selector (Physical items only) */}
+            {hasPhysicalItems ? (
+              <div
+                className={cn(
+                  "p-4 rounded-2xl border space-y-3",
+                  isDarkTheme ? "bg-zinc-900/60 border-zinc-800" : "bg-zinc-50 border-zinc-200"
+                )}
+              >
+                <Label className="text-xs font-bold">
+                  Método de Entrega
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("delivery")}
                     className={cn(
-                      "mt-1 h-9 rounded-xl text-xs border shadow-xs transition-colors",
-                      isDarkTheme
-                        ? "bg-zinc-900/90 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600"
-                        : "bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400"
+                      "p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center transition-all cursor-pointer",
+                      delivery_method === "delivery"
+                        ? "border-transparent text-white font-bold shadow-xs"
+                        : isDarkTheme
+                        ? "border-zinc-800 hover:bg-zinc-800/60 text-zinc-400"
+                        : "border-zinc-200 hover:bg-zinc-100 text-zinc-600"
                     )}
-                  />
+                    style={delivery_method === "delivery" ? { backgroundColor: primaryColor } : {}}
+                  >
+                    <Truck className="h-4 w-4" />
+                    <span className="text-xs">Envío a Domicilio</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("pickup")}
+                    className={cn(
+                      "p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center transition-all cursor-pointer",
+                      delivery_method === "pickup"
+                        ? "border-transparent text-white font-bold shadow-xs"
+                        : isDarkTheme
+                        ? "border-zinc-800 hover:bg-zinc-800/60 text-zinc-400"
+                        : "border-zinc-200 hover:bg-zinc-100 text-zinc-600"
+                    )}
+                    style={delivery_method === "pickup" ? { backgroundColor: primaryColor } : {}}
+                  >
+                    <Store className="h-4 w-4" />
+                    <span className="text-xs">Retiro en Tienda</span>
+                  </button>
                 </div>
-              )}
-            </div>
+
+                {delivery_method === "delivery" && (
+                  <div className="pt-2 animate-in fade-in duration-200">
+                    <Label className={cn("text-[11px] font-semibold", isDarkTheme ? "text-zinc-400" : "text-zinc-600")}>
+                      Dirección de entrega *
+                    </Label>
+                    <Input
+                      required
+                      value={customer_profile.address || ""}
+                      onChange={(e) =>
+                        updateCustomerProfile({ address: e.target.value })
+                      }
+                      placeholder="Calle, Carrera, Número, Barrio, Ciudad"
+                      className={cn(
+                        "mt-1 h-9 rounded-xl text-xs border shadow-xs transition-colors",
+                        isDarkTheme
+                          ? "bg-zinc-900/90 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600"
+                          : "bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400"
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "p-3.5 rounded-2xl border text-xs flex items-center gap-2.5",
+                  isDarkTheme
+                    ? "bg-zinc-900/50 border-zinc-800 text-zinc-400"
+                    : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                )}
+              >
+                <Zap className="h-4 w-4 text-brand-pink shrink-0" />
+                <span>Entrega digital / atención directa. No requiere dirección física de envío.</span>
+              </div>
+            )}
 
             {/* Customer Information Form */}
             <div

@@ -6,6 +6,8 @@ import {
   CatalogClassification,
   CatalogVariant,
   CatalogAttributeGroup,
+  StorefrontThemeConfig,
+  StorefrontIndustryPreset,
 } from "@/types/catalog"
 import { ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import {
@@ -58,6 +60,11 @@ import {
   CheckCircle2,
   Package,
   Zap,
+  Building2,
+  MapPin,
+  Tag,
+  Key,
+  CalendarRange,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -71,10 +78,13 @@ export interface CatalogItemsTabProps {
   spaceType?: string
   portalToken?: string | null
   organizationId?: string | null
+  themeConfig?: StorefrontThemeConfig
+  industryPreset?: StorefrontIndustryPreset | string
 }
 
 const CLASSIFICATION_FILTERS: Array<{ id: string; label: string; icon?: any }> = [
   { id: "all", label: "Todos" },
+  { id: "real_estate", label: "Inmuebles", icon: Building2 },
   { id: "service", label: "Servicios", icon: Briefcase },
   { id: "physical", label: "Físicos", icon: Box },
   { id: "digital", label: "Digitales", icon: FileCode2 },
@@ -90,7 +100,35 @@ export function CatalogItemsTab({
   spaceType = "agency",
   portalToken,
   organizationId,
+  themeConfig,
+  industryPreset,
 }: CatalogItemsTabProps) {
+  const activePreset = industryPreset || themeConfig?.industry_preset
+
+  const dynamicClassificationFilters = useMemo(() => {
+    let priorityId: string = "service"
+    if (activePreset === "real_estate") {
+      priorityId = "real_estate"
+    } else if (activePreset === "physical_retail") {
+      priorityId = "physical"
+    } else if (activePreset === "digital_software") {
+      priorityId = "digital"
+    } else if (activePreset === "professional_services") {
+      priorityId = "service"
+    } else if (spaceType === "resto") {
+      priorityId = "physical"
+    }
+
+    const allFilter: { id: string; label: string; icon?: any } = { id: "all", label: "Todos" }
+    const rest = [...CLASSIFICATION_FILTERS.filter((f) => f.id !== "all")]
+    rest.sort((a, b) => {
+      if (a.id === priorityId) return -1
+      if (b.id === priorityId) return 1
+      return 0
+    })
+    return [allFilter, ...rest]
+  }, [activePreset, spaceType])
+
   // View mode
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
@@ -117,7 +155,16 @@ export function CatalogItemsTab({
         const matchesDesc = (item.description || "").toLowerCase().includes(query)
         const matchesSku = (item.sku || "").toLowerCase().includes(query)
         const matchesBarcode = (item.barcode || "").toLowerCase().includes(query)
-        if (!matchesName && !matchesDesc && !matchesSku && !matchesBarcode) {
+        const re = item.real_estate_details || item.classification_metadata?.real_estate
+        const matchesRe = Boolean(
+          re && (
+            re.neighborhood?.toLowerCase().includes(query) ||
+            re.city?.toLowerCase().includes(query) ||
+            re.address?.toLowerCase().includes(query) ||
+            re.property_type?.toLowerCase().includes(query)
+          )
+        )
+        if (!matchesName && !matchesDesc && !matchesSku && !matchesBarcode && !matchesRe) {
           return false
         }
       }
@@ -263,7 +310,7 @@ export function CatalogItemsTab({
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input
-              placeholder="Buscar por nombre, SKU, código de barras..."
+              placeholder="Buscar por nombre, SKU, código, sector, ciudad..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 h-10 text-xs rounded-2xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
@@ -363,7 +410,7 @@ export function CatalogItemsTab({
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {/* Classification Pills */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {CLASSIFICATION_FILTERS.map((cf) => {
+            {dynamicClassificationFilters.map((cf) => {
               const isSelected = selectedClassification === cf.id
               const IconComp = cf.icon
               return (
@@ -490,7 +537,22 @@ export function CatalogItemsTab({
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-60" />
 
                   {/* Badges on image */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[70%]">
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[75%] z-10">
+                    {item.classification === "real_estate" && (() => {
+                      const re = item.real_estate_details || item.classification_metadata?.real_estate
+                      const op = re?.operation_type || "sale"
+                      const isRent = op === "rent"
+                      const isTemp = op === "temporary_rent"
+                      const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
+                      const OpIcon = isRent ? Key : isTemp ? CalendarRange : Tag
+                      const opColor = op === "rent" ? "bg-blue-600 text-white" : op === "temporary_rent" ? "bg-purple-600 text-white" : "bg-emerald-600 text-white"
+                      return (
+                        <Badge className={cn("text-[10px] border-none font-black shadow-md flex items-center gap-1", opColor)}>
+                          <OpIcon className="h-2.5 w-2.5" />
+                          <span>{opLabel}</span>
+                        </Badge>
+                      )
+                    })()}
                     <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-md text-[10px] border-none font-bold">
                       {item.category}
                     </Badge>
@@ -505,13 +567,14 @@ export function CatalogItemsTab({
                   <div className="absolute top-3 right-3 flex items-center gap-1.5">
                     {/* Floating Stock Badge */}
                     {hasVariants ? (
-                      <Badge className="bg-indigo-600/90 text-white text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm">
-                        📦 {totalVariantStock} uds
+                      <Badge className="bg-indigo-600/90 text-white text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm flex items-center gap-1">
+                        <Package className="h-2.5 w-2.5" />
+                        <span>{totalVariantStock} uds</span>
                       </Badge>
                     ) : isTracking ? (
                       <Badge
                         className={cn(
-                          "text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm",
+                          "text-[10px] font-extrabold backdrop-blur-md border-none shadow-sm flex items-center gap-1",
                           isOut
                             ? "bg-rose-600 text-white"
                             : isBackorder
@@ -521,7 +584,8 @@ export function CatalogItemsTab({
                             : "bg-emerald-600 text-white"
                         )}
                       >
-                        {isOut ? "🚫 Agotado" : isBackorder ? "📦 Bajo Pedido" : isLow ? `⚠️ ¡${stockQty} uds!` : `📦 ${stockQty} uds`}
+                        <Package className="h-2.5 w-2.5" />
+                        <span>{isOut ? "Agotado" : isBackorder ? "Bajo Pedido" : isLow ? `¡${stockQty} uds!` : `${stockQty} uds`}</span>
                       </Badge>
                     ) : null}
 
@@ -587,16 +651,73 @@ export function CatalogItemsTab({
                       <h3 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1 group-hover:text-brand-pink transition-colors">
                         {item.name}
                       </h3>
+
+                      {/* Real Estate Subtitle in Admin Card */}
+                      {item.classification === "real_estate" && (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate
+                        const propType = re?.property_type || "apartment"
+                        const typeMap: Record<string, string> = {
+                          apartment: "Apartamento",
+                          house: "Casa",
+                          studio: "Apartaestudio",
+                          office: "Oficina",
+                          commercial: "Local Comercial",
+                          warehouse: "Bodega",
+                          land: "Lote / Terreno",
+                          country_house: "Finca / Casa Campestre",
+                          medical_office: "Consultorio",
+                          building: "Edificio",
+                        }
+                        const typeLabel = typeMap[propType] || "Inmueble"
+                        const loc = re?.neighborhood ? `${re.neighborhood}, ${re.city || ""}` : (re?.city || "")
+                        return (
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-1">
+                            <span className="flex items-center gap-1 font-bold text-zinc-700 dark:text-zinc-300">
+                              <Building2 className="h-3.5 w-3.5 text-brand-pink shrink-0" />
+                              {typeLabel}
+                            </span>
+                            {loc && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-emerald-500 shrink-0" />
+                                  {loc}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
+
                       {item.description && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
                           {item.description}
                         </p>
                       )}
                     </div>
 
-                    {/* Highly Visible Stock and SKU Badges */}
+                    {/* Highly Visible Stock, Real Estate Specs and SKU Badges */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {hasVariants ? (
+                      {item.classification === "real_estate" ? (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+                        const pills: string[] = []
+                        if (re.area_total_m2) pills.push(`📐 ${re.area_total_m2} m²`)
+                        if (re.bedrooms) pills.push(`🛏️ ${re.bedrooms} Hab`)
+                        if (re.bathrooms) pills.push(`🚿 ${re.bathrooms} Baños`)
+                        if (re.parking_cars || re.parking_motorcycles) {
+                          const pType = re.parking_type === "covered" ? "Cub." : re.parking_type === "uncovered" ? "Int." : ""
+                          pills.push(`🚗 ${re.parking_cars || 0}${pType ? ` (${pType})` : ''}`)
+                        }
+                        return (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {pills.map((p, idx) => (
+                              <span key={idx} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        )
+                      })() : hasVariants ? (
                         <Badge variant="outline" className="text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 gap-1 py-0.5 rounded-lg">
                           <Layers className="h-3 w-3 text-indigo-500" />
                           <span>{totalVariantStock} en stock ({item.variants?.length} vars)</span>
@@ -705,7 +826,24 @@ export function CatalogItemsTab({
 
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
+                          {item.classification === "real_estate" && (() => {
+                            const re = item.real_estate_details || item.classification_metadata?.real_estate
+                            const op = re?.operation_type || "sale"
+                            const isRent = op === "rent"
+                            const isTemp = op === "temporary_rent"
+                            const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
+                            const OpIcon = isRent ? Key : isTemp ? CalendarRange : Tag
+                            const opColor = op === "rent" ? "bg-blue-600 text-white" : op === "temporary_rent" ? "bg-purple-600 text-white" : "bg-emerald-600 text-white"
+                            return (
+                              <Badge className={cn("text-[9px] py-0 px-1.5 border-none font-bold flex items-center gap-1", opColor)}>
+                                <OpIcon className="h-2 w-2" />
+                                <span>{opLabel}</span>
+                              </Badge>
+                            )
+                          })()}
+                        </div>
                         <span className="text-[11px] text-zinc-400">{item.category}</span>
                       </div>
                     </TableCell>
@@ -731,7 +869,15 @@ export function CatalogItemsTab({
                     </TableCell>
 
                     <TableCell>
-                      {hasVariants ? (
+                      {item.classification === "real_estate" ? (() => {
+                        const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
+                        return (
+                          <Badge variant="outline" className="text-[10px] font-bold bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 gap-1">
+                            <Building2 className="h-3 w-3 text-emerald-600" />
+                            <span>{re.area_total_m2 ? `${re.area_total_m2} m²` : "Inmueble"}</span>
+                          </Badge>
+                        )
+                      })() : hasVariants ? (
                         <Badge variant="outline" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 bg-indigo-50/50">
                           📦 {totalVariantStock} uds
                         </Badge>
@@ -818,6 +964,7 @@ export function CatalogItemsTab({
         spaceType={spaceType}
         portalToken={portalToken}
         organizationId={organizationId}
+        industryPreset={activePreset}
       />
 
       {/* Category Manager Drawer */}

@@ -5,7 +5,7 @@
 
 import crypto from 'crypto';
 
-export type CatalogClassification = 'physical' | 'digital' | 'service' | 'subscription';
+export type CatalogClassification = 'physical' | 'digital' | 'service' | 'subscription' | 'real_estate';
 
 export interface CatalogGalleryImage {
   id: string;
@@ -63,8 +63,9 @@ export interface CatalogAddonGroup {
   id: string;
   name: string;
   description?: string;
-  selection_type: 'single' | 'multiple';
+  selection_type?: 'single' | 'multiple';
   is_required: boolean;
+  allow_multiple?: boolean;
   min_selections?: number;
   max_selections?: number;
   options: CatalogAddonOption[];
@@ -79,7 +80,7 @@ export interface UniversalCatalogItem {
   category?: string;
   base_price: number;
   compare_at_price?: number;
-  type: 'recurring' | 'one_off' | 'product';
+  type: 'recurring' | 'one_off' | 'product' | 'real_estate';
   classification: CatalogClassification;
   frequency?: string;
   image_url?: string; // Backwards compatible cover mirror
@@ -97,6 +98,8 @@ export interface UniversalCatalogItem {
   addon_groups: CatalogAddonGroup[];
   badges: string[]; // ["Destacado", "Novedad", "Pocas Unidades", "Descuento"]
   specifications: Record<string, any>;
+  real_estate_details?: any;
+  metadata?: any;
   is_visible_in_portal: boolean;
   is_active: boolean;
   created_at: string;

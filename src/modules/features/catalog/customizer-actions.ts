@@ -82,6 +82,11 @@ export async function getStorefrontThemeConfigAction(params?: {
     return {
       ...DEFAULT_STOREFRONT_THEME_CONFIG,
       ...rawConfig,
+      industry_preset: rawConfig.industry_preset || DEFAULT_STOREFRONT_THEME_CONFIG.industry_preset || 'auto',
+      widget_config: {
+        ...DEFAULT_STOREFRONT_THEME_CONFIG.widget_config,
+        ...(rawConfig.widget_config || {}),
+      },
       primary_cta:
         rawConfig.primary_cta ||
         DEFAULT_STOREFRONT_THEME_CONFIG.primary_cta ||

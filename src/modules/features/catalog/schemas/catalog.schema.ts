@@ -69,6 +69,7 @@ export const catalogItemClassificationSchema = z.enum([
   'digital',
   'service',
   'subscription',
+  'real_estate',
 ]);
 
 export const legacyServiceTypeSchema = z.enum([
@@ -79,6 +80,7 @@ export const legacyServiceTypeSchema = z.enum([
   'digital',
   'service',
   'subscription',
+  'real_estate',
 ]);
 
 export const billingFrequencySchema = z.enum([
@@ -88,6 +90,22 @@ export const billingFrequencySchema = z.enum([
   'semiannual',
   'yearly',
 ]);
+
+export const realEstateOperationTypeSchema = z.enum(['sale', 'rent', 'temporary_rent']);
+export const realEstatePropertyTypeSchema = z.enum([
+  'apartment',
+  'house',
+  'studio',
+  'office',
+  'commercial',
+  'warehouse',
+  'land',
+  'country_house',
+  'medical_office',
+  'building',
+  'other',
+]);
+export const realEstateParkingTypeSchema = z.enum(['covered', 'uncovered', 'mixed', 'communal', 'none']);
 
 // Classification-specific metadata schemas
 export const physicalMetadataSchema = z.object({
@@ -132,11 +150,35 @@ export const subscriptionMetadataSchema = z.object({
   auto_renew: z.boolean().default(true),
 });
 
+export const realEstateMetadataSchema = z.object({
+  operation_type: realEstateOperationTypeSchema.default('sale'),
+  property_type: realEstatePropertyTypeSchema.default('apartment'),
+  area_total_m2: z.number().nonnegative('El área total no puede ser negativa').optional().nullable(),
+  area_built_m2: z.number().nonnegative('El área construida no puede ser negativa').optional().nullable(),
+  bedrooms: z.number().int().nonnegative('Las habitaciones no pueden ser negativas').optional().nullable(),
+  bathrooms: z.number().int().nonnegative('Los baños no pueden ser negativos').optional().nullable(),
+  floor_number: z.number().int().optional().nullable(),
+  stratum: z.union([z.string(), z.number()]).optional().nullable(),
+  admin_fee: z.number().nonnegative('El valor de administración no puede ser negativo').optional().nullable(),
+  antiquity: z.string().max(100).optional().nullable(),
+  parking_cars: z.number().int().nonnegative().optional().nullable(),
+  parking_motorcycles: z.number().int().nonnegative().optional().nullable(),
+  parking_type: realEstateParkingTypeSchema.default('covered').optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  neighborhood: z.string().max(150).optional().nullable(),
+  address: z.string().max(255).optional().nullable(),
+  hide_exact_address: z.boolean().default(false).optional().nullable(),
+  common_areas: z.array(z.string()).default([]),
+  virtual_tour_url: z.string().optional().nullable().or(z.literal('')),
+  brochure_pdf_url: z.string().optional().nullable().or(z.literal('')),
+});
+
 export const classificationMetadataSchema = z.object({
   physical: physicalMetadataSchema.optional(),
   digital: digitalMetadataSchema.optional(),
   service: serviceMetadataSchema.optional(),
   subscription: subscriptionMetadataSchema.optional(),
+  real_estate: realEstateMetadataSchema.optional(),
 });
 
 // ------------------------------------------------------------------------------
@@ -379,6 +421,7 @@ export const universalCatalogItemSchema = z
     digital_details: digitalMetadataSchema.optional(),
     service_details: serviceMetadataSchema.optional(),
     subscription_details: subscriptionMetadataSchema.optional(),
+    real_estate_details: realEstateMetadataSchema.optional(),
     is_visible_in_portal: z.boolean().default(true),
     is_active: z.boolean().default(true),
     order_index: z.number().int().optional(),
@@ -581,6 +624,25 @@ export const storefrontHeroSchema = z.object({
   banner_height: z.enum(['compact', 'medium', 'tall', 'full']).default('medium').optional(),
 });
 
+export const storefrontIndustryPresetSchema = z.enum([
+  'auto',
+  'real_estate',
+  'physical_retail',
+  'professional_services',
+  'digital_software',
+  'hybrid',
+]);
+
+export const storefrontWidgetConfigSchema = z.object({
+  show_real_estate_filters: z.boolean().default(true).optional(),
+  show_cart_drawer: z.boolean().default(true).optional(),
+  show_mortgage_calculator: z.boolean().default(true).optional(),
+  show_whatsapp_button: z.boolean().default(true).optional(),
+  show_category_nav: z.boolean().default(true).optional(),
+  show_search_bar: z.boolean().default(true).optional(),
+  show_stock_badges: z.boolean().default(true).optional(),
+});
+
 export const storefrontThemeConfigSchema = z.object({
   theme: z
     .enum([
@@ -597,6 +659,16 @@ export const storefrontThemeConfigSchema = z.object({
     ])
     .default('modern'),
   theme_id: z.string().optional(),
+  industry_preset: storefrontIndustryPresetSchema.default('auto').optional(),
+  widget_config: storefrontWidgetConfigSchema.default({
+    show_real_estate_filters: true,
+    show_cart_drawer: true,
+    show_mortgage_calculator: true,
+    show_whatsapp_button: true,
+    show_category_nav: true,
+    show_search_bar: true,
+    show_stock_badges: true,
+  }).optional(),
   primary_color: z.string().regex(HEX_COLOR_REGEX, 'Color primario inválido').default('#4F46E5'),
   secondary_color: z.string().regex(HEX_COLOR_REGEX, 'Color secundario inválido').default('#EC4899'),
   accent_color: z.string().regex(HEX_COLOR_REGEX, 'Color de acento inválido').default('#10B981'),

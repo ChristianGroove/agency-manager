@@ -496,6 +496,7 @@ export async function createCatalogItemAction(
       digital: validated.digital_details || validated.classification_metadata?.digital,
       service: validated.service_details || validated.classification_metadata?.service,
       subscription: validated.subscription_details || validated.classification_metadata?.subscription,
+      real_estate: validated.real_estate_details || validated.classification_metadata?.real_estate,
     }
 
     // 6. DB Insertion
@@ -687,13 +688,6 @@ export async function updateCatalogItemAction(
       null
 
     // Safe deep merge of metadata and classification details
-    const safeMetadata = {
-      ...(existingItem.metadata || {}),
-      ...(validated.metadata || {}),
-      ...(validated.cta_type ? { cta_type: validated.cta_type } : {}),
-      ...(validated.price_label_type ? { price_label_type: validated.price_label_type } : {}),
-    }
-
     const classificationMetadata = {
       ...(existingItem.classification_metadata || {}),
       ...(validated.classification_metadata || {}),
@@ -701,6 +695,15 @@ export async function updateCatalogItemAction(
       ...(validated.digital_details ? { digital: validated.digital_details } : {}),
       ...(validated.service_details ? { service: validated.service_details } : {}),
       ...(validated.subscription_details ? { subscription: validated.subscription_details } : {}),
+      ...(validated.real_estate_details ? { real_estate: validated.real_estate_details } : {}),
+    }
+
+    const safeMetadata = {
+      ...(existingItem.metadata || {}),
+      ...(validated.metadata || {}),
+      ...(validated.cta_type ? { cta_type: validated.cta_type } : {}),
+      ...(validated.price_label_type ? { price_label_type: validated.price_label_type } : {}),
+      classification_metadata: classificationMetadata,
     }
 
     const updatePayload: any = {
@@ -745,13 +748,14 @@ export async function updateCatalogItemAction(
     if (validated.seo_title !== undefined) updatePayload.seo_title = validated.seo_title
     if (validated.seo_description !== undefined) updatePayload.seo_description = validated.seo_description
     if (validated.seo_metadata !== undefined) updatePayload.seo_metadata = validated.seo_metadata
-    if (validated.classification_metadata !== undefined || validated.physical_details || validated.digital_details || validated.service_details || validated.subscription_details) {
+    if (validated.classification_metadata !== undefined || validated.physical_details || validated.digital_details || validated.service_details || validated.subscription_details || validated.real_estate_details) {
       updatePayload.classification_metadata = classificationMetadata
     }
     if (validated.physical_details !== undefined) updatePayload.physical_details = validated.physical_details
     if (validated.digital_details !== undefined) updatePayload.digital_details = validated.digital_details
     if (validated.service_details !== undefined) updatePayload.service_details = validated.service_details
     if (validated.subscription_details !== undefined) updatePayload.subscription_details = validated.subscription_details
+    if (validated.real_estate_details !== undefined) updatePayload.real_estate_details = validated.real_estate_details
     if (validated.is_visible_in_portal !== undefined) updatePayload.is_visible_in_portal = validated.is_visible_in_portal
     if (validated.is_active !== undefined) updatePayload.is_active = validated.is_active
     if (validated.order_index !== undefined) updatePayload.order_index = validated.order_index

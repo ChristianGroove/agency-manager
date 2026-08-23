@@ -299,7 +299,7 @@ export function ActionHubButtons({
                         className="flex-1 h-12 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold shadow-lg shadow-[#25D366]/25 flex items-center justify-center gap-2 text-sm transition-all"
                     >
                         <MessageCircle className="h-4 w-4 fill-current" />
-                        <span>Pedir por WhatsApp</span>
+                        <span>Contactar por WhatsApp</span>
                     </Button>
                 )}
 
@@ -315,8 +315,8 @@ export function ActionHubButtons({
                 </Button>
             </div>
 
-            {/* Additional Secondary Action: Quick Quote Option if not primary */}
-            {effectiveCta !== "quote" && (
+            {/* Additional Secondary Action: Quick Quote Option (Only for Services / B2B where formal quotes are relevant) */}
+            {effectiveCta !== "quote" && item.classification !== "real_estate" && themeConfig?.industry_preset !== "real_estate" && (
                 <div className="flex justify-center">
                     <button
                         type="button"

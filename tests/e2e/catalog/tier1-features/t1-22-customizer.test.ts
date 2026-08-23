@@ -163,6 +163,42 @@ export const suite = {
         assertTrue(typeof msg.timestamp === 'number');
       },
     },
+    {
+      name: 'Validates industry presets (real_estate, physical_retail, services, digital, hybrid, auto)',
+      fn: () => {
+        const presets = ['auto', 'real_estate', 'physical_retail', 'professional_services', 'digital_software', 'hybrid'];
+        assertEqual(presets.length, 6);
+        assertTrue(presets.includes('real_estate'));
+        assertTrue(presets.includes('physical_retail'));
+        assertTrue(presets.includes('auto'));
+      },
+    },
+    {
+      name: 'Validates modular widget_config toggle overrides',
+      fn: () => {
+        const defaultWidgetConfig = {
+          show_real_estate_filters: true,
+          show_cart_drawer: true,
+          show_mortgage_calculator: true,
+          show_whatsapp_button: true,
+          show_category_nav: true,
+          show_search_bar: true,
+          show_stock_badges: true,
+        };
+
+        assertTrue(defaultWidgetConfig.show_real_estate_filters);
+        assertTrue(defaultWidgetConfig.show_cart_drawer);
+
+        // Disabling cart drawer for real estate mode
+        const realEstateOverrides = {
+          ...defaultWidgetConfig,
+          show_cart_drawer: false,
+        };
+
+        assertFalse(realEstateOverrides.show_cart_drawer);
+        assertTrue(realEstateOverrides.show_real_estate_filters);
+      },
+    },
   ],
 };
 

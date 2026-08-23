@@ -222,6 +222,8 @@ export function CatalogWorkspace({
             onRefresh={handleRefresh}
             spaceType={organization.spaceType}
             organizationId={organization.id}
+            themeConfig={initialThemeConfig}
+            industryPreset={initialThemeConfig?.industry_preset}
           />
         </TabsContent>
 

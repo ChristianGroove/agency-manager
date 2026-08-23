@@ -68,9 +68,30 @@ export function normalizeCatalogItem(
       classification = 'subscription'
     } else if (row.type === 'digital') {
       classification = 'digital'
+    } else if (row.type === 'real_estate' || row.type === 'property' || row.type === 'inmueble') {
+      classification = 'real_estate'
     } else {
       classification = 'service'
     }
+  }
+
+  // Automatic real estate classification fallback if item contains real estate data or category
+  const catLower = categoryName.toLowerCase()
+  const isReCategoryOrData = Boolean(
+    row.real_estate_details ||
+    row.classification_metadata?.real_estate ||
+    row.metadata?.real_estate_details ||
+    row.metadata?.classification_metadata?.real_estate ||
+    catLower.includes('inmueble') ||
+    catLower.includes('propiedad') ||
+    catLower.includes('bienes raíces') ||
+    catLower.includes('bienes raices') ||
+    catLower.includes('apartamento') ||
+    catLower.includes('casa')
+  )
+
+  if (isReCategoryOrData && (!row.classification || row.classification === 'service' || row.classification === 'physical')) {
+    classification = 'real_estate'
   }
 
   // 4. Badges Normalization
@@ -89,61 +110,67 @@ export function normalizeCatalogItem(
   const ctaType = row.cta_type || metadata.cta_type || 'whatsapp'
   const priceLabelType = row.price_label_type || metadata.price_label_type || 'price'
 
-  return {
-    id: row.id,
-    organization_id: row.organization_id,
-    name: row.name || '',
-    description: row.description || '',
-    category: categoryName,
-    category_id: categoryId,
-    base_price: Number(row.base_price || 0),
-    compare_at_price:
-      row.compare_at_price !== null && row.compare_at_price !== undefined
-        ? Number(row.compare_at_price)
-        : null,
-    type: row.type || 'one_off',
-    classification,
-    frequency: row.frequency || null,
-    image_url: coverUrl,
-    gallery_images: galleryImages,
-    images: galleryImages,
-    video_url: row.video_url || null,
-    sku: row.sku || null,
-    barcode: row.barcode || null,
-    inventory_quantity: Number(row.inventory_quantity ?? row.stock_quantity ?? 0),
-    stock_quantity: Number(row.stock_quantity ?? row.inventory_quantity ?? 0),
-    track_inventory: Boolean(row.track_inventory ?? row.track_stock ?? false),
-    track_stock: Boolean(row.track_stock ?? row.track_inventory ?? false),
-    allow_backorders: Boolean(row.allow_backorders ?? false),
-    low_stock_threshold: Number(row.low_stock_threshold ?? 5),
-    has_variants: Boolean(row.has_variants ?? (Array.isArray(row.variants) && row.variants.length > 0)),
-    variant_attributes: Array.isArray(row.variant_attributes) ? row.variant_attributes : [],
-    variants: Array.isArray(row.variants) ? row.variants : [],
-    variants_config: row.variants_config || { attributes: [] },
-    addon_groups: Array.isArray(row.addon_groups)
-      ? row.addon_groups
-      : Array.isArray(row.add_ons)
-      ? row.add_ons
-      : [],
-    add_ons: Array.isArray(row.add_ons)
-      ? row.add_ons
-      : Array.isArray(row.addon_groups)
-      ? row.addon_groups
-      : [],
-    badges,
-    structured_badges: structuredBadges,
-    featured_badge: row.featured_badge || metadata.featured_badge || null,
-    specifications: (row.specifications && Object.keys(row.specifications).length > 0) ? row.specifications : metadata.specifications || {},
-    specs_tabs: Array.isArray(row.specs_tabs) && row.specs_tabs.length > 0 ? row.specs_tabs : Array.isArray(metadata.specs_tabs) ? metadata.specs_tabs : [],
-    spec_tabs: row.spec_tabs || metadata.spec_tabs || {},
-    seo_title: row.seo_title || metadata.seo_metadata?.meta_title || null,
-    seo_description: row.seo_description || metadata.seo_metadata?.meta_description || null,
-    seo_metadata: row.seo_metadata || metadata.seo_metadata || { search_tags: [] },
-    classification_metadata: row.classification_metadata || {},
-    physical_details: row.physical_details || row.classification_metadata?.physical,
-    digital_details: row.digital_details || row.classification_metadata?.digital,
-    service_details: row.service_details || row.classification_metadata?.service,
-    subscription_details: row.subscription_details || row.classification_metadata?.subscription,
+    const classMeta =
+      row.classification_metadata && Object.keys(row.classification_metadata).length > 0
+        ? row.classification_metadata
+        : metadata.classification_metadata || {}
+
+    return {
+      id: row.id,
+      organization_id: row.organization_id,
+      name: row.name || '',
+      description: row.description || '',
+      category: categoryName,
+      category_id: categoryId,
+      base_price: Number(row.base_price || 0),
+      compare_at_price:
+        row.compare_at_price !== null && row.compare_at_price !== undefined
+          ? Number(row.compare_at_price)
+          : null,
+      type: row.type || 'one_off',
+      classification,
+      frequency: row.frequency || null,
+      image_url: coverUrl,
+      gallery_images: galleryImages,
+      images: galleryImages,
+      video_url: row.video_url || null,
+      sku: row.sku || null,
+      barcode: row.barcode || null,
+      inventory_quantity: Number(row.inventory_quantity ?? row.stock_quantity ?? 0),
+      stock_quantity: Number(row.stock_quantity ?? row.inventory_quantity ?? 0),
+      track_inventory: Boolean(row.track_inventory ?? row.track_stock ?? false),
+      track_stock: Boolean(row.track_stock ?? row.track_inventory ?? false),
+      allow_backorders: Boolean(row.allow_backorders ?? false),
+      low_stock_threshold: Number(row.low_stock_threshold ?? 5),
+      has_variants: Boolean(row.has_variants ?? (Array.isArray(row.variants) && row.variants.length > 0)),
+      variant_attributes: Array.isArray(row.variant_attributes) ? row.variant_attributes : [],
+      variants: Array.isArray(row.variants) ? row.variants : [],
+      variants_config: row.variants_config || { attributes: [] },
+      addon_groups: Array.isArray(row.addon_groups)
+        ? row.addon_groups
+        : Array.isArray(row.add_ons)
+        ? row.add_ons
+        : [],
+      add_ons: Array.isArray(row.add_ons)
+        ? row.add_ons
+        : Array.isArray(row.addon_groups)
+        ? row.addon_groups
+        : [],
+      badges,
+      structured_badges: structuredBadges,
+      featured_badge: row.featured_badge || metadata.featured_badge || null,
+      specifications: (row.specifications && Object.keys(row.specifications).length > 0) ? row.specifications : metadata.specifications || {},
+      specs_tabs: Array.isArray(row.specs_tabs) && row.specs_tabs.length > 0 ? row.specs_tabs : Array.isArray(metadata.specs_tabs) ? metadata.specs_tabs : [],
+      spec_tabs: row.spec_tabs || metadata.spec_tabs || {},
+      seo_title: row.seo_title || metadata.seo_metadata?.meta_title || null,
+      seo_description: row.seo_description || metadata.seo_metadata?.meta_description || null,
+      seo_metadata: row.seo_metadata || metadata.seo_metadata || { search_tags: [] },
+      classification_metadata: classMeta,
+      physical_details: classification === "physical" ? (row.physical_details || classMeta.physical || metadata.physical_details) : undefined,
+      digital_details: classification === "digital" ? (row.digital_details || classMeta.digital || metadata.digital_details) : undefined,
+      service_details: classification === "service" ? (row.service_details || classMeta.service || metadata.service_details) : undefined,
+      subscription_details: classification === "subscription" ? (row.subscription_details || classMeta.subscription || metadata.subscription_details) : undefined,
+      real_estate_details: (classification === "real_estate" || isReCategoryOrData) ? (row.real_estate_details || classMeta.real_estate || metadata.real_estate_details || metadata.classification_metadata?.real_estate) : undefined,
     is_visible_in_portal: Boolean(row.is_visible_in_portal ?? true),
     is_active: Boolean(row.is_active ?? true),
     order_index: row.order_index ?? 0,
