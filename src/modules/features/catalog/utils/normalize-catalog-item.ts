@@ -170,7 +170,16 @@ export function normalizeCatalogItem(
       digital_details: classification === "digital" ? (row.digital_details || classMeta.digital || metadata.digital_details) : undefined,
       service_details: classification === "service" ? (row.service_details || classMeta.service || metadata.service_details) : undefined,
       subscription_details: classification === "subscription" ? (row.subscription_details || classMeta.subscription || metadata.subscription_details) : undefined,
-      real_estate_details: (classification === "real_estate" || isReCategoryOrData) ? (row.real_estate_details || classMeta.real_estate || metadata.real_estate_details || metadata.classification_metadata?.real_estate) : undefined,
+      real_estate_details: (classification === "real_estate" || isReCategoryOrData) ? (() => {
+        const raw = row.real_estate_details || classMeta.real_estate || metadata.real_estate_details || metadata.classification_metadata?.real_estate
+        if (!raw || typeof raw !== "object") return undefined
+        const op = raw.operation || raw.operation_type || (Number(row.base_price || 0) > 50000000 ? "sale" : "rent")
+        return {
+          ...raw,
+          operation: op,
+          operation_type: op,
+        }
+      })() : undefined,
     is_visible_in_portal: Boolean(row.is_visible_in_portal ?? true),
     is_active: Boolean(row.is_active ?? true),
     order_index: row.order_index ?? 0,

@@ -915,6 +915,7 @@ async function seed() {
     const coverUrl = p.photos[0];
 
     const reDetails = {
+      operation: p.operation_type,
       operation_type: p.operation_type,
       property_type: p.property_type,
       area_total_m2: p.area_total_m2,
@@ -950,6 +951,7 @@ async function seed() {
       image_url: coverUrl,
       images: gallery,
       gallery_images: gallery,
+      real_estate_details: reDetails,
       classification_metadata: {
         real_estate: reDetails,
         cta_type: 'whatsapp',
@@ -961,6 +963,8 @@ async function seed() {
       seo_title: `${p.name} | Praxis Inmobiliaria Ibagué`,
       seo_description: `${p.name} en ${p.neighborhood}, Ibagué. ${p.operation_type === 'sale' ? 'Venta' : 'Arriendo'} por $${p.base_price.toLocaleString('es-CO')} COP. Contáctanos.`
     };
+
+    await supabase.from('service_catalog').delete().eq('organization_id', org.id).eq('name', p.name);
 
     const { error: insErr } = await supabase
       .from('service_catalog')

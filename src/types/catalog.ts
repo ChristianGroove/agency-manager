@@ -245,6 +245,7 @@ export type RealEstatePropertyType =
 export type RealEstateParkingType = 'covered' | 'uncovered' | 'mixed' | 'communal' | 'none';
 
 export interface RealEstateProductDetails {
+  operation?: RealEstateOperationType;
   operation_type?: RealEstateOperationType;
   property_type?: RealEstatePropertyType;
   area_total_m2?: number | null;

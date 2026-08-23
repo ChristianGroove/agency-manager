@@ -712,6 +712,7 @@ export function CatalogItemFormSheet({
         real_estate_details:
           classification === "real_estate"
             ? {
+                operation: realEstateOperation,
                 operation_type: realEstateOperation,
                 property_type: realEstatePropertyType,
                 area_total_m2: Number(areaTotalM2) || 0,
@@ -770,6 +771,7 @@ export function CatalogItemFormSheet({
             auto_renew: autoRenew,
           } : undefined,
           real_estate: classification === "real_estate" ? {
+            operation: realEstateOperation,
             operation_type: realEstateOperation,
             property_type: realEstatePropertyType,
             area_total_m2: Number(areaTotalM2) || 0,

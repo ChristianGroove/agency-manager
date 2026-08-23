@@ -514,7 +514,7 @@ export function UniversalStorefrontLayout({
         const re = item.real_estate_details || item.classification_metadata?.real_estate || {}
         
         if (reOperationFilter !== "all") {
-          const op = re.operation_type || "sale"
+          const op = re.operation || re.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
           if (op !== reOperationFilter) return false
         }
 
@@ -1333,7 +1333,7 @@ export function UniversalStorefrontLayout({
                     {/* Real Estate Operation Badge (En Venta / En Arriendo) */}
                     {item.classification === "real_estate" && (() => {
                       const re = item.real_estate_details || item.classification_metadata?.real_estate
-                      const op = re?.operation_type || "sale"
+                      const op = re?.operation || re?.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
                       const isRent = op === "rent"
                       const isTemp = op === "temporary_rent"
                       const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
@@ -1493,11 +1493,11 @@ export function UniversalStorefrontLayout({
                     <div className="sm:text-right">
                       <span className={cn("text-[10px] uppercase font-bold block", isDarkTheme ? "text-zinc-500" : "text-zinc-400")}>
                         {item.classification === "real_estate"
-                          ? (item.real_estate_details?.operation_type === "rent"
-                            ? "Canon Mensual"
-                            : item.real_estate_details?.operation_type === "temporary_rent"
-                            ? "Tarifa Temporal"
-                            : "Precio de Venta")
+                          ? (() => {
+                              const re = item.real_estate_details || item.classification_metadata?.real_estate
+                              const op = re?.operation || re?.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
+                              return op === "rent" ? "Canon Mensual" : op === "temporary_rent" ? "Tarifa Temporal" : "Precio de Venta"
+                            })()
                           : item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
                       </span>
                       <span
@@ -1645,7 +1645,7 @@ export function UniversalStorefrontLayout({
                     {/* Real Estate Operation Badge (En Venta / En Arriendo) */}
                     {item.classification === "real_estate" && (() => {
                       const re = item.real_estate_details || item.classification_metadata?.real_estate
-                      const op = re?.operation_type || "sale"
+                      const op = re?.operation || re?.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
                       const isRent = op === "rent"
                       const isTemp = op === "temporary_rent"
                       const opLabel = isRent ? "En Arriendo" : isTemp ? "Arriendo Temp." : "En Venta"
@@ -1798,11 +1798,11 @@ export function UniversalStorefrontLayout({
                       <div>
                         <span className={cn("text-[10px] uppercase font-bold block", isDarkTheme ? "text-zinc-500" : "text-zinc-400")}>
                           {item.classification === "real_estate"
-                            ? (item.real_estate_details?.operation_type === "rent"
-                              ? "Canon Mensual"
-                              : item.real_estate_details?.operation_type === "temporary_rent"
-                              ? "Tarifa Temporal"
-                              : "Precio de Venta")
+                            ? (() => {
+                                const re = item.real_estate_details || item.classification_metadata?.real_estate
+                                const op = re?.operation || re?.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
+                                return op === "rent" ? "Canon Mensual" : op === "temporary_rent" ? "Tarifa Temporal" : "Precio de Venta"
+                              })()
                             : item.type === "recurring" ? "Inversión Recurrente" : "Precio"}
                         </span>
                         <span

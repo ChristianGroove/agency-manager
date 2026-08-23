@@ -809,7 +809,7 @@ export function ProductDetailModal({
             {/* Real Estate Specifications & Ficha Técnica */}
             {isRealEstate && (() => {
                 const re = item.real_estate_details || item.classification_metadata?.real_estate || item.metadata?.real_estate_details || {}
-                const op = re.operation_type || (item.specifications as any)?.operation_type || "sale"
+                const op = re.operation || re.operation_type || (item.specifications as any)?.operation_type || (Number(item.base_price || 0) > 50000000 ? "sale" : "rent")
                 const opLabel = op === "rent" ? "En Arriendo" : op === "temporary_rent" ? "Arriendo Temporal" : "En Venta"
                 const propType = re.property_type || (item.specifications as any)?.property_type || "apartment"
                 const typeLabel =

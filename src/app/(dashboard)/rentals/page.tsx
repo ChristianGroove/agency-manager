@@ -15,6 +15,7 @@ import {
   RentalsWorkspace,
   RentalsTabKey,
 } from "@/modules/features/rentals/components/rentals-workspace";
+import { normalizeCatalogItem } from "@/modules/features/catalog/utils/normalize-catalog-item";
 
 export async function generateMetadata() {
   const orgName = (await getCurrentOrgName()) || "Pixy";
@@ -100,7 +101,7 @@ export default async function RentalsPage({
     getSettlementsAction(),
     supabase
       .from("service_catalog")
-      .select("id, name, base_price, classification, real_estate_details, images, gallery_images")
+      .select("*")
       .eq("organization_id", orgId)
       .eq("classification", "real_estate")
       .is("deleted_at", null)
@@ -117,7 +118,7 @@ export default async function RentalsPage({
     getCurrentOrgRole(orgId),
   ]);
 
-  const properties = propertiesRes.data || [];
+  const properties = (propertiesRes.data || []).map((p) => normalizeCatalogItem(p));
   const contacts = contactsRes.data || [];
   const leases = leasesRes.data || [];
   const settlements = settlementsRes.data || [];
