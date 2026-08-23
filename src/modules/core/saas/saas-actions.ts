@@ -355,7 +355,7 @@ export async function getSidebarContext(orgId?: string, user?: User | null, prel
             userRole: userPerms?.role || null,
             userPermissions: userPerms?.permissions || null,
             organizationType: (orgDetails?.organization_type || 'client') as 'platform' | 'reseller' | 'client',
-            vertical: orgDetails?.vertical_key || dynamicUI.terminology.client.toLowerCase(),
+            vertical: (orgDetails?.active_app as any)?.space_category || orgDetails?.vertical_key || dynamicUI.terminology.client.toLowerCase(),
             capabilities: {
                 ...(brandingData?.capabilities || {}),
                 ...(userPerms?.permissions || {}),
