@@ -813,14 +813,28 @@ export function LeaseFormSheet({
                     <SelectValue placeholder="Seleccionar inquilino registrado..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl max-h-72">
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs py-2">
-                        <div className="flex items-center justify-between w-full gap-4">
-                          <span className="font-bold text-zinc-900 dark:text-white">{c.name}</span>
-                          <span className="text-[11px] text-zinc-500 font-mono">{c.phone || c.email || "Sin contacto"}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {contacts.map((c) => {
+                      const role = (c.metadata?.role || "").toLowerCase();
+                      const roleBadge =
+                        role === "tenant" || role === "inquilino" ? "🏢 Inquilino" :
+                        role === "owner" || role === "propietario" ? "🔑 Propietario" :
+                        role === "guarantor" || role === "co_signer" || role === "codeudor" || role === "fiador" ? "🛡️ Codeudor" :
+                        role === "buyer" ? "💼 Comprador" :
+                        role === "seller" ? "🏷️ Vendedor" : "🌐 General";
+                      return (
+                        <SelectItem key={c.id} value={c.id} className="text-xs py-2">
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-zinc-900 dark:text-white">{c.name}</span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                {roleBadge}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-zinc-500 font-mono">{c.phone || c.email || "Sin contacto"}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {errors.tenantId ? (
@@ -850,14 +864,28 @@ export function LeaseFormSheet({
                     <SelectValue placeholder="Seleccionar propietario registrado..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl max-h-72">
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs py-2">
-                        <div className="flex items-center justify-between w-full gap-4">
-                          <span className="font-bold text-zinc-900 dark:text-white">{c.name}</span>
-                          <span className="text-[11px] text-zinc-500 font-mono">{c.phone || c.email || "Sin contacto"}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {contacts.map((c) => {
+                      const role = (c.metadata?.role || "").toLowerCase();
+                      const roleBadge =
+                        role === "owner" || role === "propietario" ? "🔑 Propietario" :
+                        role === "tenant" || role === "inquilino" ? "🏢 Inquilino" :
+                        role === "guarantor" || role === "co_signer" || role === "codeudor" || role === "fiador" ? "🛡️ Codeudor" :
+                        role === "buyer" ? "💼 Comprador" :
+                        role === "seller" ? "🏷️ Vendedor" : "🌐 General";
+                      return (
+                        <SelectItem key={c.id} value={c.id} className="text-xs py-2">
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-zinc-900 dark:text-white">{c.name}</span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                {roleBadge}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-zinc-500 font-mono">{c.phone || c.email || "Sin contacto"}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {errors.ownerId ? (
@@ -875,7 +903,7 @@ export function LeaseFormSheet({
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-zinc-400" />
-                  Coarrendatario / Fiador (Opcional)
+                  Coarrendatario / Fiador / Codeudor (Opcional)
                 </Label>
                 <Select
                   value={coSignerId || "none"}
@@ -888,12 +916,28 @@ export function LeaseFormSheet({
                     <SelectItem value="none" className="text-xs py-2 text-zinc-400">
                       Ninguno (Garantía directa o con aseguradora)
                     </SelectItem>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs py-2">
-                        <span className="font-semibold text-zinc-900 dark:text-white">{c.name}</span>
-                        <span className="ml-2 text-[11px] text-zinc-500">({c.phone || "Sin tel"})</span>
-                      </SelectItem>
-                    ))}
+                    {contacts.map((c) => {
+                      const role = (c.metadata?.role || "").toLowerCase();
+                      const roleBadge =
+                        role === "guarantor" || role === "co_signer" || role === "codeudor" || role === "fiador" ? "🛡️ Codeudor / Fiador" :
+                        role === "tenant" || role === "inquilino" ? "🏢 Inquilino" :
+                        role === "owner" || role === "propietario" ? "🔑 Propietario" :
+                        role === "buyer" ? "💼 Comprador" :
+                        role === "seller" ? "🏷️ Vendedor" : "🌐 General";
+                      return (
+                        <SelectItem key={c.id} value={c.id} className="text-xs py-2">
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-zinc-900 dark:text-white">{c.name}</span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                {roleBadge}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-zinc-500 font-mono">({c.phone || c.email || "Sin contacto"})</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

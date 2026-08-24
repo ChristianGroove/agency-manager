@@ -94,6 +94,13 @@ export function ClientsGrid({
                         ● Propietario
                     </Badge>
                 )
+            case 'guarantor':
+            case 'co_signer':
+                return (
+                    <Badge className="bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20 text-[10px] font-bold">
+                        ● Codeudor
+                    </Badge>
+                )
             case 'buyer':
                 return (
                     <Badge className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 text-[10px] font-bold">
@@ -104,6 +111,12 @@ export function ClientsGrid({
                 return (
                     <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 text-[10px] font-bold">
                         ● Vendedor
+                    </Badge>
+                )
+            case 'other':
+                return (
+                    <Badge className="bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 text-[10px] font-bold">
+                        ● General
                     </Badge>
                 )
             default:

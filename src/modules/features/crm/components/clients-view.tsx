@@ -178,23 +178,29 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
         if (isRealEstate) {
             let tenants = 0
             let owners = 0
+            let guarantors = 0
             let buyers = 0
             let sellers = 0
+            let others = 0
 
             clients.forEach((c: any) => {
                 const role = (c.metadata?.role || '').toLowerCase()
                 if (role === 'tenant' || role === 'inquilino' || role === 'arrendatario') tenants++
                 else if (role === 'owner' || role === 'propietario' || role === 'arrendador') owners++
+                else if (role === 'guarantor' || role === 'co_signer' || role === 'codeudor' || role === 'fiador') guarantors++
                 else if (role === 'buyer' || role === 'comprador') buyers++
                 else if (role === 'seller' || role === 'vendedor') sellers++
+                else others++
             })
 
             return {
                 all: clients.length,
                 tenant: tenants,
                 owner: owners,
+                guarantor: guarantors,
                 buyer: buyers,
                 seller: sellers,
+                other: others,
                 overdue: 0,
                 urgent: 0,
                 active: clients.length,
@@ -220,10 +226,14 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                         if (role !== 'tenant' && role !== 'inquilino' && role !== 'arrendatario') return false
                     } else if (activeFilter === 'owner') {
                         if (role !== 'owner' && role !== 'propietario' && role !== 'arrendador') return false
+                    } else if (activeFilter === 'guarantor') {
+                        if (role !== 'guarantor' && role !== 'co_signer' && role !== 'codeudor' && role !== 'fiador') return false
                     } else if (activeFilter === 'buyer') {
                         if (role !== 'buyer' && role !== 'comprador') return false
                     } else if (activeFilter === 'seller') {
                         if (role !== 'seller' && role !== 'vendedor') return false
+                    } else if (activeFilter === 'other') {
+                        if (role === 'tenant' || role === 'owner' || role === 'guarantor' || role === 'co_signer' || role === 'buyer' || role === 'seller') return false
                     }
                 } else {
                     if (activeFilter === 'overdue' && (c.debt || 0) <= 0) return false
@@ -271,8 +281,12 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                     (q.includes('arrendatari') && (role === 'tenant' || role === 'inquilino' || role === 'arrendatario')) ||
                     (q.includes('propietari') && (role === 'owner' || role === 'propietario' || role === 'arrendador')) ||
                     (q.includes('arrendador') && (role === 'owner' || role === 'propietario' || role === 'arrendador')) ||
+                    (q.includes('codeudor') && (role === 'guarantor' || role === 'co_signer' || role === 'codeudor' || role === 'fiador')) ||
+                    (q.includes('fiador') && (role === 'guarantor' || role === 'co_signer' || role === 'codeudor' || role === 'fiador')) ||
+                    (q.includes('garante') && (role === 'guarantor' || role === 'co_signer' || role === 'codeudor' || role === 'fiador')) ||
                     (q.includes('comprador') && (role === 'buyer' || role === 'comprador')) ||
-                    (q.includes('vendedor') && (role === 'seller' || role === 'vendedor'))
+                    (q.includes('vendedor') && (role === 'seller' || role === 'vendedor')) ||
+                    (q.includes('otro') && (role === 'other' || !role))
                 )
 
                 if (!isMatch) return false

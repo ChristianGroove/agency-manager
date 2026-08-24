@@ -36,8 +36,10 @@ export function ClientsToolbar({
         { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
         { id: 'tenant', label: '🏢 Inquilinos', count: counts.tenant ?? 0, color: 'emerald' },
         { id: 'owner', label: '🔑 Propietarios', count: counts.owner ?? 0, color: 'amber' },
-        { id: 'buyer', label: '🛡️ Compradores', count: counts.buyer ?? 0, color: 'blue' },
-        { id: 'seller', label: '💼 Vendedores', count: counts.seller ?? 0, color: 'indigo' },
+        { id: 'guarantor', label: '🛡️ Codeudores', count: counts.guarantor ?? 0, color: 'purple' },
+        { id: 'buyer', label: '💼 Compradores', count: counts.buyer ?? 0, color: 'blue' },
+        { id: 'seller', label: '🏷️ Vendedores', count: counts.seller ?? 0, color: 'indigo' },
+        { id: 'other', label: '🌐 Otros', count: counts.other ?? 0, color: 'slate' },
     ] : [
         { id: 'all', label: t('clients.tabs.all'), count: counts.all, color: 'gray' },
         { id: 'overdue', label: t('clients.tabs.overdue'), count: counts.overdue, color: 'red' },

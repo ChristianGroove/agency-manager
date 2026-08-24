@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Upload, UserCircle, Mail, Globe, Building2, Landmark, ShieldCheck, Briefcase } from "lucide-react"
+import { Upload, UserCircle, Mail, Globe, Building2, Landmark, ShieldCheck, Briefcase, Users } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CategorySelector } from "../../../category-selector"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
@@ -74,12 +74,14 @@ export function ProfileTab({
                     {/* Role Selector Pills */}
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-gray-700 dark:text-gray-200">Tipo de Contacto Inmobiliario *</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                             {[
                                 { key: "tenant", label: "Inquilino / Arrendatario", icon: Building2, color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/30" },
                                 { key: "owner", label: "Propietario / Arrendador", icon: Landmark, color: "text-amber-600 bg-amber-500/10 border-amber-500/30" },
-                                { key: "buyer", label: "Comprador / Prospecto", icon: ShieldCheck, color: "text-sky-600 bg-sky-500/10 border-sky-500/30" },
+                                { key: "guarantor", label: "Codeudor / Fiador", icon: ShieldCheck, color: "text-violet-600 bg-violet-500/10 border-violet-500/30" },
+                                { key: "buyer", label: "Comprador / Prospecto", icon: Users, color: "text-sky-600 bg-sky-500/10 border-sky-500/30" },
                                 { key: "seller", label: "Vendedor / Propietario", icon: Briefcase, color: "text-indigo-600 bg-indigo-500/10 border-indigo-500/30" },
+                                { key: "other", label: "Contacto General / Otro", icon: UserCircle, color: "text-zinc-600 bg-zinc-500/10 border-zinc-500/30" },
                             ].map((item) => (
                                 <button
                                     key={item.key}
@@ -165,8 +167,8 @@ export function ProfileTab({
                         </div>
                     )}
 
-                    {/* If Tenant: Financial Capacity */}
-                    {editForm.role === "tenant" && (
+                    {/* If Tenant or Guarantor: Financial Capacity */}
+                    {(editForm.role === "tenant" || editForm.role === "guarantor") && (
                         <div className="p-4 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 space-y-4">
                             <h5 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                                 <ShieldCheck className="h-4 w-4 text-emerald-600" /> Estudio de Crédito & Capacidad Financiera
