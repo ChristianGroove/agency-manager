@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { MenuCategoryManager } from "./category-manager"
 import { MenuSheetTrigger } from "./menu-sheet-trigger"
-import { Search, Plus, Palette } from "lucide-react"
+import { Search, Plus, Palette, ExternalLink } from "lucide-react"
 import { RestoMenuItem, RestoMenuCategory, RestoMenuModifierGroup } from "@/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModifiersWorkspace } from "./modifiers-workspace"
@@ -31,13 +31,15 @@ export function MenuWorkspace({
     categories, 
     modifierGroups,
     initialThemeConfig,
-    orgId 
+    orgId,
+    liveMenuUrl 
 }: { 
     items: RestoMenuItem[], 
     categories: RestoMenuCategory[], 
     modifierGroups: RestoMenuModifierGroup[],
     initialThemeConfig?: PortalThemeConfig,
-    orgId: string 
+    orgId: string,
+    liveMenuUrl?: string 
 }) {
     const [activeCategory, setActiveCategory] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
@@ -87,7 +89,7 @@ export function MenuWorkspace({
                 {/* Right Column: Items */}
                 <div className="flex-1 flex flex-col glass-panel bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-lg shadow-black/10 dark:shadow-black/20 rounded-2xl p-6 min-w-0">
                 {/* Toolbar */}
-                <div className="flex items-center justify-between mb-6 gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
@@ -98,6 +100,20 @@ export function MenuWorkspace({
                             className="w-full h-10 pl-9 pr-4 rounded-xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all text-xs outline-none"
                         />
                     </div>
+                    {liveMenuUrl && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <a
+                                href={liveMenuUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-white/80 dark:bg-zinc-900/80 border border-brand-pink/30 hover:bg-brand-pink/10 text-brand-pink font-bold text-xs rounded-xl h-10 px-3.5 shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                                title="Abrir Menú Digital en Vivo"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                                <span>Ver Menú Digital en Vivo</span>
+                            </a>
+                        </div>
+                    )}
                 </div>
 
                 {/* Items Grid */}

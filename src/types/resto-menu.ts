@@ -60,6 +60,7 @@ export interface RestoMenuItem {
     base_price: number;
     is_available: boolean;
     is_visible: boolean;
+    is_active?: boolean;
     type: 'food' | 'beverage' | 'combo' | 'other';
     metadata: RestoMenuItemMetadata;
     created_at: string;

@@ -604,7 +604,39 @@ export async function getPortalCatalog(token: string) {
 
     if (!organizationId) throw new Error('Unauthorized')
 
-    // 1. Fetch universal service_catalog items
+    // Check organization space / active app
+    const { data: orgInfo } = await supabaseAdmin
+        .from('organizations')
+        .select('id, active_app_id, saas_apps:active_app_id(space_category, portal_template)')
+        .eq('id', organizationId)
+        .maybeSingle()
+
+    const isRestoSpace = (orgInfo as any)?.saas_apps?.space_category === 'resto' ||
+                         (orgInfo as any)?.saas_apps?.portal_template === 'b2c_commerce' ||
+                         orgInfo?.active_app_id === 'app_resto'
+
+    // 1. For Resto Space, prioritize dedicated dishes from resto_menu_items
+    if (isRestoSpace) {
+        const { data: restoItems } = await supabaseAdmin
+            .from('resto_menu_items')
+            .select('*, category:resto_menu_categories(id, name, order_index), resto_item_modifier_groups(order_index, resto_modifier_groups(*))')
+            .eq('organization_id', organizationId)
+            .eq('is_visible', true)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: true })
+
+        if (restoItems && restoItems.length > 0) {
+            return restoItems.map((item: any) => ({
+                ...item,
+                is_available: Boolean(item.is_available ?? true),
+                is_active: Boolean(item.is_active ?? true),
+                modifiers: item.resto_item_modifier_groups ? item.resto_item_modifier_groups.sort((a: any, b: any) => a.order_index - b.order_index).map((link: any) => link.resto_modifier_groups) : [],
+                resto_item_modifier_groups: undefined
+            }))
+        }
+    }
+
+    // 2. Fetch universal service_catalog items
     const { data: universalItems } = await supabaseAdmin
         .from('service_catalog')
         .select('*')
@@ -628,7 +660,7 @@ export async function getPortalCatalog(token: string) {
         return universalItems.map((row: any) => normalizeCatalogItem(row, catMap))
     }
 
-    // 2. Fallback to resto menu items for resto spaces
+    // 3. Fallback to resto menu items for other spaces if service_catalog is empty
     const { data: catalogItems } = await supabaseAdmin
         .from('resto_menu_items')
         .select('*, category:resto_menu_categories(id, name, order_index), resto_item_modifier_groups(order_index, resto_modifier_groups(*))')
@@ -638,6 +670,8 @@ export async function getPortalCatalog(token: string) {
 
     const formattedCatalog = (catalogItems || []).map((item: any) => ({
         ...item,
+        is_available: Boolean(item.is_available ?? true),
+        is_active: Boolean(item.is_active ?? true),
         modifiers: item.resto_item_modifier_groups ? item.resto_item_modifier_groups.sort((a: any, b: any) => a.order_index - b.order_index).map((link: any) => link.resto_modifier_groups) : [],
         resto_item_modifier_groups: undefined
     }))

@@ -174,7 +174,8 @@ export function normalizeCatalogItem(
         }
       })() : undefined,
     is_visible_in_portal: Boolean(row.is_visible_in_portal ?? true),
-    is_active: Boolean(row.is_active ?? true),
+    is_available: Boolean(row.is_available ?? row.is_active ?? true),
+    is_active: Boolean(row.is_active ?? row.is_available ?? true),
     order_index: row.order_index ?? 0,
     cta_type: ctaType,
     price_label_type: priceLabelType,

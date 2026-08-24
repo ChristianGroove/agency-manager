@@ -46,9 +46,11 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
     const today = new Date().getDay();
     const isAvailableToday = item.metadata?.available_days ? item.metadata.available_days.includes(today) : true;
 
+    const isAvailable = (item.is_available !== false) && (item.is_active !== false)
+
     const handleAdd = (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!isAvailableToday || !item.is_available) return;
+        if (!isAvailableToday || !isAvailable) return;
 
         // If item has modifiers, open the modal instead
         if (item.modifiers && item.modifiers.length > 0) {
@@ -113,7 +115,7 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
                 "flex flex-row p-3 gap-3 overflow-hidden h-36 relative transition-all cursor-pointer",
                 cardClasses,
                 isSelected && 'scale-[1.01]',
-                (!item.is_available || !isAvailableToday) && 'opacity-60 grayscale-[0.5]'
+                (!isAvailable || !isAvailableToday) && 'opacity-60 grayscale-[0.5]'
             )}
             style={borderStyle}
             onClick={onSelect}
@@ -139,7 +141,7 @@ export function FoodCard({ item, orgId, primaryColor, onSelect }: FoodCardProps)
                         <span className="text-xs">Sin Foto</span>
                     </div>
                 )}
-                {!item.is_available ? (
+                {!isAvailable ? (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px] z-20">
                         <span className="text-white text-xs font-bold uppercase tracking-wider">Agotado</span>
                     </div>

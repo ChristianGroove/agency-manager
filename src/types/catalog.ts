@@ -572,6 +572,7 @@ export interface UniversalCatalogItem<TMetadata = Record<string, any>> {
 
   // === Portal Visibility & UI Controls ===
   is_visible_in_portal: boolean;
+  is_available?: boolean;
   is_active?: boolean;
   order_index?: number;
   cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio' | 'add_to_cart' | 'cart' | 'booking';
