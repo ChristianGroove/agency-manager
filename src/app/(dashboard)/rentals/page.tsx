@@ -20,7 +20,7 @@ import { normalizeCatalogItem } from "@/modules/features/catalog/utils/normalize
 export async function generateMetadata() {
   const orgName = (await getCurrentOrgName()) || "Pixy";
   return {
-    title: `Gestión de Arriendos & RentFlow | ${orgName}`,
+    title: `Gestión de Arriendos | ${orgName}`,
     description: `Administración de contratos de arrendamiento, control de cobranza y liquidaciones a propietarios de ${orgName}.`,
     robots: "noindex, nofollow",
   };

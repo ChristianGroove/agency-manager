@@ -14,7 +14,10 @@ import {
     Key,
     Clock,
     Sparkles,
-    CheckCircle2
+    CheckCircle2,
+    Landmark,
+    FileText,
+    ShieldCheck
 } from "lucide-react"
 import CountUp from "react-countup"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
@@ -22,11 +25,11 @@ import { useRegisterView } from "@/modules/features/caa/context/view-context"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 
-// Import Modals
-import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
-import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
-import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
+// Import Specialized Modals & Sheets
+import { CreateClientSheet } from "@/modules/features/crm/components/create-client-sheet"
 import { CatalogItemFormSheet } from "@/modules/features/catalog/components/catalog-item-form-sheet"
+import { LeaseFormSheet } from "@/modules/features/rentals/components/lease-form-sheet"
+import { RentFlowCollectionGauge } from "./rentflow-collection-gauge"
 
 export interface RealEstateDashboardProps {
     dashboardData: any
@@ -49,9 +52,8 @@ export function RealEstateDashboard({
 
     // Modals internal state
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
-    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false)
+    const [isLeaseModalOpen, setIsLeaseModalOpen] = useState(false)
 
     const refreshData = () => {
         router.refresh()
@@ -65,27 +67,27 @@ export function RealEstateDashboard({
         actions: [
             {
                 id: "new-property",
-                label: "Nueva Propiedad",
+                label: "Publicar Inmueble",
                 type: "function",
                 target: "open_property_modal",
                 icon: Building2,
-                description: "Publicar una nueva propiedad o inmueble"
+                description: "Publicar una nueva propiedad o inmueble en catálogo"
+            },
+            {
+                id: "new-lease",
+                label: "Nuevo Contrato",
+                type: "function",
+                target: "open_lease_modal",
+                icon: Key,
+                description: "Registrar un nuevo contrato de arrendamiento en RentFlow"
             },
             {
                 id: "new-lead",
-                label: "Registrar Prospecto",
+                label: "Registrar Contacto",
                 type: "function",
                 target: "open_client_modal",
                 icon: UserPlus,
-                description: "Registrar cliente comprador o arrendatario"
-            },
-            {
-                id: "schedule-visit",
-                label: "Agendar Visita",
-                type: "function",
-                target: "open_quote_modal",
-                icon: Calendar,
-                description: "Agendar visita técnica o comercial a un inmueble"
+                description: "Registrar inquilino, propietario, fiador o comprador"
             },
             {
                 id: "view-portfolio",
@@ -101,10 +103,18 @@ export function RealEstateDashboard({
     const metrics = realEstateMetrics || {
         activePropertiesCount: 0,
         totalPropertiesCount: 0,
-        portfolioValue: 0,
-        buyerLeadsCount: 0,
-        propertyVisitsCount: 0,
-        quotesCount: 0
+        rentPropertiesCount: 0,
+        salePropertiesCount: 0,
+        occupancyRate: 0,
+        totalExpectedRent: 0,
+        grossCollected: 0,
+        collectionRate: 0,
+        lateAmount: 0,
+        pendingAmount: 0,
+        netOwnerPayout: 0,
+        agencyCommissions: 0,
+        activeLeasesCount: 0,
+        upcomingRenewalsCount: 0,
     }
 
     const data: DashboardDataProps = {
@@ -112,64 +122,86 @@ export function RealEstateDashboard({
         agentStats: extraData?.agentStats,
         stats: [
             {
-                title: "Propiedades Activas",
+                title: "Portafolio & Ocupación",
                 value: (
                     <div className="flex items-baseline gap-2">
                         <span>{metrics.activePropertiesCount}</span>
                         {metrics.totalPropertiesCount > 0 && (
                             <span className="text-sm font-normal text-muted-foreground">
-                                / {metrics.totalPropertiesCount} Total
+                                / {metrics.totalPropertiesCount} Inmuebles
                             </span>
                         )}
                     </div>
                 ),
                 icon: Building2,
                 subtext: (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Inmuebles en oferta activa
+                    <span className="text-muted-foreground font-normal">
+                        {metrics.rentPropertiesCount || 0} arriendo <span className="text-emerald-600 dark:text-emerald-400 font-medium">({metrics.occupancyRate || 0}% ocupación)</span> · {metrics.salePropertiesCount || 0} venta
                     </span>
                 ),
-                gradientColor: "var(--brand-pink)"
+                gradientColor: "var(--primary)"
             },
             {
-                title: "Leads de Compradores",
-                value: metrics.buyerLeadsCount,
-                icon: Users,
-                subtext: (
-                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                        Prospectos calificados
-                    </span>
-                ),
-                gradientColor: "rgba(99, 102, 241, 0.4)"
-            },
-            {
-                title: "Visitas / Contactos",
-                value: metrics.propertyVisitsCount,
-                icon: Calendar,
-                subtext: (
-                    <span className="text-cyan-600 dark:text-cyan-400 font-semibold flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Citas y solicitudes recibidas
-                    </span>
-                ),
-                gradientColor: "rgba(6, 182, 212, 0.4)"
-            },
-            {
-                title: "Valor del Portafolio",
+                title: "Recaudo del Mes",
                 value: (
                     <CountUp
-                        end={metrics.portfolioValue || 0}
-                        duration={2}
-                        separator=","
-                        prefix="$"
+                        end={metrics.grossCollected || 0}
+                        duration={1.5}
+                        separator="."
+                        prefix="$ "
                     />
                 ),
                 icon: DollarSign,
                 subtext: (
-                    <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" /> Valor consolidado en oferta
+                    <span className="text-muted-foreground font-normal">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">{metrics.collectionRate || 0}% al día</span> · {metrics.lateAmount > 0 ? (
+                            <span className="text-rose-600 dark:text-rose-400 font-medium">$ {Math.round(metrics.lateAmount).toLocaleString('es-CO')} en mora</span>
+                        ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">0 en mora</span>
+                        )}
                     </span>
                 ),
-                gradientColor: "rgba(234, 179, 8, 0.4)"
+                gradientColor: "var(--primary)"
+            },
+            {
+                title: "Dispersión a Propietarios",
+                value: (
+                    <CountUp
+                        end={metrics.netOwnerPayout || 0}
+                        duration={1.5}
+                        separator="."
+                        prefix="$ "
+                    />
+                ),
+                icon: Landmark,
+                subtext: (
+                    <span className="text-muted-foreground font-normal">
+                        Comisión neta: <span className="font-semibold text-gray-800 dark:text-gray-200">$ {Math.round(metrics.agencyCommissions || 0).toLocaleString('es-CO')}</span> (8%+IVA)
+                    </span>
+                ),
+                gradientColor: "var(--primary)"
+            },
+            {
+                title: "Contratos Vigentes",
+                value: (
+                    <div className="flex items-baseline gap-2">
+                        <span>{metrics.activeLeasesCount || 0}</span>
+                        <span className="text-sm font-normal text-muted-foreground">
+                            Activos
+                        </span>
+                    </div>
+                ),
+                icon: Key,
+                subtext: metrics.upcomingRenewalsCount > 0 ? (
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                        {metrics.upcomingRenewalsCount} {metrics.upcomingRenewalsCount === 1 ? 'vencimiento próximo' : 'vencimientos próximos'} (60 días)
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground font-normal">
+                        Contratos al día sin vencimientos
+                    </span>
+                ),
+                gradientColor: "var(--primary)"
             }
         ],
         social: {
@@ -180,54 +212,60 @@ export function RealEstateDashboard({
         },
         quickActions: [
             {
-                title: "Nueva Propiedad",
+                title: "Publicar Inmueble",
                 icon: Building2,
                 colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white",
                 onClick: () => setIsPropertyModalOpen(true)
             },
             {
-                title: "Registrar Prospecto",
+                title: "Nuevo Contrato",
+                icon: Key,
+                colorClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 group-hover:bg-violet-600 group-hover:text-white",
+                onClick: () => setIsLeaseModalOpen(true)
+            },
+            {
+                title: "Registrar Contacto",
                 icon: UserPlus,
                 colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white",
                 onClick: () => setIsClientModalOpen(true)
             },
             {
-                title: "Agendar Visita",
-                icon: Calendar,
-                colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white",
-                onClick: () => setIsQuoteModalOpen(true)
-            },
-            {
-                title: "Portafolio Inmuebles",
-                icon: Home,
-                colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white",
-                onClick: () => router.push('/portfolio')
-            },
-            {
-                title: "Nueva Factura",
+                title: "Cobranza & Dispersión",
                 icon: Receipt,
-                colorClass: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-                onClick: () => setIsInvoiceModalOpen(true)
+                colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
+                onClick: () => router.push('/rentals')
+            },
+            {
+                title: "Tienda / Portal",
+                icon: Home,
+                colorClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white",
+                onClick: () => router.push('/tienda')
             }
         ]
     }
 
     return (
         <>
-            <ModularDashboardLayout data={data} userRole={initialRole} />
+            <ModularDashboardLayout data={data} userRole={initialRole}>
+                {/* Semáforo de Cobranza Mensual en Vivo */}
+                <div className="pt-2 pb-1">
+                    <RentFlowCollectionGauge
+                        totalExpectedRent={metrics.totalExpectedRent}
+                        grossCollected={metrics.grossCollected}
+                        collectionRate={metrics.collectionRate}
+                        lateAmount={metrics.lateAmount}
+                        pendingAmount={metrics.pendingAmount}
+                        currentPeriod={metrics.currentPeriod}
+                    />
+                </div>
+            </ModularDashboardLayout>
+
             <CreateClientSheet
                 open={isClientModalOpen}
                 onOpenChange={setIsClientModalOpen}
+                spaceType="real_estate"
                 onSuccess={() => {
                     setIsClientModalOpen(false)
-                    refreshData()
-                }}
-            />
-            <CreateQuoteSheet
-                open={isQuoteModalOpen}
-                onOpenChange={setIsQuoteModalOpen}
-                onSuccess={() => {
-                    setIsQuoteModalOpen(false)
                     refreshData()
                 }}
             />
@@ -242,11 +280,13 @@ export function RealEstateDashboard({
                 industryPreset="real_estate"
                 organizationId={orgDetails?.id}
             />
-            <CreateInvoiceSheet
-                open={isInvoiceModalOpen}
-                onOpenChange={setIsInvoiceModalOpen}
+            <LeaseFormSheet
+                open={isLeaseModalOpen}
+                onOpenChange={setIsLeaseModalOpen}
+                properties={dashboardData?.catalog || []}
+                contacts={dashboardData?.leads || []}
                 onSuccess={() => {
-                    setIsInvoiceModalOpen(false)
+                    setIsLeaseModalOpen(false)
                     refreshData()
                 }}
             />

@@ -437,6 +437,7 @@ export function UniversalStorefrontLayout({
   }, [industryPreset, availableClassifications])
 
   // Determines whether the user is currently viewing Real Estate listings
+  // Determines whether the user is currently viewing Real Estate listings
   const isRealEstateContext = useMemo(() => {
     // If widget explicitly disabled by admin, return false
     if (widgetConfig.show_real_estate_filters === false) return false
@@ -447,14 +448,13 @@ export function UniversalStorefrontLayout({
       return false
     }
 
-    // Auto / Hybrid detection
+    // Auto / Hybrid detection: only when explicitly viewing Real Estate classification
     if (selectedClassification === "real_estate") return true
-    if (activeCategory !== "all") {
-      const itemsInCat = items.filter((i) => i.category === activeCategory)
-      return itemsInCat.length > 0 && itemsInCat.every((i) => i.classification === "real_estate")
-    }
+    if (selectedClassification !== "all") return false
+
+    // When viewing "all", only if every single item in the store is real_estate
     return items.length > 0 && items.every((i) => i.classification === "real_estate")
-  }, [widgetConfig.show_real_estate_filters, industryPreset, selectedClassification, activeCategory, items])
+  }, [widgetConfig.show_real_estate_filters, industryPreset, selectedClassification, items])
 
   // Dynamic Industry-Adaptive Search Placeholder
   const searchPlaceholder = useMemo(() => {

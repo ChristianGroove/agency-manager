@@ -215,14 +215,14 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 <SheetTrigger asChild>
                     {trigger}
                 </SheetTrigger>
-            ) : (
+            ) : !isControlled ? (
                 <SheetTrigger asChild>
                     <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
                         <Plus className="h-4 w-4" />
                         Nuevo Contacto
                     </Button>
                 </SheetTrigger>
-            )}
+            ) : null}
 
             <SheetContent
                 side="right"

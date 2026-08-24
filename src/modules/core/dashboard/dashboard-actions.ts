@@ -3,6 +3,7 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { unstable_noStore as noStore } from "next/cache"
+import { normalizeCatalogItem } from "@/modules/features/catalog/utils/normalize-catalog-item"
 
 export async function getDashboardData(supabase: any, orgId: string) {
     // RPC + Settings in parallel (was sequential)
@@ -137,46 +138,152 @@ export async function getDashboardPayload() {
     let extraData: any = null
 
     if (orgType === 'real_estate') {
-        const [settingsRes, bannerRes, catalogRes, leadsRes, quotesRes] = await Promise.all([
+        const now = new Date()
+        const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const in60Days = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+        const [
+            settingsRes,
+            bannerRes,
+            catalogRes,
+            leasesRes,
+            settlementsRes,
+            leadsRes
+        ] = await Promise.all([
             supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
             bannerPromise,
-            supabase.from('service_catalog').select('id, name, base_price, is_active, is_visible_in_portal, classification, real_estate_details, type').eq('organization_id', orgId).is('deleted_at', null),
-            supabase.from('leads').select('id, status, created_at, organization_id, name, company_name').eq('organization_id', orgId).is('deleted_at', null),
-            supabase.from('quotes').select('id, total, status, created_at').eq('organization_id', orgId).is('deleted_at', null)
+            supabase.from('service_catalog')
+                .select('id, name, base_price, is_active, is_visible_in_portal, classification, real_estate_details, classification_metadata, type, images, gallery_images, image_url')
+                .eq('organization_id', orgId)
+                .is('deleted_at', null),
+            supabase.from('property_leases')
+                .select('id, property_id, tenant_id, owner_id, monthly_rent, status, start_date, end_date, commission_percentage')
+                .eq('organization_id', orgId)
+                .is('deleted_at', null),
+            supabase.from('property_lease_settlements')
+                .select('id, lease_id, period, rent_amount, gross_collected, commission_amount, vat_amount, net_owner_payout, tenant_payment_status, owner_payout_status, deductions_amount')
+                .eq('organization_id', orgId),
+            supabase.from('leads')
+                .select('id, name, company_name, email, phone, metadata, status')
+                .eq('organization_id', orgId)
+                .is('deleted_at', null)
         ])
 
-        const catalogItems = catalogRes.data || []
+        const catalogItems = (catalogRes.data || []).map((p: any) => normalizeCatalogItem(p))
+        const leases = leasesRes.data || []
+        const settlements = settlementsRes.data || []
         const leads = leadsRes.data || []
-        const quotes = quotesRes.data || []
 
-        const activeProperties = catalogItems.filter((item: any) => item.is_active !== false)
-        const activePropertiesCount = activeProperties.length
+        // 1. Portafolio & Ocupación
+        const activeItems = catalogItems.filter((i: any) => i.is_active !== false)
+        let rentPropertiesCount = 0
+        let salePropertiesCount = 0
+        let totalSalesValuation = 0
+
+        activeItems.forEach((i: any) => {
+            const re = i.real_estate_details || i.classification_metadata?.real_estate
+            const op = re?.operation || re?.operation_type || (Number(i.base_price || 0) > 50000000 ? 'sale' : 'rent')
+            if (op === 'sale') {
+                salePropertiesCount++
+                totalSalesValuation += Number(i.base_price || 0)
+            } else {
+                rentPropertiesCount++
+            }
+        })
+
+        // 2. Contratos & Renovaciones (Próximos 60 días)
+        const activeLeases = leases.filter((l: any) => l.status === 'active')
+        const activeLeasesCount = activeLeases.length
         const totalPropertiesCount = catalogItems.length
-        const portfolioValue = activeProperties.reduce((sum: number, item: any) => sum + (Number(item.base_price) || 0), 0)
-        const buyerLeadsCount = leads.length
-        const visitsCount = quotes.length
-        const quotesCount = quotes.length
+        const occupancyRate = rentPropertiesCount > 0 
+            ? Math.min(100, Math.round((activeLeasesCount / rentPropertiesCount) * 100))
+            : 0
+
+        const upcomingRenewalsCount = activeLeases.filter((l: any) => {
+            if (!l.end_date) return false
+            const end = new Date(l.end_date).getTime()
+            const nowDate = now.getTime()
+            const maxDate = new Date(in60Days).getTime()
+            return end >= nowDate && end <= maxDate
+        }).length
+
+        // 3. Recaudo del Mes (RentFlow Pro) & Dispersión a Propietarios
+        const currentMonthSettlements = settlements.filter((s: any) => s.period === currentPeriod)
+        
+        let totalExpectedRent = 0
+        let grossCollected = 0
+        let netOwnerPayout = 0
+        let agencyCommissions = 0
+        let lateAmount = 0
+        let pendingAmount = 0
+
+        if (currentMonthSettlements.length > 0) {
+            currentMonthSettlements.forEach((s: any) => {
+                const rent = Number(s.rent_amount || 0)
+                const gross = Number(s.gross_collected || 0)
+                const comm = Number(s.commission_amount || 0) + Number(s.vat_amount || 0)
+                const net = Number(s.net_owner_payout || 0)
+                
+                totalExpectedRent += rent
+                if (s.tenant_payment_status === 'paid') {
+                    grossCollected += gross
+                    netOwnerPayout += net
+                    agencyCommissions += comm
+                } else if (s.tenant_payment_status === 'late') {
+                    lateAmount += rent
+                } else {
+                    pendingAmount += rent
+                }
+            })
+        } else {
+            // Computed estimation from active leases
+            activeLeases.forEach((l: any) => {
+                const rent = Number(l.monthly_rent || 0)
+                const commRate = Number(l.commission_percentage || 8) / 100
+                const comm = rent * commRate * 1.19
+                const net = rent - comm
+                totalExpectedRent += rent
+                pendingAmount += rent
+                netOwnerPayout += net
+                agencyCommissions += comm
+            })
+        }
+
+        const collectionRate = totalExpectedRent > 0 
+            ? Math.round((grossCollected / totalExpectedRent) * 100) 
+            : 0
 
         dashboardData = {
             settings: settingsRes.data,
             bannerConfig: bannerRes.data || null,
             catalog: catalogItems,
             leads,
-            quotes
+            leases,
+            settlements
         }
         extraData = {
             orgDetails,
             realEstateMetrics: {
-                activePropertiesCount,
+                // Portfolio & Occupancy
+                activePropertiesCount: activeItems.length,
                 totalPropertiesCount,
-                portfolioValue,
-                buyerLeadsCount,
-                propertyVisitsCount: visitsCount,
-                quotesCount,
-                activeProperties: activePropertiesCount,
-                portfolioValueFormatted: `$${portfolioValue.toLocaleString('es-CO')}`,
-                buyerLeads: buyerLeadsCount,
-                visitsCount
+                rentPropertiesCount,
+                salePropertiesCount,
+                occupancyRate,
+                totalSalesValuation,
+                // Collection (RentFlow Pro)
+                totalExpectedRent,
+                grossCollected,
+                collectionRate,
+                lateAmount,
+                pendingAmount,
+                // Settlements & Agency Earnings
+                netOwnerPayout,
+                agencyCommissions,
+                // Leases & Renewals
+                activeLeasesCount,
+                upcomingRenewalsCount,
+                currentPeriod
             }
         }
     } else if (orgType === 'resto') {
@@ -364,7 +471,13 @@ export async function getDashboardPayload() {
                 payload.extraData.cleaningMetrics.revenue = 0
             }
             if (payload.extraData.realEstateMetrics) {
-                payload.extraData.realEstateMetrics.portfolioValue = 0
+                payload.extraData.realEstateMetrics.totalSalesValuation = 0
+                payload.extraData.realEstateMetrics.totalExpectedRent = 0
+                payload.extraData.realEstateMetrics.grossCollected = 0
+                payload.extraData.realEstateMetrics.netOwnerPayout = 0
+                payload.extraData.realEstateMetrics.agencyCommissions = 0
+                payload.extraData.realEstateMetrics.lateAmount = 0
+                payload.extraData.realEstateMetrics.pendingAmount = 0
             }
             delete payload.extraData.agentStats
         }

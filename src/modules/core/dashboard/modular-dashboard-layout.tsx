@@ -25,9 +25,18 @@ export interface DashboardDataProps {
     settings?: any
     orgType?: string
     extraData?: any
+    children?: React.ReactNode
 }
 
-export function ModularDashboardLayout({ data, userRole: initialRole }: { data: DashboardDataProps, userRole?: string | null }) {
+export function ModularDashboardLayout({ 
+    data, 
+    userRole: initialRole,
+    children
+}: { 
+    data: DashboardDataProps, 
+    userRole?: string | null,
+    children?: React.ReactNode
+}) {
     const { userRole: hookRole } = useActiveModules();
     const userRole = initialRole || hookRole;
     const isMember = userRole === 'member' || userRole === 'miembro';
@@ -38,7 +47,6 @@ export function ModularDashboardLayout({ data, userRole: initialRole }: { data: 
             {/* dynamic Standardized Header */}
             <DynamicGreetingHeader />
             
-
 
             {/* 1. Stats Grid (Dynamic) - HIDDEN FOR MEMBERS */}
             {!isMember && (
@@ -58,6 +66,9 @@ export function ModularDashboardLayout({ data, userRole: initialRole }: { data: 
                     ))}
                 </div>
             )}
+
+            {/* Injected Custom Industry Widgets (below Quick Actions) */}
+            {!isMember && (children || data.children)}
 
             {/* 4. Smart Alert (Full Width) - HIDDEN FOR MEMBERS */}
             {!isMember && data.smartAlert && (

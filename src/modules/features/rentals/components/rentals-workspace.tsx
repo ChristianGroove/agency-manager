@@ -169,7 +169,7 @@ export function RentalsWorkspace({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-                RentFlow Pro — Gestión de Arriendos
+                Gestión de Arriendos
               </h1>
               <Badge variant="outline" className="text-xs uppercase font-mono px-2.5 py-0.5">
                 {organization.name}

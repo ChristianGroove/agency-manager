@@ -75,22 +75,15 @@ export function normalizeCatalogItem(
     }
   }
 
-  // Automatic real estate classification fallback if item contains real estate data or category
-  const catLower = categoryName.toLowerCase()
-  const isReCategoryOrData = Boolean(
-    row.real_estate_details ||
-    row.classification_metadata?.real_estate ||
-    row.metadata?.real_estate_details ||
-    row.metadata?.classification_metadata?.real_estate ||
-    catLower.includes('inmueble') ||
-    catLower.includes('propiedad') ||
-    catLower.includes('bienes raíces') ||
-    catLower.includes('bienes raices') ||
-    catLower.includes('apartamento') ||
-    catLower.includes('casa')
+  // Automatic real estate classification fallback ONLY if classification was NOT explicitly provided
+  const hasRealEstateData = Boolean(
+    (row.real_estate_details && typeof row.real_estate_details === 'object' && Object.keys(row.real_estate_details).length > 0) ||
+    (row.classification_metadata?.real_estate && typeof row.classification_metadata.real_estate === 'object' && Object.keys(row.classification_metadata.real_estate).length > 0) ||
+    (row.metadata?.real_estate_details && typeof row.metadata.real_estate_details === 'object' && Object.keys(row.metadata.real_estate_details).length > 0) ||
+    (row.metadata?.classification_metadata?.real_estate && typeof row.metadata.classification_metadata.real_estate === 'object' && Object.keys(row.metadata.classification_metadata.real_estate).length > 0)
   )
 
-  if (isReCategoryOrData && (!row.classification || row.classification === 'service' || row.classification === 'physical')) {
+  if (!row.classification && hasRealEstateData) {
     classification = 'real_estate'
   }
 
@@ -170,9 +163,9 @@ export function normalizeCatalogItem(
       digital_details: classification === "digital" ? (row.digital_details || classMeta.digital || metadata.digital_details) : undefined,
       service_details: classification === "service" ? (row.service_details || classMeta.service || metadata.service_details) : undefined,
       subscription_details: classification === "subscription" ? (row.subscription_details || classMeta.subscription || metadata.subscription_details) : undefined,
-      real_estate_details: (classification === "real_estate" || isReCategoryOrData) ? (() => {
+      real_estate_details: classification === "real_estate" ? (() => {
         const raw = row.real_estate_details || classMeta.real_estate || metadata.real_estate_details || metadata.classification_metadata?.real_estate
-        if (!raw || typeof raw !== "object") return undefined
+        if (!raw || typeof raw !== "object" || Object.keys(raw).length === 0) return undefined
         const op = raw.operation || raw.operation_type || (Number(row.base_price || 0) > 50000000 ? "sale" : "rent")
         return {
           ...raw,
