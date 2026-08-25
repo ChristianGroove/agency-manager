@@ -27,11 +27,11 @@ export function useCurrentOrganization() {
                     // Check if superadmin first
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('is_super_admin')
+                        .select('platform_role')
                         .eq('id', user.id)
                         .maybeSingle()
 
-                    if (profile?.is_super_admin) {
+                    if (profile?.platform_role === 'superadmin' || profile?.platform_role === 'platform_owner') {
                         setOrganizationId(orgCookie)
                         setLoading(false)
                         return
