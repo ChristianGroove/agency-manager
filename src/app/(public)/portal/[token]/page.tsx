@@ -16,6 +16,8 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 import { AttendanceStaffPortal } from "@/modules/features/attendance/components/staff-portal-view"
 import { RestoStaffPortal } from "@/modules/features/resto-orders/components/staff-portal/RestoStaffPortal"
 import { isPortalInvoicePayable } from "@/modules/features/portal/utils/invoice-payability"
+import { I18nProvider } from "@/modules/core/i18n/context"
+import { getDictionary, Locale } from "@/modules/core/i18n/dictionaries"
 
 // ... existing imports
 
@@ -228,44 +230,53 @@ export default function PortalPage() {
         fontFamily: settings.brand_font_family || 'Inter, sans-serif',
     } as React.CSSProperties
 
+    const portalLocale: Locale = ((settings?.portal_language || settings?.default_language || 'es') as Locale)
+    const portalDict = getDictionary(portalLocale)
+
     // -------------------------------------------------------------
     // RENDER: STAFF PORTAL
     // -------------------------------------------------------------
     if (portalType === 'staff' && staff) {
         return (
-            <div className="min-h-screen" style={brandingStyles}>
-                <WorkerPortalLayout
-                    staff={staff}
-                    jobs={jobs}
-                    settings={settings}
-                    token={params.token as string}
-                />
-            </div>
+            <I18nProvider dict={portalDict} locale={portalLocale}>
+                <div className="min-h-screen" style={brandingStyles}>
+                    <WorkerPortalLayout
+                        staff={staff}
+                        jobs={jobs}
+                        settings={settings}
+                        token={params.token as string}
+                    />
+                </div>
+            </I18nProvider>
         )
     }
 
     if (portalType === 'attendance_staff' && staff) {
         return (
-            <div className="min-h-screen" style={brandingStyles}>
-                <AttendanceStaffPortal
-                    staff={staff}
-                    settings={settings}
-                    token={params.token as string}
-                />
-            </div>
+            <I18nProvider dict={portalDict} locale={portalLocale}>
+                <div className="min-h-screen" style={brandingStyles}>
+                    <AttendanceStaffPortal
+                        staff={staff}
+                        settings={settings}
+                        token={params.token as string}
+                    />
+                </div>
+            </I18nProvider>
         )
     }
 
     if (portalType === 'resto_staff' && staff) {
         return (
-            <div className="min-h-screen" style={brandingStyles}>
-                <RestoStaffPortal
-                    staff={staff}
-                    zoneAssignments={zoneAssignments}
-                    settings={settings}
-                    token={params.token as string}
-                />
-            </div>
+            <I18nProvider dict={portalDict} locale={portalLocale}>
+                <div className="min-h-screen" style={brandingStyles}>
+                    <RestoStaffPortal
+                        staff={staff}
+                        zoneAssignments={zoneAssignments}
+                        settings={settings}
+                        token={params.token as string}
+                    />
+                </div>
+            </I18nProvider>
         )
     }
 
@@ -303,79 +314,81 @@ export default function PortalPage() {
     const PortalLayoutComponent = getPublicPortalTemplate(portalConfig)
 
     return (
-        <div className="min-h-screen" style={brandingStyles}>
-            <PortalLayoutComponent
-                token={params.token as string}
-                client={client}
-                organization={organization}
-                invoices={invoices}
-                quotes={quotes}
-                briefings={briefings}
-                events={events}
-                services={services}
-                settings={settings}
-                themeConfig={settings.portal_theme_config}
-                activeModules={activeModules}
-                hostingAccounts={hostingAccounts}
-                catalog={catalog} // NEW: Pass pre-fetched catalog
-                onPay={handlePayClick}
-                onViewInvoice={setViewInvoice}
-                onViewQuote={setViewQuote}
-                insightsAccess={insightsAccess} // NEW
+        <I18nProvider dict={portalDict} locale={portalLocale}>
+            <div className="min-h-screen" style={brandingStyles}>
+                <PortalLayoutComponent
+                    token={params.token as string}
+                    client={client}
+                    organization={organization}
+                    invoices={invoices}
+                    quotes={quotes}
+                    briefings={briefings}
+                    events={events}
+                    services={services}
+                    settings={settings}
+                    themeConfig={settings.portal_theme_config}
+                    activeModules={activeModules}
+                    hostingAccounts={hostingAccounts}
+                    catalog={catalog} // NEW: Pass pre-fetched catalog
+                    onPay={handlePayClick}
+                    onViewInvoice={setViewInvoice}
+                    onViewQuote={setViewQuote}
+                    insightsAccess={insightsAccess} // NEW
 
-                // Props adiciones esperadas por RestoLayout y Storefront
-                user={client}
-                currentOrgId={client?.organization_id || organization?.id || ""}
-                isAdmin={false}
-                orgData={{ name: client?.organization?.name || organization?.name || "Tienda Comercial" }}
-            />
+                    // Props adiciones esperadas por RestoLayout y Storefront
+                    user={client}
+                    currentOrgId={client?.organization_id || organization?.id || ""}
+                    isAdmin={false}
+                    orgData={{ name: client?.organization?.name || organization?.name || "Tienda Comercial" }}
+                />
 
-            {/* Payment Options Modal */}
-            <PaymentOptionsModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                amount={paymentAmount}
-                paymentMethods={paymentMethods}
-                onWompiPay={handleWompiPay}
-                settings={settings}
-                invoiceIds={paymentInvoiceIds}
-            />
+                {/* Payment Options Modal */}
+                <PaymentOptionsModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    amount={paymentAmount}
+                    paymentMethods={paymentMethods}
+                    onWompiPay={handleWompiPay}
+                    settings={settings}
+                    invoiceIds={paymentInvoiceIds}
+                />
 
-            {/* Success Message Modal */}
-            {showSuccessMessage && settings.payment_success_message && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full text-center space-y-4 animate-in zoom-in-95">
-                        <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                            <Check className="h-6 w-6" />
+                {/* Success Message Modal */}
+                {showSuccessMessage && settings.payment_success_message && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full text-center space-y-4 animate-in zoom-in-95">
+                            <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                                <Check className="h-6 w-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">¡Pago Recibido!</h3>
+                            <p className="text-gray-600 whitespace-pre-wrap">{settings.payment_success_message}</p>
+                            <Button onClick={() => setShowSuccessMessage(false)} className="w-full text-white" style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}>
+                                Entendido
+                            </Button>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">¡Pago Recibido!</h3>
-                        <p className="text-gray-600 whitespace-pre-wrap">{settings.payment_success_message}</p>
-                        <Button onClick={() => setShowSuccessMessage(false)} className="w-full text-white" style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}>
-                            Entendido
-                        </Button>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Invoice Detail Modal */}
-            <InvoiceDetailModal
-                invoice={viewInvoice}
-                open={!!viewInvoice}
-                onOpenChange={(open: boolean) => !open && setViewInvoice(null)}
-                token={params.token as string}
-            />
+                {/* Invoice Detail Modal */}
+                <InvoiceDetailModal
+                    invoice={viewInvoice}
+                    open={!!viewInvoice}
+                    onOpenChange={(open: boolean) => !open && setViewInvoice(null)}
+                    token={params.token as string}
+                />
 
-            {/* Quote Detail Modal */}
-            <QuoteDetailModal
-                quote={viewQuote}
-                open={!!viewQuote}
-                onOpenChange={(open: boolean) => !open && setViewQuote(null)}
-                onAccept={handleAcceptQuote}
-                onReject={handleRejectQuote}
-                settings={settings}
-                token={params.token as string}
-            />
-        </div>
+                {/* Quote Detail Modal */}
+                <QuoteDetailModal
+                    quote={viewQuote}
+                    open={!!viewQuote}
+                    onOpenChange={(open: boolean) => !open && setViewQuote(null)}
+                    onAccept={handleAcceptQuote}
+                    onReject={handleRejectQuote}
+                    settings={settings}
+                    token={params.token as string}
+                />
+            </div>
+        </I18nProvider>
     )
 }
 

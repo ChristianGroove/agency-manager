@@ -29,7 +29,15 @@ const DEFAULT_BRANDING: BrandingConfig = {
     website: "https://pixy.com.co",
     font_family: "Inter",
     login_bg_color: "#F3F4F6", // Gray-100
-    socials: {}
+    socials: {},
+    country: "Colombia",
+    currency: "COP",
+    timezone: "America/Bogota",
+    language: "es",
+    portal_language: "es",
+    date_format: "DD/MM/YYYY",
+    currency_format: "es-CO",
+    email_style: "neo"
 }
 
 /**
@@ -182,7 +190,15 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
             linkedin: tenantSettings.social_linkedin || null,
             twitter: tenantSettings.social_twitter || null,
             youtube: tenantSettings.social_youtube || null
-        }
+        },
+        country: tenantSettings.agency_country || platformBranding.country || 'Colombia',
+        currency: tenantSettings.agency_currency || platformBranding.currency || 'COP',
+        timezone: tenantSettings.agency_timezone || platformBranding.timezone || 'America/Bogota',
+        language: tenantSettings.default_language || platformBranding.language || 'es',
+        portal_language: tenantSettings.portal_language || platformBranding.portal_language || 'es',
+        date_format: tenantSettings.date_format || platformBranding.date_format || 'DD/MM/YYYY',
+        currency_format: tenantSettings.currency_format || platformBranding.currency_format || 'es-CO',
+        email_style: tenantSettings.email_style || platformBranding.email_style || 'neo'
     } as BrandingConfig
 })
 
@@ -358,18 +374,26 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         social_linkedin: settings.socials?.linkedin,
         social_twitter: settings.socials?.twitter,
         social_youtube: settings.socials?.youtube,
+        default_language: settings.language || 'es',
+        portal_language: settings.portal_language || 'es',
+        agency_country: settings.country || null,
+        agency_currency: settings.currency || 'COP',
+        agency_timezone: settings.timezone || null,
+        date_format: settings.date_format || 'DD/MM/YYYY',
+        currency_format: settings.currency_format || 'es-CO',
+        email_style: settings.email_style || 'neo',
         updated_at: new Date().toISOString()
     }
 
     let saveError: any = null
     if (existing?.id) {
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("organization_settings")
             .update(payload)
             .eq("id", existing.id)
         saveError = error
     } else {
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from("organization_settings")
             .insert(payload)
         saveError = error
@@ -378,6 +402,8 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
     if (saveError) throw new Error(saveError.message)
 
     revalidatePath("/platform/adn")
+    revalidatePath("/platform/settings")
     revalidatePath("/", "layout")
+    revalidatePath("/portal", "layout")
     return { success: true }
 }
