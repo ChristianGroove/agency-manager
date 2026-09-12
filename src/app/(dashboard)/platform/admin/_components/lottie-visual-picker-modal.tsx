@@ -42,17 +42,44 @@ const LottieThumbnail = memo(function LottieThumbnail({
     isSelected: boolean
     onSelect: (value: string) => void
 }) {
+    const containerRef = React.useRef<HTMLButtonElement>(null)
+    const lottieRef = React.useRef<any>(null)
+    const [isVisible, setIsVisible] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
     const [animationData, setAnimationData] = useState<any>(() => jsonCache.get(item.value) || null)
-    const [loading, setLoading] = useState(!jsonCache.has(item.value))
+    const [loading, setLoading] = useState(false)
 
+    // Solo descargar el JSON cuando la tarjeta está próxima a ser visible en el scroll
     useEffect(() => {
         if (jsonCache.has(item.value)) {
             setAnimationData(jsonCache.get(item.value))
-            setLoading(false)
+            return
+        }
+
+        const currentElement = containerRef.current
+        if (!currentElement) return
+
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) {
+                setIsVisible(true)
+                observer.disconnect()
+            }
+        }, { rootMargin: '120px' })
+
+        observer.observe(currentElement)
+        return () => observer.disconnect()
+    }, [item.value])
+
+    // Cargar JSON de la animación
+    useEffect(() => {
+        if (!isVisible && !isHovered) return
+        if (animationData || jsonCache.has(item.value)) {
+            if (!animationData) setAnimationData(jsonCache.get(item.value))
             return
         }
 
         let isMounted = true
+        setLoading(true)
         fetch(item.value)
             .then(res => res.json())
             .then(data => {
@@ -69,12 +96,27 @@ const LottieThumbnail = memo(function LottieThumbnail({
         return () => {
             isMounted = false
         }
-    }, [item.value])
+    }, [isVisible, isHovered, item.value, animationData])
+
+    // Reproducir exclusivamente cuando el cursor pasa por encima (Hover)
+    useEffect(() => {
+        if (lottieRef.current) {
+            if (isHovered) {
+                lottieRef.current.play()
+            } else {
+                lottieRef.current.pause()
+                lottieRef.current.goToAndStop(0, true)
+            }
+        }
+    }, [isHovered])
 
     return (
         <button
+            ref={containerRef}
             type="button"
             onClick={() => onSelect(item.value)}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className={`group relative flex flex-col items-center justify-between p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer overflow-hidden ${
                 isSelected
                     ? "border-primary bg-primary/10 ring-2 ring-primary shadow-md"
@@ -96,12 +138,20 @@ const LottieThumbnail = memo(function LottieThumbnail({
                         <span className="text-[10px]">Cargando...</span>
                     </div>
                 ) : animationData ? (
-                    <Lottie
-                        animationData={animationData}
-                        loop={true}
-                        autoplay={true}
-                        className="w-full h-full object-contain p-1"
-                    />
+                    <>
+                        <Lottie
+                            lottieRef={lottieRef}
+                            animationData={animationData}
+                            loop={true}
+                            autoplay={false}
+                            className="w-full h-full object-contain p-1"
+                        />
+                        {!isHovered && !isSelected && (
+                            <div className="absolute bottom-1 right-1 bg-black/40 text-[9px] text-white px-1.5 py-0.5 rounded backdrop-blur-sm opacity-60 group-hover:opacity-0 transition-opacity flex items-center gap-1">
+                                <PlayCircle className="w-2.5 h-2.5" /> Hover
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <PlayCircle className="h-6 w-6 opacity-40" />

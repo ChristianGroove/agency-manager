@@ -1109,9 +1109,14 @@ export async function upsertGlobalBanner(bannerData: any) {
             .eq('space_type', bannerData.space_type)
     }
 
+    const cleanData = { ...bannerData, updated_at: new Date().toISOString() }
+    if (!cleanData.id) {
+        delete cleanData.id
+    }
+
     const { data, error } = await supabaseAdmin
         .from('global_dashboard_banners')
-        .upsert({ ...bannerData, updated_at: new Date().toISOString() })
+        .upsert(cleanData, { onConflict: 'space_type' })
         .select()
         .single()
 

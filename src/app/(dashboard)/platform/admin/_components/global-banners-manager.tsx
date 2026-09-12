@@ -30,16 +30,10 @@ const DEFAULT_BANNER: GlobalBannerConfig = {
     is_active: false
 }
 
-const BASE_SPACES = [
-    { value: 'all', label: '🌐 Global (Todos los Dashboards)' },
-    { value: 'agency', label: '🏢 Agencia / Marketing & B2B' },
-    { value: 'resto', label: '🍽️ Restaurantes & Gastronomía' },
-    { value: 'retail', label: '🛍️ Retail & Comercio' },
-    { value: 'cleaning', label: '🧹 Limpieza & Servicios Especializados' },
-    { value: 'real_estate', label: '🏠 Bienes Raíces / Real Estate' },
-    { value: 'saas', label: '💻 SaaS & Plataformas de Software' },
-    { value: 'reseller', label: '🤝 Resellers & Aliados Comerciales' },
-    { value: 'platform', label: '⚙️ Plataforma Central (Superadmin / Core)' },
+// 1. Destinos principales de Red
+const NETWORK_DESTINATIONS = [
+    { value: 'all', label: '🌐 Toda la Red (Global - Todos los Dashboards)' },
+    { value: 'reseller', label: '🤝 Red de Resellers & Aliados' },
 ]
 
 export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
@@ -52,24 +46,36 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const [formData, setFormData] = useState<GlobalBannerConfig>(DEFAULT_BANNER)
     const [isPristine, setIsPristine] = useState(true)
 
+    // 2. Spaces registrados en el SaaS Engine (sin duplicados, mapeados a su space_category o slug)
+    const saasEngineSpaces = useMemo(() => {
+        return (apps || [])
+            .filter(app => app && app.is_active !== false)
+            .map(app => {
+                const spaceKey = app.space_category || app.category || app.slug || app.id
+                return {
+                    value: spaceKey,
+                    label: `📦 ${app.name}`,
+                    slug: app.slug,
+                    appId: app.id
+                }
+            })
+            .filter(s => !NETWORK_DESTINATIONS.some(n => n.value === s.value))
+    }, [apps])
+
+    const allDestinations = useMemo(() => {
+        return [...NETWORK_DESTINATIONS, ...saasEngineSpaces]
+    }, [saasEngineSpaces])
+
+    const getDestinationLabel = (val?: string) => {
+        if (!val) return 'Sin Destino'
+        const found = allDestinations.find(d => d.value === val)
+        return found ? found.label : `🎯 ${val} (Personalizado)`
+    }
+
     const selectedLottieItem = useMemo(() => {
         if (!formData.media_url) return null
         return (lottieCatalog as any[]).find(item => item.value === formData.media_url)
     }, [formData.media_url])
-
-    const saasAppOptions = useMemo(() => {
-        return (apps || [])
-            .filter(app => app && (app.slug || app.id))
-            .map(app => ({
-                value: app.slug || app.id,
-                label: `📦 ${app.name} (${app.slug || app.category || 'app'})`
-            }))
-            .filter(appOpt => !BASE_SPACES.some(b => b.value === appOpt.value))
-    }, [apps])
-
-    const allKnownOptions = useMemo(() => {
-        return [...BASE_SPACES, ...saasAppOptions]
-    }, [saasAppOptions])
 
     useEffect(() => {
         loadBanners()
@@ -99,9 +105,23 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
         }
     }
 
+    // Al cambiar el destino (Space), si ya existe un banner para ese destino, lo cargamos para editarlo
+    const handleSpaceChange = (newSpaceType: string) => {
+        const existing = banners.find(b => b.space_type === newSpaceType)
+        if (existing) {
+            let desc = existing.description
+            if (typeof desc === 'string') desc = [desc]
+            setFormData({ ...existing, description: desc || [''] })
+            setIsPristine(false)
+            toast.info(`Cargando configuración de "${getDestinationLabel(newSpaceType)}"`)
+        } else {
+            setFormData(prev => ({ ...prev, space_type: newSpaceType }))
+        }
+    }
+
     const handleSave = async () => {
         if (!formData.title || !formData.space_type) {
-            toast.error("El Título y Space Type son obligatorios")
+            toast.error("El Título y el Destino (Space) son obligatorios")
             return
         }
 
@@ -124,9 +144,11 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
         if (res.success) {
             toast.success("Banner guardado exitosamente")
             await loadBanners()
-            // Recargar datos actualizados al form
+            // Sincronizar datos actualizados al form
             if ('data' in res && res.data) {
-                setFormData({ ...(res.data as any), description: cleanDescriptions })
+                let desc = (res.data as any).description
+                if (typeof desc === 'string') desc = [desc]
+                setFormData({ ...(res.data as any), description: desc || cleanDescriptions })
             }
         } else {
             toast.error(res.error || "Error al guardar el banner")
@@ -193,7 +215,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold tracking-tight">Gestor de Banners Globales</h2>
-                    <p className="text-sm text-muted-foreground">Configura los banners publicitarios dinámicos que verán los usuarios en sus Dashboards por tipo de espacio.</p>
+                    <p className="text-sm text-muted-foreground">Configura los anuncios y mensajes dinámicos que se inyectan en los Dashboards según el destino.</p>
                 </div>
 
                 {/* SELECTOR DE BANNER A EDITAR O CREAR */}
@@ -202,18 +224,21 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                         value={formData.id || (isPristine ? "" : "new")}
                         onValueChange={handleSelectBanner}
                     >
-                        <SelectTrigger className="w-full md:w-[280px]">
+                        <SelectTrigger className="w-full md:w-[320px]">
                             <SelectValue placeholder="Seleccionar un banner para editar" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="new" className="font-bold text-primary">
-                                <span className="flex items-center"><Plus className="w-4 h-4 mr-2" /> Crear Nuevo Banner</span>
+                                <span className="flex items-center"><Plus className="w-4 h-4 mr-2" /> Configurar Nuevo Destino</span>
                             </SelectItem>
                             {banners.map(b => (
                                 <SelectItem key={b.id} value={b.id}>
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${b.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                                        <span className="truncate">{b.title} ({b.space_type})</span>
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${b.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                        <span className="truncate">{b.title}</span>
+                                        <Badge variant="outline" className="text-[10px] ml-auto shrink-0 font-mono">
+                                            {b.space_type}
+                                        </Badge>
                                     </div>
                                 </SelectItem>
                             ))}
@@ -237,7 +262,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                             <CardTitle className="text-lg flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                     <Edit2 className="h-4 w-4 text-primary" />
-                                    {formData.id ? 'Editando Banner' : 'Configuración de Nuevo Banner'}
+                                    {formData.id ? 'Editando Banner' : 'Configuración de Banner'}
                                 </span>
                                 {formData.id && (
                                     <div className="flex items-center gap-2">
@@ -256,7 +281,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                                 )}
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Todos los cambios se reflejan inmediatamente en la vista previa a la derecha.
+                                Selecciona el destino donde se mostrará este banner (Toda la red, Resellers o Spaces de SaaS Engine).
                             </CardDescription>
                         </CardHeader>
 
@@ -277,37 +302,35 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Inyectar en (Space Type)</Label>
-                                        <Select value={formData.space_type} onValueChange={(v) => setFormData({ ...formData, space_type: v })}>
-                                            <SelectTrigger><SelectValue placeholder="Selecciona un Space Type" /></SelectTrigger>
+                                        <Label>Inyectar en (Destino del Banner)</Label>
+                                        <Select value={formData.space_type} onValueChange={handleSpaceChange}>
+                                            <SelectTrigger><SelectValue placeholder="Selecciona el destino del banner" /></SelectTrigger>
                                             <SelectContent className="max-h-[320px]">
-                                                <SelectItem value="all" className="font-semibold text-primary">
-                                                    🌐 Global (Todos los Dashboards)
-                                                </SelectItem>
-                                                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                    Verticales Principales
-                                                </div>
-                                                {BASE_SPACES.filter(s => s.value !== 'all').map(s => (
-                                                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                                {NETWORK_DESTINATIONS.map(d => (
+                                                    <SelectItem key={d.value} value={d.value} className="font-semibold">
+                                                        {d.label}
+                                                    </SelectItem>
                                                 ))}
-                                                {saasAppOptions.length > 0 && (
+                                                {saasEngineSpaces.length > 0 && (
                                                     <>
                                                         <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t mt-1 pt-2">
-                                                            SaaS Engine Spaces & Soluciones
+                                                            Spaces Registrados en SaaS Engine
                                                         </div>
-                                                        {saasAppOptions.map(s => (
-                                                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                                        {saasEngineSpaces.map(space => (
+                                                            <SelectItem key={space.value} value={space.value}>
+                                                                {space.label}
+                                                            </SelectItem>
                                                         ))}
                                                     </>
                                                 )}
-                                                {formData.space_type && !allKnownOptions.some(o => o.value === formData.space_type) && (
+                                                {formData.space_type && !allDestinations.some(o => o.value === formData.space_type) && (
                                                     <SelectItem value={formData.space_type}>
                                                         🎯 {formData.space_type} (Personalizado)
                                                     </SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[11px] text-muted-foreground">Nota: Solo puede haber un banner activo por cada space a la vez.</p>
+                                        <p className="text-[11px] text-muted-foreground">Nota: Cada destino (Space) tiene su banner dedicado en el dashboard.</p>
                                     </div>
                                 </div>
                             </div>
@@ -519,8 +542,8 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                                 <Globe className="h-4 w-4 text-brand-cyan" />
                                 Renderización en Tiempo Real
                             </h3>
-                            <Badge variant="outline" className="bg-white/50 dark:bg-black/50 backdrop-blur">
-                                {formData.space_type?.toUpperCase() || 'ALL'}
+                            <Badge variant="outline" className="bg-white/50 dark:bg-black/50 backdrop-blur font-medium">
+                                {getDestinationLabel(formData.space_type)}
                             </Badge>
                         </div>
 

@@ -134,14 +134,25 @@ export async function getDashboardPayload() {
         'all'
     ].filter(Boolean)))
 
-    const bannerPromise = supabaseAdmin
-        .from('global_dashboard_banners')
-        .select('*')
-        .in('space_type', candidateSpaceTypes)
-        .eq('is_active', true)
-        .order('is_active', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+    const bannerPromise = (async () => {
+        try {
+            const { data: banners } = await supabaseAdmin
+                .from('global_dashboard_banners')
+                .select('*')
+                .in('space_type', candidateSpaceTypes)
+                .eq('is_active', true)
+
+            if (!banners || banners.length === 0) return { data: null }
+
+            for (const candidate of candidateSpaceTypes) {
+                const match = banners.find(b => b.space_type === candidate)
+                if (match) return { data: match }
+            }
+            return { data: banners[0] }
+        } catch {
+            return { data: null }
+        }
+    })()
 
     let dashboardData: any = null
     let extraData: any = null
