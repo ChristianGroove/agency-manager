@@ -1,7 +1,7 @@
 "use server"
 import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 
 /**
  * Get all organizations with their SaaS subscription data
@@ -9,7 +9,7 @@ import { createClient } from "@/modules/core/database/supabase-server";
 export async function getAllPlatformSubscriptions() {
     await requireSuperAdmin()
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
             id,
@@ -50,10 +50,9 @@ export async function adminUpdateSubscription(subscriptionId: string, updates: {
     admin_notes?: string
 }) {
     await requireSuperAdmin()
-    const supabase = await createClient()
 
     // 1. Update the subscription
-    const { data: sub, error } = await supabase
+    const { data: sub, error } = await supabaseAdmin
         .from('saas_subscriptions')
         .update({
             ...updates,
@@ -65,23 +64,32 @@ export async function adminUpdateSubscription(subscriptionId: string, updates: {
 
     if (error) throw error
 
-    // 2. Cascade status to organizations table to prevent CRON block
+    // 2. Cascade status to organizations table with supabaseAdmin so RLS never blocks it
     if (updates.status && sub?.organization_id) {
-        let orgStatus = 'active'
-        if (updates.status === 'canceled') orgStatus = 'suspended'
-        // If past_due, we might leave it active but warning, or suspended depending on rules. 
-        // Let's set orgStatus to suspended if it's past_due, or keep it active if bypass is used.
-        // Actually, if canceled or past_due we can map to suspended for hard block.
-        // Or better yet, just sync the `subscription_status` field.
-        await supabase.from('organizations').update({
-            status: updates.status === 'canceled' ? 'suspended' : 'active',
+        const isSuspended = updates.status === 'canceled' || updates.status === 'suspended'
+        const orgStatus = isSuspended ? 'suspended' : 'active'
+
+        const orgUpdatePayload: any = {
+            status: orgStatus,
             subscription_status: updates.status,
-            suspended_at: updates.status === 'canceled' ? new Date().toISOString() : null,
+            suspended_at: isSuspended ? new Date().toISOString() : null,
+            suspended_reason: isSuspended ? (updates.admin_notes || 'Suspended via billing admin') : null,
             updated_at: new Date().toISOString()
-        }).eq('id', sub.organization_id)
+        }
+
+        const { error: orgError } = await supabaseAdmin
+            .from('organizations')
+            .update(orgUpdatePayload)
+            .eq('id', sub.organization_id)
+
+        if (orgError) {
+            console.error('[adminUpdateSubscription] Error updating organization status:', orgError)
+            throw orgError
+        }
     }
 
     revalidatePath('/platform/admin')
+    revalidatePath('/platform/admin/organizations')
     return { success: true }
 }
 
@@ -94,7 +102,7 @@ export async function adminUpdateSpaceDetails(appId: string, updates: {
 }) {
     await requireSuperAdmin()
 
-    const { error } = await (await createClient())
+    const { error } = await supabaseAdmin
         .from('saas_apps')
         .update({
             ...updates,
@@ -114,17 +122,33 @@ export async function adminUpdateSpaceDetails(appId: string, updates: {
 export async function updateSubscriptionStatusAdmin(subscriptionId: string, status: any) {
     await requireSuperAdmin()
 
-    const { error } = await (await createClient())
+    const { data: sub, error } = await supabaseAdmin
         .from('saas_subscriptions')
         .update({
             status,
             updated_at: new Date().toISOString()
         })
         .eq('id', subscriptionId)
+        .select('organization_id')
+        .single()
 
     if (error) throw error
 
+    if (status && sub?.organization_id) {
+        const isSuspended = status === 'canceled' || status === 'suspended'
+        await supabaseAdmin
+            .from('organizations')
+            .update({
+                status: isSuspended ? 'suspended' : 'active',
+                subscription_status: status,
+                suspended_at: isSuspended ? new Date().toISOString() : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', sub.organization_id)
+    }
+
     revalidatePath('/platform/admin')
+    revalidatePath('/platform/admin/organizations')
     return { success: true }
 }
 
@@ -135,7 +159,7 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
     await requireSuperAdmin()
 
     // 1. Verify organization exists and has no active subscription
-    const { data: existing } = await (await createClient())
+    const { data: existing } = await supabaseAdmin
         .from('saas_subscriptions')
         .select('id')
         .eq('organization_id', orgId)
@@ -144,7 +168,7 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
     if (existing) throw new Error('Esta organización ya tiene una suscripción activa.')
 
     // 2. Create the subscription
-    const { data: sub, error } = await (await createClient())
+    const { data: sub, error } = await supabaseAdmin
         .from('saas_subscriptions')
         .insert({
             organization_id: orgId,
@@ -160,12 +184,122 @@ export async function adminCreateSubscription(orgId: string, appId: string, init
 
     if (error) throw error
 
-    // 3. Ensure the organization has the correct active_app_id
-    await (await createClient())
+    // 3. Ensure the organization has the correct active_app_id and status
+    await supabaseAdmin
         .from('organizations')
-        .update({ active_app_id: appId })
+        .update({
+            active_app_id: appId,
+            subscription_status: initialStatus,
+            status: (initialStatus === 'canceled' || initialStatus === 'suspended') ? 'suspended' : 'active',
+            updated_at: new Date().toISOString()
+        })
         .eq('id', orgId)
 
     revalidatePath('/platform/admin')
+    revalidatePath('/platform/admin/organizations')
     return { success: true, sub }
 }
+
+/**
+ * Admin Action: Configure Courtesy / Grace Period (Acceso de Cortesía)
+ * Sets or removes bypass_until on saas_subscriptions and trial_ends_at on organizations
+ */
+export async function adminSetCourtesyAccess(
+    organizationId: string,
+    courtesyUntil: string | null,
+    reason?: string
+) {
+    await requireSuperAdmin()
+
+    // 1. Check if organization exists
+    const { data: org, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, status, active_app_id')
+        .eq('id', organizationId)
+        .single()
+
+    if (orgError || !org) throw new Error("Organización no encontrada")
+
+    const isGranting = !!(courtesyUntil && new Date(courtesyUntil) > new Date())
+
+    // 2. Check for existing subscription
+    const { data: sub } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .select('id, status, metadata')
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+
+    if (sub) {
+        // Update existing subscription
+        const subUpdates: any = {
+            bypass_until: courtesyUntil,
+            updated_at: new Date().toISOString()
+        }
+        if (reason) {
+            subUpdates.admin_notes = reason
+        }
+        if (isGranting && (sub.status === 'canceled' || sub.status === 'suspended' || sub.status === 'past_due')) {
+            subUpdates.status = 'active'
+        }
+        const { error: subUpdateErr } = await supabaseAdmin
+            .from('saas_subscriptions')
+            .update(subUpdates)
+            .eq('id', sub.id)
+
+        if (subUpdateErr) throw subUpdateErr
+    } else if (isGranting) {
+        // Create complimentary subscription if granting courtesy and none exists
+        await supabaseAdmin
+            .from('saas_subscriptions')
+            .insert({
+                organization_id: organizationId,
+                plan_id: org.active_app_id || 'app_saas_platform',
+                status: 'active',
+                bypass_until: courtesyUntil,
+                current_period_start: new Date().toISOString(),
+                current_period_end: courtesyUntil,
+                payment_gateway: 'manual',
+                admin_notes: reason || 'Acceso de cortesía concedido por superadmin',
+                metadata: { courtesy: true, granted_by_admin: true }
+            })
+    }
+
+    // 3. Update organization record
+    const orgUpdates: any = {
+        trial_ends_at: courtesyUntil,
+        updated_at: new Date().toISOString()
+    }
+
+    if (isGranting) {
+        orgUpdates.status = 'active'
+        orgUpdates.subscription_status = 'active'
+        orgUpdates.suspended_at = null
+        orgUpdates.suspended_reason = null
+    }
+
+    const { error: orgUpdateErr } = await supabaseAdmin
+        .from('organizations')
+        .update(orgUpdates)
+        .eq('id', organizationId)
+
+    if (orgUpdateErr) throw orgUpdateErr
+
+    // 4. Log admin action
+    try {
+        await supabaseAdmin.from('organization_audit_log').insert({
+            organization_id: organizationId,
+            action: isGranting ? 'courtesy_access_granted' : 'courtesy_access_revoked',
+            details: {
+                courtesy_until: courtesyUntil,
+                reason: reason || null
+            }
+        })
+    } catch (e) {
+        console.error('[adminSetCourtesyAccess] Audit log error:', e)
+    }
+
+    revalidatePath('/platform/admin')
+    revalidatePath('/platform/admin/organizations')
+    return { success: true }
+}
+

@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt, Clock, AlertCircle, Shield, Mail, Users, Briefcase, MessageSquare, Phone, Radio } from "lucide-react"
+import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt, Clock, AlertCircle, Shield, Mail, Users, Briefcase, MessageSquare, Phone, Radio, Facebook, Instagram, BarChart3, Gift } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
@@ -25,6 +25,7 @@ import { EditOrganizationDialog } from "@/modules/core/admin/components/edit-org
 import { updateOrganizationStatus, deleteOrganization, type AdminOrganization } from '@/modules/core/admin/actions'
 import { toast } from 'sonner'
 import { ManualBillingModal } from "./manual-billing-modal"
+import { CourtesyAccessModal } from "./courtesy-access-modal"
 
 const PROTECTED_ORG_SLUGS = ['pixy', 'pixy-agency', 'pixy-pds']
 
@@ -39,19 +40,40 @@ function renderConnectedChannels(channels: string[] = []) {
     }
 
     return (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
             {channels.map((provider) => {
                 const p = provider.toLowerCase()
-                if (p.includes('meta') || p.includes('evolution') || p.includes('whatsapp')) {
+                if (p.includes('whatsapp') || p.includes('evolution')) {
                     return (
-                        <div key={provider} className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" title={`WhatsApp / Meta Cloud (${provider})`}>
+                        <div key={provider} className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" title={`WhatsApp Cloud (${provider})`}>
                             <MessageSquare className="h-3.5 w-3.5" />
+                        </div>
+                    )
+                }
+                if (p.includes('instagram')) {
+                    return (
+                        <div key={provider} className="p-1 rounded-lg bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20" title={`Instagram Direct (${provider})`}>
+                            <Instagram className="h-3.5 w-3.5" />
+                        </div>
+                    )
+                }
+                if (p.includes('ads') || p.includes('monitor')) {
+                    return (
+                        <div key={provider} className="p-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20" title={`Meta Ads Monitor (${provider})`}>
+                            <BarChart3 className="h-3.5 w-3.5" />
+                        </div>
+                    )
+                }
+                if (p.includes('facebook') || p.includes('page')) {
+                    return (
+                        <div key={provider} className="p-1 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-600/20" title={`Facebook Page (${provider})`}>
+                            <Facebook className="h-3.5 w-3.5" />
                         </div>
                     )
                 }
                 if (p.includes('resend') || p.includes('email')) {
                     return (
-                        <div key={provider} className="p-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" title={`Email / Resend (${provider})`}>
+                        <div key={provider} className="p-1 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" title={`Email / Resend (${provider})`}>
                             <Mail className="h-3.5 w-3.5" />
                         </div>
                     )
@@ -82,6 +104,9 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
     const [activeSheetOrgId, setActiveSheetOrgId] = useState<string | null>(null)
     const [editOrg, setEditOrg] = useState<AdminOrganization | null>(null)
     const [isEditOpen, setIsEditOpen] = useState(false)
+
+    // Courtesy / Grace Period State
+    const [courtesyOrg, setCourtesyOrg] = useState<any | null>(null)
 
     // Manual Billing State
     const [billingOrg, setBillingOrg] = useState<{ id: string, name: string } | null>(null)
@@ -114,7 +139,10 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
             <OrgDetailsSheet
                 orgId={activeSheetOrgId}
                 isOpen={!!activeSheetOrgId}
-                onClose={() => setActiveSheetOrgId(null)}
+                onClose={() => {
+                    setActiveSheetOrgId(null)
+                    router.refresh()
+                }}
             />
             <EditOrganizationDialog
                 open={isEditOpen}
@@ -127,6 +155,14 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                 onOpenChange={(open) => !open && setBillingOrg(null)}
                 organizationId={billingOrg?.id || ""}
                 organizationName={billingOrg?.name || ""}
+            />
+            <CourtesyAccessModal
+                open={!!courtesyOrg}
+                onOpenChange={(open) => {
+                    if (!open) setCourtesyOrg(null)
+                }}
+                org={courtesyOrg}
+                onSuccess={() => router.refresh()}
             />
 
             <div className="flex flex-col gap-4 mb-6">
@@ -353,7 +389,18 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                                     <Receipt className="h-4 w-4" />
                                                 </Button>
 
-                                                {/* 4. Delete Action */}
+                                                {/* 4. Courtesy / Grace Period Action */}
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-amber-600 bg-amber-50 hover:bg-amber-100 hover:text-amber-700 shrink-0 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 rounded-xl"
+                                                    title="Configurar Acceso de Cortesía / Gracia"
+                                                    onClick={() => setCourtesyOrg(org)}
+                                                >
+                                                    <Gift className="h-4 w-4" />
+                                                </Button>
+
+                                                {/* 5. Delete Action */}
                                                 {!PROTECTED_ORG_SLUGS.includes(org.slug) && (
                                                     <Button
                                                         size="icon"

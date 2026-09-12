@@ -315,7 +315,7 @@ export interface AdminOrganization {
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
             *,
@@ -343,7 +343,6 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     const userEmailMap: Record<string, { email: string, full_name?: string }> = {}
 
     try {
-        const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
         const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
         if (users) {
             users.forEach(u => {
@@ -361,7 +360,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
 
     // Secondary fallback: query profiles table
     try {
-        const { data: profiles } = await (await createClient())
+        const { data: profiles } = await supabaseAdmin
             .from('profiles')
             .select('id, full_name')
         if (profiles) {
@@ -375,21 +374,24 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
         console.error("[getAdminOrganizations] Error fetching profiles:", e)
     }
 
-    // 2. Fetch Organization Members to map org -> owner user_id
+    // 2. Fetch Organization Members, exact Lead counts, and Integration Connections
     const orgOwnerMap: Record<string, string> = {}
     const memberCountMap: Record<string, number> = {}
     const clientCountMap: Record<string, number> = {}
     const connectedChannelsMap: Record<string, string[]> = {}
 
     try {
-        const [membersRes, clientsRes, channelsRes] = await Promise.all([
-            (await createClient()).from('organization_members').select('organization_id, user_id, role').in('organization_id', orgIds),
-            (await createClient()).from('leads').select('organization_id').in('organization_id', orgIds),
-            (await createClient()).from('channels').select('organization_id, provider, status').in('organization_id', orgIds)
+        const [membersRes, channelsRes, leadCounts] = await Promise.all([
+            supabaseAdmin.from('organization_members').select('organization_id, user_id, role').in('organization_id', orgIds).limit(10000),
+            supabaseAdmin.from('integration_connections').select('organization_id, provider_key, status').in('organization_id', orgIds).neq('status', 'deleted'),
+            Promise.all(orgIds.map(async (id: string) => {
+                const { count } = await supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', id)
+                return { id, count: count || 0 }
+            }))
         ])
 
         if (membersRes.data) {
-            membersRes.data.forEach(m => {
+            membersRes.data.forEach((m: any) => {
                 memberCountMap[m.organization_id] = (memberCountMap[m.organization_id] || 0) + 1
                 if (m.role === 'owner' || (!orgOwnerMap[m.organization_id] && m.role === 'admin')) {
                     orgOwnerMap[m.organization_id] = m.user_id
@@ -399,20 +401,20 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
             })
         }
 
-        if (clientsRes.data) {
-            clientsRes.data.forEach(c => {
-                clientCountMap[c.organization_id] = (clientCountMap[c.organization_id] || 0) + 1
+        if (leadCounts) {
+            leadCounts.forEach(c => {
+                clientCountMap[c.id] = c.count
             })
         }
 
         if (channelsRes.data) {
             channelsRes.data.forEach((ch: any) => {
-                if (ch.status === 'connected' || ch.status === 'active' || ch.status !== 'disconnected') {
+                if (ch.status !== 'deleted') {
                     if (!connectedChannelsMap[ch.organization_id]) {
                         connectedChannelsMap[ch.organization_id] = []
                     }
-                    if (!connectedChannelsMap[ch.organization_id].includes(ch.provider)) {
-                        connectedChannelsMap[ch.organization_id].push(ch.provider)
+                    if (!connectedChannelsMap[ch.organization_id].includes(ch.provider_key)) {
+                        connectedChannelsMap[ch.organization_id].push(ch.provider_key)
                     }
                 }
             })
@@ -426,8 +428,27 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
         const ownerUserId = org.owner_id || orgOwnerMap[org.id]
         const ownerProfile = ownerUserId ? userEmailMap[ownerUserId] : null
 
+        // Determine effective status: if subscription is canceled or suspended, or subscription_status is suspended/canceled
+        let effectiveStatus = org.status || 'active'
+        const isSubSuspended = sub?.status === 'canceled' || sub?.status === 'suspended' || org.subscription_status === 'suspended' || org.subscription_status === 'canceled'
+        if (isSubSuspended) {
+            effectiveStatus = 'suspended'
+        }
+
+        // Lazy self-healing in database if out of sync
+        if (org.status !== effectiveStatus) {
+            supabaseAdmin.from('organizations').update({
+                status: effectiveStatus,
+                subscription_status: sub?.status || effectiveStatus,
+                updated_at: new Date().toISOString()
+            }).eq('id', org.id).then(({ error }: any) => {
+                if (error) console.error(`[getAdminOrganizations] Self-healing error for org ${org.id}:`, error)
+            })
+        }
+
         return {
             ...org,
+            status: effectiveStatus,
             owner_email: ownerProfile?.email || null,
             owner_name: ownerProfile?.full_name || null,
             member_count: memberCountMap[org.id] || 0,
@@ -446,7 +467,7 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
 export async function getAdminOrganizationById(organizationId: string): Promise<AdminOrganization | null> {
     await requireSuperAdmin()
 
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
             *,
@@ -470,7 +491,7 @@ export async function getAdminOrganizationById(organizationId: string): Promise<
 
 export async function getOrganizationDetails(orgId: string) {
     await requireSuperAdmin()
-    const { data: org, error: orgError } = await (await createClient())
+    const { data: org, error: orgError } = await supabaseAdmin
         .from('organizations')
         .select(`*, saas_subscriptions(*)`)
         .eq('id', orgId)
@@ -481,16 +502,17 @@ export async function getOrganizationDetails(orgId: string) {
         org.saas_subscriptions = org.saas_subscriptions[0]
     }
 
-    const { count: userCount } = await (await createClient()).from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
-    const { count: clientCount } = await (await createClient()).from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
-    return { organization: org, stats: { users: userCount || 0, clients: clientCount || 0 } }
+    const [userRes, clientRes] = await Promise.all([
+        supabaseAdmin.from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
+        supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
+    ])
+    return { organization: org, stats: { users: userRes.count || 0, clients: clientRes.count || 0 } }
 }
 
 export async function updateOrganizationStatus(orgId: string, status: 'active' | 'suspended' | 'past_due' | 'archived', reason?: string) {
     await requireSuperAdmin()
-    const supabase = await createClient()
 
-    const { data: orgCheck } = await supabase.from('organizations').select('slug').eq('id', orgId).single()
+    const { data: orgCheck } = await supabaseAdmin.from('organizations').select('slug').eq('id', orgId).single()
     if (!orgCheck || PROTECTED_ORG_SLUGS.includes(orgCheck.slug)) throw new Error(`Cannot modify protected organization`)
     
     const updatePayload: any = {
@@ -500,23 +522,28 @@ export async function updateOrganizationStatus(orgId: string, status: 'active' |
     }
 
     if (status === 'active') {
-        // Sync subscription status so cron doesn't suspend it on Saturday
         updatePayload.subscription_status = 'active'
-        // Optionally extend trial 10 years or clear it if they are marked active
-        // But the cron checks `trial_ends_at < NOW() AND subscription_status IS DISTINCT FROM 'active'`
-        // Since we set subscription_status = 'active', the cron will skip it!
+    } else if (status === 'suspended') {
+        updatePayload.subscription_status = 'suspended'
     }
 
-    const { error } = await supabase.from('organizations').update(updatePayload).eq('id', orgId)
+    const { error } = await supabaseAdmin.from('organizations').update(updatePayload).eq('id', orgId)
     if (error) throw error
 
+    // Sync saas_subscriptions status as well
+    await supabaseAdmin.from('saas_subscriptions').update({
+        status: status === 'suspended' ? 'canceled' : status === 'active' ? 'active' : status,
+        updated_at: new Date().toISOString()
+    }).eq('organization_id', orgId)
+
     revalidatePath('/platform/admin')
+    revalidatePath('/platform/admin/organizations')
     return { success: true }
 }
 
 export async function updateOrganization(orgId: string, data: { name: string, slug: string, base_app_slug?: string }) {
     await requireSuperAdmin()
-    const { error } = await (await createClient()).from('organizations').update({ name: data.name, slug: data.slug, base_app_slug: data.base_app_slug }).eq('id', orgId)
+    const { error } = await supabaseAdmin.from('organizations').update({ name: data.name, slug: data.slug, base_app_slug: data.base_app_slug }).eq('id', orgId)
     if (error) throw error
     revalidatePath('/platform/admin/organizations')
     return { success: true }
@@ -526,12 +553,12 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
     await requireSuperAdmin()
 
     // 1. Get current Org to find Owner
-    const { data: org, error: orgError } = await (await createClient()).from('organizations').select('owner_id, created_at').eq('id', orgId).single()
+    const { data: org, error: orgError } = await supabaseAdmin.from('organizations').select('owner_id, created_at').eq('id', orgId).single()
     if (orgError) throw new Error("Org not found")
 
     // 2. Update created_at if provided
     if (options.created_at && options.created_at !== org.created_at) {
-        const { error: tsError } = await (await createClient()).from('organizations').update({ created_at: options.created_at }).eq('id', orgId)
+        const { error: tsError } = await supabaseAdmin.from('organizations').update({ created_at: options.created_at }).eq('id', orgId)
         if (tsError) throw new Error("Error actualizando fecha de creación")
     }
 
@@ -541,7 +568,7 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
         if (options.new_email) authUpdates.email = options.new_email
         if (options.new_password) authUpdates.password = options.new_password
 
-        const { error: authError } = await (await createClient()).auth.admin.updateUserById(org.owner_id, authUpdates)
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(org.owner_id, authUpdates)
         if (authError) throw new Error(`Auth Error: ${authError.message}`)
     }
 
@@ -551,22 +578,26 @@ export async function updateAdvancedOrganizationOptions(orgId: string, options: 
 
 export async function getSaasProducts() {
     await requireSuperAdmin()
-    const { data } = await (await createClient()).from('saas_products').select('*').eq('is_active', true).order('name')
+    const { data } = await supabaseAdmin.from('saas_products').select('*').eq('is_active', true).order('name')
     return data || []
 }
 
 export async function getOrganizationUsers(orgId: string) {
     await requireSuperAdmin()
-    const { data: members, error } = await (await createClient()).from('organization_members').select('*').eq('organization_id', orgId)
+    const { data: members, error } = await supabaseAdmin.from('organization_members').select('*').eq('organization_id', orgId)
     if (error) throw error
     if (!members?.length) return []
     const userIds = members.map(m => m.user_id)
     const userMap = new Map<string, { email: string }>()
     await Promise.all(userIds.map(async (uid) => {
-        const { data: { user } } = await (await createClient()).auth.admin.getUserById(uid)
-        if (user) userMap.set(uid, { email: user.email || 'No Email' })
+        try {
+            const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(uid)
+            if (user) userMap.set(uid, { email: user.email || 'No Email' })
+        } catch (e) {
+            console.error(`[getOrganizationUsers] Error fetching user ${uid}:`, e)
+        }
     }))
-    const { data: profiles } = await (await createClient()).from('profiles').select('id, platform_role').in('id', userIds)
+    const { data: profiles } = await supabaseAdmin.from('profiles').select('id, platform_role').in('id', userIds)
     return members.map(member => ({ ...member, user: { email: userMap.get(member.user_id)?.email || 'Unknown', platform_role: profiles?.find(p => p.id === member.user_id)?.platform_role || 'user' } }))
 }
 
@@ -585,10 +616,10 @@ export async function deleteOrganization(orgId: string) {
 
 export async function getAdminDashboardStats() {
     await requireSuperAdmin()
-    const { count: totalOrgs } = await (await createClient()).from('organizations').select('*', { count: 'exact', head: true })
-    const { count: totalUsers } = await (await createClient()).from('profiles').select('*', { count: 'exact', head: true })
-    const { count: activeAlerts } = await (await createClient()).from('system_alerts').select('*', { count: 'exact', head: true }).eq('is_active', true)
-    const { data: recentLogs } = await (await createClient()).from('organization_audit_log').select('*').order('created_at', { ascending: false }).limit(10)
+    const { count: totalOrgs } = await supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true })
+    const { count: totalUsers } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
+    const { count: activeAlerts } = await supabaseAdmin.from('system_alerts').select('*', { count: 'exact', head: true }).eq('is_active', true)
+    const { data: recentLogs } = await supabaseAdmin.from('organization_audit_log').select('*').order('created_at', { ascending: false }).limit(10)
     return { totalOrgs: totalOrgs || 0, totalUsers: totalUsers || 0, activeAlerts: activeAlerts || 0, recentLogs: recentLogs || [] }
 }
 
@@ -1135,7 +1166,7 @@ export async function deleteGlobalBanner(id: string) {
  */
 export async function getOrganizationAuditLogs(orgId: string) {
     await requireSuperAdmin()
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('organization_audit_log')
         .select('*')
         .eq('organization_id', orgId)
@@ -1148,7 +1179,7 @@ export async function getOrganizationAuditLogs(orgId: string) {
     const performerIds = Array.from(new Set(data.map(log => log.performed_by).filter(id => !!id))) as string[]
     
     if (performerIds.length > 0) {
-        const { data: profiles } = await (await createClient())
+        const { data: profiles } = await supabaseAdmin
             .from('profiles')
             .select('id, full_name')
             .in('id', performerIds)

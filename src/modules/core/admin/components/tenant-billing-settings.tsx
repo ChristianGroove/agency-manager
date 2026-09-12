@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Loader2, MoreHorizontal, CreditCard, Mail, ExternalLink, ShieldAlert, CheckCircle2, Clock, AlertCircle, RefreshCcw } from "lucide-react"
+import { Loader2, MoreHorizontal, CreditCard, Mail, ExternalLink, ShieldAlert, CheckCircle2, Clock, AlertCircle, RefreshCcw, Gift, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -14,6 +15,7 @@ import { es } from "date-fns/locale"
 import { adminUpdateSubscription, adminCreateSubscription } from "@/modules/billing/saas/admin-actions"
 import { getOrganizationInvoicesAction, sendPlatformInvoiceEmailAction, suspendOrganizationSubscriptionAction } from "@/modules/features/billing/billing-actions"
 import { ManualBillingModal } from "@/app/(dashboard)/platform/admin/_components/manual-billing-modal"
+import { CourtesyAccessModal } from "@/app/(dashboard)/platform/admin/_components/courtesy-access-modal"
 
 interface TenantBillingSettingsProps {
     orgData: any;
@@ -21,10 +23,12 @@ interface TenantBillingSettingsProps {
 }
 
 export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSettingsProps) {
+    const router = useRouter()
     const [invoices, setInvoices] = useState<any[]>([])
     const [loadingInvoices, setLoadingInvoices] = useState(true)
     const [renewalData, setRenewalData] = useState<any>(null)
     const [isManualBillingOpen, setIsManualBillingOpen] = useState(false)
+    const [isCourtesyOpen, setIsCourtesyOpen] = useState(false)
 
     const sub = orgData?.saas_subscriptions
 
@@ -52,6 +56,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
             await adminUpdateSubscription(sub.id, updates)
             toast.success("Suscripción actualizada correctamente")
             onRefresh()
+            router.refresh()
         } catch (error: any) {
             toast.error(error.message || "Error al actualizar suscripción")
         }
@@ -63,6 +68,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
             await adminCreateSubscription(orgData.id, orgData.active_app_id || 'app_saas_platform')
             toast.success("Suscripción creada y plan asignado")
             onRefresh()
+            router.refresh()
         } catch (error: any) {
             toast.error(error.message || "Error al crear suscripción")
         }
@@ -92,6 +98,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
             await suspendOrganizationSubscriptionAction(orgData.id)
             toast.success("Suscripción suspendida manualmente")
             onRefresh()
+            router.refresh()
         } catch (error) {
             toast.error("Error al suspender")
         }
@@ -131,45 +138,79 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                 </CardHeader>
                 <CardContent>
                     {sub ? (
-                        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border">
                             <div className="space-y-1">
                                 <p className="text-sm font-medium">Plan Actual</p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-bold">{sub.saas_apps?.name || 'SaaS Básico'}</span>
                                     <Badge variant="outline" className={getStatusColor(sub.status)}>
                                         {sub.status.toUpperCase()}
                                     </Badge>
+                                    {sub.bypass_until && new Date(sub.bypass_until) > new Date() && (
+                                        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-semibold flex items-center gap-1">
+                                            <Gift className="h-3 w-3" />
+                                            Cortesía hasta {format(new Date(sub.bypass_until), 'dd MMM yyyy', { locale: es })}
+                                        </Badge>
+                                    )}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Próximo Corte: {sub.current_period_end ? format(new Date(sub.current_period_end), 'dd MMM yyyy', { locale: es }) : '-'}
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" onClick={() => handleAdminUpdate({ status: 'active' })}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+                                    onClick={() => setIsCourtesyOpen(true)}
+                                >
+                                    <Gift className="h-4 w-4 mr-1.5" />
+                                    Cortesía / Gracia
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => handleAdminUpdate({ status: 'active' })}>
                                     Activar Acceso
                                 </Button>
-                                <Button variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 font-semibold" onClick={() => handleAdminUpdate({ status: 'past_due' })}>
+                                <Button variant="outline" size="sm" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 font-semibold" onClick={() => handleAdminUpdate({ status: 'past_due' })}>
                                     Marcar Mora
                                 </Button>
-                                <Button variant="outline" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 font-semibold" onClick={() => handleAdminUpdate({ status: 'canceled' })}>
+                                <Button variant="outline" size="sm" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 font-semibold" onClick={() => handleAdminUpdate({ status: 'suspended' })}>
                                     Suspender
                                 </Button>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/10 p-4 rounded-lg border border-amber-200 dark:border-amber-900/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-lg border border-amber-200 dark:border-amber-900/30">
                             <div>
-                                <p className="font-medium text-amber-800 dark:text-amber-400">Sin Suscripción Vinculada</p>
-                                <p className="text-sm text-amber-700 dark:text-amber-500">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium text-amber-800 dark:text-amber-400">Sin Suscripción Vinculada</p>
+                                    {orgData?.trial_ends_at && new Date(orgData.trial_ends_at) > new Date() && (
+                                        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-semibold flex items-center gap-1">
+                                            <Gift className="h-3 w-3" />
+                                            Cortesía / Gracia Activa
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
                                     {orgData?.trial_ends_at && new Date(orgData.trial_ends_at) > new Date() 
-                                        ? `En Trial (Expira: ${format(new Date(orgData.trial_ends_at), 'dd MMM', { locale: es })})`
-                                        : "Trial vencido. Requiere asignar plan para evitar bloqueo de los Sábados."}
+                                        ? `Periodo activo hasta el ${format(new Date(orgData.trial_ends_at), 'dd MMM yyyy', { locale: es })}.`
+                                        : "Trial o cortesía vencida. Requiere asignar plan o cortesía para evitar bloqueo de los Sábados."}
                                 </p>
                             </div>
-                            <Button onClick={handleCreateSubscription}>
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Asignar Plan Inicial
-                            </Button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Button 
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+                                    onClick={() => setIsCourtesyOpen(true)}
+                                >
+                                    <Gift className="h-4 w-4 mr-1.5" />
+                                    Acceso de Cortesía
+                                </Button>
+                                <Button size="sm" onClick={handleCreateSubscription}>
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Asignar Plan Inicial
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </CardContent>
@@ -284,6 +325,16 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                 organizationId={orgData.id}
                 organizationName={orgData.name}
                 initialData={renewalData}
+            />
+
+            <CourtesyAccessModal
+                open={isCourtesyOpen}
+                onOpenChange={setIsCourtesyOpen}
+                org={orgData}
+                onSuccess={() => {
+                    onRefresh()
+                    router.refresh()
+                }}
             />
         </div>
     )
