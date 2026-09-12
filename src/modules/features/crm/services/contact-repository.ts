@@ -11,6 +11,13 @@ export type CreateContactRepositoryInput = {
     status?: string
     source?: string
     contact_type?: 'lead' | 'client'
+    portal_token?: string
+    portal_short_token?: string
+    portal_token_never_expires?: boolean
+    portal_token_created_at?: string
+    category_id?: string | null
+    metadata?: any
+    [key: string]: any
 }
 
 export class ContactRepository {

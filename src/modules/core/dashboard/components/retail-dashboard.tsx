@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 
 // Import Modals
-import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
+import { CreateClientSheet } from "@/modules/features/crm/components/create-client-sheet"
 import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
 import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"

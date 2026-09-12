@@ -7,7 +7,7 @@ import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashb
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 // Import Modals (these were in page.tsx)
-import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
+import { CreateClientSheet } from "@/modules/features/crm/components/create-client-sheet"
 import { NewJobModal } from "@/modules/features/work-orders/components/new-job-modal"
 
 import { useRouter } from "next/navigation"

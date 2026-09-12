@@ -10,17 +10,26 @@ export async function regeneratePortalToken(clientId: string) {
         const orgId = await getCurrentOrganizationId()
         if (!orgId) throw new Error('Unauthorized')
 
-        // 1. Generate new token using DB function
-        const { data: newToken, error: tokenError } = await (await createClient())
-            .rpc('generate_short_token')
+        const supabase = await createClient()
 
-        if (tokenError) throw tokenError
+        // 1. Generate new token using DB function with safe JS fallback
+        let newToken: string | null = null
+        try {
+            const { data, error: tokenError } = await supabase.rpc('generate_short_token')
+            if (!tokenError && data) newToken = data
+        } catch (_) {}
+
+        if (!newToken) {
+            newToken = Math.random().toString(36).substring(2, 8).toUpperCase()
+        }
 
         // 2. Update client
-        const { error: updateError } = await (await createClient())
+        const { error: updateError } = await supabase
             .from('leads')
             .update({
                 portal_short_token: newToken,
+                portal_token: crypto.randomUUID(),
+                portal_token_never_expires: true,
                 portal_token_created_at: new Date().toISOString()
             })
             .eq('id', clientId)

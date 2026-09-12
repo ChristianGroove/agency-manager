@@ -178,7 +178,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 // Generate Portal Tokens
                 portal_token: crypto.randomUUID(),
                 portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
-                portal_token_never_expires: true
+                portal_token_never_expires: true,
+                portal_token_created_at: new Date().toISOString()
             })
 
             if (error) throw error

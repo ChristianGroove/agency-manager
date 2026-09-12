@@ -272,7 +272,25 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                         </Button>
                         <Button
                             className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 font-bold cursor-pointer transition-all"
-                            onClick={() => window.open(`/portal/${client.portal_short_token || client.portal_token}`, '_blank')}
+                            onClick={async () => {
+                                let token = client?.portal_short_token || client?.portal_token
+                                if (!token && client?.id) {
+                                    try {
+                                        const { regeneratePortalToken } = await import("@/modules/features/portal/services/token-service")
+                                        const res = await regeneratePortalToken(client.id)
+                                        if (res.success && res.token) {
+                                            token = res.token
+                                        }
+                                    } catch (err) {
+                                        console.error("Error auto-generating portal token:", err)
+                                    }
+                                }
+                                if (token) {
+                                    window.open(`/portal/${token}`, '_blank')
+                                } else {
+                                    alert("No se pudo generar el acceso al portal del cliente")
+                                }
+                            }}
                         >
                             <ExternalLink className="mr-2 h-4 w-4" />
                             Ver Portal del Cliente

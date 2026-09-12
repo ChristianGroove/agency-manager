@@ -10,7 +10,7 @@ import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
 
 // Import Modals (these were in page.tsx)
-import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
+import { CreateClientSheet } from "@/modules/features/crm/components/create-client-sheet"
 import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
 import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"

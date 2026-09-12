@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { CreateLeadSheet as CreateClientSheet } from "../create-lead-sheet"
 import { ClientManagementSheet } from "./client-management-sheet"
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"

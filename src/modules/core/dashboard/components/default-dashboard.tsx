@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { Users, LayoutDashboard, UserPlus, Inbox, Sparkles } from "lucide-react"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
-import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
+import { CreateClientSheet } from "@/modules/features/crm/components/create-client-sheet"
 import { useRouter } from "next/navigation"
 
 interface DefaultDashboardProps {

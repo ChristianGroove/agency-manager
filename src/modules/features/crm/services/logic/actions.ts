@@ -94,7 +94,11 @@ export async function quickCreateProspect(data: CreateProspectInput) {
                 phone: data.phone,
                 contact_type: 'client',
                 status: 'active',
-                source: 'quote_builder'
+                source: 'quote_builder',
+                portal_token: crypto.randomUUID(),
+                portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
+                portal_token_never_expires: true,
+                portal_token_created_at: new Date().toISOString()
             })
             .select()
             .single()

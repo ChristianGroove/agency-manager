@@ -66,4 +66,52 @@ describe('ContactService tenant safety', () => {
         expect(updateContact.eq).toHaveBeenCalledWith('id', 'contact-1')
         expect(updateContact.eq).toHaveBeenCalledWith('organization_id', 'org-current')
     })
+
+    it('generates portal tokens when converting a lead to client', async () => {
+        const findLead = createQuery({
+            data: { id: 'lead-123', contact_type: 'lead', name: 'Carlos', portal_token: null, portal_short_token: null },
+            error: null,
+        })
+        const updateLead = createQuery({
+            data: { id: 'lead-123', contact_type: 'client', status: 'converted', portal_short_token: 'TOK123' },
+            error: null,
+        })
+        const supabase = createSupabaseMock({
+            leads: [findLead, updateLead],
+        })
+        supabase.rpc = vi.fn().mockResolvedValue({ data: 'TOK123', error: null })
+
+        const service = new ContactService(supabase, 'org-current')
+        const converted = await service.convertToClient('lead-123')
+
+        expect(updateLead.update).toHaveBeenCalledWith(expect.objectContaining({
+            contact_type: 'client',
+            status: 'converted',
+            portal_short_token: 'TOK123',
+            portal_token_never_expires: true,
+        }))
+        expect(updateLead.eq).toHaveBeenCalledWith('id', 'lead-123')
+        expect(updateLead.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
+
+    it('generates portal tokens when creating a contact with type client directly', async () => {
+        const createContact = createQuery({
+            data: { id: 'contact-client-1', contact_type: 'client', name: 'Diana', portal_short_token: 'CLI789' },
+            error: null,
+        })
+        const supabase = createSupabaseMock({
+            leads: [createContact],
+        })
+        supabase.rpc = vi.fn().mockResolvedValue({ data: 'CLI789', error: null })
+
+        const service = new ContactService(supabase, 'org-current')
+        await service.createContact({ name: 'Diana', contact_type: 'client' })
+
+        expect(createContact.insert).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Diana',
+            contact_type: 'client',
+            portal_short_token: 'CLI789',
+            portal_token_never_expires: true,
+        }))
+    })
 })

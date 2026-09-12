@@ -234,8 +234,8 @@ export const es = {
         },
         actions: {
             new_tenant: "Nuevo Tenant",
-            new_client: "Nuevo Cliente",
-            new_client_desc: "Registrar un nuevo cliente en el sistema",
+            new_client: "Nuevo Contacto",
+            new_client_desc: "Registrar un nuevo contacto en el sistema",
             new_quote: "Nueva Cotización",
             new_quote_desc: "Crear una cotización para un cliente",
             new_brief: "Nuevo Brief",

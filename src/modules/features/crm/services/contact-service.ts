@@ -11,6 +11,34 @@ export class ContactService {
         this.repo = new ContactRepository(supabase)
     }
 
+    private async generatePortalTokens(existing?: { portal_token?: string | null; portal_short_token?: string | null }) {
+        let portalToken = existing?.portal_token
+        if (!portalToken) {
+            portalToken = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)
+        }
+
+        let portalShortToken = existing?.portal_short_token
+        if (!portalShortToken) {
+            try {
+                const { data: rpcToken, error: rpcError } = await this.supabase?.rpc?.('generate_short_token')
+                if (!rpcError && rpcToken) {
+                    portalShortToken = rpcToken
+                }
+            } catch (_) {}
+
+            if (!portalShortToken) {
+                portalShortToken = Math.random().toString(36).substring(2, 8).toUpperCase()
+            }
+        }
+
+        return {
+            portal_token: portalToken,
+            portal_short_token: portalShortToken,
+            portal_token_never_expires: true,
+            portal_token_created_at: new Date().toISOString()
+        }
+    }
+
     /**
      * UNIFIED CONTACT CREATION (Leads & Clients)
      */
@@ -25,11 +53,18 @@ export class ContactService {
     }): Promise<Lead> {
         if (!this.organizationId) throw new Error("No organization context found")
 
+        const isClient = input.contact_type === 'client'
+        let portalFields: Record<string, any> = {}
+        if (isClient) {
+            portalFields = await this.generatePortalTokens()
+        }
+
         const contactInput: CreateContactRepositoryInput = {
             ...input,
+            ...portalFields,
             user_id: this.userId,
             organization_id: this.organizationId,
-            status: input.status || (input.contact_type === 'client' ? 'active' : 'new'),
+            status: input.status || (isClient ? 'active' : 'new'),
             source: input.source || 'manual',
             contact_type: input.contact_type || 'lead'
         }
@@ -117,10 +152,18 @@ export class ContactService {
     }
 
     async convertToClient(id: string): Promise<Client> {
+        let existing: any = null
+        try {
+            existing = await this.repo.findById(id, this.organizationId)
+        } catch (_) {}
+
+        const portalFields = await this.generatePortalTokens(existing)
+
         const updated = await this.repo.update(id, {
             contact_type: 'client',
             status: 'converted', // Can also be 'active'
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            ...portalFields
         }, this.organizationId)
 
         if (this.userId) {

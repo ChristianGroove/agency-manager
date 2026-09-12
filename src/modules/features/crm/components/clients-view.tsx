@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from "react"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
-import { Users, AlertTriangle, Tag } from "lucide-react"
+import { Users, AlertTriangle, Tag, Plus } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
@@ -338,9 +338,26 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
         setInvoicesOpen(true)
     }
 
-    const handlePortalQuickAction = (client: any) => {
-        const url = getPortalUrl(client)
-        window.open(url, '_blank')
+    const handlePortalQuickAction = async (client: any) => {
+        let token = client.portal_short_token || client.portal_token
+        if (!token && client.id) {
+            try {
+                const { regeneratePortalToken } = await import("@/modules/features/portal/services/token-service")
+                const res = await regeneratePortalToken(client.id)
+                if (res.success && res.token) {
+                    token = res.token
+                    client.portal_short_token = res.token
+                }
+            } catch (err) {
+                console.error("Error auto-generating portal token:", err)
+            }
+        }
+        if (token) {
+            const baseUrl = window.location.origin
+            window.open(`${baseUrl}/portal/${token}`, '_blank')
+        } else {
+            toast.error("No se pudo generar el acceso al portal del cliente")
+        }
     }
 
     const getPortalUrl = (client: any) => {
@@ -373,6 +390,14 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                             >
                                 <Tag className="mr-2 h-4 w-4" />
                                 Categorías
+                            </Button>
+
+                            <Button 
+                                className="bg-brand-pink hover:bg-brand-pink/90 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                onClick={() => setCreateClientOpen(true)}
+                            >
+                                <Plus className="h-4 w-4" />
+                                {t('clients.new_client') || 'Nuevo Contacto'}
                             </Button>
 
                             <CreateClientSheet 
