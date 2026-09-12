@@ -1086,7 +1086,7 @@ export async function updateOrganizationTier(orgId: string, tierId: string) {
 
 export async function getGlobalBanners() {
     await requireSuperAdmin()
-    const { data, error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('global_dashboard_banners')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1103,15 +1103,17 @@ export async function upsertGlobalBanner(bannerData: any) {
 
     // Si se está activando un banner, desactivar los demás del mismo space_type
     if (bannerData.is_active) {
-        await (await createClient())
+        await supabaseAdmin
             .from('global_dashboard_banners')
             .update({ is_active: false })
             .eq('space_type', bannerData.space_type)
     }
 
-    const { error } = await (await createClient())
+    const { data, error } = await supabaseAdmin
         .from('global_dashboard_banners')
         .upsert({ ...bannerData, updated_at: new Date().toISOString() })
+        .select()
+        .single()
 
     if (error) {
         console.error("Error upserting banner:", error)
@@ -1120,7 +1122,7 @@ export async function upsertGlobalBanner(bannerData: any) {
 
     revalidatePath('/platform/admin')
     revalidatePath('/dashboard')
-    return { success: true }
+    return { success: true, data }
 }
 
 export async function toggleBannerActive(id: string, space_type: string, is_active: boolean) {
@@ -1128,13 +1130,13 @@ export async function toggleBannerActive(id: string, space_type: string, is_acti
 
     if (is_active) {
         // Desactivar todos los de este space_type primero
-        await (await createClient())
+        await supabaseAdmin
             .from('global_dashboard_banners')
             .update({ is_active: false })
             .eq('space_type', space_type)
     }
 
-    const { error } = await (await createClient())
+    const { error } = await supabaseAdmin
         .from('global_dashboard_banners')
         .update({ is_active })
         .eq('id', id)
@@ -1149,7 +1151,7 @@ export async function toggleBannerActive(id: string, space_type: string, is_acti
 export async function deleteGlobalBanner(id: string) {
     await requireSuperAdmin()
 
-    const { error } = await (await createClient())
+    const { error } = await supabaseAdmin
         .from('global_dashboard_banners')
         .delete()
         .eq('id', id)

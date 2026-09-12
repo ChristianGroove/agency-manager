@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,869 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, Plus, Save, Trash2, Edit2, PlayCircle, Eye, X, Image as ImageIcon, LayoutTemplate, Palette, Globe, Target, Trash } from "lucide-react"
+import { Loader2, Plus, Save, Trash2, Edit2, PlayCircle, Eye, X, Image as ImageIcon, LayoutTemplate, Palette, Globe, Target, Trash, Sparkles, Film } from "lucide-react"
 
 import { getGlobalBanners, upsertGlobalBanner, toggleBannerActive, deleteGlobalBanner } from "@/modules/core/admin/actions"
 import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
-
-const ANIMATIONS = [
-  {
-    "label": "24 7 cliente soporte",
-    "value": "/animations/24-7-customer-support-cartoon-illustration-2025-10-20-04-30-40-utc.json"
-  },
-  {
-    "label": "Data presentation mujer explaining chart",
-    "value": "/animations/animated-data-presentation-woman-explaining-chart-2025-10-20-06-25-36-utc.json"
-  },
-  {
-    "label": "Hand holding clock for productivity",
-    "value": "/animations/animated-hand-holding-clock-for-productivity-2025-10-20-06-18-36-utc.json"
-  },
-  {
-    "label": "Oficina workspace desk with computer and b",
-    "value": "/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json"
-  },
-  {
-    "label": "Work timing clock",
-    "value": "/animations/animated-work-timing-clock-2025-10-20-06-08-30-utc.json"
-  },
-  {
-    "label": "Beauty product on phone",
-    "value": "/animations/beauty-product-on-phone-cartoon-animation-2025-10-20-02-26-52-utc.json"
-  },
-  {
-    "label": "Big sale tag",
-    "value": "/animations/big-sale-tag-animation-2025-10-20-04-33-47-utc.json"
-  },
-  {
-    "label": "Niño dribbling basketball",
-    "value": "/animations/boy-dribbling-basketball-animation-2025-10-20-06-26-42-utc.json"
-  },
-  {
-    "label": "Niño leyendo a libro in a mobile phone",
-    "value": "/animations/boy-reading-a-book-in-a-mobile-phone-cartoon-2025-10-20-04-34-46-utc.json"
-  },
-  {
-    "label": "Niño watching a video for learning",
-    "value": "/animations/boy-watching-a-video-for-learning-illustration-2025-10-20-06-01-34-utc.json"
-  },
-  {
-    "label": "Niño with dog in wilderness",
-    "value": "/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
-  },
-  {
-    "label": "Budget calculation with calculator and coins illus",
-    "value": "/animations/budget-calculation-with-calculator-and-coins-illus-2025-10-20-04-28-16-utc.json"
-  },
-  {
-    "label": "Budget management financial planning and task ch",
-    "value": "/animations/budget-management-financial-planning-and-task-ch-2025-10-20-06-02-26-utc.json"
-  },
-  {
-    "label": "Negocios goal achievement and target success",
-    "value": "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json"
-  },
-  {
-    "label": "Negocios presentation with charts and data analysi",
-    "value": "/animations/business-presentation-with-charts-and-data-analysi-2025-10-20-06-00-36-utc.json"
-  },
-  {
-    "label": "Cancel order on mobile phone",
-    "value": "/animations/cancel-order-on-mobile-phone-illustration-2025-10-21-01-41-09-utc.json"
-  },
-  {
-    "label": "Advertising speaker",
-    "value": "/animations/cartoon-advertising-speaker-illustration-2025-10-20-03-14-15-utc.json"
-  },
-  {
-    "label": "Airplane",
-    "value": "/animations/cartoon-airplane-animation-2025-10-20-02-23-50-utc.json"
-  },
-  {
-    "label": "Beach chair and umbrella",
-    "value": "/animations/cartoon-beach-chair-and-umbrella-illustration-2025-10-20-02-26-52-utc.json"
-  },
-  {
-    "label": "Bike",
-    "value": "/animations/cartoon-bike-illustration-2025-10-20-03-14-14-utc.json"
-  },
-  {
-    "label": "Box with checkmark for package verificatio",
-    "value": "/animations/cartoon-box-with-checkmark-for-package-verificatio-2025-10-20-02-17-47-utc.json"
-  },
-  {
-    "label": "Niño receiving a heartfelt surprise gift",
-    "value": "/animations/cartoon-boy-receiving-a-heartfelt-surprise-gift-2025-10-20-04-38-51-utc.json"
-  },
-  {
-    "label": "Niño with books and school supplies illustr",
-    "value": "/animations/cartoon-boy-with-books-and-school-supplies-illustr-2025-10-20-06-07-44-utc.json"
-  },
-  {
-    "label": "Brain meditating for mental wellness",
-    "value": "/animations/cartoon-brain-meditating-for-mental-wellness-2025-10-20-06-08-32-utc.json"
-  },
-  {
-    "label": "Hamburguesa combo",
-    "value": "/animations/cartoon-burger-combo-illustration-2025-10-20-04-32-44-utc.json"
-  },
-  {
-    "label": "Hamburguesa",
-    "value": "/animations/cartoon-burger-illustration-2025-10-20-05-59-08-utc.json"
-  },
-  {
-    "label": "Calendar",
-    "value": "/animations/cartoon-calendar-illustration-2025-10-20-02-24-50-utc.json"
-  },
-  {
-    "label": "Canceled order",
-    "value": "/animations/cartoon-canceled-order-illustration-2025-10-20-02-21-51-utc.json"
-  },
-  {
-    "label": "Cargo ship with containers",
-    "value": "/animations/cartoon-cargo-ship-with-containers-illustration-2025-10-20-01-47-10-utc.json"
-  },
-  {
-    "label": "Cart confirmation on mobile phone",
-    "value": "/animations/cartoon-cart-confirmation-on-mobile-phone-2025-10-20-03-06-09-utc.json"
-  },
-  {
-    "label": "Character limpieza servicio",
-    "value": "/animations/cartoon-character-cleaning-service-illustration-2025-10-20-04-38-50-utc.json"
-  },
-  {
-    "label": "Character finding directions in the wilder",
-    "value": "/animations/cartoon-character-finding-directions-in-the-wilder-2025-10-20-02-20-48-utc.json"
-  },
-  {
-    "label": "Character comida entrega on foot illustrati",
-    "value": "/animations/cartoon-character-food-delivery-on-foot-illustrati-2025-10-20-02-27-52-utc.json"
-  },
-  {
-    "label": "Character moving into new home",
-    "value": "/animations/cartoon-character-moving-into-new-home-2025-10-20-05-58-29-utc.json"
-  },
-  {
-    "label": "Citrus drink",
-    "value": "/animations/cartoon-citrus-drink-illustration-2025-10-20-04-28-24-utc.json"
-  },
-  {
-    "label": "Limpieza cart with supplies",
-    "value": "/animations/cartoon-cleaning-cart-with-supplies-illustration-2025-10-20-04-32-44-utc.json"
-  },
-  {
-    "label": "Cocktail and soda duo",
-    "value": "/animations/cartoon-cocktail-and-soda-duo-illustration-2025-10-20-06-01-37-utc.json"
-  },
-  {
-    "label": "Compass in wilderness",
-    "value": "/animations/cartoon-compass-in-wilderness-animation-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Construction site crane",
-    "value": "/animations/cartoon-construction-site-crane-illustration-2025-10-20-04-32-49-utc.json"
-  },
-  {
-    "label": "Content planning",
-    "value": "/animations/cartoon-content-planning-illustration-2025-10-20-02-32-55-utc.json"
-  },
-  {
-    "label": "Couple in romantic embrace",
-    "value": "/animations/cartoon-couple-in-romantic-embrace-illustration-2025-10-20-05-59-25-utc.json"
-  },
-  {
-    "label": "Courier delivering a package",
-    "value": "/animations/cartoon-courier-delivering-a-package-animation-2025-10-20-04-33-47-utc.json"
-  },
-  {
-    "label": "Cliente servicio representative",
-    "value": "/animations/cartoon-customer-service-representative-animation-2025-10-20-03-06-09-utc.json"
-  },
-  {
-    "label": "Cliente servicio representative contacting",
-    "value": "/animations/cartoon-customer-service-representative-contacting-2025-10-20-06-00-34-utc.json"
-  },
-  {
-    "label": "Cliente soporte equipo",
-    "value": "/animations/cartoon-customer-support-team-illustration-2025-10-20-05-59-15-utc.json"
-  },
-  {
-    "label": "Entrega niño on bicycle",
-    "value": "/animations/cartoon-delivery-boy-on-bicycle-illustration-2025-10-20-02-27-52-utc.json"
-  },
-  {
-    "label": "Entrega hombre walking home",
-    "value": "/animations/cartoon-delivery-man-walking-home-illustration-2025-10-20-03-06-08-utc.json"
-  },
-  {
-    "label": "Entrega truck with clock and location pin",
-    "value": "/animations/cartoon-delivery-truck-with-clock-and-location-pin-2025-10-20-04-33-44-utc.json"
-  },
-  {
-    "label": "Doctor checking patient",
-    "value": "/animations/cartoon-doctor-checking-patient-illustration-2025-10-20-04-34-46-utc.json"
-  },
-  {
-    "label": "Doctor holding clipboard with heart rate",
-    "value": "/animations/cartoon-doctor-holding-clipboard-with-heart-rate-2025-10-20-04-28-16-utc.json"
-  },
-  {
-    "label": "Doctor using a tablet",
-    "value": "/animations/cartoon-doctor-using-a-tablet-illustration-2025-10-20-04-30-55-utc.json"
-  },
-  {
-    "label": "Engagement metrics graph",
-    "value": "/animations/cartoon-engagement-metrics-graph-illustration-2025-10-20-02-25-51-utc.json"
-  },
-  {
-    "label": "Fashion stylist choosing clothes",
-    "value": "/animations/cartoon-fashion-stylist-choosing-clothes-2025-10-20-01-54-38-utc.json"
-  },
-  {
-    "label": "Flight ticket",
-    "value": "/animations/cartoon-flight-ticket-illustration-2025-10-20-02-26-52-utc.json"
-  },
-  {
-    "label": "Comida entrega on scooter character animati",
-    "value": "/animations/cartoon-food-delivery-on-scooter-character-animati-2025-10-20-02-29-53-utc.json"
-  },
-  {
-    "label": "Free offer label",
-    "value": "/animations/cartoon-free-offer-label-illustration-2025-10-20-01-41-32-utc.json"
-  },
-  {
-    "label": "French fries",
-    "value": "/animations/cartoon-french-fries-illustration-2025-10-20-05-58-30-utc.json"
-  },
-  {
-    "label": "Geometric compass",
-    "value": "/animations/cartoon-geometric-compass-illustration-2025-10-20-05-59-14-utc.json"
-  },
-  {
-    "label": "Niña giving a surprise gift to a niño",
-    "value": "/animations/cartoon-girl-giving-a-surprise-gift-to-a-boy-2025-10-20-04-30-48-utc.json"
-  },
-  {
-    "label": "Niña leyendo a libro",
-    "value": "/animations/cartoon-girl-reading-a-book-illustration-2025-10-20-05-59-05-utc.json"
-  },
-  {
-    "label": "Niña watching en línea education video on ph",
-    "value": "/animations/cartoon-girl-watching-online-education-video-on-ph-2025-10-20-04-34-47-utc.json"
-  },
-  {
-    "label": "Niña with love letter",
-    "value": "/animations/cartoon-girl-with-love-letter-animation-2025-10-20-05-59-05-utc.json"
-  },
-  {
-    "label": "Globe spinning",
-    "value": "/animations/cartoon-globe-spinning-animation-2025-10-20-04-30-44-utc.json"
-  },
-  {
-    "label": "Graduate niña throwing graduation cap",
-    "value": "/animations/cartoon-graduate-girl-throwing-graduation-cap-2025-10-20-05-58-26-utc.json"
-  },
-  {
-    "label": "Graduation caps",
-    "value": "/animations/cartoon-graduation-caps-illustration-2025-10-20-04-30-42-utc.json"
-  },
-  {
-    "label": "Green digital tarjeta",
-    "value": "/animations/cartoon-green-digital-card-illustration-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Grocery basket with comida items illustratio",
-    "value": "/animations/cartoon-grocery-basket-with-food-items-illustratio-2025-10-20-04-28-24-utc.json"
-  },
-  {
-    "label": "Hand holding compass in wilderness illustr",
-    "value": "/animations/cartoon-hand-holding-compass-in-wilderness-illustr-2025-10-20-04-30-40-utc.json"
-  },
-  {
-    "label": "Hand holding thermometer",
-    "value": "/animations/cartoon-hand-holding-thermometer-illustration-2025-10-20-05-58-25-utc.json"
-  },
-  {
-    "label": "Hands reaching for hearts",
-    "value": "/animations/cartoon-hands-reaching-for-hearts-2025-10-20-04-28-18-utc.json"
-  },
-  {
-    "label": "Hands receiving a package",
-    "value": "/animations/cartoon-hands-receiving-a-package-animation-2025-10-20-03-11-12-utc.json"
-  },
-  {
-    "label": "Heart health  with hand",
-    "value": "/animations/cartoon-heart-health-illustration-with-hand-2025-10-20-04-28-16-utc.json"
-  },
-  {
-    "label": "Of a couple on wine date",
-    "value": "/animations/cartoon-illustration-of-a-couple-on-wine-date-2025-10-20-04-32-49-utc.json"
-  },
-  {
-    "label": "Of credit tarjeta and wallet",
-    "value": "/animations/cartoon-illustration-of-credit-card-and-wallet-2025-10-20-03-13-12-utc.json"
-  },
-  {
-    "label": "Of crypto wallet transfer",
-    "value": "/animations/cartoon-illustration-of-crypto-wallet-transfer-2025-10-20-03-16-13-utc.json"
-  },
-  {
-    "label": "Of mujer building brand block",
-    "value": "/animations/cartoon-illustration-of-woman-building-brand-block-2025-10-20-02-26-52-utc.json"
-  },
-  {
-    "label": "Luggage with hat",
-    "value": "/animations/cartoon-luggage-with-hat-illustration-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Hombre announcing a job vacancy with megaphon",
-    "value": "/animations/cartoon-man-announcing-a-job-vacancy-with-megaphon-2025-10-20-04-32-48-utc.json"
-  },
-  {
-    "label": "Hombre delivering fast comida on scooter illust",
-    "value": "/animations/cartoon-man-delivering-fast-food-on-scooter-illust-2025-10-20-03-16-13-utc.json"
-  },
-  {
-    "label": "Hombre getting a haircut at the barber shop",
-    "value": "/animations/cartoon-man-getting-a-haircut-at-the-barber-shop-2025-10-20-02-20-48-utc.json"
-  },
-  {
-    "label": "Hombre relaxing in oficina chair",
-    "value": "/animations/cartoon-man-relaxing-in-office-chair-2025-10-20-03-14-13-utc.json"
-  },
-  {
-    "label": "Hombre vacuum limpieza the floor",
-    "value": "/animations/cartoon-man-vacuum-cleaning-the-floor-illustration-2025-10-20-05-59-26-utc.json"
-  },
-  {
-    "label": "Hombre trabajando at coffee shop",
-    "value": "/animations/cartoon-man-working-at-coffee-shop-illustration-2025-10-20-05-59-33-utc.json"
-  },
-  {
-    "label": "Hombre trabajando en escritorio",
-    "value": "/animations/cartoon-man-working-at-desk-illustration-2025-10-20-04-30-47-utc.json"
-  },
-  {
-    "label": "Mannequin with dress",
-    "value": "/animations/cartoon-mannequin-with-dress-illustration-2025-10-20-01-43-33-utc.json"
-  },
-  {
-    "label": "Map  in wilderness",
-    "value": "/animations/cartoon-map-illustration-in-wilderness-2025-10-20-03-11-12-utc.json"
-  },
-  {
-    "label": "Marketing target",
-    "value": "/animations/cartoon-marketing-target-illustration-2025-10-20-02-32-54-utc.json"
-  },
-  {
-    "label": "Médico consultation with doctor and patie",
-    "value": "/animations/cartoon-medical-consultation-with-doctor-and-patie-2025-10-20-04-29-11-utc.json"
-  },
-  {
-    "label": "Megaphone and mail",
-    "value": "/animations/cartoon-megaphone-and-mail-illustration-2025-10-20-02-22-50-utc.json"
-  },
-  {
-    "label": "Money transfer with mobile phone and credi",
-    "value": "/animations/cartoon-money-transfer-with-mobile-phone-and-credi-2025-10-20-02-25-51-utc.json"
-  },
-  {
-    "label": "Oficina supplies",
-    "value": "/animations/cartoon-office-supplies-illustration-2025-10-20-05-59-35-utc.json"
-  },
-  {
-    "label": "Pago invoice",
-    "value": "/animations/cartoon-payment-invoice-illustration-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "People boarding at airport",
-    "value": "/animations/cartoon-people-boarding-at-airport-illustration-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Premium box",
-    "value": "/animations/cartoon-premium-box-illustration-2025-10-20-03-11-12-utc.json"
-  },
-  {
-    "label": "Product return",
-    "value": "/animations/cartoon-product-return-illustration-2025-10-20-02-19-48-utc.json"
-  },
-  {
-    "label": "Road trip in the wilderness",
-    "value": "/animations/cartoon-road-trip-in-the-wilderness-animation-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Scissors",
-    "value": "/animations/cartoon-scissors-illustration-2025-10-20-06-01-30-utc.json"
-  },
-  {
-    "label": "Comprando basket with gifts",
-    "value": "/animations/cartoon-shopping-basket-with-gifts-illustration-2025-10-20-03-17-15-utc.json"
-  },
-  {
-    "label": "Comprando cart full of comida",
-    "value": "/animations/cartoon-shopping-cart-full-of-food-illustration-2025-10-20-05-58-25-utc.json"
-  },
-  {
-    "label": "Camera",
-    "value": "/animations/cartoon-style-camera-illustration-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Coffee bar",
-    "value": "/animations/cartoon-style-coffee-bar-illustration-2025-10-20-05-58-25-utc.json"
-  },
-  {
-    "label": "Cream tubes",
-    "value": "/animations/cartoon-style-cream-tubes-illustration-2025-10-20-04-33-47-utc.json"
-  },
-  {
-    "label": "Dna structure",
-    "value": "/animations/cartoon-style-dna-structure-illustration-2025-10-20-04-32-46-utc.json"
-  },
-  {
-    "label": "Financial tarjeta",
-    "value": "/animations/cartoon-style-financial-card-illustration-2025-10-20-02-22-50-utc.json"
-  },
-  {
-    "label": "Scooter",
-    "value": "/animations/cartoon-style-scooter-illustration-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Task list",
-    "value": "/animations/cartoon-task-list-illustration-2025-10-20-03-26-27-utc.json"
-  },
-  {
-    "label": "Tether coin",
-    "value": "/animations/cartoon-tether-coin-illustration-2025-10-20-01-52-37-utc.json"
-  },
-  {
-    "label": "Vacuum cleaner",
-    "value": "/animations/cartoon-vacuum-cleaner-illustration-2025-10-20-04-28-11-utc.json"
-  },
-  {
-    "label": "Washing machine",
-    "value": "/animations/cartoon-washing-machine-illustration-2025-10-20-04-30-43-utc.json"
-  },
-  {
-    "label": "Window limpieza servicio",
-    "value": "/animations/cartoon-window-cleaning-service-illustration-2025-10-20-04-30-52-utc.json"
-  },
-  {
-    "label": "Mujer applying face cream",
-    "value": "/animations/cartoon-woman-applying-face-cream-animation-2025-10-20-02-02-41-utc.json"
-  },
-  {
-    "label": "Mujer doing skincare routine",
-    "value": "/animations/cartoon-woman-doing-skincare-routine-2025-10-20-03-06-09-utc.json"
-  },
-  {
-    "label": "Caution wet floor sign",
-    "value": "/animations/caution-wet-floor-sign-illustration-2025-10-20-04-28-19-utc.json"
-  },
-  {
-    "label": "Clock  in",
-    "value": "/animations/clock-animation-in-cartoon-style-2025-10-20-03-17-16-utc.json"
-  },
-  {
-    "label": "Coffee cup and note",
-    "value": "/animations/coffee-cup-and-note-illustration-2025-10-20-04-28-21-utc.json"
-  },
-  {
-    "label": "Colorful comprando bags",
-    "value": "/animations/colorful-shopping-bags-illustration-2025-10-20-05-59-17-utc.json"
-  },
-  {
-    "label": "Comfortable leyendo with digital data overlay",
-    "value": "/animations/comfortable-reading-with-digital-data-overlay-2025-10-20-06-18-32-utc.json"
-  },
-  {
-    "label": "Confirm order",
-    "value": "/animations/confirm-order-cartoon-illustration-2025-10-20-03-10-17-utc.json"
-  },
-  {
-    "label": "Creative idea lightbulb",
-    "value": "/animations/creative-idea-lightbulb-cartoon-illustration-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Creative equipo brainstorming session",
-    "value": "/animations/creative-team-brainstorming-session-2025-10-20-06-25-38-utc.json"
-  },
-  {
-    "label": "Cryptocurrency app interface",
-    "value": "/animations/cryptocurrency-app-interface-illustration-2025-10-20-02-02-41-utc.json"
-  },
-  {
-    "label": "Cliente servicio agent tracking a package",
-    "value": "/animations/customer-service-agent-tracking-a-package-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Cliente soporte via smartphone",
-    "value": "/animations/customer-support-via-smartphone-illustration-2025-10-20-04-38-50-utc.json"
-  },
-  {
-    "label": "Cute store  with bright colors",
-    "value": "/animations/cute-store-illustration-with-bright-colors-2025-10-20-05-59-20-utc.json"
-  },
-  {
-    "label": "Defective order box",
-    "value": "/animations/defective-order-box-cartoon-illustration-2025-10-20-01-55-39-utc (1).json"
-  },
-  {
-    "label": "Defective order box",
-    "value": "/animations/defective-order-box-cartoon-illustration-2025-10-20-01-55-39-utc.json"
-  },
-  {
-    "label": "Entrega confirmation",
-    "value": "/animations/delivery-confirmation-illustration-2025-10-20-06-00-27-utc (1).json"
-  },
-  {
-    "label": "Entrega confirmation",
-    "value": "/animations/delivery-confirmation-illustration-2025-10-20-06-00-27-utc.json"
-  },
-  {
-    "label": "Dollar and euro currency exchange",
-    "value": "/animations/dollar-and-euro-currency-exchange-illustration-2025-10-20-02-17-47-utc.json"
-  },
-  {
-    "label": "Dynamic handstand challenge",
-    "value": "/animations/dynamic-handstand-challenge-animation-2025-10-20-06-25-36-utc.json"
-  },
-  {
-    "label": "Dynamic hoop acrobatics performer",
-    "value": "/animations/dynamic-hoop-acrobatics-performer-animation-2025-10-20-06-25-39-utc.json"
-  },
-  {
-    "label": "Excited mujer receiving a job offer",
-    "value": "/animations/excited-woman-receiving-a-job-offer-illustration-2025-10-20-05-58-23-utc.json"
-  },
-  {
-    "label": "File upload to cloud",
-    "value": "/animations/file-upload-to-cloud-cartoon-animation-2025-10-20-03-17-15-utc.json"
-  },
-  {
-    "label": "Global love and affection",
-    "value": "/animations/global-love-and-affection-illustration-2025-10-20-04-28-08-utc.json"
-  },
-  {
-    "label": "Graduation cap on stack of books",
-    "value": "/animations/graduation-cap-on-stack-of-books-illustration-2025-10-20-04-28-19-utc.json"
-  },
-  {
-    "label": "Hand holding crypto coins",
-    "value": "/animations/hand-holding-crypto-coins-illustration-2025-10-20-04-12-35-utc.json"
-  },
-  {
-    "label": "Hand holding hairdressing kit",
-    "value": "/animations/hand-holding-hairdressing-kit-cartoon-style-2025-10-20-03-08-08-utc.json"
-  },
-  {
-    "label": "Hands collaborating to build success word animatio",
-    "value": "/animations/hands-collaborating-to-build-success-word-animatio-2025-10-20-06-26-39-utc.json"
-  },
-  {
-    "label": "Hands holding a phone with a family picture",
-    "value": "/animations/hands-holding-a-phone-with-a-family-picture-2025-10-20-04-28-29-utc.json"
-  },
-  {
-    "label": "Handshake agreement  graphic",
-    "value": "/animations/handshake-agreement-animated-graphic-2025-10-20-06-25-39-utc.json"
-  },
-  {
-    "label": "Health and fitness essentials",
-    "value": "/animations/health-and-fitness-essentials-animation-2025-10-20-06-08-31-utc.json"
-  },
-  {
-    "label": "Heartfelt message  with hearts",
-    "value": "/animations/heartfelt-message-animation-with-hearts-2025-10-20-04-36-48-utc.json"
-  },
-  {
-    "label": "Hire me appeal",
-    "value": "/animations/hire-me-appeal-cartoon-illustration-2025-10-20-04-32-47-utc.json"
-  },
-  {
-    "label": "Home oficina workout with laptop",
-    "value": "/animations/home-office-workout-with-laptop-2025-10-20-05-58-23-utc.json"
-  },
-  {
-    "label": "Home repair servicio",
-    "value": "/animations/home-repair-service-cartoon-illustration-2025-10-20-06-01-50-utc.json"
-  },
-  {
-    "label": "Job offer  in",
-    "value": "/animations/job-offer-illustration-in-cartoon-style-2025-10-20-04-30-49-utc.json"
-  },
-  {
-    "label": "Job offer letter  in",
-    "value": "/animations/job-offer-letter-illustration-in-cartoon-style-2025-10-20-04-28-26-utc.json"
-  },
-  {
-    "label": "Join our equipo",
-    "value": "/animations/join-our-team-illustration-2025-10-20-04-30-54-utc.json"
-  },
-  {
-    "label": "Law libro",
-    "value": "/animations/law-book-illustration-2025-10-20-05-59-30-utc.json"
-  },
-  {
-    "label": "Learning symbols",
-    "value": "/animations/learning-symbols-cartoon-illustration-2025-10-20-06-17-32-utc.json"
-  },
-  {
-    "label": "Magnet marketing",
-    "value": "/animations/magnet-marketing-cartoon-illustration-2025-10-20-03-25-21-utc.json"
-  },
-  {
-    "label": "Hombre enjoying coffee with cupcake",
-    "value": "/animations/man-enjoying-coffee-with-cupcake-illustration-2025-10-20-05-59-06-utc.json"
-  },
-  {
-    "label": "Hombre comprando en línea using mobile device illustrati",
-    "value": "/animations/man-shopping-online-using-mobile-device-illustrati-2025-10-20-04-30-49-utc.json"
-  },
-  {
-    "label": "Marketing announcement",
-    "value": "/animations/marketing-announcement-cartoon-style-animation-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Médico report",
-    "value": "/animations/medical-report-cartoon-illustration-2025-10-20-04-36-48-utc.json"
-  },
-  {
-    "label": "Mobile engagement",
-    "value": "/animations/mobile-engagement-cartoon-illustration-2025-10-20-02-25-51-utc.json"
-  },
-  {
-    "label": "Mobile grocery comprando and pago",
-    "value": "/animations/mobile-grocery-shopping-and-payment-illustration-2025-10-20-05-59-34-utc.json"
-  },
-  {
-    "label": "Mobile marketing   with smartph",
-    "value": "/animations/mobile-marketing-cartoon-illustration-with-smartph-2025-10-20-03-11-12-utc.json"
-  },
-  {
-    "label": "Oficina break leyendo hombre",
-    "value": "/animations/office-break-reading-man-2025-10-20-06-26-40-utc (1).json"
-  },
-  {
-    "label": "Oficina break leyendo hombre",
-    "value": "/animations/office-break-reading-man-2025-10-20-06-26-40-utc.json"
-  },
-  {
-    "label": "Oficina worker en escritorio",
-    "value": "/animations/office-worker-at-desk-2025-10-20-06-00-34-utc.json"
-  },
-  {
-    "label": "Oficina worker wearing mask en escritorio",
-    "value": "/animations/office-worker-wearing-mask-at-desk-illustration-2025-10-20-02-58-14-utc.json"
-  },
-  {
-    "label": "En línea clothing store comprando on tablet illustrat",
-    "value": "/animations/online-clothing-store-shopping-on-tablet-illustrat-2025-10-20-04-36-48-utc.json"
-  },
-  {
-    "label": "En línea course on smartphone screen",
-    "value": "/animations/online-course-on-smartphone-screen-illustration-2025-10-20-04-38-51-utc.json"
-  },
-  {
-    "label": "En línea fast comida order",
-    "value": "/animations/online-fast-food-order-illustration-2025-10-20-06-01-38-utc.json"
-  },
-  {
-    "label": "En línea grocery pago app",
-    "value": "/animations/online-grocery-payment-app-illustration-2025-10-20-05-59-09-utc.json"
-  },
-  {
-    "label": "En línea grocery store comprando on mobile app",
-    "value": "/animations/online-grocery-store-shopping-on-mobile-app-2025-10-20-05-59-28-utc.json"
-  },
-  {
-    "label": "En línea comprando cart with box",
-    "value": "/animations/online-shopping-cart-with-box-illustration-2025-10-20-02-32-54-utc.json"
-  },
-  {
-    "label": "En línea store  with pago tarjeta",
-    "value": "/animations/online-store-illustration-with-payment-card-2025-10-20-06-01-27-utc.json"
-  },
-  {
-    "label": "En línea vegetable market",
-    "value": "/animations/online-vegetable-market-illustration-2025-10-20-04-29-10-utc.json"
-  },
-  {
-    "label": "Order status",
-    "value": "/animations/order-status-cartoon-illustration-2025-10-20-03-17-17-utc.json"
-  },
-  {
-    "label": "Pago rejection",
-    "value": "/animations/payment-rejection-illustration-2025-10-20-03-06-09-utc.json"
-  },
-  {
-    "label": "Pago verification  with phone and c",
-    "value": "/animations/payment-verification-illustration-with-phone-and-c-2025-10-20-03-11-10-utc.json"
-  },
-  {
-    "label": "Piggy bank with coins",
-    "value": "/animations/piggy-bank-with-coins-cartoon-illustration-2025-10-20-04-28-14-utc.json"
-  },
-  {
-    "label": "Pin code",
-    "value": "/animations/pin-code-animation-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Product box",
-    "value": "/animations/product-box-cartoon-style-illustration-2025-10-20-03-14-16-utc.json"
-  },
-  {
-    "label": "Rejected resume",
-    "value": "/animations/rejected-resume-cartoon-illustration-2025-10-20-04-34-46-utc.json"
-  },
-  {
-    "label": "Remote work global connectivity and productivity",
-    "value": "/animations/remote-work-global-connectivity-and-productivity-2025-10-20-06-00-28-utc.json"
-  },
-  {
-    "label": "Resume rejection",
-    "value": "/animations/resume-rejection-cartoon-illustration-2025-10-20-05-58-21-utc.json"
-  },
-  {
-    "label": "Secure financial app",
-    "value": "/animations/secure-financial-app-illustration-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "September first  school day",
-    "value": "/animations/september-first-cartoon-school-day-illustration-2025-10-20-04-32-45-utc.json"
-  },
-  {
-    "label": "Comprando bags and box",
-    "value": "/animations/shopping-bags-and-box-animation-2025-10-20-06-00-40-utc.json"
-  },
-  {
-    "label": "Comprando cart with gifts",
-    "value": "/animations/shopping-cart-with-gifts-illustration-2025-10-20-06-00-43-utc.json"
-  },
-  {
-    "label": "Signing contract  in",
-    "value": "/animations/signing-contract-illustration-in-cartoon-style-2025-10-20-04-33-46-utc.json"
-  },
-  {
-    "label": "Special offer",
-    "value": "/animations/special-offer-cartoon-illustration-2025-10-20-02-27-52-utc.json"
-  },
-  {
-    "label": "Startup launch",
-    "value": "/animations/startup-launch-cartoon-illustration-2025-10-20-03-17-17-utc.json"
-  },
-  {
-    "label": "Stationary bike exercise",
-    "value": "/animations/stationary-bike-exercise-animation-2025-10-20-06-25-36-utc.json"
-  },
-  {
-    "label": "Students studying with books and tablets illustrat",
-    "value": "/animations/students-studying-with-books-and-tablets-illustrat-2025-10-20-04-28-19-utc.json"
-  },
-  {
-    "label": "Successful seo   with character",
-    "value": "/animations/successful-seo-cartoon-illustration-with-character-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Target focus",
-    "value": "/animations/target-focus-cartoon-illustration-2025-10-20-04-28-10-utc.json"
-  },
-  {
-    "label": "Target idea bulb",
-    "value": "/animations/target-idea-bulb-illustration-2025-10-20-03-15-58-utc.json"
-  },
-  {
-    "label": "Equipo collaboration and presentation meeting",
-    "value": "/animations/team-collaboration-and-presentation-meeting-2025-10-20-05-59-13-utc.json"
-  },
-  {
-    "label": "Teamwork building resources letter tiles",
-    "value": "/animations/teamwork-building-resources-letter-tiles-animation-2025-10-20-06-18-34-utc.json"
-  },
-  {
-    "label": "Teamwork word building with diverse hands",
-    "value": "/animations/teamwork-word-building-with-diverse-hands-2025-10-20-06-00-44-utc.json"
-  },
-  {
-    "label": "Time for coffee break  icon",
-    "value": "/animations/time-for-coffee-break-animated-icon-2025-10-20-06-00-36-utc.json"
-  },
-  {
-    "label": "Viaje gear  in",
-    "value": "/animations/travel-gear-illustration-in-cartoon-style-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Viaje guide  for adventure theme",
-    "value": "/animations/travel-guide-illustration-for-adventure-theme-2025-10-20-03-17-15-utc.json"
-  },
-  {
-    "label": "Viaje schedule",
-    "value": "/animations/travel-schedule-cartoon-illustration-2025-10-20-02-21-50-utc.json"
-  },
-  {
-    "label": "Twenty four seven en línea comprando",
-    "value": "/animations/twenty-four-seven-online-shopping-illustration-2025-10-20-06-00-27-utc.json"
-  },
-  {
-    "label": "Two colorful gift boxes",
-    "value": "/animations/two-colorful-gift-boxes-illustration-2025-10-20-06-00-37-utc.json"
-  },
-  {
-    "label": "Ufo abduction beam with alien pilot",
-    "value": "/animations/ufo-abduction-beam-with-alien-pilot-2025-10-20-06-02-27-utc.json"
-  },
-  {
-    "label": "Vacant oficina chair  in",
-    "value": "/animations/vacant-office-chair-illustration-in-cartoon-style-2025-10-20-06-00-43-utc.json"
-  },
-  {
-    "label": "Verified entrega",
-    "value": "/animations/verified-delivery-illustration-2025-10-20-04-28-21-utc.json"
-  },
-  {
-    "label": "Virtual market en línea comprando",
-    "value": "/animations/virtual-market-online-shopping-animation-2025-10-20-06-26-38-utc.json"
-  },
-  {
-    "label": "We are hiring  with  people",
-    "value": "/animations/we-are-hiring-illustration-with-cartoon-people-2025-10-20-05-59-05-utc.json"
-  },
-  {
-    "label": "Mujer adding items to en línea comprando cart animati",
-    "value": "/animations/woman-adding-items-to-online-shopping-cart-animati-2025-10-20-06-07-44-utc.json"
-  },
-  {
-    "label": "Mujer doing ball balance workout",
-    "value": "/animations/woman-doing-ball-balance-workout-2025-10-20-06-00-38-utc.json"
-  },
-  {
-    "label": "Mujer doing mat workout exercise",
-    "value": "/animations/woman-doing-mat-workout-exercise-animation-2025-10-20-06-00-28-utc.json"
-  },
-  {
-    "label": "Mujer drinking cocktail at cafe",
-    "value": "/animations/woman-drinking-cocktail-at-cafe-animation-2025-10-20-03-06-07-utc.json"
-  },
-  {
-    "label": "Mujer meditating in lotus position  illustr",
-    "value": "/animations/woman-meditating-in-lotus-position-cartoon-illustr-2025-10-20-03-14-14-utc.json"
-  },
-  {
-    "label": "Mujer comprando for groceries en línea",
-    "value": "/animations/woman-shopping-for-groceries-online-2025-10-20-06-01-30-utc.json"
-  },
-  {
-    "label": "Mujer comprando en línea via mobile app",
-    "value": "/animations/woman-shopping-online-via-mobile-app-illustration-2025-10-20-06-02-30-utc.json"
-  },
-  {
-    "label": "Mujer using hairspray in workplace",
-    "value": "/animations/woman-using-hairspray-in-workplace-animation-2025-10-20-03-14-13-utc.json"
-  },
-  {
-    "label": "Mujer with comprando cart full of comida",
-    "value": "/animations/woman-with-shopping-cart-full-of-food-2025-10-20-05-59-35-utc.json"
-  }
-]
+import { LottieVisualPickerModal } from "./lottie-visual-picker-modal"
+import lottieCatalog from "./lottie-catalog.json"
 
 const DEFAULT_BANNER: GlobalBannerConfig = {
     space_type: 'all',
@@ -887,14 +30,46 @@ const DEFAULT_BANNER: GlobalBannerConfig = {
     is_active: false
 }
 
-export function GlobalBannersManager() {
+const BASE_SPACES = [
+    { value: 'all', label: '🌐 Global (Todos los Dashboards)' },
+    { value: 'agency', label: '🏢 Agencia / Marketing & B2B' },
+    { value: 'resto', label: '🍽️ Restaurantes & Gastronomía' },
+    { value: 'retail', label: '🛍️ Retail & Comercio' },
+    { value: 'cleaning', label: '🧹 Limpieza & Servicios Especializados' },
+    { value: 'real_estate', label: '🏠 Bienes Raíces / Real Estate' },
+    { value: 'saas', label: '💻 SaaS & Plataformas de Software' },
+    { value: 'reseller', label: '🤝 Resellers & Aliados Comerciales' },
+    { value: 'platform', label: '⚙️ Plataforma Central (Superadmin / Core)' },
+]
+
+export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const [banners, setBanners] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [isLottiePickerOpen, setIsLottiePickerOpen] = useState(false)
 
     // El banner que estamos editando en el formulario
     const [formData, setFormData] = useState<GlobalBannerConfig>(DEFAULT_BANNER)
     const [isPristine, setIsPristine] = useState(true)
+
+    const selectedLottieItem = useMemo(() => {
+        if (!formData.media_url) return null
+        return (lottieCatalog as any[]).find(item => item.value === formData.media_url)
+    }, [formData.media_url])
+
+    const saasAppOptions = useMemo(() => {
+        return (apps || [])
+            .filter(app => app && (app.slug || app.id))
+            .map(app => ({
+                value: app.slug || app.id,
+                label: `📦 ${app.name} (${app.slug || app.category || 'app'})`
+            }))
+            .filter(appOpt => !BASE_SPACES.some(b => b.value === appOpt.value))
+    }, [apps])
+
+    const allKnownOptions = useMemo(() => {
+        return [...BASE_SPACES, ...saasAppOptions]
+    }, [saasAppOptions])
 
     useEffect(() => {
         loadBanners()
@@ -1018,9 +193,10 @@ export function GlobalBannersManager() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-xl font-bold tracking-tight">Gestor de Banners Globales</h2>
-                    <p className="text-muted-foreground text-sm">Escoge un banner para editar y previsualiza los cambios en tiempo real.</p>
+                    <p className="text-sm text-muted-foreground">Configura los banners publicitarios dinámicos que verán los usuarios en sus Dashboards por tipo de espacio.</p>
                 </div>
 
+                {/* SELECTOR DE BANNER A EDITAR O CREAR */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <Select
                         value={formData.id || (isPristine ? "" : "new")}
@@ -1064,19 +240,31 @@ export function GlobalBannersManager() {
                                     {formData.id ? 'Editando Banner' : 'Configuración de Nuevo Banner'}
                                 </span>
                                 {formData.id && (
-                                    <Switch
-                                        checked={formData.is_active}
-                                        onCheckedChange={() => handleToggleActive(formData)}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant={formData.is_active ? "default" : "secondary"} className={formData.is_active ? "bg-green-500 hover:bg-green-600" : ""}>
+                                            {formData.is_active ? "Activo en Vivo" : "Inactivo"}
+                                        </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs"
+                                            onClick={() => handleToggleActive(formData)}
+                                        >
+                                            {formData.is_active ? "Desactivar" : "Activar"}
+                                        </Button>
+                                    </div>
                                 )}
                             </CardTitle>
+                            <CardDescription className="text-xs">
+                                Todos los cambios se reflejan inmediatamente en la vista previa a la derecha.
+                            </CardDescription>
                         </CardHeader>
 
-                        <CardContent className="p-0">
-                            {/* SECCIÓN 1: IDENTIFICACIÓN */}
-                            <div className="p-5 space-y-4 border-b">
+                        <CardContent className="p-0 divide-y">
+                            {/* SECCIÓN 1: GENERAL */}
+                            <div className="p-5 space-y-4">
                                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-                                    <Target className="h-3 w-3" /> Entorno y Red
+                                    <Target className="h-3 w-3" /> Configuración Principal
                                 </h3>
 
                                 <div className="space-y-4">
@@ -1091,17 +279,35 @@ export function GlobalBannersManager() {
                                     <div className="space-y-2">
                                         <Label>Inyectar en (Space Type)</Label>
                                         <Select value={formData.space_type} onValueChange={(v) => setFormData({ ...formData, space_type: v })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Global (Todos los Dashboards)</SelectItem>
-                                                <SelectItem value="platform">Plataforma (Ej: Pixy Agency)</SelectItem>
-                                                <SelectItem value="agency">Agency / B2B</SelectItem>
-                                                <SelectItem value="resto">Restaurantes</SelectItem>
-                                                <SelectItem value="cleaning">Limpieza y Servicios</SelectItem>
-                                                <SelectItem value="reseller">Resellers</SelectItem>
+                                            <SelectTrigger><SelectValue placeholder="Selecciona un Space Type" /></SelectTrigger>
+                                            <SelectContent className="max-h-[320px]">
+                                                <SelectItem value="all" className="font-semibold text-primary">
+                                                    🌐 Global (Todos los Dashboards)
+                                                </SelectItem>
+                                                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                    Verticales Principales
+                                                </div>
+                                                {BASE_SPACES.filter(s => s.value !== 'all').map(s => (
+                                                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                                ))}
+                                                {saasAppOptions.length > 0 && (
+                                                    <>
+                                                        <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t mt-1 pt-2">
+                                                            SaaS Engine Spaces & Soluciones
+                                                        </div>
+                                                        {saasAppOptions.map(s => (
+                                                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                {formData.space_type && !allKnownOptions.some(o => o.value === formData.space_type) && (
+                                                    <SelectItem value={formData.space_type}>
+                                                        🎯 {formData.space_type} (Personalizado)
+                                                    </SelectItem>
+                                                )}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[11px] text-muted-foreground">Nota: Solo puede haber un banner activo "agencia", "resto", etc a la vez.</p>
+                                        <p className="text-[11px] text-muted-foreground">Nota: Solo puede haber un banner activo por cada space a la vez.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1119,24 +325,33 @@ export function GlobalBannersManager() {
                                             <Textarea
                                                 value={tip}
                                                 onChange={(e) => updateTip(idx, e.target.value)}
-                                                placeholder={`Línea u oración (presiona Enter para salto de línea) ${idx + 1}...`}
-                                                className="text-sm min-h-[60px]"
+                                                placeholder={`Línea ${idx + 1}...`}
+                                                rows={2}
+                                                className="resize-none text-sm"
                                             />
-                                            <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-red-500" onClick={() => removeTip(idx)}>
-                                                <Trash className="h-4 w-4" />
-                                            </Button>
+                                            {tipsArray.length > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-muted-foreground hover:text-red-500 shrink-0"
+                                                    onClick={() => removeTip(idx)}
+                                                >
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     ))}
-                                    <Button variant="outline" size="sm" onClick={addTip} className="w-full mt-2 border-dashed">
-                                        <Plus className="h-3 w-3 mr-2" /> Agregar Nueva Línea de Texto
+
+                                    <Button variant="outline" size="sm" onClick={addTip} className="w-full text-xs">
+                                        <Plus className="h-3.5 w-3.5 mr-1" /> Agregar otra frase rotativa
                                     </Button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 pt-4 border-t mt-4">
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                                     <div className="space-y-2">
-                                        <Label className="text-xs">Botón - Texto</Label>
+                                        <Label className="text-xs">Botón - Texto (Opcional)</Label>
                                         <Input
-                                            placeholder="Opcional. Ej: Saber más"
+                                            placeholder="Ej: Probar Ahora"
                                             value={formData.cta_text || ''}
                                             onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
                                         />
@@ -1202,24 +417,68 @@ export function GlobalBannersManager() {
                                     </div>
 
                                     {formData.media_type === 'json_lottie' ? (
-                                        <Select
-                                            value={ANIMATIONS.some(a => a.value === formData.media_url) ? formData.media_url : (formData.media_url ? "custom" : "")}
-                                            onValueChange={(v) => {
-                                                if (v !== "custom") {
-                                                    setFormData({ ...formData, media_url: v })
-                                                }
-                                            }}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona una animación Lottie de la biblioteca" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {ANIMATIONS.map(anim => (
-                                                    <SelectItem key={anim.value} value={anim.value}>{anim.label}</SelectItem>
-                                                ))}
-                                                <SelectItem value="custom" disabled className="text-muted-foreground italic">Cargado via campo customizado (abajo)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="space-y-2">
+                                            {/* Visual preview card & open modal button */}
+                                            <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                                        {formData.media_url ? (
+                                                            <Film className="h-6 w-6 text-primary animate-pulse" />
+                                                        ) : (
+                                                            <Sparkles className="h-6 w-6 text-muted-foreground/40" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-semibold text-foreground truncate">
+                                                            {selectedLottieItem?.label || (formData.media_url ? 'Animación seleccionada' : 'Ninguna animación')}
+                                                        </p>
+                                                        <p className="text-[11px] text-muted-foreground font-mono truncate">
+                                                            {formData.media_url ? formData.media_url.split('/').pop() : 'Selecciona una miniatura visual'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setIsLottiePickerOpen(true)}
+                                                    className="gap-1.5 shrink-0 bg-white dark:bg-zinc-800 hover:bg-primary hover:text-primary-foreground transition-colors text-xs h-9 px-3 border-primary/30"
+                                                >
+                                                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                                    Galería ({lottieCatalog.length})
+                                                </Button>
+                                            </div>
+
+                                            {/* Input direct URL / path with Clear button */}
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    placeholder="Ruta JSON ej: /animations/..."
+                                                    value={formData.media_url || ''}
+                                                    onChange={(e) => setFormData({ ...formData, media_url: e.target.value })}
+                                                    className="text-xs h-8 font-mono"
+                                                />
+                                                {formData.media_url && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setFormData({ ...formData, media_url: '' })}
+                                                        className="h-8 px-2 text-xs text-muted-foreground hover:text-red-500"
+                                                        title="Quitar animación"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            <LottieVisualPickerModal
+                                                open={isLottiePickerOpen}
+                                                onOpenChange={setIsLottiePickerOpen}
+                                                selectedValue={formData.media_url}
+                                                onSelect={(val) => setFormData({ ...formData, media_url: val })}
+                                            />
+                                        </div>
                                     ) : (
                                         <Input
                                             placeholder="Pega la URL pública de la imagen (JPG, PNG, GIF)"
@@ -1252,7 +511,7 @@ export function GlobalBannersManager() {
                     </Card>
                 </div>
 
-                {/* COLUMNA DERECHA: PREVIEW (7 columnas), Fixed o Sticky para que siempe se vea */}
+                {/* COLUMNA DERECHA: PREVIEW (7 columnas), Fixed o Sticky para que siempre se vea */}
                 <div className="xl:col-span-7 sticky top-6">
                     <Card className="border-0 shadow-none bg-transparent">
                         <div className="flex items-center justify-between mb-4 px-2">

@@ -193,7 +193,7 @@ export default async function AdminDashboardPage() {
                             <DomainsManager initialOrgs={organizations} />
                         </TabsContent>
                         <TabsContent value="banners" className="focus-visible:outline-none">
-                            <GlobalBannersManager />
+                            <GlobalBannersManager apps={apps} />
                         </TabsContent>
                     </Tabs>
                 </TabsContent>

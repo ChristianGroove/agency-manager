@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { unstable_noStore as noStore } from "next/cache"
 import { normalizeCatalogItem } from "@/modules/features/catalog/utils/normalize-catalog-item"
@@ -125,10 +126,18 @@ export async function getDashboardPayload() {
 
     // Step 2: Fetch vertical data AND banner in parallel (was sequential)
     const bannerSpaceType = orgDetails?.organization_type === 'platform' ? 'platform' : orgType
-    const bannerPromise = supabase
+    const candidateSpaceTypes = Array.from(new Set([
+        bannerSpaceType,
+        spaceCategory,
+        orgDetails?.base_app_slug,
+        orgDetails?.active_app_id,
+        'all'
+    ].filter(Boolean)))
+
+    const bannerPromise = supabaseAdmin
         .from('global_dashboard_banners')
         .select('*')
-        .in('space_type', [bannerSpaceType, 'all'])
+        .in('space_type', candidateSpaceTypes)
         .eq('is_active', true)
         .order('is_active', { ascending: false })
         .limit(1)
