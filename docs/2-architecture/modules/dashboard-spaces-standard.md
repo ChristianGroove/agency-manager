@@ -70,3 +70,24 @@ El contexto del componente depende de las siguientes llaves en `es.ts` / `en.ts`
 > [!IMPORTANT]
 > **Al crear un nuevo Dashboard:**
 > Asegúrese de no pasar un `title` fijo si desea que se use "Pixy Spaces" por defecto. Pase siempre `companyName: settings?.agency_name` para mantener la personalización del tenant en la descripción.
+
+---
+
+## 7. Dashboard SaaS Space (`SaasDashboard`)
+
+El espacio **SaaS Space** cuenta con un dashboard especializado (`saas-dashboard.tsx`) orquestado por `ModularDashboardLayout`:
+
+- **Data Fetching Dedicado (`dashboard-actions.ts`)**:
+  - 8 consultas paralelas (`Promise.all`), priorizando `head: true` (COUNT-only) para minimizar transferencia de datos.
+  - Métricas calculadas: Contactos Totales, Nuevos Contactos Semanales, Conversaciones Abiertas, Conversaciones Sin Responder, Tareas Activas, Completadas este Mes, Tasa de Resolución y Velocidad de Sprint.
+- **KPI Stats Cards (`MagicStatCard`)**:
+  - `Contactos Totales`: Total de leads registrados y delta semanal.
+  - `Inbox Activo`: Conversaciones abiertas y pendientes de respuesta.
+  - `Tareas Activas`: Tickets en curso/revisión y total completado en el mes.
+  - `Tasa de Resolución`: % de resolución y velocidad estimada (tareas/semana).
+- **Widget Exclusivo: `SprintBoardMini`**:
+  - Franja horizontal compacta que muestra la distribución de tareas por estado (`todo`, `in_progress`, `in_review`, `done`) con barras de progreso apiladas proporcionales y badges de tareas bloqueadas (`blocked`).
+  - Cuenta con empty state ilustrado con redirección a `/operations/tasks` cuando no hay tareas creadas.
+- **Ergonomía Visual Global**:
+  - Padding de `SectionHeader` reducido a `pt-1 pb-2` para un layout sin espacios muertos.
+  - Padding compacto en `MagicStatCard` (`px-5 pt-4 pb-1.5`) y `QuickAction` (`px-4 py-3`).

@@ -26,7 +26,7 @@ export function SectionHeader({
     titleClassName
 }: SectionHeaderProps) {
     return (
-        <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4", className)}>
+        <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 pb-2", className)}>
             <div>
                 <h2 className={cn("font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-3", titleClassName || "text-3xl")}>
                     {Icon && <Icon className={cn("h-8 w-8", iconClassName || "text-[var(--brand-pink)]")} />}

@@ -26,15 +26,15 @@ export function MagicStatCard({
     return (
         <MagicCard gradientColor={gradientColor} gradientOpacity={0.15} className={className}>
             <Card className="glass-card h-full transition-all">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between px-5 pt-4 pb-1.5">
                     <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         {title}
                     </CardTitle>
-                    <div className="p-2 bg-gray-50 dark:bg-white/10 rounded-lg">
+                    <div className="p-1.5 bg-gray-50 dark:bg-white/10 rounded-lg">
                         <Icon className="h-4 w-4 text-gray-500 dark:text-gray-200" />
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-5 pb-4 pt-0">
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
                         <div className="text-xs text-muted-foreground mt-1">
                             {subtext}

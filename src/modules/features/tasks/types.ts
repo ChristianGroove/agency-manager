@@ -2,7 +2,7 @@ export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'don
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery';
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
-export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer';
+export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer' | 'sales' | 'operations' | 'support' | 'consultant';
 
 export interface TaskChecklistItem {
   id: string;

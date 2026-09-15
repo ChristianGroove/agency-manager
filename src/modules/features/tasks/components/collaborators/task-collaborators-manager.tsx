@@ -39,6 +39,12 @@ import {
   Check,
   Mail,
   Phone,
+  Target,
+  Settings2,
+  Headphones,
+  GraduationCap,
+  Wrench,
+  Eye,
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import type { TaskCollaborator, CollaboratorRole } from "../../types"
@@ -211,8 +217,8 @@ export function TaskCollaboratorsManager({
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [role, setRole] = useState<string>("Desarrollador Fullstack")
-  const [taskRole, setTaskRole] = useState<CollaboratorRole>("developer")
+  const [role, setRole] = useState<string>("Colaborador")
+  const [taskRole, setTaskRole] = useState<CollaboratorRole>("specialist")
   const [photoUrl, setPhotoUrl] = useState<string>("")
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
@@ -315,8 +321,8 @@ export function TaskCollaboratorsManager({
     setEditLastName(collab.last_name)
     setEditEmail(collab.email || "")
     setEditPhone(collab.phone || "")
-    setEditRole(collab.role || "Desarrollador")
-    setEditTaskRole(collab.task_role || "developer")
+    setEditRole(collab.role || "Colaborador")
+    setEditTaskRole(collab.task_role || "specialist")
     setEditPhotoUrl(collab.photo_url || "")
     setEditIsActive(collab.is_active ?? true)
     setIsEditModalOpen(true)
@@ -363,14 +369,32 @@ export function TaskCollaboratorsManager({
 
   const getRoleIcon = (roleName: string) => {
     const lower = (roleName || "").toLowerCase()
-    if (lower.includes("pm") || lower.includes("project") || lower.includes("lead")) {
+    if (lower.includes("pm") || lower.includes("project") || lower.includes("lead") || lower.includes("gestor")) {
       return <Briefcase className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
     }
     if (lower.includes("qa") || lower.includes("test")) {
       return <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
     }
-    if (lower.includes("design") || lower.includes("ux") || lower.includes("ui")) {
+    if (lower.includes("design") || lower.includes("ux") || lower.includes("ui") || lower.includes("creativ")) {
       return <Palette className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+    }
+    if (lower.includes("venta") || lower.includes("comercial") || lower.includes("sales")) {
+      return <Target className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+    }
+    if (lower.includes("operac") || lower.includes("logistic")) {
+      return <Settings2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+    }
+    if (lower.includes("soporte") || lower.includes("support") || lower.includes("atención")) {
+      return <Headphones className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+    }
+    if (lower.includes("consult") || lower.includes("extern") || lower.includes("asesor")) {
+      return <GraduationCap className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+    }
+    if (lower.includes("observ")) {
+      return <Eye className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+    }
+    if (lower.includes("especial") || lower.includes("técnic")) {
+      return <Wrench className="w-3.5 h-3.5 text-slate-500 shrink-0" />
     }
     return <Code2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
   }
@@ -400,8 +424,8 @@ export function TaskCollaboratorsManager({
             setLastName("")
             setEmail("")
             setPhone("")
-            setRole("Desarrollador Fullstack")
-            setTaskRole("developer")
+            setRole("Colaborador")
+            setTaskRole("specialist")
             setPhotoUrl("")
             setIsCreateModalOpen(true)
           }}
@@ -565,7 +589,7 @@ export function TaskCollaboratorsManager({
 
       {/* Modal: New Collaborator */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl sm:max-w-2xl w-full">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Plus className="w-4 h-4 text-primary" />
@@ -585,7 +609,7 @@ export function TaskCollaboratorsManager({
               onSelectPreset={(url) => setPhotoUrl(url)}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">
                   Nombre *
@@ -610,29 +634,31 @@ export function TaskCollaboratorsManager({
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                Correo Electrónico
-              </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ana@empresa.com"
-                className="h-9 text-xs"
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Correo Electrónico
+                </label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ana@empresa.com"
+                  className="h-9 text-xs"
+                />
+              </div>
 
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                Teléfono / WhatsApp
-              </label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+57 300 123 4567"
-                className="h-9 text-xs"
-              />
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Teléfono / WhatsApp
+                </label>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+57 300 123 4567"
+                  className="h-9 text-xs"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -642,16 +668,37 @@ export function TaskCollaboratorsManager({
                 </label>
                 <Select
                   value={taskRole}
-                  onValueChange={(val: CollaboratorRole) => setTaskRole(val)}
+                  onValueChange={(val: CollaboratorRole) => {
+                    setTaskRole(val)
+                    const cargoMap: Record<string, string> = {
+                      developer: "Desarrollador",
+                      designer: "Diseñador",
+                      qa_lead: "QA / Tester",
+                      pm: "Gestor de Proyecto",
+                      specialist: "Especialista",
+                      observer: "Observador",
+                      sales: "Ejecutivo Comercial",
+                      operations: "Coordinador de Operaciones",
+                      support: "Soporte Técnico",
+                      consultant: "Consultor Externo",
+                    }
+                    setRole(cargoMap[val] || "Colaborador")
+                  }}
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="pm">Gestor de Proyecto</SelectItem>
+                    <SelectItem value="specialist">Especialista</SelectItem>
                     <SelectItem value="developer">Desarrollador</SelectItem>
-                    <SelectItem value="designer">Diseñador UX/UI</SelectItem>
-                    <SelectItem value="qa_lead">Tester QA</SelectItem>
-                    <SelectItem value="pm">Project Manager</SelectItem>
+                    <SelectItem value="designer">Diseñador</SelectItem>
+                    <SelectItem value="qa_lead">QA / Tester</SelectItem>
+                    <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
+                    <SelectItem value="operations">Operaciones</SelectItem>
+                    <SelectItem value="support">Soporte / Atención</SelectItem>
+                    <SelectItem value="consultant">Consultor Externo</SelectItem>
+                    <SelectItem value="observer">Observador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -663,7 +710,7 @@ export function TaskCollaboratorsManager({
                 <Input
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  placeholder="Ej. Frontend Senior"
+                  placeholder="Ej. Coordinador Senior"
                   className="h-9 text-xs"
                 />
               </div>
@@ -701,7 +748,7 @@ export function TaskCollaboratorsManager({
 
       {/* Modal: Edit Collaborator */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl sm:max-w-2xl w-full">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="w-4 h-4 text-primary" />
@@ -721,7 +768,7 @@ export function TaskCollaboratorsManager({
               onSelectPreset={(url) => setEditPhotoUrl(url)}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">
                   Nombre *
@@ -746,29 +793,31 @@ export function TaskCollaboratorsManager({
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                Correo Electrónico
-              </label>
-              <Input
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                placeholder="ana@empresa.com"
-                className="h-9 text-xs"
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Correo Electrónico
+                </label>
+                <Input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="ana@empresa.com"
+                  className="h-9 text-xs"
+                />
+              </div>
 
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                Teléfono / WhatsApp
-              </label>
-              <Input
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                placeholder="+57 300 123 4567"
-                className="h-9 text-xs"
-              />
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Teléfono / WhatsApp
+                </label>
+                <Input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+57 300 123 4567"
+                  className="h-9 text-xs"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -778,16 +827,37 @@ export function TaskCollaboratorsManager({
                 </label>
                 <Select
                   value={editTaskRole}
-                  onValueChange={(val: CollaboratorRole) => setEditTaskRole(val)}
+                  onValueChange={(val: CollaboratorRole) => {
+                    setEditTaskRole(val)
+                    const cargoMap: Record<string, string> = {
+                      developer: "Desarrollador",
+                      designer: "Diseñador",
+                      qa_lead: "QA / Tester",
+                      pm: "Gestor de Proyecto",
+                      specialist: "Especialista",
+                      observer: "Observador",
+                      sales: "Ejecutivo Comercial",
+                      operations: "Coordinador de Operaciones",
+                      support: "Soporte Técnico",
+                      consultant: "Consultor Externo",
+                    }
+                    setEditRole(cargoMap[val] || "Colaborador")
+                  }}
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="pm">Gestor de Proyecto</SelectItem>
+                    <SelectItem value="specialist">Especialista</SelectItem>
                     <SelectItem value="developer">Desarrollador</SelectItem>
-                    <SelectItem value="designer">Diseñador UX/UI</SelectItem>
-                    <SelectItem value="qa_lead">Tester QA</SelectItem>
-                    <SelectItem value="pm">Project Manager</SelectItem>
+                    <SelectItem value="designer">Diseñador</SelectItem>
+                    <SelectItem value="qa_lead">QA / Tester</SelectItem>
+                    <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
+                    <SelectItem value="operations">Operaciones</SelectItem>
+                    <SelectItem value="support">Soporte / Atención</SelectItem>
+                    <SelectItem value="consultant">Consultor Externo</SelectItem>
+                    <SelectItem value="observer">Observador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -799,7 +869,7 @@ export function TaskCollaboratorsManager({
                 <Input
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  placeholder="Ej. Frontend Senior"
+                  placeholder="Ej. Coordinador Senior"
                   className="h-9 text-xs"
                 />
               </div>

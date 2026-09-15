@@ -30,7 +30,7 @@ La base de datos se estructura alrededor de las tablas del esquema relacional en
 | `description` | Text | Alcance técnico, especificaciones y criterios de aceptación. |
 | `status` | Text (`TaskStatus`) | `backlog`, `todo`, `in_progress`, `in_review`, `blocked`, `done`. |
 | `priority` | Text (`TaskPriority`) | `low`, `medium`, `high`, `urgent`. |
-| `type` | Text (`TaskType`) | `feature`, `bug`, `improvement`, `review`, `documentation`. |
+| `type` | Text (`TaskType`) | `task`, `feature`, `bug`, `improvement`, `delivery`. |
 | `assigned_staff_id` | UUID | Especialista asignado a la ejecución (`staff`). |
 | `qa_staff_id` | UUID | Revisor asignado a la etapa de aseguramiento de calidad. |
 | `progress_percentage` | Integer | Porcentaje de avance registrado (0 a 100). |
@@ -39,6 +39,24 @@ La base de datos se estructura alrededor de las tablas del esquema relacional en
 | `checklist` | JSONB | Lista de entregables y criterios (`TaskChecklistItem[]`). |
 | `attachments` | JSONB | Enlaces de Figma, repositorios, documentos o archivos adjuntos. |
 | `due_date` | Timestamp | Fecha límite de entrega del sprint. |
+
+### Perfiles de Colaborador (`CollaboratorRole`)
+El módulo soporta 10 perfiles para abarcar agencias, SaaS, consultorías, operaciones, soporte y ventas:
+| Rol (`CollaboratorRole`) | Etiqueta en Selector | Cargo Sugerido Automático | Icono Asociado |
+|---|---|---|---|
+| `pm` | Gestor de Proyecto | Gestor de Proyecto | `Briefcase` |
+| `specialist` | Especialista | Especialista | `Wrench` |
+| `developer` | Desarrollador | Desarrollador | `Code2` |
+| `designer` | Diseñador | Diseñador | `Palette` |
+| `qa_lead` | QA / Tester | QA / Tester | `ShieldCheck` |
+| `sales` | Ejecutivo Comercial | Ejecutivo Comercial | `Target` |
+| `operations` | Operaciones | Coordinador de Operaciones | `Settings2` |
+| `support` | Soporte / Atención | Soporte Técnico | `Headphones` |
+| `consultant` | Consultor Externo | Consultor Externo | `GraduationCap` |
+| `observer` | Observador | Observador | `Eye` |
+
+> [!NOTE]
+> **Autocompletado de Cargo**: Al seleccionar un perfil de tareas en el modal, el sistema autocompleta el "Cargo Visible" con un título profesional limpio, evitando la palabra *"agente"* para prevenir confusiones con módulos de IA. El modal utiliza un ancho `max-w-2xl sm:max-w-2xl` con distribución en dos columnas para campos de contacto (`email` y `phone`).
 
 ### Tabla: `task_projects`
 | Campo | Tipo | Propósito |

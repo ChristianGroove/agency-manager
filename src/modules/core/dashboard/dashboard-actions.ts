@@ -373,6 +373,75 @@ export async function getDashboardPayload() {
                 alerts: logsRes.data?.filter((l: any) => !l.is_valid).length || 0
             }
         }
+    } else if (orgType === 'saas') {
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+        const [
+            settingsRes,
+            bannerRes,
+            leadsCountRes,
+            leadsWeekCountRes,
+            taskStatusesRes,
+            tasksCompletedMonthRes,
+            openConvsCountRes,
+            unreadConvsCountRes
+        ] = await Promise.all([
+            supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle(),
+            bannerPromise,
+            // Total contacts (count only — no row data)
+            supabase.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('deleted_at', null),
+            // New contacts this week (count only)
+            supabase.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('deleted_at', null).gte('created_at', sevenDaysAgo),
+            // Task statuses (minimal columns for aggregation — uses admin to bypass RLS, consistent with task-actions.ts)
+            supabaseAdmin.from('task_items').select('status').eq('organization_id', orgId),
+            // Tasks completed this month (count only)
+            supabaseAdmin.from('task_items').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'done').gte('updated_at', monthStart),
+            // Open inbox conversations (count only)
+            supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).neq('state', 'archived').neq('status', 'snoozed'),
+            // Unread/unanswered conversations (count only)
+            supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).neq('state', 'archived').neq('status', 'snoozed').gt('unread_count', 0)
+        ])
+
+        // Aggregate task statuses in-memory (single pass)
+        const taskStatuses = taskStatusesRes.data || []
+        const statusCounts: Record<string, number> = { backlog: 0, todo: 0, in_progress: 0, in_review: 0, done: 0, blocked: 0 }
+        taskStatuses.forEach((t: any) => {
+            if (t.status in statusCounts) statusCounts[t.status]++
+        })
+
+        const totalTasks = taskStatuses.length
+        const activeTasks = statusCounts.todo + statusCounts.in_progress + statusCounts.in_review + statusCounts.blocked
+        const completedThisMonth = tasksCompletedMonthRes.count || 0
+
+        // Velocity: completed tasks per week this month (avoid division by zero)
+        const weeksElapsed = Math.max(1, Math.ceil((now.getTime() - new Date(monthStart).getTime()) / (7 * 24 * 60 * 60 * 1000)))
+        const taskVelocity = Math.round(completedThisMonth / weeksElapsed)
+
+        // Resolution rate: completed / total (this month scope)
+        const monthTotalForRate = completedThisMonth + activeTasks
+        const resolutionRate = monthTotalForRate > 0 ? Math.round((completedThisMonth / monthTotalForRate) * 100) : 0
+
+        dashboardData = {
+            settings: settingsRes.data,
+            bannerConfig: bannerRes.data || null
+        }
+        extraData = {
+            orgDetails,
+            saasMetrics: {
+                totalContacts: leadsCountRes.count || 0,
+                newContactsThisWeek: leadsWeekCountRes.count || 0,
+                activeTasks,
+                completedThisMonth,
+                totalTasks,
+                taskVelocity,
+                resolutionRate,
+                statusCounts,
+                openConversations: openConvsCountRes.count || 0,
+                unansweredConversations: unreadConvsCountRes.count || 0
+            }
+        }
     } else {
         // Agency, Cleaning, or Reseller
         const [data, bannerRes] = await Promise.all([

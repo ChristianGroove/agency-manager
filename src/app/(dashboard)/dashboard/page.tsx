@@ -11,6 +11,7 @@ import { RestoDashboard } from "@/modules/core/dashboard/components/resto-dashbo
 import { RetailDashboard } from "@/modules/core/dashboard/components/retail-dashboard"
 import { RealEstateDashboard } from "@/modules/core/dashboard/components/real-estate-dashboard"
 import { DefaultDashboard } from "@/modules/core/dashboard/components/default-dashboard"
+import { SaasDashboard } from "@/modules/core/dashboard/components/saas-dashboard"
 
 export default async function DashboardPage() {
     const payload = await getDashboardPayload()
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
                 {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'retail' && <RetailDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'real_estate' && <RealEstateDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
-                {orgType === 'saas' && <DefaultDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
+                {orgType === 'saas' && <SaasDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
 
                 {/* Fallback de Seguridad */}
                 {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas', 'real_estate'].includes(orgType) && (
