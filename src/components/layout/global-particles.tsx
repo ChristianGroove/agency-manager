@@ -5,41 +5,68 @@ import { getEffectiveBranding } from "@/modules/core/branding/actions"
 
 interface GlobalParticlesProps {
     orgId?: string | null
+    primaryColor?: string | null
 }
 
-// Generate 40 particles for the global screen
-const particles = Array.from({ length: 40 }, (_, i) => ({
-    id: i,
-    isBrandingColor: i % 3 === 0,
-    size: 1 + (i % 6), // 1-6px based on index
-    top: (i * 2.5) % 100, // Spread across 100% height
-    duration: (15 + (i % 25)) * 3, // 45-120s (3x slower) movement horizontally
-    delay: (i * 0.8) % 10, // Staggered delays
-    translateX40: (i % 5) * 4 - 10,
-    translateX100: (i % 5) * 8 - 20,
-}))
+function hexToRgb(hex?: string | null): string | null {
+    if (!hex) return null
+    const clean = hex.replace("#", "")
+    if (clean.length === 6) {
+        const r = parseInt(clean.substring(0, 2), 16)
+        const g = parseInt(clean.substring(2, 4), 16)
+        const b = parseInt(clean.substring(4, 6), 16)
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+            return `${r}, ${g}, ${b}`
+        }
+    }
+    return null
+}
 
-export function GlobalParticles({ orgId }: GlobalParticlesProps) {
-    const [brandingColor, setBrandingColor] = useState<string>("255, 255, 255") // Default RGB
+// Generate 40 particles for the global screen with pre-warmed negative delays for immediate screen distribution
+const particles = Array.from({ length: 40 }, (_, i) => {
+    const duration = (15 + (i % 25)) * 3 // 45-120s horizontal movement
+    const prewarmRatio = (i * 0.173) % 1
+    const delay = -(prewarmRatio * duration) // Negative delay so particles are already spread across the screen on load
+    return {
+        id: i,
+        isBrandingColor: i % 3 === 0,
+        size: 1 + (i % 6), // 1-6px based on index
+        top: (i * 2.5) % 100, // Spread across 100% height
+        duration,
+        delay,
+        translateX40: (i % 5) * 4 - 10,
+        translateX100: (i % 5) * 8 - 20,
+    }
+})
+
+export function GlobalParticles({ orgId, primaryColor }: GlobalParticlesProps) {
+    const [brandingColor, setBrandingColor] = useState<string>(() => {
+        return hexToRgb(primaryColor) || "255, 255, 255"
+    })
 
     useEffect(() => {
+        if (primaryColor) {
+            const rgb = hexToRgb(primaryColor)
+            if (rgb) {
+                setBrandingColor(rgb)
+                return
+            }
+        }
+
         const fetchBranding = async () => {
             try {
                 if (!orgId) return
                 const data = await getEffectiveBranding(orgId)
                 if (data?.colors?.primary) {
-                    const hex = data.colors.primary.replace('#', '')
-                    const r = parseInt(hex.substring(0, 2), 16)
-                    const g = parseInt(hex.substring(2, 4), 16)
-                    const b = parseInt(hex.substring(4, 6), 16)
-                    setBrandingColor(`${r}, ${g}, ${b}`)
+                    const rgb = hexToRgb(data.colors.primary)
+                    if (rgb) setBrandingColor(rgb)
                 }
             } catch (e) {
                 console.error("Failed to load branding color for global particles", e)
             }
         }
         fetchBranding()
-    }, [orgId])
+    }, [orgId, primaryColor])
 
     return (
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 text-gray-300 dark:text-white">

@@ -124,11 +124,11 @@
   }
 
   .glass-card {
-    @apply relative bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-xl rounded-xl transition-[transform,background-color] duration-200 ease-out;
+    @apply relative bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-sm rounded-xl transition-[background-color,border-color] duration-200 ease-out;
   }
 
   .glass-card:hover {
-    @apply -translate-y-1 shadow-2xl bg-white/20 dark:bg-white/10 border-gray-300 dark:border-zinc-600;
+    @apply bg-white/15 dark:bg-white/10;
   }
 
   .animate-spin-slow {

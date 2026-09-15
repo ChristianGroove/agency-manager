@@ -36,6 +36,11 @@ export default function StaffPortalPage() {
         try {
             const data = await getPortalData(token)
 
+            if (data.type === 'task_collaborator') {
+                window.location.href = `/portal/tasks/${token}`
+                return
+            }
+
             if (data.type !== 'staff') {
                 // This is a client token, redirect to client portal
                 window.location.href = `/portal/${token}`

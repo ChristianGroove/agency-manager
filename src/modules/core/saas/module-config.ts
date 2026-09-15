@@ -234,6 +234,19 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         }
     },
     {
+        key: 'module_tasks',
+        label: 'Proyectos & Tareas',
+        href: '/operations/tasks',
+        icon: Kanban,
+        category: 'operations',
+        parentModule: 'module_tasks',
+        description: 'Gestión ágil de proyectos, tareas y portales de colaboradores',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            requiredPermission: 'operations.tasks.view'
+        }
+    },
+    {
         key: 'module_whitelabel',
         label: 'Marca Blanca',
         href: '/platform/branding',

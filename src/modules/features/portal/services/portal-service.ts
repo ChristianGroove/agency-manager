@@ -367,6 +367,17 @@ export async function getPortalData(token: string) {
                     }
                 }
 
+                // Check if staff has a task/collaborator role -> render task collaborator portal
+                const TASK_ROLES = ['pm', 'project_manager', 'qa', 'qa_lead', 'developer', 'dev', 'designer', 'ux_designer', 'ui_designer', 'specialist', 'copywriter', 'collaborator', 'fullstack', 'frontend', 'backend']
+                const isTaskRole = TASK_ROLES.some((r) => (retailStaff.role || '').toLowerCase().includes(r))
+                if (isTaskRole) {
+                    return {
+                        type: 'task_collaborator' as const,
+                        staff: retailStaff,
+                        settings: effectiveSettings
+                    }
+                }
+
                 return { type: 'attendance_staff', staff: retailStaff, settings: effectiveSettings }
             }
         }

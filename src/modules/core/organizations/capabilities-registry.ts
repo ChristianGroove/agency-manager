@@ -20,7 +20,8 @@ export type UICapability =
   | 'notifications.smtp_custom'
   | 'whitelabel.branding'
   | 'whitelabel.domain_custom'
-  | 'module_rentals';
+  | 'module_rentals'
+  | 'tasks.management';
 
 export interface TerminologyConfig {
   client: string;
@@ -28,6 +29,8 @@ export interface TerminologyConfig {
   project: string;
   sale: string;
   action_new: string;
+  task?: string;
+  tasks?: string;
 }
 
 export interface SpaceUIPolicy {
@@ -69,7 +72,9 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
       clients: 'Clientes',
       project: 'Proyecto',
       sale: 'Venta',
-      action_new: 'Nuevo Cliente'
+      action_new: 'Nuevo Cliente',
+      task: 'Entrega',
+      tasks: 'Entregables'
     },
     policies: {
       visibleTabs: ['info', 'activity', 'services', 'billing', 'hosting'],
@@ -92,7 +97,8 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
       'crm.quotes', 
       'messaging.standard', 
       'billing.management', 
-      'hosting.management'
+      'hosting.management',
+      'tasks.management'
     ]
   },
   resto: {
@@ -230,9 +236,11 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
     terminology: {
       client: 'Usuario',
       clients: 'Usuarios',
-      project: 'Suscripción',
+      project: 'Sprint',
       sale: 'Plan',
-      action_new: 'Nuevo Usuario'
+      action_new: 'Nuevo Usuario',
+      task: 'Ticket',
+      tasks: 'Tickets'
     },
     policies: {
       visibleTabs: ['info', 'activity', 'services', 'billing'],
@@ -250,11 +258,12 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
       allowedChannels: ['email', 'whatsapp']
     },
     capabilities: [
-      'crm.core',
-      'crm.advanced',
-      'messaging.standard',
-      'billing.management',
-      'automation.engine'
+      'crm.core', 
+      'crm.advanced', 
+      'messaging.standard', 
+      'billing.management', 
+      'automation.engine',
+      'tasks.management'
     ]
   },
   platform: {

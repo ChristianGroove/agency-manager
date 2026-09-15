@@ -36,6 +36,8 @@ export const PERMISSIONS = {
         LOCATIONS_MANAGE: 'operations.locations.manage',
         ATTENDANCE_VIEW: 'operations.attendance.view',
         ATTENDANCE_MANAGE: 'operations.attendance.manage',
+        TASKS_VIEW: 'operations.tasks.view',
+        TASKS_MANAGE: 'operations.tasks.manage',
         RESTO_VIEW: 'operations.resto.view',
         RESTO_MANAGE: 'operations.resto.manage',
         RESTO_ORDERS_VIEW: 'operations.resto_orders.view',
@@ -201,6 +203,16 @@ export const PERMISSION_GROUPS = [
         permissions: [
             { id: PERMISSIONS.OPERATIONS.RESTO_STAFF_VIEW, label: 'Ver Personal', description: 'Visualizar lista de colaboradores y sus zonas' },
             { id: PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, label: 'Gestionar Personal', description: 'Crear, editar, bloquear y eliminar colaboradores' },
+        ]
+    },
+    {
+        id: 'tasks',
+        moduleKey: 'module_tasks',
+        label: 'Proyectos & Tareas (TaskFlow)',
+        description: 'Gestión ágil de proyectos, tableros Kanban y portales de colaboradores.',
+        permissions: [
+            { id: PERMISSIONS.OPERATIONS.TASKS_VIEW, label: 'Ver Proyectos y Tareas', description: 'Visualizar tableros Kanban, listas y métricas' },
+            { id: PERMISSIONS.OPERATIONS.TASKS_MANAGE, label: 'Gestionar Tareas y Proyectos', description: 'Crear proyectos, tickets, asignar colaboradores y editar estados' },
         ]
     }
 ];

@@ -76,6 +76,11 @@ export default function PortalPage() {
         try {
             const data = await getPortalData(token)
 
+            if (data.type === 'task_collaborator') {
+                window.location.href = `/portal/tasks/${token}`
+                return
+            }
+
             if (data.type === 'staff') {
                 setPortalType('staff')
                 setStaff(data.staff)
