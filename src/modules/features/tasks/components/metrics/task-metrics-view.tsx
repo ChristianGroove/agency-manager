@@ -12,13 +12,45 @@ import {
   ShieldCheck,
   Layers,
 } from "lucide-react"
-import type { TaskMetrics } from "../../types"
+import type { TaskMetrics, TaskItem, TaskCollaborator, TaskProject } from "../../types"
+import { TaskPmOperationsDashboard } from "../portal/task-pm-operations-dashboard"
 
 interface TaskMetricsViewProps {
-  metrics: TaskMetrics
+  metrics?: TaskMetrics
+  tasks?: TaskItem[]
+  collaborators?: TaskCollaborator[]
+  projects?: TaskProject[]
+  brandColor?: string
+  onSelectTask?: (task: TaskItem) => void
+  onSwitchToGeneral?: () => void
 }
 
-export function TaskMetricsView({ metrics }: TaskMetricsViewProps) {
+export function TaskMetricsView({
+  metrics,
+  tasks = [],
+  collaborators = [],
+  projects = [],
+  brandColor = "#8ec045",
+  onSelectTask,
+  onSwitchToGeneral,
+}: TaskMetricsViewProps) {
+  if (tasks.length > 0 || collaborators.length > 0) {
+    return (
+      <div className="pt-1">
+        <TaskPmOperationsDashboard
+          tasks={tasks}
+          teamMembers={collaborators}
+          projects={projects}
+          organization={{ name: "Plataforma" }}
+          brandColor={brandColor}
+          onSwitchToGestion={onSwitchToGeneral || (() => {})}
+          onSelectTask={onSelectTask}
+        />
+      </div>
+    )
+  }
+
+  if (!metrics) return null
   const totalByPriority =
     (metrics.tasksByPriority.urgent || 0) +
     (metrics.tasksByPriority.high || 0) +

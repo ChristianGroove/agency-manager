@@ -260,7 +260,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                         <SidebarItem
                                             key={route.href}
                                             icon={route.icon}
-                                            label={t(`sidebar.${route.key}` as any)}
+                                            label={t(`sidebar.${route.key}` as any) !== `sidebar.${route.key}` ? t(`sidebar.${route.key}` as any) : route.label}
                                             href={route.href}
                                             active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                             collapsed={isCollapsed}
@@ -284,7 +284,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                     <SidebarItem
                                         key={route.href}
                                         icon={route.icon}
-                                        label={t(`sidebar.${route.key}` as any)}
+                                        label={t(`sidebar.${route.key}` as any) !== `sidebar.${route.key}` ? t(`sidebar.${route.key}` as any) : route.label}
                                         href={route.href}
                                         active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                         collapsed={isCollapsed}

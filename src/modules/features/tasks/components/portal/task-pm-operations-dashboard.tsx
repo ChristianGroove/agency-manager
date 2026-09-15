@@ -71,7 +71,7 @@ interface StaffMember {
   first_name: string
   last_name: string
   photo_url?: string | null
-  email?: string
+  email?: string | null
   role?: string
 }
 
@@ -79,9 +79,9 @@ interface TaskPmOperationsDashboardProps {
   tasks: TaskItem[]
   teamMembers: StaffMember[]
   projects: { id: string; name: string; color?: string }[]
-  organization: { name: string; logo_url?: string | null; primary_color?: string | null }
+  organization?: { name?: string; logo_url?: string | null; primary_color?: string | null }
   brandColor?: string
-  onSwitchToGestion: () => void
+  onSwitchToGestion?: () => void
   onSelectTask?: (task: TaskItem) => void
 }
 
@@ -107,9 +107,9 @@ export function TaskPmOperationsDashboard({
   tasks,
   teamMembers,
   projects,
-  organization,
+  organization = { name: "Plataforma" },
   brandColor = organization?.primary_color || "#8ec045",
-  onSwitchToGestion,
+  onSwitchToGestion = () => {},
   onSelectTask,
 }: TaskPmOperationsDashboardProps) {
 
@@ -884,16 +884,18 @@ export function TaskPmOperationsDashboard({
         </Card>
       </div>
 
-      {/* Futuristic Operational Insights & Quick Action Banner */}
-      <div className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-blue-600/15 via-purple-600/10 to-pink-600/15 border border-blue-500/20 backdrop-blur-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl shadow-blue-500/5">
+      {/* Operational Insights & Quick Action Banner */}
+      <div className="rounded-3xl p-6 sm:p-7 bg-card border border-zinc-200/80 dark:border-white/10 shadow-xs relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-1.5 max-w-2xl">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+            <div className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-white/10 flex items-center justify-center text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Diagnóstico Operacional Inteligente
             </span>
           </div>
-          <h4 className="text-xl font-black text-foreground tracking-tight">
+          <h4 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">
             {riskIndexCount === 0
               ? "Sprint en trayectoria verde y óptima ejecución"
               : `Se detectaron ${riskIndexCount} tickets que requieren intervención inmediata`}
@@ -908,7 +910,7 @@ export function TaskPmOperationsDashboard({
         <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
           <Button
             onClick={onSwitchToGestion}
-            className="w-full sm:w-auto gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/25 rounded-2xl px-5 py-2.5 h-11"
+            className="w-full sm:w-auto gap-2 font-semibold shadow-xs rounded-2xl px-5 h-10"
           >
             <Kanban className="w-4 h-4" />
             <span>Ir al Espacio de Gestión</span>

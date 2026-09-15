@@ -18,7 +18,7 @@ interface StaffMember {
   first_name: string
   last_name: string
   photo_url?: string | null
-  email?: string
+  email?: string | null
   role?: string
 }
 

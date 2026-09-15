@@ -235,7 +235,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     },
     {
         key: 'module_tasks',
-        label: 'Proyectos & Tareas',
+        label: 'Tareas',
         href: '/operations/tasks',
         icon: Kanban,
         category: 'operations',

@@ -59,6 +59,7 @@ export const en = {
         module_contracts: "Contracts",
         module_hosting: "Web Hosting",
         module_cleaning: "Cleaning",
+        module_tasks: "Tasks",
         core_knowledge: "Knowledge Base",
         core_integrations: "Integrations",
         module_invoicing: "Invoicing",

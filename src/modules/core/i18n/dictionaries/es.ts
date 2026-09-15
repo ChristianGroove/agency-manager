@@ -59,6 +59,7 @@ export const es = {
         module_contracts: "Contratos",
         module_hosting: "Hosting Web",
         module_cleaning: "Limpieza",
+        module_tasks: "Tareas",
         core_knowledge: "Base de Conocimiento",
         core_integrations: "Integraciones",
         module_invoicing: "Facturación",
