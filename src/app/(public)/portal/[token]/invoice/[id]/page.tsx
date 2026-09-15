@@ -3,10 +3,10 @@ import { notFound } from "next/navigation"
 import { PortalInvoiceClientPage } from "./client-page"
 
 interface PageProps {
-    params: {
+    params: Promise<{
         token: string
         id: string
-    }
+    }>
 }
 
 export default async function PortalInvoicePrintPage({ params }: PageProps) {

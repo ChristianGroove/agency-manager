@@ -54,7 +54,7 @@ function RentalsWorkspaceSkeleton() {
 export default async function RentalsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ tab?: string }> | { tab?: string };
+  searchParams?: Promise<{ tab?: string }>;
 }) {
   // 1. Session verification: redirect unauthenticated users to /login?redirect=/rentals
   const supabase = await createClient();

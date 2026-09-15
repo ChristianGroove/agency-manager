@@ -14,11 +14,12 @@ export const metadata = {
 export default async function ClientsPage({
     searchParams
 }: {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-    const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1
-    const search = typeof searchParams.search === 'string' ? searchParams.search : ''
-    const filter = typeof searchParams.filter === 'string' ? searchParams.filter : 'all'
+    const resolvedParams = await searchParams
+    const page = typeof resolvedParams?.page === 'string' ? parseInt(resolvedParams.page) : 1
+    const search = typeof resolvedParams?.search === 'string' ? resolvedParams.search : ''
+    const filter = typeof resolvedParams?.filter === 'string' ? resolvedParams.filter : 'all'
 
     // Parallel data fetching for maximum performance
     const [paginatedData, settings, categoriesRes, spaceType] = await Promise.all([

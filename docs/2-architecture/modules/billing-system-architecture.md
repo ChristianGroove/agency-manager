@@ -68,5 +68,13 @@ A partir de **Abril 2026**, el sistema de billing ha sido desacoplado físicamen
 Para una documentación técnica profunda dirigida a desarrolladores, ver:
 [**Arquitectura de 3 Capas - Billing (Detallada)**](file:///d:/Pixy/agency-manager/docs/billing-3-tier-architecture.md)
 
+### 10. Pasarela Wompi en Portales de Cliente (Capa 1: Invoicing)
+- **Autenticación y Seguridad**:
+  - Los portales de clientes operan sin sesión de usuario en plataforma (`anon`), accediendo a través de un token de portal (`portal_token` / `portal_short_token`).
+  - La generación de firma (`/api/wompi/signature`) valida estrictamente el `portalToken` contra la entidad `leads`, confirmando la titularidad de las facturas (`invoices`) antes de autorizar cualquier transacción.
+  - El registro de la intención de pago en `payment_transactions` y la sincronización en el webhook (`/api/wompi/webhook`) operan mediante `supabaseAdmin` (`service_role`), previniendo excepciones de Row-Level Security (RLS) al no existir sesión `authenticated` en peticiones externas o públicas.
+- **Interfaz de Usuario**:
+  - Modal de métodos de pago (`payment-options-modal.tsx`) optimizado con soporte dual Modo Claro / Modo Oscuro, cálculo dinámico de liquidación y opciones para pasarela automática (Wompi) y transferencias bancarias manuales con copiado rápido.
+
 ---
 *Documentación base para la Plataforma Pixy*

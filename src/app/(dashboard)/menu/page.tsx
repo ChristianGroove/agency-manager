@@ -12,7 +12,8 @@ import { Plus, UtensilsCrossed, ExternalLink } from "lucide-react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/modules/core/database/supabase-server"
 
-export default async function MenuPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function MenuPage({ searchParams }: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
+    if (searchParams) await searchParams
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return <div>Unauthorized</div>
 

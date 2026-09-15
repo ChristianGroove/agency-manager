@@ -5,7 +5,7 @@ import { notFound } from "next/navigation"
 export default async function PortalQuotePrintPage({
     params
 }: {
-    params: { token: string; id: string }
+    params: Promise<{ token: string; id: string }>
 }) {
     // Unwrap params (Next.js 15+ compatible)
     const { token, id } = await params

@@ -36,7 +36,7 @@ function isPrivateOrReservedIPv4(parts: number[]) {
     )
 }
 
-export function isPrivateOrReservedAudioAddress(address: string) {
+function isPrivateOrReservedAudioAddress(address: string) {
     const normalized = address.toLowerCase().replace(/^\[|\]$/g, '')
 
     if (isIP(normalized) === 4) {
@@ -63,7 +63,7 @@ export function isPrivateOrReservedAudioAddress(address: string) {
     return true
 }
 
-export async function validatePublicAudioUrl(rawUrl: string) {
+async function validatePublicAudioUrl(rawUrl: string) {
     if (rawUrl.length > MAX_AUDIO_URL_LENGTH) {
         return { error: 'Audio URL is too long' }
     }

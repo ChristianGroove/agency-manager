@@ -14,7 +14,7 @@ import {
     normalizePortalPrimaryColor,
     normalizePublicPortalLogoUrl,
     resolvePortalBranding,
-} from './route'
+} from './branding-utils'
 
 describe('/api/og/portal branding sanitization', () => {
     it('keeps public HTTP image URLs on standard ports', () => {

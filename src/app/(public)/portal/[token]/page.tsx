@@ -18,6 +18,7 @@ import { RestoStaffPortal } from "@/modules/features/resto-orders/components/sta
 import { isPortalInvoicePayable } from "@/modules/features/portal/utils/invoice-payability"
 import { I18nProvider } from "@/modules/core/i18n/context"
 import { getDictionary, Locale } from "@/modules/core/i18n/dictionaries"
+import { toast } from "sonner"
 
 // ... existing imports
 
@@ -180,7 +181,7 @@ export default function PortalPage() {
             .reduce((acc, curr) => acc + Number(curr.total), 0)
 
         if (settings.min_payment_amount && totalAmount < settings.min_payment_amount) {
-            alert(`El monto mínimo para pagos en línea es de $${parseInt(settings.min_payment_amount).toLocaleString()}`)
+            toast.error(`El monto mínimo para pagos en línea es de $${parseInt(settings.min_payment_amount).toLocaleString()}`)
             return
         }
 
@@ -189,7 +190,10 @@ export default function PortalPage() {
             const response = await fetch('/api/wompi/signature', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invoiceIds })
+                body: JSON.stringify({ 
+                    invoiceIds,
+                    portalToken: (params?.token as string) || ''
+                })
             })
 
             if (!response.ok) {
@@ -213,7 +217,7 @@ export default function PortalPage() {
 
         } catch (error: any) {
             console.error('Payment error:', error)
-            alert(error.message || 'Error al iniciar el pago')
+            toast.error(error.message || 'Error al iniciar el pago')
             setIsProcessing(false)
         }
     }
@@ -356,6 +360,7 @@ export default function PortalPage() {
                     onWompiPay={handleWompiPay}
                     settings={settings}
                     invoiceIds={paymentInvoiceIds}
+                    isProcessing={isProcessing}
                 />
 
                 {/* Success Message Modal */}

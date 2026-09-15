@@ -46,7 +46,7 @@ function CatalogWorkspaceSkeleton() {
 export default async function PortfolioPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ tab?: string }> | { tab?: string }
+  searchParams?: Promise<{ tab?: string }>
 }) {
   // 1. Session verification
   const supabase = await createClient()

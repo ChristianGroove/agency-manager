@@ -34,7 +34,7 @@ function isPrivateOrReservedIPv4(parts: number[]) {
     )
 }
 
-export function isPrivateOrReservedAddress(address: string) {
+function isPrivateOrReservedAddress(address: string) {
     const normalized = address.toLowerCase().replace(/^\[|\]$/g, '')
 
     if (isIP(normalized) === 4) {
@@ -66,7 +66,7 @@ export function isPrivateOrReservedAddress(address: string) {
     return true
 }
 
-export function normalizeHostingCheckUrl(rawUrl: string) {
+function normalizeHostingCheckUrl(rawUrl: string) {
     const trimmedUrl = rawUrl.trim()
     const url = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
     return new URL(url)

@@ -86,7 +86,8 @@ export interface PortalThemeConfig {
 
 ### E. Banners Promocionales y Contexto Presencial (QR Mesa)
 - **Transparencia PNG**: `PortalPromoBanner` usa `bg-transparent`, respetando el canal alfa transparente de las imágenes PNG subidas.
-- **Banner de Mesa (`b2c-restaurant-layout.tsx`)**: Notificación traslúcida (`${effectivePrimaryColor}15`) para clientes escaneando QR de mesa con texto de alto contraste (`📍 Estás ordenando en Mesa #T1`).
+### F. Experiencia de Facturación y Pasarelas de Pago en el Portal
+- **Modal de Selección de Métodos de Pago (`payment-options-modal.tsx`)**: Estilizado con soporte definido para Modo Claro y Modo Oscuro (`dark:bg-zinc-950`), hero card con balance a liquidar formateado en COP, pasarela online Wompi con acreditación automática e información para transferencias bancarias con copiado rápido interactivo al portapapeles.
 
 ---
 
@@ -98,4 +99,5 @@ export interface PortalThemeConfig {
 | `src/modules/features/portal/theme/components/PortalThemeCustomizer.tsx` | Editor interactivo de personalización y previsualizador dinámico (`PreviewPhone`). |
 | `src/modules/features/portal/theme/components/ScheduleModal.tsx` | Modal de visualización completa de horarios semanales y doble jornada. |
 | `src/modules/features/portal/components/b2c-restaurant-template/b2c-restaurant-layout.tsx` | Layout público B2C del portal de restaurante con lógica de pedidos e hidratación. |
+| `src/modules/features/portal/components/modals/payment-options-modal.tsx` | Modal estilizado para selección de métodos de pago (Wompi y transferencias bancarias). |
 | `src/modules/core/branding/actions.ts` | Motor central de ADN de Marca y resolución de identidad corporativa. |
