@@ -52,17 +52,17 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                 </p>
             </CardHeader>
             <CardContent className="px-0">
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-white/10 shadow-sm overflow-hidden">
                     {/* Desktop Table */}
                     <div className="hidden md:block">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-500 font-medium border-b">
+                            <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 font-medium border-b border-zinc-200/80 dark:border-white/10">
                                 <tr>
                                     <th className="px-6 py-4 w-12">
                                         {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && (
                                             <input
                                                 type="checkbox"
-                                                className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
+                                                className="rounded border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
                                                 checked={payableInvoices.length > 0 && selectedInvoices.length === payableInvoices.length}
                                                 onChange={onToggleAll}
                                                 disabled={payableInvoices.length === 0}
@@ -77,7 +77,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     <th className="px-6 py-4 text-right">{t('portal.components.invoice_list.table.actions')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                 {displayInvoices.map((invoice, index) => {
                                     const status = getInvoiceStatus(invoice)
                                     const isExpanded = expandedInvoiceId === invoice.id
@@ -87,8 +87,8 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                         <Fragment key={invoice.id}>
                                             <tr
                                                 className={cn(
-                                                    "hover:bg-gray-50/50 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards cursor-pointer",
-                                                    isExpanded && "bg-gray-50/80"
+                                                    "hover:bg-gray-50/50 dark:hover:bg-zinc-800/40 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards cursor-pointer",
+                                                    isExpanded && "bg-gray-50/80 dark:bg-zinc-800/70"
                                                 )}
                                                 style={{ animationDelay: `${index * 50}ms` }}
                                                 onClick={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
@@ -97,14 +97,14 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                     {isPayable && !compact && paymentsEnabled && onToggle && (
                                                         <input
                                                             type="checkbox"
-                                                            className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
+                                                            className="rounded border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
                                                             checked={selectedInvoices.includes(invoice.id)}
                                                             onChange={() => onToggle(invoice.id)}
                                                             style={{ color: settings?.portal_primary_color }}
                                                         />
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 font-medium text-gray-900 group">
+                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white group">
                                                     <div className="flex items-center gap-2">
                                                         <div className={cn("transition-transform duration-200 text-gray-400", isExpanded && "rotate-90")}>
                                                             <ChevronRight className="h-4 w-4" />
@@ -112,33 +112,33 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                         <span>#{invoice.number}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4 text-gray-600 dark:text-zinc-400">{new Date(invoice.date).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4">
                                                     <Badge
                                                         variant="outline"
                                                         className={cn(
                                                             "w-24 justify-center border-0",
-                                                            status === 'paid' ? "text-green-600" :
-                                                                status === 'overdue' ? "text-red-600" : "text-gray-600"
+                                                            status === 'paid' ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30" :
+                                                                status === 'overdue' ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30" : "text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800"
                                                         )}
                                                     >
                                                         {status === 'paid' ? t('portal.components.invoice_list.status.paid') : status === 'overdue' ? t('portal.components.invoice_list.status.overdue') : t('portal.components.invoice_list.status.pending')}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">${invoice.total.toLocaleString()}</td>
                                                 <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                                     {token ? (
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="hover:bg-brand-pink/10 hover:text-brand-pink"
+                                                            className="hover:bg-brand-pink/10 hover:text-brand-pink text-gray-700 dark:text-zinc-300"
                                                             onClick={() => window.open(`/portal/${token}/invoice/${invoice.id}`, '_blank')}
                                                         >
                                                             <Printer className="h-4 w-4 mr-2" />
                                                             {t('portal.components.invoice_list.buttons.pdf')}
                                                         </Button>
                                                     ) : (
-                                                        <Button variant="ghost" size="sm" onClick={() => onView(invoice)}>
+                                                        <Button variant="ghost" size="sm" onClick={() => onView(invoice)} className="text-gray-700 dark:text-zinc-300">
                                                             {t('portal.components.invoice_list.buttons.view_detail')}
                                                         </Button>
                                                     )}
@@ -146,42 +146,42 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             </tr>
                                             {/* Expanded Detail Row */}
                                             {isExpanded && (
-                                                <tr className="bg-gray-50/50 animate-in fade-in zoom-in-95 duration-200">
+                                                <tr className="bg-gray-50/50 dark:bg-zinc-800/40 animate-in fade-in zoom-in-95 duration-200">
                                                     <td colSpan={6} className="px-6 pb-6 pt-0">
-                                                        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mt-2 ml-12">
+                                                        <div className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-100 dark:border-white/10 shadow-sm overflow-hidden mt-2 ml-12">
                                                             {/* Mini Header Details */}
-                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-gray-50 text-sm bg-gray-50/30">
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-gray-50 dark:border-white/5 text-sm bg-gray-50/30 dark:bg-zinc-800/50">
                                                                 <div>
-                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.emission')}</p>
-                                                                    <p className="font-medium flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {new Date(invoice.date).toLocaleDateString()}</p>
+                                                                    <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.emission')}</p>
+                                                                    <p className="font-medium text-gray-900 dark:text-zinc-100 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400 dark:text-zinc-500" /> {new Date(invoice.date).toLocaleDateString()}</p>
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.expiration')}</p>
-                                                                    <p className={cn("font-medium flex items-center gap-1.5", status === 'overdue' ? "text-red-600" : "text-gray-900")}>
+                                                                    <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.expiration')}</p>
+                                                                    <p className={cn("font-medium flex items-center gap-1.5", status === 'overdue' ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-zinc-100")}>
                                                                         {status === 'overdue' && <AlertTriangle className="h-3.5 w-3.5" />}
                                                                         {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
                                                                     </p>
                                                                 </div>
                                                                 <div className="col-span-2 text-right">
-                                                                    {(invoice as any).description && <p className="text-gray-500 italic text-xs">{(invoice as any).description}</p>}
+                                                                    {(invoice as any).description && <p className="text-gray-500 dark:text-zinc-400 italic text-xs">{(invoice as any).description}</p>}
                                                                 </div>
                                                             </div>
 
                                                             {/* Items List */}
-                                                            <div className="divide-y divide-gray-50">
+                                                            <div className="divide-y divide-gray-50 dark:divide-white/5">
                                                                 {invoice.items?.map((item: any, idx: number) => (
-                                                                    <div key={idx} className="flex justify-between items-center p-3 px-4 hover:bg-gray-50 transition-colors">
+                                                                    <div key={idx} className="flex justify-between items-center p-3 px-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-sm font-medium text-gray-700">{item.description}</span>
-                                                                            {item.quantity > 1 && <span className="text-xs text-gray-400">{t('portal.components.invoice_list.details.quantity')}: {item.quantity}</span>}
+                                                                            <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">{item.description}</span>
+                                                                            {item.quantity > 1 && <span className="text-xs text-gray-400 dark:text-zinc-500">{t('portal.components.invoice_list.details.quantity')}: {item.quantity}</span>}
                                                                         </div>
-                                                                        <span className="text-sm font-medium text-gray-900">${(item.price * item.quantity).toLocaleString()}</span>
+                                                                        <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">${(item.price * item.quantity).toLocaleString()}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                             {/* Total Footer */}
-                                                            <div className="bg-gray-50 p-3 px-4 flex justify-between items-center border-t border-gray-100">
-                                                                <span className="text-sm font-bold text-gray-600">{t('portal.components.invoice_list.details.total_invoice')}</span>
+                                                            <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 px-4 flex justify-between items-center border-t border-gray-100 dark:border-white/10">
+                                                                <span className="text-sm font-bold text-gray-600 dark:text-zinc-400">{t('portal.components.invoice_list.details.total_invoice')}</span>
                                                                 <span className="text-lg font-bold text-[var(--portal-primary)]" style={{ color: settings?.portal_primary_color }}>${invoice.total.toLocaleString()}</span>
                                                             </div>
                                                         </div>
@@ -196,16 +196,16 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                     </div>
 
                     {/* Mobile List */}
-                    <div className="md:hidden divide-y divide-gray-100">
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-white/10">
                         {/* Mobile Select All Header */}
                         {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && payableInvoices.length > 0 && (
                             <div
-                                className="p-4 bg-gray-50/50 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                className="p-4 bg-gray-50/50 dark:bg-zinc-800/50 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
                                 onClick={onToggleAll}
                             >
                                 <input
                                     type="checkbox"
-                                    className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
+                                    className="h-5 w-5 rounded border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
                                     checked={selectedInvoices.length === payableInvoices.length}
                                     onChange={(e) => {
                                         e.stopPropagation()
@@ -213,7 +213,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     }}
                                     style={{ color: settings?.portal_primary_color }}
                                 />
-                                <span className="text-sm font-medium text-gray-600">
+                                <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">
                                     {selectedInvoices.length === payableInvoices.length ? "Desmarcar todos" : "Seleccionar todos"}
                                 </span>
                             </div>
@@ -228,7 +228,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     <div
                                         className={cn(
                                             "p-4 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards cursor-pointer",
-                                            isExpanded && "bg-gray-50"
+                                            isExpanded ? "bg-gray-50 dark:bg-zinc-800/60" : "hover:bg-gray-50/50 dark:hover:bg-zinc-800/30"
                                         )}
                                         style={{ animationDelay: `${index * 50}ms` }}
                                         onClick={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
@@ -240,7 +240,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
+                                                    className="h-5 w-5 rounded border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
                                                     checked={selectedInvoices.includes(invoice.id)}
                                                     onChange={() => onToggle(invoice.id)}
                                                     style={{ color: settings.portal_primary_color }}
@@ -249,7 +249,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                         )}
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
-                                                <span className="text-sm font-bold text-gray-900 flex items-center gap-1">
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1">
                                                     #{invoice.number}
                                                     {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
                                                 </span>
@@ -257,17 +257,17 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                     variant="outline"
                                                     className={cn(
                                                         "w-20 justify-center border-0 text-[10px] h-5 px-1",
-                                                        status === 'paid' ? "text-green-600" :
-                                                            status === 'overdue' ? "text-red-600" : "text-gray-600"
+                                                        status === 'paid' ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30" :
+                                                            status === 'overdue' ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30" : "text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800"
                                                     )}
                                                 >
                                                     {status === 'paid' ? t('portal.components.invoice_list.status.paid') : status === 'overdue' ? t('portal.components.invoice_list.status.overdue') : t('portal.components.invoice_list.status.pending')}
                                                 </Badge>
                                             </div>
                                             <div className="flex justify-between items-end">
-                                                <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
+                                                <span className="text-xs text-gray-500 dark:text-zinc-400">{new Date(invoice.date).toLocaleDateString()}</span>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-sm font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">${invoice.total.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -275,15 +275,15 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
 
                                     {/* Mobile Expanded */}
                                     {isExpanded && (
-                                        <div className="bg-gray-50 p-4 border-b border-gray-100 animate-in slide-in-from-top-2">
-                                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                                        <div className="bg-gray-50 dark:bg-zinc-800/40 p-4 border-b border-gray-100 dark:border-white/10 animate-in slide-in-from-top-2">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
                                                 {/* Actions Row Mobile */}
-                                                <div className="p-3 bg-gray-50 border-b border-gray-100 flex justify-end">
+                                                <div className="p-3 bg-gray-50 dark:bg-zinc-800/50 border-b border-gray-100 dark:border-white/10 flex justify-end">
                                                     {token && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="w-full"
+                                                            className="w-full dark:border-white/10 dark:text-zinc-200 dark:hover:bg-zinc-800"
                                                             onClick={() => window.open(`/portal/${token}/invoice/${invoice.id}`, '_blank')}
                                                         >
                                                             <Printer className="h-4 w-4 mr-2" />
@@ -292,11 +292,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                     )}
                                                 </div>
 
-                                                <div className="divide-y divide-gray-50">
+                                                <div className="divide-y divide-gray-50 dark:divide-white/5">
                                                     {invoice.items?.map((item: any, idx: number) => (
-                                                        <div key={idx} className="p-3 flex justify-between text-sm">
+                                                        <div key={idx} className="p-3 flex justify-between text-sm text-gray-700 dark:text-zinc-300">
                                                             <span>{item.description} {item.quantity > 1 && `(x${item.quantity})`}</span>
-                                                            <span className="font-semibold">${(item.price * item.quantity).toLocaleString()}</span>
+                                                            <span className="font-semibold text-gray-900 dark:text-white">${(item.price * item.quantity).toLocaleString()}</span>
                                                         </div>
                                                     ))}
                                                 </div>

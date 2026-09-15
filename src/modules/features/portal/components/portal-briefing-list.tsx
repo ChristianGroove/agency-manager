@@ -39,7 +39,7 @@ export function PortalBriefingList({ briefings, onView }: PortalBriefingListProp
                 {briefings.map((briefing, index) => (
                     <div
                         key={briefing.id}
-                        className="group relative flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards"
+                        className="group relative flex flex-col justify-between rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-sm transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards"
                         style={{ animationDelay: `${index * 100}ms` }}
                     >
                         <div>
@@ -49,17 +49,17 @@ export function PortalBriefingList({ briefings, onView }: PortalBriefingListProp
                                 </div>
                                 {getStatusBadge(briefing.status)}
                             </div>
-                            <h3 className="font-semibold text-gray-900 mb-1">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                                 {briefing.template?.name || "Briefing sin nombre"}
                             </h3>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-zinc-400">
                                 {new Date(briefing.created_at).toLocaleDateString()}
                             </p>
                         </div>
 
                         <div className="mt-6">
                             {briefing.status === 'submitted' ? (
-                                <Button variant="outline" className="w-full" disabled>
+                                <Button variant="outline" className="w-full dark:border-white/10 dark:text-zinc-400" disabled>
                                     <CheckCircle2 className="mr-2 h-4 w-4" />
                                     Enviado
                                 </Button>

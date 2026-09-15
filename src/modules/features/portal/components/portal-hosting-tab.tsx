@@ -19,12 +19,12 @@ export function PortalHostingTab({ hostingAccounts }: PortalHostingTabProps) {
     const { t } = useTranslation()
     if (!hostingAccounts || hostingAccounts.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border border-dashed border-gray-200">
-                <div className="bg-gray-50 p-4 rounded-full mb-4">
-                    <Server className="h-8 w-8 text-indigo-200" />
+            <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-gray-200 dark:border-white/10">
+                <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-full mb-4">
+                    <Server className="h-8 w-8 text-indigo-400 dark:text-indigo-300" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">{t('portal.hosting_tab.empty_title')}</h3>
-                <p className="text-gray-500 max-w-sm">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">{t('portal.hosting_tab.empty_title')}</h3>
+                <p className="text-gray-500 dark:text-zinc-400 max-w-sm">
                     {t('portal.hosting_tab.empty_desc')}
                 </p>
             </div>
@@ -86,34 +86,34 @@ function HostingAccountCard({ account }: { account: any }) {
     }
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-all group">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm overflow-hidden hover:shadow-md transition-all group">
             {/* Header */}
-            <div className="bg-gray-50/50 p-4 border-b border-gray-100 flex justify-between items-start">
+            <div className="bg-gray-50/50 dark:bg-zinc-800/50 p-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-start">
                 <div>
-                    <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                        <a href={`https://${account.domain_url}`} target="_blank" rel="noreferrer" className="hover:text-indigo-600 hover:underline flex items-center gap-1">
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                        <a href={`https://${account.domain_url}`} target="_blank" rel="noreferrer" className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline flex items-center gap-1">
                             {account.domain_url}
-                            <ExternalLink className="h-3 w-3 text-gray-400" />
+                            <ExternalLink className="h-3 w-3 text-gray-400 dark:text-zinc-500" />
                         </a>
                     </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{account.provider_name} • {account.plan_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{account.provider_name} • {account.plan_name}</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     <Badge variant="outline" className={cn(
-                        "bg-white",
-                        account.status === 'active' ? "text-emerald-700 border-emerald-200 bg-emerald-50" : "text-gray-600"
+                        "bg-white dark:bg-zinc-800",
+                        account.status === 'active' ? "text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40" : "text-gray-600 dark:text-zinc-400"
                     )}>
                         {account.status === 'active' ? t('portal.hosting_tab.status.active') : account.status}
                     </Badge>
                     {/* Ping Status */}
                     {status === 'online' && (
-                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Online {ping}ms
                         </div>
                     )}
                     {status === 'offline' && (
-                        <div className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
+                        <div className="flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium">
                             <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                             Offline
                         </div>
@@ -126,26 +126,26 @@ function HostingAccountCard({ account }: { account: any }) {
 
                 {/* Tech Details Grid */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-gray-50 rounded-lg p-2.5">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-lg p-2.5">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-zinc-400 mb-1">
                             <Server className="h-3.5 w-3.5" />
                             <span className="text-xs font-medium uppercase">{t('portal.hosting_tab.tech_details.server_ip')}</span>
                         </div>
-                        <div className="font-mono text-gray-900 flex items-center justify-between">
+                        <div className="font-mono text-gray-900 dark:text-white flex items-center justify-between">
                             {account.server_ip || '---'}
                             {account.server_ip && (
-                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyToClipboard(account.server_ip, 'IP')}>
-                                    <Copy className="h-3 w-3 text-gray-400" />
+                                <Button variant="ghost" size="icon" className="h-5 w-5 hover:bg-gray-200 dark:hover:bg-zinc-700" onClick={() => copyToClipboard(account.server_ip, 'IP')}>
+                                    <Copy className="h-3 w-3 text-gray-400 dark:text-zinc-400" />
                                 </Button>
                             )}
                         </div>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-2.5">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-lg p-2.5">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-zinc-400 mb-1">
                             <Terminal className="h-3.5 w-3.5" />
                             <span className="text-xs font-medium uppercase">{t('portal.hosting_tab.tech_details.ftp_port')}</span>
                         </div>
-                        <div className="font-mono text-gray-900">
+                        <div className="font-mono text-gray-900 dark:text-white">
                             21 / 22 (SFTP)
                         </div>
                     </div>
@@ -153,16 +153,16 @@ function HostingAccountCard({ account }: { account: any }) {
 
                 {/* Credentials Section */}
                 {(account.cpanel_user || account.cpanel_password) && (
-                    <div className="border border-indigo-100 bg-indigo-50/30 rounded-lg p-3">
+                    <div className="border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-indigo-900 font-medium text-sm">
+                            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-medium text-sm">
                                 <Lock className="h-3.5 w-3.5" />
                                 {t('portal.hosting_tab.tech_details.access_title')}
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                className="h-6 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/40"
                                 onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? <><EyeOff className="h-3 w-3 mr-1" /> {t('portal.hosting_tab.tech_details.hide')}</> : <><Eye className="h-3 w-3 mr-1" /> {t('portal.hosting_tab.tech_details.show')}</>}
@@ -172,11 +172,11 @@ function HostingAccountCard({ account }: { account: any }) {
                         <div className="space-y-2">
                             {/* User */}
                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500 text-xs w-16">{t('portal.hosting_tab.tech_details.user')}:</span>
-                                <div className="flex-1 flex items-center justify-between bg-white px-2 py-1 rounded border border-indigo-100">
-                                    <span className="font-mono text-gray-700 truncate">{account.cpanel_user || '---'}</span>
+                                <span className="text-gray-500 dark:text-zinc-400 text-xs w-16">{t('portal.hosting_tab.tech_details.user')}:</span>
+                                <div className="flex-1 flex items-center justify-between bg-white dark:bg-zinc-800 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-900/30">
+                                    <span className="font-mono text-gray-700 dark:text-zinc-200 truncate">{account.cpanel_user || '---'}</span>
                                     <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(account.cpanel_user, t('portal.hosting_tab.tech_details.user'))}>
-                                        <Copy className="h-2.5 w-2.5 text-gray-400" />
+                                        <Copy className="h-2.5 w-2.5 text-gray-400 dark:text-zinc-400" />
                                     </Button>
                                 </div>
                             </div>
@@ -184,11 +184,11 @@ function HostingAccountCard({ account }: { account: any }) {
                             {/* Password */}
                             {showPassword && (
                                 <div className="flex items-center justify-between text-sm animate-in fade-in zoom-in-95">
-                                    <span className="text-gray-500 text-xs w-16">{t('portal.hosting_tab.tech_details.pass')}:</span>
-                                    <div className="flex-1 flex items-center justify-between bg-white px-2 py-1 rounded border border-indigo-100">
-                                        <span className="font-mono text-gray-700 truncate">{account.cpanel_password || '---'}</span>
+                                    <span className="text-gray-500 dark:text-zinc-400 text-xs w-16">{t('portal.hosting_tab.tech_details.pass')}:</span>
+                                    <div className="flex-1 flex items-center justify-between bg-white dark:bg-zinc-800 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-900/30">
+                                        <span className="font-mono text-gray-700 dark:text-zinc-200 truncate">{account.cpanel_password || '---'}</span>
                                         <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => copyToClipboard(account.cpanel_password, 'Password')}>
-                                            <Copy className="h-2.5 w-2.5 text-gray-400" />
+                                            <Copy className="h-2.5 w-2.5 text-gray-400 dark:text-zinc-400" />
                                         </Button>
                                     </div>
                                 </div>
@@ -199,11 +199,11 @@ function HostingAccountCard({ account }: { account: any }) {
             </div>
 
             {/* Actions Footer */}
-            <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t border-gray-100">
-                <div className="text-xs text-gray-400">
+            <div className="bg-gray-50 dark:bg-zinc-800/50 px-4 py-3 flex justify-between items-center border-t border-gray-100 dark:border-white/10">
+                <div className="text-xs text-gray-400 dark:text-zinc-500">
                     {t('portal.hosting_tab.tech_details.renew_date').replace('{date}', account.renewal_date ? new Date(account.renewal_date).toLocaleDateString() : 'N/A')}
                 </div>
-                <Button variant="outline" size="sm" onClick={checkStatus} disabled={isChecking} className="bg-white hover:bg-gray-50 text-indigo-600 border-indigo-200">
+                <Button variant="outline" size="sm" onClick={checkStatus} disabled={isChecking} className="bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60">
                     {isChecking ? t('portal.hosting_tab.status.checking') : <><Globe className="h-3.5 w-3.5 mr-1.5" /> {t('portal.hosting_tab.tech_details.ping_test')}</>}
                 </Button>
             </div>

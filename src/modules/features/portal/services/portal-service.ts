@@ -136,7 +136,9 @@ export async function getPortalData(token: string) {
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
-                portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
+                main_logo_url: (rawSettings as any)?.main_logo_url || branding.logos.main,
+                main_logo_light_url: (rawSettings as any)?.main_logo_light_url || branding.logos.main_light || branding.logos.main,
+                portal_logo_url: branding.logos.portal || branding.logos.main_light || branding.logos.main,
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
                 portal_primary_color: themeConfig.primary_color,
@@ -418,7 +420,9 @@ export async function getPortalData(token: string) {
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
-                portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
+                main_logo_url: (rawSettings as any)?.main_logo_url || branding.logos.main,
+                main_logo_light_url: (rawSettings as any)?.main_logo_light_url || branding.logos.main_light || branding.logos.main,
+                portal_logo_url: branding.logos.portal || branding.logos.main_light || branding.logos.main,
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
                 portal_primary_color: branding.colors.primary,

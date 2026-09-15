@@ -17,11 +17,11 @@ export function PortalHeader({ title, subtitle, className, centered = true }: Po
             centered && "text-center",
             className
         )}>
-            <h1 className="text-[1.65rem] md:text-3xl font-bold text-gray-900 leading-tight px-4 md:px-0 break-normal overflow-hidden">
+            <h1 className="text-[1.65rem] md:text-3xl font-bold text-gray-900 dark:text-white leading-tight px-4 md:px-0 break-normal overflow-hidden">
                 <SplitText>{title}</SplitText>
             </h1>
             {subtitle && (
-                <p className="text-gray-500 max-w-2xl mx-auto">
+                <p className="text-gray-500 dark:text-zinc-400 max-w-2xl mx-auto">
                     {subtitle}
                 </p>
             )}

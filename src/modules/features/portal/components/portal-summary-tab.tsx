@@ -66,26 +66,26 @@ export function PortalSummaryTab({ client, invoices = [], quotes = [], briefings
             {/* Priority Actions Card */}
             {
                 hasPending ? (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 overflow-hidden">
                         <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-8">
                             <div className="w-48 h-48 shrink-0 relative">
                                 <PendingTasksAnimation />
                             </div>
                             <div className="text-center md:text-left space-y-4 flex-1">
-                                <h3 className="text-xl font-bold text-gray-900">{t('portal.summary.pending_tasks_title')}</h3>
-                                <p className="text-gray-600">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t('portal.summary.pending_tasks_title')}</h3>
+                                <p className="text-gray-600 dark:text-zinc-400">
                                     {pendingInvoices.length > 0 && t('portal.summary.pending_docs').replace('{count}', pendingInvoices.length.toString()) + ' '}
                                     {openQuotes.length > 0 && t('portal.summary.pending_quotes').replace('{count}', openQuotes.length.toString()) + ' '}
                                     {pendingBriefings.length > 0 && t('portal.summary.pending_briefings').replace('{count}', pendingBriefings.length.toString())}
                                 </p>
                                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                                     {openQuotes.map(quote => (
-                                        <Button key={quote.id} onClick={() => onViewQuote(quote)} className="rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">
+                                        <Button key={quote.id} onClick={() => onViewQuote(quote)} className="rounded-full bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 border-0">
                                             <FileText className="h-4 w-4 mr-2" /> {t('portal.summary.buttons.view_quote')}
                                         </Button>
                                     ))}
                                     {pendingBriefings.map(briefing => (
-                                        <Button key={briefing.id} onClick={() => onViewBriefing(briefing.id)} className="rounded-full bg-brand-pink/10 text-brand-pink hover:bg-brand-pink/20 border-0">
+                                        <Button key={briefing.id} onClick={() => onViewBriefing(briefing.id)} className="rounded-full bg-brand-pink/10 dark:bg-brand-pink/20 text-brand-pink hover:bg-brand-pink/20 dark:hover:bg-brand-pink/30 border-0">
                                             <MessageSquare className="h-4 w-4 mr-2" /> {t('portal.summary.buttons.answer_briefing')}
                                         </Button>
                                     ))}
@@ -94,23 +94,23 @@ export function PortalSummaryTab({ client, invoices = [], quotes = [], briefings
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center text-center">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 p-8 flex flex-col items-center text-center">
                         <div className="w-48 h-48">
                             <EmptyStateAnimation />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mt-4">{t('portal.summary.all_clear_title')}</h3>
-                        <p className="text-gray-500 mt-2">{t('portal.summary.all_clear_desc')}</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-4">{t('portal.summary.all_clear_title')}</h3>
+                        <p className="text-gray-500 dark:text-zinc-400 mt-2">{t('portal.summary.all_clear_desc')}</p>
                     </div>
                 )
             }
 
             {/* Timeline Preview */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold mb-4 text-center">{t('portal.summary.recent_activity')}</h3>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 p-6">
+                <h3 className="text-lg font-bold mb-4 text-center text-gray-900 dark:text-white">{t('portal.summary.recent_activity')}</h3>
                 {events && events.length > 0 ? (
                     <PortalTimeline events={events.slice(0, 5)} />
                 ) : (
-                    <p className="text-gray-400 text-sm text-center py-4">{t('portal.summary.no_activity')}</p>
+                    <p className="text-gray-400 dark:text-zinc-500 text-sm text-center py-4">{t('portal.summary.no_activity')}</p>
                 )}
             </div>
         </div >

@@ -76,11 +76,11 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
 
             {/* Sticky Bottom Payment Bar (Scoped to this Tab) */}
             {selectedInvoices.length > 0 && paymentsEnabled && (
-                <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 bg-white border-t p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-40 animate-in slide-in-from-bottom">
+                <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-zinc-200/80 dark:border-white/10 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40 animate-in slide-in-from-bottom">
                     <div className="max-w-4xl mx-auto flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">{t('portal.billing_tab.total_selected').replace('{count}', selectedInvoices.length.toString())}</p>
-                            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
+                            <p className="text-sm text-gray-500 dark:text-zinc-400">{t('portal.billing_tab.total_selected').replace('{count}', selectedInvoices.length.toString())}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalSelected)}</p>
                         </div>
                         <Button
                             size="lg"

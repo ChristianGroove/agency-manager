@@ -5,12 +5,11 @@ import { ServiceCatalogItem } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle } from "lucide-react"
+import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getPortalCatalog } from "@/modules/features/portal/services/portal-service"
 import { registerServiceInterest } from "@/modules/features/portal/services/business-service"
-import { CatalogItemFlipCard } from "./catalog-item-flip-card"
 import { ProductDetailModal } from "./product-detail-modal"
 import { PortalHeader } from "./portal-header"
 import { motion } from "framer-motion"
@@ -133,21 +132,21 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
             />
 
             {/* Filters */}
-            <div className="flex flex-col gap-4 mb-8 sticky top-0 z-20 bg-gray-50/80 backdrop-blur-md p-4 rounded-xl border border-gray-100">
+            <div className="flex flex-col gap-4 mb-8 sticky top-0 z-20 bg-gray-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 dark:border-white/5">
                 <div className="relative w-full max-w-md mx-auto">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-gray-400 dark:text-zinc-500" />
                     <Input
                         placeholder={t('portal.catalog_tab.search_placeholder')}
-                        className="pl-9 bg-white border-gray-200 rounded-full h-11"
+                        className="pl-10 bg-white dark:bg-zinc-900 border-gray-200 dark:border-white/10 text-gray-900 dark:text-white rounded-full h-11 shadow-xs"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
 
-                <div className="w-full overflow-hidden relative group cursor-grab active:cursor-grabbing py-2" ref={containerRef}>
+                <div className="w-full overflow-hidden relative group cursor-grab active:cursor-grabbing py-1" ref={containerRef}>
                     <motion.div
                         ref={contentRef}
-                        className="flex gap-2 w-max px-4"
+                        className="flex gap-2 w-max px-2"
                         drag="x"
                         dragConstraints={dragConstraints}
                         dragElastic={0.1}
@@ -156,10 +155,10 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                             variant={selectedCategory === "all" ? "default" : "outline"}
                             onClick={() => setSelectedCategory("all")}
                             className={cn(
-                                "rounded-full whitespace-nowrap px-6 transition-all duration-200",
+                                "rounded-full whitespace-nowrap px-5 h-9 text-xs transition-all duration-200",
                                 selectedCategory === "all"
-                                    ? "bg-white text-gray-900 shadow-md ring-2 ring-gray-900 border-transparent font-medium hover:bg-white hover:text-gray-900 hover:ring-2 hover:ring-gray-900"
-                                    : "bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-gray-200 shadow-sm"
+                                    ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md border-transparent font-semibold"
+                                    : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 border-gray-200 dark:border-white/10"
                             )}
                         >
                             {t('portal.catalog_tab.filter_all')}
@@ -170,10 +169,10 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                                 variant={selectedCategory === cat ? "default" : "outline"}
                                 onClick={() => setSelectedCategory(cat)}
                                 className={cn(
-                                    "rounded-full whitespace-nowrap capitalize px-6 transition-all duration-200",
+                                    "rounded-full whitespace-nowrap capitalize px-5 h-9 text-xs transition-all duration-200",
                                     selectedCategory === cat
-                                        ? "bg-white text-gray-900 shadow-md ring-2 ring-gray-900 border-transparent font-medium hover:bg-white hover:text-gray-900 hover:ring-2 hover:ring-gray-900"
-                                        : "bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-gray-200 shadow-sm"
+                                        ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md border-transparent font-semibold"
+                                        : "bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 border-gray-200 dark:border-white/10"
                                 )}
                             >
                                 {cat}
@@ -183,23 +182,111 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                 </div>
             </div>
 
-            {/* Catalog Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredItems.map(item => {
-                    const isRequested = requestedItems.includes(item.id)
-                    return (
-                        <CatalogItemFlipCard
-                            key={item.id}
-                            item={item}
-                            variant="portal"
-                            isRequested={isRequested}
-                            onRequestInterest={handleRequestInterest}
-                            onViewDetail={handleOpenDetail}
-                            settings={settings}
-                        />
-                    )
-                })}
-            </div>
+            {/* Catalog Grid (Estilo Tienda Oficial) */}
+            {filteredItems.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-white/10 p-8">
+                    <Search className="w-10 h-10 mx-auto mb-3 opacity-40 text-muted-foreground" />
+                    <p className="text-sm font-medium">No se encontraron servicios disponibles en esta categoría.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredItems.map(item => {
+                        const isRequested = requestedItems.includes(item.id)
+                        const gallery = (item as any).gallery_images || (item.image_url ? [item.image_url] : [])
+                        const coverImg = item.image_url || (gallery.length > 0 ? (typeof gallery[0] === 'string' ? gallery[0] : gallery[0]?.url) : "/placeholder-service.jpg")
+
+                        return (
+                            <div
+                                key={item.id}
+                                onClick={() => handleOpenDetail(item)}
+                                className="group flex flex-col rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900/90 overflow-hidden shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                            >
+                                {/* Photo Container */}
+                                <div className="relative aspect-[16/10] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    {coverImg ? (
+                                        <img
+                                            src={coverImg}
+                                            alt={item.name}
+                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-brand-pink/15 via-purple-500/10 to-indigo-500/10 dark:from-brand-pink/20 dark:via-purple-950/40 dark:to-zinc-900 flex items-center justify-center">
+                                            <Sparkles className="w-8 h-8 text-primary/40" />
+                                        </div>
+                                    )}
+
+                                    {/* Category Pill */}
+                                    {item.category && (
+                                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/15 text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                                            {item.category}
+                                        </div>
+                                    )}
+
+                                    {/* Requested Badge */}
+                                    {isRequested && (
+                                        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            <span>Consultado</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Card Body */}
+                                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                                    <div className="space-y-1.5">
+                                        <h3 className="font-extrabold text-base leading-snug line-clamp-2 text-zinc-900 dark:text-white group-hover:text-primary transition-colors">
+                                            {item.name}
+                                        </h3>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                                            {item.description || (item.metadata?.portal_card?.detailed_description) || "Servicio profesional diseñado a medida para tu empresa."}
+                                        </p>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-zinc-100 dark:border-white/10 flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <span className="text-[10px] uppercase font-semibold text-zinc-400 dark:text-zinc-500 block">
+                                                {item.price_label_type === 'from' ? 'Desde' : 'Inversión'}
+                                            </span>
+                                            <span className="text-base font-extrabold text-zinc-900 dark:text-white truncate block">
+                                                {formatPrice(item.base_price)}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 rounded-xl text-xs font-semibold gap-1 border-zinc-200 dark:border-white/10 hover:border-primary/50 text-zinc-700 dark:text-zinc-300 hover:text-primary transition-all"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleOpenDetail(item)
+                                                }}
+                                            >
+                                                <span>Detalles</span>
+                                                <ArrowRight className="h-3 w-3" />
+                                            </Button>
+
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                                title="Consultar por WhatsApp"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleRequestInterest(item)
+                                                }}
+                                            >
+                                                <MessageCircle className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
 
             {/* Interactive Product Detail Modal */}
             <ProductDetailModal
