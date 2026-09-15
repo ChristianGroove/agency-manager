@@ -348,27 +348,26 @@ export function TaskKanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {/* Columns Container: Smooth horizontal track on mobile/tablet, full 5-column grid on desktop */}
-      <div className="flex xl:grid xl:grid-cols-5 gap-4 overflow-x-auto pb-4 scrollbar-thin snap-x snap-mandatory">
-        {COLUMNS.map((col) => {
-          const columnTasks = tasks.filter((t) => t.status === col.id)
-          const totalEstimated = columnTasks.reduce(
-            (acc, curr) => acc + Number(curr.estimated_hours || 0),
-            0
-          )
+      {/* Kanban Rail: Continuous horizontal track with horizontal scroll just like CRM Pipeline */}
+      <div className="w-full overflow-x-auto scrollbar-modern pb-4">
+        <div className="flex flex-nowrap gap-4 items-stretch min-w-max">
+          {COLUMNS.map((col) => {
+            const columnTasks = tasks.filter((t) => t.status === col.id)
+            const totalEstimated = columnTasks.reduce(
+              (acc, curr) => acc + Number(curr.estimated_hours || 0),
+              0
+            )
 
-          return (
-            <SortableContext
-              key={col.id}
-              id={col.id}
-              items={columnTasks.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div
-                className={cn(
-                  "flex flex-col rounded-3xl border border-zinc-200/80 dark:border-white/10 p-3.5 min-w-[290px] xl:min-w-0 flex-1 bg-card shadow-sm snap-center"
-                )}
+            return (
+              <SortableContext
+                key={col.id}
+                id={col.id}
+                items={columnTasks.map((t) => t.id)}
+                strategy={verticalListSortingStrategy}
               >
+                <div
+                  className="flex flex-col shrink-0 w-[300px] sm:w-[320px] rounded-3xl border border-zinc-200/80 dark:border-white/10 p-3.5 bg-card shadow-sm"
+                >
                 {/* Column Header */}
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-100 dark:border-white/5">
                   <div className="flex items-center gap-2">
@@ -433,6 +432,7 @@ export function TaskKanbanBoard({
             </SortableContext>
           )
         })}
+        </div>
       </div>
 
       {/* Drag Overlay for smooth dragging preview */}

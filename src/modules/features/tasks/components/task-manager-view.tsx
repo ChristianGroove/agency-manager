@@ -234,49 +234,132 @@ export function TaskManagerView({
         </div>
       </div>
 
-      {/* Quick Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-2 rounded-3xl bg-card border border-zinc-200/80 dark:border-white/10 shadow-sm">
-        <div className="p-3 text-center rounded-2xl bg-zinc-50/70 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-            Tareas Totales
-          </span>
-          <span className="text-lg font-extrabold text-foreground font-mono">
-            {totalCount}
-          </span>
+      {/* Quick Summary Insights Deck - Only visible in Kanban and List tabs */}
+      {(activeTab === "kanban" || activeTab === "list") && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* Card 1: Total */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-gradient-to-br from-zinc-50/80 via-card to-card dark:from-white/5 relative overflow-hidden group shadow-xs hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Tareas Totales
+              </span>
+              <div className="p-1.5 rounded-xl bg-zinc-100 dark:bg-white/10 text-muted-foreground">
+                <Layers className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-foreground font-mono tracking-tight">
+                {totalCount}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                registradas
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1 font-medium truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
+              <span>Sprint & Backlog activo</span>
+            </p>
+          </div>
+
+          {/* Card 2: En Progreso */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/10 via-card to-card dark:from-indigo-500/15 relative overflow-hidden group shadow-xs shadow-indigo-500/5 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                En Progreso
+              </span>
+              <div className="p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-tight">
+                {inProgressCount}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                en curso
+              </span>
+            </div>
+            <p className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 mt-1.5 flex items-center gap-1 font-medium truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 animate-pulse" />
+              <span>Desarrollo activo</span>
+            </p>
+          </div>
+
+          {/* Card 3: Revisión / QA */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-card to-card dark:from-amber-500/15 relative overflow-hidden group shadow-xs shadow-amber-500/5 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Revisión / QA
+              </span>
+              <div className="p-1.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <ShieldCheck className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
+                {inQaCount}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                por validar
+              </span>
+            </div>
+            <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1.5 flex items-center gap-1 font-medium truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>Cola de test y entregables</span>
+            </p>
+          </div>
+
+          {/* Card 4: Completadas */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-card to-card dark:from-emerald-500/15 relative overflow-hidden group shadow-xs shadow-emerald-500/5 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Completadas
+              </span>
+              <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                {completedCount}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                aprobadas
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1 font-medium truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span>Entregadas al 100%</span>
+            </p>
+          </div>
+
+          {/* Card 5: Tasa de Entrega */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card dark:from-primary/15 relative overflow-hidden group shadow-xs shadow-primary/5 hover:shadow-md transition-all col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                Tasa de Entrega
+              </span>
+              <div className="p-1.5 rounded-xl bg-primary/15 text-primary">
+                <TrendingUp className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black text-primary font-mono tracking-tight">
+                {completionRate}%
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                éxito
+              </span>
+            </div>
+            <div className="mt-2.5 w-full bg-zinc-200/70 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${completionRate}%` }}
+              />
+            </div>
+          </div>
         </div>
-        <div className="p-3 text-center rounded-2xl bg-indigo-500/10 border border-indigo-500/10">
-          <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
-            En Progreso
-          </span>
-          <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">
-            {inProgressCount}
-          </span>
-        </div>
-        <div className="p-3 text-center rounded-2xl bg-amber-500/10 border border-amber-500/10">
-          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
-            Revisión / QA
-          </span>
-          <span className="text-lg font-extrabold text-amber-600 dark:text-amber-400 font-mono">
-            {inQaCount}
-          </span>
-        </div>
-        <div className="p-3 text-center rounded-2xl bg-emerald-500/10 border border-emerald-500/10">
-          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-            Completadas
-          </span>
-          <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-            {completedCount}
-          </span>
-        </div>
-        <div className="p-3 text-center rounded-2xl bg-primary/10 border border-primary/15 col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider block">
-            Tasa de Entrega
-          </span>
-          <span className="text-lg font-extrabold text-primary font-mono">
-            {completionRate}%
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* Unified SearchFilterBar & Actions Row - Only for Kanban and List views */}
       {(activeTab === "kanban" || activeTab === "list") && (

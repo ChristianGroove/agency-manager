@@ -12,7 +12,8 @@ import type {
   TaskMetrics,
   TaskStatus,
   CollaboratorRole,
-  TaskChecklistItem
+  TaskChecklistItem,
+  TaskAttachment
 } from "../types";
 import { normalizeTask, parseTaskChecklist } from "../types";
 
@@ -752,6 +753,85 @@ export async function uploadCollaboratorAvatar(
     return { success: false, error: err.message || "Error al subir imagen" };
   }
 }
+
+/**
+ * Upload Task Attachment to Storage
+ */
+export async function uploadTaskAttachment(
+  formData: FormData
+): Promise<{ success: boolean; attachment?: TaskAttachment; error?: string }> {
+  try {
+    const file = formData.get("file") as File;
+    if (!file) return { success: false, error: "No se ha seleccionado ningún archivo" };
+
+    const orgId = await resolveOrgId();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `tasks/${orgId}/${Date.now()}_${sanitizedName}`;
+
+    const candidateBuckets = ["public-assets", "branding", "catalog", "public_assets"];
+    let publicUrl: string | null = null;
+    let lastError: any = null;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    for (const bucket of candidateBuckets) {
+      try {
+        const { error: uploadErr } = await supabaseAdmin.storage
+          .from(bucket)
+          .upload(filePath, buffer, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true
+          });
+
+        if (!uploadErr) {
+          const { data: urlData } = supabaseAdmin.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+          publicUrl = urlData?.publicUrl || null;
+          break;
+        } else {
+          lastError = uploadErr;
+        }
+      } catch (bErr) {
+        lastError = bErr;
+      }
+    }
+
+    if (!publicUrl) {
+      throw lastError || new Error("Error al guardar archivo en almacenamiento.");
+    }
+
+    let attType = "file";
+    const mime = file.type || "";
+    if (mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name)) {
+      attType = "image";
+    } else if (mime.includes("pdf") || /\.pdf$/i.test(file.name)) {
+      attType = "pdf";
+    } else if (mime.includes("sheet") || mime.includes("excel") || /\.(xlsx?|csv)$/i.test(file.name)) {
+      attType = "sheet";
+    } else if (mime.includes("word") || /\.(docx?|txt|md)$/i.test(file.name)) {
+      attType = "doc";
+    } else if (/\.(zip|rar|7z|tar\.gz)$/i.test(file.name)) {
+      attType = "archive";
+    }
+
+    const attachment: TaskAttachment = {
+      id: `att-${Date.now()}`,
+      name: file.name,
+      url: publicUrl,
+      size: file.size,
+      type: attType,
+      created_at: new Date().toISOString(),
+    };
+
+    return { success: true, attachment };
+  } catch (err: any) {
+    console.error("Error uploading task attachment:", err);
+    return { success: false, error: err.message || "Error al subir archivo" };
+  }
+}
+
 
 /**
  * Create a new collaborator in organization_staff
