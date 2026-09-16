@@ -12,11 +12,6 @@ export const SYSTEM_INTENTS = {
     SEND_PAYMENT_REMINDER: 'send_payment_reminder',
     LIST_PENDING_PAYMENTS: 'list_pending_payments',
     CREATE_CLIENT_NOTE: 'create_client_note',
-    PAUSE_FLOW: 'pause_flow',
-    ACTIVATE_FLOW: 'activate_flow',
-    RUN_FLOW_ONCE: 'run_flow_once',
-    LIST_ACTIVE_FLOWS: 'list_active_flows',
-    CREATE_FLOW_FROM_TEMPLATE: 'create_flow_from_template',
     LIST_PENDING_ACTIONS: 'list_pending_actions'
 } as const;
 
@@ -87,74 +82,6 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         required_parameters: ['client_id', 'content'],
         allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'create_client_note',
-        requires_confirmation: false // Low risk usually doesn't need confirmation, but can enforce if strict
-    },
-
-    // 5. PAUSE FLOW (High Risk - Operational Impact)
-    [SYSTEM_INTENTS.PAUSE_FLOW]: {
-        id: SYSTEM_INTENTS.PAUSE_FLOW,
-        name: "Pausar Flujo",
-        description: "Detener la ejecución de una automatización activa.",
-
-        risk_level: 'high',
-        scope: 'agency',
-        allowed_roles: ['owner', 'admin'],
-        module: 'flows',
-
-        required_parameters: ['flow_id'],
-        allowed_spaces: ['agency', 'resto', 'retail'],
-        linked_action: 'pause_flow',
-        requires_confirmation: true
-    },
-
-    // 6. ACTIVATE FLOW (High Risk)
-    [SYSTEM_INTENTS.ACTIVATE_FLOW]: {
-        id: SYSTEM_INTENTS.ACTIVATE_FLOW,
-        name: "Activar Flujo",
-        description: "Reanudar o iniciar una automatización.",
-
-        risk_level: 'high',
-        scope: 'agency',
-        allowed_roles: ['owner', 'admin'],
-        module: 'flows',
-
-        required_parameters: ['flow_id'],
-        allowed_spaces: ['agency', 'resto', 'retail'],
-        linked_action: 'activate_flow',
-        requires_confirmation: true
-    },
-
-    // 7. RUN FLOW ONCE (Medium Risk - Manual Trigger)
-    [SYSTEM_INTENTS.RUN_FLOW_ONCE]: {
-        id: SYSTEM_INTENTS.RUN_FLOW_ONCE,
-        name: "Ejecutar Flujo (Manual)",
-        description: "Forzar una ejecución inmediata de un flujo.",
-
-        risk_level: 'medium',
-        scope: 'agency',
-        allowed_roles: ['owner', 'admin', 'editor'],
-        module: 'flows',
-
-        required_parameters: ['flow_id'],
-        allowed_spaces: ['agency', 'resto', 'retail'],
-        linked_action: 'run_flow_once',
-        requires_confirmation: true // Always confirm manual triggers
-    },
-
-    // 8. LIST ACTIVE FLOWS (Read Only)
-    [SYSTEM_INTENTS.LIST_ACTIVE_FLOWS]: {
-        id: SYSTEM_INTENTS.LIST_ACTIVE_FLOWS,
-        name: "Listar Flujos Activos",
-        description: "Ver qué automatizaciones están corriendo actualmente.",
-
-        risk_level: 'low',
-        scope: 'read-only',
-        allowed_roles: ['owner', 'admin', 'viewer'],
-        module: 'flows',
-
-        required_parameters: [],
-        allowed_spaces: ['agency'],
-        linked_action: 'list_active_flows',
         requires_confirmation: false
     }
 };

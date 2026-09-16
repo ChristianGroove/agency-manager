@@ -32,7 +32,7 @@ Servicios técnicos transversales que dan soporte tanto al Motor como a las Feat
 ### D. MÓDULOS DE DOMINIO INDEPENDIENTES
 Existen dominios tan grandes o aislados que justifican un directorio de nivel raíz en `src/modules/` para evitar saturar el Core o las Features.
 - **Propósito**: Encapsular lógicas masivas que actúan como sub-sistemas completos.
-- **Ubicación**: `src/modules/billing/`, `src/modules/auth/`, `src/modules/flows/`, etc.
+- **Ubicación**: `src/modules/billing/`, `src/modules/auth/`, `src/modules/assistant/`, etc.
 - **Regla**: Se tratan como módulos Core extendidos, con reglas de dependencia estrictas (no pueden depender de Features).
 
 ---

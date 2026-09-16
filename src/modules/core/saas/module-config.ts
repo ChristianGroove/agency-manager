@@ -223,17 +223,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         }
     },
     {
-        key: 'pixy_flows',
-        label: 'Pixy Flows',
-        href: '/flows',
-        icon: BrainCircuit,
-        category: 'operations',
-        parentModule: 'module_automation',
-        access: {
-            allowedRoles: ['owner', 'admin']
-        }
-    },
-    {
         key: 'module_tasks',
         label: 'Tareas',
         href: '/operations/tasks',

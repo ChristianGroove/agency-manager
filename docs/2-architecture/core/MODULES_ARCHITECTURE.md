@@ -21,7 +21,7 @@ Servicios técnicos transversales que dan soporte al sistema (ej. conectores de 
 Además de la triada principal (Core/Features/Infrastructure), existen módulos extraídos por su alta complejidad o aislamiento de dominio:
 - **`@/modules/billing/*`**: Todo el sistema financiero, suscripciones SaaS, pasarelas de pago y facturación.
 - **`@/modules/auth/*`**: Sistemas de autenticación avanzados (ej. Passkeys).
-- **`@/modules/assistant/*` & `@/modules/flows/*`**: Motores especializados de agentes conversacionales e IA.
+- **`@/modules/assistant/*`**: Motor especializado de agentes conversacionales e IA gobernada.
 - **`@/modules/admin/*`**: Funciones exclusivas para el Super Admin de la plataforma.
 - **`@/modules/custom/*`**: Integraciones o scripts específicos y experimentales.
 

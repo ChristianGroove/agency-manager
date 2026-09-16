@@ -52,7 +52,6 @@ export const es = {
         crm_automations: "Automatizaciones",
         crm_reports: "Reportes",
         crm_settings: "Configuración CRM",
-        pixy_flows: "Pixy Flows",
         module_quotes: "Cotizaciones",
         module_briefings: "Briefings",
         module_catalog: "Catálogo",

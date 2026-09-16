@@ -57,19 +57,6 @@ export class MockAssistantModel implements AssistantModel {
             };
         }
 
-        // 4. Create Flow
-        if (text.includes("crear flujo") || text.includes("nueva rutina")) {
-            return {
-                text: "Configurando nueva rutina de automatización.",
-                confidence: 0.9,
-                suggestedAction: {
-                    type: SYSTEM_INTENTS.CREATE_FLOW_FROM_TEMPLATE,
-                    payload: {
-                        template_id: 'tpl_onboarding_v1'
-                    }
-                }
-            };
-        }
 
         // 5. List Pending
         if (text.includes("pendientes") || text.includes("que hay por hacer")) {

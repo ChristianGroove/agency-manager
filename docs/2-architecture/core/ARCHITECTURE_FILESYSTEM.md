@@ -47,7 +47,7 @@ El valor de negocio modular cargado según el "Space" del tenant.
 Dominios extraídos a la raíz por su complejidad masiva o necesidades de seguridad.
 - **`/src/modules/billing`**: Facturación recurrente, Proyectos y Pasarelas de Pago.
 - **`/src/modules/auth`**: Sistemas avanzados de login (ej. Passkeys).
-- **`/src/modules/assistant` & `/src/modules/flows`**: Agentes IA y flujos.
+- **`/src/modules/assistant`**: Asistente conversacional con IA y gobernanza.
 - **`/src/modules/admin`**: Panel de superadministrador.
 - **`/src/modules/custom`**: Scripts e integraciones específicas experimentales.
 

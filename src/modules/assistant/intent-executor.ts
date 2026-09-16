@@ -95,27 +95,6 @@ export class IntentExecutor {
                     result = await sendPaymentReminderAction(log.payload, context, userSupabase);
                     break;
 
-                // PHASE 3: FLOWS
-                case 'activate_flow':
-                    const { activateFlowAction } = await import("./actions/flows/activateFlow.action");
-                    result = await activateFlowAction(log.payload, context, userSupabase);
-                    break;
-
-                case 'pause_flow':
-                    const { pauseFlowAction } = await import("./actions/flows/pauseFlow.action");
-                    result = await pauseFlowAction(log.payload, context, userSupabase);
-                    break;
-
-                case 'run_flow_once':
-                    const { runFlowOnceAction } = await import("./actions/flows/runFlowOnce.action");
-                    result = await runFlowOnceAction(log.payload, context, userSupabase);
-                    break;
-
-                case 'list_active_flows':
-                    const { listActiveFlowsAction } = await import("./actions/flows/listActiveFlows.action");
-                    result = await listActiveFlowsAction(log.payload, context, userSupabase);
-                    break;
-
                 default:
                     throw new Error(`No adapter found for intent: ${log.intent_id}`);
             }

@@ -14,7 +14,7 @@ import { Client } from "@/types"
 import { Loader2, UserCircle, CalendarClock, Server, FileText, Globe, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
-import { useSpacePolicies } from "@/modules/flows/hooks/use-space-policies"
+import { useSpacePolicies } from "@/modules/core/organizations/hooks/use-space-policies"
 
 // Hooks
 import { useClientManagement } from "../../hooks/management/use-client-management"

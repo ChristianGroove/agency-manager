@@ -1,5 +1,9 @@
 # Pixy Flows: Visión de Producto y Arquitectura
 
+> [!WARNING]
+> **ESTADO: DEPRECADO / ARCHIVADO**
+> Documento de visión histórica. El módulo prototipo aislado fue retirado del sistema en favor de la infraestructura central de Workflows y Agentes IA.
+
 ## 1. Visión y Filosofía
 Pixy Flows es el **motor de operaciones** para negocios reales. No es una herramienta de "programación visual", sino un **gerente de operaciones virtual** que ejecuta procedimientos estándar.
 

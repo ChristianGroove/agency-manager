@@ -1,5 +1,9 @@
 # Pixy Flows v1: Especificación de MVP y Arquitectura Operativa
 
+> [!WARNING]
+> **ESTADO: DEPRECADO / ARCHIVADO**
+> El prototipo no operativo de Pixy Flows (`/flows`) fue retirado del sistema. Las automatizaciones activas se gestionan a través del motor central de Workflows (`/crm/automations`, `/automations`, Inngest y Supabase), y la gestión conversacional se unifica en el nuevo motor de agentes IA.
+
 ## 1. Alcance Definido del MVP (Strict Scope)
 
 ### ✅ Qué SÍ incluye (The "Magic 5")

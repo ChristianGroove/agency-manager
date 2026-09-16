@@ -7,7 +7,6 @@ import { CreateBriefAction } from "./actions/create-brief.action";
 import { CreateQuoteAction } from "./actions/create-quote.action";
 import { SendPaymentReminderAction } from "./actions/send-payment-reminder.action";
 import { ListPendingActions } from "./actions/list-pending.action";
-import { CreateFlowAction } from "./actions/create-flow.action";
 
 const CreateClientAction: AssistantAction = {
     name: "create_client_prospect",
@@ -61,8 +60,7 @@ export const ACTION_REGISTRY: Record<string, AssistantAction> = {
     [SYSTEM_INTENTS.CREATE_BRIEF]: CreateBriefAction,
     [SYSTEM_INTENTS.CREATE_QUOTE]: CreateQuoteAction,
     [SYSTEM_INTENTS.SEND_PAYMENT_REMINDER]: SendPaymentReminderAction,
-    [SYSTEM_INTENTS.LIST_PENDING_ACTIONS]: ListPendingActions,
-    [SYSTEM_INTENTS.CREATE_FLOW_FROM_TEMPLATE]: CreateFlowAction,
+    [SYSTEM_INTENTS.LIST_PENDING_ACTIONS]: ListPendingActions
 };
 
 export function getActionForIntent(intentName: string): AssistantAction | null {

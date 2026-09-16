@@ -52,7 +52,6 @@ export const en = {
         crm_automations: "Automations",
         crm_reports: "Analytics",
         crm_settings: "CRM Settings",
-        pixy_flows: "Pixy Flows",
         module_quotes: "Quotes",
         module_briefings: "Briefings",
         module_catalog: "Catalog",
