@@ -36,3 +36,12 @@ El campo `source` permite trazar el linaje de la información:
 - `manual`: Agregado directamente por un administrador en la UI.
 - `file`: Extraído automáticamente de un PDF/TXT subido al sistema.
 - `ai_extracted`: Conocimiento deducido por un agente de IA tras analizar conversaciones pasadas exitosas, promoviendo el aprendizaje continuo del Tenant.
+
+## 6. Resiliencia RAG y Fallback de Búsqueda (`embedding.ts`)
+
+Para garantizar que los agentes de IA y el inbox nunca se queden sin respuesta o generen errores 500:
+
+1. **Búsqueda Vectorial Híbrida**: Al consultar la base de conocimiento para alimentar un prompt con RAG, se invoca `searchKnowledge()`.
+2. **Fallback Automático a Búsqueda Textual (`fallbackTextSearch`)**: Si la función RPC `match_knowledge_v2` de PostgreSQL no está disponible, la extensión `pgvector` falla, o la clave para generar el embedding temporal no responde, el sistema ejecuta una búsqueda alternativa mediante `ILIKE` contra los campos `question` y `answer`.
+3. **Auto-Vectorización en Aprobación de FAQs**: Cuando un administrador aprueba una FAQ sugerida por el extractor de conocimiento (`knowledge-extractor.ts`), el sistema calcula e indexa su embedding vectorial en ese mismo instante, asegurando que quede inmediatamente disponible para búsqueda semántica.
+

@@ -7,17 +7,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo } from "react"
-import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle } from "lucide-react"
+import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle, ShieldAlert, Zap } from "lucide-react"
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
 import { useSearchParams } from "next/navigation"
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
+import { TenantAIGovernanceContext } from "@/modules/infrastructure/ai-engine/actions"
 
 interface MarketplacePageProps {
     providers: IntegrationProvider[]
     installedIntegrations: InstalledIntegration[]
     aiCredentials?: any[]
     aiProviders?: any[]
+    aiGovernance?: TenantAIGovernanceContext
 }
 
 const PROVIDER_ICONS: Record<string, string> = {
@@ -37,7 +39,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 import { AIEngineSheet } from "./ai-engine-sheet"
 import { useEffect } from "react"
 
-export function MarketplacePage({ providers, installedIntegrations, aiCredentials = [], aiProviders = [] }: MarketplacePageProps) {
+export function MarketplacePage({ providers, installedIntegrations, aiCredentials = [], aiProviders = [], aiGovernance }: MarketplacePageProps) {
     const searchParams = useSearchParams()
     const [search, setSearch] = useState("")
     const [category, setCategory] = useState("all")
@@ -60,16 +62,34 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
     // Derived state for quick lookup
     const installedKeys = useMemo(() => new Set(installedIntegrations.map(i => i.provider_key)), [installedIntegrations])
 
+    const isAiSuspended = aiGovernance?.aiStatus === 'suspended' || aiGovernance?.aiMode === 'disabled'
+    const isAiSaaS = aiGovernance?.aiMode === 'saas'
+
     const filteredProviders = useMemo(() => {
-        // 1. Create Synthetic AI Card
+        // 1. Create Synthetic AI Card with adaptive microcopy
+        let aiDescription = 'Gestiona tus cuentas de OpenAI, Anthropic, Gemini y Groq con enrutamiento inteligente.'
+        if (isAiSuspended) {
+            aiDescription = 'Capacidades de IA pausadas. Contacta al administrador para reactivar.'
+        } else if (isAiSaaS) {
+            const usageText = aiGovernance ? ` (${aiGovernance.currentUsage.toLocaleString()} / ${aiGovernance.monthlyLimit === -1 ? 'Ilimitado' : `${aiGovernance.monthlyLimit.toLocaleString()} tok`})` : ''
+            aiDescription = `Inteligencia Artificial gestionada e incluida en tu plan${usageText}. Modelos provistos por Pixy.`
+        } else {
+            // Claves Propias
+            if (aiCredentials.length > 0) {
+                aiDescription = `${aiCredentials.length} clave(s) conectada(s). Consumo directo con tu proveedor sin límites de plataforma.`
+            } else {
+                aiDescription = 'Conecta tus cuentas de OpenAI o Anthropic para activar la IA en tu espacio.'
+            }
+        }
+
         const aiCard: IntegrationProvider = {
             id: 'ai-engine-synth',
             key: 'ai-engine',
-            name: 'AI Engine',
-            description: 'Centro de Comando Centralizado. Gestiona claves de OpenAI, Anthropic, Gemini y Groq con enrutamiento inteligente.',
+            name: 'Inteligencia Artificial',
+            description: aiDescription,
             category: 'ai',
-            is_premium: true,
-            is_enabled: true,
+            is_premium: isAiSaaS,
+            is_enabled: !isAiSuspended,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             config_schema: { required: [], properties: {} },
@@ -103,7 +123,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             const matchesCategory = category === "all" || p.category === category
             return matchesSearch && matchesCategory
         })
-    }, [providers, search, category])
+    }, [providers, search, category, isAiSuspended, isAiSaaS, aiGovernance, aiCredentials.length])
 
     const getProviderIcon = (key: string, category: string) => {
         if (PROVIDER_ICONS[key]) return PROVIDER_ICONS[key]
@@ -169,27 +189,58 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             {/* Provider Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredProviders.map(provider => {
-                    // Logic for AI Engine special status
+                    const isAiCard = provider.key === 'ai-engine'
                     let isInstalled = installedKeys.has(provider.key)
 
-                    if (provider.key === 'ai-engine') {
-                        // Consider installed if we have ANY credential
+                    if (isAiCard) {
                         isInstalled = aiCredentials.length > 0
                     }
 
+                    // Dynamic border ring
+                    let cardRing = ''
+                    if (isAiCard) {
+                        if (isAiSuspended) cardRing = 'ring-2 ring-red-500/50 dark:ring-red-500/30'
+                        else if (isAiSaaS) cardRing = 'ring-2 ring-indigo-500/50 dark:ring-indigo-500/30'
+                        else if (isInstalled) cardRing = 'ring-2 ring-emerald-500/50 dark:ring-emerald-500/30'
+                        else cardRing = 'ring-2 ring-amber-500/40 dark:ring-amber-500/25'
+                    } else if (isInstalled) {
+                        cardRing = 'ring-2 ring-emerald-500/50 dark:ring-emerald-500/30'
+                    }
+
                     return (
-                        <Card key={provider.id} className={`glass-card rounded-2xl relative overflow-hidden transition-all hover:shadow-md border-transparent ${isInstalled ? 'ring-2 ring-emerald-500/50 dark:ring-emerald-500/30' : ''}`}>
-                            {provider.is_premium && (
-                                <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
-                                    <Crown className="h-3 w-3 mr-1" />
-                                    Premium
-                                </Badge>
+                        <Card key={provider.id} className={`glass-card rounded-2xl relative overflow-hidden transition-all hover:shadow-md border-transparent ${cardRing}`}>
+                            {isAiCard ? (
+                                isAiSuspended ? (
+                                    <Badge className="absolute top-3 right-3 bg-red-500 text-white hover:bg-red-600 text-[10px] font-semibold">
+                                        Servicio Pausado
+                                    </Badge>
+                                ) : isAiSaaS ? (
+                                    <Badge className="absolute top-3 right-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 text-[10px] font-semibold gap-1">
+                                        <Sparkles className="h-3 w-3" />
+                                        Incluido en tu Plan
+                                    </Badge>
+                                ) : (
+                                    <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600 text-[10px] font-semibold">
+                                        Claves Propias
+                                    </Badge>
+                                )
+                            ) : (
+                                provider.is_premium && (
+                                    <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
+                                        <Crown className="h-3 w-3 mr-1" />
+                                        Premium
+                                    </Badge>
+                                )
                             )}
 
                             <CardHeader className="pb-2">
                                 <div className="flex items-center gap-3">
-                                    <div className={`h-12 w-12 rounded-lg flex items-center justify-center text-2xl ${provider.key === 'ai-engine'
-                                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20'
+                                    <div className={`h-12 w-12 rounded-lg flex items-center justify-center text-2xl ${isAiCard
+                                        ? isAiSuspended
+                                            ? 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400'
+                                            : isAiSaaS
+                                            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20'
+                                            : 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20'
                                         : 'bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900'
                                         }`}>
                                         {getProviderIcon(provider.key, provider.category)}
@@ -210,7 +261,45 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                             </CardContent>
 
                             <CardFooter className="pt-0">
-                                {isInstalled ? (
+                                {isAiCard ? (
+                                    isAiSuspended ? (
+                                        <Button
+                                            variant="destructive"
+                                            className="w-full gap-2 text-xs font-semibold"
+                                            onClick={() => handleConfigure(provider)}
+                                        >
+                                            <ShieldAlert className="h-4 w-4" />
+                                            Ver Estado (Pausado)
+                                        </Button>
+                                    ) : isAiSaaS ? (
+                                        <Button
+                                            variant="default"
+                                            className="w-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:to-purple-700 text-white shadow-md text-xs font-semibold border-0"
+                                            onClick={() => handleConfigure(provider)}
+                                        >
+                                            <Zap className="h-4 w-4" />
+                                            Panel de IA Gestionada
+                                        </Button>
+                                    ) : isInstalled ? (
+                                        <Button
+                                            variant="secondary"
+                                            className="w-full gap-2 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-xs font-semibold"
+                                            onClick={() => handleConfigure(provider)}
+                                        >
+                                            <Check className="h-4 w-4" />
+                                            Administrar Claves
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="default"
+                                            className="w-full gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:to-amber-600 hover:to-amber-700 text-white shadow-md text-xs font-semibold border-0"
+                                            onClick={() => handleConfigure(provider)}
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
+                                            Conectar Claves
+                                        </Button>
+                                    )
+                                ) : isInstalled ? (
                                     <Button
                                         variant="secondary"
                                         className="w-full gap-2 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
@@ -222,7 +311,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                                 ) : (
                                     <Button
                                         variant="default"
-                                        className={provider.key === 'ai-engine' ? "w-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:to-purple-700 text-white shadow-md border-0" : "w-full gap-2"}
+                                        className="w-full gap-2"
                                         onClick={() => handleConfigure(provider)}
                                     >
                                         <ExternalLink className="h-4 w-4" />
@@ -257,6 +346,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                 onOpenChange={setIsAIEngineOpen}
                 credentials={aiCredentials}
                 providers={aiProviders}
+                aiGovernance={aiGovernance}
             />
         </div>
     )

@@ -47,6 +47,40 @@ export const AIEngine = {
             }
         }
 
+        // 2.5. AI GOVERNANCE & KILL-SWITCH CHECK
+        let aiMode: 'saas' | 'byok' | 'disabled' = 'byok';
+        let aiStatus: 'active' | 'suspended' = 'active';
+
+        try {
+            const { data: orgData } = await supabaseAdmin
+                .from('organizations')
+                .select('status, rate_limit_config')
+                .eq('id', organizationId)
+                .maybeSingle();
+
+            const config = (orgData?.rate_limit_config as Record<string, any>) || {};
+            aiMode = config.ai_mode || 'byok';
+            aiStatus = config.ai_status || 'active';
+
+            if (orgData?.status === 'suspended' || aiStatus === 'suspended' || aiMode === 'disabled') {
+                throw new Error('Los servicios de Inteligencia Artificial están desactivados para esta organización.');
+            }
+        } catch (govErr: any) {
+            if (govErr.message?.includes('desactivados')) throw govErr;
+            console.warn('[AIEngine] Governance check warning:', govErr);
+        }
+
+        // Enforce Usage Limits for SaaS Managed Mode
+        if (aiMode === 'saas') {
+            try {
+                const { assertUsageAllowed } = await import('@/modules/infrastructure/usage/usage-limiter');
+                await assertUsageAllowed({ organizationId, engine: 'ai' });
+            } catch (limitErr: any) {
+                console.warn(`[AIEngine] Usage limit blocked for org ${organizationId}:`, limitErr.message);
+                throw limitErr;
+            }
+        }
+
         // 3. Resolve Credentials (Active & Priority)
         const credentials = await fetchInternalCredentials(organizationId);
 
@@ -55,23 +89,83 @@ export const AIEngine = {
             .filter(c => c.status === 'active')
             .sort((a, b) => a.priority - b.priority);
 
-        // Env Var Fallback (Platform cost)
-        const envKey = process.env.OPENAI_API_KEY;
-        if (envKey && envKey.startsWith('sk-') && activeCredentials.length === 0) {
-            console.log('[AIEngine] Using Platform Fallback (OpenAI)');
-            activeCredentials.push({
-                id: 'platform-fallback',
-                organization_id: organizationId,
-                provider_id: 'openai',
-                api_key_encrypted: envKey,
-                priority: 99,
-                status: 'active',
-                created_at: new Date().toISOString()
-            });
+        if (aiMode === 'byok') {
+            if (activeCredentials.length === 0) {
+                throw new Error('Claves Propias requerido: La organización debe configurar sus propias API Keys en Integraciones.');
+            }
+        } else {
+            // In SaaS mode: if tenant has no active credentials, check Master Key Vault (DB or Env)
+            if (activeCredentials.length === 0) {
+                // Check DB Master Vault in ai_settings
+                try {
+                    const { data: globalSettings } = await supabaseAdmin
+                        .from('ai_settings')
+                        .select('model_overrides')
+                        .eq('scope_type', 'global')
+                        .eq('scope_id', 'system')
+                        .maybeSingle();
+
+                    const masterKeysRaw = (globalSettings?.model_overrides as any)?.master_keys;
+
+                    if (Array.isArray(masterKeysRaw)) {
+                        for (const mk of masterKeysRaw) {
+                            if (mk && mk.status !== 'inactive' && mk.apiKeyEncrypted) {
+                                activeCredentials.push({
+                                    id: mk.id || `master-vault-${mk.providerId}`,
+                                    organization_id: organizationId,
+                                    provider_id: mk.providerId,
+                                    api_key_encrypted: mk.apiKeyEncrypted,
+                                    priority: mk.priority || 50,
+                                    status: 'active',
+                                    created_at: mk.createdAt || new Date().toISOString()
+                                });
+                            }
+                        }
+                    } else if (masterKeysRaw && typeof masterKeysRaw === 'object') {
+                        for (const [providerId, encryptedVal] of Object.entries(masterKeysRaw)) {
+                            if (encryptedVal) {
+                                activeCredentials.push({
+                                    id: `master-vault-${providerId}`,
+                                    organization_id: organizationId,
+                                    provider_id: providerId,
+                                    api_key_encrypted: encryptedVal as string,
+                                    priority: 50,
+                                    status: 'active',
+                                    created_at: new Date().toISOString()
+                                });
+                            }
+                        }
+                    }
+                } catch (vaultErr) {
+                    console.warn('[AIEngine] Error reading master vault:', vaultErr);
+                }
+
+                // Env Var Fallbacks
+                const envFallbacks: Array<{ provider: string; keyVal?: string }> = [
+                    { provider: 'openai', keyVal: process.env.OPENAI_API_KEY },
+                    { provider: 'anthropic', keyVal: process.env.ANTHROPIC_API_KEY },
+                    { provider: 'google', keyVal: process.env.GEMINI_API_KEY },
+                    { provider: 'groq', keyVal: process.env.GROQ_API_KEY },
+                ];
+
+                for (const fb of envFallbacks) {
+                    if (fb.keyVal && fb.keyVal.length > 5 && !activeCredentials.some(c => c.provider_id === fb.provider)) {
+                        activeCredentials.push({
+                            id: `platform-fallback-${fb.provider}`,
+                            organization_id: organizationId,
+                            provider_id: fb.provider,
+                            api_key_encrypted: fb.keyVal,
+                            priority: 99,
+                            status: 'active',
+                            created_at: new Date().toISOString()
+                        });
+                    }
+                }
+            }
         }
 
         if (activeCredentials.length === 0) {
-            throw new Error('No active AI credentials found for this organization.');
+            throw new Error('No se encontraron credenciales activas de IA para procesar la solicitud.');
         }
 
         // 4. RAG Context Injection (Knowledge Base)
@@ -186,17 +280,20 @@ function resolveModelForTier(tier: 'cheap' | 'standard' | 'premium', providerId:
         cheap: {
             openai: 'gpt-4o-mini',
             groq: 'llama-3.1-8b-instant',
-            google: 'gemini-1.5-flash'
+            google: 'gemini-1.5-flash',
+            anthropic: 'claude-3-haiku-20240307'
         },
         standard: {
             openai: 'gpt-4o-mini',
             groq: 'llama-3.3-70b-versatile',
-            google: 'gemini-1.5-flash'
+            google: 'gemini-1.5-flash',
+            anthropic: 'claude-3-5-sonnet-20240620'
         },
         premium: {
             openai: 'gpt-4o',
             google: 'gemini-1.5-pro',
-            groq: 'llama-3.3-70b-versatile'
+            groq: 'llama-3.3-70b-versatile',
+            anthropic: 'claude-3-5-sonnet-20240620'
         }
     };
 

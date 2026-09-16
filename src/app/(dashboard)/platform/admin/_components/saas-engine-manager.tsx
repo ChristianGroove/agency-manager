@@ -4,13 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AppsList } from "../apps/_components/apps-list"
 import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
-import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard, LayoutGrid, Package, Brain } from "lucide-react"
+import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard, LayoutGrid, Package } from "lucide-react"
 import { GlobalBrandingManager } from "./global-branding-manager"
 import { BrandingPlansManager } from "./branding-plans-manager"
 import { SettlementsManager } from "./settlements-manager"
 import { PaymentSettingsManager } from "./payment-settings-manager"
 import { ModulesAddonsManager } from "./modules-addons-manager"
-import { SaasIntelligence } from "./saas-intelligence"
 import type { Module360Data } from "@/modules/core/admin/actions"
 
 interface SaasEngineManagerProps {
@@ -18,10 +17,10 @@ interface SaasEngineManagerProps {
     apps: any[]
     dict: any
     modules360: Module360Data[]
-    intelligenceData: any
+    intelligenceData?: any
 }
 
-export function SaasEngineManager({ allModules, apps, dict, modules360, intelligenceData }: SaasEngineManagerProps) {
+export function SaasEngineManager({ allModules, apps, dict, modules360 }: SaasEngineManagerProps) {
     return (
         <Card className="border-none shadow-none bg-transparent">
             {/* Header section removed as it's redundant with tabs */}
@@ -55,10 +54,6 @@ export function SaasEngineManager({ allModules, apps, dict, modules360, intellig
                     <TabsTrigger value="payments" className="gap-2">
                         <CreditCard className="h-4 w-4" />
                         Pagos
-                    </TabsTrigger>
-                    <TabsTrigger value="intelligence" className="gap-2 text-primary font-bold">
-                        <Brain className="h-4 w-4" />
-                        Intelligence 🚀
                     </TabsTrigger>
                 </TabsList>
 
@@ -114,10 +109,6 @@ export function SaasEngineManager({ allModules, apps, dict, modules360, intellig
 
                 <TabsContent value="payments" className="focus-visible:outline-none">
                     <PaymentSettingsManager />
-                </TabsContent>
-
-                <TabsContent value="intelligence" className="focus-visible:outline-none">
-                    <SaasIntelligence data={intelligenceData} />
                 </TabsContent>
             </Tabs>
         </Card>

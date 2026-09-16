@@ -1258,3 +1258,468 @@ export async function getIntelligenceMetrics() {
         totalTokens: (engineUsage || []).filter(e => e.engine === 'ai').reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0)
     };
 }
+
+/**
+ * ==========================================
+ * AI GOVERNANCE & MASTER KEY VAULT ACTIONS
+ * ==========================================
+ */
+
+export interface MasterKeyItem {
+    id: string
+    providerId: 'openai' | 'anthropic' | 'google' | 'groq'
+    providerName: string
+    label?: string
+    apiKeyMasked: string
+    priority: number
+    status: 'active' | 'inactive'
+    source: 'vault' | 'env'
+    createdAt: string
+    models: string[]
+}
+
+export type MasterAICredentialInfo = MasterKeyItem
+
+export interface TenantAIGovernance {
+    id: string
+    name: string
+    slug: string
+    orgStatus: string
+    aiMode: 'saas' | 'byok' | 'disabled'
+    aiStatus: 'active' | 'suspended'
+    monthlyLimit: number // -1 means unlimited
+    currentUsage: number
+    byokKeysCount: number
+}
+
+const MASTER_PROVIDERS_META: Record<string, { name: string; description: string; envKeyName: string; models: string[] }> = {
+    openai: {
+        name: 'OpenAI',
+        description: 'GPT-4o, GPT-4o-mini y Embeddings vectoriales (text-embedding-3-small)',
+        envKeyName: 'OPENAI_API_KEY',
+        models: ['gpt-4o', 'gpt-4o-mini', 'text-embedding-3-small']
+    },
+    anthropic: {
+        name: 'Anthropic Claude',
+        description: 'Claude 3.5 Sonnet y Claude 3 Haiku para redacción avanzada y análisis',
+        envKeyName: 'ANTHROPIC_API_KEY',
+        models: ['claude-3-5-sonnet-20240620', 'claude-3-haiku-20240307']
+    },
+    google: {
+        name: 'Google Gemini',
+        description: 'Gemini 1.5 Flash y Gemini 1.5 Pro con soporte multimodal extendido',
+        envKeyName: 'GEMINI_API_KEY',
+        models: ['gemini-1.5-flash', 'gemini-1.5-pro']
+    },
+    groq: {
+        name: 'Groq (Llama)',
+        description: 'Inferencia ultra-rápida con Llama 3.3 70B y Mixtral',
+        envKeyName: 'GROQ_API_KEY',
+        models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+    }
+}
+
+export async function getMasterAICredentials(): Promise<MasterKeyItem[]> {
+    await requireSuperAdmin()
+
+    // 1. Fetch from ai_settings (global/system)
+    const { data: settings } = await supabaseAdmin
+        .from('ai_settings')
+        .select('model_overrides')
+        .eq('scope_type', 'global')
+        .eq('scope_id', 'system')
+        .maybeSingle()
+
+    const masterKeysRaw = (settings?.model_overrides as any)?.master_keys
+    const items: MasterKeyItem[] = []
+
+    if (Array.isArray(masterKeysRaw)) {
+        masterKeysRaw.forEach((mk: any, idx: number) => {
+            const meta = MASTER_PROVIDERS_META[mk.providerId] || {
+                name: mk.providerId,
+                description: '',
+                envKeyName: '',
+                models: []
+            }
+
+            items.push({
+                id: mk.id || `master-${mk.providerId}-${idx}`,
+                providerId: mk.providerId,
+                providerName: meta.name,
+                label: mk.label || `${meta.name} Clave #${idx + 1}`,
+                apiKeyMasked: '●●●●●●●● (Master Vault DB)',
+                priority: mk.priority || idx + 1,
+                status: mk.status === 'inactive' ? 'inactive' : 'active',
+                source: 'vault',
+                createdAt: mk.createdAt || new Date().toISOString(),
+                models: meta.models
+            })
+        })
+    } else if (masterKeysRaw && typeof masterKeysRaw === 'object') {
+        Object.entries(masterKeysRaw).forEach(([provId, encVal], idx) => {
+            if (encVal) {
+                const meta = MASTER_PROVIDERS_META[provId] || { name: provId, description: '', envKeyName: '', models: [] }
+                items.push({
+                    id: `master-legacy-${provId}`,
+                    providerId: provId as any,
+                    providerName: meta.name,
+                    label: `${meta.name} Clave Principal`,
+                    apiKeyMasked: '●●●●●●●● (Master Vault DB)',
+                    priority: idx + 1,
+                    status: 'active',
+                    source: 'vault',
+                    createdAt: new Date().toISOString(),
+                    models: meta.models
+                })
+            }
+        })
+    }
+
+    // Check env fallbacks for unconfigured providers
+    for (const [provId, meta] of Object.entries(MASTER_PROVIDERS_META)) {
+        const envVal = process.env[meta.envKeyName]
+        const hasVaultKey = items.some(i => i.providerId === provId && i.source === 'vault')
+
+        if (!hasVaultKey && envVal && envVal.length > 5) {
+            items.push({
+                id: `env-${provId}`,
+                providerId: provId as any,
+                providerName: meta.name,
+                label: `${meta.name} (Servidor ENV)`,
+                apiKeyMasked: `${envVal.slice(0, 4)}...${envVal.slice(-4)} (ENV)`,
+                priority: 99,
+                status: 'active',
+                source: 'env',
+                createdAt: new Date().toISOString(),
+                models: meta.models
+            })
+        }
+    }
+
+    return items.sort((a, b) => a.priority - b.priority)
+}
+
+export async function addMasterAICredential(providerId: string, apiKey: string, label?: string) {
+    await requireSuperAdmin()
+
+    if (!apiKey || apiKey.trim().length === 0) {
+        throw new Error('La clave API no puede estar vacía')
+    }
+
+    const { encrypt } = await import('@/modules/infrastructure/ai-engine/encryption')
+    const encryptedKey = encrypt(apiKey.trim())
+
+    const { data: existing } = await supabaseAdmin
+        .from('ai_settings')
+        .select('*')
+        .eq('scope_type', 'global')
+        .eq('scope_id', 'system')
+        .maybeSingle()
+
+    const currentOverrides = (existing?.model_overrides as any) || {}
+    let masterKeys: any[] = []
+
+    if (Array.isArray(currentOverrides.master_keys)) {
+        masterKeys = [...currentOverrides.master_keys]
+    } else if (currentOverrides.master_keys && typeof currentOverrides.master_keys === 'object') {
+        masterKeys = Object.entries(currentOverrides.master_keys).map(([pId, val], i) => ({
+            id: `master-${pId}-${i + 1}`,
+            providerId: pId,
+            apiKeyEncrypted: val,
+            label: `Clave Principal`,
+            priority: i + 1,
+            status: 'active',
+            createdAt: new Date().toISOString()
+        }))
+    }
+
+    const newPriority = masterKeys.length + 1
+    const meta = MASTER_PROVIDERS_META[providerId]
+    const defaultLabel = `${meta?.name || providerId} Clave #${masterKeys.filter(k => k.providerId === providerId).length + 1}`
+    const newKeyId = `master-${providerId}-${Date.now()}`
+
+    masterKeys.push({
+        id: newKeyId,
+        providerId,
+        apiKeyEncrypted: encryptedKey,
+        label: label?.trim() || defaultLabel,
+        priority: newPriority,
+        status: 'active',
+        createdAt: new Date().toISOString()
+    })
+
+    const newOverrides = {
+        ...currentOverrides,
+        master_keys: masterKeys
+    }
+
+    if (existing) {
+        const { error } = await supabaseAdmin
+            .from('ai_settings')
+            .update({ model_overrides: newOverrides })
+            .eq('id', existing.id)
+        if (error) throw error
+    } else {
+        const { error } = await supabaseAdmin
+            .from('ai_settings')
+            .insert({
+                scope_type: 'global',
+                scope_id: 'system',
+                model_overrides: newOverrides,
+                is_clawdbot_enabled: true
+            })
+        if (error) throw error
+    }
+
+    await logAdminAction(null, 'add_master_ai_key', { provider: providerId, id: newKeyId })
+    revalidatePath('/platform/admin')
+    return { success: true, id: newKeyId }
+}
+
+export async function deleteMasterAICredential(keyId: string) {
+    await requireSuperAdmin()
+
+    const { data: existing } = await supabaseAdmin
+        .from('ai_settings')
+        .select('*')
+        .eq('scope_type', 'global')
+        .eq('scope_id', 'system')
+        .maybeSingle()
+
+    if (!existing) return { success: true }
+
+    const currentOverrides = (existing.model_overrides as any) || {}
+    let masterKeys: any[] = []
+
+    if (Array.isArray(currentOverrides.master_keys)) {
+        masterKeys = currentOverrides.master_keys.filter((mk: any) => mk.id !== keyId)
+    } else if (currentOverrides.master_keys && typeof currentOverrides.master_keys === 'object') {
+        const keysObj = { ...currentOverrides.master_keys }
+        delete keysObj[keyId]
+        masterKeys = Object.entries(keysObj).map(([pId, val], i) => ({
+            id: `master-${pId}-${i + 1}`,
+            providerId: pId,
+            apiKeyEncrypted: val,
+            priority: i + 1,
+            status: 'active'
+        }))
+    }
+
+    // Re-index priorities 1..N
+    masterKeys = masterKeys.map((mk, idx) => ({ ...mk, priority: idx + 1 }))
+
+    const { error } = await supabaseAdmin
+        .from('ai_settings')
+        .update({
+            model_overrides: {
+                ...currentOverrides,
+                master_keys: masterKeys
+            }
+        })
+        .eq('id', existing.id)
+
+    if (error) throw error
+
+    await logAdminAction(null, 'delete_master_ai_key', { keyId })
+    revalidatePath('/platform/admin')
+    return { success: true }
+}
+
+export async function updateMasterAIPriority(items: { id: string; priority: number }[]) {
+    await requireSuperAdmin()
+
+    const { data: existing } = await supabaseAdmin
+        .from('ai_settings')
+        .select('*')
+        .eq('scope_type', 'global')
+        .eq('scope_id', 'system')
+        .maybeSingle()
+
+    if (!existing) return { success: true }
+
+    const currentOverrides = (existing.model_overrides as any) || {}
+    if (!Array.isArray(currentOverrides.master_keys)) return { success: true }
+
+    const priorityMap = new Map<string, number>()
+    items.forEach(i => priorityMap.set(i.id, i.priority))
+
+    const updatedKeys = currentOverrides.master_keys.map((mk: any) => ({
+        ...mk,
+        priority: priorityMap.has(mk.id) ? priorityMap.get(mk.id)! : mk.priority
+    })).sort((a: any, b: any) => a.priority - b.priority)
+
+    const { error } = await supabaseAdmin
+        .from('ai_settings')
+        .update({
+            model_overrides: {
+                ...currentOverrides,
+                master_keys: updatedKeys
+            }
+        })
+        .eq('id', existing.id)
+
+    if (error) throw error
+
+    await logAdminAction(null, 'reorder_master_ai_keys', { count: items.length })
+    revalidatePath('/platform/admin')
+    return { success: true }
+}
+
+export async function toggleMasterKeyStatus(keyId: string, status: 'active' | 'inactive') {
+    await requireSuperAdmin()
+
+    const { data: existing } = await supabaseAdmin
+        .from('ai_settings')
+        .select('*')
+        .eq('scope_type', 'global')
+        .eq('scope_id', 'system')
+        .maybeSingle()
+
+    if (!existing) return { success: true }
+
+    const currentOverrides = (existing.model_overrides as any) || {}
+    if (!Array.isArray(currentOverrides.master_keys)) return { success: true }
+
+    const updatedKeys = currentOverrides.master_keys.map((mk: any) =>
+        mk.id === keyId ? { ...mk, status } : mk
+    )
+
+    const { error } = await supabaseAdmin
+        .from('ai_settings')
+        .update({
+            model_overrides: {
+                ...currentOverrides,
+                master_keys: updatedKeys
+            }
+        })
+        .eq('id', existing.id)
+
+    if (error) throw error
+
+    await logAdminAction(null, 'toggle_master_ai_key_status', { keyId, status })
+    revalidatePath('/platform/admin')
+    return { success: true }
+}
+
+export async function getTenantsAIGovernance(): Promise<TenantAIGovernance[]> {
+    await requireSuperAdmin()
+
+    // 1. Fetch all organizations
+    const { data: orgs, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, slug, status, rate_limit_config')
+        .order('name', { ascending: true })
+
+    if (orgError || !orgs) {
+        console.error('Error fetching organizations for AI governance:', orgError)
+        return []
+    }
+
+    // 2. Fetch AI monthly usage limits
+    const { data: limits } = await supabaseAdmin
+        .from('usage_limits')
+        .select('organization_id, limit_value')
+        .eq('engine', 'ai')
+        .eq('period', 'month')
+
+    const limitsMap = new Map<string, number>()
+    limits?.forEach(l => limitsMap.set(l.organization_id, l.limit_value))
+
+    // 3. Fetch current month usage counters
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+    const { data: counters } = await supabaseAdmin
+        .from('usage_counters')
+        .select('organization_id, used')
+        .eq('engine', 'ai')
+        .eq('period', 'month')
+        .eq('period_start', monthStart)
+
+    const countersMap = new Map<string, number>()
+    counters?.forEach(c => countersMap.set(c.organization_id, c.used))
+
+    // 4. Fetch BYOK credentials count per tenant
+    const { data: creds } = await supabaseAdmin
+        .from('ai_credentials')
+        .select('organization_id')
+        .eq('status', 'active')
+
+    const credsCountMap = new Map<string, number>()
+    creds?.forEach(c => {
+        credsCountMap.set(c.organization_id, (credsCountMap.get(c.organization_id) || 0) + 1)
+    })
+
+    return orgs.map(org => {
+        const config = (org.rate_limit_config as Record<string, any>) || {}
+        const aiMode: 'saas' | 'byok' | 'disabled' = config.ai_mode || 'byok'
+        const aiStatus: 'active' | 'suspended' = config.ai_status || 'active'
+        const monthlyLimit = limitsMap.has(org.id) ? limitsMap.get(org.id)! : 100000
+        const currentUsage = countersMap.get(org.id) || 0
+        const byokKeysCount = credsCountMap.get(org.id) || 0
+
+        return {
+            id: org.id,
+            name: org.name || 'Sin nombre',
+            slug: org.slug || '',
+            orgStatus: org.status || 'active',
+            aiMode,
+            aiStatus,
+            monthlyLimit,
+            currentUsage,
+            byokKeysCount
+        }
+    })
+}
+
+export async function updateTenantAIGovernance(
+    orgId: string,
+    updates: {
+        ai_mode?: 'saas' | 'byok' | 'disabled'
+        ai_status?: 'active' | 'suspended'
+        monthly_limit?: number
+    }
+) {
+    await requireSuperAdmin()
+
+    // 1. Update rate_limit_config in organizations
+    const { data: org, error: orgFetchError } = await supabaseAdmin
+        .from('organizations')
+        .select('rate_limit_config')
+        .eq('id', orgId)
+        .single()
+
+    if (orgFetchError) throw orgFetchError
+
+    const currentConfig = (org?.rate_limit_config as Record<string, any>) || {}
+    const updatedConfig = {
+        ...currentConfig,
+        ...(updates.ai_mode !== undefined && { ai_mode: updates.ai_mode }),
+        ...(updates.ai_status !== undefined && { ai_status: updates.ai_status })
+    }
+
+    const { error: orgUpdateError } = await supabaseAdmin
+        .from('organizations')
+        .update({ rate_limit_config: updatedConfig })
+        .eq('id', orgId)
+
+    if (orgUpdateError) throw orgUpdateError
+
+    // 2. Update monthly limit if provided
+    if (updates.monthly_limit !== undefined) {
+        const { error: limitError } = await supabaseAdmin
+            .from('usage_limits')
+            .upsert({
+                organization_id: orgId,
+                engine: 'ai',
+                period: 'month',
+                limit_value: updates.monthly_limit
+            }, {
+                onConflict: 'organization_id,engine,period'
+            })
+
+        if (limitError) throw limitError
+    }
+
+    await logAdminAction(orgId, 'update_ai_governance', updates)
+    revalidatePath('/platform/admin')
+    return { success: true }
+}

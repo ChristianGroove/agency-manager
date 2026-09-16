@@ -1,36 +1,57 @@
-import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules, getModules360Data, getIntelligenceMetrics } from '@/modules/core/admin/actions'
-import { getAdminOrganizations } from '@/modules/core/admin/actions'
+import {
+    getAdminDashboardStats,
+    getActiveBroadcasts,
+    getAllSystemModules,
+    getModules360Data,
+    getIntelligenceMetrics,
+    getMasterAICredentials,
+    getTenantsAIGovernance,
+    getAdminOrganizations
+} from '@/modules/core/admin/actions'
 import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet } from 'lucide-react'
+import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet, Brain } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SystemHealthWidget } from './_components/system-health-widget'
 import { getDictionary } from "@/modules/core/i18n"
 
-// Placeholder components - will be implemented in next steps
+// Components
 import { TenantsManager } from './_components/tenants-manager'
 import { SaasEngineManager } from "./_components/saas-engine-manager"
 import { SecurityCenter } from "./_components/security-center"
 import { DomainsManager } from "./_components/domains-manager"
 import { GlobalBannersManager } from "./_components/global-banners-manager"
 import { PlatformInvoicesManager } from "./_components/platform-invoices-manager"
+import { AIGovernanceManager } from "./_components/ai-governance-manager"
 
 export default async function AdminDashboardPage() {
     await requireSuperAdmin()
     const t = await getDictionary()
 
-    const [stats, activeBroadcasts, organizations, allModules, apps, modules360, intelligenceData] = await Promise.all([
+    const [
+        stats,
+        activeBroadcasts,
+        organizations,
+        allModules,
+        apps,
+        modules360,
+        intelligenceData,
+        masterCredentials,
+        tenantsGovernance
+    ] = await Promise.all([
         getAdminDashboardStats(),
         getActiveBroadcasts(),
         getAdminOrganizations(),
         getAllSystemModules(),
         getAllAppsAdmin(),
         getModules360Data(),
-        getIntelligenceMetrics()
+        getIntelligenceMetrics(),
+        getMasterAICredentials(),
+        getTenantsAIGovernance()
     ])
 
     return (
@@ -50,7 +71,7 @@ export default async function AdminDashboardPage() {
 
             {/* Main Command Center Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full max-w-full grid-cols-5 bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-lg h-auto">
+                <TabsList className="grid w-full max-w-full grid-cols-6 bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-lg h-auto">
                     <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Visión Global
@@ -67,7 +88,11 @@ export default async function AdminDashboardPage() {
                         <ShieldAlert className="h-4 w-4" />
                         Seguridad
                     </TabsTrigger>
-                    <TabsTrigger value="billing" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2 text-primary data-[state=active]:text-primary font-bold">
+                    <TabsTrigger value="intelligence" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2">
+                        <Brain className="h-4 w-4" />
+                        Intelligence
+                    </TabsTrigger>
+                    <TabsTrigger value="billing" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2">
                         <Wallet className="h-4 w-4" />
                         Finanzas
                     </TabsTrigger>
@@ -205,7 +230,6 @@ export default async function AdminDashboardPage() {
                         apps={apps}
                         dict={t.admin}
                         modules360={modules360}
-                        intelligenceData={intelligenceData}
                     />
                 </TabsContent>
 
@@ -214,7 +238,16 @@ export default async function AdminDashboardPage() {
                     <SecurityCenter />
                 </TabsContent>
                 
-                {/* TAB 5: BILLING (Platform) */}
+                {/* TAB 5: INTELLIGENCE & AI GOVERNANCE */}
+                <TabsContent value="intelligence" className="focus-visible:outline-none">
+                    <AIGovernanceManager
+                        intelligenceData={intelligenceData}
+                        masterCredentials={masterCredentials}
+                        tenantsGovernance={tenantsGovernance}
+                    />
+                </TabsContent>
+
+                {/* TAB 6: BILLING (Platform) */}
                 <TabsContent value="billing" className="focus-visible:outline-none">
                     <PlatformInvoicesManager />
                 </TabsContent>

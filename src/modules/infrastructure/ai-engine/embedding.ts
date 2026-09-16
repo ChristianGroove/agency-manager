@@ -78,24 +78,75 @@ export const EmbeddingService = {
     },
 
     async searchKnowledgeBase(query: string, orgId: string, category?: string, audience?: 'staff' | 'customer' | 'both'): Promise<KnowledgeBaseResult[]> {
-        const embedding = await this.generateEmbedding(query, orgId)
-        if (!embedding) return []
+        const cleanQuery = query?.trim()
+        if (!cleanQuery) return []
 
-        // 2. Search DB (using v2 with category filtering)
-        const { data, error } = await (supabaseAdmin).rpc('match_knowledge_v2', {
-            query_embedding: embedding,
-            match_threshold: 0.7,
-            match_count: 5,
-            msg_org_id: orgId,
-            category_filter: category,
-            audience_filter: audience
-        })
+        const embedding = await this.generateEmbedding(cleanQuery, orgId)
 
-        if (error) {
-            console.error("[EmbeddingService] Search error:", error)
-            return []
+        if (embedding) {
+            // 1. Try vector similarity search
+            try {
+                const { data, error } = await (supabaseAdmin).rpc('match_knowledge_v2', {
+                    query_embedding: embedding,
+                    match_threshold: 0.65,
+                    match_count: 5,
+                    msg_org_id: orgId,
+                    category_filter: category,
+                    audience_filter: audience
+                })
+
+                if (!error && Array.isArray(data) && data.length > 0) {
+                    return data as KnowledgeBaseResult[]
+                }
+            } catch (err: any) {
+                console.warn("[EmbeddingService] Vector search error, falling back to text search:", err.message)
+            }
         }
 
-        return data as KnowledgeBaseResult[] || []
+        // 2. Resilient Fallback: Text Similarity Match directly on knowledge_base
+        return this.fallbackTextSearch(cleanQuery, orgId, category)
+    },
+
+    async fallbackTextSearch(query: string, orgId: string, category?: string): Promise<KnowledgeBaseResult[]> {
+        try {
+            const words = query
+                .toLowerCase()
+                .replace(/[^\w\s]/g, '')
+                .split(/\s+/)
+                .filter(w => w.length > 3)
+                .slice(0, 5)
+
+            let dbQuery = supabaseAdmin
+                .from('knowledge_base')
+                .select('id, question, answer, category')
+                .eq('organization_id', orgId)
+                .limit(5)
+
+            if (category) {
+                dbQuery = dbQuery.eq('category', category)
+            }
+
+            if (words.length > 0) {
+                const orConditions = words.map(w => `question.ilike.%${w}%,answer.ilike.%${w}%`).join(',')
+                dbQuery = dbQuery.or(orConditions)
+            } else {
+                dbQuery = dbQuery.or(`question.ilike.%${query}%,answer.ilike.%${query}%`)
+            }
+
+            const { data, error } = await dbQuery
+            if (error || !data) return []
+
+            return data.map((item: any) => ({
+                id: item.id,
+                question: item.question,
+                answer: item.answer,
+                category: item.category || 'General',
+                audience: 'both',
+                similarity: 0.8
+            }))
+        } catch (e: any) {
+            console.error("[EmbeddingService] Fallback search error:", e.message)
+            return []
+        }
     }
 }

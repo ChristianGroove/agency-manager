@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/dialog"
 import {
     Bot, Check, ChevronDown, ChevronRight, GripVertical,
-    Info, Key, Plus, Trash2, Zap, ExternalLink, Loader2
+    Info, Key, Plus, Trash2, Zap, ExternalLink, Loader2,
+    ShieldAlert, AlertCircle, Sparkles
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
+import { Progress } from "@/components/ui/progress"
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent
 } from "@dnd-kit/core"
@@ -27,13 +29,19 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { addAICredential, deleteAICredential, updateAICredentialPriority } from "@/modules/infrastructure/ai-engine/actions"
+import {
+    addAICredential,
+    deleteAICredential,
+    updateAICredentialPriority,
+    TenantAIGovernanceContext
+} from "@/modules/infrastructure/ai-engine/actions"
 
 interface AIEngineSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     credentials: any[]
     providers: any[]
+    aiGovernance?: TenantAIGovernanceContext
 }
 
 // Logo mapping for official branding
@@ -83,25 +91,31 @@ const PROVIDER_GUIDES: Record<string, { title: string, url: string, steps: strin
     }
 }
 
-export function AIEngineSheet({ open, onOpenChange, credentials, providers }: AIEngineSheetProps) {
+export function AIEngineSheet({ open, onOpenChange, credentials, providers, aiGovernance }: AIEngineSheetProps) {
+    const isSuspended = aiGovernance?.aiStatus === 'suspended' || aiGovernance?.aiMode === 'disabled'
+    const isSaaS = aiGovernance?.aiMode === 'saas'
+    const isBYOK = !isSaaS && !isSuspended
+
     // Merge providers and credentials
     const initialItems = useMemo(() => {
-        // Map configured creds
-        const configured = credentials.map(c => ({
-            id: c.provider_id, // Use provider_id as stable ID for UI list
+        // Map configured creds (each key has unique ID)
+        const configured = credentials.map((c, idx) => ({
+            id: c.id, // Use unique credential ID
             credentialId: c.id,
+            providerId: c.provider_id,
             providerName: c.providerName || providers.find(p => p.id === c.provider_id)?.name,
             status: c.status,
-            priority: c.priority,
+            priority: c.priority || idx + 1,
             apiKeyMasked: c.api_key_encrypted
         }))
 
         // Find providers NOT configured
         const unconfigured = providers
-            .filter(p => !configured.find(c => c.id === p.id))
+            .filter(p => !configured.find(c => c.providerId === p.id))
             .map(p => ({
-                id: p.id,
+                id: `unconfigured-${p.id}`,
                 credentialId: null,
+                providerId: p.id,
                 providerName: p.name,
                 status: 'missing',
                 priority: 999,
@@ -128,31 +142,33 @@ export function AIEngineSheet({ open, onOpenChange, credentials, providers }: AI
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event
+        if (!over || active.id === over.id) return
 
-        if (active.id !== over?.id) {
-            let newItems: any[] = []
+        let reorderedItems: typeof items = []
 
-            setItems((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id)
-                const newIndex = items.findIndex((item) => item.id === over?.id)
+        setItems((prevItems) => {
+            const oldIndex = prevItems.findIndex((item) => item.id === active.id)
+            const newIndex = prevItems.findIndex((item) => item.id === over.id)
+            if (oldIndex === -1 || newIndex === -1) return prevItems
 
-                newItems = arrayMove(items, oldIndex, newIndex)
-                return newItems
-            })
+            reorderedItems = arrayMove(prevItems, oldIndex, newIndex)
+            return reorderedItems
+        })
 
-            // Trigger backend update for configured items OUTSIDE state setter
-            const updates = newItems
-                .filter(i => i.credentialId) // Only update active creds
-                .map((item, index) => ({
-                    id: item.credentialId!,
-                    priority: index + 1
-                }))
+        const updates = reorderedItems
+            .filter(i => i.credentialId)
+            .map((item, index) => ({
+                id: item.credentialId!,
+                priority: index + 1
+            }))
 
-            if (updates.length > 0) {
-                // Non-blocking update
-                updateAICredentialPriority(updates).then(() => {
-                    toast.success("Prioridad actualizada")
-                })
+        if (updates.length > 0) {
+            try {
+                await updateAICredentialPriority(updates)
+                toast.success("Prioridad actualizada")
+            } catch (err: any) {
+                console.error("Error actualizando prioridad:", err)
+                toast.error("Error al actualizar la prioridad")
             }
         }
     }
@@ -172,24 +188,46 @@ export function AIEngineSheet({ open, onOpenChange, credentials, providers }: AI
             >
                 <div className="flex flex-col h-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl">
                     {/* Premium Header */}
-                    <SheetHeader className="p-6 pb-2 border-b bg-white/50 dark:bg-zinc-900/50 border-border/40 space-y-1">
+                    <SheetHeader className="p-6 pb-4 border-b bg-white/50 dark:bg-zinc-900/50 border-border/40 space-y-1">
                         <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20">
-                                <Bot className="h-6 w-6" />
+                            <div className={`p-3 rounded-2xl text-white shadow-lg ${
+                                isSuspended
+                                    ? 'bg-red-500 shadow-red-500/20'
+                                    : isSaaS
+                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/20'
+                                    : 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-amber-500/20'
+                            }`}>
+                                {isSuspended ? <ShieldAlert className="h-6 w-6" /> : isSaaS ? <Zap className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
                             </div>
                             <div>
                                 <SheetTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
                                     Centro de Comando AI
                                 </SheetTitle>
                                 <SheetDescription className="text-sm font-medium text-muted-foreground/80">
-                                    Orquesta tu infraestructura de inteligencia artificial.
+                                    {isSuspended
+                                        ? 'Servicio de Inteligencia Artificial actualmente inactivo.'
+                                        : isSaaS
+                                        ? 'Infraestructura de inferencia gestionada provista por la plataforma.'
+                                        : 'Orquesta y prioriza tus propias claves de inteligencia artificial.'}
                                 </SheetDescription>
                             </div>
                             <div className="ml-auto flex flex-col items-end">
-                                <Badge variant="outline" className="font-mono text-xs gap-1.5 py-1.5 px-3 border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800 rounded-full">
-                                    <Zap className="h-3.5 w-3.5 fill-indigo-500 text-indigo-500" />
-                                    {activeCount} / {providers.length} Activos
-                                </Badge>
+                                {isSuspended ? (
+                                    <Badge variant="destructive" className="font-mono text-xs gap-1.5 py-1.5 px-3 rounded-full">
+                                        <ShieldAlert className="h-3.5 w-3.5" />
+                                        Servicio Suspendido
+                                    </Badge>
+                                ) : isSaaS ? (
+                                    <Badge variant="outline" className="font-mono text-xs gap-1.5 py-1.5 px-3 border-indigo-200 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800 rounded-full">
+                                        <Zap className="h-3.5 w-3.5 fill-indigo-500 text-indigo-500" />
+                                        SaaS Gestionado
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline" className="font-mono text-xs gap-1.5 py-1.5 px-3 border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 rounded-full">
+                                        <Bot className="h-3.5 w-3.5 text-amber-500" />
+                                        Claves Propias ({activeCount} Activa{activeCount === 1 ? '' : 's'})
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </SheetHeader>
@@ -197,37 +235,171 @@ export function AIEngineSheet({ open, onOpenChange, credentials, providers }: AI
                     {/* Content */}
                     <div className="flex-1 overflow-hidden relative">
                         <div className="absolute inset-0 p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-100 dark:scrollbar-thumb-indigo-900">
-                            <div className="space-y-6 max-w-2xl mx-auto">
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50/50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30">
-                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium flex gap-2 items-center">
-                                        <Info className="h-4 w-4" />
-                                        Arrastra las tarjetas para reordenar la prioridad
-                                    </span>
-                                </div>
-
-                                <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <SortableContext
-                                        items={items.map(i => i.id)}
-                                        strategy={verticalListSortingStrategy}
-                                    >
-                                        <div className="space-y-3">
-                                            {items.map((item) => (
-                                                <ProviderCard
-                                                    key={item.id}
-                                                    item={item}
-                                                    providers={providers}
-                                                    isExpanded={expandedId === item.id}
-                                                    onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                                                />
-                                            ))}
+                            {isSuspended ? (
+                                <div className="space-y-6 max-w-2xl mx-auto">
+                                    <div className="p-8 rounded-3xl bg-red-50/70 dark:bg-red-950/25 border border-red-200 dark:border-red-900/40 text-center space-y-4 shadow-sm">
+                                        <div className="mx-auto w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center shadow-inner">
+                                            <ShieldAlert className="h-7 w-7" />
                                         </div>
-                                    </SortableContext>
-                                </DndContext>
-                            </div>
+                                        <div className="space-y-1.5">
+                                            <h3 className="text-xl font-bold text-foreground">Inteligencia Artificial Inactiva</h3>
+                                            <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                                                El acceso a las funciones cognitivas de tu espacio (agentes de respuesta en inbox, transcripción de notas de voz y resúmenes automáticos) se encuentra temporalmente pausado por la administración.
+                                            </p>
+                                        </div>
+                                        <div className="p-3.5 rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-red-100 dark:border-red-900/30 text-xs text-muted-foreground max-w-md mx-auto">
+                                            Comunícate con soporte o con el administrador de la plataforma para reactivar las funciones cognitivas de tu cuenta.
+                                        </div>
+                                        <div className="pt-2">
+                                            <Button
+                                                variant="outline"
+                                                className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-semibold gap-2"
+                                                onClick={() => window.open('mailto:soporte@pixy.com?subject=Reactivacion%20IA%20Organizacion', '_blank')}
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                Contactar a Soporte
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Read-only view of existing keys */}
+                                    {items.filter(i => i.credentialId).length > 0 && (
+                                        <div className="space-y-3 opacity-60 pointer-events-none">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tus Credenciales Guardadas (Inactivas)</p>
+                                            <div className="space-y-2">
+                                                {items.filter(i => i.credentialId).map(item => (
+                                                    <div key={item.id} className="p-3 rounded-xl border bg-muted/30 flex items-center justify-between">
+                                                        <span className="text-xs font-medium">{item.providerName}</span>
+                                                        <Badge variant="outline" className="text-[10px] text-muted-foreground">Pausado</Badge>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : isSaaS ? (
+                                <div className="space-y-6 max-w-2xl mx-auto">
+                                    {/* SaaS Managed Hero */}
+                                    <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-zinc-900 border border-indigo-100 dark:border-indigo-900/40 space-y-5 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 rounded-lg bg-indigo-600 text-white">
+                                                        <Zap className="h-4 w-4" />
+                                                    </div>
+                                                    <h3 className="text-base font-bold text-foreground">IA Gestionada por la Plataforma</h3>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Tu suscripción incluye infraestructura de Inteligencia Artificial de alta velocidad. No necesitas pagar cuentas externas a OpenAI ni Anthropic.
+                                                </p>
+                                            </div>
+                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-semibold shrink-0">
+                                                Infraestructura Operativa
+                                            </Badge>
+                                        </div>
+
+                                        {/* Monthly Quota Meter */}
+                                        <div className="space-y-2 p-4 rounded-2xl bg-white/70 dark:bg-zinc-900/70 border border-indigo-100/60 dark:border-white/5">
+                                            <div className="flex justify-between items-center text-xs">
+                                                <span className="font-medium text-muted-foreground">Consumo de Tokens del Mes</span>
+                                                <span className="font-mono font-bold text-foreground">
+                                                    {aiGovernance?.currentUsage.toLocaleString()} / {aiGovernance?.monthlyLimit === -1 ? 'Ilimitado' : `${aiGovernance?.monthlyLimit.toLocaleString()} tok`}
+                                                </span>
+                                            </div>
+                                            {aiGovernance && aiGovernance.monthlyLimit > 0 && (
+                                                <Progress
+                                                    value={Math.min(100, Math.round((aiGovernance.currentUsage / aiGovernance.monthlyLimit) * 100))}
+                                                    className="h-2"
+                                                />
+                                            )}
+                                            <p className="text-[10px] text-muted-foreground">
+                                                La cuota mensual asignada por tu plan se reinicia el primer día de cada mes calendario.
+                                            </p>
+                                        </div>
+
+                                        {/* Available Models in SaaS */}
+                                        <div className="space-y-2">
+                                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Modelos Disponibles en tu Cuenta</span>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Badge variant="secondary" className="gap-1.5 py-1 text-xs font-normal">
+                                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                                    OpenAI GPT-4o
+                                                </Badge>
+                                                <Badge variant="secondary" className="gap-1.5 py-1 text-xs font-normal">
+                                                    <span className="h-2 w-2 rounded-full bg-purple-500" />
+                                                    Claude 3.5 Sonnet
+                                                </Badge>
+                                                <Badge variant="secondary" className="gap-1.5 py-1 text-xs font-normal">
+                                                    <span className="h-2 w-2 rounded-full bg-blue-500" />
+                                                    Google Gemini 1.5 Flash
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Callout for Custom Keys Upgrade */}
+                                    <div className="p-4 rounded-2xl bg-muted/40 border text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="space-y-0.5">
+                                            <p className="font-medium text-foreground">¿Requieres conectar tus propias cuentas sin límites?</p>
+                                            <p className="text-[11px]">Puedes solicitar a soporte activar el uso de Claves Propias para conectar tus proveedores directamente.</p>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs shrink-0"
+                                            onClick={() => window.open('mailto:soporte@pixy.com?subject=Solicitud%20Claves%20Propias', '_blank')}
+                                        >
+                                            Consultar
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-6 max-w-2xl mx-auto">
+                                    {/* Claves Propias Info Banner */}
+                                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/60 dark:bg-amber-950/20 dark:border-amber-900/30 text-xs text-amber-900 dark:text-amber-200">
+                                        <Info className="h-4 w-4 text-amber-600 shrink-0" />
+                                        <span>Conecta tus cuentas de OpenAI, Anthropic o Gemini. El consumo se factura en tu proveedor sin límites de plataforma.</span>
+                                    </div>
+
+                                    {/* 0 Keys Alert */}
+                                    {activeCount === 0 && (
+                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50/80 border border-red-200 dark:bg-red-950/25 dark:border-red-900/40 text-xs text-red-700 dark:text-red-300">
+                                            <AlertCircle className="h-4 w-4 shrink-0" />
+                                            <span>Agrega al menos una clave para activar los agentes y funciones de IA en tu espacio.</span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50/50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30">
+                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium flex gap-2 items-center">
+                                            <Info className="h-4 w-4" />
+                                            Arrastra las tarjetas para reordenar la prioridad de enrutamiento
+                                        </span>
+                                    </div>
+
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={items.map(i => i.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            <div className="space-y-3">
+                                                {items.map((item) => (
+                                                    <ProviderCard
+                                                        key={item.id}
+                                                        item={item}
+                                                        providers={providers}
+                                                        isExpanded={expandedId === item.id}
+                                                        onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </SortableContext>
+                                    </DndContext>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -268,7 +440,7 @@ function ProviderCard({ item, providers, isExpanded, onToggleExpand }: any) {
         if (!apiKey) return
         setLoading(true)
         try {
-            await addAICredential(item.id, apiKey)
+            await addAICredential(item.providerId, apiKey)
             toast.success("Credencial guardada seguramente")
             setApiKey("")
         } catch (e) {
@@ -279,7 +451,7 @@ function ProviderCard({ item, providers, isExpanded, onToggleExpand }: any) {
     }
 
     const handleDelete = async () => {
-        if (!confirm("¿Desconectar este proveedor?")) return
+        if (!confirm("¿Desconectar esta credencial?")) return
         setLoading(true)
         try {
             await deleteAICredential(item.credentialId)
@@ -291,7 +463,7 @@ function ProviderCard({ item, providers, isExpanded, onToggleExpand }: any) {
         }
     }
 
-    const guide = PROVIDER_GUIDES[item.id]
+    const guide = PROVIDER_GUIDES[item.providerId]
 
     return (
         <div ref={setNodeRef} style={style} className={cn("group rounded-xl border bg-white dark:bg-zinc-900 shadow-sm transition-all", isActive ? "border-indigo-100 dark:border-indigo-900/50" : "border-border/50")}>
@@ -302,8 +474,8 @@ function ProviderCard({ item, providers, isExpanded, onToggleExpand }: any) {
                 </div>
 
                 <div className="h-10 w-10 rounded-lg bg-zinc-50 dark:bg-zinc-800 border p-1.5 flex items-center justify-center">
-                    {PROVIDER_LOGOS[item.id] ? (
-                        <img src={PROVIDER_LOGOS[item.id]} alt={item.providerName} className="w-full h-full object-contain" />
+                    {PROVIDER_LOGOS[item.providerId] ? (
+                        <img src={PROVIDER_LOGOS[item.providerId]} alt={item.providerName} className="w-full h-full object-contain" />
                     ) : (
                         <Bot className="h-5 w-5 text-muted-foreground" />
                     )}

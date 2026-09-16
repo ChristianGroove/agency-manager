@@ -90,13 +90,26 @@ export async function saveFAQ(faq: FAQEntry): Promise<{ success: boolean; id?: s
     try {
         const supabase = supabaseAdmin
 
-        const { data, error } = await supabase.from('knowledge_base').insert({
+        let embedding = null
+        try {
+            const { EmbeddingService } = await import('@/modules/infrastructure/ai-engine/embedding')
+            embedding = await EmbeddingService.generateEmbedding(`${faq.question}\n${faq.answer}`, orgId)
+        } catch {
+            // Embedding generation is best-effort
+        }
+
+        const insertPayload: any = {
             organization_id: orgId,
             question: faq.question,
             answer: faq.answer,
             category: faq.category,
             source: 'ai_extracted'
-        }).select('id').single()
+        }
+        if (embedding) {
+            insertPayload.embedding = embedding
+        }
+
+        const { data, error } = await supabase.from('knowledge_base').insert(insertPayload).select('id').single()
 
         if (error) throw error
 

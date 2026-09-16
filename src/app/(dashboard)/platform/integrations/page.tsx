@@ -2,14 +2,15 @@ import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import { MarketplacePage } from "@/modules/infrastructure/integrations/marketplace/components/marketplace-page"
 import { getMarketplaceProviders, getInstalledIntegrations } from "@/modules/infrastructure/integrations/marketplace/marketplace-actions"
-import { getAICredentials, getAIProviders } from "@/modules/infrastructure/ai-engine/actions"
+import { getAICredentials, getAIProviders, getTenantAIGovernanceContext } from "@/modules/infrastructure/ai-engine/actions"
 
 export default async function Page() {
-    const [providers, installed, aiCredentials, aiProviders] = await Promise.all([
+    const [providers, installed, aiCredentials, aiProviders, aiGovernance] = await Promise.all([
         getMarketplaceProviders(),
         getInstalledIntegrations(),
         getAICredentials(),
-        getAIProviders()
+        getAIProviders(),
+        getTenantAIGovernanceContext()
     ])
 
     return (
@@ -19,6 +20,7 @@ export default async function Page() {
                 installedIntegrations={installed}
                 aiCredentials={aiCredentials}
                 aiProviders={aiProviders}
+                aiGovernance={aiGovernance}
             />
         </Suspense>
     )

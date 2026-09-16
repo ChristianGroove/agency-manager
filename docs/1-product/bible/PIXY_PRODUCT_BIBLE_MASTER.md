@@ -803,19 +803,29 @@ Sistema de gestión centralizada de información de la organización para alimen
 - Análisis de conversaciones históricas del Inbox para identificar patrones de preguntas frecuentes.
 - Generación automática de respuestas basadas en cómo respondió el equipo previamente.
 
-#### 3. Búsqueda Semántica (RAG Integration)
+#### 3. Búsqueda Semántica y Resiliencia RAG
 - **Proceso**:
-    1. Cada entrada genera un embedding vectorial al crearse/actualizarse.
-    2. Cuando un usuario pregunta algo (CAA o Smart Replies), se genera un embedding del query.
-    3. Se buscan los vectores más similares en la base.
-    4. Los documentos relevantes se inyectan como contexto en el prompt del LLM.
-    5. La IA responde con información precisa y actualizada de la organización.
-- **Ventaja**: Respuestas contextuales sin entrenar modelos personalizados costosos.
+    1. Cada entrada genera un embedding vectorial al crearse/actualizarse (o al aprobarse desde el Inbox).
+    2. Cuando un usuario pregunta algo (CAA, Inbox AI o Smart Replies), se genera un embedding del query.
+    3. Se buscan los vectores más similares mediante la RPC `match_knowledge_v2`.
+    4. **Resiliencia Automática**: Si la búsqueda vectorial falla o no hay clave de embeddings disponible, el sistema ejecuta un fallback inmediato por texto (`ILIKE`) sobre preguntas y respuestas, garantizando cero caídas 500 y continuidad cognitiva total.
+    5. Los documentos relevantes se inyectan como contexto en el prompt del LLM.
+    6. La IA responde con información precisa y actualizada de la organización.
+- **Ventaja**: Respuestas contextuales y de alta fidelidad sin entrenar modelos personalizados costosos.
 
 #### 4. Categorización & Gestión
 - **Categorías Dinámicas**: Los administradores pueden crear categorías personalizadas según su operación.
 - **Búsqueda por Texto**: Filtrado rápido por keywords en pregunta o respuesta.
 - **Auditoría de Uso**: Tracking de qué entradas se consultaron más para optimizar la base.
+
+### E. Motor de Inteligencia Artificial y Gobernanza (AI Engine)
+- **Multi-Proveedor & Multi-Key**: Soporte nativo para OpenAI, Anthropic (Claude 3.5), Google Gemini y Groq, permitiendo múltiples claves por proveedor con orden de prioridad.
+- **Failover & Rotación Automática**: Detección de errores 429 (límite de cuota o rate limit) con conmutación transparente a la siguiente credencial activa del pool.
+- **Modos de Gobernanza**:
+  - **BYOK Propio (Por Defecto)**: El cliente aporta sus propias credenciales, facturación directa con su proveedor y consumo de tokens ilimitado de plataforma.
+  - **SaaS Gestionado**: Pixy asume el costo de inferencia mediante la Bóveda Maestra de Claves del Super Admin con control estricto de cuota mensual de tokens.
+  - **Kill Switch & Suspensión**: Desactivación instantánea por organización para mitigar abusos o mora.
+- **Bóveda Maestra Super Admin**: Gestión deslizante tipo `Sheet` con reordenamiento Drag & Drop (`@dnd-kit`) y cifrado AES-256 en reposo.
 
 ---
 

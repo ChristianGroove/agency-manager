@@ -157,7 +157,13 @@ export async function createOrganization(formData: {
                     organization_type: formData.organization_type || 'client',
                     status: 'active',
                     acquired_by_reseller_id: targetResellerId,
-                    acquisition_date: targetResellerId ? new Date().toISOString() : null
+                    acquisition_date: targetResellerId ? new Date().toISOString() : null,
+                    rate_limit_config: {
+                        requests_per_minute: 500,
+                        ai_requests_per_day: 100,
+                        ai_mode: 'byok',
+                        ai_status: 'active'
+                    }
                 })
                 .select()
                 .single()
