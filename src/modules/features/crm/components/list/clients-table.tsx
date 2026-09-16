@@ -14,7 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, Phone, FileText, Trash2, Globe, Wifi, Shield, StickyNote } from "lucide-react"
+import { MoreVertical, Phone, SendHorizontal, FileText, Trash2, Globe, Wifi, Shield, StickyNote } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { VERTICAL_REGISTRY, VerticalType } from "@/modules/core/organizations/vertical-registry"
 import { 
@@ -55,6 +55,7 @@ export function ClientsTable({
     const { selectedIds, toggleSelection, toggleAll, spaceType } = useClients()
     const config = VERTICAL_REGISTRY[spaceType as VerticalType]
     const isAgency = (spaceType === 'agency' || spaceType === 'platform') && config?.management?.actions?.showBilling
+    const isAgencyOrLegacy = spaceType === 'agency' || spaceType === 'legacy' || spaceType === 'platform'
 
     return (
         <div className="glass-card rounded-lg overflow-hidden flex flex-col flex-1 h-full relative">
@@ -107,9 +108,11 @@ export function ClientsTable({
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} title="Comunicación" className="text-slate-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary hover:bg-primary/10 h-8 w-8 mb-0 transition-colors">
-                                                <Phone className="h-4 w-4" />
-                                            </Button>
+                                            {isAgencyOrLegacy && (
+                                                <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} title="Centro de Envíos" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 mb-0 transition-colors">
+                                                    <SendHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                             {isAgency && (
                                                  <Button variant="ghost" size="icon" onClick={() => onInvoices(client)} title="Facturación" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 transition-colors">
                                                      <FileText className="h-4 w-4" />

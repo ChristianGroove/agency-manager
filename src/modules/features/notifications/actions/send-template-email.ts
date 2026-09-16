@@ -61,7 +61,8 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
     console.log(`[SendEmail] Starting. Key: '${normalizedKey}', Client: ${clientId}`)
     const requiresInvoiceContext = normalizedKey === 'invoice_new' || normalizedKey === 'invoice_sent' || normalizedKey === 'payment_reminder'
     const requiresQuoteContext = normalizedKey === 'quote_new'
-    let requiredContextFound = !(requiresInvoiceContext || requiresQuoteContext)
+    const requiresBriefingContext = normalizedKey === 'briefing_invite'
+    let requiredContextFound = !(requiresInvoiceContext || requiresQuoteContext || requiresBriefingContext)
 
     // 2. Fetch Context Data (Invoice or Quote)
     let contextData: any = {}
@@ -126,6 +127,32 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
                 }
             } else {
                 console.warn(`[SendEmail] Quote context not found or not owned by client.`)
+            }
+        } else if (contextId && requiresBriefingContext) {
+            console.log(`[SendEmail] Fetching Briefing Context ID: ${contextId}`)
+            const { data: brief } = await supabase
+                .from('briefings')
+                .select('id, token, client_id, template:briefing_templates(name)')
+                .eq('id', contextId)
+                .eq('organization_id', orgId)
+                .single()
+
+            if (brief && (brief.client_id === clientId || !brief.client_id)) {
+                console.log(`[SendEmail] Found Briefing: ${brief.id}`)
+                requiredContextFound = true
+                const templateName = (brief.template as any)?.name || 'Briefing de Proyecto'
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pixy.com.co'
+                const briefingLink = `${siteUrl}/briefing/${brief.token}`
+
+                contextData = {
+                    ...contextData,
+                    template_name: templateName,
+                    briefing_title: templateName,
+                    link_url: briefingLink,
+                    document_type: 'briefing'
+                }
+            } else {
+                console.warn(`[SendEmail] Briefing context not found or not owned by client.`)
             }
         }
 

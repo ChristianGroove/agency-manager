@@ -47,6 +47,7 @@ function deleteEqIn(result: { error?: unknown }) {
     const query: any = {
         delete: vi.fn(() => query),
         eq: vi.fn(() => query),
+        neq: vi.fn(() => query),
         in: vi.fn(async () => result),
     }
 
@@ -56,7 +57,8 @@ function deleteEqIn(result: { error?: unknown }) {
 function deleteEq(result: { error?: unknown }) {
     const query: any = {
         delete: vi.fn(() => query),
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
+        neq: vi.fn(async () => result),
     }
 
     return query
@@ -65,7 +67,8 @@ function deleteEq(result: { error?: unknown }) {
 function selectEq(result: { data?: unknown; error?: unknown }) {
     const query: any = {
         select: vi.fn(() => query),
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
+        neq: vi.fn(async () => result),
     }
 
     return query
@@ -75,6 +78,7 @@ function selectEqIn(result: { data?: unknown; error?: unknown }) {
     const query: any = {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
+        neq: vi.fn(() => query),
         in: vi.fn(async () => result),
     }
 

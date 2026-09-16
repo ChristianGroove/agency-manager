@@ -1,5 +1,5 @@
 import { createClient } from "@/modules/core/database/supabase-server"
-import { EmailBranding, getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getInvoiceSummaryEmailHtml, getPortalInviteEmailHtml } from "@/modules/infrastructure/notifications/services/email-templates"
+import { EmailBranding, getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getBriefingInviteEmailHtml, getInvoiceSummaryEmailHtml, getPortalInviteEmailHtml } from "@/modules/infrastructure/notifications/services/email-templates"
 
 export class TemplateEngine {
 
@@ -108,6 +108,16 @@ export class TemplateEngine {
                         style
                     )
                     if (!subject) subject = `Nuevo Briefing: ${variables.template_name}`
+                    break;
+                case 'briefing_invite':
+                    html = getBriefingInviteEmailHtml(
+                        variables.client_name,
+                        variables.template_name || variables.briefing_title || 'Briefing de Proyecto',
+                        variables.link_url || '#',
+                        branding,
+                        style
+                    )
+                    if (!subject) subject = `Briefing Pendiente: ${variables.template_name || variables.briefing_title || 'Requerimientos'} - ${branding.agency_name}`
                     break;
                 case 'portal_invite':
                     html = getPortalInviteEmailHtml(

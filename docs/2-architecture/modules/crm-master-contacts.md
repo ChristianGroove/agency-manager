@@ -19,7 +19,8 @@ La tabla `public.leads` funciona ahora como una entidad unificada con un discrim
 ### 2. Relación `master_contact_id` y Limpieza Pipeline
 Se introdujo una relación de auto-referencia en la tabla `leads`:
 - Cada `lead` de pipeline puede (y debe) apuntar a un **Master Contact** (`contact_type='client'`) mediante el campo `master_contact_id`.
-- **Protección de Datos**: Al realizar un borrado de leads (limpieza de pipeline), el sistema ahora distingue estos registros. Borrar un `lead` no afectará al registro `client` maestro, preservando la identidad, facturas y configuraciones de hosting asociadas.
+- **Protección de Datos y Blindaje de Pipeline**: Al realizar un borrado de leads (limpieza de pipeline por etapas o borrado total), las acciones `deleteLeadsByPipeline` y `deleteAllLeads` incluyen estrictamente el filtro `.neq('contact_type', 'client')`. Esto asegura que jamás se elimine un contacto maestro ni sus notas asociadas ante limpiezas del embudo comercial.
+- **Notas de Contacto (`QuickNotesModal`)**: Las notas creadas desde la agenda o tarjeta de contacto se anclan de manera exclusiva al ID del contacto (`contact_type = 'client'`), impidiendo que caigan en oportunidades temporales del pipeline que puedan ser eliminadas en cascada (`lead_notes ON DELETE CASCADE`).
 
 ### 3. Blindaje en la Capa de Servicios (3-Layers)
 Para evitar errores futuros de integridad, se ha estandarizado el acceso a datos:

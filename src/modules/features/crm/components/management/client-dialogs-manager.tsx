@@ -6,7 +6,7 @@ import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
 import { UnifiedCommunicationModal } from "@/modules/infrastructure/communication/components/unified-communication-modal"
 import { QuickInvoicesModal } from "./quick-invoices-modal"
-// NotesModal is now integrated or removed
+import { QuickNotesModal } from "./quick-notes-modal"
 
 export function ClientDialogsManager({
     managementOpen,
@@ -94,7 +94,12 @@ export function ClientDialogsManager({
                 onSuccess={onSuccess}
             />
 
-            {/* NotesModal REMOVED */}
+            <QuickNotesModal
+                isOpen={!!notesOpen}
+                onOpenChange={(val) => setNotesOpen?.(val)}
+                client={clientForNotes}
+                onSuccess={() => onSuccess()}
+            />
         </>
     )
 }

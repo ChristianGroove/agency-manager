@@ -303,6 +303,30 @@ export function getBriefingSubmissionEmailHtml(clientName: string, templateName:
     return getBaseHtml(`Briefing Recibido`, content, branding, style)
 }
 
+export function getBriefingInviteEmailHtml(clientName: string, templateName: string, linkUrl: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+    const isSwiss = style === 'swiss';
+    const isNeo = style === 'neo';
+
+    const content = `
+        <p>Hola <strong>${clientName}</strong>,</p>
+        <p>Para avanzar con los requerimientos de tu proyecto, necesitamos que diligencies el siguiente formulario/briefing: <strong>${templateName}</strong>.</p>
+        
+        <div style="${isSwiss ? 'border: 1px solid #000; padding: 20px; margin: 20px 0;' : (isNeo ? 'background: #eff6ff; border-radius: 12px; padding: 20px; margin: 24px 0;' : 'background: #f8fafc; border: 1px solid #e2e8f0; padding: 18px; border-radius: 10px; margin: 20px 0;')}">
+            <p style="margin: 0; font-size: 14px; color: ${isSwiss ? '#000' : '#334155'}; line-height: 1.5;">
+                📋 Este formulario nos permite conocer en detalle tus objetivos, referencias y especificaciones técnicas para ofrecerte el mejor resultado.
+            </p>
+        </div>
+
+        <p>Puedes completarlo directamente desde el siguiente enlace seguro:</p>
+        <div style="margin: 32px 0; text-align: ${isSwiss ? 'left' : 'center'};">
+             <a href="${linkUrl}" style="${isSwiss ? 'background:#000; color:#fff; padding:14px 28px; text-decoration:none; font-weight:bold; display:inline-block;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 12px 28px; border-radius: ${isNeo ? '50px' : '8px'}; text-decoration: none; font-weight: 600; display:inline-block; box-shadow: ${isNeo ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'};`}">
+                Completar Briefing
+            </a>
+        </div>
+    `
+    return getBaseHtml(`Briefing Pendiente`, content, branding, style)
+}
+
 export function getPortalInviteEmailHtml(clientName: string, portalUrl: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
     const isSwiss = style === 'swiss';
     const isNeo = style === 'neo';

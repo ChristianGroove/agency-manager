@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { 
     MoreVertical, 
     Phone, 
+    SendHorizontal,
     FileText, 
     Trash2, 
     AlertTriangle, 
@@ -61,6 +62,7 @@ export function ClientsGrid({
 
     const isRealEstate = spaceType === 'real_estate'
     const isAgency = (spaceType === 'agency' || spaceType === 'platform') && config?.management?.actions?.showBilling
+    const isAgencyOrLegacy = spaceType === 'agency' || spaceType === 'legacy' || spaceType === 'platform'
 
     if (loading) {
         return (
@@ -365,15 +367,17 @@ export function ClientsGrid({
                             )}
 
                             <CardFooter className="px-5 pb-5 pt-0 flex gap-1.5 items-center border-t border-zinc-100 dark:border-white/5 mt-auto">
-                                <Button 
-                                   variant="ghost" 
-                                   size="icon" 
-                                   className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl transition-all" 
-                                   onClick={() => onCommunication(client)}
-                                   title="Contactar"
-                                >
-                                    <Phone className="h-4 w-4" />
-                                </Button>
+                                {isAgencyOrLegacy && (
+                                    <Button 
+                                       variant="ghost" 
+                                       size="icon" 
+                                       className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl transition-all" 
+                                       onClick={() => onCommunication(client)}
+                                       title="Centro de Envíos"
+                                    >
+                                        <SendHorizontal className="h-4 w-4" />
+                                    </Button>
+                                )}
                                 {isAgency && (
                                     <Button 
                                        variant="ghost" 

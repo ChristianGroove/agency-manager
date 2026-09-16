@@ -121,8 +121,13 @@ export async function deleteLeadsByPipeline(pipelineId: string): Promise<LeadMan
 
     const statusKeys = stages.map(s => s.status_key)
 
-    // 1. CLEANUP PHYSICAL MEDIA (Find leads first by status)
-    const { data: leadsToDelete } = await supabase.from('leads').select('id').eq('organization_id', orgId).in('status', statusKeys);
+    // 1. CLEANUP PHYSICAL MEDIA (Find leads first by status) - Exclude master clients
+    const { data: leadsToDelete } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('organization_id', orgId)
+        .neq('contact_type', 'client')
+        .in('status', statusKeys);
     if (leadsToDelete?.length) {
         try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] Pipeline media cleanup error:", e); }
     }
@@ -131,6 +136,7 @@ export async function deleteLeadsByPipeline(pipelineId: string): Promise<LeadMan
         .from('leads')
         .delete()
         .eq('organization_id', orgId)
+        .neq('contact_type', 'client')
         .in('status', statusKeys)
 
     if (error) {
@@ -146,8 +152,12 @@ export async function deleteAllLeads(): Promise<LeadManagementResponse> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
 
-    // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG
-    const { data: leads } = await supabase.from('leads').select('id').eq('organization_id', orgId);
+    // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG - Exclude master clients
+    const { data: leads } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('organization_id', orgId)
+        .neq('contact_type', 'client');
     if (leads?.length) {
         try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id)); } catch (e) { logLeadManagementError("[LeadActions] All leads media cleanup error:", e); }
     }
@@ -156,6 +166,7 @@ export async function deleteAllLeads(): Promise<LeadManagementResponse> {
         .from('leads')
         .delete()
         .eq('organization_id', orgId)
+        .neq('contact_type', 'client')
 
     if (error) {
         return leadManagementFailure("Error deleting all leads:", error)
