@@ -122,6 +122,33 @@ export const SYSTEM_STAGE_TAGS: Record<string, SystemStageTagConfig> = {
   }
 };
 
+export interface TenantTaskTag {
+  id: string;            // slug/key único
+  name: string;          // nombre de la etiqueta
+  label: string;         // etiqueta visible
+  color: string;         // 'blue' | 'emerald' | 'purple' | 'amber' | 'red' | 'indigo' | 'rose' | 'cyan' | 'slate'
+  is_favorite: boolean;  // si es favorita para predominar arriba en la lista
+  created_at?: string;
+  created_by?: string;
+}
+
+export const DEFAULT_TENANT_TASK_TAGS: TenantTaskTag[] = [
+  // Favoritas Predeterminadas (predominan arriba en el selector)
+  { id: "qa-failed", name: "qa-failed", label: "QA: Rechazado", color: "red", is_favorite: true },
+  { id: "uat", name: "uat", label: "Pruebas UAT", color: "purple", is_favorite: true },
+  { id: "vendor-blocked", name: "vendor-blocked", label: "Bloqueo Proveedor", color: "amber", is_favorite: true },
+  { id: "ready-for-release", name: "ready-for-release", label: "Listo para Release", color: "emerald", is_favorite: true },
+  { id: "bug", name: "bug", label: "Bug / Incidencia", color: "red", is_favorite: true },
+  { id: "urgente", name: "urgente", label: "Urgente", color: "amber", is_favorite: true },
+  { id: "frontend", name: "frontend", label: "Frontend", color: "blue", is_favorite: true },
+  { id: "backend", name: "backend", label: "Backend", color: "indigo", is_favorite: true },
+  // Otras Disponibles
+  { id: "api", name: "api", label: "API REST", color: "cyan", is_favorite: false },
+  { id: "diseño", name: "diseño", label: "Diseño UI/UX", color: "rose", is_favorite: false },
+  { id: "database", name: "database", label: "Base de Datos", color: "emerald", is_favorite: false },
+  { id: "seguridad", name: "seguridad", label: "Seguridad", color: "purple", is_favorite: false },
+];
+
 export interface TaskItem {
   id: string;
   organization_id: string;

@@ -150,6 +150,27 @@ async function runSeed() {
     console.log(`   ✅ Organización creada: "${newOrg.name}" (ID: ${targetOrgId})`)
   }
 
+  // Sincronizar catálogo global de etiquetas si existe en el snapshot
+  if (snapshot.organization?.app_metadata?.task_tags) {
+    const { data: curOrg } = await supabase
+      .from("organizations")
+      .select("app_metadata")
+      .eq("id", targetOrgId)
+      .single()
+
+    const mergedMeta = {
+      ...(curOrg?.app_metadata || {}),
+      task_tags: snapshot.organization.app_metadata.task_tags
+    }
+
+    await supabase
+      .from("organizations")
+      .update({ app_metadata: mergedMeta })
+      .eq("id", targetOrgId)
+
+    console.log(`   🏷️ Sincronizadas ${snapshot.organization.app_metadata.task_tags.length} etiquetas globales en el tenant`)
+  }
+
   // -------------------------------------------------------------
   // 2. SEMBRAR COLABORADORES (organization_staff)
   // -------------------------------------------------------------

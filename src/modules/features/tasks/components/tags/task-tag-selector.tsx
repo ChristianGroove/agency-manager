@@ -1,215 +1,539 @@
 "use client"
 
-import React, { useState } from "react"
-import { Tag, Plus, X, Check } from "lucide-react"
-import { SYSTEM_STAGE_TAGS } from "../../types"
+import React, { useState, useEffect, useMemo, useRef } from "react"
+import {
+  Tag,
+  Plus,
+  X,
+  Check,
+  Search,
+  Star,
+  Trash2,
+  ChevronsUpDown,
+  Sparkles,
+  Loader2
+} from "lucide-react"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover"
 import { cn } from "@/modules/infrastructure/utils/utils"
+import { TenantTaskTag, DEFAULT_TENANT_TASK_TAGS, SYSTEM_STAGE_TAGS } from "../../types"
+import {
+  getTenantTaskTags,
+  createTenantTaskTag,
+  toggleFavoriteTenantTaskTag,
+  deleteTenantTaskTag
+} from "../../actions/task-tag-actions"
+import { toast } from "sonner"
 
 interface TaskTagSelectorProps {
   tags: string[]
   onChange: (tags: string[]) => void
   readOnly?: boolean
+  canManageCatalog?: boolean // PM in portal or Platform admin
+  portalToken?: string
+  organizationId?: string
   className?: string
+}
+
+export function getTagColorInfo(colorName?: string) {
+  switch (colorName?.toLowerCase()) {
+    case "red":
+      return {
+        badge: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
+        dot: "bg-red-500",
+        pill: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+      }
+    case "purple":
+      return {
+        badge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
+        dot: "bg-purple-500",
+        pill: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+      }
+    case "amber":
+    case "orange":
+      return {
+        badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+        dot: "bg-amber-500",
+        pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+      }
+    case "emerald":
+    case "green":
+      return {
+        badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+        dot: "bg-emerald-500",
+        pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+      }
+    case "blue":
+      return {
+        badge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+        dot: "bg-blue-500",
+        pill: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      }
+    case "indigo":
+      return {
+        badge: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+        dot: "bg-indigo-500",
+        pill: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30"
+      }
+    case "rose":
+    case "pink":
+      return {
+        badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
+        dot: "bg-rose-500",
+        pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+      }
+    case "cyan":
+      return {
+        badge: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+        dot: "bg-cyan-500",
+        pill: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30"
+      }
+    default:
+      return {
+        badge: "bg-secondary text-secondary-foreground border-border/80",
+        dot: "bg-slate-400 dark:bg-slate-500",
+        pill: "bg-secondary text-secondary-foreground border-border/80"
+      }
+  }
 }
 
 export function TaskTagSelector({
   tags = [],
   onChange,
   readOnly = false,
+  canManageCatalog = true,
+  portalToken,
+  organizationId,
   className,
 }: TaskTagSelectorProps) {
-  const [customTagInput, setCustomTagInput] = useState("")
-  const [isAdding, setIsAdding] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [isCreating, setIsCreating] = useState(false)
+  const [loadingCatalog, setLoadingCatalog] = useState(false)
+  const [catalogTags, setCatalogTags] = useState<TenantTaskTag[]>(DEFAULT_TENANT_TASK_TAGS)
+  const [canManage, setCanManage] = useState(canManageCatalog)
 
   const currentTags = Array.isArray(tags) ? tags : []
 
-  // Toggle a system tag
-  const handleToggleSystemTag = (tagKey: string) => {
+  // Load catalog on mount and when popover opens
+  const fetchCatalog = async () => {
+    try {
+      setLoadingCatalog(true)
+      const res = await getTenantTaskTags(organizationId, portalToken)
+      if (res.success && res.tags) {
+        setCatalogTags(res.tags)
+        setCanManage(res.canManageCatalog)
+      }
+    } catch (err) {
+      console.error("Error cargando etiquetas:", err)
+    } finally {
+      setLoadingCatalog(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchCatalog()
+  }, [organizationId, portalToken])
+
+  // Combine catalog tags with any orphan tags currently on the task
+  const allAvailableTags = useMemo(() => {
+    const map = new Map<string, TenantTaskTag>()
+
+    // 1. Add catalog tags
+    for (const ct of catalogTags) {
+      map.set(ct.id.toLowerCase(), ct)
+    }
+
+    // 2. Add current task tags if not present
+    for (const t of currentTags) {
+      const lower = t.toLowerCase()
+      if (!map.has(lower)) {
+        const sys = SYSTEM_STAGE_TAGS[lower]
+        map.set(lower, {
+          id: lower,
+          name: lower,
+          label: sys?.shortLabel || sys?.label || lower,
+          color: sys?.color || "blue",
+          is_favorite: false
+        })
+      }
+    }
+
+    return Array.from(map.values())
+  }, [catalogTags, currentTags])
+
+  // Split into favorites and regular
+  const { favoriteTags, regularTags } = useMemo(() => {
+    const q = search.trim().toLowerCase().replace(/^[#@]+/, "")
+    const filtered = allAvailableTags.filter(
+      (t) =>
+        !q ||
+        t.name.toLowerCase().includes(q) ||
+        t.label.toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q)
+    )
+
+    const favs = filtered.filter((t) => t.is_favorite)
+    const regulars = filtered.filter((t) => !t.is_favorite)
+
+    return { favoriteTags: favs, regularTags: regulars }
+  }, [allAvailableTags, search])
+
+  // Toggle selection of a tag on the task
+  const handleToggleTag = (tagId: string) => {
     if (readOnly) return
-    if (currentTags.includes(tagKey)) {
-      onChange(currentTags.filter((t) => t !== tagKey))
+    const exists = currentTags.some((t) => t.toLowerCase() === tagId.toLowerCase())
+    if (exists) {
+      onChange(currentTags.filter((t) => t.toLowerCase() !== tagId.toLowerCase()))
     } else {
-      onChange([...currentTags, tagKey])
+      onChange([...currentTags, tagId])
     }
   }
 
-  // Remove any tag
-  const handleRemoveTag = (tagToRemove: string) => {
+  // Remove a tag from the task
+  const handleRemoveTag = (tagToRemove: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
     if (readOnly) return
-    onChange(currentTags.filter((t) => t !== tagToRemove))
+    onChange(currentTags.filter((t) => t.toLowerCase() !== tagToRemove.toLowerCase()))
   }
 
-  // Add custom tag
-  const handleAddCustomTag = () => {
-    if (readOnly) return
-    const clean = customTagInput
-      .trim()
-      .toLowerCase()
-      .replace(/^[#@]+/, "") // remove leading # or @ if user typed them
-      .replace(/\s+/g, "-") // normalize spaces to dashes
+  // Create new tag globally in tenant
+  const handleCreateNewTag = async () => {
+    const raw = search.trim().replace(/^[#@]+/, "")
+    if (!raw) return
 
-    if (!clean) return
+    setIsCreating(true)
+    try {
+      const res = await createTenantTaskTag(
+        {
+          name: raw,
+          label: raw,
+          color: "blue",
+          is_favorite: false,
+          orgId: organizationId
+        },
+        portalToken
+      )
 
-    if (!currentTags.includes(clean)) {
-      onChange([...currentTags, clean])
+      if (res.success && res.tag) {
+        toast.success(`Etiqueta #${res.tag.name} creada exitosamente`)
+        // Update catalog local state
+        setCatalogTags((prev) => {
+          if (prev.some((t) => t.id === res.tag!.id)) return prev
+          return [...prev, res.tag!]
+        })
+        // Automatically select it on the task
+        if (!currentTags.includes(res.tag.id)) {
+          onChange([...currentTags, res.tag.id])
+        }
+        setSearch("")
+      } else {
+        toast.error(res.error || "No se pudo crear la etiqueta")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al crear la etiqueta")
+    } finally {
+      setIsCreating(false)
     }
-    setCustomTagInput("")
-    setIsAdding(false)
+  }
+
+  // Toggle favorite in catalog
+  const handleToggleFavorite = async (tagId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!canManage) return
+
+    try {
+      const res = await toggleFavoriteTenantTaskTag(tagId, organizationId, portalToken)
+      if (res.success && res.tags) {
+        setCatalogTags(res.tags)
+      }
+    } catch (err: any) {
+      toast.error("Error al actualizar etiqueta favorita")
+    }
+  }
+
+  // Delete tag from catalog
+  const handleDeleteFromCatalog = async (tagId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!canManage) return
+
+    try {
+      const res = await deleteTenantTaskTag(tagId, organizationId, portalToken)
+      if (res.success && res.tags) {
+        setCatalogTags(res.tags)
+        // Also remove from task if present
+        if (currentTags.includes(tagId)) {
+          onChange(currentTags.filter((t) => t !== tagId))
+        }
+        toast.success("Etiqueta eliminada del catálogo")
+      }
+    } catch (err: any) {
+      toast.error("Error al eliminar etiqueta")
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault()
-      handleAddCustomTag()
-    } else if (e.key === "Escape") {
-      setIsAdding(false)
-      setCustomTagInput("")
+      const q = search.trim().toLowerCase().replace(/^[#@]+/, "")
+      const exactMatch = allAvailableTags.find(
+        (t) => t.name.toLowerCase() === q || t.id.toLowerCase() === q
+      )
+      if (exactMatch) {
+        handleToggleTag(exactMatch.id)
+        setSearch("")
+      } else if (canManage && q) {
+        handleCreateNewTag()
+      }
     }
   }
 
+  const cleanSearch = search.trim().replace(/^[#@]+/, "")
+  const hasExactMatch = allAvailableTags.some(
+    (t) => t.name.toLowerCase() === cleanSearch.toLowerCase() || t.id.toLowerCase() === cleanSearch.toLowerCase()
+  )
+
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Tag className="w-3 h-3 text-muted-foreground" />
-          Etiquetas & Etapas
+          Etiquetas & Categorías
         </label>
-        {!readOnly && !isAdding && (
-          <button
-            type="button"
-            onClick={() => setIsAdding(true)}
-            className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-          >
-            <Plus className="w-3 h-3" />
-            Añadir tag
-          </button>
+        {canManage && (
+          <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1 font-mono">
+            <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+            Globales
+          </span>
         )}
       </div>
 
-      {/* Quick System Stage Tags (QA, UAT, Bloqueos, Release) */}
-      {!readOnly && (
-        <div className="space-y-1.5">
-          <span className="text-[10px] font-medium text-muted-foreground/80 block">
-            Etapas clave de flujo:
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(SYSTEM_STAGE_TAGS).map(([key, info]) => {
-              const isSelected = currentTags.includes(key)
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleToggleSystemTag(key)}
-                  className={cn(
-                    "text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all flex items-center gap-1",
-                    isSelected
-                      ? cn(info.badgeClass, "ring-1 ring-primary/40 shadow-2xs font-bold")
-                      : "border-border/60 bg-background/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                  )}
-                  title={info.label}
-                >
-                  <span>{info.shortLabel || info.label}</span>
-                  {isSelected && <Check className="w-2.5 h-2.5 ml-0.5 shrink-0" />}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Inline Input for Adding Custom Tags */}
-      {!readOnly && isAdding && (
-        <div className="flex items-center gap-1.5 pt-0.5">
-          <div className="relative flex-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
-              #
-            </span>
-            <input
-              type="text"
-              autoFocus
-              value={customTagInput}
-              onChange={(e) => setCustomTagInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="frontend, api, bug..."
-              className="w-full bg-background border border-primary/50 text-xs rounded-lg pl-6 pr-2 h-7 focus:outline-none focus:ring-1 focus:ring-primary text-foreground font-medium"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleAddCustomTag}
-            disabled={!customTagInput.trim()}
-            className="h-7 px-2.5 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
-          >
-            Añadir
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsAdding(false)
-              setCustomTagInput("")
-            }}
-            className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors shrink-0"
-            title="Cancelar"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Active Tags Pills List */}
-      <div className="flex flex-wrap gap-1.5 pt-0.5">
-        {currentTags.length === 0 ? (
-          <span className="text-[11px] text-muted-foreground/70 italic">
-            Sin etiquetas asignadas
-          </span>
-        ) : (
-          currentTags.map((tag) => {
-            const sysTag = SYSTEM_STAGE_TAGS[tag]
-            if (sysTag) {
-              return (
-                <span
-                  key={tag}
-                  className={cn(
-                    "text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shadow-2xs",
-                    sysTag.badgeClass
-                  )}
-                >
-                  <span>{sysTag.shortLabel || sysTag.label}</span>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="hover:opacity-75 focus:outline-none ml-0.5 rounded-full"
-                      title={`Quitar etiqueta ${sysTag.label}`}
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  )}
-                </span>
-              )
-            }
+      {/* Popover Combobox Selector */}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex flex-wrap items-center gap-1.5 min-h-[36px] p-1.5 bg-background border border-border/70 rounded-xl transition-all hover:border-border">
+          {/* Selected Tag Badges */}
+          {currentTags.map((tagKey) => {
+            const found = allAvailableTags.find(
+              (t) => t.id.toLowerCase() === tagKey.toLowerCase() || t.name.toLowerCase() === tagKey.toLowerCase()
+            )
+            const colorInfo = getTagColorInfo(found?.color)
+            const label = found?.label || SYSTEM_STAGE_TAGS[tagKey]?.shortLabel || tagKey
 
             return (
               <span
-                key={tag}
-                className="text-[10px] font-semibold px-2 py-0.5 rounded-md border border-border/80 bg-secondary text-secondary-foreground flex items-center gap-1 shadow-2xs"
+                key={tagKey}
+                className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shadow-2xs transition-all",
+                  colorInfo.pill
+                )}
               >
-                <span>#{tag}</span>
+                <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", colorInfo.dot)} />
+                <span className="truncate max-w-[120px]">{label}</span>
                 {!readOnly && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="hover:opacity-75 focus:outline-none ml-0.5 rounded-full text-muted-foreground hover:text-foreground"
-                    title={`Quitar etiqueta ${tag}`}
+                    onClick={(e) => handleRemoveTag(tagKey, e)}
+                    className="hover:opacity-75 focus:outline-none ml-0.5 rounded-full"
+                    title={`Quitar ${label}`}
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
                 )}
               </span>
             )
-          })
-        )}
-      </div>
+          })}
+
+          {/* Trigger Button to Open Popover */}
+          {!readOnly && (
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors focus:outline-none",
+                  currentTags.length === 0 && "w-full justify-between py-1.5"
+                )}
+              >
+                {currentTags.length === 0 ? (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Plus className="w-3.5 h-3.5" />
+                    Seleccionar etiquetas...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] text-primary">
+                    <Plus className="w-3 h-3" />
+                    Añadir
+                  </span>
+                )}
+                <ChevronsUpDown className="w-3 h-3 text-muted-foreground shrink-0 ml-auto" />
+              </button>
+            </PopoverTrigger>
+          )}
+
+          {readOnly && currentTags.length === 0 && (
+            <span className="text-[11px] text-muted-foreground/70 italic px-1">
+              Sin etiquetas asignadas
+            </span>
+          )}
+        </div>
+
+        {/* Dropdown Content */}
+        <PopoverContent
+          className="w-72 p-2 z-[60] shadow-2xl rounded-2xl border border-border/80 bg-popover text-popover-foreground"
+          align="start"
+          sideOffset={6}
+        >
+          {/* Search Box */}
+          <div className="relative mb-2">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Buscar o filtrar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-muted/50 border border-border/60 text-xs rounded-xl pl-8 pr-2 h-8 focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Option to create tag (PM or Platform only) */}
+          {canManage && cleanSearch && !hasExactMatch && (
+            <button
+              type="button"
+              onClick={handleCreateNewTag}
+              disabled={isCreating}
+              className="w-full text-left px-2.5 py-1.5 mb-2 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-2"
+            >
+              {isCreating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Plus className="w-3.5 h-3.5" />
+              )}
+              <span className="truncate">Crear global "#{cleanSearch}"</span>
+            </button>
+          )}
+
+          {/* Non-PM hint when search has no results */}
+          {!canManage && cleanSearch && !hasExactMatch && favoriteTags.length === 0 && regularTags.length === 0 && (
+            <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+              No encontrada. Solo los gestores de proyecto pueden crear nuevas etiquetas.
+            </div>
+          )}
+
+          {/* Tag List */}
+          <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {/* Section 1: FAVORITES (⭐ Predominan siempre arriba) */}
+            {favoriteTags.length > 0 && (
+              <div>
+                <div className="px-2 py-1 text-[10px] font-bold tracking-wider uppercase text-amber-500/90 flex items-center gap-1">
+                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                  Favoritas
+                </div>
+                <div className="space-y-0.5">
+                  {favoriteTags.map((tag) => {
+                    const isSelected = currentTags.some((t) => t.toLowerCase() === tag.id.toLowerCase())
+                    const colorInfo = getTagColorInfo(tag.color)
+
+                    return (
+                      <div
+                        key={tag.id}
+                        onClick={() => handleToggleTag(tag.id)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors group select-none",
+                          isSelected ? "bg-primary/10 font-semibold" : "hover:bg-muted/60"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", colorInfo.dot)} />
+                          <span className="truncate text-foreground text-xs">{tag.label}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleFavorite(tag.id, e)}
+                              className="p-1 text-amber-500 hover:opacity-75 transition-opacity"
+                              title="Quitar de favoritas"
+                            >
+                              <Star className="w-3 h-3 fill-amber-500" />
+                            </button>
+                          )}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Section 2: REGULAR TAGS */}
+            {regularTags.length > 0 && (
+              <div>
+                <div className="px-2 py-1 text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+                  Otras Etiquetas
+                </div>
+                <div className="space-y-0.5">
+                  {regularTags.map((tag) => {
+                    const isSelected = currentTags.some((t) => t.toLowerCase() === tag.id.toLowerCase())
+                    const colorInfo = getTagColorInfo(tag.color)
+
+                    return (
+                      <div
+                        key={tag.id}
+                        onClick={() => handleToggleTag(tag.id)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors group select-none",
+                          isSelected ? "bg-primary/10 font-semibold" : "hover:bg-muted/60"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", colorInfo.dot)} />
+                          <span className="truncate text-foreground text-xs">{tag.label}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {canManage && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleFavorite(tag.id, e)}
+                                className="p-1 text-muted-foreground hover:text-amber-500 transition-colors"
+                                title="Marcar como favorita"
+                              >
+                                <Star className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteFromCatalog(tag.id, e)}
+                                className="p-1 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                                title="Eliminar del catálogo global"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {favoriteTags.length === 0 && regularTags.length === 0 && (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                No hay etiquetas que coincidan con la búsqueda.
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

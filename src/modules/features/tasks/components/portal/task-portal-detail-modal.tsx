@@ -1383,7 +1383,9 @@ export function TaskPortalDetailModal({
               <TaskTagSelector
                 tags={tags}
                 onChange={handleTagsChange}
-                readOnly={!isCreating && !isLeadOrPm && !isQa}
+                readOnly={false}
+                canManageCatalog={isLeadOrPm}
+                portalToken={token}
               />
             </div>
 
