@@ -11,20 +11,32 @@ import {
   Trash2,
   ChevronsUpDown,
   Sparkles,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from "lucide-react"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger
 } from "@/components/ui/popover"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TenantTaskTag, DEFAULT_TENANT_TASK_TAGS, SYSTEM_STAGE_TAGS } from "../../types"
 import {
   getTenantTaskTags,
   createTenantTaskTag,
   toggleFavoriteTenantTaskTag,
-  deleteTenantTaskTag
+  deleteTenantTaskTag,
+  getTagUsageCount
 } from "../../actions/task-tag-actions"
 import { toast } from "sonner"
 
@@ -115,6 +127,16 @@ export function TaskTagSelector({
   const [loadingCatalog, setLoadingCatalog] = useState(false)
   const [catalogTags, setCatalogTags] = useState<TenantTaskTag[]>(DEFAULT_TENANT_TASK_TAGS)
   const [canManage, setCanManage] = useState(canManageCatalog)
+
+  // Deletion confirmation state
+  const [tagToDelete, setTagToDelete] = useState<{
+    id: string
+    name: string
+    label: string
+  } | null>(null)
+  const [tagUsageCount, setTagUsageCount] = useState<number | null>(null)
+  const [checkingUsage, setCheckingUsage] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const currentTags = Array.isArray(tags) ? tags : []
 
@@ -255,23 +277,54 @@ export function TaskTagSelector({
     }
   }
 
-  // Delete tag from catalog
-  const handleDeleteFromCatalog = async (tagId: string, e: React.MouseEvent) => {
+  // Request delete from catalog (opens confirmation modal with usage count)
+  const handleRequestDelete = async (
+    tag: { id: string; name: string; label: string },
+    e: React.MouseEvent
+  ) => {
     e.stopPropagation()
     if (!canManage) return
 
+    setTagToDelete(tag)
+    setTagUsageCount(null)
+    setCheckingUsage(true)
+
     try {
-      const res = await deleteTenantTaskTag(tagId, organizationId, portalToken)
+      const res = await getTagUsageCount(tag.id, organizationId, portalToken)
+      if (res.success) {
+        setTagUsageCount(res.count)
+      } else {
+        setTagUsageCount(0)
+      }
+    } catch {
+      setTagUsageCount(0)
+    } finally {
+      setCheckingUsage(false)
+    }
+  }
+
+  // Confirm delete from catalog
+  const handleConfirmDelete = async () => {
+    if (!tagToDelete || !canManage) return
+    setIsDeleting(true)
+
+    try {
+      const res = await deleteTenantTaskTag(tagToDelete.id, organizationId, portalToken)
       if (res.success && res.tags) {
         setCatalogTags(res.tags)
         // Also remove from task if present
-        if (currentTags.includes(tagId)) {
-          onChange(currentTags.filter((t) => t !== tagId))
+        if (currentTags.some((t) => t.toLowerCase() === tagToDelete.id.toLowerCase())) {
+          onChange(currentTags.filter((t) => t.toLowerCase() !== tagToDelete.id.toLowerCase()))
         }
-        toast.success("Etiqueta eliminada del catálogo")
+        toast.success(`Etiqueta #${tagToDelete.name} eliminada del catálogo`)
+        setTagToDelete(null)
+      } else {
+        toast.error(res.error || "No se pudo eliminar la etiqueta")
       }
     } catch (err: any) {
-      toast.error("Error al eliminar etiqueta")
+      toast.error(err.message || "Error al eliminar etiqueta")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -301,14 +354,8 @@ export function TaskTagSelector({
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Tag className="w-3 h-3 text-muted-foreground" />
-          Etiquetas & Categorías
+          Etiquetas
         </label>
-        {canManage && (
-          <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1 font-mono">
-            <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-            Globales
-          </span>
-        )}
       </div>
 
       {/* Popover Combobox Selector */}
@@ -453,14 +500,24 @@ export function TaskTagSelector({
 
                         <div className="flex items-center gap-1 shrink-0">
                           {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleFavorite(tag.id, e)}
-                              className="p-1 text-amber-500 hover:opacity-75 transition-opacity"
-                              title="Quitar de favoritas"
-                            >
-                              <Star className="w-3 h-3 fill-amber-500" />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleFavorite(tag.id, e)}
+                                className="p-1 text-amber-500 hover:opacity-75 transition-opacity"
+                                title="Quitar de favoritas"
+                              >
+                                <Star className="w-3 h-3 fill-amber-500" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleRequestDelete(tag, e)}
+                                className="p-1 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                                title="Eliminar del catálogo global"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </>
                           )}
                           {isSelected && <Check className="w-3.5 h-3.5 text-primary" />}
                         </div>
@@ -509,7 +566,7 @@ export function TaskTagSelector({
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => handleDeleteFromCatalog(tag.id, e)}
+                                onClick={(e) => handleRequestDelete(tag, e)}
                                 className="p-1 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
                                 title="Eliminar del catálogo global"
                               >
@@ -534,6 +591,83 @@ export function TaskTagSelector({
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Confirmation Dialog for Tag Deletion */}
+      <AlertDialog open={!!tagToDelete} onOpenChange={(open) => !open && setTagToDelete(null)}>
+        <AlertDialogContent className="z-[70] max-w-md rounded-2xl border-border bg-background p-6 shadow-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-base font-bold text-foreground">
+                  ¿Eliminar etiqueta "#{tagToDelete?.name}"?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Esta acción retirará la etiqueta del catálogo global de la organización.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <div className="my-3 p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-2.5">
+            {checkingUsage ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-1">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="font-medium">Consultando tareas que usan esta etiqueta...</span>
+              </div>
+            ) : tagUsageCount !== null && tagUsageCount > 0 ? (
+              <div className="text-amber-600 dark:text-amber-400 font-medium flex items-start gap-2 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  Atención: Esta etiqueta está asignada actualmente a <strong>{tagUsageCount}</strong> {tagUsageCount === 1 ? "tarea" : "tareas"}.
+                </span>
+              </div>
+            ) : (
+              <div className="text-muted-foreground flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg">
+                <span>ℹ️ Esta etiqueta no está asignada a ninguna tarea actualmente.</span>
+              </div>
+            )}
+
+            <div className="text-[11px] text-muted-foreground/90 border-t border-border/40 pt-2 space-y-1">
+              <p className="font-semibold text-foreground/90">¿Qué sucederá después de eliminarla?</p>
+              <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                <li>
+                  Ya <strong>no aparecerá en el catálogo</strong> ni podrá ser seleccionada en nuevas tareas.
+                </li>
+                <li>
+                  Las tareas que ya la tengan asignada <strong>conservarán la etiqueta como texto histórico</strong> para preservar la trazabilidad.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="flex items-center justify-end gap-2 pt-1">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setTagToDelete(null)}
+              className="h-9 px-4 text-xs font-semibold rounded-xl"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={handleConfirmDelete}
+              className="h-9 px-4 text-xs font-semibold rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+            >
+              {isDeleting ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Eliminando...
+                </span>
+              ) : (
+                "Eliminar del Catálogo"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

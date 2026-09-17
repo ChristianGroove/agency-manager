@@ -311,3 +311,33 @@ export async function deleteTenantTaskTag(
     return { success: false, error: err.message }
   }
 }
+
+/**
+ * Check how many tasks currently have this tag assigned
+ */
+export async function getTagUsageCount(
+  tagId: string,
+  orgId?: string,
+  portalToken?: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const { organizationId } = await resolveOrgAndAuthority(orgId, portalToken)
+
+    const { count, error } = await supabaseAdmin
+      .from("task_items")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .contains("tags", [tagId])
+
+    if (error) throw error
+
+    return {
+      success: true,
+      count: count || 0
+    }
+  } catch (err: any) {
+    console.error("Error consultando uso de etiqueta:", err)
+    return { success: false, count: 0, error: err.message }
+  }
+}
+
