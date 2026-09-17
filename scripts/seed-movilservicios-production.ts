@@ -5,19 +5,65 @@ import path from "path"
 
 loadEnvConfig(process.cwd())
 
-// Support either production environment variables or standard env vars
+// Helper to read CLI args like --url ... or --key ...
+function getCliArg(name: string): string | undefined {
+  const args = process.argv.slice(2)
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === `--${name}` && args[i + 1] && !args[i + 1].startsWith("--")) {
+      return args[i + 1]
+    }
+    if (args[i].startsWith(`--${name}=`)) {
+      return args[i].substring(`--${name}=`.length).replace(/^["']|["']$/g, "")
+    }
+  }
+  return undefined
+}
+
+// Check if optional .env.production exists
+const prodEnvPath = path.join(process.cwd(), ".env.production")
+if (fs.existsSync(prodEnvPath)) {
+  const lines = fs.readFileSync(prodEnvPath, "utf-8").split("\n")
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+      const idx = trimmed.indexOf("=")
+      const k = trimmed.substring(0, idx).trim()
+      const v = trimmed.substring(idx + 1).trim().replace(/^["']|["']$/g, "")
+      process.env[k] = v
+    }
+  }
+}
+
+const cliUrl = getCliArg("url")
+const cliKey = getCliArg("key")
+const isExplicitLocal = process.argv.includes("--local") || process.argv.includes("--allow-local")
+
 const targetUrl =
+  cliUrl ||
   process.env.PROD_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL!
+  (isExplicitLocal ? process.env.NEXT_PUBLIC_SUPABASE_URL : undefined)
 
 const targetKey =
+  cliKey ||
   process.env.PROD_SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  (isExplicitLocal ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined)
 
 if (!targetUrl || !targetKey) {
-  console.error("❌ Faltan credenciales de Supabase en las variables de entorno.")
-  console.error("   Asegúrate de configurar NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY")
-  console.error("   o PROD_SUPABASE_URL y PROD_SUPABASE_SERVICE_ROLE_KEY.")
+  console.log("\n================================================================")
+  console.error("🛑 ATENCIÓN: No se indicaron las credenciales de PRODUCCIÓN.")
+  console.log("================================================================")
+  console.error("Por seguridad, para no sobreescribir tu base de datos local por error,")
+  console.error("debes indicar la URL y SERVICE_ROLE_KEY de tu Supabase de Producción.\n")
+  console.log("Puedes ejecutarlo de cualquiera de estas formas:\n")
+  console.log("👉 OPCIÓN 1 (Recomendada - Argumentos directos en una sola línea):")
+  console.log('   npx tsx scripts/seed-movilservicios-production.ts --url "https://tu-proyecto.supabase.co" --key "tu-service-role-key"\n')
+  console.log("👉 OPCIÓN 2 (Crear archivo temporal .env.production):")
+  console.log("   Crea un archivo .env.production en la raíz con:")
+  console.log("   PROD_SUPABASE_URL=https://tu-proyecto.supabase.co")
+  console.log("   PROD_SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key")
+  console.log("   Y luego corre simplemente: npx tsx scripts/seed-movilservicios-production.ts\n")
+  console.log("👉 OPCIÓN 3 (Si explícitamente deseas sembrar en tu entorno local):")
+  console.log("   npx tsx scripts/seed-movilservicios-production.ts --local\n")
   process.exit(1)
 }
 
