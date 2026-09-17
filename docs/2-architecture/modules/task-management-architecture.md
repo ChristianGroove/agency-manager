@@ -253,7 +253,38 @@ Se aplicó una reestructuración de ingeniería para garantizar fluidez con mile
 
 ---
 
-## 9. Estructura de Directorios del Módulo
+## 9. Experiencia de Usuario y Estándares de Interfaz
+
+### A. Sistema Dual de Menciones en Discusión (@ y #)
+Implementado en [`task-detail-modal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-detail-modal.tsx) y [`task-portal-detail-modal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx):
+1. **Menciones de Colaboradores (`@`)**:
+   - Activa un popover flotante inteligente que filtra por nombre a los miembros de la organización.
+   - Inserta `@Nombre` y notifica al usuario en su portal correspondiente.
+2. **Menciones de Tickets (`#`)**:
+   - Al tipear `#`, despliega un menú flotante con búsqueda instantánea por código de ticket (ej. `TK-101`) o palabras clave en el título.
+   - En el historial de comentarios, cualquier mención `#TK-XXX` se renderiza como un chip interactivo estilizado (`FormattedCommentContent`).
+   - **Navegación inter-ticket**: Al pulsar un chip `#TK-XXX`, el modal cambia directamente al ticket mencionado sin recargar la página.
+
+### B. Confirmación de Cierre y Validación de Entregables
+- En el portal de colaboradores, las acciones de completado ("Listo" en tabla o "Completar" en tarjetas) abren un `AlertDialog` con animación slide-in from bottom (`animate-alert-enter`).
+- **Validación de checklist**:
+  - Si existen entregables sin marcar como completados, se muestra una alerta ámbar detallando la cantidad pendiente y fijando el avance como máximo en **95%**.
+  - Si todos los entregables están listos, confirma el cierre formal al **100%** con estado `done` y activa la celebración.
+
+### C. Acciones Minimalistas y Tablas Fluidas
+- **Columna Acciones**: En la tabla del portal, los botones de acción son exclusivamente de ícono (`CheckCircle2` y `Settings` de 28x28px) con tooltips nativos (`title`), optimizando el espacio horizontal.
+- **Protección de Tablas en Pantallas Angostas**: Contenedores con `overflow-x-auto` y `min-w-[760px]` (en portal) o `min-w-[800px]` (en plataforma) para prevenir la compresión o solapamiento de columnas en dispositivos móviles o pantallas reducidas.
+- **Ancho Completo Responsivo (100%)**: Se retiraron los límites de ancho fijos (`max-w-7xl mx-auto`) de los portales, utilizando `w-full px-4 sm:px-6 lg:px-8 xl:px-10` para aprovechar monitores ultra-wide, 2K y 4K.
+
+### D. Scroll Horizontal Desktop en Monitor de Colaboradores
+- En [`task-collaborator-ribbon.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-ribbon.tsx), se captura el evento `wheel` del ratón para traducir el giro vertical (`deltaY`) en desplazamiento horizontal fluido sobre el monitor de especialistas, complementado por una barra de desplazamiento delgada (`scrollbar-thin`).
+
+### E. Tonalización y Contraste del Riel de Slider
+- En [`slider.tsx`](file:///G:/Pixy/agency-manager/src/components/ui/slider.tsx), el riel base se estiliza con `bg-zinc-200/90 dark:bg-zinc-800 border border-zinc-300/50 dark:border-white/10` y soporte para `trackClassName`, garantizando contraste visual nítido frente al fondo blanco o grafito de las tablas.
+
+---
+
+## 10. Estructura de Directorios del Módulo
 
 ```
 src/modules/features/tasks/

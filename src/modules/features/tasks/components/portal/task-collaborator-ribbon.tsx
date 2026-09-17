@@ -84,6 +84,25 @@ export function TaskCollaboratorRibbon({
   const isAllSelected = selectedMemberId === "all"
   const isAnySpecificSelected = selectedMemberId !== "all"
 
+  const ribbonRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const el = ribbonRef.current
+    if (!el) return
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY
+      }
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => {
+      el.removeEventListener("wheel", onWheel)
+    }
+  }, [])
+
   const getRoleIcon = (roleName?: string) => {
     const lower = (roleName || "").toLowerCase()
     if (lower.includes("pm") || lower.includes("lead")) {
@@ -111,7 +130,10 @@ export function TaskCollaboratorRibbon({
       </div>
 
       {/* Horizontal Scroll Ribbon Container */}
-      <div className="bg-card/40 dark:bg-white/[0.03] backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-xs relative flex flex-nowrap overflow-x-auto no-scrollbar snap-x items-center gap-2.5 sm:gap-3">
+      <div
+        ref={ribbonRef}
+        className="bg-card/40 dark:bg-white/[0.03] backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-xs relative flex flex-nowrap overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700/60 pb-2 snap-x items-center gap-2.5 sm:gap-3"
+      >
         <TooltipProvider delayDuration={100}>
           {/* 1. "Todo el Equipo" Master Bubble */}
           <motion.div

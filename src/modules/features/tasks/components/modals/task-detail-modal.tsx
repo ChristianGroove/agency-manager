@@ -37,7 +37,11 @@ import {
   Image as ImageIcon,
   FileText,
   Globe,
-  TrendingUp
+  TrendingUp,
+  Upload,
+  Loader2,
+  AtSign,
+  Hash
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -47,12 +51,89 @@ import {
   toggleChecklistItem,
   deleteTask,
   getTaskComments,
-  addTaskComment
+  addTaskComment,
+  uploadTaskAttachment
 } from "../../actions/task-actions"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TaskTagSelector } from "../tags/task-tag-selector"
+
+function renderFormattedComment(
+  content: string,
+  availableTasks?: TaskItem[],
+  onSelectTask?: (task: TaskItem) => void
+) {
+  const regex = /(#[A-Za-z0-9_-]+|@[A-Za-z0-9_\u00C0-\u017F]+|https?:\/\/[^\s]+)/g
+  const parts = content.split(regex)
+
+  return parts.map((part, index) => {
+    if (!part) return null
+
+    if (part.startsWith("#")) {
+      const code = part.slice(1)
+      const matchedTask = availableTasks?.find(
+        (t) =>
+          (t.ticket_code && t.ticket_code.toLowerCase() === code.toLowerCase()) ||
+          t.id.toLowerCase() === code.toLowerCase() ||
+          `tk-${t.id.slice(0, 4)}`.toLowerCase() === code.toLowerCase()
+      )
+
+      return (
+        <button
+          key={index}
+          type="button"
+          onClick={() => {
+            if (matchedTask && onSelectTask) {
+              onSelectTask(matchedTask)
+              toast.info(`Abriendo ticket ${matchedTask.ticket_code || code}`)
+            }
+          }}
+          className={cn(
+            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-semibold transition-all shadow-2xs mx-0.5 align-baseline",
+            matchedTask && onSelectTask
+              ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 cursor-pointer"
+              : "bg-muted text-foreground/90 border border-border/60"
+          )}
+          title={matchedTask ? `${matchedTask.ticket_code || code}: ${matchedTask.title}` : `Ticket #${code}`}
+        >
+          <Hash className="w-3 h-3 text-primary shrink-0" />
+          <span>{matchedTask?.ticket_code || code}</span>
+        </button>
+      )
+    }
+
+    if (part.startsWith("@")) {
+      const name = part.slice(1)
+      return (
+        <span
+          key={index}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 font-medium text-[11px] mx-0.5 align-baseline"
+        >
+          <AtSign className="w-2.5 h-2.5 shrink-0" />
+          <span>{name}</span>
+        </span>
+      )
+    }
+
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 text-primary hover:underline font-mono text-[11px] mx-0.5 align-baseline"
+        >
+          <ExternalLink className="w-2.5 h-2.5 inline" />
+          <span>{part.replace(/^https?:\/\/(www\.)?/, "").slice(0, 30)}</span>
+        </a>
+      )
+    }
+
+    return <span key={index}>{part}</span>
+  })
+}
 
 interface TaskDetailModalProps {
   task: TaskItem | null
@@ -61,6 +142,8 @@ interface TaskDetailModalProps {
   onTaskUpdated?: (task: TaskItem) => void
   onTaskDeleted?: (taskId: string) => void
   collaborators: TaskCollaborator[]
+  availableTasks?: TaskItem[]
+  onSelectTask?: (task: TaskItem) => void
 }
 
 export function TaskDetailModal({
@@ -70,6 +153,8 @@ export function TaskDetailModal({
   onTaskUpdated,
   onTaskDeleted,
   collaborators,
+  availableTasks,
+  onSelectTask,
 }: TaskDetailModalProps) {
   if (!task) return null
 
@@ -95,11 +180,18 @@ export function TaskDetailModal({
   const [newRefName, setNewRefName] = useState("")
   const [newRefType, setNewRefType] = useState<string>("auto")
   const [showAddRef, setShowAddRef] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
 
-  // Comments
+  // Comments & Mentions
   const [comments, setComments] = useState<TaskComment[]>([])
   const [newCommentText, setNewCommentText] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
+  const [isSendingComment, setIsSendingComment] = useState(false)
+  const [mentionType, setMentionType] = useState<"collaborator" | "ticket" | null>(null)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
+  const commentInputRef = useRef<HTMLInputElement>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   // Sync state when task changes
@@ -244,6 +336,34 @@ export function TaskDetailModal({
     })
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !task) return
+
+    setIsUploadingFile(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await uploadTaskAttachment(formData)
+      if (res.success && res.attachment) {
+        const updated = [...attachments, res.attachment]
+        setAttachments(updated)
+        toast.success(`Archivo "${file.name}" subido con éxito`)
+        updateTask(task.id, { attachments: updated }).then((uRes) => {
+          if (uRes.success && uRes.task) onTaskUpdated?.(uRes.task)
+        })
+      } else {
+        toast.error(res.error || "Error al subir archivo")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al subir archivo")
+    } finally {
+      setIsUploadingFile(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   const handleProgressSliderDrag = (values: number[]) => {
     const val = values[0]
     setProgress(val)
@@ -314,8 +434,97 @@ export function TaskDetailModal({
     })
   }
 
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setNewCommentText(val)
+    const cursor = e.target.selectionStart || val.length
+
+    const textBeforeCursor = val.slice(0, cursor)
+    const lastAt = textBeforeCursor.lastIndexOf("@")
+    const lastHash = textBeforeCursor.lastIndexOf("#")
+
+    if (lastAt !== -1 && (lastHash === -1 || lastAt > lastHash)) {
+      const query = textBeforeCursor.slice(lastAt + 1)
+      if (!/\s/.test(query)) {
+        setMentionType("collaborator")
+        setMentionQuery(query.toLowerCase())
+        setMentionCursorPos(lastAt)
+        return
+      }
+    } else if (lastHash !== -1 && (lastAt === -1 || lastHash > lastAt)) {
+      const query = textBeforeCursor.slice(lastHash + 1)
+      if (!/\s/.test(query)) {
+        setMentionType("ticket")
+        setMentionQuery(query.toLowerCase())
+        setMentionCursorPos(lastHash)
+        return
+      }
+    }
+
+    setMentionType(null)
+    setMentionQuery(null)
+  }
+
+  const handleSelectCollaborator = (collab: TaskCollaborator) => {
+    const mentionTag = `@${collab.first_name}${collab.last_name ? ` ${collab.last_name}` : ""} `
+    const before = newCommentText.slice(0, mentionCursorPos)
+    const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
+    const newText = before + mentionTag + after
+    setNewCommentText(newText)
+    setMentionType(null)
+    setMentionQuery(null)
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus()
+        const newPos = before.length + mentionTag.length
+        commentInputRef.current.setSelectionRange(newPos, newPos)
+      }
+    }, 50)
+  }
+
+  const handleSelectTicket = (t: TaskItem) => {
+    const code = t.ticket_code || `TK-${t.id.slice(0, 4)}`
+    const mentionTag = `#${code} `
+    const before = newCommentText.slice(0, mentionCursorPos)
+    const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
+    const newText = before + mentionTag + after
+    setNewCommentText(newText)
+    setMentionType(null)
+    setMentionQuery(null)
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus()
+        const newPos = before.length + mentionTag.length
+        commentInputRef.current.setSelectionRange(newPos, newPos)
+      }
+    }, 50)
+  }
+
+  const filteredMentionCollaborators =
+    mentionType === "collaborator" && mentionQuery !== null
+      ? (collaborators || []).filter(
+          (c) =>
+            c.first_name.toLowerCase().includes(mentionQuery) ||
+            c.last_name.toLowerCase().includes(mentionQuery) ||
+            (c.role && c.role.toLowerCase().includes(mentionQuery))
+        )
+      : []
+
+  const filteredMentionTickets =
+    mentionType === "ticket" && mentionQuery !== null
+      ? (availableTasks || [])
+          .filter(
+            (t) =>
+              t.id !== task?.id &&
+              ((t.ticket_code && t.ticket_code.toLowerCase().includes(mentionQuery)) ||
+                t.title.toLowerCase().includes(mentionQuery))
+          )
+          .slice(0, 8)
+      : []
+
   const handleAddComment = async () => {
     if (!newCommentText.trim() || !task) return
+    setIsSendingComment(true)
     try {
       const res = await addTaskComment({
         taskId: task.id,
@@ -326,10 +535,14 @@ export function TaskDetailModal({
       if (res.success && res.comment) {
         setComments((prev) => [...prev, res.comment!])
         setNewCommentText("")
+        setMentionType(null)
+        setMentionQuery(null)
         toast.success("Comentario publicado")
       }
     } catch (err: any) {
       toast.error("Error al enviar comentario")
+    } finally {
+      setIsSendingComment(false)
     }
   }
 
@@ -353,11 +566,20 @@ export function TaskDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 border-border bg-card">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card">
         {/* Screen Reader Header */}
         <DialogHeader className="sr-only">
           <DialogTitle>{title || "Detalle de Tarea"}</DialogTitle>
         </DialogHeader>
+
+        {/* Hidden input for local file upload */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          className="hidden"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.rar,.txt"
+        />
 
         {/* Header Jira Style */}
         <div className="p-4 sm:p-6 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -384,7 +606,7 @@ export function TaskDetailModal({
             <Button
               size="sm"
               onClick={handleSaveDetails}
-              disabled={isSaving}
+              disabled={isSaving || isUploadingFile}
               className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-8 font-medium shadow-sm"
             >
               {isSaving ? "Guardando..." : "Guardar Cambios"}
@@ -418,27 +640,15 @@ export function TaskDetailModal({
               />
             </div>
 
-            {/* Manual Interactive Progress Slider (User requested) */}
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Avance y Progreso de Ejecución
-                  </span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl sm:text-3xl font-black text-primary font-mono tracking-tight">{progress}%</span>
-                  {progress === 100 && (
-                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs px-2.5 py-1 font-bold">
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Completado
-                    </Badge>
-                  )}
-                </div>
+            {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avance
+                </span>
               </div>
-
-              {/* Radix Slider with custom styled track */}
-              <div className="pt-2 px-1">
+              <div className="flex-1 px-1">
                 <Slider
                   value={[progress]}
                   min={0}
@@ -449,9 +659,13 @@ export function TaskDetailModal({
                   className="cursor-pointer"
                 />
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground font-mono font-medium px-1">
-                <span>0%</span>
-                <span>100%</span>
+              <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
+                  {progress}%
+                </span>
+                {progress === 100 && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                )}
               </div>
             </div>
 
@@ -552,23 +766,41 @@ export function TaskDetailModal({
 
             {/* Project References, Links & Attachments */}
             <div className="space-y-3 pt-4 border-t border-border/60">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Paperclip className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Enlaces & Referencias de Proyecto ({attachments.length})
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider truncate">
+                    Enlaces & Referencias ({attachments.length})
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddRef(!showAddRef)}
-                  className="h-7 text-xs px-2.5 rounded-lg border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  {showAddRef ? "Cancelar" : "Añadir Referencia"}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploadingFile}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
+                  >
+                    {isUploadingFile ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 mr-1 text-primary" />
+                    )}
+                    Subir desde PC
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddRef(!showAddRef)}
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
+                  >
+                    <Link2 className="w-3.5 h-3.5 mr-1 text-primary" />
+                    {showAddRef ? "Cancelar" : "Enlaces"}
+                  </Button>
+                </div>
               </div>
 
               {/* Add Reference Form */}
@@ -640,8 +872,8 @@ export function TaskDetailModal({
 
               {/* References List */}
               {attachments.length === 0 ? (
-                <div className="p-3.5 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
-                  <p>Sin referencias adjuntas. Añade links de Figma, repositorios, imágenes o especificaciones.</p>
+                <div className="py-2.5 px-3 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
+                  <p>Sin referencias adjuntas</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -719,10 +951,15 @@ export function TaskDetailModal({
 
             {/* Comments and Mentions Feed */}
             <div className="space-y-4 pt-4 border-t border-border/60">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                <span className="text-xs font-semibold uppercase tracking-wider">
-                  Historial de Discusión & Menciones (@)
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    Historial de Discusión & Menciones (@ y #)
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {comments.length} {comments.length === 1 ? "comentario" : "comentarios"}
                 </span>
               </div>
 
@@ -732,13 +969,13 @@ export function TaskDetailModal({
                   <p className="text-xs text-muted-foreground italic">Cargando comentarios...</p>
                 ) : comments.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic py-2">
-                    No hay comentarios aún. Usa @nombre para mencionar a los colaboradores.
+                    No hay comentarios aún. Usa @ para mencionar a colaboradores o # para vincular tickets.
                   </p>
                 ) : (
                   comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className="p-3 rounded-lg bg-background border border-border/60 text-xs space-y-1.5"
+                      className="p-3 rounded-xl bg-background border border-border/60 text-xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -760,26 +997,124 @@ export function TaskDetailModal({
                           })}
                         </span>
                       </div>
-                      <p className="text-muted-foreground leading-relaxed pl-7 whitespace-pre-wrap">
-                        {comment.content}
-                      </p>
+                      <div className="text-muted-foreground leading-relaxed pl-7 whitespace-pre-wrap">
+                        {renderFormattedComment(comment.content, availableTasks, onSelectTask)}
+                      </div>
                     </div>
                   ))
                 )}
               </div>
 
-              {/* Add comment input */}
-              <div className="flex gap-2">
-                <Input
-                  value={newCommentText}
-                  onChange={(e) => setNewCommentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-                  placeholder="Escribe un comentario o menciona con @..."
-                  className="text-xs h-9 bg-background"
-                />
-                <Button size="sm" onClick={handleAddComment} className="h-9 px-3">
-                  <Send className="w-3.5 h-3.5" />
-                </Button>
+              {/* Add comment input with floating autocomplete popover */}
+              <div className="relative">
+                {/* Floating Mention Autocomplete Menu (Collaborators & Tickets) */}
+                <AnimatePresence>
+                  {mentionType === "collaborator" && filteredMentionCollaborators.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute bottom-full left-0 mb-2 w-72 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
+                    >
+                      <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
+                        <AtSign className="w-3 h-3 text-primary" />
+                        Mencionar a un colaborador
+                      </div>
+                      {filteredMentionCollaborators.map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => handleSelectCollaborator(member)}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-muted/80 text-xs transition-colors"
+                        >
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={member.photo_url || undefined} />
+                            <AvatarFallback className="text-[9px] font-bold">
+                              {member.first_name.slice(0, 1)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-foreground truncate">
+                              {member.first_name} {member.last_name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {member.role}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+
+                  {mentionType === "ticket" && filteredMentionTickets.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute bottom-full left-0 mb-2 w-80 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
+                    >
+                      <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
+                        <Hash className="w-3 h-3 text-primary" />
+                        Vincular Ticket / Tarea
+                      </div>
+                      {filteredMentionTickets.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleSelectTicket(t)}
+                          className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-muted/80 text-xs transition-colors group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="font-mono text-[10px] font-bold text-primary px-1.5 py-0.2 bg-primary/10 rounded border border-primary/20">
+                                {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
+                              </span>
+                              {t.project?.name && (
+                                <span className="text-[10px] text-muted-foreground truncate">
+                                  {t.project.name}
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-medium text-foreground truncate text-xs">
+                              {t.title}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex gap-2">
+                  <Input
+                    ref={commentInputRef}
+                    value={newCommentText}
+                    onChange={handleCommentChange}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && mentionType === null) {
+                        e.preventDefault()
+                        handleAddComment()
+                      } else if (e.key === "Escape") {
+                        setMentionType(null)
+                        setMentionQuery(null)
+                      }
+                    }}
+                    placeholder="Escribe un comentario, usa @ para colaboradores o # para tickets..."
+                    className="text-xs h-9 bg-background rounded-xl"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleAddComment}
+                    disabled={isSendingComment || !newCommentText.trim()}
+                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {isSendingComment ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Send className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

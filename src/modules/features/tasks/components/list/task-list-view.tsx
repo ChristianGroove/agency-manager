@@ -102,7 +102,7 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
       {/* Tasks Table */}
       <div className="border border-border/60 rounded-2xl bg-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[800px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-muted-foreground font-semibold">
                 <th className="p-3.5 pl-4 w-24">Ticket</th>

@@ -332,7 +332,7 @@ export function TaskFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Nuevo Ticket de Sprint</DialogTitle>
         </DialogHeader>
@@ -426,35 +426,15 @@ export function TaskFormModal({
               />
             </div>
 
-            {/* Progress Slider (with 95% Deliverable Rule) */}
-            <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-foreground block">
-                      Avance Inicial de Ejecución
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {checklist.length > 0 && checklist.some((c) => !c.completed)
-                        ? "Entregables pendientes: limitado al 95% hasta completar el checklist"
-                        : "Progreso estimado inicial"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl sm:text-3xl font-black text-primary font-mono tracking-tight">
-                    {progress}%
-                  </span>
-                  {progress === 100 && (
-                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs px-2.5 py-1 font-bold">
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Completado
-                    </Badge>
-                  )}
-                </div>
+            {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avance
+                </span>
               </div>
-
-              <div className="pt-2 px-1">
+              <div className="flex-1 px-1">
                 <Slider
                   value={[progress]}
                   min={0}
@@ -464,9 +444,13 @@ export function TaskFormModal({
                   className="cursor-pointer"
                 />
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground font-mono font-medium px-1">
-                <span>0%</span>
-                <span>100%</span>
+              <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
+                  {progress}%
+                </span>
+                {progress === 100 && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                )}
               </div>
             </div>
 
@@ -572,26 +556,26 @@ export function TaskFormModal({
 
             {/* Resources, Attachments & Links */}
             <div className="space-y-3 pt-4 border-t border-border/60">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <FolderArchive className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Recursos, Archivos & Entregables ({attachments.length})
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider truncate">
+                    Enlaces & Referencias ({attachments.length})
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={isUploadingFile}
                     onClick={() => fileInputRef.current?.click()}
-                    className="h-7 text-xs px-2.5 rounded-lg border-primary/30 text-primary hover:bg-primary/10"
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
                   >
                     {isUploadingFile ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
                     ) : (
-                      <Upload className="w-3.5 h-3.5 mr-1" />
+                      <Upload className="w-3.5 h-3.5 mr-1 text-primary" />
                     )}
                     Subir desde PC
                   </Button>
@@ -601,10 +585,10 @@ export function TaskFormModal({
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAddRef(!showAddRef)}
-                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40"
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
                   >
-                    <Link2 className="w-3.5 h-3.5 mr-1" />
-                    {showAddRef ? "Cancelar" : "Enlace / Figma"}
+                    <Link2 className="w-3.5 h-3.5 mr-1 text-primary" />
+                    {showAddRef ? "Cancelar" : "Enlaces"}
                   </Button>
                 </div>
               </div>
@@ -678,8 +662,8 @@ export function TaskFormModal({
 
               {/* References & Files List */}
               {attachments.length === 0 ? (
-                <div className="p-3.5 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
-                  <p>Sin recursos adjuntos aún. Sube archivos desde tu PC o añade links de Figma, repositorios o especificaciones.</p>
+                <div className="py-2.5 px-3 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
+                  <p>Sin referencias adjuntas</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

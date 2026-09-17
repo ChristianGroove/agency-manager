@@ -78,7 +78,35 @@
   }
 }
 
+@keyframes alert-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 20px)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes alert-exit {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 20px)) scale(0.98);
+  }
+}
+
 @layer utilities {
+  .animate-alert-enter {
+    animation: alert-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-alert-exit {
+    animation: alert-exit 0.16s ease-in forwards;
+  }
   .animate-shadow-pulse-slow-red {
     animation: shadow-pulse-red 5s ease-in-out infinite !important;
   }
@@ -149,19 +177,19 @@
     scrollbar-width: none;
   }
 
-  /* Thin custom scrollbar for Virtuoso and other native scroll containers */
+  /* Ultra-subtle custom scrollbar for Virtuoso, Dialogs and containers */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+    scrollbar-color: rgba(156, 163, 175, 0.25) transparent;
   }
   
   .dark .scrollbar-thin {
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -169,20 +197,20 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.3);
-    border-radius: 10px;
+    background: rgba(156, 163, 175, 0.25);
+    border-radius: 9999px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.5);
+    background: rgba(156, 163, 175, 0.45);
   }
 
   .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
   }
 }
 
@@ -351,41 +379,40 @@
     @apply bg-background text-foreground;
   }
 
-  /* Apply Modern Scrollbar to Global Navigation (body) */
-  html {
+  /* Apply Modern Subtle Scrollbars Globally across the app */
+  * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(203 213 225) transparent;
+    scrollbar-color: rgba(156, 163, 175, 0.28) transparent;
   }
 
-  html.dark {
-    scrollbar-color: rgb(63 63 70) transparent;
+  .dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
   }
 
-  body::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
   }
 
-  body::-webkit-scrollbar-track {
+  *::-webkit-scrollbar-track {
     background: transparent;
-    border-radius: 10px;
   }
 
-  body::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, rgb(148 163 184), rgb(203 213 225));
-    border-radius: 10px;
+  *::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.28);
+    border-radius: 9999px;
   }
 
-  body::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, rgb(100 116 139), rgb(148 163 184));
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.48);
   }
 
-  .dark body::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, rgb(63 63 70), rgb(82 82 91));
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.14);
   }
 
-  .dark body::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, rgb(82 82 91), rgb(113 113 122));
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.28);
   }
 
   .dark body {

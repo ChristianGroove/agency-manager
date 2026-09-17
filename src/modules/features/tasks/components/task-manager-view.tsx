@@ -727,6 +727,8 @@ export function TaskManagerView({
         onTaskUpdated={handleTaskUpdated}
         onTaskDeleted={handleTaskDeleted}
         collaborators={collaborators}
+        availableTasks={tasks}
+        onSelectTask={(t) => setSelectedTask(t)}
       />
 
       {/* Task Creation Modal */}

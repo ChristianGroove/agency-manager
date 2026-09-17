@@ -43,7 +43,8 @@ import {
   SlidersHorizontal,
   AtSign,
   Download,
-  FolderArchive
+  FolderArchive,
+  Hash
 } from "lucide-react"
 import type {
   TaskItem,
@@ -72,6 +73,82 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { TaskTagSelector } from "../tags/task-tag-selector"
 
+function renderFormattedComment(
+  content: string,
+  availableTasks?: TaskItem[],
+  onSelectTask?: (task: TaskItem) => void
+) {
+  const regex = /(#[A-Za-z0-9_-]+|@[A-Za-z0-9_\u00C0-\u017F]+|https?:\/\/[^\s]+)/g
+  const parts = content.split(regex)
+
+  return parts.map((part, index) => {
+    if (!part) return null
+
+    if (part.startsWith("#")) {
+      const code = part.slice(1)
+      const matchedTask = availableTasks?.find(
+        (t) =>
+          (t.ticket_code && t.ticket_code.toLowerCase() === code.toLowerCase()) ||
+          t.id.toLowerCase() === code.toLowerCase() ||
+          `tk-${t.id.slice(0, 4)}`.toLowerCase() === code.toLowerCase()
+      )
+
+      return (
+        <button
+          key={index}
+          type="button"
+          onClick={() => {
+            if (matchedTask && onSelectTask) {
+              onSelectTask(matchedTask)
+              toast.info(`Abriendo ticket ${matchedTask.ticket_code || code}`)
+            }
+          }}
+          className={cn(
+            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-semibold transition-all shadow-2xs mx-0.5 align-baseline",
+            matchedTask && onSelectTask
+              ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 cursor-pointer"
+              : "bg-muted text-foreground/90 border border-border/60"
+          )}
+          title={matchedTask ? `${matchedTask.ticket_code || code}: ${matchedTask.title}` : `Ticket #${code}`}
+        >
+          <Hash className="w-3 h-3 text-primary shrink-0" />
+          <span>{matchedTask?.ticket_code || code}</span>
+        </button>
+      )
+    }
+
+    if (part.startsWith("@")) {
+      const name = part.slice(1)
+      return (
+        <span
+          key={index}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 font-medium text-[11px] mx-0.5 align-baseline"
+        >
+          <AtSign className="w-2.5 h-2.5 shrink-0" />
+          <span>{name}</span>
+        </span>
+      )
+    }
+
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 text-primary hover:underline font-mono text-[11px] mx-0.5 align-baseline"
+        >
+          <ExternalLink className="w-2.5 h-2.5 inline" />
+          <span>{part.replace(/^https?:\/\/(www\.)?/, "").slice(0, 30)}</span>
+        </a>
+      )
+    }
+
+    return <span key={index}>{part}</span>
+  })
+}
+
 interface TaskPortalDetailModalProps {
   task: TaskItem | null
   isOpen: boolean
@@ -94,6 +171,8 @@ interface TaskPortalDetailModalProps {
   onTaskCreated?: (task: TaskItem) => void
   onTaskUpdated?: (task: TaskItem) => void
   onTaskDeleted?: (taskId: string) => void
+  availableTasks?: TaskItem[]
+  onSelectTask?: (task: TaskItem) => void
 }
 
 export function TaskPortalDetailModal({
@@ -112,6 +191,8 @@ export function TaskPortalDetailModal({
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
+  availableTasks = [],
+  onSelectTask,
 }: TaskPortalDetailModalProps) {
   const isCreating = isCreateMode || !task
 
@@ -150,6 +231,7 @@ export function TaskPortalDetailModal({
   const [newCommentText, setNewCommentText] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
   const [isSendingComment, setIsSendingComment] = useState(false)
+  const [mentionType, setMentionType] = useState<"collaborator" | "ticket" | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
@@ -547,7 +629,7 @@ export function TaskPortalDetailModal({
     }
   }
 
-  // Mentions autocomplete handler
+  // Mentions autocomplete handler (Collaborators @ & Tickets #)
   const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setNewCommentText(val)
@@ -555,15 +637,27 @@ export function TaskPortalDetailModal({
 
     const textBeforeCursor = val.slice(0, cursor)
     const lastAtIndex = textBeforeCursor.lastIndexOf("@")
+    const lastHashIndex = textBeforeCursor.lastIndexOf("#")
 
-    if (lastAtIndex !== -1) {
+    if (lastAtIndex !== -1 && (lastHashIndex === -1 || lastAtIndex > lastHashIndex)) {
       const query = textBeforeCursor.slice(lastAtIndex + 1)
       if (!/\s/.test(query)) {
+        setMentionType("collaborator")
         setMentionQuery(query.toLowerCase())
         setMentionCursorPos(lastAtIndex)
         return
       }
+    } else if (lastHashIndex !== -1 && (lastAtIndex === -1 || lastHashIndex > lastAtIndex)) {
+      const query = textBeforeCursor.slice(lastHashIndex + 1)
+      if (!/\s/.test(query)) {
+        setMentionType("ticket")
+        setMentionQuery(query.toLowerCase())
+        setMentionCursorPos(lastHashIndex)
+        return
+      }
     }
+
+    setMentionType(null)
     setMentionQuery(null)
   }
 
@@ -573,6 +667,25 @@ export function TaskPortalDetailModal({
     const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
     const newText = before + mentionTag + after
     setNewCommentText(newText)
+    setMentionType(null)
+    setMentionQuery(null)
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus()
+        const newPos = before.length + mentionTag.length
+        commentInputRef.current.setSelectionRange(newPos, newPos)
+      }
+    }, 50)
+  }
+
+  const handleSelectTicket = (t: TaskItem) => {
+    const code = t.ticket_code || `TK-${t.id.slice(0, 4)}`
+    const mentionTag = `#${code} `
+    const before = newCommentText.slice(0, mentionCursorPos)
+    const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
+    const newText = before + mentionTag + after
+    setNewCommentText(newText)
+    setMentionType(null)
     setMentionQuery(null)
     setTimeout(() => {
       if (commentInputRef.current) {
@@ -584,13 +697,25 @@ export function TaskPortalDetailModal({
   }
 
   const filteredMentionMembers =
-    mentionQuery !== null
+    mentionType === "collaborator" && mentionQuery !== null
       ? teamMembers.filter(
           (m) =>
             m.first_name.toLowerCase().includes(mentionQuery) ||
             m.last_name.toLowerCase().includes(mentionQuery) ||
             m.role.toLowerCase().includes(mentionQuery)
         )
+      : []
+
+  const filteredMentionTickets =
+    mentionType === "ticket" && mentionQuery !== null
+      ? (availableTasks || [])
+          .filter(
+            (t) =>
+              t.id !== task?.id &&
+              ((t.ticket_code && t.ticket_code.toLowerCase().includes(mentionQuery)) ||
+                t.title.toLowerCase().includes(mentionQuery))
+          )
+          .slice(0, 8)
       : []
 
   const handleAddComment = async () => {
@@ -601,6 +726,8 @@ export function TaskPortalDetailModal({
       if (res.success && res.comment) {
         setComments((prev) => [...prev, res.comment!])
         setNewCommentText("")
+        setMentionType(null)
+        setMentionQuery(null)
         toast.success("Comentario publicado")
       }
     } catch (err: any) {
@@ -634,11 +761,13 @@ export function TaskPortalDetailModal({
   const checklistPercentage =
     checklist.length > 0 ? Math.round((completedChecklistCount / checklist.length) * 100) : 0
 
-  const resolvedProject = projects.find((p) => p.id === (task?.project_id || selectedProjectId))
+  const resolvedProject =
+    projects.find((p) => p.id === (task?.project_id || selectedProjectId)) ||
+    task?.project
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>{title || (isCreating ? "Nuevo Ticket de Sprint" : "Detalle de Tarea")}</DialogTitle>
         </DialogHeader>
@@ -659,27 +788,22 @@ export function TaskPortalDetailModal({
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-                  Nuevo Ticket
+                  Nuevo Ticket de Sprint
                 </h2>
               </div>
             ) : (
               <>
                 <Badge
                   variant="outline"
-                  className="font-mono text-xs font-bold px-2.5 py-0.5 bg-muted/60 text-foreground border border-border/80 rounded-md whitespace-nowrap shrink-0 shadow-2xs tracking-wide"
+                  className="font-mono text-xs font-bold px-3 py-1 bg-primary/10 text-primary border border-primary/25 rounded-lg whitespace-nowrap shrink-0 shadow-xs tracking-wide"
                 >
                   {task?.ticket_code}
                 </Badge>
 
-                {resolvedProject && (
-                  <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: resolvedProject.color }}
-                    />
-                    {resolvedProject.name}
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
+                  <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                  {resolvedProject?.name || task?.project?.name || "Proyecto"}
+                </span>
               </>
             )}
           </div>
@@ -779,36 +903,16 @@ export function TaskPortalDetailModal({
               )}
             </div>
 
-            {/* Avance y Progreso de Ejecución */}
+            {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
             {!isCreating && (
-              <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-emerald-500 shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-foreground block">
-                        Avance y Progreso de Ejecución
-                      </span>
-                      {!isLeadOrPm && savedProgress > 0 && (
-                        <span className="text-[11px] text-muted-foreground">
-                          Mínimo actual: <strong className="text-foreground font-mono">{savedProgress}%</strong> (solo avance)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl sm:text-3xl font-black text-primary font-mono tracking-tight">
-                      {progress}%
-                    </span>
-                    {progress === 100 && (
-                      <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs px-2.5 py-1 font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Completado
-                      </Badge>
-                    )}
-                  </div>
+              <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Avance
+                  </span>
                 </div>
-
-                <div className="pt-2 px-1">
+                <div className="flex-1 px-1">
                   <Slider
                     value={[progress]}
                     min={0}
@@ -819,16 +923,14 @@ export function TaskPortalDetailModal({
                     className="cursor-pointer"
                   />
                 </div>
-                <div className="flex justify-between text-xs text-muted-foreground font-mono font-medium px-1">
-                  <span>0%</span>
-                  <span>100%</span>
+                <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                  <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
+                    {progress}%
+                  </span>
+                  {progress === 100 && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  )}
                 </div>
-
-                {!isLeadOrPm && savedProgress > 0 && (
-                  <p className="text-[10px] text-muted-foreground italic text-right pt-0.5">
-                    * El avance registrado no puede ser reducido por colaboradores.
-                  </p>
-                )}
               </div>
             )}
 
@@ -940,28 +1042,28 @@ export function TaskPortalDetailModal({
               </div>
             </div>
 
-            {/* Recursos, Archivos & Entregables */}
+            {/* Enlaces & Referencias */}
             <div className="space-y-3 pt-4 border-t border-border/60">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <FolderArchive className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Recursos, Archivos & Entregables ({attachments.length})
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider truncate">
+                    Enlaces & Referencias ({attachments.length})
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={isUploadingFile}
                     onClick={() => fileInputRef.current?.click()}
-                    className="h-7 text-xs px-2.5 rounded-lg border-primary/30 text-primary hover:bg-primary/10"
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
                   >
                     {isUploadingFile ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
                     ) : (
-                      <Upload className="w-3.5 h-3.5 mr-1" />
+                      <Upload className="w-3.5 h-3.5 mr-1 text-primary" />
                     )}
                     Subir desde PC
                   </Button>
@@ -971,10 +1073,10 @@ export function TaskPortalDetailModal({
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAddRef(!showAddRef)}
-                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40"
+                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
                   >
-                    <Link2 className="w-3.5 h-3.5 mr-1" />
-                    {showAddRef ? "Cancelar" : "Enlace / Figma"}
+                    <Link2 className="w-3.5 h-3.5 mr-1 text-primary" />
+                    {showAddRef ? "Cancelar" : "Enlaces"}
                   </Button>
                 </div>
               </div>
@@ -1048,8 +1150,8 @@ export function TaskPortalDetailModal({
 
               {/* References & Files List */}
               {attachments.length === 0 ? (
-                <div className="p-3.5 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
-                  <p>Sin recursos adjuntos aún. Sube archivos desde tu PC o agrega links de Figma, repositorios o especificaciones.</p>
+                <div className="py-2.5 px-3 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
+                  <p>Sin referencias adjuntas</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1198,25 +1300,25 @@ export function TaskPortalDetailModal({
                               })}
                             </span>
                           </div>
-                          <p className="text-foreground/90 leading-relaxed pl-7 whitespace-pre-wrap">
-                            {c.content}
-                          </p>
+                          <div className="text-foreground/90 leading-relaxed pl-7 whitespace-pre-wrap">
+                            {renderFormattedComment(c.content, availableTasks, onSelectTask)}
+                          </div>
                         </div>
                       )
                     })
                   )}
                 </div>
 
-                {/* Add Comment Input with @ Mention Autocomplete Popover */}
+                {/* Add Comment Input with @ & # Mention Autocomplete Popover */}
                 <div className="relative">
                   {/* Floating Mention Autocomplete Menu */}
                   <AnimatePresence>
-                    {mentionQuery !== null && filteredMentionMembers.length > 0 && (
+                    {mentionType === "collaborator" && filteredMentionMembers.length > 0 && (
                       <motion.div
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
-                        className="absolute bottom-full left-0 mb-2 w-72 max-h-48 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
+                        className="absolute bottom-full left-0 mb-2 w-72 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
                       >
                         <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
                           <AtSign className="w-3 h-3 text-primary" />
@@ -1247,6 +1349,44 @@ export function TaskPortalDetailModal({
                         ))}
                       </motion.div>
                     )}
+
+                    {mentionType === "ticket" && filteredMentionTickets.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute bottom-full left-0 mb-2 w-80 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
+                      >
+                        <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
+                          <Hash className="w-3 h-3 text-primary" />
+                          Vincular Ticket / Tarea
+                        </div>
+                        {filteredMentionTickets.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => handleSelectTicket(t)}
+                            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-muted/80 text-xs transition-colors group"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="font-mono text-[10px] font-bold text-primary px-1.5 py-0.2 bg-primary/10 rounded border border-primary/20">
+                                  {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
+                                </span>
+                                {t.project?.name && (
+                                  <span className="text-[10px] text-muted-foreground truncate">
+                                    {t.project.name}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-medium text-foreground truncate text-xs">
+                                {t.title}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
                   </AnimatePresence>
 
                   <div className="flex gap-2">
@@ -1255,12 +1395,15 @@ export function TaskPortalDetailModal({
                       value={newCommentText}
                       onChange={handleCommentChange}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey && mentionQuery === null) {
+                        if (e.key === "Enter" && !e.shiftKey && mentionType === null) {
                           e.preventDefault()
                           handleAddComment()
+                        } else if (e.key === "Escape") {
+                          setMentionType(null)
+                          setMentionQuery(null)
                         }
                       }}
-                      placeholder="Escribe un comentario o usa @ para mencionar a alguien..."
+                      placeholder="Escribe un comentario, usa @ para colaboradores o # para tickets..."
                       className="text-xs h-9 bg-background rounded-xl"
                     />
                     <Button
