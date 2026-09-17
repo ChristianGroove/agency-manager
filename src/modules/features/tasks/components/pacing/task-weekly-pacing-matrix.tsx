@@ -168,9 +168,12 @@ export function TaskWeeklyPacingMatrix({
   const countOnTrack = useMemo(() => {
     return baseTasks.filter((t) => {
       if (t.status === "done" || t.progress_percentage === 100) return true
+      if (t.status === "blocked") return false
       const pacing = getTaskWeeklyPacing(t, currentDate)
+      const hasDelayedWeek = pacing.some((p) => p.status === "delayed")
+      if (hasDelayedWeek) return false
       const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-      return currentWeekPacing?.status === "on_track"
+      return currentWeekPacing?.status !== "at_risk"
     }).length
   }, [baseTasks, currentDate, activeMonthWeek])
 
@@ -200,9 +203,14 @@ export function TaskWeeklyPacingMatrix({
         const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
         if (currentWeekPacing?.status !== "at_risk") return false
       } else if (filterPreset === "on_track") {
+        if (task.status === "done" || task.progress_percentage === 100) return true
+        if (task.status === "blocked") return false
         const pacing = getTaskWeeklyPacing(task, currentDate)
+        const hasDelayedWeek = pacing.some((p) => p.status === "delayed")
+        if (hasDelayedWeek) return false
         const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-        if (currentWeekPacing?.status !== "on_track" && task.status !== "done") return false
+        if (currentWeekPacing?.status === "at_risk") return false
+        return true
       }
 
       return true
@@ -716,7 +724,9 @@ export function TaskWeeklyPacingMatrix({
                             <div className="flex flex-col items-center gap-1 max-w-[130px] mx-auto">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-mono font-bold text-foreground text-[11px]">
-                                  {weekData.progress}%
+                                  {weekData.hasSchedule || weekData.progress > 0 || weekData.status === "completed"
+                                    ? `${weekData.progress}%`
+                                    : "—"}
                                 </span>
                                 <Badge
                                   variant="outline"

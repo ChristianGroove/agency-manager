@@ -391,18 +391,65 @@ export interface WeeklyPacingSummary {
   totalDeliverables: number;
   completedDeliverables: number;
   status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending';
+  hasSchedule: boolean;
 }
 
 /**
  * Calculates 4-week fractional progress and pacing health status for a task
+ * Respects real calendar time, delivery dates, and weekly checklist commitments.
+ * Avoids artificial future progression and false past delays.
  */
-export function getTaskWeeklyPacing(task: TaskItem, now: Date = new Date()): WeeklyPacingSummary[] {
-  const currentDay = now.getDate();
-  const currentWeek: 1 | 2 | 3 | 4 = 
-    currentDay <= 7 ? 1 : currentDay <= 14 ? 2 : currentDay <= 21 ? 3 : 4;
+export function getTaskWeeklyPacing(
+  task: TaskItem,
+  viewDate: Date = new Date(),
+  realToday: Date = new Date()
+): WeeklyPacingSummary[] {
+  const viewYear = viewDate.getFullYear();
+  const viewMonth = viewDate.getMonth();
+  const todayYear = realToday.getFullYear();
+  const todayMonth = realToday.getMonth();
+  const todayDay = realToday.getDate();
+
+  const isCurrentMonth = viewYear === todayYear && viewMonth === todayMonth;
+  const isPastMonth = viewYear < todayYear || (viewYear === todayYear && viewMonth < todayMonth);
+  const isFutureMonth = viewYear > todayYear || (viewYear === todayYear && viewMonth > todayMonth);
+
+  // Active week of the month (only exists when viewing the actual current month)
+  const activeMonthWeek: 1 | 2 | 3 | 4 | null = isCurrentMonth
+    ? todayDay <= 7
+      ? 1
+      : todayDay <= 14
+      ? 2
+      : todayDay <= 21
+      ? 3
+      : 4
+    : null;
 
   const checklist = parseTaskChecklist(task.checklist);
   const hasTargetWeeks = checklist.some((c) => c.target_week && c.target_week >= 1 && c.target_week <= 4);
+
+  const globalProg = task.progress_percentage || 0;
+  const isTaskDone = task.status === 'done' || globalProg === 100;
+  const isBlocked = task.status === 'blocked';
+
+  // Parse due date if present to determine if a week is overdue
+  let dueWeek: number | null = null;
+  let isDueInPastMonth = false;
+
+  if (task.due_date) {
+    const due = new Date(task.due_date);
+    if (!isNaN(due.getTime())) {
+      const dueYear = due.getFullYear();
+      const dueMonth = due.getMonth();
+      const dueDay = due.getDate();
+
+      if (dueYear < viewYear || (dueYear === viewYear && dueMonth < viewMonth)) {
+        isDueInPastMonth = true;
+      } else if (dueYear === viewYear && dueMonth === viewMonth) {
+        dueWeek = dueDay <= 7 ? 1 : dueDay <= 14 ? 2 : dueDay <= 21 ? 3 : 4;
+      }
+    }
+  }
 
   const weeks: (1 | 2 | 3 | 4)[] = [1, 2, 3, 4];
   const dateRanges = [
@@ -413,44 +460,120 @@ export function getTaskWeeklyPacing(task: TaskItem, now: Date = new Date()): Wee
   ];
 
   return weeks.map((w, idx) => {
-    let progress = 0;
-    let totalItems = 0;
-    let doneItems = 0;
+    // Determine time status of week w
+    let isPastWeek = false;
+    let isCurrentWeek = false;
+    let isFutureWeek = false;
 
-    if (hasTargetWeeks) {
-      const itemsInWeek = checklist.filter((c) => c.target_week === w);
-      totalItems = itemsInWeek.length;
-      doneItems = itemsInWeek.filter((c) => c.completed).length;
-      progress = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+    if (isPastMonth) {
+      isPastWeek = true;
+    } else if (isFutureMonth) {
+      isFutureWeek = true;
     } else {
-      // Fallback: fraction of global progress allocated to 4 quartiles (25% each)
-      const globalProg = task.progress_percentage || 0;
-      const lowerBound = (w - 1) * 25;
-      const upperBound = w * 25;
-      if (globalProg >= upperBound) {
-        progress = 100;
-      } else if (globalProg <= lowerBound) {
-        progress = 0;
-      } else {
-        progress = Math.round(((globalProg - lowerBound) / 25) * 100);
+      // Current month
+      if (activeMonthWeek !== null) {
+        if (w < activeMonthWeek) isPastWeek = true;
+        else if (w === activeMonthWeek) isCurrentWeek = true;
+        else isFutureWeek = true;
       }
     }
 
+    let progress = 0;
+    let totalItems = 0;
+    let doneItems = 0;
+    let hasSchedule = false;
     let status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending' = 'pending';
-    if (progress === 100 || task.status === 'done') {
-      status = 'completed';
-    } else if (w < currentWeek) {
-      status = 'delayed';
-    } else if (w === currentWeek) {
-      if (progress >= 50) {
-        status = 'on_track';
-      } else if (task.status === 'blocked') {
+
+    // If task is globally completed, all weeks reflect complete status
+    if (isTaskDone) {
+      return {
+        week: w,
+        label: `Semana ${w}`,
+        dateRange: dateRanges[idx],
+        progress: 100,
+        totalDeliverables: 0,
+        completedDeliverables: 0,
+        status: 'completed',
+        hasSchedule: true,
+      };
+    }
+
+    if (hasTargetWeeks) {
+      // CASE 1: Task has explicit checklist deliverables per week
+      const itemsInWeek = checklist.filter((c) => c.target_week === w);
+      totalItems = itemsInWeek.length;
+      doneItems = itemsInWeek.filter((c) => c.completed).length;
+      hasSchedule = totalItems > 0;
+      progress = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+
+      if (!hasSchedule) {
+        // No deliverables planned for this week -> Not a delay!
+        status = 'pending';
+      } else if (doneItems === totalItems) {
+        status = 'completed';
+      } else if (isBlocked) {
         status = 'delayed';
+      } else if (isPastWeek) {
+        // Had deliverables in a past week and failed to complete them -> True delay!
+        status = 'delayed';
+      } else if (isCurrentWeek) {
+        // Current week with deliverables in progress
+        if (progress >= 50) {
+          status = 'on_track';
+        } else {
+          status = 'at_risk';
+        }
       } else {
-        status = 'at_risk';
+        // Future week
+        status = progress > 0 ? 'on_track' : 'pending';
       }
     } else {
-      status = progress > 0 ? 'on_track' : 'pending';
+      // CASE 2: Standard task WITHOUT target_week checklist (Global progress & dates)
+      if (isPastWeek) {
+        // In past weeks: only marked delayed if blocked or due_date expired on/before this week
+        const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
+
+        if (isBlocked || isPastDue) {
+          status = 'delayed';
+          progress = globalProg;
+          hasSchedule = true;
+        } else if (globalProg > 0) {
+          // If task has reached progress today, earlier weeks were successfully worked
+          status = 'completed';
+          progress = 100;
+          hasSchedule = true;
+        } else {
+          // 0% progress and not past due -> Scheduled/Plan, NOT a delay!
+          status = 'pending';
+          progress = 0;
+          hasSchedule = false;
+        }
+      } else if (isCurrentWeek) {
+        // Current active week: reflects current global progress
+        progress = globalProg;
+        hasSchedule = true;
+
+        if (isBlocked) {
+          status = 'delayed';
+        } else if (progress >= 70) {
+          status = 'on_track';
+        } else if (progress >= 20) {
+          status = 'on_track';
+        } else if (dueWeek !== null && dueWeek <= w) {
+          // Due this week or overdue with low progress
+          status = 'at_risk';
+        } else if (progress > 0) {
+          status = 'on_track';
+        } else {
+          // 0% progress
+          status = 'pending';
+        }
+      } else {
+        // Future week: cannot have arbitrary progress allocated!
+        progress = 0;
+        status = 'pending';
+        hasSchedule = false;
+      }
     }
 
     return {
@@ -461,6 +584,7 @@ export function getTaskWeeklyPacing(task: TaskItem, now: Date = new Date()): Wee
       totalDeliverables: totalItems,
       completedDeliverables: doneItems,
       status,
+      hasSchedule,
     };
   });
 }

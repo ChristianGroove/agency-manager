@@ -319,7 +319,9 @@ graph LR
 ### A. Entregables Vinculados a Semanas del Mes
 - Cada ítem del checklist (`TaskChecklistItem`) incluye el atributo opcional `target_week?: 1 | 2 | 3 | 4 | null`.
 - Los líderes y colaboradores pueden asignar entregables a la semana objetivo directamente desde los modales de creación y detalle (`task-form-modal.tsx`, `task-detail-modal.tsx`, `task-portal-detail-modal.tsx`).
-- **Algoritmo Fallback**: Si una tarea no tiene entregables asignados a semanas específicas, el motor distribuye equitativamente el progreso total mediante cuartiles (0-25% = S1, 26-50% = S2, 51-75% = S3, 76-100% = S4), garantizando compatibilidad retrospectiva inmediata con tareas históricas.
+- **Lógica Temporal y Auditoría Semanal**:
+  - **Tareas con Entregables por Semana (`target_week`)**: Cada semana mide estrictamente los entregables comprometidos para esa semana. Si una semana no tiene entregables programados, se presenta como `— Plan`, evitando catalogarla erróneamente en retraso. El retraso (`delayed`) solo se dispara si una semana pasada tenía entregables comprometidos que no se finalizaron o si el ticket está bloqueado.
+  - **Tareas Estándar (Sin Entregables Semanales)**: Se eliminó el esquema de cuartiles artificiales (que imputaba avance a semanas futuras inexistentes). La semana activa refleja el progreso global real del ticket (ej: 95% en S3). Las semanas futuras se mantienen en `— Plan` (0% de avance). En semanas pasadas, solo se marca retraso si la fecha límite (`due_date`) expiró o si el ticket está bloqueado; las tareas del backlog o en curso normal se reconocen como programadas, eliminando falsos positivos en el semáforo gerencial.
 
 ### B. Matriz Ejecutiva (`TaskWeeklyPacingMatrix`)
 - Componente interactivo de alta dirección ubicado en:
