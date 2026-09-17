@@ -37,6 +37,8 @@ export interface CollaboratorPortalData {
     last_name: string;
     photo_url?: string | null;
     role: string;
+    phone?: string | null;
+    access_token?: string | null;
     totalTasks: number;
     completedTasks: number;
     inProgressTasks: number;
@@ -270,7 +272,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   // Fetch team members with live sprint workload for all staff (allows @mentions and team overview)
   const { data: staffList } = await supabaseAdmin
     .from("organization_staff")
-    .select("id, first_name, last_name, photo_url, role")
+    .select("id, first_name, last_name, photo_url, role, phone, access_token")
     .eq("organization_id", staff.organization_id)
     .eq("is_active", true)
     .order("first_name", { ascending: true });
@@ -293,27 +295,39 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     filteredStaffList = filteredStaffList.filter((m) => sharedStaffIds.has(m.id));
   }
 
-  const teamMembers = filteredStaffList.map((m) => {
-    const memberTasks = allTasks.filter((t) => t.assigned_staff_id === m.id);
-    const mCompleted = memberTasks.filter((t) => t.status === "done").length;
-    const mInProgress = memberTasks.filter((t) => t.status === "in_progress").length;
-    const mInReview = memberTasks.filter((t) => t.status === "in_review").length;
-    const mPercent = memberTasks.length > 0 ? Math.round((mCompleted / memberTasks.length) * 100) : 0;
-    const mHours = memberTasks.reduce((acc, t) => acc + (t.estimated_hours || 0), 0);
-    return {
-      id: m.id,
-      first_name: m.first_name,
-      last_name: m.last_name,
-      photo_url: m.photo_url,
-      role: m.role,
-      totalTasks: memberTasks.length,
-      completedTasks: mCompleted,
-      inProgressTasks: mInProgress,
-      inReviewTasks: mInReview,
-      hours: mHours,
-      completionPercentage: mPercent,
-    };
-  });
+  const teamMembers = await Promise.all(
+    filteredStaffList.map(async (m) => {
+      let token = m.access_token;
+      if (!token) {
+        token = crypto.randomUUID();
+        await supabaseAdmin
+          .from("organization_staff")
+          .update({ access_token: token })
+          .eq("id", m.id);
+      }
+      const memberTasks = allTasks.filter((t) => t.assigned_staff_id === m.id);
+      const mCompleted = memberTasks.filter((t) => t.status === "done").length;
+      const mInProgress = memberTasks.filter((t) => t.status === "in_progress").length;
+      const mInReview = memberTasks.filter((t) => t.status === "in_review").length;
+      const mPercent = memberTasks.length > 0 ? Math.round((mCompleted / memberTasks.length) * 100) : 0;
+      const mHours = memberTasks.reduce((acc, t) => acc + (t.estimated_hours || 0), 0);
+      return {
+        id: m.id,
+        first_name: m.first_name,
+        last_name: m.last_name,
+        photo_url: m.photo_url,
+        role: m.role,
+        phone: m.phone,
+        access_token: token,
+        totalTasks: memberTasks.length,
+        completedTasks: mCompleted,
+        inProgressTasks: mInProgress,
+        inReviewTasks: mInReview,
+        hours: mHours,
+        completionPercentage: mPercent,
+      };
+    })
+  );
 
   // Fetch comments where this collaborator is mentioned (@Name or @staffId)
   const { data: mentionsData } = await supabaseAdmin

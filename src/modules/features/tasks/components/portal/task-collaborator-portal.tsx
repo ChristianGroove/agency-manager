@@ -1493,6 +1493,7 @@ export function TaskCollaboratorPortal({
                 allTasks={allTeamTasks && allTeamTasks.length > 0 ? allTeamTasks : tasks}
                 selectedMemberId={selectedMemberFilter}
                 brandColor={brandColor}
+                organizationName={organization.name}
                 onSelectMember={(memberId) => {
                   setSelectedMemberFilter(memberId)
                 }}
