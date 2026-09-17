@@ -65,6 +65,7 @@ import {
   Code2,
   Palette,
   ExternalLink,
+  ChevronLeft,
   ChevronRight,
   TrendingUp,
   Award,
@@ -268,6 +269,15 @@ export function TaskCollaboratorPortal({
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+
+  // Pagination State for Management / Tasks views
+  const [pageSize, setPageSize] = useState<number>(25)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  // Reset pagination when filters or view mode change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, selectedProjectFilter, selectedMemberFilter, viewMode])
 
   // Selected task for comments & details
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
@@ -1026,6 +1036,18 @@ export function TaskCollaboratorPortal({
 
   const displayedTasks = filteredTasks
 
+  // Pagination calculations for Grid, Compact, and List views
+  const totalPages = Math.max(1, Math.ceil(displayedTasks.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginatedTasks = useMemo(() => {
+    if (viewMode === "kanban") return displayedTasks
+    const start = (safePage - 1) * pageSize
+    return displayedTasks.slice(start, start + pageSize)
+  }, [displayedTasks, safePage, pageSize, viewMode])
+
+  const startRecord = displayedTasks.length > 0 ? (safePage - 1) * pageSize + 1 : 0
+  const endRecord = Math.min(safePage * pageSize, displayedTasks.length)
+
   // Dynamic Logo Selection based on Portal Color Mode (Dark vs Light from ADN de Marca)
   const activeLogo =
     portalTheme === "dark"
@@ -1732,7 +1754,7 @@ export function TaskCollaboratorPortal({
         {viewMode === "grid" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <AnimatePresence>
-              {displayedTasks.map((task) => {
+              {paginatedTasks.map((task) => {
                 const safeChecklist = Array.isArray(task.checklist)
                   ? task.checklist
                   : parseTaskChecklist(task.checklist)
@@ -2030,7 +2052,7 @@ export function TaskCollaboratorPortal({
         {viewMode === "compact" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
-              {displayedTasks.map((task) => (
+              {paginatedTasks.map((task) => (
                 <motion.div
                   key={task.id}
                   layout
@@ -2169,7 +2191,7 @@ export function TaskCollaboratorPortal({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-white/5">
-                  {displayedTasks.map((task) => {
+                  {paginatedTasks.map((task) => {
                     const resolvedProject = task.project || projects.find((p) => p.id === task.project_id)
                     return (
                       <tr
@@ -2371,6 +2393,66 @@ export function TaskCollaboratorPortal({
                 setIsCreateModalOpen(true)
               } : undefined}
             />
+          </div>
+        )}
+
+        {/* Pagination Footer (Para vistas Grid, Compact y List) */}
+        {displayedTasks.length > 0 && viewMode !== "kanban" && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 bg-card/80 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 rounded-2xl text-xs text-muted-foreground shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span>
+                Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
+                <strong className="text-foreground font-semibold">{displayedTasks.length}</strong> tickets
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">Por pág:</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(val) => {
+                    setPageSize(Number(val))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[72px] text-xs font-semibold rounded-xl bg-background border-zinc-200/80 dark:border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" className="rounded-xl">
+                    <SelectItem value="25" className="text-xs">25</SelectItem>
+                    <SelectItem value="50" className="text-xs">50</SelectItem>
+                    <SelectItem value="100" className="text-xs">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Página anterior"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+                <span className="px-2 text-[11px] font-mono font-medium text-foreground">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Página siguiente"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
