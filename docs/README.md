@@ -13,7 +13,7 @@ Aquí encontrarás el "Qué" y el "Por qué" construimos las cosas.
 ### [2. Arquitectura de Software](./2-architecture/)
 Aquí encontrarás el "Cómo" está diseñado el sistema.
 * **`core/`**: Reglas globales, estándares modulares, mapa de bases de datos, UI y arquitectura del SaaS.
-* **`modules/`**: Documentación técnica detallada de cada módulo (CRM, Billing, Inbox, Quotes, Automations, Locations, Work Orders, Catalog, Knowledge, Forms, Broadcasts, Resto).
+* **`modules/`**: Documentación técnica detallada de cada módulo (CRM, Tasks / Sprints, Billing, Inbox, Quotes, Automations, Locations, Work Orders, Catalog, Knowledge, Forms, Broadcasts, Resto).
 * **`security/`**: Estrategia de seguridad de datos y cumplimiento.
 
 ### [3. Desarrollo y Operaciones](./3-development/)

@@ -1,7 +1,7 @@
 "use server"
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
-import type { TaskItem, TaskProject, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem } from "../types";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem } from "../types";
 import { normalizeTask, parseTaskChecklist } from "../types";
 
 export interface CollaboratorPortalData {
@@ -26,6 +26,7 @@ export interface CollaboratorPortalData {
     primary_color: string;
     secondary_color: string;
   };
+  workspaces?: TaskWorkspace[];
   projects: TaskProject[];
   tasks: TaskItem[];
   allTeamTasks?: TaskItem[]; // For PMs or QA Leads
@@ -63,10 +64,13 @@ export interface CollaboratorPortalData {
   };
 }
 
+import { cache } from "react";
+
 /**
  * Validate token and return full collaborator portal session data
+ * Memoized per-request to avoid redundant executions between generateMetadata and Page render.
  */
-export async function getCollaboratorPortalData(token: string): Promise<CollaboratorPortalData | null> {
+export const getCollaboratorPortalData = cache(async (token: string): Promise<CollaboratorPortalData | null> => {
   if (!token) return null;
 
   // 1. Verify staff by token
@@ -131,30 +135,103 @@ export async function getCollaboratorPortalData(token: string): Promise<Collabor
 
   // 3. Determine role permissions
   const roleLower = (staff.role || "").toLowerCase();
-  const isLeadOrPm =
+  const hasLeadKeywords =
     roleLower.includes("pm") ||
     roleLower.includes("lead") ||
     roleLower.includes("project") ||
+    roleLower.includes("proyecto") ||
+    roleLower.includes("gestor") ||
+    roleLower.includes("gestora") ||
     roleLower.includes("gerente") ||
-    roleLower.includes("manager");
+    roleLower.includes("manager") ||
+    roleLower.includes("lider") ||
+    roleLower.includes("líder") ||
+    roleLower.includes("coordinad") ||
+    roleLower.includes("director");
+
+  // Also check if this collaborator is designated lead of any workspace or project
+  const { data: leadWorkspaces } = await supabaseAdmin
+    .from("task_workspaces")
+    .select("id")
+    .eq("organization_id", staff.organization_id)
+    .eq("lead_staff_id", staff.id)
+    .limit(1);
+
+  const { data: leadProjects } = await supabaseAdmin
+    .from("task_projects")
+    .select("id")
+    .eq("organization_id", staff.organization_id)
+    .eq("lead_staff_id", staff.id)
+    .limit(1);
+
+  const isLeadOrPm = Boolean(
+    hasLeadKeywords ||
+    (leadWorkspaces && leadWorkspaces.length > 0) ||
+    (leadProjects && leadProjects.length > 0)
+  );
 
   const isQa =
     roleLower.includes("qa") ||
     roleLower.includes("tester") ||
-    roleLower.includes("calidad");
+    roleLower.includes("calidad") ||
+    roleLower.includes("revisor") ||
+    roleLower.includes("pruebas");
 
-  // 4. Fetch Projects
+  // 4. Resolve Workspace Access Control & Fetch Workspaces
+  const hasGlobalAccess = staff.has_global_workspace_access !== false;
+
+  let authorizedWorkspaceIds: string[] | null = null;
+  if (!hasGlobalAccess) {
+    const { data: userMemberships } = await supabaseAdmin
+      .from("task_workspace_members")
+      .select("workspace_id")
+      .eq("staff_id", staff.id)
+      .eq("organization_id", staff.organization_id);
+
+    const wsIds = new Set((userMemberships || []).map((m) => m.workspace_id));
+    if (leadWorkspaces) {
+      leadWorkspaces.forEach((w) => wsIds.add(w.id));
+    }
+    authorizedWorkspaceIds = Array.from(wsIds);
+  }
+
+  let workspacesQuery = supabaseAdmin
+    .from("task_workspaces")
+    .select("id, organization_id, name, slug, key_prefix, color, icon, lead_staff_id, created_at, updated_at")
+    .eq("organization_id", staff.organization_id)
+    .order("name", { ascending: true });
+
+  if (authorizedWorkspaceIds !== null) {
+    workspacesQuery = workspacesQuery.in(
+      "id",
+      authorizedWorkspaceIds.length > 0 ? authorizedWorkspaceIds : ["00000000-0000-0000-0000-000000000000"]
+    );
+  }
+
+  const { data: workspacesData } = await workspacesQuery;
+  const workspaces: TaskWorkspace[] = (workspacesData || []) as any;
+  const allowedWorkspaceIds = new Set(workspaces.map((w) => w.id));
+
+  // 5. Fetch Projects (scoped to allowed workspaces if not global)
   const { data: projectsData } = await supabaseAdmin
     .from("task_projects")
-    .select("*")
+    .select(`
+      *,
+      workspace:task_workspaces!task_projects_workspace_id_fkey(
+        id, name, slug, key_prefix, color, icon
+      )
+    `)
     .eq("organization_id", staff.organization_id)
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
-  const projects: TaskProject[] = projectsData || [];
+  let projects: TaskProject[] = projectsData || [];
+  if (!hasGlobalAccess) {
+    projects = projects.filter((p) => p.workspace_id && allowedWorkspaceIds.has(p.workspace_id));
+  }
+  const allowedProjectIds = new Set(projects.map((p) => p.id));
 
-  // 5. Fetch Tasks
-  // If PM or QA, also fetch all team tasks for supervision & testing queue
+  // 6. Fetch Tasks (scoped to allowed projects if not global)
   let tasksQuery = supabaseAdmin
     .from("task_items")
     .select(`
@@ -173,7 +250,11 @@ export async function getCollaboratorPortalData(token: string): Promise<Collabor
     .order("created_at", { ascending: false });
 
   const { data: allTasksData } = await tasksQuery;
-  const allTasks = (allTasksData || []).map(normalizeTask);
+  let allTasks = (allTasksData || []).map(normalizeTask);
+
+  if (!hasGlobalAccess) {
+    allTasks = allTasks.filter((t) => allowedProjectIds.has(t.project_id) || t.assigned_staff_id === staff.id);
+  }
 
   // Filter tasks assigned to this collaborator
   const myTasks = allTasks.filter(
@@ -193,7 +274,25 @@ export async function getCollaboratorPortalData(token: string): Promise<Collabor
     .eq("is_active", true)
     .order("first_name", { ascending: true });
 
-  const teamMembers = (staffList || []).map((m) => {
+  let filteredStaffList = staffList || [];
+  if (!hasGlobalAccess) {
+    // Only include staff who share at least one authorized workspace or are assigned in allowed tasks
+    const { data: sharedStaffMemberships } = await supabaseAdmin
+      .from("task_workspace_members")
+      .select("staff_id")
+      .in("workspace_id", Array.from(allowedWorkspaceIds).length > 0 ? Array.from(allowedWorkspaceIds) : ["00000000-0000-0000-0000-000000000000"]);
+
+    const sharedStaffIds = new Set((sharedStaffMemberships || []).map((m) => m.staff_id));
+    sharedStaffIds.add(staff.id);
+    allTasks.forEach((t) => {
+      if (t.assigned_staff_id) sharedStaffIds.add(t.assigned_staff_id);
+      if (t.qa_staff_id) sharedStaffIds.add(t.qa_staff_id);
+    });
+
+    filteredStaffList = filteredStaffList.filter((m) => sharedStaffIds.has(m.id));
+  }
+
+  const teamMembers = filteredStaffList.map((m) => {
     const memberTasks = allTasks.filter((t) => t.assigned_staff_id === m.id);
     const mCompleted = memberTasks.filter((t) => t.status === "done").length;
     const mInProgress = memberTasks.filter((t) => t.status === "in_progress").length;
@@ -251,6 +350,7 @@ export async function getCollaboratorPortalData(token: string): Promise<Collabor
       access_token: staff.access_token
     },
     organization: orgData,
+    workspaces,
     projects,
     tasks: myTasks,
     allTeamTasks: isLeadOrPm || isQa ? allTasks : undefined,
@@ -266,7 +366,7 @@ export async function getCollaboratorPortalData(token: string): Promise<Collabor
       completionPercentage
     }
   };
-}
+});
 
 /**
  * Update task priority from portal (e.g. PM in sprint review)
@@ -613,6 +713,7 @@ export async function portalCreateTask(
     estimatedHours?: number;
     checklist?: TaskChecklistItem[];
     attachments?: TaskAttachment[];
+    tags?: string[];
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -671,6 +772,7 @@ export async function portalCreateTask(
         created_by_staff_id: staff.id,
         estimated_hours: Number(taskData.estimatedHours || 0),
         checklist: taskData.checklist || [],
+        tags: taskData.tags || [],
         attachments: taskData.attachments || [],
         order_index: 0
       })
@@ -716,6 +818,7 @@ export async function portalUpdateTask(
     progressPercentage?: number;
     checklist?: TaskChecklistItem[];
     attachments?: TaskAttachment[];
+    tags?: string[];
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -783,6 +886,9 @@ export async function portalUpdateTask(
     }
     if (data.attachments !== undefined) {
       updateData.attachments = data.attachments;
+    }
+    if (data.tags !== undefined) {
+      updateData.tags = data.tags;
     }
 
     // PM/Lead administrative fields

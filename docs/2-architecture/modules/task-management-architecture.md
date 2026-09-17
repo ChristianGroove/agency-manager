@@ -1,140 +1,287 @@
-# Arquitectura del Módulo de Gestión de Tareas (Task Management)
+# Arquitectura Integral del Módulo de Gestión de Tareas (Task Management)
 
-Este documento detalla la estructura, funcionamiento, reglas de negocio y patrones de diseño del módulo de Gestión de Tareas (`tasks`), sus portales de acceso rápido para colaboradores y gestores de proyecto, y su integración con el ecosistema de PIXY Agency Manager.
-
----
-
-## 1. Visión General
-
-El módulo de Gestión de Tareas orquesta el ciclo de vida operativo de los tickets y sprints en proyectos de la agencia. Proporciona:
-- **Portales Seguros por Token**: Entornos dedicados para colaboradores externos o miembros del equipo sin necesidad de credenciales directas de base de datos.
-- **Doble Perspectiva por Rol**:
-  - **Colaborador / Especialista**: Vista enfocada en entregables propios, minimizando ruido visual (columna de responsable oculta), con slider de progreso seguro y checklist interactivo.
-  - **Gestor de Proyecto (PM / Lead)**: Puesto de comando futurista con switch de doble vista (*Dashboard de Telemetría* con KPIs, gráficos de velocidad, distribución de carga y horas estimadas vs. reales, y *Vista de Gestión* con monitor de especialistas en cinta interactiva y supervisión de responsables).
-- **Consistencia Visual con la Plataforma**: Fondo global `bg-gray-100 dark:bg-[#0a0a0a]` con partículas animadas (`GlobalParticles`), adaptación reactiva al ADN de Marca (logos dark/light y color corporativo primario), y avatares 3D con efecto pop-out flotante.
+Este documento describe la estructura técnica, modelo de datos relacional, mecanismos de control de acceso (RBAC granular por espacios), flujos operativos, estándares de interfaz y optimizaciones de rendimiento del módulo de **Gestión de Tareas (`tasks`)** y sus **Portales de Colaboradores**, en el ecosistema de PIXY Agency Manager.
 
 ---
 
-## 2. Modelo de Datos Central
+## 1. Visión General y Jerarquía de Trabajo
 
-La base de datos se estructura alrededor de las tablas del esquema relacional en Supabase (`supabase/migrations/20260912000000_create_task_management_module.sql`):
+El módulo orquesta el ciclo de vida operativo de los requerimientos y sprints de la agencia a través de una jerarquía de tres niveles:
 
-### Tabla: `tasks`
+```mermaid
+graph TD
+    A["Espacio de Trabajo (Workspace)"] --> B["Proyecto / Sprint"]
+    B --> C["Ticket / Tarea (Task Item)"]
+    C --> D["Checklist de Entregables"]
+    C --> E["Etiquetas & Etapas QA"]
+    C --> F["Recursos & Adjuntos"]
+    C --> G["Hilo de Comentarios & Menciones"]
+```
+
+### Componentes Principales del Sistema
+1. **Plataforma Central (`/operations/tasks`)**: Panel de control administrativo para dueños de agencia, administradores y personal interno con acceso a métricas globales, tableros Kanban interactivos, vistas de lista paginadas y gestión de espacios y proyectos.
+2. **Portales Seguros por Token (`/portal/tasks/[token]`)**: Entornos web aislados accesibles mediante tokens criptográficos únicos por colaborador (`organization_staff.access_token`), sin requerir autenticación directa a la base de datos:
+   - **Modo Colaborador (Ejecución)**: Enfocado en entregables propios, minimizando ruido visual (columna de responsable oculta, slider de progreso seguro y checklist interactivo).
+   - **Modo Gestor de Proyecto (PM / Lead)**: Puesto de mando avanzado con telemetría de sprints, cinta interactiva de especialistas, reasignación de prioridades/estados y facultad de crear proyectos y tickets según sus espacios autorizados.
+
+---
+
+## 2. Modelo de Datos Relacional (Supabase / PostgreSQL)
+
+El esquema se implementa en migraciones SQL con soporte multi-tenant estricto (`organization_id`):
+
+### A. Tabla: `task_workspaces`
+Define los espacios o unidades operativas macro (ej. *Desarrollo Web*, *App Móvil*, *Marketing*, *Diseño*).
 | Campo | Tipo | Propósito |
-|-------|------|-----------|
-| `id` | UUID | Identificador único de la tarea. |
-| `organization_id` | UUID | Tenant propietario del ticket (SaaS multi-tenant). |
-| `project_id` | UUID | Proyecto o Sprint asociado (`task_projects`). |
-| `ticket_code` | Text | Código legible autogenerado (ej: `TK-108`, `MS-107`). |
-| `title` | Text | Título descriptivo del ticket. |
-| `description` | Text | Alcance técnico, especificaciones y criterios de aceptación. |
+|---|---|---|
+| `id` | UUID (PK) | Identificador único del espacio. |
+| `organization_id` | UUID (FK) | Tenant propietario. |
+| `name` | Text | Nombre descriptivo del espacio de trabajo. |
+| `color` | Text | Color hexadecimal para identificación visual. |
+| `description` | Text | Descripción opcional del alcance del espacio. |
+| `icon` | Text | Identificador de icono de Lucide. |
+| `order_index` | Integer | Posicionamiento en menús y selectores. |
+| `is_active` | Boolean | Estado de vigencia (default: `true`). |
+| `created_at` | Timestamp | Fecha y hora de creación. |
+
+### B. Tabla: `task_workspace_members`
+Gobierna el control de acceso granular por espacio para colaboradores.
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador del registro de membresía. |
+| `organization_id` | UUID (FK) | Tenant propietario. |
+| `workspace_id` | UUID (FK) | Espacio de trabajo concedido (`task_workspaces`). |
+| `staff_id` | UUID (FK) | Miembro del personal autorizado (`organization_staff`). |
+| `created_at` | Timestamp | Registro de asignación de acceso. |
+
+### C. Tabla: `task_projects`
+Proyectos o sprints específicos contenidos dentro de un espacio de trabajo.
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador del proyecto. |
+| `organization_id` | UUID (FK) | Tenant propietario. |
+| `workspace_id` | UUID (FK, Opcional) | Espacio al que pertenece el proyecto. |
+| `name` | Text | Nombre del proyecto o sprint. |
+| `color` | Text | Color hexadecimal del proyecto. |
+| `description` | Text | Descripción de alcance y objetivos. |
+| `status` | Text | `planning`, `active`, `completed`, `on_hold`. |
+| `start_date` | Timestamp | Fecha de inicio programada. |
+| `end_date` | Timestamp | Fecha de cierre estimada. |
+| `is_active` | Boolean | Indicador de proyecto activo. |
+| `order_index` | Integer | Orden de presentación visual. |
+
+### D. Tabla: `task_items`
+Unidad atómica de requerimiento técnico, tarea o ticket.
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador único del ticket. |
+| `organization_id` | UUID (FK) | Tenant propietario. |
+| `project_id` | UUID (FK) | Proyecto asociado (`task_projects`). |
+| `ticket_code` | Text | Código autogenerado secuencial (ej: `TK-101`, `PRJ-102`). |
+| `title` | Text | Título descriptivo y conciso de la tarea. |
+| `description` | Text | Criterios de aceptación y especificaciones técnicas. |
 | `status` | Text (`TaskStatus`) | `backlog`, `todo`, `in_progress`, `in_review`, `blocked`, `done`. |
 | `priority` | Text (`TaskPriority`) | `low`, `medium`, `high`, `urgent`. |
 | `type` | Text (`TaskType`) | `task`, `feature`, `bug`, `improvement`, `delivery`. |
-| `assigned_staff_id` | UUID | Especialista asignado a la ejecución (`staff`). |
-| `qa_staff_id` | UUID | Revisor asignado a la etapa de aseguramiento de calidad. |
-| `progress_percentage` | Integer | Porcentaje de avance registrado (0 a 100). |
-| `estimated_hours` | Numeric | Horas estimadas para la tarea. |
-| `actual_hours` | Numeric | Horas reales invertidas reportadas. |
-| `checklist` | JSONB | Lista de entregables y criterios (`TaskChecklistItem[]`). |
-| `attachments` | JSONB | Enlaces de Figma, repositorios, documentos o archivos adjuntos. |
-| `due_date` | Timestamp | Fecha límite de entrega del sprint. |
+| `assigned_staff_id` | UUID (FK, Nullable) | Especialista responsable asignado (`organization_staff`). |
+| `created_by_staff_id` | UUID (FK, Nullable) | Creador de la tarea. |
+| `qa_staff_id` | UUID (FK, Nullable) | Tester o revisor de calidad asignado. |
+| `progress_percentage` | Integer | Avance registrado (0 - 100%). |
+| `estimated_hours` | Numeric | Horas estimadas de ejecución. |
+| `actual_hours` | Numeric | Horas reales reportadas. |
+| `checklist` | JSONB | Entregables y subtareas (`TaskChecklistItem[]`). |
+| `tags` | Text[] / JSONB | Etiquetas libres y etapas de flujo del sistema. |
+| `attachments` | JSONB | Referencias a Figma, GitHub, imágenes y documentos. |
+| `due_date` | Date / Timestamp | Fecha límite de entrega del entregable. |
+| `order_index` | Integer | Orden dentro de columnas Kanban. |
 
-### Perfiles de Colaborador (`CollaboratorRole`)
-El módulo soporta 10 perfiles para abarcar agencias, SaaS, consultorías, operaciones, soporte y ventas:
-| Rol (`CollaboratorRole`) | Etiqueta en Selector | Cargo Sugerido Automático | Icono Asociado |
+### E. Tabla: `task_comments`
+Canal de discusión contextual del ticket con soporte para menciones de equipo.
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador del comentario. |
+| `organization_id` | UUID (FK) | Tenant propietario. |
+| `task_id` | UUID (FK) | Ticket al que pertenece el comentario. |
+| `author_type` | Text | `owner`, `staff`, `system`. |
+| `author_id` | UUID (FK) | Colaborador emisor. |
+| `author_name` | Text | Nombre visible del autor. |
+| `author_avatar` | Text | URL del avatar. |
+| `content` | Text | Mensaje con soporte para `@Nombre`. |
+| `mentions` | JSONB | Metadatos de colaboradores mencionados para notificaciones. |
+
+---
+
+## 3. Control de Acceso y Aislamiento por Espacios (RBAC Granular)
+
+Para permitir que una agencia gestione múltiples unidades operativas (ej. *Espacio Web* y *Espacio App Móvil*) sin que colaboradores ajenos tengan visibilidad no autorizada:
+
+1. **Acceso Global Implícito (Dueños y Administradores)**:
+   - Usuarios con roles de administración o colaboradores sin restricciones en `task_workspace_members` tienen visibilidad total sobre todos los espacios, proyectos y tareas.
+2. **Acceso Acotado a Espacios (`task_workspace_members`)**:
+   - Si un colaborador tiene registros en `task_workspace_members`, sus consultas se limitan estrictamente a esos `workspace_id`.
+   - Proyectos de espacios no autorizados quedan filtrados en el combobox, tableros y listados.
+   - En el portal de colaboradores, un PM asignado a un solo espacio únicamente puede crear proyectos y tickets dentro de su espacio asignado.
+3. **Mapeo de Consultas con `allowedWorkspaceIds` y `allowedProjectIds`**:
+   - En [`collaborator-portal-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/collaborator-portal-actions.ts), se realiza la intersección de membresías al iniciar la sesión del portal:
+     ```ts
+     const { data: memberWorkspaces } = await supabaseAdmin
+       .from("task_workspace_members")
+       .select("workspace_id")
+       .eq("staff_id", staff.id);
+     ```
+   - Si existen membresías, se extraen los IDs y solo se cargan proyectos hijos de esos espacios.
+
+---
+
+## 4. Patrones de Interfaz y Navegación
+
+### A. Combobox Unificado en Árbol (Espacios y Proyectos)
+En lugar de selectores separados que consumen espacio horizontal, se diseñó un combobox jerárquico integrado en [`task-manager-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx) y [`task-collaborator-portal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx):
+- **Jerarquía en Árbol**:
+  - **Espacios de Trabajo**: Justificados completamente a la izquierda, en negrita, sin dot circular para distinguirlos con claridad.
+  - **Proyectos**: Anidados hacia la derecha con indentación visual (`pl-6`), acompañados de su dot de color corporativo.
+- **Edición Contextual Inmediata**:
+  - Un botón de acción rápida con icono de lápiz (`Pencil`) permite editar el elemento seleccionado actualmente (si es un espacio abre [`WorkspaceFormModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/modals/workspace-form-modal.tsx); si es un proyecto abre [`ProjectFormModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/modals/project-form-modal.tsx)).
+- **Aislamiento de Despliegue**: El popover de filtros despliega su contenido internamente sin empujar los elementos de la barra de herramientas fuera del frame contenedor.
+
+### B. Botón de Creación Unificado (+ Nuevo)
+El botón principal despliega un menú contextual según permisos:
+- **+ Nuevo Ticket**: Invoca el modal de creación de requerimientos.
+- **+ Nuevo Proyecto**: Invoca el modal de creación de proyectos/sprints, asociándolo al espacio contextual seleccionado.
+
+---
+
+## 5. Estándar de Diseño de Modales (Estilo Linear / Jira)
+
+Para evitar contaminación visual y antipatrones de interfaz:
+
+1. **Eliminación de Falsos Botones**:
+   - Se erradicó el badge verde `+ NUEVO TICKET` en la cabecera que confundía a los usuarios al aparentar ser un botón interactivo.
+2. **Supresión de Redundancias**:
+   - Se eliminó el indicador duplicado de proyecto en la cabecera, ya que el selector interactivo es el primer campo del formulario.
+   - Se retiraron los badges de rol innecesarios (`Gestor de Proyecto (Configuración Completa)`, `Modo Gestor PM`, `Modo Colaborador`).
+3. **Cabecera Minimalista**:
+   - **Izquierda**: Icono sobrio `<CheckSquare className="w-4 h-4 text-primary" />` acompañado del título semántico (`Nuevo Ticket de Sprint` o `TK-101` en edición).
+   - **Derecha**: Botón de acción principal (`Crear Ticket` o `Guardar Cambios`), botón de `Eliminar` (si aplica) y botón de cierre `X`.
+4. **Placeholder Profesional**:
+   - Todos los inputs de título usan el placeholder estandarizado:
+     ```tsx
+     placeholder="Título de la tarea o requerimiento..."
+     ```
+
+---
+
+## 6. Sistema Integral de Etiquetas (Tags & Etapas de Flujo)
+
+### Componente Unificado: [`TaskTagSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/tags/task-tag-selector.tsx)
+Centraliza la gestión visual y funcional de etiquetas:
+
+```mermaid
+graph LR
+    subgraph TaskTagSelector
+        A["SYSTEM_STAGE_TAGS (Etapas Clave)"] --> C["Array tags: string[]"]
+        B["Custom Tags (Input Libre '#')"] --> C
+    end
+    C --> D["Persistencia en DB (task_items.tags)"]
+    C --> E["Filtros Rápidos en Toolbar"]
+    C --> F["Chips en Kanban, Lista & Portales"]
+```
+
+#### A. Etapas Semánticas del Sistema (`SYSTEM_STAGE_TAGS`)
+Pre-configuradas para conectar con los filtros analíticos de la agencia:
+| Clave | Etiqueta Visible | Color / BadgeClass | Propósito Operativo |
 |---|---|---|---|
-| `pm` | Gestor de Proyecto | Gestor de Proyecto | `Briefcase` |
-| `specialist` | Especialista | Especialista | `Wrench` |
-| `developer` | Desarrollador | Desarrollador | `Code2` |
-| `designer` | Diseñador | Diseñador | `Palette` |
-| `qa_lead` | QA / Tester | QA / Tester | `ShieldCheck` |
-| `sales` | Ejecutivo Comercial | Ejecutivo Comercial | `Target` |
-| `operations` | Operaciones | Coordinador de Operaciones | `Settings2` |
-| `support` | Soporte / Atención | Soporte Técnico | `Headphones` |
-| `consultant` | Consultor Externo | Consultor Externo | `GraduationCap` |
-| `observer` | Observador | Observador | `Eye` |
+| `qa-failed` | QA Erróneo | Rojo (`bg-red-500/10 text-red-600 border-red-500/30`) | Ticket rechazado en pruebas de calidad. |
+| `uat` | UAT | Púrpura (`bg-purple-500/10 text-purple-600 border-purple-500/30`) | En validación por parte del cliente o usuario final. |
+| `vendor-blocked` | Espera Proveedor | Ámbar (`bg-amber-500/10 text-amber-600 border-amber-500/30`) | Bloqueo externo por APIs, credenciales o terceros. |
+| `ready-for-release` | Listo Release | Esmeralda (`bg-emerald-500/10 text-emerald-600 border-emerald-500/30`) | Aprobado técnicamente para pase a producción. |
 
-> [!NOTE]
-> **Autocompletado de Cargo**: Al seleccionar un perfil de tareas en el modal, el sistema autocompleta el "Cargo Visible" con un título profesional limpio, evitando la palabra *"agente"* para prevenir confusiones con módulos de IA. El modal utiliza un ancho `max-w-2xl sm:max-w-2xl` con distribución en dos columnas para campos de contacto (`email` y `phone`).
+#### B. Etiquetas Personalizadas Libres (Custom Tags)
+- Input con prefijo visual `#`.
+- Normalización automática al presionar `Enter` o click en `Añadir`:
+  - Conversión a minúsculas (`toLowerCase`).
+  - Reemplazo de espacios por guiones medios (`slugify`).
+  - Eliminación de `#` o `@` iniciales duplicados.
+  - Prevención de duplicados en el array de la tarea.
 
-### Tabla: `task_projects`
-| Campo | Tipo | Propósito |
-|-------|------|-----------|
-| `id` | UUID | Identificador del proyecto. |
-| `organization_id` | UUID | Tenant propietario. |
-| `name` | Text | Nombre del proyecto o sprint. |
-| `color` | Text | Color hexadecimal para identificación visual en chips y badges. |
-| `is_active` | Boolean | Estado de vigencia del proyecto. |
-
-### Tabla: `task_comments`
-| Campo | Tipo | Propósito |
-|-------|------|-----------|
-| `id` | UUID | Identificador del comentario. |
-| `task_id` | UUID | Tarea a la que pertenece el hilo. |
-| `staff_id` | UUID | Autor del mensaje (colaborador o PM). |
-| `content` | Text | Contenido con soporte de menciones (@). |
-| `created_at` | Timestamp | Marca de tiempo para orden cronológico del hilo. |
+#### C. Visualización Transversal
+- **Tablero Kanban ([`task-kanban-board.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/kanban/task-kanban-board.tsx))**: Renderiza las etapas del sistema con su estilo semántico y las etiquetas personalizadas con chips sutiles `#{tag}`.
+- **Vista de Lista ([`task-list-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/list/task-list-view.tsx))**: Badges compactos junto al título del ticket.
+- **Portal de Colaboradores ([`task-collaborator-portal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx))**: Visualización en tarjetas Kanban individuales, tarjetas del monitor de equipo y filas de la tabla de tareas.
 
 ---
 
-## 3. Server Actions y Lógica de Negocio
+## 7. Reglas de Negocio y Restricciones Operativas
 
-El módulo separa estrictamente las operaciones administrativas internas de las acciones accesibles mediante token público:
-
-### `collaborator-portal-actions.ts` (Portales Públicos por Token)
-- **`getCollaboratorPortalData(token)`**: Resuelve de forma segura el miembro del staff mediante token firmado, cargando su organización, proyectos activos, tareas asignadas (y todas las tareas del sprint si es PM/Lead), menciones recientes y configuración de marca.
-- **`portalUpdateTaskProgress(token, taskId, progress)`**: Actualiza el avance verificando que colaboradores estándar no puedan retroceder progreso ya guardado y validando la regla del 95%.
-- **`portalUpdateTaskStatus(token, taskId, status)`**: Transiciona el estado del ticket (`todo`, `in_progress`, `in_review`, `blocked`, `done`).
-- **`portalToggleChecklist(token, taskId, itemId, completed)`**: Marca o desmarca entregables específicos en el JSONB del ticket.
-- **`portalAddTaskComment(token, taskId, content)`**: Publica comentarios en el ticket y emite notificaciones por menciones (@).
-- **`portalCreateTask(token, data)`**: Permite a gestores de proyecto crear tickets de sprint directamente desde el portal.
-
----
-
-## 4. Reglas de Negocio y Restricciones Operativas
-
-1. **Regla de Entregables al 95%**:
-   - Una tarea **no puede avanzar al 100% ni marcarse como completada (`done`)** si tiene entregables pendientes en su checklist.
-   - Si se intenta llevar el slider al 100% o marcar "Listo" existiendo criterios pendientes, el sistema frena el avance en **95%**, ajusta el estado a `in_review` y notifica al usuario.
-2. **Slider de Progreso Seguro (Prevención de Guardado Accidental)**:
-   - Mientras el usuario mantenga sostenido el slider (`onValueChange`), el valor se actualiza en memoria local para una interacción visual fluida sin disparar peticiones de guardado a la base de datos.
-   - El commit real (`onValueCommit`) solo se ejecuta al soltar el clic.
-   - Si el colaborador retrocede antes de soltar, puede retornar al punto fijado sin perder el estado previo.
-3. **Visibilidad Contextual de Responsable**:
-   - En la tabla de la vista de lista, la columna `Responsable` se renderiza **únicamente para Gestores de Proyecto (`isLeadOrPm`)**.
-   - Para colaboradores estándar, la columna se omite por completo, maximizando el espacio de visualización de títulos, proyectos y sliders de progreso.
-4. **Soporte Integral de Estado "Bloqueado"**:
-   - El estado `blocked` se representa transversalmente en la **Tabla** (badge rojo "Bloqueado"), **Kanban** (columna dedicada "Bloqueadas"), **Vista Compacta**, **Cuadrícula** y **Filtros Rápidos**.
+1. **Regla del 95% en Entregables**:
+   - Una tarea **no puede alcanzar el 100% de progreso ni cambiar al estado `done`** si tiene entregables sin completar en su checklist (`TaskChecklistItem[]`).
+   - El sistema frena automáticamente el avance en **95%**, ajusta el estado a `in_review` y notifica al colaborador.
+2. **Slider de Progreso Seguro**:
+   - La manipulación continua del control deslizante actualiza el estado local en memoria (`onValueChange`), evitando ráfagas de escrituras a la base de datos.
+   - El commit en base de datos únicamente se dispara al soltar el ratón (`onValueCommit`), optimizando la red y previniendo pérdidas de estado.
+3. **Aseguramiento de Calidad (QA Flow)**:
+   - El campo `qa_staff_id` permite designar a un tester responsable. Si el ticket es rechazado, se asigna el tag `qa-failed`, contabilizándose en las alertas del dashboard de telemetría del PM.
+4. **Visibilidad Condicional de Asignaciones**:
+   - En portales de colaboradores independientes, las columnas o controles de asignación a terceros se ocultan para mantener el foco en sus propias entregas y proteger la privacidad del equipo.
 
 ---
 
-## 5. Arquitectura de Componentes en Frontend
+## 8. Optimización de Rendimiento y Escalabilidad
+
+Se aplicó una reestructuración de ingeniería para garantizar fluidez con miles de tickets concurrentes:
+
+### A. Índices Compuestos en Base de Datos (`20260916000003_optimize_task_indexes.sql`)
+- `idx_task_items_org_proj_status`: Índice compuesto en `(organization_id, project_id, status)` para acelerar filtros de tableros Kanban.
+- `idx_task_items_org_assigned`: En `(organization_id, assigned_staff_id)` para consultas de tareas asignadas al colaborador en portales.
+- `idx_task_items_org_created`: En `(organization_id, created_at DESC)` para listados paginados cronológicos.
+- `idx_task_workspace_members_org_staff`: En `(organization_id, staff_id)` para verificación instantánea de permisos en portales.
+
+### B. Ejecución de Consultas Concurrentes y `React.cache()`
+- En `collaborator-portal-actions.ts`, las consultas de membresías, proyectos, organización, staff y menciones se resuelven concurrentemente con `Promise.all()`.
+- Se envuelven las funciones en `React.cache()` para deduplicar peticiones dentro del mismo ciclo de render de Next.js.
+
+### C. Paginación Eficiente en Vistas de Lista
+- [`task-list-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/list/task-list-view.tsx) implementa paginación reactiva con selector de tamaño de página (10, 25, 50, 100 elementos) para mantener el árbol DOM ligero.
+
+### D. Memoización en Tableros Kanban
+- `TaskKanbanCard` está memoizado con `React.memo` y un comparador de propiedades personalizado (`arePropsEqual`).
+- La clasificación de tareas por columnas en [`task-kanban-board.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/kanban/task-kanban-board.tsx) se realiza en **una sola pasada $O(n)$** en lugar de filtros repetidos $O(k \cdot n)$.
+
+### E. Aislamiento de Sliders y Carga Diferida (Lazy Loading)
+- `PortalTaskSlider` opera como un componente aislado, evitando re-renders del tablero completo mientras se arrastra el slider.
+- Animaciones pesadas de Lottie (celebración al 100% y modal de alertas) se cargan dinámicamente (`lazy load`) sólo cuando el modal correspondiente se activa.
+
+---
+
+## 9. Estructura de Directorios del Módulo
 
 ```
 src/modules/features/tasks/
 ├── actions/
-│   └── collaborator-portal-actions.ts       # Server Actions autenticadas por token
+│   ├── collaborator-portal-actions.ts       # Acciones autenticadas por token de portal
+│   ├── task-actions.ts                      # Server Actions administrativas internas
+│   └── task-management-actions.ts           # Consultas de métricas y workspaces
 ├── components/
 │   ├── collaborators/
-│   │   └── task-collaborators-manager.tsx   # Panel de gestión de colaboradores y modal con selector 3D
+│   │   └── task-collaborators-manager.tsx   # Panel de miembros y asignación de accesos
 │   ├── kanban/
-│   │   └── task-kanban-board.tsx            # Tablero Kanban con DnD (@dnd-kit)
-│   └── portal/
-│       ├── task-collaborator-portal.tsx     # Contenedor raíz del portal (vistas, hero, toolbar, tabla)
-│       ├── task-collaborator-ribbon.tsx     # Monitor de equipo (cinta horizontal de especialistas)
-│       ├── task-pm-operations-dashboard.tsx # Dashboard futurista para PMs (Recharts, telemetría)
-│       └── task-portal-detail-modal.tsx     # Modal completo de gestión, entregables y comentarios
-├── types.ts                                 # Tipos TypeScript compartidos (TaskItem, TaskStatus, etc.)
+│   │   └── task-kanban-board.tsx            # Tablero Kanban con agrupación O(n) y React.memo
+│   ├── list/
+│   │   └── task-list-view.tsx               # Vista de lista paginada de tickets
+│   ├── modals/
+│   │   ├── project-form-modal.tsx           # Creación y edición de proyectos/sprints
+│   │   ├── task-detail-modal.tsx            # Detalle y edición completa de tickets en plataforma
+│   │   ├── task-form-modal.tsx              # Modal de nuevo ticket con cabecera limpia
+│   │   └── workspace-form-modal.tsx         # Creación y edición de espacios de trabajo
+│   ├── portal/
+│   │   ├── task-collaborator-portal.tsx     # Portal raíz con combobox en árbol y vistas
+│   │   ├── task-collaborator-ribbon.tsx     # Monitor interactivo de especialistas (cinta)
+│   │   ├── task-pm-operations-dashboard.tsx # Telemetría de sprint y gráficos de velocidad
+│   │   └── task-portal-detail-modal.tsx     # Modal de tickets para portal (crear y editar)
+│   ├── tags/
+│   │   └── task-tag-selector.tsx            # Componente unificado de etapas QA y tags libres
+│   └── task-manager-view.tsx                # Vista central de la plataforma (/operations/tasks)
+├── types.ts                                 # Definición de tipos TypeScript (TaskItem, SYSTEM_STAGE_TAGS)
 └── utils/
-    └── avatar-presets.ts                    # Hash determinista para el paquete de 11 avatares 3D
+    └── avatar-presets.ts                    # Avatares 3D y helpers visuales
 ```
-
----
-
-## 6. Experiencia de Usuario y Diseño
-
-- **Fondo Global y Partículas**: Uso de `GlobalParticles` (`components/layout/global-particles.tsx`) con pre-warming de animaciones para presencia inmediata en pantalla completa y soporte de color corporativo (`brandColor`).
-- **Header Limpio**: Icono estándar de perfil (`User` de `lucide-react`) en la barra superior para evitar duplicidad visual con el avatar grande del Hero.
-- **Hero Pop-Out 3D**: Avatar 3D con posición absoluta, +10% de tamaño adicional y desborde libre (`overflow-visible`) por encima de la tarjeta con efecto sutil de flotación vertical (`motion.div`).
-- **Cinta Monitora Ultrarrápida**: Avatares sin contenedor plano flotando sobre las tarjetas, microinteracciones a 120ms sin recálculos de layout forzados, y zoom dinámico para el especialista seleccionado.

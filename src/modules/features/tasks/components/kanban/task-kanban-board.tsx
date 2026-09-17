@@ -22,7 +22,7 @@ import {
   GripVertical
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
-import { parseTaskChecklist } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -126,18 +126,19 @@ function DroppableColumn({
   )
 }
 
-// Draggable & Sortable Task Card
-function SortableTaskCard({
-  task,
-  onSelectTask,
-  isOverlay = false,
-  brandColor = "#8ec045",
-}: {
-  task: TaskItem
-  onSelectTask?: (task: TaskItem) => void
-  isOverlay?: boolean
-  brandColor?: string
-}) {
+// Draggable & Sortable Task Card (Memoized for zero-lag drag & drop and fast filtering)
+const SortableTaskCard = React.memo(
+  function SortableTaskCard({
+    task,
+    onSelectTask,
+    isOverlay = false,
+    brandColor = "#8ec045",
+  }: {
+    task: TaskItem
+    onSelectTask?: (task: TaskItem) => void
+    isOverlay?: boolean
+    brandColor?: string
+  }) {
   const {
     attributes,
     listeners,
@@ -216,6 +217,36 @@ function SortableTaskCard({
         {task.title}
       </h4>
 
+      {/* Semantic Stage / QA Badges */}
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {task.tags.map((tag) => {
+            const sysTag = SYSTEM_STAGE_TAGS[tag]
+            if (sysTag) {
+              return (
+                <span
+                  key={tag}
+                  className={cn(
+                    "text-[9px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 shadow-2xs",
+                    sysTag.badgeClass
+                  )}
+                >
+                  {sysTag.shortLabel || sysTag.label}
+                </span>
+              )
+            }
+            return (
+              <span
+                key={tag}
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground flex items-center gap-0.5 shadow-2xs"
+              >
+                #{tag}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {/* Progress Bar & Percentage */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -271,7 +302,23 @@ function SortableTaskCard({
       </div>
     </div>
   )
-}
+},
+(prev, next) => {
+  return (
+    prev.task.id === next.task.id &&
+    prev.task.status === next.task.status &&
+    prev.task.priority === next.task.priority &&
+    prev.task.progress_percentage === next.task.progress_percentage &&
+    prev.task.title === next.task.title &&
+    prev.task.due_date === next.task.due_date &&
+    prev.task.assigned_staff_id === next.task.assigned_staff_id &&
+    prev.task.updated_at === next.task.updated_at &&
+    prev.isOverlay === next.isOverlay &&
+    prev.brandColor === next.brandColor &&
+    prev.task.tags?.length === next.task.tags?.length &&
+    prev.task.checklist === next.task.checklist
+  )
+})
 
 export function TaskKanbanBoard({
   tasks,
@@ -295,6 +342,26 @@ export function TaskKanbanBoard({
     () => (activeId ? tasks.find((t) => t.id === activeId) : null),
     [activeId, tasks]
   )
+
+  // O(N) single-pass column partition instead of 6 filter passes
+  const tasksByColumn = useMemo(() => {
+    const map: Record<TaskStatus, TaskItem[]> = {
+      backlog: [],
+      todo: [],
+      in_progress: [],
+      in_review: [],
+      blocked: [],
+      done: [],
+    }
+    tasks.forEach((t) => {
+      if (map[t.status]) {
+        map[t.status].push(t)
+      } else {
+        map.todo.push(t)
+      }
+    })
+    return map
+  }, [tasks])
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -352,7 +419,7 @@ export function TaskKanbanBoard({
       <div className="w-full overflow-x-auto scrollbar-modern pb-4">
         <div className="flex flex-nowrap gap-4 items-stretch min-w-max">
           {COLUMNS.map((col) => {
-            const columnTasks = tasks.filter((t) => t.status === col.id)
+            const columnTasks = tasksByColumn[col.id] || []
             const totalEstimated = columnTasks.reduce(
               (acc, curr) => acc + Number(curr.estimated_hours || 0),
               0

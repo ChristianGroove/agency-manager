@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -16,8 +16,11 @@ import {
   Clock,
   Layers,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
+import { SYSTEM_STAGE_TAGS } from "../../types"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface TaskListViewProps {
   tasks: TaskItem[]
@@ -26,6 +29,24 @@ interface TaskListViewProps {
 }
 
 export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListViewProps) {
+  const [pageSize, setPageSize] = useState<number>(25)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  // Reset to page 1 whenever filter or task list size changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [tasks.length])
+
+  const totalPages = Math.max(1, Math.ceil(tasks.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+
+  const paginatedTasks = useMemo(() => {
+    const start = (safePage - 1) * pageSize
+    return tasks.slice(start, start + pageSize)
+  }, [tasks, safePage, pageSize])
+
+  const startRecord = tasks.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const endRecord = Math.min(safePage * pageSize, tasks.length)
   const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
       case "backlog":
@@ -102,7 +123,7 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
                   </td>
                 </tr>
               ) : (
-                tasks.map((task) => (
+                paginatedTasks.map((task) => (
                   <tr
                     key={task.id}
                     onClick={() => onSelectTask(task)}
@@ -117,10 +138,40 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
                       </Badge>
                     </td>
                     <td className="p-3.5">
-                      <div className="space-y-0.5">
-                        <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                          {task.title}
-                        </span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                            {task.title}
+                          </span>
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              {task.tags.map((tag) => {
+                                const sysTag = SYSTEM_STAGE_TAGS[tag]
+                                if (sysTag) {
+                                  return (
+                                    <span
+                                      key={tag}
+                                      className={cn(
+                                        "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
+                                        sysTag.badgeClass
+                                      )}
+                                    >
+                                      {sysTag.shortLabel || sysTag.label}
+                                    </span>
+                                  )
+                                }
+                                return (
+                                  <span
+                                    key={tag}
+                                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                                  >
+                                    #{tag}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
                         {task.project && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <Layers className="w-3 h-3 text-muted-foreground" />
@@ -209,6 +260,64 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
           </table>
         </div>
       </div>
+
+      {/* Pagination Footer */}
+      {tasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-card border border-border/60 rounded-2xl text-xs text-muted-foreground shadow-xs">
+          <div className="flex items-center gap-2">
+            <span>
+              Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
+              <strong className="text-foreground font-semibold">{tasks.length}</strong> tareas
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground">Por pág:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(Number(val))
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="h-7 w-[72px] text-xs font-semibold rounded-lg bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0 rounded-lg cursor-pointer"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
+              <span className="px-2 text-[11px] font-mono font-medium text-foreground">
+                {safePage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0 rounded-lg cursor-pointer"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

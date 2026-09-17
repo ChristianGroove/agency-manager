@@ -4,7 +4,7 @@ export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery';
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
 export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer' | 'sales' | 'operations' | 'support' | 'consultant';
 
-export interface TaskChecklistItem {
+export type TaskChecklistItem = {
   id: string;
   title: string;
   completed: boolean;
@@ -21,9 +21,35 @@ export interface TaskAttachment {
   created_at?: string;
 }
 
+export interface TaskWorkspace {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  key_prefix: string;
+  description?: string | null;
+  color: string;
+  icon: string;
+  lead_staff_id?: string | null;
+  settings?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  // Computed / Joined
+  lead_staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    photo_url?: string | null;
+    role?: string;
+  } | null;
+  project_count?: number;
+  task_count?: number;
+}
+
 export interface TaskProject {
   id: string;
   organization_id: string;
+  workspace_id?: string | null;
   name: string;
   slug: string;
   description?: string | null;
@@ -37,6 +63,7 @@ export interface TaskProject {
   created_at: string;
   updated_at: string;
   // Computed / Joined
+  workspace?: TaskWorkspace | null;
   lead_staff?: {
     id: string;
     first_name: string;
@@ -48,6 +75,52 @@ export interface TaskProject {
   completed_count?: number;
   progress_percentage?: number;
 }
+
+export type TaskReviewStage = 'none' | 'qa_failed' | 'uat' | 'vendor_blocked' | 'ready_for_release';
+
+export interface SystemStageTagConfig {
+  tag: string;
+  label: string;
+  shortLabel: string;
+  color: string;
+  badgeClass: string;
+  icon: string;
+}
+
+export const SYSTEM_STAGE_TAGS: Record<string, SystemStageTagConfig> = {
+  'qa-failed': {
+    tag: 'qa-failed',
+    label: 'QA: Rechazado / Erróneo',
+    shortLabel: 'QA Erróneo',
+    color: 'red',
+    badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
+    icon: 'AlertTriangle'
+  },
+  'uat': {
+    tag: 'uat',
+    label: 'Pruebas de Usuario (UAT)',
+    shortLabel: 'UAT',
+    color: 'purple',
+    badgeClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
+    icon: 'UserCheck'
+  },
+  'vendor-blocked': {
+    tag: 'vendor-blocked',
+    label: 'Espera Proveedor / Bloqueada',
+    shortLabel: 'Espera Proveedor',
+    color: 'amber',
+    badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    icon: 'Clock'
+  },
+  'ready-for-release': {
+    tag: 'ready-for-release',
+    label: 'Aprobado para Release',
+    shortLabel: 'Listo Release',
+    color: 'emerald',
+    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    icon: 'CheckCircle2'
+  }
+};
 
 export interface TaskItem {
   id: string;
@@ -122,8 +195,19 @@ export interface TaskCollaborator {
   is_active: boolean;
   photo_url?: string | null;
   portal_url?: string;
+  has_global_workspace_access?: boolean;
+  workspace_ids?: string[];
   assigned_tasks_count?: number;
   completed_tasks_count?: number;
+}
+
+export interface TaskWorkspaceMember {
+  id: string;
+  organization_id: string;
+  workspace_id: string;
+  staff_id: string;
+  role: 'lead' | 'member';
+  created_at: string;
 }
 
 export interface TaskProjectMember {
@@ -201,4 +285,52 @@ export function normalizeTask(task: any): TaskItem {
     estimated_hours: Number(task.estimated_hours || 0),
     actual_hours: Number(task.actual_hours || 0),
   };
+}
+
+/**
+ * Safely infer CollaboratorRole enum from arbitrary job role strings
+ */
+export function inferTaskRole(role?: string | null): CollaboratorRole {
+  if (!role) return "developer";
+  const r = role.toLowerCase();
+  if (
+    r.includes("pm") ||
+    r.includes("project") ||
+    r.includes("gestor") ||
+    r.includes("gestora") ||
+    r.includes("gerente") ||
+    r.includes("manager") ||
+    r.includes("coordinad") ||
+    r.includes("lider") ||
+    r.includes("líder") ||
+    r.includes("director") ||
+    r.includes("directora")
+  ) {
+    return "pm";
+  }
+  if (r.includes("qa") || r.includes("test") || r.includes("calidad") || r.includes("revisor") || r.includes("pruebas")) {
+    return "qa_lead";
+  }
+  if (r.includes("design") || r.includes("ux") || r.includes("ui") || r.includes("diseñ") || r.includes("creativ")) {
+    return "designer";
+  }
+  if (r.includes("dev") || r.includes("desarroll") || r.includes("program") || r.includes("front") || r.includes("back") || r.includes("full")) {
+    return "developer";
+  }
+  if (r.includes("vent") || r.includes("sales") || r.includes("comercial")) {
+    return "sales";
+  }
+  if (r.includes("operac") || r.includes("logistic")) {
+    return "operations";
+  }
+  if (r.includes("soport") || r.includes("support") || r.includes("atenci")) {
+    return "support";
+  }
+  if (r.includes("consult") || r.includes("asesor")) {
+    return "consultant";
+  }
+  if (r.includes("observ")) {
+    return "observer";
+  }
+  return "specialist";
 }

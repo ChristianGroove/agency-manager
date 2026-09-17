@@ -14,7 +14,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -44,7 +47,7 @@ import {
   Kanban
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import type { TaskItem, TaskPriority, TaskStatus } from "../../types"
+import type { TaskItem, TaskPriority, TaskStatus, TaskWorkspace } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import {
   ResponsiveContainer,
@@ -78,7 +81,8 @@ interface StaffMember {
 interface TaskPmOperationsDashboardProps {
   tasks: TaskItem[]
   teamMembers: StaffMember[]
-  projects: { id: string; name: string; color?: string }[]
+  projects: { id: string; name: string; color?: string; workspace_id?: string | null }[]
+  workspaces?: TaskWorkspace[]
   organization?: { name?: string; logo_url?: string | null; primary_color?: string | null }
   brandColor?: string
   onSwitchToGestion?: () => void
@@ -107,6 +111,7 @@ export function TaskPmOperationsDashboard({
   tasks,
   teamMembers,
   projects,
+  workspaces = [],
   organization = { name: "Plataforma" },
   brandColor = organization?.primary_color || "#8ec045",
   onSwitchToGestion = () => {},
@@ -139,9 +144,15 @@ export function TaskPmOperationsDashboard({
     else if (selectedPeriod === "1y") cutoffDate = subDays(now, 365)
 
     return tasks.filter((t) => {
-      // Project filter
-      if (selectedProjectFilter !== "all" && t.project_id !== selectedProjectFilter) {
-        return false
+      // Project / Workspace filter
+      if (selectedProjectFilter !== "all") {
+        if (selectedProjectFilter.startsWith("workspace:")) {
+          const wsId = selectedProjectFilter.replace("workspace:", "")
+          const wsProjectIds = new Set(projects.filter((p) => p.workspace_id === wsId).map((p) => p.id))
+          if (!wsProjectIds.has(t.project_id)) return false
+        } else if (t.project_id !== selectedProjectFilter) {
+          return false
+        }
       }
       // Member filter
       if (selectedMemberFilter !== "all" && t.assigned_staff_id !== selectedMemberFilter) {
@@ -160,7 +171,7 @@ export function TaskPmOperationsDashboard({
       }
       return true
     })
-  }, [tasks, selectedPeriod, selectedProjectFilter, selectedMemberFilter])
+  }, [tasks, selectedPeriod, selectedProjectFilter, selectedMemberFilter, projects])
 
   // 2. High-Value KPI Calculations
   const totalTasks = filteredTasks.length
@@ -368,22 +379,112 @@ export function TaskPmOperationsDashboard({
             ))}
           </div>
 
-          {/* Project Filter */}
-          {projects.length > 1 && (
+          {/* Project / Workspace Filter */}
+          {projects.length > 0 && (
             <Select
               value={selectedProjectFilter}
               onValueChange={setSelectedProjectFilter}
             >
-              <SelectTrigger className="w-[140px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium">
-                <SelectValue placeholder="Proyecto" />
+              <SelectTrigger className="w-[175px] sm:w-[210px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
+                <div className="flex items-center truncate text-left flex-1 min-w-0">
+                  <SelectValue placeholder="Todos los espacios" />
+                </div>
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">Todos los proyectos</SelectItem>
-                {projects.map((proj) => (
-                  <SelectItem key={proj.id} value={proj.id}>
-                    {proj.name}
-                  </SelectItem>
-                ))}
+              <SelectContent className="rounded-xl max-h-[320px]">
+                <SelectItem value="all" className="text-xs font-medium">
+                  <span className="flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Todos los espacios</span>
+                  </span>
+                </SelectItem>
+                {workspaces.length > 0 ? (
+                  <>
+                    {workspaces.map((ws) => {
+                      const wsProjects = projects.filter((p) => p.workspace_id === ws.id)
+                      return (
+                        <SelectGroup key={ws.id}>
+                          <SelectSeparator className="my-1" />
+                          <SelectItem
+                            value={`workspace:${ws.id}`}
+                            textValue={`${ws.name}${ws.key_prefix ? ` [${ws.key_prefix}]` : ""}`}
+                            className="text-xs font-semibold text-foreground py-1.5 cursor-pointer pl-8"
+                          >
+                            <span className="flex items-center gap-2 w-full">
+                              <span className="truncate">{ws.name}</span>
+                              {ws.key_prefix && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-zinc-500 dark:text-zinc-400 font-normal">
+                                  [{ws.key_prefix}]
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground font-normal ml-auto">
+                                ({wsProjects.length})
+                              </span>
+                            </span>
+                          </SelectItem>
+                          {wsProjects.map((p) => (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              textValue={p.name}
+                              className="text-xs pl-12 py-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.color }}
+                                />
+                                <span className="truncate">{p.name}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )
+                    })}
+                    {projects.filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id)).length > 0 && (
+                      <SelectGroup>
+                        <SelectSeparator className="my-1" />
+                        <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-8 py-1">
+                          Otros Proyectos
+                        </SelectLabel>
+                        {projects
+                          .filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id))
+                          .map((p) => (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              textValue={p.name}
+                              className="text-xs pl-12 py-1.5"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.color }}
+                                />
+                                <span className="truncate">{p.name}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    )}
+                  </>
+                ) : (
+                  projects.map((proj) => (
+                    <SelectItem
+                      key={proj.id}
+                      value={proj.id}
+                      textValue={proj.name}
+                      className="text-xs"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: proj.color }}
+                        />
+                        <span className="truncate">{proj.name}</span>
+                      </span>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           )}
@@ -393,14 +494,29 @@ export function TaskPmOperationsDashboard({
             value={selectedMemberFilter}
             onValueChange={setSelectedMemberFilter}
           >
-            <SelectTrigger className="w-[140px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium">
-              <SelectValue placeholder="Colaborador" />
+            <SelectTrigger className="w-[155px] sm:w-[185px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
+              <div className="flex items-center truncate text-left flex-1 min-w-0">
+                <SelectValue placeholder="Todo el equipo" />
+              </div>
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="all">Todo el equipo</SelectItem>
+            <SelectContent className="rounded-xl max-h-[300px]">
+              <SelectItem value="all" className="text-xs">
+                <span className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Todo el equipo</span>
+                </span>
+              </SelectItem>
               {teamMembers.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.first_name} {m.last_name}
+                <SelectItem
+                  key={m.id}
+                  value={m.id}
+                  textValue={`${m.first_name} ${m.last_name}`}
+                  className="text-xs"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="truncate">{m.first_name} {m.last_name}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

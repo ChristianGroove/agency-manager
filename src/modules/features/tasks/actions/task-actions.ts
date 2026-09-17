@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions";
 import { revalidatePath } from "next/cache";
 import type {
+  TaskWorkspace,
   TaskProject,
   TaskItem,
   TaskComment,
@@ -15,7 +16,7 @@ import type {
   TaskChecklistItem,
   TaskAttachment
 } from "../types";
-import { normalizeTask, parseTaskChecklist } from "../types";
+import { normalizeTask, parseTaskChecklist, inferTaskRole } from "../types";
 
 /**
  * Helper to get current organization ID safely
@@ -28,21 +29,192 @@ async function resolveOrgId(providedOrgId?: string): Promise<string> {
 }
 
 /**
- * Fetch all projects for an organization
+ * Fetch all workspaces for an organization
  */
-export async function getProjects(orgId?: string): Promise<TaskProject[]> {
+export async function getWorkspaces(orgId?: string): Promise<TaskWorkspace[]> {
   const activeOrgId = await resolveOrgId(orgId);
 
-  const { data: projects, error } = await supabaseAdmin
+  const { data: workspaces, error } = await supabaseAdmin
+    .from("task_workspaces")
+    .select(`
+      *,
+      lead_staff:organization_staff!task_workspaces_lead_staff_id_fkey(
+        id, first_name, last_name, photo_url, role
+      )
+    `)
+    .eq("organization_id", activeOrgId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching task workspaces:", error);
+    return [];
+  }
+
+  // Count projects and tasks per workspace
+  const { data: projects } = await supabaseAdmin
+    .from("task_projects")
+    .select("id, workspace_id")
+    .eq("organization_id", activeOrgId);
+
+  const { data: tasks } = await supabaseAdmin
+    .from("task_items")
+    .select("project_id")
+    .eq("organization_id", activeOrgId);
+
+  const projectWorkspaceMap = new Map<string, string>();
+  const workspaceProjectCount = new Map<string, number>();
+  (projects || []).forEach((p) => {
+    if (p.workspace_id) {
+      projectWorkspaceMap.set(p.id, p.workspace_id);
+      workspaceProjectCount.set(p.workspace_id, (workspaceProjectCount.get(p.workspace_id) || 0) + 1);
+    }
+  });
+
+  const workspaceTaskCount = new Map<string, number>();
+  (tasks || []).forEach((t) => {
+    const wsId = projectWorkspaceMap.get(t.project_id);
+    if (wsId) {
+      workspaceTaskCount.set(wsId, (workspaceTaskCount.get(wsId) || 0) + 1);
+    }
+  });
+
+  return (workspaces || []).map((w: any) => ({
+    ...w,
+    project_count: workspaceProjectCount.get(w.id) || 0,
+    task_count: workspaceTaskCount.get(w.id) || 0,
+  }));
+}
+
+/**
+ * Create a new workspace (parent space)
+ */
+export async function createWorkspace(data: {
+  name: string;
+  key_prefix: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  lead_staff_id?: string | null;
+  organization_id?: string;
+}): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
+  try {
+    const orgId = await resolveOrgId(data.organization_id);
+    const slug = data.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || `ws-${Date.now()}`;
+
+    const keyPrefix = (data.key_prefix || "WEB").toUpperCase().trim().replace(/[^A-Z0-9]/g, "");
+
+    const { data: newWorkspace, error } = await supabaseAdmin
+      .from("task_workspaces")
+      .insert({
+        organization_id: orgId,
+        name: data.name,
+        slug: `${slug}-${Math.floor(1000 + Math.random() * 9000)}`,
+        key_prefix: keyPrefix,
+        description: data.description || null,
+        color: data.color || "#0284c7",
+        icon: data.icon || "Globe",
+        lead_staff_id: data.lead_staff_id || null,
+      })
+      .select(`
+        *,
+        lead_staff:organization_staff!task_workspaces_lead_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+    revalidatePath("/operations/tasks");
+    return { success: true, workspace: newWorkspace as TaskWorkspace };
+  } catch (err: any) {
+    console.error("Error creating workspace:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Update an existing workspace
+ */
+export async function updateWorkspace(
+  workspaceId: string,
+  data: Partial<TaskWorkspace>
+): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
+  try {
+    const updateData: any = { ...data, updated_at: new Date().toISOString() };
+    delete updateData.lead_staff;
+    delete updateData.project_count;
+    delete updateData.task_count;
+
+    const { data: updated, error } = await supabaseAdmin
+      .from("task_workspaces")
+      .update(updateData)
+      .eq("id", workspaceId)
+      .select(`
+        *,
+        lead_staff:organization_staff!task_workspaces_lead_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+    revalidatePath("/operations/tasks");
+    return { success: true, workspace: updated as TaskWorkspace };
+  } catch (err: any) {
+    console.error("Error updating workspace:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Delete a workspace
+ */
+export async function deleteWorkspace(workspaceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabaseAdmin
+      .from("task_workspaces")
+      .delete()
+      .eq("id", workspaceId);
+
+    if (error) throw error;
+    revalidatePath("/operations/tasks");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting workspace:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetch all projects for an organization
+ */
+export async function getProjects(orgId?: string, workspaceId?: string): Promise<TaskProject[]> {
+  const activeOrgId = await resolveOrgId(orgId);
+
+  let query = supabaseAdmin
     .from("task_projects")
     .select(`
       *,
+      workspace:task_workspaces!task_projects_workspace_id_fkey(
+        id, name, slug, key_prefix, color, icon
+      ),
       lead_staff:organization_staff!task_projects_lead_staff_id_fkey(
         id, first_name, last_name, photo_url, role
       )
     `)
     .eq("organization_id", activeOrgId)
     .order("created_at", { ascending: false });
+
+  if (workspaceId && workspaceId !== "all") {
+    query = query.eq("workspace_id", workspaceId);
+  }
+
+  const { data: projects, error } = await query;
 
   if (error) {
     console.error("Error fetching task projects:", error);
@@ -83,6 +255,7 @@ export async function createProject(data: {
   description?: string;
   color?: string;
   icon?: string;
+  workspace_id?: string | null;
   start_date?: string | null;
   target_date?: string | null;
   lead_staff_id?: string | null;
@@ -104,6 +277,7 @@ export async function createProject(data: {
       .from("task_projects")
       .insert({
         organization_id: orgId,
+        workspace_id: data.workspace_id || null,
         name: data.name,
         slug: finalSlug,
         description: data.description || null,
@@ -116,6 +290,9 @@ export async function createProject(data: {
       })
       .select(`
         *,
+        workspace:task_workspaces!task_projects_workspace_id_fkey(
+          id, name, slug, key_prefix, color, icon
+        ),
         lead_staff:organization_staff!task_projects_lead_staff_id_fkey(
           id, first_name, last_name, photo_url, role
         )
@@ -184,6 +361,7 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
  */
 export async function getTasks(params?: {
   orgId?: string;
+  workspaceId?: string;
   projectId?: string;
   status?: TaskStatus;
   assignedStaffId?: string;
@@ -210,6 +388,19 @@ export async function getTasks(params?: {
 
   if (params?.projectId && params.projectId !== "all") {
     query = query.eq("project_id", params.projectId);
+  } else if (params?.workspaceId && params.workspaceId !== "all") {
+    // If workspace is selected without specific project, filter to projects in that workspace
+    const { data: wsProjects } = await supabaseAdmin
+      .from("task_projects")
+      .select("id")
+      .eq("workspace_id", params.workspaceId);
+
+    const projectIds = (wsProjects || []).map((p) => p.id);
+    if (projectIds.length > 0) {
+      query = query.in("project_id", projectIds);
+    } else {
+      return [];
+    }
   }
 
   if (params?.status) {
@@ -238,23 +429,40 @@ export async function createTask(
   try {
     const orgId = await resolveOrgId(data.organization_id);
 
-    // Calculate sequential ticket code based on existing items
-    const { data: latest } = await supabaseAdmin
-      .from("task_items")
-      .select("ticket_code")
-      .eq("organization_id", orgId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+    let ticketCode = data.ticket_code;
 
-    let nextNum = 101;
-    if (latest && latest.length > 0 && latest[0].ticket_code) {
-      const match = latest[0].ticket_code.match(/(\d+)$/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
+    if (!ticketCode) {
+      // Determine prefix based on project's workspace if available
+      let prefix = "TK";
+      const { data: projectData } = await supabaseAdmin
+        .from("task_projects")
+        .select("workspace:task_workspaces!task_projects_workspace_id_fkey(key_prefix)")
+        .eq("id", data.project_id)
+        .single();
+
+      if ((projectData as any)?.workspace?.key_prefix) {
+        prefix = (projectData as any).workspace.key_prefix;
       }
-    }
 
-    const ticketCode = `TK-${nextNum}`;
+      // Calculate sequential ticket code based on existing items with this prefix
+      const { data: latest } = await supabaseAdmin
+        .from("task_items")
+        .select("ticket_code")
+        .eq("organization_id", orgId)
+        .ilike("ticket_code", `${prefix}-%`)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let nextNum = 101;
+      if (latest && latest.length > 0 && latest[0].ticket_code) {
+        const match = latest[0].ticket_code.match(/(\d+)$/);
+        if (match) {
+          nextNum = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      ticketCode = `${prefix}-${nextNum}`;
+    }
 
     const { data: newTask, error } = await supabaseAdmin
       .from("task_items")
@@ -667,6 +875,19 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
     return [];
   }
 
+  // Fetch workspace memberships
+  const { data: memberships } = await supabaseAdmin
+    .from("task_workspace_members")
+    .select("workspace_id, staff_id")
+    .eq("organization_id", activeOrgId);
+
+  const staffWorkspaces = new Map<string, string[]>();
+  (memberships || []).forEach((m) => {
+    const list = staffWorkspaces.get(m.staff_id) || [];
+    list.push(m.workspace_id);
+    staffWorkspaces.set(m.staff_id, list);
+  });
+
   // Count assigned tasks
   const { data: tasks } = await supabaseAdmin
     .from("task_items")
@@ -692,11 +913,13 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       email: s.email,
       phone: s.phone,
       role: s.role,
-      task_role: (s.role || "developer") as CollaboratorRole,
+      task_role: inferTaskRole(s.role),
       access_token: s.access_token,
       is_active: s.is_active,
       photo_url: s.photo_url,
       portal_url: `/portal/tasks/${s.access_token}`,
+      has_global_workspace_access: s.has_global_workspace_access ?? true,
+      workspace_ids: staffWorkspaces.get(s.id) || [],
       assigned_tasks_count: counts.total,
       completed_tasks_count: counts.done
     };
@@ -844,10 +1067,13 @@ export async function createCollaborator(data: {
   role: string;
   taskRole?: CollaboratorRole;
   photoUrl?: string | null;
+  workspaceIds?: string[];
+  hasGlobalWorkspaceAccess?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(data.orgId);
+    const hasGlobal = data.hasGlobalWorkspaceAccess ?? (data.workspaceIds && data.workspaceIds.length > 0 ? false : true);
 
     const { data: newStaff, error } = await supabaseAdmin
       .from("organization_staff")
@@ -859,12 +1085,25 @@ export async function createCollaborator(data: {
         phone: data.phone || null,
         role: data.role || data.taskRole || "developer",
         photo_url: data.photoUrl || null,
+        has_global_workspace_access: hasGlobal,
         is_active: true
       })
       .select("*")
       .single();
 
     if (error) throw error;
+
+    // Sync workspace memberships
+    if (data.workspaceIds && data.workspaceIds.length > 0) {
+      const isLead = data.taskRole === 'pm' || (data.role && data.role.toLowerCase().includes('gestor'));
+      const membersToInsert = data.workspaceIds.map((wsId) => ({
+        organization_id: activeOrgId,
+        workspace_id: wsId,
+        staff_id: newStaff.id,
+        role: isLead ? 'lead' : 'member'
+      }));
+      await supabaseAdmin.from("task_workspace_members").insert(membersToInsert);
+    }
 
     revalidatePath("/operations/tasks");
     return {
@@ -877,11 +1116,13 @@ export async function createCollaborator(data: {
         email: newStaff.email,
         phone: newStaff.phone,
         role: newStaff.role,
-        task_role: (newStaff.role || "developer") as CollaboratorRole,
+        task_role: inferTaskRole(newStaff.role),
         access_token: newStaff.access_token,
         is_active: newStaff.is_active,
         photo_url: newStaff.photo_url,
         portal_url: `/portal/tasks/${newStaff.access_token}`,
+        has_global_workspace_access: hasGlobal,
+        workspace_ids: data.workspaceIds || [],
         assigned_tasks_count: 0,
         completed_tasks_count: 0
       }
@@ -905,6 +1146,8 @@ export async function updateCollaborator(data: {
   taskRole?: CollaboratorRole;
   photoUrl?: string | null;
   isActive?: boolean;
+  workspaceIds?: string[];
+  hasGlobalWorkspaceAccess?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -924,6 +1167,9 @@ export async function updateCollaborator(data: {
     if (data.isActive !== undefined) {
       updatePayload.is_active = data.isActive;
     }
+    if (data.hasGlobalWorkspaceAccess !== undefined) {
+      updatePayload.has_global_workspace_access = data.hasGlobalWorkspaceAccess;
+    }
 
     const { data: updatedStaff, error } = await supabaseAdmin
       .from("organization_staff")
@@ -934,6 +1180,35 @@ export async function updateCollaborator(data: {
       .single();
 
     if (error) throw error;
+
+    // Sync task_workspace_members
+    if (data.workspaceIds !== undefined) {
+      await supabaseAdmin
+        .from("task_workspace_members")
+        .delete()
+        .eq("staff_id", data.id)
+        .eq("organization_id", activeOrgId);
+
+      if (data.workspaceIds.length > 0) {
+        const isLead = data.taskRole === 'pm' || (data.role && data.role.toLowerCase().includes('gestor'));
+        const membersToInsert = data.workspaceIds.map((wsId) => ({
+          organization_id: activeOrgId,
+          workspace_id: wsId,
+          staff_id: data.id,
+          role: isLead ? 'lead' : 'member'
+        }));
+        await supabaseAdmin.from("task_workspace_members").insert(membersToInsert);
+      }
+    }
+
+    // Fetch current workspace_ids for the response
+    const { data: currentMemberships } = await supabaseAdmin
+      .from("task_workspace_members")
+      .select("workspace_id")
+      .eq("staff_id", data.id)
+      .eq("organization_id", activeOrgId);
+
+    const currentWsIds = (currentMemberships || []).map((m) => m.workspace_id);
 
     revalidatePath("/operations/tasks");
     return {
@@ -946,11 +1221,13 @@ export async function updateCollaborator(data: {
         email: updatedStaff.email,
         phone: updatedStaff.phone,
         role: updatedStaff.role,
-        task_role: (updatedStaff.role || "developer") as CollaboratorRole,
+        task_role: inferTaskRole(updatedStaff.role),
         access_token: updatedStaff.access_token,
         is_active: updatedStaff.is_active,
         photo_url: updatedStaff.photo_url,
         portal_url: `/portal/tasks/${updatedStaff.access_token}`,
+        has_global_workspace_access: updatedStaff.has_global_workspace_access ?? true,
+        workspace_ids: currentWsIds,
         assigned_tasks_count: 0,
         completed_tasks_count: 0
       }
@@ -962,9 +1239,82 @@ export async function updateCollaborator(data: {
 }
 
 /**
+ * Delete a collaborator and safely handle their assigned tasks, QA assignments and lead roles
+ */
+export async function deleteCollaborator(params: {
+  collaboratorId: string;
+  reassignToStaffId?: string | null; // if null, unassign (set to null)
+  orgId?: string;
+}): Promise<{ success: boolean; reassignedCount?: number; error?: string }> {
+  try {
+    const activeOrgId = await resolveOrgId(params.orgId);
+    const { collaboratorId, reassignToStaffId } = params;
+
+    // 1. Check tasks assigned to this collaborator
+    const { data: assignedTasks } = await supabaseAdmin
+      .from("task_items")
+      .select("id")
+      .eq("organization_id", activeOrgId)
+      .eq("assigned_staff_id", collaboratorId);
+
+    const taskCount = assignedTasks?.length || 0;
+
+    // 2. Handle assigned tasks: either reassign or unassign
+    if (taskCount > 0) {
+      const { error: taskUpdateErr } = await supabaseAdmin
+        .from("task_items")
+        .update({
+          assigned_staff_id: reassignToStaffId || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("organization_id", activeOrgId)
+        .eq("assigned_staff_id", collaboratorId);
+
+      if (taskUpdateErr) throw taskUpdateErr;
+    }
+
+    // 3. Handle QA reviewer references (if this staff was set as qa_staff_id)
+    await supabaseAdmin
+      .from("task_items")
+      .update({ qa_staff_id: reassignToStaffId || null })
+      .eq("organization_id", activeOrgId)
+      .eq("qa_staff_id", collaboratorId);
+
+    // 4. Handle project lead references (if this staff was project lead)
+    await supabaseAdmin
+      .from("task_projects")
+      .update({ lead_staff_id: reassignToStaffId || null })
+      .eq("organization_id", activeOrgId)
+      .eq("lead_staff_id", collaboratorId);
+
+    // 5. Handle workspace lead references (if this staff was workspace lead)
+    await supabaseAdmin
+      .from("task_workspaces")
+      .update({ lead_staff_id: reassignToStaffId || null })
+      .eq("organization_id", activeOrgId)
+      .eq("lead_staff_id", collaboratorId);
+
+    // 6. Delete the collaborator from organization_staff
+    const { error: deleteErr } = await supabaseAdmin
+      .from("organization_staff")
+      .delete()
+      .eq("id", collaboratorId)
+      .eq("organization_id", activeOrgId);
+
+    if (deleteErr) throw deleteErr;
+
+    revalidatePath("/operations/tasks");
+    return { success: true, reassignedCount: taskCount };
+  } catch (err: any) {
+    console.error("Error deleting collaborator:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Get aggregated metrics for projects and tasks
  */
-export async function getTaskMetrics(orgId?: string, projectId?: string): Promise<TaskMetrics> {
+export async function getTaskMetrics(orgId?: string, projectId?: string, workspaceId?: string): Promise<TaskMetrics> {
   const activeOrgId = await resolveOrgId(orgId);
 
   let query = supabaseAdmin
@@ -979,6 +1329,30 @@ export async function getTaskMetrics(orgId?: string, projectId?: string): Promis
 
   if (projectId && projectId !== "all") {
     query = query.eq("project_id", projectId);
+  } else if (workspaceId && workspaceId !== "all") {
+    const { data: wsProjects } = await supabaseAdmin
+      .from("task_projects")
+      .select("id")
+      .eq("workspace_id", workspaceId);
+
+    const projectIds = (wsProjects || []).map((p) => p.id);
+    if (projectIds.length > 0) {
+      query = query.in("project_id", projectIds);
+    } else {
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        inProgressTasks: 0,
+        inReviewTasks: 0,
+        blockedTasks: 0,
+        todoTasks: 0,
+        completionRate: 0,
+        totalEstimatedHours: 0,
+        totalActualHours: 0,
+        tasksByPriority: { urgent: 0, high: 0, medium: 0, low: 0 },
+        collaboratorWorkload: []
+      };
+    }
   }
 
   const { data: tasks, error } = await query;

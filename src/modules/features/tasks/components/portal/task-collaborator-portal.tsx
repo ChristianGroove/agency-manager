@@ -20,9 +20,18 @@ import {
   PopoverContent,
 } from "@/components/ui/popover"
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
+import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -58,12 +67,15 @@ import {
   Moon,
   AtSign,
   Settings,
+  Pencil,
+  ChevronDown,
+  FolderPlus,
   LayoutDashboard,
   Kanban,
   User
 } from "lucide-react"
-import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment } from "../../types"
-import { parseTaskChecklist } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
   portalUpdateTaskProgress,
@@ -83,12 +95,80 @@ import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { TaskKanbanBoard } from "../kanban/task-kanban-board"
 import { TaskPortalDetailModal } from "./task-portal-detail-modal"
+import { ProjectFormModal } from "../modals/project-form-modal"
+import { WorkspaceFormModal } from "../modals/workspace-form-modal"
 import { TaskPmOperationsDashboard } from "./task-pm-operations-dashboard"
 import { TaskCollaboratorRibbon } from "./task-collaborator-ribbon"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
+
+interface PortalTaskSliderProps {
+  taskId: string
+  progress: number
+  hasUnfinishedDeliverables: boolean
+  savedProg: number
+  isLeadOrPm: boolean
+  onCommit: (taskId: string, val: number) => void
+  className?: string
+  showLabel?: boolean
+  labelClassName?: string
+}
+
+// Self-contained memoized slider: holds local progress state during dragging
+// and only commits on release, eliminating 60fps whole-page re-renders.
+const PortalTaskSlider = React.memo(function PortalTaskSlider({
+  taskId,
+  progress,
+  hasUnfinishedDeliverables,
+  savedProg,
+  isLeadOrPm,
+  onCommit,
+  className,
+  showLabel = false,
+  labelClassName,
+}: PortalTaskSliderProps) {
+  const [localVal, setLocalVal] = useState(progress)
+
+  useEffect(() => {
+    setLocalVal(progress)
+  }, [progress])
+
+  const handleChange = ([val]: number[]) => {
+    let clamped = Math.max(0, Math.min(100, Math.round(val)))
+    if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
+    if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
+    setLocalVal(clamped)
+  }
+
+  const handleCommit = ([val]: number[]) => {
+    let clamped = Math.max(0, Math.min(100, Math.round(val)))
+    if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
+    if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
+    setLocalVal(clamped)
+    onCommit(taskId, clamped)
+  }
+
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <Slider
+        value={[localVal]}
+        min={0}
+        max={100}
+        step={5}
+        onValueChange={handleChange}
+        onValueCommit={handleCommit}
+        className="cursor-pointer flex-1"
+      />
+      {showLabel && (
+        <span className={cn("font-mono font-bold text-primary shrink-0", labelClassName || "text-xs")}>
+          {localVal}%
+        </span>
+      )}
+    </div>
+  )
+})
 
 interface TaskCollaboratorPortalProps {
   portalData: CollaboratorPortalData
@@ -99,11 +179,64 @@ export function TaskCollaboratorPortal({
   portalData,
   token,
 }: TaskCollaboratorPortalProps) {
-  const { staff, organization, projects, isLeadOrPm, isQa, recentMentions = [] } = portalData
+  const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa, recentMentions = [] } = portalData
   const brandColor = organization?.primary_color || "#8ec045"
+  const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
+  const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(portalData.tasks)
   const [allTeamTasks, setAllTeamTasks] = useState<TaskItem[]>(portalData.allTeamTasks || [])
   const teamMembers = portalData.teamMembers || []
+
+  // Workspace & Project Edit Modal States for PM Portal
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
+  const [workspaceToEdit, setWorkspaceToEdit] = useState<TaskWorkspace | null>(null)
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [projectToEdit, setProjectToEdit] = useState<TaskProject | null>(null)
+
+  const handleEditCurrentScope = () => {
+    if (selectedProjectFilter.startsWith("workspace:")) {
+      const wsId = selectedProjectFilter.replace("workspace:", "")
+      const ws = workspaces.find((w) => w.id === wsId)
+      if (ws) {
+        setWorkspaceToEdit(ws)
+        setIsWorkspaceModalOpen(true)
+      }
+    } else if (selectedProjectFilter !== "all") {
+      const proj = projects.find((p) => p.id === selectedProjectFilter)
+      if (proj) {
+        setProjectToEdit(proj)
+        setIsProjectModalOpen(true)
+      }
+    }
+  }
+
+  const handleWorkspaceUpdated = (updatedWs: TaskWorkspace) => {
+    setWorkspaces((prev) => prev.map((w) => (w.id === updatedWs.id ? updatedWs : w)))
+  }
+
+  const handleWorkspaceDeleted = (workspaceId: string) => {
+    setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId))
+    if (selectedProjectFilter === `workspace:${workspaceId}`) {
+      setSelectedProjectFilter("all")
+    }
+  }
+
+  const handleProjectCreated = (newProject: TaskProject) => {
+    setProjects((prev) => [newProject, ...prev])
+    setSelectedProjectFilter(newProject.id)
+    toast.success(`Proyecto "${newProject.name}" creado con éxito`)
+  }
+
+  const handleProjectUpdated = (updatedProj: TaskProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === updatedProj.id ? updatedProj : p)))
+  }
+
+  const handleProjectDeleted = (projectId: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId))
+    if (selectedProjectFilter === projectId) {
+      setSelectedProjectFilter("all")
+    }
+  }
 
   // View Mode: 'list' (default) | 'kanban' | 'compact' | 'grid'
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -244,17 +377,10 @@ export function TaskCollaboratorPortal({
     }
   }
 
-  // Celebration modal state (100% completion)
+  // Celebration modal state (100% completion) - loaded strictly on-demand
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false)
   const [celebrationTask, setCelebrationTask] = useState<TaskItem | null>(null)
   const [celebrationLottie, setCelebrationLottie] = useState<any>(null)
-
-  useEffect(() => {
-    fetch("/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json")
-      .then((r) => r.json())
-      .then((data) => setCelebrationLottie(data))
-      .catch((e) => console.error("Error loading Lottie animation:", e))
-  }, [])
 
   // Computed metrics
   const myTotal = tasks.length
@@ -476,6 +602,12 @@ export function TaskCollaboratorPortal({
 
   const triggerCelebration = (task: TaskItem) => {
     setCelebrationTask(task)
+    if (!celebrationLottie) {
+      fetch("/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json")
+        .then((r) => r.json())
+        .then((data) => setCelebrationLottie(data))
+        .catch((e) => console.error("Error loading celebration Lottie:", e))
+    }
     setIsCelebrationOpen(true)
   }
 
@@ -486,11 +618,17 @@ export function TaskCollaboratorPortal({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [seenTaskIds, setSeenTaskIds] = useState<string[]>([])
 
+  // On-demand load of alert animation only when alert modal is opened
   useEffect(() => {
-    fetch("/animations/cartoon-task-list-illustration-2025-10-20-03-26-27-utc.json")
-      .then((r) => r.json())
-      .then((data) => setAlertLottie(data))
-      .catch((e) => console.error("Error loading alert Lottie animation:", e))
+    if (isAlertModalOpen && !alertLottie) {
+      fetch("/animations/cartoon-task-list-illustration-2025-10-20-03-26-27-utc.json")
+        .then((r) => r.json())
+        .then((data) => setAlertLottie(data))
+        .catch((e) => console.error("Error loading alert Lottie animation:", e))
+    }
+  }, [isAlertModalOpen, alertLottie])
+
+  useEffect(() => {
 
     try {
       const storageKey = `pixy_seen_tasks_${staff.id}`
@@ -823,9 +961,15 @@ export function TaskCollaboratorPortal({
     baseSourceTasks = allTeamTasks.filter((t) => t.assigned_staff_id === selectedMemberFilter)
   }
 
-  // Project filter
+  // Project / Workspace filter
   if (selectedProjectFilter !== "all") {
-    baseSourceTasks = baseSourceTasks.filter((t) => t.project_id === selectedProjectFilter)
+    if (selectedProjectFilter.startsWith("workspace:")) {
+      const wsId = selectedProjectFilter.replace("workspace:", "")
+      const wsProjectIds = new Set(projects.filter((p) => p.workspace_id === wsId).map((p) => p.id))
+      baseSourceTasks = baseSourceTasks.filter((t) => wsProjectIds.has(t.project_id))
+    } else {
+      baseSourceTasks = baseSourceTasks.filter((t) => t.project_id === selectedProjectFilter)
+    }
   }
 
   // Calculate status counts on base source before status filter
@@ -1264,6 +1408,7 @@ export function TaskCollaboratorPortal({
             tasks={allTeamTasks && allTeamTasks.length > 0 ? allTeamTasks : tasks}
             teamMembers={teamMembers}
             projects={projects}
+            workspaces={workspaces}
             organization={organization}
             onSwitchToGestion={() => setPmViewMode("gestion")}
             onSelectTask={openTaskDetail}
@@ -1306,25 +1451,115 @@ export function TaskCollaboratorPortal({
           />
 
           <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-auto">
-            {/* Project / Sprint Selector with modern Radix Select */}
+            {/* Project / Workspace Selector with modern Radix Select */}
             <Select value={selectedProjectFilter} onValueChange={setSelectedProjectFilter}>
-              <SelectTrigger className="h-10 text-xs w-[180px] sm:w-[210px] rounded-2xl bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-white/10 shadow-sm font-medium">
-                <SelectValue placeholder="Todos los proyectos" />
+              <SelectTrigger className="h-10 text-xs w-[190px] sm:w-[225px] rounded-2xl bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-white/10 shadow-sm font-medium text-left">
+                <div className="flex items-center truncate text-left flex-1 min-w-0">
+                  <SelectValue placeholder="Todos los espacios" />
+                </div>
               </SelectTrigger>
-              <SelectContent className="rounded-2xl">
-                <SelectItem value="all" className="text-xs">
-                  Todos los proyectos
+              <SelectContent className="rounded-2xl max-h-[340px]">
+                <SelectItem value="all" className="text-xs font-medium">
+                  <span className="flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Todos los espacios</span>
+                  </span>
                 </SelectItem>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                      {p.name}
-                    </span>
-                  </SelectItem>
-                ))}
+                {workspaces.length > 0 ? (
+                  <>
+                    {workspaces.map((ws) => {
+                      const wsProjects = projects.filter((p) => p.workspace_id === ws.id)
+                      return (
+                        <SelectGroup key={ws.id}>
+                          <SelectSeparator className="my-1" />
+                          <SelectItem
+                            value={`workspace:${ws.id}`}
+                            textValue={`${ws.name}${ws.key_prefix ? ` [${ws.key_prefix}]` : ""}`}
+                            className="text-xs font-semibold text-foreground py-1.5 cursor-pointer pl-8"
+                          >
+                            <span className="flex items-center gap-2 w-full">
+                              <span className="truncate">{ws.name}</span>
+                              {ws.key_prefix && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-zinc-500 dark:text-zinc-400 font-normal">
+                                  [{ws.key_prefix}]
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground font-normal ml-auto">
+                                ({wsProjects.length})
+                              </span>
+                            </span>
+                          </SelectItem>
+                          {wsProjects.map((p) => (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              textValue={p.name}
+                              className="text-xs pl-12 py-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.color }}
+                                />
+                                <span className="truncate">{p.name}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )
+                    })}
+                    {projects.filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id)).length > 0 && (
+                      <SelectGroup>
+                        <SelectSeparator className="my-1" />
+                        <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-8 py-1">
+                          Otros Proyectos
+                        </SelectLabel>
+                        {projects
+                          .filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id))
+                          .map((p) => (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              textValue={p.name}
+                              className="text-xs pl-12 py-1.5"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.color }}
+                                />
+                                <span className="truncate">{p.name}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                      </SelectGroup>
+                    )}
+                  </>
+                ) : (
+                  projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id} textValue={p.name} className="text-xs">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+
+            {/* Dynamic Edit button for selected Workspace OR Project in Management Portal */}
+            {isLeadOrPm && selectedProjectFilter !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEditCurrentScope}
+                className="h-10 w-9 p-0 text-muted-foreground hover:text-foreground shrink-0 rounded-2xl hover:bg-muted/50 cursor-pointer"
+                title={selectedProjectFilter.startsWith("workspace:") ? "Editar espacio de trabajo" : "Editar proyecto"}
+              >
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+              </Button>
+            )}
 
             {/* View Mode Toggle: Grid, Compact, List, Kanban */}
             <ViewToggle
@@ -1334,16 +1569,57 @@ export function TaskCollaboratorPortal({
               showKanban={true}
             />
 
-            {/* Botón Nuevo Ticket de Sprint para PM */}
+            {/* Unified + Nuevo Dropdown Menu para PM */}
             {isLeadOrPm && (
-              <Button
-                size="sm"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="h-10 px-3.5 rounded-2xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 shrink-0 gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nuevo Ticket</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="h-10 px-3.5 rounded-2xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 shrink-0 gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nuevo</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-64 p-1.5 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-white/10 bg-card z-50"
+                >
+                  <DropdownMenuItem
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckSquare className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-xs text-foreground block">Nuevo Ticket</span>
+                      <span className="text-[11px] text-muted-foreground block leading-tight">
+                        Crear requerimiento en el sprint
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setProjectToEdit(null)
+                      setIsProjectModalOpen(true)
+                    }}
+                    className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <FolderPlus className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-xs text-foreground block">Nuevo Proyecto</span>
+                      <span className="text-[11px] text-muted-foreground block leading-tight">
+                        Crear nuevo sprint o módulo
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
@@ -1480,6 +1756,34 @@ export function TaskCollaboratorPortal({
                           {task.description}
                         </p>
                       )}
+                      {task.tags && task.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {task.tags.map((tag) => {
+                            const sysTag = SYSTEM_STAGE_TAGS[tag]
+                            if (sysTag) {
+                              return (
+                                <span
+                                  key={tag}
+                                  className={cn(
+                                    "text-[9px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 shadow-2xs",
+                                    sysTag.badgeClass
+                                  )}
+                                >
+                                  {sysTag.shortLabel || sysTag.label}
+                                </span>
+                              )
+                            }
+                            return (
+                              <span
+                                key={tag}
+                                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                              >
+                                #{tag}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* Assignee & Controls Row */}
@@ -1554,14 +1858,14 @@ export function TaskCollaboratorPortal({
                           {task.progress_percentage}%
                         </span>
                       </div>
-                      <Slider
-                        value={[task.progress_percentage]}
-                        min={0}
-                        max={100}
-                        step={5}
-                        onValueChange={([val]) => handleSliderDrag(task.id, val)}
-                        onValueCommit={([val]) => handleSliderCommit(task.id, val)}
-                        className="cursor-pointer py-1"
+                      <PortalTaskSlider
+                        taskId={task.id}
+                        progress={task.progress_percentage}
+                        hasUnfinishedDeliverables={safeChecklist.length > 0 && safeChecklist.some((c) => !c.completed)}
+                        savedProg={getSavedProgress(task.id)}
+                        isLeadOrPm={isLeadOrPm}
+                        onCommit={handleSliderCommit}
+                        className="py-1"
                       />
                     </div>
 
@@ -1726,6 +2030,34 @@ export function TaskCollaboratorPortal({
                     <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-1">
                       {task.title}
                     </h4>
+                    {task.tags && task.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {task.tags.map((tag) => {
+                          const sysTag = SYSTEM_STAGE_TAGS[tag]
+                          if (sysTag) {
+                            return (
+                              <span
+                                key={tag}
+                                className={cn(
+                                  "text-[9px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 shadow-2xs",
+                                  sysTag.badgeClass
+                                )}
+                              >
+                                {sysTag.shortLabel || sysTag.label}
+                              </span>
+                            )
+                          }
+                          return (
+                            <span
+                              key={tag}
+                              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                            >
+                              #{tag}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Compact Progress Slider */}
@@ -1734,14 +2066,13 @@ export function TaskCollaboratorPortal({
                       <span className="text-muted-foreground">Avance</span>
                       <span className="font-mono font-bold text-primary">{task.progress_percentage}%</span>
                     </div>
-                    <Slider
-                      value={[task.progress_percentage]}
-                      min={0}
-                      max={100}
-                      step={5}
-                      onValueChange={([val]) => handleSliderDrag(task.id, val)}
-                      onValueCommit={([val]) => handleSliderCommit(task.id, val)}
-                      className="cursor-pointer"
+                    <PortalTaskSlider
+                      taskId={task.id}
+                      progress={task.progress_percentage}
+                      hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
+                      savedProg={getSavedProgress(task.id)}
+                      isLeadOrPm={isLeadOrPm}
+                      onCommit={handleSliderCommit}
                     />
                   </div>
 
@@ -1809,6 +2140,34 @@ export function TaskCollaboratorPortal({
                           <span className="font-semibold text-foreground line-clamp-1 max-w-[240px]">
                             {task.title}
                           </span>
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                              {task.tags.map((tag) => {
+                                const sysTag = SYSTEM_STAGE_TAGS[tag]
+                                if (sysTag) {
+                                  return (
+                                    <span
+                                      key={tag}
+                                      className={cn(
+                                        "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
+                                        sysTag.badgeClass
+                                      )}
+                                    >
+                                      {sysTag.shortLabel || sysTag.label}
+                                    </span>
+                                  )
+                                }
+                                return (
+                                  <span
+                                    key={tag}
+                                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                                  >
+                                    #{tag}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3.5 text-muted-foreground">
@@ -1884,20 +2243,16 @@ export function TaskCollaboratorPortal({
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <Slider
-                            value={[task.progress_percentage]}
-                            min={0}
-                            max={100}
-                            step={5}
-                            onValueChange={([val]) => handleSliderDrag(task.id, val)}
-                            onValueCommit={([val]) => handleSliderCommit(task.id, val)}
-                            className="cursor-pointer flex-1"
-                          />
-                          <span className="font-mono text-[11px] font-bold text-primary w-8 text-right">
-                            {task.progress_percentage}%
-                          </span>
-                        </div>
+                        <PortalTaskSlider
+                          taskId={task.id}
+                          progress={task.progress_percentage}
+                          hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
+                          savedProg={getSavedProgress(task.id)}
+                          isLeadOrPm={isLeadOrPm}
+                          onCommit={handleSliderCommit}
+                          showLabel={true}
+                          labelClassName="text-[11px] w-8 text-right"
+                        />
                       </td>
                       <td className="px-4 py-3.5">
                         <Badge
@@ -2036,7 +2391,7 @@ export function TaskCollaboratorPortal({
           teamMembers={teamMembers}
           brandColor={brandColor}
           defaultStatus={newTaskStatus || "todo"}
-          defaultProjectId={selectedProjectFilter !== "all" ? selectedProjectFilter : projects[0]?.id}
+          defaultProjectId={selectedProjectFilter !== "all" && !selectedProjectFilter.startsWith("workspace:") ? selectedProjectFilter : projects[0]?.id}
           onTaskCreated={(createdTask) => {
             setTasks((prev) => [createdTask, ...prev])
             setAllTeamTasks((prev) => [createdTask, ...prev])
@@ -2264,6 +2619,38 @@ export function TaskCollaboratorPortal({
           </div>
         </DialogContent>
       </Dialog>
+      {/* Workspace Edit Modal for PM Portal */}
+      {isWorkspaceModalOpen && (
+        <WorkspaceFormModal
+          isOpen={isWorkspaceModalOpen}
+          onClose={() => {
+            setIsWorkspaceModalOpen(false)
+            setWorkspaceToEdit(null)
+          }}
+          workspaceToEdit={workspaceToEdit}
+          onWorkspaceUpdated={handleWorkspaceUpdated}
+          onWorkspaceDeleted={handleWorkspaceDeleted}
+          collaborators={teamMembers as any}
+        />
+      )}
+
+      {/* Project Creation & Edit Modal for PM Portal */}
+      {isProjectModalOpen && (
+        <ProjectFormModal
+          isOpen={isProjectModalOpen}
+          onClose={() => {
+            setIsProjectModalOpen(false)
+            setProjectToEdit(null)
+          }}
+          projectToEdit={projectToEdit}
+          onProjectCreated={handleProjectCreated}
+          onProjectUpdated={handleProjectUpdated}
+          onProjectDeleted={handleProjectDeleted}
+          collaborators={teamMembers as any}
+          workspaces={workspaces}
+          defaultWorkspaceId={selectedProjectFilter.startsWith("workspace:") ? selectedProjectFilter.replace("workspace:", "") : undefined}
+        />
+      )}
     </div>
   )
 }

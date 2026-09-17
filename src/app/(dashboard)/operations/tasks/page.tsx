@@ -1,10 +1,10 @@
 import { Metadata } from "next"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import {
+  getWorkspaces,
   getProjects,
   getTasks,
-  getCollaborators,
-  getTaskMetrics
+  getCollaborators
 } from "@/modules/features/tasks/actions/task-actions"
 import { TaskManagerView } from "@/modules/features/tasks/components/task-manager-view"
 import { redirect } from "next/navigation"
@@ -20,20 +20,20 @@ export default async function TasksPage() {
     redirect("/dashboard")
   }
 
-  const [projects, tasks, collaborators, metrics] = await Promise.all([
+  const [workspaces, projects, tasks, collaborators] = await Promise.all([
+    getWorkspaces(orgId),
     getProjects(orgId),
     getTasks({ orgId }),
-    getCollaborators(orgId),
-    getTaskMetrics(orgId)
+    getCollaborators(orgId)
   ])
 
   return (
     <div className="flex-1 w-full">
       <TaskManagerView
+        initialWorkspaces={workspaces}
         initialProjects={projects}
         initialTasks={tasks}
         initialCollaborators={collaborators}
-        initialMetrics={metrics}
         organizationId={orgId}
       />
     </div>

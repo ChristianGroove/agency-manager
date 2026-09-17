@@ -70,6 +70,7 @@ import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { TaskTagSelector } from "../tags/task-tag-selector"
 
 interface TaskPortalDetailModalProps {
   task: TaskItem | null
@@ -124,6 +125,7 @@ export function TaskPortalDetailModal({
   const initialStatusRef = useRef<TaskStatus>(task?.status || defaultStatus || "todo")
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || "medium")
   const [type, setType] = useState<TaskType>(task?.type || "task")
+  const [tags, setTags] = useState<string[]>(task?.tags || [])
   const [progress, setProgress] = useState(task?.progress_percentage || 0)
   const [savedProgress, setSavedProgress] = useState(task?.progress_percentage || 0)
   const [assignedStaffId, setAssignedStaffId] = useState<string>(task?.assigned_staff_id || "unassigned")
@@ -166,6 +168,7 @@ export function TaskPortalDetailModal({
       initialStatusRef.current = task.status
       setPriority(task.priority)
       setType(task.type)
+      setTags(task.tags || [])
       setProgress(task.progress_percentage || 0)
       setSavedProgress(task.progress_percentage || 0)
       setAssignedStaffId(task.assigned_staff_id || "unassigned")
@@ -183,6 +186,7 @@ export function TaskPortalDetailModal({
       setStatus(defaultStatus || "todo")
       setPriority("medium")
       setType("task")
+      setTags([])
       setProgress(0)
       setSavedProgress(0)
       setAssignedStaffId("unassigned")
@@ -195,6 +199,21 @@ export function TaskPortalDetailModal({
       setComments([])
     }
   }, [task?.id, isCreating, isOpen])
+
+  const handleTagsChange = async (newTags: string[]) => {
+    setTags(newTags)
+    if (!isCreating && task) {
+      try {
+        const res = await portalUpdateTask(token, task.id, { tags: newTags })
+        if (res.success && res.task) {
+          onTaskUpdated?.(res.task)
+          toast.success("Etiquetas actualizadas")
+        }
+      } catch (err: any) {
+        toast.error("Error al actualizar etiquetas")
+      }
+    }
+  }
 
   const loadComments = async (taskId: string) => {
     setLoadingComments(true)
@@ -234,6 +253,7 @@ export function TaskPortalDetailModal({
           dueDate: dueDate || null,
           estimatedHours: Number(estimatedHours),
           checklist,
+          tags,
           attachments,
         })
 
@@ -273,6 +293,7 @@ export function TaskPortalDetailModal({
           actualHours: Number(actualHours),
           dueDate: isLeadOrPm ? (dueDate || null) : undefined,
           checklist,
+          tags: isLeadOrPm || isQa ? tags : undefined,
           attachments,
         })
 
@@ -631,47 +652,39 @@ export function TaskPortalDetailModal({
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.rar,.txt"
         />
 
-        {/* Top Header - Jira / Linear Style */}
-        <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Ticket Code or New Ticket Indicator */}
+        {/* Top Header - Modern Linear / Jira Style */}
+        <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
+          <div className="flex items-center gap-2.5 min-w-0">
             {isCreating ? (
-              <Badge className="bg-primary text-primary-foreground font-mono text-xs font-bold px-3 py-1 rounded-lg whitespace-nowrap shrink-0 shadow-xs">
-                + NUEVO TICKET
-              </Badge>
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
+                  Nuevo Ticket
+                </h2>
+              </div>
             ) : (
-              <Badge
-                variant="outline"
-                className="font-mono text-xs font-bold px-3 py-1 bg-primary/10 text-primary border border-primary/25 rounded-lg whitespace-nowrap shrink-0 shadow-xs tracking-wide"
-              >
-                {task?.ticket_code}
-              </Badge>
-            )}
+              <>
+                <Badge
+                  variant="outline"
+                  className="font-mono text-xs font-bold px-2.5 py-0.5 bg-muted/60 text-foreground border border-border/80 rounded-md whitespace-nowrap shrink-0 shadow-2xs tracking-wide"
+                >
+                  {task?.ticket_code}
+                </Badge>
 
-            {resolvedProject && (
-              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: resolvedProject.color }}
-                />
-                {resolvedProject.name}
-              </span>
-            )}
-
-            {isLeadOrPm ? (
-              <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 text-[11px] px-2 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-                <Crown className="w-3 h-3 text-indigo-500" />
-                Modo Gestor PM (Edición Total)
-              </Badge>
-            ) : (
-              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[11px] px-2 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-                <User className="w-3 h-3 text-emerald-500" />
-                Modo Colaborador (Ejecución)
-              </Badge>
+                {resolvedProject && (
+                  <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: resolvedProject.color }}
+                    />
+                    {resolvedProject.name}
+                  </span>
+                )}
+              </>
             )}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0">
             {!isCreating && isLeadOrPm && (
               <Button
                 variant="outline"
@@ -701,7 +714,7 @@ export function TaskPortalDetailModal({
                   {isCreating ? "Creando..." : "Guardando..."}
                 </>
               ) : isCreating ? (
-                "Crear Ticket de Sprint"
+                "Crear Ticket"
               ) : (
                 "Guardar Cambios"
               )}
@@ -757,7 +770,7 @@ export function TaskPortalDetailModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="text-base sm:text-lg font-bold bg-background rounded-xl"
-                  placeholder="Ej. Integración de webhooks, diseño de pantalla de pago..."
+                  placeholder="Título de la tarea o requerimiento..."
                 />
               ) : (
                 <h3 className="text-base sm:text-lg font-bold text-foreground leading-snug p-1">
@@ -1363,6 +1376,15 @@ export function TaskPortalDetailModal({
                     : "Entrega de Cliente"}
                 </Badge>
               )}
+            </div>
+
+            {/* Tags & Quality Stages */}
+            <div className="pt-2 border-t border-border/60">
+              <TaskTagSelector
+                tags={tags}
+                onChange={handleTagsChange}
+                readOnly={!isCreating && !isLeadOrPm && !isQa}
+              />
             </div>
 
             {/* Assignee Selector with Truncation */}

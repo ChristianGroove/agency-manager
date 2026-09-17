@@ -45,12 +45,17 @@ import {
   GraduationCap,
   Wrench,
   Eye,
+  Globe,
+  Layers,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import type { TaskCollaborator, CollaboratorRole } from "../../types"
+import type { TaskCollaborator, CollaboratorRole, TaskWorkspace } from "../../types"
 import {
   createCollaborator,
   updateCollaborator,
+  deleteCollaborator,
   uploadCollaboratorAvatar,
 } from "../../actions/task-actions"
 import { toast } from "sonner"
@@ -58,8 +63,10 @@ import { TASK_PACK_AVATARS, getCollaboratorAvatar } from "../../utils/avatar-pre
 
 interface TaskCollaboratorsManagerProps {
   collaborators: TaskCollaborator[]
+  workspaces?: TaskWorkspace[]
   onCollaboratorCreated?: (collab: TaskCollaborator) => void
   onCollaboratorUpdated?: (collab: TaskCollaborator) => void
+  onCollaboratorDeleted?: (collabId: string) => void
 }
 
 function AvatarUploader({
@@ -202,8 +209,10 @@ function AvatarUploader({
 
 export function TaskCollaboratorsManager({
   collaborators,
+  workspaces = [],
   onCollaboratorCreated,
   onCollaboratorUpdated,
+  onCollaboratorDeleted,
 }: TaskCollaboratorsManagerProps) {
   const [localCollaborators, setLocalCollaborators] = useState<TaskCollaborator[]>(collaborators)
 
@@ -220,6 +229,8 @@ export function TaskCollaboratorsManager({
   const [role, setRole] = useState<string>("Colaborador")
   const [taskRole, setTaskRole] = useState<CollaboratorRole>("specialist")
   const [photoUrl, setPhotoUrl] = useState<string>("")
+  const [hasGlobalAccess, setHasGlobalAccess] = useState(true)
+  const [selectedWorkspaceIds, setSelectedWorkspaceIds] = useState<string[]>([])
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
 
@@ -233,9 +244,60 @@ export function TaskCollaboratorsManager({
   const [editRole, setEditRole] = useState<string>("")
   const [editTaskRole, setEditTaskRole] = useState<CollaboratorRole>("developer")
   const [editPhotoUrl, setEditPhotoUrl] = useState<string>("")
+  const [editHasGlobalAccess, setEditHasGlobalAccess] = useState(true)
+  const [editSelectedWorkspaceIds, setEditSelectedWorkspaceIds] = useState<string[]>([])
   const [editIsActive, setEditIsActive] = useState<boolean>(true)
   const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
+
+  // Delete Collaborator Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [collabToDelete, setCollabToDelete] = useState<TaskCollaborator | null>(null)
+  const [deleteAction, setDeleteAction] = useState<"unassign" | "reassign">("unassign")
+  const [reassignStaffId, setReassignStaffId] = useState<string>("")
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false)
+
+  const handleOpenDelete = (collab: TaskCollaborator) => {
+    setCollabToDelete(collab)
+    const others = localCollaborators.filter((c) => c.id !== collab.id)
+    if (others.length > 0) {
+      setReassignStaffId(others[0].id)
+    } else {
+      setReassignStaffId("")
+    }
+    setDeleteAction("unassign")
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!collabToDelete) return
+    setIsSubmittingDelete(true)
+    try {
+      const res = await deleteCollaborator({
+        collaboratorId: collabToDelete.id,
+        reassignToStaffId: deleteAction === "reassign" && reassignStaffId ? reassignStaffId : null,
+      })
+
+      if (res.success) {
+        toast.success(`Colaborador ${collabToDelete.first_name} eliminado con éxito`, {
+          description:
+            res.reassignedCount && res.reassignedCount > 0
+              ? `${res.reassignedCount} tareas fueron ${deleteAction === "reassign" ? "reasignadas" : "desasignadas"}.`
+              : "No tenía tareas asignadas.",
+        })
+        setLocalCollaborators((prev) => prev.filter((c) => c.id !== collabToDelete.id))
+        onCollaboratorDeleted?.(collabToDelete.id)
+        setIsDeleteModalOpen(false)
+        setCollabToDelete(null)
+      } else {
+        toast.error(res.error || "Error al eliminar colaborador")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar la solicitud")
+    } finally {
+      setIsSubmittingDelete(false)
+    }
+  }
 
   const copyPortalLink = (collab: TaskCollaborator) => {
     const origin = typeof window !== "undefined" ? window.location.origin : ""
@@ -293,6 +355,8 @@ export function TaskCollaboratorsManager({
         role,
         taskRole,
         photoUrl: photoUrl || null,
+        workspaceIds: hasGlobalAccess ? [] : selectedWorkspaceIds,
+        hasGlobalWorkspaceAccess: hasGlobalAccess,
       })
 
       if (res.success && res.collaborator) {
@@ -305,6 +369,8 @@ export function TaskCollaboratorsManager({
         setEmail("")
         setPhone("")
         setPhotoUrl("")
+        setHasGlobalAccess(true)
+        setSelectedWorkspaceIds([])
       } else {
         toast.error(res.error || "Error al crear colaborador")
       }
@@ -325,6 +391,8 @@ export function TaskCollaboratorsManager({
     setEditTaskRole(collab.task_role || "specialist")
     setEditPhotoUrl(collab.photo_url || "")
     setEditIsActive(collab.is_active ?? true)
+    setEditHasGlobalAccess(collab.has_global_workspace_access ?? true)
+    setEditSelectedWorkspaceIds(collab.workspace_ids || [])
     setIsEditModalOpen(true)
   }
 
@@ -347,6 +415,8 @@ export function TaskCollaboratorsManager({
         taskRole: editTaskRole,
         photoUrl: editPhotoUrl || null,
         isActive: editIsActive,
+        workspaceIds: editHasGlobalAccess ? [] : editSelectedWorkspaceIds,
+        hasGlobalWorkspaceAccess: editHasGlobalAccess,
       })
 
       if (res.success && res.collaborator) {
@@ -488,9 +558,42 @@ export function TaskCollaboratorsManager({
 
                     {/* Cargo / Especialidad */}
                     <td className="p-3.5">
-                      <div className="flex items-center gap-1.5 font-medium text-foreground">
-                        {getRoleIcon(collab.role)}
-                        <span>{collab.role}</span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 font-medium text-foreground">
+                          {getRoleIcon(collab.role)}
+                          <span>{collab.role}</span>
+                        </div>
+                        {/* Assigned Workspaces Badges */}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {collab.has_global_workspace_access !== false ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 font-medium">
+                              <Globe className="w-2.5 h-2.5 opacity-70" />
+                              Todos los espacios
+                            </span>
+                          ) : collab.workspace_ids && collab.workspace_ids.length > 0 ? (
+                            collab.workspace_ids.map((wsId) => {
+                              const ws = workspaces.find((w) => w.id === wsId)
+                              if (!ws) return null
+                              return (
+                                <span
+                                  key={wsId}
+                                  className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-mono font-medium"
+                                  style={{
+                                    backgroundColor: `${ws.color}15`,
+                                    color: ws.color,
+                                    border: `1px solid ${ws.color}35`,
+                                  }}
+                                >
+                                  {ws.key_prefix ? `[${ws.key_prefix}]` : ws.name}
+                                </span>
+                              )
+                            })
+                          ) : (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                              Sin espacios asignados
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -576,6 +679,15 @@ export function TaskCollaboratorsManager({
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>Abrir</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDelete(collab)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors"
+                          title="Eliminar colaborador"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </Button>
                       </div>
                     </td>
@@ -714,6 +826,107 @@ export function TaskCollaboratorsManager({
                   className="h-9 text-xs"
                 />
               </div>
+            </div>
+
+            {taskRole === "pm" && (
+              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-start gap-2.5">
+                <Briefcase className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Portal de Doble Vista Activo (Gestor de Proyecto / Lead)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador tendrá acceso dual en su portal privado: <strong>Dashboard Táctico</strong> (telemetría de sprints y métricas globales del equipo) + <strong>Gestión</strong> (tablero Kanban general, ribbon de miembros, creación de tickets y reasignaciones).
+                  </p>
+                </div>
+              </div>
+            )}
+            {taskRole === "qa_lead" && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Cola de QA & Validación Activa
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador tendrá acceso prioritario en su portal para revisar tickets en cola de QA, validar entregables y certificar pasos a UAT / producción.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Espacios de Trabajo Asignados */}
+            <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-primary" />
+                    Acceso Global a Todos los Espacios
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área.
+                  </span>
+                </div>
+                <Switch
+                  checked={hasGlobalAccess}
+                  onCheckedChange={setHasGlobalAccess}
+                />
+              </div>
+
+              {!hasGlobalAccess && (
+                <div className="pt-2.5 border-t border-border/40 space-y-2">
+                  <label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                    <span>Espacios Permitidos ({selectedWorkspaceIds.length} seleccionados):</span>
+                    {workspaces.length === 0 && (
+                      <span className="text-destructive text-[10px]">No hay espacios creados</span>
+                    )}
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {workspaces.map((ws) => {
+                      const isSelected = selectedWorkspaceIds.includes(ws.id)
+                      return (
+                        <div
+                          key={ws.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedWorkspaceIds((prev) => prev.filter((id) => id !== ws.id))
+                            } else {
+                              setSelectedWorkspaceIds((prev) => [...prev, ws.id])
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all",
+                            isSelected
+                              ? "bg-primary/10 border-primary/40 text-foreground shadow-xs"
+                              : "bg-card hover:bg-muted/40 border-border/50 text-muted-foreground"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0",
+                              isSelected
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/40 bg-transparent"
+                            )}
+                          >
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: ws.color || "#0284c7" }}
+                          />
+                          <span className="truncate font-medium flex-1">{ws.name}</span>
+                          {ws.key_prefix && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-muted font-mono text-muted-foreground shrink-0">
+                              [{ws.key_prefix}]
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground space-y-1">
@@ -875,6 +1088,107 @@ export function TaskCollaboratorsManager({
               </div>
             </div>
 
+            {editTaskRole === "pm" && (
+              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-start gap-2.5">
+                <Briefcase className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Portal de Doble Vista Activo (Gestor de Proyecto / Lead)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador tiene acceso dual en su portal privado: <strong>Dashboard Táctico</strong> (telemetría de sprints y métricas globales del equipo) + <strong>Gestión</strong> (tablero Kanban general, ribbon de miembros, creación de tickets y reasignaciones).
+                  </p>
+                </div>
+              </div>
+            )}
+            {editTaskRole === "qa_lead" && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Cola de QA & Validación Activa
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador tiene acceso prioritario en su portal para revisar tickets en cola de QA, validar entregables y certificar pasos a UAT / producción.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Espacios de Trabajo Asignados */}
+            <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-primary" />
+                    Acceso Global a Todos los Espacios
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área.
+                  </span>
+                </div>
+                <Switch
+                  checked={editHasGlobalAccess}
+                  onCheckedChange={setEditHasGlobalAccess}
+                />
+              </div>
+
+              {!editHasGlobalAccess && (
+                <div className="pt-2.5 border-t border-border/40 space-y-2">
+                  <label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                    <span>Espacios Permitidos ({editSelectedWorkspaceIds.length} seleccionados):</span>
+                    {workspaces.length === 0 && (
+                      <span className="text-destructive text-[10px]">No hay espacios creados</span>
+                    )}
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {workspaces.map((ws) => {
+                      const isSelected = editSelectedWorkspaceIds.includes(ws.id)
+                      return (
+                        <div
+                          key={ws.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setEditSelectedWorkspaceIds((prev) => prev.filter((id) => id !== ws.id))
+                            } else {
+                              setEditSelectedWorkspaceIds((prev) => [...prev, ws.id])
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition-all",
+                            isSelected
+                              ? "bg-primary/10 border-primary/40 text-foreground shadow-xs"
+                              : "bg-card hover:bg-muted/40 border-border/50 text-muted-foreground"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0",
+                              isSelected
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/40 bg-transparent"
+                            )}
+                          >
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: ws.color || "#0284c7" }}
+                          />
+                          <span className="truncate font-medium flex-1">{ws.name}</span>
+                          {ws.key_prefix && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-muted font-mono text-muted-foreground shrink-0">
+                              [{ws.key_prefix}]
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Activo Switch */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/60">
               <div className="space-y-0.5">
@@ -891,26 +1205,214 @@ export function TaskCollaboratorsManager({
               />
             </div>
 
-            <DialogFooter className="gap-2 pt-2">
+            <DialogFooter className="gap-2 pt-2 items-center justify-between">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={() => {
+                  if (editingCollab) {
+                    setIsEditModalOpen(false)
+                    handleOpenDelete(editingCollab)
+                  }
+                }}
                 disabled={isSubmittingEdit}
-                className="text-xs"
+                className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 hover:border-destructive/60 gap-1.5 px-3 mr-auto"
               >
-                Cancelar
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                Eliminar
               </Button>
-              <Button
-                size="sm"
-                onClick={handleUpdate}
-                disabled={isSubmittingEdit}
-                className="text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
-              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditModalOpen(false)}
+                  disabled={isSubmittingEdit}
+                  className="text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleUpdate}
+                  disabled={isSubmittingEdit}
+                  className="text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Delete Collaborator Confirmation & Reassignment */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={(open) => !isSubmittingDelete && setIsDeleteModalOpen(open)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              ¿Eliminar colaborador?
+            </DialogTitle>
+          </DialogHeader>
+
+          {collabToDelete && (
+            <div className="space-y-4 pt-2">
+              {/* Member Card Summary */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
+                <Avatar className="w-10 h-10 border border-border shrink-0">
+                  <AvatarImage src={getCollaboratorAvatar(collabToDelete.photo_url, collabToDelete.first_name)} />
+                  <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                    {collabToDelete.first_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-bold text-foreground truncate">
+                    {collabToDelete.first_name} {collabToDelete.last_name}
+                  </h4>
+                  <p className="text-xs text-muted-foreground truncate">{collabToDelete.role}</p>
+                </div>
+              </div>
+
+              {/* Tasks Impact Assessment */}
+              {(collabToDelete.assigned_tasks_count || 0) > 0 ? (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block mb-0.5">
+                        Este colaborador tiene {collabToDelete.assigned_tasks_count} tarea(s) asignada(s).
+                      </span>
+                      <span>Define qué sucederá con estas tareas antes de continuar:</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Option 1: Unassign */}
+                    <div
+                      onClick={() => setDeleteAction("unassign")}
+                      className={cn(
+                        "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors text-xs",
+                        deleteAction === "unassign"
+                          ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary/30"
+                          : "border-border/60 hover:bg-muted/30 text-muted-foreground"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="deleteAction"
+                        checked={deleteAction === "unassign"}
+                        onChange={() => setDeleteAction("unassign")}
+                        className="mt-0.5 text-primary focus:ring-primary"
+                      />
+                      <div>
+                        <span className="font-semibold block text-foreground">
+                          Desasignar tareas (Quedarán sin responsable)
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          Las tareas se conservarán en sus proyectos correspondientes para ser tomadas más adelante.
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Reassign */}
+                    {localCollaborators.filter((c) => c.id !== collabToDelete.id).length > 0 && (
+                      <div
+                        onClick={() => setDeleteAction("reassign")}
+                        className={cn(
+                          "flex flex-col gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors text-xs",
+                          deleteAction === "reassign"
+                            ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary/30"
+                            : "border-border/60 hover:bg-muted/30 text-muted-foreground"
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="deleteAction"
+                            checked={deleteAction === "reassign"}
+                            onChange={() => setDeleteAction("reassign")}
+                            className="mt-0.5 text-primary focus:ring-primary"
+                          />
+                          <div>
+                            <span className="font-semibold block text-foreground">
+                              Reasignar tareas a otro colaborador
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              Todas las tareas activas se transferirán inmediatamente al miembro seleccionado.
+                            </span>
+                          </div>
+                        </div>
+
+                        {deleteAction === "reassign" && (
+                          <div className="pl-6 pt-1">
+                            <Select value={reassignStaffId} onValueChange={setReassignStaffId}>
+                              <SelectTrigger className="h-8 text-xs bg-background">
+                                <SelectValue placeholder="Seleccionar colaborador destino..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {localCollaborators
+                                  .filter((c) => c.id !== collabToDelete.id)
+                                  .map((c) => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">
+                                      <div className="flex items-center gap-2">
+                                        <span>
+                                          {c.first_name} {c.last_name}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground font-mono">
+                                          ({c.role})
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Este colaborador no tiene tareas asignadas actualmente. Al eliminarlo, se revocará de inmediato el
+                  acceso a su portal privado de tareas.
+                </p>
+              )}
+
+              <DialogFooter className="gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isSubmittingDelete}
+                  className="text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={isSubmittingDelete || (deleteAction === "reassign" && !reassignStaffId)}
+                  className="text-xs gap-1.5 font-semibold text-white bg-destructive hover:bg-destructive/90 shadow-sm"
+                >
+                  {isSubmittingDelete ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Eliminando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5 text-white" />
+                      Eliminar Colaborador
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

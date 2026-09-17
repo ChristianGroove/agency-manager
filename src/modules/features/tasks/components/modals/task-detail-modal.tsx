@@ -40,7 +40,7 @@ import {
   TrendingUp
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment } from "../../types"
-import { parseTaskChecklist } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
 import {
   updateTask,
   updateTaskProgress,
@@ -52,6 +52,7 @@ import {
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
+import { TaskTagSelector } from "../tags/task-tag-selector"
 
 interface TaskDetailModalProps {
   task: TaskItem | null
@@ -78,6 +79,7 @@ export function TaskDetailModal({
   const initialStatusRef = useRef<TaskStatus>(task.status)
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [type, setType] = useState<TaskType>(task.type)
+  const [tags, setTags] = useState<string[]>(task.tags || [])
   const [progress, setProgress] = useState(task.progress_percentage || 0)
   const [assignedStaffId, setAssignedStaffId] = useState<string>(task.assigned_staff_id || "unassigned")
   const [qaStaffId, setQaStaffId] = useState<string>(task.qa_staff_id || "unassigned")
@@ -106,6 +108,7 @@ export function TaskDetailModal({
       setTitle(task.title)
       setDescription(task.description || "")
       setStatus(task.status)
+      setTags(task.tags || [])
       initialStatusRef.current = task.status
       setPriority(task.priority)
       setType(task.type)
@@ -120,6 +123,20 @@ export function TaskDetailModal({
       loadComments(task.id)
     }
   }, [task?.id])
+
+  const handleTagsChange = async (newTags: string[]) => {
+    if (!task) return
+    setTags(newTags)
+    try {
+      const res = await updateTask(task.id, { tags: newTags })
+      if (res.success && res.task) {
+        onTaskUpdated?.(res.task)
+        toast.success("Etiquetas actualizadas")
+      }
+    } catch (err: any) {
+      toast.error("Error al actualizar etiquetas")
+    }
+  }
 
   const loadComments = async (taskId: string) => {
     setLoadingComments(true)
@@ -150,6 +167,7 @@ export function TaskDetailModal({
         actual_hours: Number(actualHours),
         due_date: dueDate || null,
         checklist,
+        tags,
         attachments,
       })
 
@@ -396,7 +414,7 @@ export function TaskDetailModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-base md:text-lg font-semibold bg-background"
-                placeholder="Nombre de la tarea..."
+                placeholder="Título de la tarea o requerimiento..."
               />
             </div>
 
@@ -786,6 +804,11 @@ export function TaskDetailModal({
                   <SelectItem value="blocked">Bloqueado</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Tags & Quality Stages */}
+            <div className="pt-1 border-t border-border/60">
+              <TaskTagSelector tags={tags} onChange={handleTagsChange} />
             </div>
 
             {/* Priority */}

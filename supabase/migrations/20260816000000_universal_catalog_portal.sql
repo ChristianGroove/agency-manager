@@ -68,7 +68,7 @@ BEGIN
     
     ALTER TABLE public.service_catalog
     ADD CONSTRAINT service_catalog_type_check 
-    CHECK (type = ANY (ARRAY['recurring'::text, 'one_off'::text, 'product'::text, 'physical'::text, 'digital'::text, 'service'::text, 'subscription'::text]));
+    CHECK (type = ANY (ARRAY['recurring'::text, 'one_off'::text, 'product'::text, 'physical'::text, 'digital'::text, 'service'::text, 'subscription'::text, 'real_estate'::text]));
 
     -- Drop existing classification check constraint if exists
     IF EXISTS (
@@ -81,7 +81,7 @@ BEGIN
 
     ALTER TABLE public.service_catalog
     ADD CONSTRAINT service_catalog_classification_check 
-    CHECK (classification = ANY (ARRAY['physical'::text, 'digital'::text, 'service'::text, 'subscription'::text]));
+    CHECK (classification = ANY (ARRAY['physical'::text, 'digital'::text, 'service'::text, 'subscription'::text, 'real_estate'::text]));
 END $$;
 
 -- 1.6 Data Backfills for Legacy Rows

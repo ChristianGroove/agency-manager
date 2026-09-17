@@ -56,6 +56,7 @@ import type {
   TaskAttachment
 } from "../../types"
 import { createTask, uploadTaskAttachment } from "../../actions/task-actions"
+import { TaskTagSelector } from "../tags/task-tag-selector"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -90,6 +91,7 @@ export function TaskFormModal({
   const [status, setStatus] = useState<TaskStatus>(defaultStatus)
   const [priority, setPriority] = useState<TaskPriority>("medium")
   const [type, setType] = useState<TaskType>("task")
+  const [tags, setTags] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [assignedStaffId, setAssignedStaffId] = useState("unassigned")
   const [qaStaffId, setQaStaffId] = useState("unassigned")
@@ -123,6 +125,7 @@ export function TaskFormModal({
       setStatus(defaultStatus || "todo")
       setPriority("medium")
       setType("task")
+      setTags([])
       setProgress(0)
       setAssignedStaffId("unassigned")
       setQaStaffId("unassigned")
@@ -309,6 +312,7 @@ export function TaskFormModal({
         estimated_hours: Number(estimatedHours) || 0,
         actual_hours: Number(actualHours) || 0,
         checklist,
+        tags,
         attachments,
       })
 
@@ -342,30 +346,16 @@ export function TaskFormModal({
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.rar,.txt"
         />
 
-        {/* Top Header - Jira / Linear Style */}
-        <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Badge className="bg-primary text-primary-foreground font-mono text-xs font-bold px-3 py-1 rounded-lg whitespace-nowrap shrink-0 shadow-xs">
-              + NUEVO TICKET
-            </Badge>
-
-            {selectedProject && (
-              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: selectedProject.color }}
-                />
-                {selectedProject.name}
-              </span>
-            )}
-
-            <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 text-[11px] px-2 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-              <Layers className="w-3 h-3 text-indigo-500" />
-              Gestor de Proyecto (Configuración Completa)
-            </Badge>
+        {/* Top Header - Modern Linear / Jira Style */}
+        <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+            <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
+              Nuevo Ticket de Sprint
+            </h2>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
               onClick={handleSubmit}
@@ -378,7 +368,7 @@ export function TaskFormModal({
                   Creando...
                 </>
               ) : (
-                "Crear Ticket de Sprint"
+                "Crear Ticket"
               )}
             </Button>
 
@@ -432,7 +422,7 @@ export function TaskFormModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-base sm:text-lg font-bold bg-background rounded-xl"
-                placeholder="Ej. Integración de webhooks, diseño de pantalla de pago, QA de checkout..."
+                placeholder="Título de la tarea o requerimiento..."
               />
             </div>
 
@@ -852,6 +842,11 @@ export function TaskFormModal({
                   <SelectItem value="delivery">Entrega de Cliente</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Tags & Quality Stages */}
+            <div className="pt-2 border-t border-border/60">
+              <TaskTagSelector tags={tags} onChange={setTags} />
             </div>
 
             {/* Assignee */}
