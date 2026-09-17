@@ -321,6 +321,7 @@ graph LR
 - Los líderes y colaboradores pueden asignar entregables a la semana objetivo directamente desde los modales de creación y detalle (`task-form-modal.tsx`, `task-detail-modal.tsx`, `task-portal-detail-modal.tsx`).
 - **Lógica Temporal y Auditoría Semanal**:
   - **Tareas con Entregables por Semana (`target_week`)**: Cada semana mide estrictamente los entregables comprometidos para esa semana. Si una semana no tiene entregables programados, se presenta como `— Plan`, evitando catalogarla erróneamente en retraso. El retraso (`delayed`) solo se dispara si una semana pasada tenía entregables comprometidos que no se finalizaron o si el ticket está bloqueado.
+  - **Tareas con Entregable Único**: Si un ticket tiene un solo entregable asignado (ej. S2), las semanas previas se mantienen en `— Plan` sin penalización. Durante la semana activa, si el usuario trabaja en ella, el slider global se refleja en dicha semana (ej. 50% en progreso) hasta marcar el check para alcanzar el 100% definitivo.
   - **Tareas Estándar (Sin Entregables Semanales)**: Se eliminó el esquema de cuartiles artificiales (que imputaba avance a semanas futuras inexistentes). La semana activa refleja el progreso global real del ticket (ej: 95% en S3). Las semanas futuras se mantienen en `— Plan` (0% de avance). En semanas pasadas, solo se marca retraso si la fecha límite (`due_date`) expiró o si el ticket está bloqueado; las tareas del backlog o en curso normal se reconocen como programadas, eliminando falsos positivos en el semáforo gerencial.
 
 ### B. Matriz Ejecutiva (`TaskWeeklyPacingMatrix`)
@@ -345,6 +346,16 @@ graph LR
   - **Paginación Inteligente**: Control de 25, 50 y 100 registros por página con reseteo automático ante cambios de filtro, garantizando renderizado ágil en tableros con cientos de tickets.
 - **Exportación con 1 Clic**: Botón de copia que formatea un informe ejecutivo estructurado en Markdown listo para comités directivos y canales operativos.
 
+### C. Sistema de Snapshots Automáticos de Corte Semanal
+- **Persistencia Histórica (`task_items.weekly_snapshots`)**:
+  - Columna JSONB que almacena cortes congelados inmutables: `{"s1": number, "s2": number, "s3": number, "s4": number}`.
+  - Resuelve de raíz el problema de regresión de porcentajes en tareas de slider: si un colaborador tuvo 20% en S1 y 35% en S2, y en S3 el PM realiza una regresión a 30%, los cortes de S1 y S2 permanecen grabados fielmente (idéntico al histórico de Excel).
+- **Cron de Corte Semanal (`/api/cron/tasks-pacing-snapshot`)**:
+  - Ejecutable cada domingo a las 23:59 o programable vía Vercel Cron.
+  - Evalúa y congela automáticamente la foto de la semana que cierra para todas las tareas activas de la organización.
+- **Acciones de Ajuste Manual**:
+  - Server actions `saveTaskWeeklySnapshot` y `portalSaveTaskWeeklySnapshot` para que líderes y PMs puedan corregir o auditar manualmente el corte de una semana histórica si fuera necesario.
+
 ---
 
 ## 13. Estructura de Directorios del Módulo
@@ -354,6 +365,8 @@ src/
 ├── app/
 │   └── api/
 │       └── cron/
+│           ├── tasks-pacing-snapshot/
+│           │   └── route.ts                 # Endpoint cron de congelamiento de cortes semanales
 │           └── tasks-recurrence/
 │               └── route.ts                 # Endpoint cron de renovación recurrente
 └── modules/features/tasks/

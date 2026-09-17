@@ -1465,3 +1465,48 @@ export async function getTaskMetrics(orgId?: string, projectId?: string, workspa
     collaboratorWorkload: Array.from(workloadMap.values()).sort((a, b) => b.totalTasks - a.totalTasks)
   };
 }
+
+/**
+ * Save or override a weekly pacing progress snapshot for a specific week (1, 2, 3, or 4)
+ */
+export async function saveTaskWeeklySnapshot(
+  taskId: string,
+  week: 1 | 2 | 3 | 4,
+  progress: number
+): Promise<{ success: boolean; weekly_snapshots?: any; error?: string }> {
+  try {
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("id, weekly_snapshots")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) throw fetchErr || new Error("Tarea no encontrada");
+
+    const currentSnapshots = task.weekly_snapshots && typeof task.weekly_snapshots === "object"
+      ? task.weekly_snapshots
+      : {};
+
+    const weekKey = `s${week}`;
+    const nextSnapshots = {
+      ...currentSnapshots,
+      [weekKey]: Math.max(0, Math.min(100, Math.round(progress))),
+    };
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        weekly_snapshots: nextSnapshots,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId);
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath("/operations/tasks");
+    return { success: true, weekly_snapshots: nextSnapshots };
+  } catch (err: any) {
+    console.error("Error saving task weekly snapshot:", err);
+    return { success: false, error: err.message };
+  }
+}

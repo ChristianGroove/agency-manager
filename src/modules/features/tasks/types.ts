@@ -191,6 +191,12 @@ export interface TaskItem {
   parent_recurring_id?: string | null;
   last_recurred_at?: string | null;
   next_recurrence_at?: string | null;
+  weekly_snapshots?: {
+    s1?: number | null;
+    s2?: number | null;
+    s3?: number | null;
+    s4?: number | null;
+  } | null;
   created_at: string;
   updated_at: string;
   // Joined
@@ -332,6 +338,7 @@ export function normalizeTask(task: any): TaskItem {
     progress_percentage: Number(task.progress_percentage || 0),
     estimated_hours: Number(task.estimated_hours || 0),
     actual_hours: Number(task.actual_hours || 0),
+    weekly_snapshots: task.weekly_snapshots && typeof task.weekly_snapshots === "object" ? task.weekly_snapshots : {},
   };
 }
 
@@ -498,6 +505,46 @@ export function getTaskWeeklyPacing(
       };
     }
 
+    // 1. Check if there is an inmutable recorded snapshot for past week w
+    const snapshotKey = `s${w}` as 's1' | 's2' | 's3' | 's4';
+    const snapshotVal = task.weekly_snapshots && typeof task.weekly_snapshots[snapshotKey] === 'number'
+      ? task.weekly_snapshots[snapshotKey]
+      : null;
+
+    if (isPastWeek && snapshotVal !== null) {
+      // Use frozen historical cut for past week!
+      progress = snapshotVal;
+      hasSchedule = true;
+      if (progress === 100) {
+        status = 'completed';
+      } else if (hasTargetWeeks) {
+        const itemsInWeek = checklist.filter((c) => c.target_week === w);
+        totalItems = itemsInWeek.length;
+        doneItems = itemsInWeek.filter((c) => c.completed).length;
+        status = totalItems > 0 && doneItems < totalItems ? 'delayed' : 'pending';
+      } else {
+        const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
+        if (isBlocked || isPastDue) {
+          status = 'delayed';
+        } else if (progress > 0) {
+          status = 'on_track';
+        } else {
+          status = 'pending';
+        }
+      }
+
+      return {
+        week: w,
+        label: `Semana ${w}`,
+        dateRange: dateRanges[idx],
+        progress,
+        totalDeliverables: totalItems,
+        completedDeliverables: doneItems,
+        status,
+        hasSchedule,
+      };
+    }
+
     if (hasTargetWeeks) {
       // CASE 1: Task has explicit checklist deliverables per week
       const itemsInWeek = checklist.filter((c) => c.target_week === w);
@@ -505,6 +552,11 @@ export function getTaskWeeklyPacing(
       doneItems = itemsInWeek.filter((c) => c.completed).length;
       hasSchedule = totalItems > 0;
       progress = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+
+      // If single deliverable in this week is not yet checked, but global slider has progress, reflect active progress!
+      if (totalItems === 1 && doneItems === 0 && globalProg > 0 && isCurrentWeek) {
+        progress = globalProg;
+      }
 
       if (!hasSchedule) {
         // No deliverables planned for this week -> Not a delay!

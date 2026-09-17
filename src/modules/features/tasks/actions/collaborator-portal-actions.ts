@@ -1107,3 +1107,59 @@ export async function portalUploadTaskAttachment(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Portal action: Save or override weekly pacing snapshot for a task
+ */
+export async function portalSaveTaskWeeklySnapshot(
+  accessToken: string,
+  taskId: string,
+  week: 1 | 2 | 3 | 4,
+  progress: number
+): Promise<{ success: boolean; weekly_snapshots?: any; error?: string }> {
+  try {
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, organization_id, role")
+      .eq("access_token", accessToken)
+      .eq("is_active", true)
+      .single();
+
+    if (!staff) throw new Error("Acceso no autorizado");
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("id, weekly_snapshots")
+      .eq("id", taskId)
+      .eq("organization_id", staff.organization_id)
+      .single();
+
+    if (fetchErr || !task) throw fetchErr || new Error("Tarea no encontrada");
+
+    const currentSnapshots = task.weekly_snapshots && typeof task.weekly_snapshots === "object"
+      ? task.weekly_snapshots
+      : {};
+
+    const weekKey = `s${week}`;
+    const nextSnapshots = {
+      ...currentSnapshots,
+      [weekKey]: Math.max(0, Math.min(100, Math.round(progress))),
+    };
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        weekly_snapshots: nextSnapshots,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId)
+      .eq("organization_id", staff.organization_id);
+
+    if (updateErr) throw updateErr;
+
+    return { success: true, weekly_snapshots: nextSnapshots };
+  } catch (err: any) {
+    console.error("Portal save task weekly snapshot error:", err);
+    return { success: false, error: err.message };
+  }
+}
