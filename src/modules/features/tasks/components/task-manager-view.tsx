@@ -211,52 +211,43 @@ export function TaskManagerView({
       : projectTasks
   }, [activeTab, selectedMemberFilter, projectTasks])
 
-  // Recompute quick summary counts
+  // Summary counts for filter tabs
   const summaryCounts = useMemo(() => {
+    let backlog = 0
     let todo = 0
     let inProgress = 0
     let inQa = 0
-    let qaFailed = 0
-    let uat = 0
-    let vendorBlocked = 0
+    let blocked = 0
     let completed = 0
-    let urgent = 0
 
     baseTasks.forEach((t: TaskItem) => {
-      if (t.status === "todo" || t.status === "backlog") todo++
+      if (t.status === "backlog") backlog++
+      else if (t.status === "todo") todo++
       else if (t.status === "in_progress") inProgress++
       else if (t.status === "in_review") inQa++
+      else if (t.status === "blocked") blocked++
       else if (t.status === "done") completed++
-
-      if (t.tags?.includes("qa-failed")) qaFailed++
-      if (t.tags?.includes("uat")) uat++
-      if (t.tags?.includes("vendor-blocked") || t.status === "blocked") vendorBlocked++
-      if (t.priority === "urgent") urgent++
     })
 
     return {
       total: baseTasks.length,
+      backlog,
       todo,
       inProgress,
       inQa,
-      qaFailed,
-      uat,
-      vendorBlocked,
+      blocked,
       completed,
-      urgent,
     }
   }, [baseTasks])
 
   const {
     total: totalCount,
+    backlog: backlogCount,
     todo: todoCount,
     inProgress: inProgressCount,
     inQa: inQaCount,
-    qaFailed: qaFailedCount,
-    uat: uatCount,
-    vendorBlocked: vendorBlockedCount,
+    blocked: blockedCount,
     completed: completedCount,
-    urgent: urgentCount,
   } = summaryCounts
 
   // Filter by search & status
@@ -264,14 +255,12 @@ export function TaskManagerView({
     const q = searchTerm.trim().toLowerCase()
     return baseTasks.filter((t: TaskItem) => {
       let matchesStatus = true
-      if (statusFilter === "todo") matchesStatus = t.status === "todo" || t.status === "backlog"
+      if (statusFilter === "backlog") matchesStatus = t.status === "backlog"
+      else if (statusFilter === "todo") matchesStatus = t.status === "todo"
       else if (statusFilter === "in_progress") matchesStatus = t.status === "in_progress"
       else if (statusFilter === "in_review") matchesStatus = t.status === "in_review"
-      else if (statusFilter === "qa_failed") matchesStatus = Boolean(t.tags?.includes("qa-failed"))
-      else if (statusFilter === "uat") matchesStatus = Boolean(t.tags?.includes("uat"))
-      else if (statusFilter === "vendor_blocked") matchesStatus = Boolean(t.tags?.includes("vendor-blocked") || t.status === "blocked")
+      else if (statusFilter === "blocked") matchesStatus = t.status === "blocked"
       else if (statusFilter === "done") matchesStatus = t.status === "done"
-      else if (statusFilter === "urgent") matchesStatus = t.priority === "urgent"
 
       if (!matchesStatus) return false
 
@@ -480,14 +469,12 @@ export function TaskManagerView({
             searchPlaceholder="Buscar por código, título o responsable..."
             filters={[
               { id: "all", label: "Todas", count: totalCount },
-              { id: "todo", label: "Por Hacer", count: todoCount, color: "slate" },
+              { id: "backlog", label: "Backlog", count: backlogCount, color: "slate" },
+              { id: "todo", label: "Por Hacer", count: todoCount, color: "sky" },
               { id: "in_progress", label: "En Curso", count: inProgressCount, color: "indigo" },
               { id: "in_review", label: "En QA", count: inQaCount, color: "amber" },
-              { id: "qa_failed", label: "⚠️ Con Errores", count: qaFailedCount, color: "red" },
-              { id: "uat", label: "👤 En UAT", count: uatCount, color: "purple" },
-              { id: "vendor_blocked", label: "⏸️ Suspendidas", count: vendorBlockedCount, color: "orange" },
+              { id: "blocked", label: "Bloqueadas", count: blockedCount, color: "red" },
               { id: "done", label: "Completadas", count: completedCount, color: "emerald" },
-              { id: "urgent", label: "Urgentes", count: urgentCount, color: "red" },
             ]}
             activeFilter={statusFilter}
             onFilterChange={setStatusFilter}

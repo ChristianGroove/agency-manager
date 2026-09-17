@@ -1003,7 +1003,8 @@ export function TaskCollaboratorPortal({
 
   // Calculate status counts on base source before status filter
   const countAll = baseSourceTasks.length
-  const countTodo = baseSourceTasks.filter((t) => t.status === "todo" || t.status === "backlog").length
+  const countBacklog = baseSourceTasks.filter((t) => t.status === "backlog").length
+  const countTodo = baseSourceTasks.filter((t) => t.status === "todo").length
   const countInProgress = baseSourceTasks.filter((t) => t.status === "in_progress").length
   const countInReview = baseSourceTasks.filter((t) => t.status === "in_review").length
   const countBlocked = baseSourceTasks.filter((t) => t.status === "blocked").length
@@ -1011,8 +1012,10 @@ export function TaskCollaboratorPortal({
 
   // Apply status filter
   let filteredTasks = baseSourceTasks
-  if (statusFilter === "todo") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "todo" || t.status === "backlog")
+  if (statusFilter === "backlog") {
+    filteredTasks = filteredTasks.filter((t) => t.status === "backlog")
+  } else if (statusFilter === "todo") {
+    filteredTasks = filteredTasks.filter((t) => t.status === "todo")
   } else if (statusFilter === "in_progress") {
     filteredTasks = filteredTasks.filter((t) => t.status === "in_progress")
   } else if (statusFilter === "in_review") {
@@ -1508,7 +1511,8 @@ export function TaskCollaboratorPortal({
             searchPlaceholder="Buscar por código, título o descripción..."
             filters={[
               { id: "all", label: "Todas", count: countAll },
-              { id: "todo", label: "Por Hacer", count: countTodo, color: "slate" },
+              { id: "backlog", label: "Backlog", count: countBacklog, color: "slate" },
+              { id: "todo", label: "Por Hacer", count: countTodo, color: "sky" },
               { id: "in_progress", label: "En Curso", count: countInProgress, color: "indigo" },
               { id: "in_review", label: "En QA", count: countInReview, color: "amber" },
               { id: "blocked", label: "Bloqueadas", count: countBlocked, color: "red" },
@@ -1795,6 +1799,16 @@ export function TaskCollaboratorPortal({
                         {task.priority === "urgent" && (
                           <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 text-[10px] px-2 py-0.5 font-bold rounded-lg">
                             Urgente
+                          </Badge>
+                        )}
+                        {task.status === "backlog" && (
+                          <Badge className="bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 text-[10px] px-2 py-0.5 font-bold rounded-lg">
+                            Backlog
+                          </Badge>
+                        )}
+                        {task.status === "todo" && (
+                          <Badge className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 text-[10px] px-2 py-0.5 font-bold rounded-lg">
+                            Por Hacer
                           </Badge>
                         )}
                         {task.status === "done" && (
@@ -2089,10 +2103,22 @@ export function TaskCollaboratorPortal({
                             ? "text-indigo-600 border-indigo-500/20 bg-indigo-500/10"
                             : task.status === "blocked"
                             ? "text-rose-600 border-rose-500/20 bg-rose-500/10"
-                            : "text-zinc-600 border-zinc-200"
+                            : task.status === "backlog"
+                            ? "text-slate-600 border-slate-500/20 bg-slate-500/10"
+                            : "text-sky-600 border-sky-500/20 bg-sky-500/10"
                         )}
                       >
-                        {task.status === "done" ? "Listo" : task.status === "in_review" ? "QA" : task.status === "in_progress" ? "Curso" : task.status === "blocked" ? "Bloqueado" : "Por Hacer"}
+                        {task.status === "done"
+                          ? "Listo"
+                          : task.status === "in_review"
+                          ? "QA"
+                          : task.status === "in_progress"
+                          ? "Curso"
+                          : task.status === "blocked"
+                          ? "Bloqueado"
+                          : task.status === "backlog"
+                          ? "Backlog"
+                          : "Por Hacer"}
                       </Badge>
                     </div>
 
@@ -2335,6 +2361,8 @@ export function TaskCollaboratorPortal({
                                 ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
                                 : task.status === "blocked"
                                 ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                : task.status === "backlog"
+                                ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
                                 : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
                             )}
                           >
@@ -2346,6 +2374,8 @@ export function TaskCollaboratorPortal({
                               ? "En Curso"
                               : task.status === "blocked"
                               ? "Bloqueado"
+                              : task.status === "backlog"
+                              ? "Backlog"
                               : "Por Hacer"}
                           </Badge>
                         </td>

@@ -194,6 +194,7 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
                             <SelectItem value="todo">Por Hacer</SelectItem>
                             <SelectItem value="in_progress">En Progreso</SelectItem>
                             <SelectItem value="in_review">Revisión / QA</SelectItem>
+                            <SelectItem value="blocked">Bloqueado</SelectItem>
                             <SelectItem value="done">Completado</SelectItem>
                           </SelectContent>
                         </Select>
