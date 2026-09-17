@@ -119,9 +119,12 @@ export function TaskWeeklyPacingMatrix({
     setCurrentPage(1)
   }, [searchQuery, selectedMember, selectedProject, filterPreset, currentDate])
 
-  // Base tasks for current project and member scope
+  // Base tasks for current project and member scope (excludes backlog as it represents unscheduled/dormant work)
   const baseTasks = useMemo(() => {
     return tasks.filter((task) => {
+      // Exclude backlog tickets from sprint pacing
+      if (task.status === "backlog") return false
+
       // Member
       if (selectedMember !== "all") {
         if (task.assigned_staff_id !== selectedMember) return false
