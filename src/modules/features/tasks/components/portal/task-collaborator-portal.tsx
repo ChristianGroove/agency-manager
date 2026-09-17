@@ -83,7 +83,8 @@ import {
   FolderPlus,
   LayoutDashboard,
   Kanban,
-  User
+  User,
+  CalendarDays,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -110,6 +111,7 @@ import { ProjectFormModal } from "../modals/project-form-modal"
 import { WorkspaceFormModal } from "../modals/workspace-form-modal"
 import { TaskPmOperationsDashboard } from "./task-pm-operations-dashboard"
 import { TaskCollaboratorRibbon } from "./task-collaborator-ribbon"
+import { TaskWeeklyPacingMatrix } from "../pacing/task-weekly-pacing-matrix"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
 
@@ -255,8 +257,8 @@ export function TaskCollaboratorPortal({
   // View Mode: 'list' (default) | 'kanban' | 'compact' | 'grid'
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
-  // PM Portal View Mode: 'dashboard' (Hero + futuristic telemetry) | 'gestion' (clean tasks & team review)
-  const [pmViewMode, setPmViewMode] = useState<"dashboard" | "gestion">("dashboard")
+  // PM Portal View Mode: 'dashboard' (Hero + futuristic telemetry) | 'gestion' (clean tasks & team review) | 'pacing' (Weekly Pacing Matrix)
+  const [pmViewMode, setPmViewMode] = useState<"dashboard" | "gestion" | "pacing">("dashboard")
 
   // Active tab filter & collaborator filter
   const [activeTab, setActiveTab] = useState<"my_tasks" | "in_progress" | "qa_queue" | "team_tasks">(
@@ -1085,6 +1087,19 @@ export function TaskCollaboratorPortal({
                 <Kanban className="w-3.5 h-3.5" />
                 <span>Gestión</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setPmViewMode("pacing")}
+                className={cn(
+                  "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                  pmViewMode === "pacing"
+                    ? "bg-white dark:bg-zinc-900 text-primary shadow-sm shadow-black/5 dark:shadow-white/5 border border-zinc-200/50 dark:border-white/10"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>Ritmo Semanal</span>
+              </button>
             </div>
           )}
 
@@ -1430,6 +1445,20 @@ export function TaskCollaboratorPortal({
             onSwitchToGestion={() => setPmViewMode("gestion")}
             onSelectTask={openTaskDetail}
           />
+        )}
+
+        {/* PM Ritmo Semanal (Weekly Pacing Matrix) */}
+        {isLeadOrPm && pmViewMode === "pacing" && (
+          <div className="pt-2 pb-8">
+            <TaskWeeklyPacingMatrix
+              tasks={allTeamTasks && allTeamTasks.length > 0 ? allTeamTasks : tasks}
+              teamMembers={teamMembers}
+              projects={projects}
+              workspaces={workspaces}
+              onSelectTask={openTaskDetail}
+              brandColor={brandColor}
+            />
+          </div>
         )}
 
         {/* Espacio de Gestión Operativa (Siempre visible para colaboradores, o para PM cuando está en modo 'gestion') */}

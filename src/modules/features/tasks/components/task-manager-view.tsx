@@ -26,6 +26,7 @@ import {
   Pencil,
   ChevronDown,
   CheckSquare,
+  CalendarDays,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ import { TaskListView } from "./list/task-list-view"
 import { TaskMetricsView } from "./metrics/task-metrics-view"
 import { TaskCollaboratorsManager } from "./collaborators/task-collaborators-manager"
 import { TaskCollaboratorRibbon } from "./portal/task-collaborator-ribbon"
+import { TaskWeeklyPacingMatrix } from "./pacing/task-weekly-pacing-matrix"
 import { TaskDetailModal } from "./modals/task-detail-modal"
 import { TaskFormModal } from "./modals/task-form-modal"
 import { ProjectFormModal } from "./modals/project-form-modal"
@@ -80,7 +82,7 @@ export function TaskManagerView({
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
-  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "metrics" | "collaborators">("list")
+  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators">("list")
 
   // Search & Status filters
   const [searchTerm, setSearchTerm] = useState("")
@@ -429,6 +431,15 @@ export function TaskManagerView({
               Tablero Kanban
             </Button>
             <Button
+              variant={activeTab === "pacing" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("pacing")}
+              className="h-8 text-xs font-semibold gap-1.5 rounded-md shrink-0"
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              Ritmo Semanal
+            </Button>
+            <Button
               variant={activeTab === "metrics" ? "default" : "ghost"}
               size="sm"
               onClick={() => setActiveTab("metrics")}
@@ -691,6 +702,16 @@ export function TaskManagerView({
             tasks={visibleTasks}
             onSelectTask={handleSelectTask}
             onQuickMoveTask={handleQuickMoveTask}
+          />
+        )}
+
+        {activeTab === "pacing" && (
+          <TaskWeeklyPacingMatrix
+            tasks={projectTasks}
+            teamMembers={collaborators}
+            projects={projects}
+            workspaces={workspaces}
+            onSelectTask={handleSelectTask}
           />
         )}
 

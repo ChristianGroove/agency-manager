@@ -4,12 +4,16 @@ export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery';
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
 export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer' | 'sales' | 'operations' | 'support' | 'consultant';
 
+export type RecurrenceInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'biannual' | 'yearly';
+
 export type TaskChecklistItem = {
   id: string;
   title: string;
   completed: boolean;
   completed_at?: string;
   completed_by?: string;
+  target_week?: 1 | 2 | 3 | 4 | null;
+  due_date?: string | null;
 }
 
 export interface TaskAttachment {
@@ -149,6 +153,16 @@ export const DEFAULT_TENANT_TASK_TAGS: TenantTaskTag[] = [
   { id: "seguridad", name: "seguridad", label: "Seguridad", color: "purple", is_favorite: false },
 ];
 
+export const RECURRENCE_INTERVAL_LABELS: Record<RecurrenceInterval, string> = {
+  daily: 'Diaria (Cada día)',
+  weekly: 'Semanal (Cada semana)',
+  biweekly: 'Quincenal (Cada 15 días)',
+  monthly: 'Mensual (Cada mes)',
+  quarterly: 'Trimestral (Cada 3 meses)',
+  biannual: 'Semestral (Cada 6 meses)',
+  yearly: 'Anual (Cada año)',
+};
+
 export interface TaskItem {
   id: string;
   organization_id: string;
@@ -170,6 +184,13 @@ export interface TaskItem {
   tags: string[];
   attachments: TaskAttachment[];
   order_index: number;
+  // Recurrence Engine
+  is_recurring?: boolean;
+  recurrence_interval?: RecurrenceInterval | null;
+  recurrence_day?: number | null;
+  parent_recurring_id?: string | null;
+  last_recurred_at?: string | null;
+  next_recurrence_at?: string | null;
   created_at: string;
   updated_at: string;
   // Joined
@@ -360,4 +381,86 @@ export function inferTaskRole(role?: string | null): CollaboratorRole {
     return "observer";
   }
   return "specialist";
+}
+
+export interface WeeklyPacingSummary {
+  week: 1 | 2 | 3 | 4;
+  label: string;
+  dateRange: string;
+  progress: number;
+  totalDeliverables: number;
+  completedDeliverables: number;
+  status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending';
+}
+
+/**
+ * Calculates 4-week fractional progress and pacing health status for a task
+ */
+export function getTaskWeeklyPacing(task: TaskItem, now: Date = new Date()): WeeklyPacingSummary[] {
+  const currentDay = now.getDate();
+  const currentWeek: 1 | 2 | 3 | 4 = 
+    currentDay <= 7 ? 1 : currentDay <= 14 ? 2 : currentDay <= 21 ? 3 : 4;
+
+  const checklist = parseTaskChecklist(task.checklist);
+  const hasTargetWeeks = checklist.some((c) => c.target_week && c.target_week >= 1 && c.target_week <= 4);
+
+  const weeks: (1 | 2 | 3 | 4)[] = [1, 2, 3, 4];
+  const dateRanges = [
+    'Días 1 - 7',
+    'Días 8 - 14',
+    'Días 15 - 21',
+    'Días 22 - Fin',
+  ];
+
+  return weeks.map((w, idx) => {
+    let progress = 0;
+    let totalItems = 0;
+    let doneItems = 0;
+
+    if (hasTargetWeeks) {
+      const itemsInWeek = checklist.filter((c) => c.target_week === w);
+      totalItems = itemsInWeek.length;
+      doneItems = itemsInWeek.filter((c) => c.completed).length;
+      progress = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+    } else {
+      // Fallback: fraction of global progress allocated to 4 quartiles (25% each)
+      const globalProg = task.progress_percentage || 0;
+      const lowerBound = (w - 1) * 25;
+      const upperBound = w * 25;
+      if (globalProg >= upperBound) {
+        progress = 100;
+      } else if (globalProg <= lowerBound) {
+        progress = 0;
+      } else {
+        progress = Math.round(((globalProg - lowerBound) / 25) * 100);
+      }
+    }
+
+    let status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending' = 'pending';
+    if (progress === 100 || task.status === 'done') {
+      status = 'completed';
+    } else if (w < currentWeek) {
+      status = 'delayed';
+    } else if (w === currentWeek) {
+      if (progress >= 50) {
+        status = 'on_track';
+      } else if (task.status === 'blocked') {
+        status = 'delayed';
+      } else {
+        status = 'at_risk';
+      }
+    } else {
+      status = progress > 0 ? 'on_track' : 'pending';
+    }
+
+    return {
+      week: w,
+      label: `Semana ${w}`,
+      dateRange: dateRanges[idx],
+      progress,
+      totalDeliverables: totalItems,
+      completedDeliverables: doneItems,
+      status,
+    };
+  });
 }

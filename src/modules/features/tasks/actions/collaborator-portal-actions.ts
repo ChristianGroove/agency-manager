@@ -1,8 +1,9 @@
 "use server"
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
-import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem } from "../types";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval } from "../types";
 import { normalizeTask, parseTaskChecklist } from "../types";
+import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 export interface CollaboratorPortalData {
   staff: {
@@ -714,6 +715,9 @@ export async function portalCreateTask(
     checklist?: TaskChecklistItem[];
     attachments?: TaskAttachment[];
     tags?: string[];
+    isRecurring?: boolean;
+    recurrenceInterval?: RecurrenceInterval | null;
+    recurrenceDay?: number | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -774,7 +778,11 @@ export async function portalCreateTask(
         checklist: taskData.checklist || [],
         tags: taskData.tags || [],
         attachments: taskData.attachments || [],
-        order_index: 0
+        order_index: 0,
+        is_recurring: taskData.isRecurring ?? false,
+        recurrence_interval: taskData.recurrenceInterval || null,
+        recurrence_day: taskData.recurrenceDay || 1,
+        next_recurrence_at: taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null
       })
       .select(`
         *,
@@ -819,6 +827,9 @@ export async function portalUpdateTask(
     checklist?: TaskChecklistItem[];
     attachments?: TaskAttachment[];
     tags?: string[];
+    isRecurring?: boolean;
+    recurrenceInterval?: RecurrenceInterval | null;
+    recurrenceDay?: number | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -908,6 +919,36 @@ export async function portalUpdateTask(
       }
       if (data.dueDate !== undefined) {
         updateData.due_date = data.dueDate || null;
+      }
+      if (data.isRecurring !== undefined) {
+        updateData.is_recurring = data.isRecurring;
+        if (data.isRecurring && data.recurrenceInterval) {
+          updateData.recurrence_interval = data.recurrenceInterval;
+          updateData.recurrence_day = data.recurrenceDay || 1;
+          updateData.next_recurrence_at = calculateNextRecurrence(
+            data.recurrenceInterval,
+            new Date(),
+            data.recurrenceDay || 1
+          ).toISOString();
+        } else if (!data.isRecurring) {
+          updateData.recurrence_interval = null;
+          updateData.next_recurrence_at = null;
+        }
+      } else if (data.recurrenceInterval !== undefined || data.recurrenceDay !== undefined) {
+        if (data.recurrenceInterval) updateData.recurrence_interval = data.recurrenceInterval;
+        if (data.recurrenceDay) updateData.recurrence_day = data.recurrenceDay;
+        const { data: currRTask } = await supabaseAdmin
+          .from("task_items")
+          .select("is_recurring, recurrence_interval, recurrence_day")
+          .eq("id", taskId)
+          .single();
+        if (currRTask?.is_recurring) {
+          const interval = data.recurrenceInterval || currRTask.recurrence_interval;
+          const day = data.recurrenceDay || currRTask.recurrence_day || 1;
+          if (interval) {
+            updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day).toISOString();
+          }
+        }
       }
     } else {
       // Collaborators can also update description or title if provided

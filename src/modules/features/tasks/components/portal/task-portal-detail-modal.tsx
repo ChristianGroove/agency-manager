@@ -44,7 +44,8 @@ import {
   AtSign,
   Download,
   FolderArchive,
-  Hash
+  Hash,
+  RefreshCw,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -54,9 +55,10 @@ import type {
   TaskPriority,
   TaskType,
   TaskChecklistItem,
-  TaskAttachment
+  TaskAttachment,
+  RecurrenceInterval,
 } from "../../types"
-import { parseTaskChecklist } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS } from "../../types"
 import {
   portalCreateTask,
   portalUpdateTask,
@@ -216,6 +218,12 @@ export function TaskPortalDetailModal({
   const [dueDate, setDueDate] = useState(task?.due_date || "")
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>(parseTaskChecklist(task?.checklist))
   const [newChecklistTitle, setNewChecklistTitle] = useState("")
+  const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
+
+  // Recurrence configuration
+  const [isRecurring, setIsRecurring] = useState(task?.is_recurring ?? false)
+  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>(task?.recurrence_interval || "monthly")
+  const [recurrenceDay, setRecurrenceDay] = useState<number>(task?.recurrence_day || 1)
 
   // Attachments & Project References / Files
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments || [])
@@ -260,6 +268,10 @@ export function TaskPortalDetailModal({
       setDueDate(task.due_date || "")
       setChecklist(parseTaskChecklist(task.checklist))
       setAttachments(task.attachments || [])
+      setIsRecurring(task.is_recurring ?? false)
+      setRecurrenceInterval(task.recurrence_interval || "monthly")
+      setRecurrenceDay(task.recurrence_day || 1)
+      setNewChecklistWeek(null)
       loadComments(task.id)
     } else if (isCreating) {
       setSelectedProjectId(defaultProjectId || projects[0]?.id || "")
@@ -279,6 +291,10 @@ export function TaskPortalDetailModal({
       setChecklist([])
       setAttachments([])
       setComments([])
+      setIsRecurring(false)
+      setRecurrenceInterval("monthly")
+      setRecurrenceDay(1)
+      setNewChecklistWeek(null)
     }
   }, [task?.id, isCreating, isOpen])
 
@@ -337,6 +353,9 @@ export function TaskPortalDetailModal({
           checklist,
           tags,
           attachments,
+          isRecurring: isRecurring,
+          recurrenceInterval: isRecurring ? recurrenceInterval : null,
+          recurrenceDay: isRecurring ? recurrenceDay : null,
         })
 
         if (res.success && res.task) {
@@ -377,6 +396,9 @@ export function TaskPortalDetailModal({
           checklist,
           tags: isLeadOrPm || isQa ? tags : undefined,
           attachments,
+          isRecurring: isLeadOrPm ? isRecurring : undefined,
+          recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
+          recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
         })
 
         if (res.success && res.task) {
@@ -511,10 +533,22 @@ export function TaskPortalDetailModal({
       id: `chk-${Date.now()}`,
       title: newChecklistTitle.trim(),
       completed: false,
+      target_week: newChecklistWeek,
     }
     const updated = [...checklist, newItem]
     setChecklist(updated)
     setNewChecklistTitle("")
+
+    if (task && !isCreating) {
+      portalUpdateTask(token, task.id, { checklist: updated }).then((res) => {
+        if (res.success && res.task) onTaskUpdated?.(res.task)
+      })
+    }
+  }
+
+  const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
+    const updated = checklist.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
+    setChecklist(updated)
 
     if (task && !isCreating) {
       portalUpdateTask(token, task.id, { checklist: updated }).then((res) => {
@@ -986,13 +1020,13 @@ export function TaskPortalDetailModal({
                   <motion.div
                     key={item.id}
                     layout
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group"
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={item.completed}
                       onChange={() => handleToggleChecklist(item.id, item.completed)}
-                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary shrink-0"
                     />
                     <span
                       className={`text-xs sm:text-sm flex-1 ${
@@ -1003,15 +1037,44 @@ export function TaskPortalDetailModal({
                     >
                       {item.title}
                     </span>
+
+                    {/* Week tag / selector */}
+                    {isLeadOrPm ? (
+                      <Select
+                        value={item.target_week ? String(item.target_week) : "general"}
+                        onValueChange={(val) =>
+                          handleUpdateChecklistWeek(
+                            item.id,
+                            val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4)
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-6 w-20 text-[10px] font-semibold rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="text-xs">
+                          <SelectItem value="general" className="text-[11px] text-muted-foreground">General</SelectItem>
+                          <SelectItem value="1" className="text-[11px] font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
+                          <SelectItem value="2" className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
+                          <SelectItem value="3" className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
+                          <SelectItem value="4" className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : item.target_week ? (
+                      <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0 shrink-0 border-border/60 bg-muted/30">
+                        Semana {item.target_week}
+                      </Badge>
+                    ) : null}
+
                     {item.completed && (
-                      <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/20 font-semibold px-2 py-0">
+                      <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/20 font-semibold px-2 py-0 shrink-0">
                         Listo
                       </Badge>
                     )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => handleRemoveChecklistItem(item.id)}
                       title="Eliminar subtarea"
                     >
@@ -1020,20 +1083,39 @@ export function TaskPortalDetailModal({
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item */}
-                <div className="flex gap-2 pt-1">
+                {/* Add new checklist item with optional week selector */}
+                <div className="flex items-center gap-2 pt-1">
                   <Input
                     value={newChecklistTitle}
                     onChange={(e) => setNewChecklistTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
                     placeholder="Añadir nueva subtarea..."
-                    className="h-8 text-xs bg-background rounded-lg"
+                    className="h-8 text-xs bg-background rounded-lg flex-1"
                   />
+                  {isLeadOrPm && (
+                    <Select
+                      value={newChecklistWeek ? String(newChecklistWeek) : "general"}
+                      onValueChange={(val) =>
+                        setNewChecklistWeek(val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4))
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-24 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
+                        <SelectValue placeholder="Semana" />
+                      </SelectTrigger>
+                      <SelectContent className="text-xs">
+                        <SelectItem value="general" className="text-xs text-muted-foreground">General</SelectItem>
+                        <SelectItem value="1" className="text-xs font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
+                        <SelectItem value="2" className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
+                        <SelectItem value="3" className="text-xs font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
+                        <SelectItem value="4" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAddChecklistItem}
-                    className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40"
+                    className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40 shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
                     Añadir
@@ -1645,6 +1727,125 @@ export function TaskPortalDetailModal({
                 </div>
               )}
             </div>
+
+            {/* Recurrence Engine */}
+            {(isCreating || isLeadOrPm) && (
+              <div className="p-3 rounded-xl border border-border/80 bg-muted/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <RefreshCw className={cn("w-3.5 h-3.5", isRecurring ? "text-primary animate-spin-slow" : "text-muted-foreground")} />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                      Tarea Periódica / Recurrente
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setIsRecurring(checked)
+                      if (!isCreating && task) {
+                        portalUpdateTask(token, task.id, {
+                          isRecurring: checked,
+                          recurrenceInterval: checked ? recurrenceInterval : null,
+                          recurrenceDay: checked ? recurrenceDay : null,
+                        }).then((res) => {
+                          if (res.success && res.task) {
+                            onTaskUpdated?.(res.task)
+                            toast.success(checked ? "Recurrencia activada" : "Recurrencia desactivada")
+                          }
+                        })
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                  />
+                </div>
+
+                {isRecurring && (
+                  <div className="space-y-2 pt-2 border-t border-border/50">
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                        Frecuencia de Renovación
+                      </label>
+                      <Select
+                        value={recurrenceInterval}
+                        onValueChange={(val: RecurrenceInterval) => {
+                          setRecurrenceInterval(val)
+                          if (!isCreating && task) {
+                            portalUpdateTask(token, task.id, {
+                              recurrenceInterval: val,
+                            }).then((res) => {
+                              if (res.success && res.task) onTaskUpdated?.(res.task)
+                            })
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-background h-8 text-xs rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(RECURRENCE_INTERVAL_LABELS).map(([key, label]) => (
+                            <SelectItem key={key} value={key} className="text-xs">
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {recurrenceInterval !== "daily" && (
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          {recurrenceInterval === "weekly"
+                            ? "Día de la semana (1 = Lun, 7 = Dom)"
+                            : "Día del mes (1 al 28/31)"}
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={recurrenceInterval === "weekly" ? 7 : 31}
+                          value={recurrenceDay}
+                          onChange={(e) => {
+                            const val = Math.max(1, Number(e.target.value))
+                            setRecurrenceDay(val)
+                            if (!isCreating && task) {
+                              portalUpdateTask(token, task.id, {
+                                recurrenceDay: val,
+                              }).then((res) => {
+                                if (res.success && res.task) onTaskUpdated?.(res.task)
+                              })
+                            }
+                          }}
+                          className="w-full bg-background h-8 text-xs font-mono rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    {task?.next_recurrence_at && (
+                      <div className="text-[10px] font-mono text-muted-foreground bg-primary/5 p-1.5 rounded border border-primary/15">
+                        Próxima: {new Date(task.next_recurrence_at).toLocaleDateString("es-ES")}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!isCreating && !isLeadOrPm && task?.is_recurring && (
+              <div className="p-2.5 rounded-xl border border-border/60 bg-muted/20 flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-medium text-foreground block">
+                    Tarea Periódica ({task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval] : "Recurrente"})
+                  </span>
+                  {task.next_recurrence_at && (
+                    <span className="text-[10px] text-muted-foreground font-mono block">
+                      Próxima renovación: {new Date(task.next_recurrence_at).toLocaleDateString("es-ES")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Hours Grid */}
             <div className="grid grid-cols-2 gap-3">

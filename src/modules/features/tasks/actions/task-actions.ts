@@ -17,6 +17,7 @@ import type {
   TaskAttachment
 } from "../types";
 import { normalizeTask, parseTaskChecklist, inferTaskRole } from "../types";
+import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 /**
  * Helper to get current organization ID safely
@@ -485,7 +486,12 @@ export async function createTask(
         checklist: data.checklist || [],
         tags: data.tags || [],
         attachments: data.attachments || [],
-        order_index: data.order_index ?? 0
+        order_index: data.order_index ?? 0,
+        is_recurring: data.is_recurring ?? false,
+        recurrence_interval: data.recurrence_interval || null,
+        recurrence_day: data.recurrence_day || 1,
+        parent_recurring_id: data.parent_recurring_id || null,
+        next_recurrence_at: data.next_recurrence_at || (data.is_recurring && data.recurrence_interval ? calculateNextRecurrence(data.recurrence_interval, new Date(), data.recurrence_day || 1).toISOString() : null)
       })
       .select(`
         *,
@@ -550,6 +556,31 @@ export async function updateTask(
     } else {
       if (updateData.status === "done" && updateData.progress_percentage === undefined) {
         updateData.progress_percentage = 100;
+      }
+    }
+
+    if (updateData.is_recurring !== undefined) {
+      if (updateData.is_recurring) {
+        const interval = updateData.recurrence_interval;
+        const day = updateData.recurrence_day || 1;
+        if (interval && !updateData.next_recurrence_at) {
+          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day).toISOString();
+        }
+      } else {
+        updateData.next_recurrence_at = null;
+      }
+    } else if (updateData.recurrence_interval || updateData.recurrence_day) {
+      const { data: currRTask } = await supabaseAdmin
+        .from("task_items")
+        .select("is_recurring, recurrence_interval, recurrence_day")
+        .eq("id", taskId)
+        .single();
+      if (currRTask?.is_recurring) {
+        const interval = updateData.recurrence_interval || currRTask.recurrence_interval;
+        const day = updateData.recurrence_day || currRTask.recurrence_day || 1;
+        if (interval) {
+          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day).toISOString();
+        }
       }
     }
 

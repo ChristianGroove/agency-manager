@@ -284,35 +284,106 @@ Implementado en [`task-detail-modal.tsx`](file:///G:/Pixy/agency-manager/src/mod
 
 ---
 
-## 10. Estructura de Directorios del Módulo
+## 11. Motor de Tareas Recurrentes / Periódicas (Recurrence Engine)
+
+Para automatizar procesos cíclicos (mantenimientos preventivos, auditorías semanales, cierres contables mensuales, backups diarios, etc.), el sistema incorpora un motor nativo de recurrencia:
+
+### A. Columnas de Recurrencia en `task_items`
+- `is_recurring` (`BOOLEAN`, default `false`): Señalizador de tarea periódica activa.
+- `recurrence_interval` (`VARCHAR(32)`): Intervalo de ciclo (`daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `biannual`, `yearly`).
+- `recurrence_day` (`INTEGER`, default `1`): Día programado del ciclo (1-7 para semanal; 1-31 para mensual/trimestral/anual).
+- `parent_recurring_id` (`UUID`, FK hacia `task_items`): Trazabilidad hacia la tarea matriz o plantilla original.
+- `last_recurred_at` (`TIMESTAMPTZ`): Fecha y hora en la que se generó la última instancia.
+- `next_recurrence_at` (`TIMESTAMPTZ`): Próxima fecha y hora de renovación calculada con `date-fns`.
+
+### B. Endpoint Cron Idempotente (`/api/cron/tasks-recurrence`)
+- Protegido mediante `requireCronSecret` para ejecución desatendida segura vía Vercel Cron o cron daemon.
+- Localiza tareas donde `is_recurring = true` y `next_recurrence_at <= NOW()`.
+- **Clonación atómica**: Genera una nueva tarea clonando título, descripción, proyecto, asignados, etiquetas y entregables del checklist (los cuales se reinician a `completed = false`, preservando su asignación de `target_week`).
+- **Control de instancia única**: La tarea anterior se marca como cerrada en su ciclo (`is_recurring = false`), transfiriendo la antorcha a la nueva instancia con su siguiente fecha programada calculada automáticamente.
+
+---
+
+## 12. Sistema de Avance Fraccionado & Matriz Ejecutiva de Ritmo Semanal (Weekly Pacing Matrix)
+
+Diseñado para sustituir los controles manuales estáticos e ineficientes (como las tablas de Excel tradicionales donde se preguntan avances de forma empírica en reuniones semanales), este sistema conecta el avance porcentual con entregables tangibles verificables:
+
+```mermaid
+graph LR
+    A["Checklist de Entregables"] -->|target_week: S1, S2, S3, S4| B["Motor de Ritmo Semanal"]
+    B --> C["Matriz Semanal de 4 Cuadrantes"]
+    C --> D["Semáforo de Salud (Óptimo / En Riesgo / Rezagado)"]
+    C --> E["Resumen Ejecutivo Copiable para Comités"]
+```
+
+### A. Entregables Vinculados a Semanas del Mes
+- Cada ítem del checklist (`TaskChecklistItem`) incluye el atributo opcional `target_week?: 1 | 2 | 3 | 4 | null`.
+- Los líderes y colaboradores pueden asignar entregables a la semana objetivo directamente desde los modales de creación y detalle (`task-form-modal.tsx`, `task-detail-modal.tsx`, `task-portal-detail-modal.tsx`).
+- **Algoritmo Fallback**: Si una tarea no tiene entregables asignados a semanas específicas, el motor distribuye equitativamente el progreso total mediante cuartiles (0-25% = S1, 26-50% = S2, 51-75% = S3, 76-100% = S4), garantizando compatibilidad retrospectiva inmediata con tareas históricas.
+
+### B. Matriz Ejecutiva (`TaskWeeklyPacingMatrix`)
+- Componente interactivo de alta dirección ubicado en:
+  1. **Plataforma Central (`/operations/tasks`)**: Nueva pestaña permanente **"Ritmo Semanal"** junto a General, Tablero Kanban y Métricas.
+  2. **Portal de Gestores PM (`/portal/tasks/[token]`)**: Switch superior de tres estados (**Dashboard**, **Gestión**, **Ritmo Semanal**).
+- **Indicadores y Semáforos en Tiempo Real**:
+  - 🟢 **En Ritmo (On Track)**: El avance de la semana en curso cumple o supera la cuota programada.
+  - 🟡 **En Riesgo (At Risk)**: Existe retraso leve o entregables de la semana previa incompletos.
+  - 🔴 **Rezagada (Delayed)**: La semana activa está vencida sin los entregables mínimos completados.
+  - ⚪ **No Iniciada (Not Started)**: Semana futura programada aún sin actividad.
+- **Barra de Herramientas y Filtros Integrada (`SearchFilterBar`)**:
+  - Buscador reactivo por código, título y colaborador.
+  - Píldoras de filtro rápido con contadores dinámicos: *Todas*, *Con Retraso*, *Periódicas*, *En Riesgo*, *En Ritmo*.
+  - Selector jerárquico de Espacios de Trabajo / Proyectos con formato de árbol.
+  - Selector de Colaborador con avatares integrados.
+  - Navegador de mes junto al botón de acción ejecutiva con tooltip ("Copiar resumen ejecutivo al portapapeles").
+- **Optimizaciones de Visualización y Rendimiento**:
+  - **Indicador de Semana Actual**: Resaltado visual en el encabezado (`● Actual`) y sutil tintado de columna, activo únicamente cuando se consulta el mes en curso.
+  - **Celdas Semanales Limpias**: Porcentaje numérico de avance (`%`) acompañado de su badge de estado y contador de entregables completados, prescindiendo de barras deslizantes para evitar redundancia visual.
+  - **Badges en Español Estricto**: Etiquetas de recurrencia limpias (*Semanal*, *Mensual*, *Quincenal*, etc.) sin emojis ni términos en inglés hardcodeados.
+  - **Paginación Inteligente**: Control de 25, 50 y 100 registros por página con reseteo automático ante cambios de filtro, garantizando renderizado ágil en tableros con cientos de tickets.
+- **Exportación con 1 Clic**: Botón de copia que formatea un informe ejecutivo estructurado en Markdown listo para comités directivos y canales operativos.
+
+---
+
+## 13. Estructura de Directorios del Módulo
 
 ```
-src/modules/features/tasks/
-├── actions/
-│   ├── collaborator-portal-actions.ts       # Acciones autenticadas por token de portal
-│   ├── task-actions.ts                      # Server Actions administrativas internas
-│   └── task-management-actions.ts           # Consultas de métricas y workspaces
-├── components/
-│   ├── collaborators/
-│   │   └── task-collaborators-manager.tsx   # Panel de miembros y asignación de accesos
-│   ├── kanban/
-│   │   └── task-kanban-board.tsx            # Tablero Kanban con agrupación O(n) y React.memo
-│   ├── list/
-│   │   └── task-list-view.tsx               # Vista de lista paginada de tickets
-│   ├── modals/
-│   │   ├── project-form-modal.tsx           # Creación y edición de proyectos/sprints
-│   │   ├── task-detail-modal.tsx            # Detalle y edición completa de tickets en plataforma
-│   │   ├── task-form-modal.tsx              # Modal de nuevo ticket con cabecera limpia
-│   │   └── workspace-form-modal.tsx         # Creación y edición de espacios de trabajo
-│   ├── portal/
-│   │   ├── task-collaborator-portal.tsx     # Portal raíz con combobox en árbol y vistas
-│   │   ├── task-collaborator-ribbon.tsx     # Monitor interactivo de especialistas (cinta)
-│   │   ├── task-pm-operations-dashboard.tsx # Telemetría de sprint y gráficos de velocidad
-│   │   └── task-portal-detail-modal.tsx     # Modal de tickets para portal (crear y editar)
-│   ├── tags/
-│   │   └── task-tag-selector.tsx            # Componente unificado de etapas QA y tags libres
-│   └── task-manager-view.tsx                # Vista central de la plataforma (/operations/tasks)
-├── types.ts                                 # Definición de tipos TypeScript (TaskItem, SYSTEM_STAGE_TAGS)
-└── utils/
-    └── avatar-presets.ts                    # Avatares 3D y helpers visuales
+src/
+├── app/
+│   └── api/
+│       └── cron/
+│           └── tasks-recurrence/
+│               └── route.ts                 # Endpoint cron de renovación recurrente
+└── modules/features/tasks/
+    ├── actions/
+    │   ├── collaborator-portal-actions.ts   # Acciones autenticadas por token de portal
+    │   ├── task-actions.ts                  # Server Actions administrativas internas
+    │   └── task-management-actions.ts       # Consultas de métricas y workspaces
+    ├── components/
+    │   ├── collaborators/
+    │   │   └── task-collaborators-manager.tsx   # Panel de miembros y asignación de accesos
+    │   ├── kanban/
+    │   │   └── task-kanban-board.tsx            # Tablero Kanban con agrupación O(n) y React.memo
+    │   ├── list/
+    │   │   └── task-list-view.tsx               # Vista de lista paginada de tickets
+    │   ├── modals/
+    │   │   ├── project-form-modal.tsx           # Creación y edición de proyectos/sprints
+    │   │   ├── task-detail-modal.tsx            # Detalle y edición completa de tickets en plataforma
+    │   │   ├── task-form-modal.tsx              # Modal de nuevo ticket con cabecera limpia
+    │   │   └── workspace-form-modal.tsx         # Creación y edición de espacios de trabajo
+    │   ├── pacing/
+    │   │   └── task-weekly-pacing-matrix.tsx    # Matriz ejecutiva de ritmo semanal (4 semanas)
+    │   ├── portal/
+    │   │   ├── task-collaborator-portal.tsx     # Portal raíz con combobox en árbol y vistas
+    │   │   ├── task-collaborator-ribbon.tsx     # Monitor interactivo de especialistas (cinta)
+    │   │   ├── task-pm-operations-dashboard.tsx # Telemetría de sprint y gráficos de velocidad
+    │   │   └── task-portal-detail-modal.tsx     # Modal de tickets para portal (crear y editar)
+    │   ├── tags/
+    │   │   └── task-tag-selector.tsx            # Componente unificado de etapas QA y tags libres
+    │   └── task-manager-view.tsx                # Vista central de la plataforma (/operations/tasks)
+    ├── types.ts                             # Tipos TypeScript (Recurrence, TaskChecklistItem, SYSTEM_STAGE_TAGS)
+    └── utils/
+        ├── avatar-presets.ts                # Avatares 3D y helpers visuales
+        └── recurrence-utils.ts              # Utilidades de cálculo de próximas recurrencias
 ```
+

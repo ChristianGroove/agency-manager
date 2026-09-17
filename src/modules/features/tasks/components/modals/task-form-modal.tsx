@@ -43,7 +43,8 @@ import {
   Loader2,
   Upload,
   TrendingUp,
-  FolderArchive
+  FolderArchive,
+  RefreshCw,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -53,8 +54,10 @@ import type {
   TaskType,
   TaskStatus,
   TaskChecklistItem,
-  TaskAttachment
+  TaskAttachment,
+  RecurrenceInterval,
 } from "../../types"
+import { RECURRENCE_INTERVAL_LABELS } from "../../types"
 import { createTask, uploadTaskAttachment } from "../../actions/task-actions"
 import { TaskTagSelector } from "../tags/task-tag-selector"
 import { toast } from "sonner"
@@ -100,6 +103,12 @@ export function TaskFormModal({
   const [actualHours, setActualHours] = useState<number | string>(0)
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([])
   const [newChecklistTitle, setNewChecklistTitle] = useState("")
+  const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
+
+  // Recurrence configuration
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>("monthly")
+  const [recurrenceDay, setRecurrenceDay] = useState(1)
 
   // Attachments & References
   const [attachments, setAttachments] = useState<TaskAttachment[]>([])
@@ -134,6 +143,10 @@ export function TaskFormModal({
       setActualHours(0)
       setChecklist([])
       setNewChecklistTitle("")
+      setNewChecklistWeek(null)
+      setIsRecurring(false)
+      setRecurrenceInterval("monthly")
+      setRecurrenceDay(1)
       setAttachments([])
       setNewRefUrl("")
       setNewRefName("")
@@ -157,10 +170,17 @@ export function TaskFormModal({
       id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title: newChecklistTitle.trim(),
       completed: false,
+      target_week: newChecklistWeek,
     }
     const updated = [...checklist, newItem]
     setChecklist(updated)
     setNewChecklistTitle("")
+  }
+
+  const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
+    )
   }
 
   const handleToggleChecklist = (itemId: string, currentCompleted: boolean) => {
@@ -314,6 +334,9 @@ export function TaskFormModal({
         checklist,
         tags,
         attachments,
+        is_recurring: isRecurring,
+        recurrence_interval: isRecurring ? recurrenceInterval : null,
+        recurrence_day: isRecurring ? recurrenceDay : null,
       })
 
       if (res.success && res.task) {
@@ -498,13 +521,13 @@ export function TaskFormModal({
                   <motion.div
                     key={item.id}
                     layout
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group"
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group"
                   >
                     <input
                       type="checkbox"
                       checked={item.completed}
                       onChange={() => handleToggleChecklist(item.id, item.completed)}
-                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary shrink-0"
                     />
                     <span
                       className={`text-xs sm:text-sm flex-1 ${
@@ -515,15 +538,38 @@ export function TaskFormModal({
                     >
                       {item.title}
                     </span>
+
+                    {/* Week tag / selector */}
+                    <Select
+                      value={item.target_week ? String(item.target_week) : "general"}
+                      onValueChange={(val) =>
+                        handleUpdateChecklistWeek(
+                          item.id,
+                          val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4)
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-6 w-20 text-[10px] font-semibold rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="text-xs">
+                        <SelectItem value="general" className="text-[11px] text-muted-foreground">General</SelectItem>
+                        <SelectItem value="1" className="text-[11px] font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
+                        <SelectItem value="2" className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
+                        <SelectItem value="3" className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
+                        <SelectItem value="4" className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
+                      </SelectContent>
+                    </Select>
+
                     {item.completed && (
-                      <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/20 font-semibold px-2 py-0">
+                      <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/20 font-semibold px-2 py-0 shrink-0">
                         Listo
                       </Badge>
                     )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => handleRemoveChecklistItem(item.id)}
                       title="Eliminar entregable"
                     >
@@ -532,20 +578,37 @@ export function TaskFormModal({
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item input */}
-                <div className="flex gap-2 pt-1">
+                {/* Add new checklist item input with week selector */}
+                <div className="flex items-center gap-2 pt-1">
                   <Input
                     value={newChecklistTitle}
                     onChange={(e) => setNewChecklistTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
                     placeholder="Añadir nuevo entregable o requisito de QA..."
-                    className="h-8 text-xs bg-background rounded-lg"
+                    className="h-8 text-xs bg-background rounded-lg flex-1"
                   />
+                  <Select
+                    value={newChecklistWeek ? String(newChecklistWeek) : "general"}
+                    onValueChange={(val) =>
+                      setNewChecklistWeek(val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4))
+                    }
+                  >
+                    <SelectTrigger className="h-8 w-24 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
+                      <SelectValue placeholder="Semana" />
+                    </SelectTrigger>
+                    <SelectContent className="text-xs">
+                      <SelectItem value="general" className="text-xs text-muted-foreground">General</SelectItem>
+                      <SelectItem value="1" className="text-xs font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
+                      <SelectItem value="2" className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
+                      <SelectItem value="3" className="text-xs font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
+                      <SelectItem value="4" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAddChecklistItem}
-                    className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40"
+                    className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40 shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
                     Añadir
@@ -916,6 +979,71 @@ export function TaskFormModal({
                 onChange={(e) => setDueDate(e.target.value)}
                 className="w-full bg-background h-9 text-xs rounded-xl"
               />
+            </div>
+
+            {/* Recurrence Engine */}
+            <div className="p-3 rounded-xl border border-border/80 bg-muted/30 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw className={cn("w-3.5 h-3.5", isRecurring ? "text-primary animate-spin-slow" : "text-muted-foreground")} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                    Tarea Periódica / Recurrente
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                />
+              </div>
+
+              {isRecurring && (
+                <div className="space-y-2 pt-2 border-t border-border/50">
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                      Frecuencia de Renovación
+                    </label>
+                    <Select
+                      value={recurrenceInterval}
+                      onValueChange={(val: RecurrenceInterval) => setRecurrenceInterval(val)}
+                    >
+                      <SelectTrigger className="w-full bg-background h-8 text-xs rounded-lg">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(RECURRENCE_INTERVAL_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key} className="text-xs">
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {recurrenceInterval !== "daily" && (
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                        {recurrenceInterval === "weekly"
+                          ? "Día de la semana (1 = Lun, 7 = Dom)"
+                          : "Día del mes (1 al 28/31)"}
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={recurrenceInterval === "weekly" ? 7 : 31}
+                        value={recurrenceDay}
+                        onChange={(e) => setRecurrenceDay(Math.max(1, Number(e.target.value)))}
+                        className="w-full bg-background h-8 text-xs font-mono rounded-lg"
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-muted-foreground/90 leading-tight bg-primary/5 p-2 rounded-lg border border-primary/10">
+                    🔁 Al cumplirse el ciclo, se autogenerará una nueva tarea con checklist reiniciado y nuevo correlativo.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Hours Estimated & Actual */}
