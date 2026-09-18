@@ -123,6 +123,69 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
             expect(slides[1].phrases[0].durationSeconds).toBe(5)
             expect(slides[1].theme).toBe("light")
         })
+
+        it("should parse cta_action and modal_config with power features and fallbacks", () => {
+            const configWithModal: GlobalBannerConfig = {
+                id: "banner-with-modal",
+                space_type: "agency",
+                is_active: true,
+                slides: [
+                    {
+                        id: "slide-modal-1",
+                        title: "Nuevo Módulo de Automatización",
+                        cta_text: "Conocer Más",
+                        cta_action: "modal",
+                        modal_config: {
+                            badge: "🔥 LANZAMIENTO",
+                            title: "Automatiza tu Agencia",
+                            subtitle: "Flujos de trabajo impulsados por IA nativa.",
+                            features: [
+                                { icon: "Zap", title: "Acción Rápida", description: "Menos clics y más velocidad" },
+                                { icon: "Shield", title: "Auditoría Total", description: "Control en tiempo real" }
+                            ],
+                            primary_cta_text: "Probar Ahora",
+                            primary_cta_url: "/dashboard/automation",
+                            primary_cta_shimmer: true,
+                            secondary_cta_text: "Cerrar"
+                        },
+                        phrases: [{ text: "Aumenta la productividad un 40%", durationSeconds: 6 }]
+                    }
+                ]
+            }
+
+            const slides = normalizeBannerSlides(configWithModal)
+            expect(slides).toHaveLength(1)
+            expect(slides[0].cta_action).toBe("modal")
+            expect(slides[0].modal_config).toBeDefined()
+            expect(slides[0].modal_config?.badge).toBe("🔥 LANZAMIENTO")
+            expect(slides[0].modal_config?.title).toBe("Automatiza tu Agencia")
+            expect(slides[0].modal_config?.features).toHaveLength(2)
+            expect(slides[0].modal_config?.features?.[0].icon).toBe("Zap")
+            expect(slides[0].modal_config?.primary_cta_text).toBe("Probar Ahora")
+            expect(slides[0].modal_config?.primary_cta_url).toBe("/dashboard/automation")
+        })
+
+        it("should synthesize default modal_config if cta_action is modal but modal_config is empty", () => {
+            const configWithoutModalBody: GlobalBannerConfig = {
+                id: "banner-implicit-modal",
+                is_active: true,
+                slides: [
+                    {
+                        id: "s1",
+                        title: "Banner Sin Modal Body",
+                        cta_text: "Abrir",
+                        cta_action: "modal",
+                        phrases: [{ text: "Prueba", durationSeconds: 5 }]
+                    }
+                ]
+            }
+
+            const slides = normalizeBannerSlides(configWithoutModalBody)
+            expect(slides[0].cta_action).toBe("modal")
+            expect(slides[0].modal_config).toBeDefined()
+            expect(slides[0].modal_config?.title).toBe("Banner Sin Modal Body")
+            expect(slides[0].modal_config?.features).toHaveLength(2)
+        })
     })
 
     describe("interpolateTokens (Dynamic Variables)", () => {

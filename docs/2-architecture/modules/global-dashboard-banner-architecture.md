@@ -56,7 +56,9 @@ export interface GlobalBannerSlide {
     cta_open_new_tab?: boolean
     cta_variant?: "default" | "secondary" | "outline"
     cta_shimmer?: boolean // Efecto shimmer text en botón CTA
-    
+    cta_action?: "url" | "modal" // "url" redirige a enlace, "modal" abre Cover Spotlight
+    modal_config?: BannerModalConfig // Configuración del Showcase Modal
+
     // Multimedia
     media_type?: "json_lottie" | "image"
     media_url?: string
@@ -68,6 +70,28 @@ export interface GlobalBannerSlide {
     // Programación temporal individual
     starts_at?: string | null
     expires_at?: string | null
+}
+```
+
+```typescript
+export interface BannerModalFeature {
+    icon?: string // Ícono de Lucide o Emoji nativo
+    title: string
+    description: string
+}
+
+export interface BannerModalConfig {
+    badge?: string
+    title: string
+    subtitle?: string
+    media_url?: string
+    media_type?: "json_lottie" | "image"
+    features?: BannerModalFeature[]
+    primary_cta_text?: string
+    primary_cta_url?: string
+    primary_cta_shimmer?: boolean
+    secondary_cta_text?: string
+    secondary_cta_url?: string
 }
 ```
 
@@ -149,11 +173,27 @@ Ubicado en `src/app/(dashboard)/platform/admin/_components/global-banners-manage
 4. **Control de Vigencia y Expiración:**
    * Alternancia entre campaña *Permanente* o *Programada*.
    * Selector moderno de fechas con validaciones de fechas pasadas y cálculo de estado en tiempo real (*Activo*, *Programado*, *Expirado*, *Inactivo*).
-5. **Simulador en Vivo:** Previsualizador interactivo a pantalla completa al final del formulario que refleja en tiempo real el aspecto exacto que tendrá el banner en producción.
+5. **Simulador en Vivo & Vista Previa:** Previsualizador interactivo a pantalla completa al final del formulario que refleja en tiempo real el aspecto exacto que tendrá el banner en producción, con soporte interactivo para abrir y probar modales cover al hacer clic en el CTA.
 
 ---
 
-## 6. Mecanismo de Resiliencia y Fallback de Esquema
+## 6. Modal Cover Spotlight (`BannerSpotlightModal`) - Showcase de Módulos
+
+Ubicado en `src/modules/core/dashboard/components/banner-spotlight-modal.tsx`.
+
+El **Modal Cover Spotlight** es una ventana modal de nivel mundial inspirada en las *Product Release Sheets* de Linear y Apple Keynote:
+
+### Capacidades:
+1. **Hero Media Cover a Sangre:** Cabecera con gradiente dinámico y renderizado de animación Lottie 3D o imagen de alta resolución con drop-shadow pronunciado.
+2. **Jerarquía Tipográfica & Interpolación:** Kicker badge, título principal y subtítulo con soporte completo para tokens dinámicos (`{user_name}`, `{org_name}`, `{space_name}`).
+3. **Power Feature Cards (1 a 4 items):** Grid responsivo con tarjetas de características que integran íconos temáticos (Lucide o emojis libres) con títulos en negrita y descripciones concisas.
+4. **Conversión y Shimmer:** Botón de acción principal con efecto shimmer luminiscente de IA y botón secundario opcional (o cierre).
+5. **Integración Directa en el Editor:** Subpanel dedicado en SuperAdmin con selector visual de íconos, catálogo de animaciones Lottie y botón de prueba rápida en vivo.
+6. **Cero Migraciones SQL:** Todos los datos se almacenan en el objeto JSONB `slides`, garantizando agilidad y estabilidad total.
+
+---
+
+## 7. Mecanismo de Resiliencia y Fallback de Esquema
 
 En [`src/modules/core/admin/actions.ts`](file:///g:/Pixy/agency-manager/src/modules/core/admin/actions.ts):
 * Si PostgREST reporta error de columna inexistente o schema cache sobre `slides`:

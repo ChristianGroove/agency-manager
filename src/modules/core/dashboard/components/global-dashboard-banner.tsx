@@ -11,6 +11,7 @@ import Link from "next/link"
 import { ExternalLink } from "lucide-react"
 import { supabase } from "@/modules/core/database/supabase"
 import { cn } from "@/modules/infrastructure/utils/utils"
+import { BannerSpotlightModal } from "./banner-spotlight-modal"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -35,6 +36,26 @@ export interface BannerPhrase {
     durationSeconds: number
 }
 
+export interface BannerModalFeature {
+    icon?: string
+    title: string
+    description: string
+}
+
+export interface BannerModalConfig {
+    badge?: string
+    title: string
+    subtitle?: string
+    media_url?: string
+    media_type?: "json_lottie" | "image"
+    features?: BannerModalFeature[]
+    primary_cta_text?: string
+    primary_cta_url?: string
+    primary_cta_shimmer?: boolean
+    secondary_cta_text?: string
+    secondary_cta_url?: string
+}
+
 export interface GlobalBannerSlide {
     id: string
     kicker?: string
@@ -54,6 +75,8 @@ export interface GlobalBannerSlide {
     cta_open_new_tab?: boolean
     cta_variant?: "default" | "secondary" | "outline"
     cta_shimmer?: boolean
+    cta_action?: "url" | "modal"
+    modal_config?: BannerModalConfig
 
     media_type?: "json_lottie" | "image"
     media_url?: string
@@ -139,6 +162,31 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
                 const textArr = Array.isArray(legacyText) ? legacyText : [legacyText]
                 phrases = textArr.filter(Boolean).map(t => ({ text: String(t), durationSeconds: 6 }))
             }
+            const rawModal = (s as any).modal_config
+            const ctaAction: "url" | "modal" = s.cta_action === "modal" || (rawModal && s.cta_action !== "url") ? "modal" : "url"
+            let modalConfig: BannerModalConfig | undefined = undefined
+
+            if (ctaAction === "modal" || rawModal) {
+                modalConfig = {
+                    badge: rawModal?.badge ?? s.kicker ?? "🚀 NOVEDAD",
+                    title: rawModal?.title ?? s.title ?? "Nueva Funcionalidad",
+                    subtitle: rawModal?.subtitle ?? s.subtitle ?? "",
+                    media_url: rawModal?.media_url ?? s.media_url ?? "",
+                    media_type: rawModal?.media_type ?? s.media_type ?? "json_lottie",
+                    features: Array.isArray(rawModal?.features) && rawModal.features.length > 0
+                        ? rawModal.features
+                        : [
+                            { icon: "Zap", title: "Automatización Nativa", description: "Flujos de trabajo acelerados sin fricción manual" },
+                            { icon: "BarChart", title: "Métricas en Tiempo Real", description: "Visibilidad total del rendimiento de tu equipo" },
+                        ],
+                    primary_cta_text: rawModal?.primary_cta_text ?? s.cta_text ?? "Probar Ahora",
+                    primary_cta_url: rawModal?.primary_cta_url ?? s.cta_url ?? "/dashboard",
+                    primary_cta_shimmer: rawModal?.primary_cta_shimmer !== false,
+                    secondary_cta_text: rawModal?.secondary_cta_text ?? "Cerrar",
+                    secondary_cta_url: rawModal?.secondary_cta_url ?? "",
+                }
+            }
+
             return {
                 id: s.id || `slide-${idx + 1}`,
                 kicker: s.kicker || "",
@@ -156,6 +204,8 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
                 cta_open_new_tab: Boolean(s.cta_open_new_tab),
                 cta_variant: s.cta_variant || "default",
                 cta_shimmer: Boolean(s.cta_shimmer ?? (s as any).ctaShimmer),
+                cta_action: ctaAction,
+                modal_config: modalConfig,
                 media_type: s.media_type || "json_lottie",
                 media_url: s.media_url || "",
                 layout_pos: s.layout_pos || "right",
@@ -192,6 +242,8 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
             cta_open_new_tab: false,
             cta_variant: "default",
             cta_shimmer: false,
+            cta_action: "url",
+            modal_config: undefined,
             media_type: (config.media_type as any) || "json_lottie",
             media_url: config.media_url || "",
             layout_pos: config.layout_pos || "right",
@@ -307,6 +359,7 @@ export function GlobalDashboardBanner({
     const [isHovered, setIsHovered] = useState(false)
     const [animationData, setAnimationData] = useState<any>(null)
     const [animationLoading, setAnimationLoading] = useState(false)
+    const [isSpotlightModalOpen, setIsSpotlightModalOpen] = useState(false)
 
     // Determinar slide activo (controlado desde fuera o interno)
     const slideIndex = typeof controlledSlideIndex === "number" ? controlledSlideIndex : internalSlideIndex
@@ -319,12 +372,12 @@ export function GlobalDashboardBanner({
         if (onSlideChange) onSlideChange(nextIndex)
     }
 
-    // Temporizador y rotación de frases por diapositiva
+    // Temporizador y rotación de frases por diapositiva (se pausa si se interactúa con el modal)
     const phrasesCount = currentSlide?.phrases?.length || 1
     const currentDurationSec = currentSlide?.phrases?.[phraseIndex]?.durationSeconds || 6
 
     useEffect(() => {
-        if (!controlledIsPlaying || isHovered || activeSlides.length === 0) return
+        if (!controlledIsPlaying || isHovered || isSpotlightModalOpen || activeSlides.length === 0) return
 
         const timer = setTimeout(() => {
             if (phraseIndex < phrasesCount - 1) {
@@ -338,11 +391,12 @@ export function GlobalDashboardBanner({
         }, currentDurationSec * 1000)
 
         return () => clearTimeout(timer)
-    }, [slideIndex, phraseIndex, controlledIsPlaying, isHovered, currentDurationSec, phrasesCount, activeSlides.length])
+    }, [slideIndex, phraseIndex, controlledIsPlaying, isHovered, isSpotlightModalOpen, currentDurationSec, phrasesCount, activeSlides.length])
 
-    // Resetear frase al cambiar manualmente de diapositiva
+    // Resetear frase y cerrar modal al cambiar manualmente de diapositiva
     useEffect(() => {
         setPhraseIndex(0)
+        setIsSpotlightModalOpen(false)
     }, [slideIndex])
 
     // Cargar animación Lottie con caché en memoria instantánea
@@ -629,27 +683,53 @@ export function GlobalDashboardBanner({
                             transition={{ duration: 0.3, delay: 0.1 }}
                             className="shrink-0 pt-1 pb-1 px-1 -mx-1 overflow-visible"
                         >
-                            <Link
-                                href={currentSlide.cta_url || "#"}
-                                target={currentSlide.cta_open_new_tab ? "_blank" : undefined}
-                                rel={currentSlide.cta_open_new_tab ? "noopener noreferrer" : undefined}
-                                className="inline-block overflow-visible"
-                            >
+                            {currentSlide.cta_action === "modal" ? (
                                 <Button
                                     size="sm"
+                                    onClick={() => setIsSpotlightModalOpen(true)}
                                     className="rounded-xl shadow-xs transition-transform duration-200 hover:scale-105 active:scale-95 px-5 h-8 text-xs font-bold gap-2 cursor-pointer"
                                     variant={currentSlide.cta_variant || defaultCtaVariant}
                                 >
                                     <ShimmerText active={Boolean(currentSlide.cta_shimmer)}>
                                         {currentSlide.cta_text}
                                     </ShimmerText>
-                                    {currentSlide.cta_open_new_tab && <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />}
                                 </Button>
-                            </Link>
+                            ) : (
+                                <Link
+                                    href={currentSlide.cta_url || "#"}
+                                    target={currentSlide.cta_open_new_tab ? "_blank" : undefined}
+                                    rel={currentSlide.cta_open_new_tab ? "noopener noreferrer" : undefined}
+                                    className="inline-block overflow-visible"
+                                >
+                                    <Button
+                                        size="sm"
+                                        className="rounded-xl shadow-xs transition-transform duration-200 hover:scale-105 active:scale-95 px-5 h-8 text-xs font-bold gap-2 cursor-pointer"
+                                        variant={currentSlide.cta_variant || defaultCtaVariant}
+                                    >
+                                        <ShimmerText active={Boolean(currentSlide.cta_shimmer)}>
+                                            {currentSlide.cta_text}
+                                        </ShimmerText>
+                                        {currentSlide.cta_open_new_tab && <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />}
+                                    </Button>
+                                </Link>
+                            )}
                         </motion.div>
                     )}
                 </div>
             </CardContent>
+
+            {/* 5. Modal Cover Spotlight para Promocionar Funcionalidades */}
+            {currentSlide.cta_action === "modal" && (
+                <BannerSpotlightModal
+                    isOpen={isSpotlightModalOpen}
+                    onClose={() => setIsSpotlightModalOpen(false)}
+                    config={currentSlide.modal_config}
+                    fallbackMediaUrl={currentSlide.media_url}
+                    fallbackMediaType={currentSlide.media_type}
+                    slideTheme={currentSlide.theme}
+                    userContext={userContext}
+                />
+            )}
         </Card>
     )
 }

@@ -46,7 +46,18 @@ import {
     ChevronRight,
     MonitorPlay,
     CalendarDays,
-    Infinity as InfinityIcon
+    Infinity as InfinityIcon,
+    Eye,
+    Zap,
+    Shield,
+    BarChart,
+    CheckCircle,
+    Rocket,
+    Bell,
+    Users,
+    Bot,
+    Flame,
+    Cpu
 } from "lucide-react"
 
 import { getGlobalBanners, upsertGlobalBanner, toggleBannerActive, deleteGlobalBanner } from "@/modules/core/admin/actions"
@@ -55,8 +66,11 @@ import {
     GlobalBannerSlide,
     GlobalDashboardBanner,
     TextColorRole,
+    BannerModalConfig,
+    BannerModalFeature,
     normalizeBannerSlides
 } from "@/modules/core/dashboard/components/global-dashboard-banner"
+import { BannerSpotlightModal, renderFeatureIcon } from "@/modules/core/dashboard/components/banner-spotlight-modal"
 import { LottieVisualPickerModal } from "./lottie-visual-picker-modal"
 import lottieCatalog from "./lottie-catalog.json"
 
@@ -70,6 +84,22 @@ const COLOR_ROLES: { value: TextColorRole; label: string; previewClass: string }
     { value: "amber", label: "Ámbar", previewClass: "bg-amber-500" },
     { value: "cyan", label: "Cyan", previewClass: "bg-cyan-400" },
     { value: "white", label: "Blanco", previewClass: "bg-white border border-gray-300" }
+]
+
+const FEATURE_ICON_OPTIONS = [
+    { value: "Zap", label: "⚡ Automatización (Zap)" },
+    { value: "Sparkles", label: "✨ Magia / IA (Sparkles)" },
+    { value: "Shield", label: "🛡️ Seguridad (Shield)" },
+    { value: "BarChart", label: "📊 Métricas (BarChart)" },
+    { value: "CheckCircle", label: "✅ Aprobado (CheckCircle)" },
+    { value: "Rocket", label: "🚀 Lanzamiento (Rocket)" },
+    { value: "Bell", label: "🔔 Notificaciones (Bell)" },
+    { value: "Users", label: "👥 Equipo (Users)" },
+    { value: "Bot", label: "🤖 Agente IA (Bot)" },
+    { value: "Layers", label: "🥞 Módulos (Layers)" },
+    { value: "Flame", label: "🔥 Tendencia (Flame)" },
+    { value: "Target", label: "🎯 Objetivos (Target)" },
+    { value: "Cpu", label: "💻 Procesamiento (Cpu)" },
 ]
 
 const DEFAULT_SLIDE: GlobalBannerSlide = {
@@ -92,6 +122,24 @@ const DEFAULT_SLIDE: GlobalBannerSlide = {
     cta_open_new_tab: false,
     cta_variant: "default",
     cta_shimmer: true,
+    cta_action: "url",
+    modal_config: {
+        badge: "🚀 NOVEDAD",
+        title: "Descubre esta nueva función en {space_name}",
+        subtitle: "Acelera los resultados de tu equipo con herramientas diseñadas a tu medida.",
+        media_type: "json_lottie",
+        media_url: "",
+        features: [
+            { icon: "Zap", title: "Automatización Nativa", description: "Flujos de trabajo acelerados sin fricción manual" },
+            { icon: "BarChart", title: "Métricas en Tiempo Real", description: "Visibilidad total del rendimiento de tu equipo" },
+            { icon: "Shield", title: "Seguridad y Control", description: "Permisos granulares y registros de auditoría integrados" }
+        ],
+        primary_cta_text: "Probar Ahora",
+        primary_cta_url: "/dashboard",
+        primary_cta_shimmer: true,
+        secondary_cta_text: "Cerrar",
+        secondary_cta_url: ""
+    },
     media_type: "json_lottie",
     media_url: "/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json",
     layout_pos: "right",
@@ -347,6 +395,8 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [isLottiePickerOpen, setIsLottiePickerOpen] = useState(false)
+    const [isModalLottiePickerOpen, setIsModalLottiePickerOpen] = useState(false)
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
 
     // Formulario del banner y diapositiva activa
     const [formData, setFormData] = useState<GlobalBannerConfig>(DEFAULT_BANNER)
@@ -582,6 +632,65 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
         updateCurrentSlide({ phrases })
     }
 
+    const updateModalConfig = (patch: Partial<BannerModalConfig>) => {
+        const currentModal = currentSlide.modal_config || {
+            badge: currentSlide.kicker || "🚀 NOVEDAD",
+            title: currentSlide.title || "Conoce esta nueva función",
+            subtitle: currentSlide.subtitle || "",
+            media_type: currentSlide.media_type || "json_lottie",
+            media_url: currentSlide.media_url || "",
+            features: [
+                { icon: "Zap", title: "Automatización Nativa", description: "Flujos acelerados sin fricción manual" },
+                { icon: "BarChart", title: "Métricas en Tiempo Real", description: "Visibilidad total del rendimiento de tu equipo" }
+            ],
+            primary_cta_text: "Probar Ahora",
+            primary_cta_url: currentSlide.cta_url || "/dashboard",
+            primary_cta_shimmer: true,
+            secondary_cta_text: "Cerrar",
+            secondary_cta_url: ""
+        }
+        updateCurrentSlide({
+            modal_config: {
+                ...currentModal,
+                ...patch
+            }
+        })
+    }
+
+    const handleAddModalFeature = () => {
+        const currentModal: Partial<BannerModalConfig> = currentSlide.modal_config || {}
+        const features = [...(currentModal.features || [])]
+        if (features.length >= 4) {
+            toast.error("Máximo 4 características recomendadas en el modal")
+            return
+        }
+        features.push({
+            icon: "Sparkles",
+            title: "Nueva Capacidad",
+            description: "Descripción concisa del beneficio o funcionalidad"
+        })
+        updateModalConfig({ features })
+    }
+
+    const handleUpdateModalFeature = (idx: number, patch: Partial<BannerModalFeature>) => {
+        const currentModal: Partial<BannerModalConfig> = currentSlide.modal_config || {}
+        const features = [...(currentModal.features || [])]
+        if (!features[idx]) return
+        features[idx] = { ...features[idx], ...patch }
+        updateModalConfig({ features })
+    }
+
+    const handleRemoveModalFeature = (idx: number) => {
+        const currentModal: Partial<BannerModalConfig> = currentSlide.modal_config || {}
+        const features = [...(currentModal.features || [])]
+        if (features.length <= 1) {
+            toast.error("El modal debe tener al menos 1 característica")
+            return
+        }
+        features.splice(idx, 1)
+        updateModalConfig({ features })
+    }
+
     const applyPreset = (type: "launch" | "tip" | "promo" | "notice") => {
         let presetData: Partial<GlobalBannerSlide> = {}
 
@@ -600,16 +709,34 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                     { text: "Métricas en tiempo real con reportes de alto rendimiento", durationSeconds: 6 }
                 ],
                 phrasesColor: "cyan",
-                cta_text: "Explorar Ahora",
+                cta_text: "Conocer Novedad",
                 cta_url: "/dashboard",
                 cta_variant: "default",
                 cta_shimmer: true,
+                cta_action: "modal",
+                modal_config: {
+                    badge: "🚀 NUEVA CARACTERÍSTICA",
+                    title: "Potencia tu operativa en {space_name}",
+                    subtitle: "Un conjunto de herramientas inteligentes diseñadas para acelerar tus flujos y maximizar la conversión.",
+                    media_type: "json_lottie",
+                    media_url: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
+                    features: [
+                        { icon: "Zap", title: "Automatización Nativa", description: "Ejecuta tareas repetitivas en segundos sin intervención manual." },
+                        { icon: "BarChart", title: "Métricas en Tiempo Real", description: "Tableros analíticos e informes detallados de rendimiento." },
+                        { icon: "Shield", title: "Seguridad y Control Total", description: "Permisos granulares por rol y registros de auditoría integrados." }
+                    ],
+                    primary_cta_text: "Probar Módulo Ahora",
+                    primary_cta_url: "/dashboard",
+                    primary_cta_shimmer: true,
+                    secondary_cta_text: "Ver Documentación",
+                    secondary_cta_url: "/docs"
+                },
                 theme: "brand_primary",
                 media_type: "json_lottie",
                 media_url: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
                 layout_pos: "right"
             }
-            toast.success("Plantilla 'Lanzamiento' aplicada a este slide")
+            toast.success("Plantilla 'Lanzamiento' aplicada con Modal Cover")
         } else if (type === "tip") {
             presetData = {
                 kicker: "💡 CONSEJO PRO",
@@ -1486,33 +1613,84 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
 
                         {/* Columna Izquierda: Botón de Acción (CTA) */}
                         <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <Target className="w-4 h-4 text-primary" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                                    3. Botón de Acción (CTA)
-                                </span>
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-primary" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                        3. Botón de Acción (CTA)
+                                    </span>
+                                </div>
+
+                                {/* Toggle Tipo de Acción: URL vs Modal */}
+                                <div className="flex items-center gap-1 p-0.5 rounded-lg border bg-slate-100 dark:bg-zinc-900 text-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => updateCurrentSlide({ cta_action: "url" })}
+                                        className={cn(
+                                            "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                                            currentSlide.cta_action !== "modal"
+                                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-2xs font-bold"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        🔗 URL
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const defaultModalConfig: BannerModalConfig = currentSlide.modal_config || {
+                                                badge: currentSlide.kicker || "🚀 NOVEDAD",
+                                                title: currentSlide.title || "Conoce esta nueva función",
+                                                subtitle: currentSlide.subtitle || "Acelera tus resultados con herramientas de última generación.",
+                                                media_type: currentSlide.media_type || "json_lottie",
+                                                media_url: currentSlide.media_url || "",
+                                                features: [
+                                                    { icon: "Zap", title: "Automatización Nativa", description: "Flujos acelerados sin fricción manual" },
+                                                    { icon: "BarChart", title: "Métricas en Tiempo Real", description: "Control total de tu operativa" },
+                                                ],
+                                                primary_cta_text: "Probar Ahora",
+                                                primary_cta_url: currentSlide.cta_url || "/dashboard",
+                                                primary_cta_shimmer: true,
+                                                secondary_cta_text: "Cerrar",
+                                                secondary_cta_url: "",
+                                            }
+                                            updateCurrentSlide({ cta_action: "modal", modal_config: defaultModalConfig })
+                                        }}
+                                        className={cn(
+                                            "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1",
+                                            currentSlide.cta_action === "modal"
+                                                ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <span>🪟 Modal Cover</span>
+                                        <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                <div className="sm:col-span-5 space-y-1">
+                                <div className={currentSlide.cta_action === "modal" ? "sm:col-span-7 space-y-1" : "sm:col-span-5 space-y-1"}>
                                     <Label className="text-[11px] text-muted-foreground">Texto del Botón</Label>
                                     <Input
-                                        placeholder="Ej: Comenzar Ahora"
+                                        placeholder={currentSlide.cta_action === "modal" ? "Ej: Conoce el Módulo" : "Ej: Comenzar Ahora"}
                                         value={currentSlide.cta_text || ""}
                                         onChange={e => updateCurrentSlide({ cta_text: e.target.value })}
                                         className="h-8 text-xs bg-slate-50/50 dark:bg-zinc-900/50"
                                     />
                                 </div>
-                                <div className="sm:col-span-4 space-y-1">
-                                    <Label className="text-[11px] text-muted-foreground">URL de Destino</Label>
-                                    <Input
-                                        placeholder="/dashboard o https://..."
-                                        value={currentSlide.cta_url || ""}
-                                        onChange={e => updateCurrentSlide({ cta_url: e.target.value })}
-                                        className="h-8 text-xs font-mono bg-slate-50/50 dark:bg-zinc-900/50"
-                                    />
-                                </div>
-                                <div className="sm:col-span-3 space-y-1">
+                                {currentSlide.cta_action !== "modal" && (
+                                    <div className="sm:col-span-4 space-y-1">
+                                        <Label className="text-[11px] text-muted-foreground">URL de Destino</Label>
+                                        <Input
+                                            placeholder="/dashboard o https://..."
+                                            value={currentSlide.cta_url || ""}
+                                            onChange={e => updateCurrentSlide({ cta_url: e.target.value })}
+                                            className="h-8 text-xs font-mono bg-slate-50/50 dark:bg-zinc-900/50"
+                                        />
+                                    </div>
+                                )}
+                                <div className={currentSlide.cta_action === "modal" ? "sm:col-span-5 space-y-1" : "sm:col-span-3 space-y-1"}>
                                     <Label className="text-[11px] text-muted-foreground">Estilo</Label>
                                     <Select
                                         value={currentSlide.cta_variant || "default"}
@@ -1531,18 +1709,35 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                <div className="flex items-center space-x-2">
-                                    <Switch
-                                        id={`cta-tab-switch-${safeSlideIdx}`}
-                                        checked={currentSlide.cta_open_new_tab}
-                                        onCheckedChange={checked => updateCurrentSlide({ cta_open_new_tab: checked })}
-                                        className="scale-90"
-                                    />
-                                    <Label htmlFor={`cta-tab-switch-${safeSlideIdx}`} className="text-xs cursor-pointer flex items-center gap-1">
-                                        <span>Pestaña nueva</span>
-                                        <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                                    </Label>
-                                </div>
+                                {currentSlide.cta_action !== "modal" ? (
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id={`cta-tab-switch-${safeSlideIdx}`}
+                                            checked={currentSlide.cta_open_new_tab}
+                                            onCheckedChange={checked => updateCurrentSlide({ cta_open_new_tab: checked })}
+                                            className="scale-90"
+                                        />
+                                        <Label htmlFor={`cta-tab-switch-${safeSlideIdx}`} className="text-xs cursor-pointer flex items-center gap-1">
+                                            <span>Pestaña nueva</span>
+                                            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                                        </Label>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+                                        <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                                            Abre Spotlight Cover
+                                        </Badge>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setIsPreviewModalOpen(true)}
+                                            className="h-6 px-2 text-[11px] gap-1 font-bold text-primary hover:bg-primary/10 cursor-pointer"
+                                        >
+                                            <Eye className="w-3 h-3" /> Probar Modal
+                                        </Button>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center space-x-2">
                                     <Switch
@@ -1697,6 +1892,311 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                         </div>
                     </div>
 
+                    {/* FRANJA 3.B: CONFIGURACIÓN DEL MODAL COVER SPOTLIGHT */}
+                    {currentSlide.cta_action === "modal" && (
+                        <div className="pt-4 border-t border-border/60 animate-in fade-in-50 duration-200">
+                            <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-card to-primary/[0.07] p-4 sm:p-5 space-y-4 shadow-sm">
+                                {/* Cabecera del Diseñador del Modal */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/50">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 shadow-2xs">
+                                            <Sparkles className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                                    🪟 Diseñador de Modal Cover Spotlight
+                                                </span>
+                                                <Badge variant="outline" className="text-[10px] font-mono bg-primary/5 text-primary border-primary/20">
+                                                    Linear / Keynote Sheet
+                                                </Badge>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                Experiencia inmersiva a pantalla modal que se desplegará cuando los usuarios hagan clic en este CTA.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsPreviewModalOpen(true)}
+                                        size="sm"
+                                        className="h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer shrink-0"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>👁️ Probar Modal en Vivo</span>
+                                    </Button>
+                                </div>
+
+                                {/* Fila 1: Textos Principales del Modal (Badge, Título y Subtítulo) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div className="sm:col-span-4 space-y-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">
+                                            Badge Superior del Modal
+                                        </Label>
+                                        <Input
+                                            placeholder="Ej: 🚀 NOVEDAD"
+                                            value={currentSlide.modal_config?.badge || ""}
+                                            onChange={e => updateModalConfig({ badge: e.target.value })}
+                                            className="h-8 text-xs font-bold bg-white dark:bg-zinc-900"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-8 space-y-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">
+                                            Título Principal del Modal
+                                        </Label>
+                                        <Input
+                                            placeholder="Ej: Conoce el nuevo Módulo de Tareas"
+                                            value={currentSlide.modal_config?.title || ""}
+                                            onChange={e => updateModalConfig({ title: e.target.value })}
+                                            className="h-8 text-xs font-bold bg-white dark:bg-zinc-900"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-12 space-y-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">
+                                            Subtítulo / Descripción Explicativa
+                                        </Label>
+                                        <Input
+                                            placeholder="Ej: Automatiza flujos, colabora en tiempo real y aumenta el rendimiento operativo de tu equipo."
+                                            value={currentSlide.modal_config?.subtitle || ""}
+                                            onChange={e => updateModalConfig({ subtitle: e.target.value })}
+                                            className="h-8 text-xs bg-white dark:bg-zinc-900"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Fila 2: Multimedia del Hero Cover del Modal */}
+                                <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <ImageIcon className="w-3.5 h-3.5 text-primary" />
+                                            <span className="text-[11px] font-bold text-foreground">
+                                                Cover Multimedia del Modal (Opcional - Si se deja vacío heredará el del banner)
+                                            </span>
+                                        </div>
+                                        {currentSlide.modal_config?.media_url && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => updateModalConfig({ media_url: "" })}
+                                                className="h-6 text-[10px] text-muted-foreground hover:text-red-500 cursor-pointer"
+                                            >
+                                                <X className="w-3 h-3 mr-1" /> Usar multimedia del banner
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Select
+                                            value={currentSlide.modal_config?.media_type || currentSlide.media_type || "json_lottie"}
+                                            onValueChange={(val: any) => updateModalConfig({ media_type: val })}
+                                        >
+                                            <SelectTrigger className="w-[140px] h-8 text-xs shrink-0 bg-white dark:bg-zinc-900">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="json_lottie">Animación Lottie</SelectItem>
+                                                <SelectItem value="image">Imagen URL</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+
+                                        {(currentSlide.modal_config?.media_type || currentSlide.media_type) === "json_lottie" ? (
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setIsModalLottiePickerOpen(true)}
+                                                    className="gap-1.5 shrink-0 bg-white dark:bg-zinc-800 text-xs h-8 px-3 border-primary/30 cursor-pointer"
+                                                >
+                                                    <Film className="h-3.5 w-3.5 text-primary" />
+                                                    <span>Catálogo</span>
+                                                </Button>
+                                                <Input
+                                                    placeholder={currentSlide.media_url ? `Heredado: ${currentSlide.media_url}` : "Ruta JSON ej: /animations/..."}
+                                                    value={currentSlide.modal_config?.media_url || ""}
+                                                    onChange={e => updateModalConfig({ media_url: e.target.value, media_type: "json_lottie" })}
+                                                    className="text-xs h-8 font-mono flex-1 bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                placeholder={currentSlide.media_url ? `Heredado: ${currentSlide.media_url}` : "URL pública de imagen (JPG, PNG, WebP)"}
+                                                value={currentSlide.modal_config?.media_url || ""}
+                                                onChange={e => updateModalConfig({ media_url: e.target.value, media_type: "image" })}
+                                                className="text-xs h-8 flex-1 bg-white dark:bg-zinc-900"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Fila 3: Capacidades Clave / Power Highlights (Grid de Cards) */}
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Layers className="w-3.5 h-3.5 text-primary" />
+                                            <span className="text-[11px] font-bold text-foreground">
+                                                Capacidades Clave ({((currentSlide.modal_config?.features) || []).length}/4)
+                                            </span>
+                                        </div>
+
+                                        {((currentSlide.modal_config?.features) || []).length < 4 && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleAddModalFeature}
+                                                className="h-7 text-[11px] gap-1 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-semibold cursor-pointer"
+                                            >
+                                                <Plus className="w-3 h-3" />
+                                                <span>Añadir Característica</span>
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        {((currentSlide.modal_config?.features) || []).map((feat, fIdx) => (
+                                            <div
+                                                key={fIdx}
+                                                className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 space-y-2 shadow-2xs"
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                        <Select
+                                                            value={feat.icon || "Sparkles"}
+                                                            onValueChange={(icon: string) => handleUpdateModalFeature(fIdx, { icon })}
+                                                        >
+                                                            <SelectTrigger className="h-7 w-[130px] text-xs px-2 bg-slate-50 dark:bg-zinc-800 shrink-0">
+                                                                <div className="flex items-center gap-1.5 truncate">
+                                                                    <span className="shrink-0">{renderFeatureIcon(feat.icon)}</span>
+                                                                    <span className="truncate">{feat.icon || "Sparkles"}</span>
+                                                                </div>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {FEATURE_ICON_OPTIONS.map(opt => (
+                                                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span>{renderFeatureIcon(opt.value)}</span>
+                                                                            <span>{opt.label}</span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+
+                                                        <Input
+                                                            placeholder="Título (ej: Automatización)"
+                                                            value={feat.title}
+                                                            onChange={e => handleUpdateModalFeature(fIdx, { title: e.target.value })}
+                                                            className="h-7 text-xs font-bold flex-1"
+                                                        />
+                                                    </div>
+
+                                                    {((currentSlide.modal_config?.features) || []).length > 1 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-muted-foreground hover:text-red-500 shrink-0"
+                                                            onClick={() => handleRemoveModalFeature(fIdx)}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+
+                                                <Input
+                                                    placeholder="Descripción del beneficio para el usuario..."
+                                                    value={feat.description}
+                                                    onChange={e => handleUpdateModalFeature(fIdx, { description: e.target.value })}
+                                                    className="h-7 text-[11px] text-muted-foreground"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Fila 4: Acciones de Conversión en el Modal (Botón Primario y Secundario) */}
+                                <div className="pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Botón de Conversión Primario */}
+                                    <div className="space-y-2 p-3 rounded-xl bg-slate-50/70 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                                                <Target className="w-3.5 h-3.5 text-primary" /> Botón Primario (Conversión)
+                                            </span>
+                                            <div className="flex items-center space-x-1.5">
+                                                <Switch
+                                                    id={`modal-cta-shimmer-${safeSlideIdx}`}
+                                                    checked={currentSlide.modal_config?.primary_cta_shimmer !== false}
+                                                    onCheckedChange={checked => updateModalConfig({ primary_cta_shimmer: checked })}
+                                                    className="scale-75"
+                                                />
+                                                <Label htmlFor={`modal-cta-shimmer-${safeSlideIdx}`} className="text-[10px] cursor-pointer text-muted-foreground font-semibold">
+                                                    Shimmer
+                                                </Label>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] text-muted-foreground">Texto</Label>
+                                                <Input
+                                                    placeholder="Ej: Probar Ahora"
+                                                    value={currentSlide.modal_config?.primary_cta_text || ""}
+                                                    onChange={e => updateModalConfig({ primary_cta_text: e.target.value })}
+                                                    className="h-7 text-xs font-bold bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] text-muted-foreground">URL Destino</Label>
+                                                <Input
+                                                    placeholder="/dashboard o https://..."
+                                                    value={currentSlide.modal_config?.primary_cta_url || ""}
+                                                    onChange={e => updateModalConfig({ primary_cta_url: e.target.value })}
+                                                    className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Botón Secundario Opcional */}
+                                    <div className="space-y-2 p-3 rounded-xl bg-slate-50/70 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-foreground">
+                                                Botón Secundario (Opcional)
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground italic">
+                                                Si URL está vacía, actuará como Cerrar
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] text-muted-foreground">Texto</Label>
+                                                <Input
+                                                    placeholder="Ej: Ver Documentación o Cerrar"
+                                                    value={currentSlide.modal_config?.secondary_cta_text || ""}
+                                                    onChange={e => updateModalConfig({ secondary_cta_text: e.target.value })}
+                                                    className="h-7 text-xs bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] text-muted-foreground">URL (Opcional)</Label>
+                                                <Input
+                                                    placeholder="Opcional: /docs"
+                                                    value={currentSlide.modal_config?.secondary_cta_url || ""}
+                                                    onChange={e => updateModalConfig({ secondary_cta_url: e.target.value })}
+                                                    className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
 
 
@@ -1798,6 +2298,29 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Modal Cover Spotlight Preview */}
+                <BannerSpotlightModal
+                    isOpen={isPreviewModalOpen}
+                    onClose={() => setIsPreviewModalOpen(false)}
+                    config={currentSlide.modal_config}
+                    fallbackMediaUrl={currentSlide.media_url}
+                    fallbackMediaType={currentSlide.media_type}
+                    slideTheme={currentSlide.theme}
+                    userContext={{
+                        userName: "Super Admin",
+                        orgName: "Pixy Platform",
+                        spaceName: "Agency Manager"
+                    }}
+                />
+
+                {/* Modal Dedicated Lottie Visual Picker */}
+                <LottieVisualPickerModal
+                    open={isModalLottiePickerOpen}
+                    onOpenChange={setIsModalLottiePickerOpen}
+                    selectedValue={currentSlide.modal_config?.media_url}
+                    onSelect={val => updateModalConfig({ media_url: val, media_type: "json_lottie" })}
+                />
 
             </div>
         </TooltipProvider>
