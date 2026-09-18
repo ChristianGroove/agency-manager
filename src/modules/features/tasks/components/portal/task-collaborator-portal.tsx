@@ -1563,7 +1563,7 @@ export function TaskCollaboratorPortal({
                     className="rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 h-8 px-3"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
-                    Nuevo Ticket de Sprint
+                    Nuevo Requerimiento / Ticket
                   </Button>
                   {isQa && (
                     <Button
@@ -2721,7 +2721,7 @@ export function TaskCollaboratorPortal({
             setTasks((prev) => [createdTask, ...prev])
             setAllTeamTasks((prev) => [createdTask, ...prev])
             setIsCreateModalOpen(false)
-            toast.success("¡Ticket de Sprint creado con éxito!")
+            toast.success("¡Ticket creado con éxito!")
           }}
         />
       )}

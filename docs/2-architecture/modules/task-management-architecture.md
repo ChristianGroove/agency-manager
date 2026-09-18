@@ -10,19 +10,20 @@ El módulo orquesta el ciclo de vida operativo de los requerimientos y sprints d
 
 ```mermaid
 graph TD
-    A["Espacio de Trabajo (Workspace)"] --> B["Proyecto / Sprint"]
-    B --> C["Ticket / Tarea (Task Item)"]
-    C --> D["Checklist de Entregables"]
-    C --> E["Etiquetas & Etapas QA"]
-    C --> F["Recursos & Adjuntos"]
-    C --> G["Hilo de Comentarios & Menciones"]
+    A["Espacio de Trabajo (Workspace)"] --> B["Proyecto (Contenedor Macro)"]
+    B --> C["Ticket / Requerimiento (Task Item)"]
+    C --> D["Subtareas Colaborativas (Checklist con Responsables)"]
+    C --> E["Dependencias de Bloqueo (blocked_by_task_id)"]
+    C --> F["Etiquetas & Etapas QA"]
+    C --> G["Recursos & Adjuntos"]
+    C --> H["Hilo Unificado: Actividad, Auditoría & Discusión"]
 ```
 
 ### Componentes Principales del Sistema
-1. **Plataforma Central (`/operations/tasks`)**: Panel de control administrativo para dueños de agencia, administradores y personal interno con acceso a métricas globales, tableros Kanban interactivos, vistas de lista paginadas y gestión de espacios y proyectos.
+1. **Plataforma Central (`/operations/tasks`)**: Panel de control administrativo para dueños de agencia, administradores y personal interno con acceso a métricas globales, tableros Kanban interactivos con detección de bloqueos `🚫`, matriz de ritmo semanal (S1..S4), vistas de lista paginadas y gestión de espacios y proyectos.
 2. **Portales Seguros por Token (`/portal/tasks/[token]`)**: Entornos web aislados accesibles mediante tokens criptográficos únicos por colaborador (`organization_staff.access_token`), sin requerir autenticación directa a la base de datos:
-   - **Modo Colaborador (Ejecución)**: Enfocado en entregables propios, minimizando ruido visual (columna de responsable oculta, slider de progreso seguro y checklist interactivo).
-   - **Modo Gestor de Proyecto (PM / Lead)**: Puesto de mando avanzado con telemetría de sprints, cinta interactiva de especialistas, reasignación de prioridades/estados y facultad de crear proyectos y tickets según sus espacios autorizados.
+   - **Modo Colaborador (Ejecución)**: Enfocado en entregables y subtareas propias (tanto tareas asignadas como subtareas delegadas en tickets de otros miembros), minimizando ruido visual, con slider de progreso seguro y checklist interactivo.
+   - **Modo Gestor de Proyecto (PM / Lead)**: Puesto de mando avanzado con telemetría de ritmo mensual, cinta interactiva de especialistas, delegación de subtareas individuales con responsable, control de dependencias de bloqueo y facultad de crear proyectos y tickets según sus espacios autorizados.
 
 ---
 
@@ -55,13 +56,13 @@ Gobierna el control de acceso granular por espacio para colaboradores.
 | `created_at` | Timestamp | Registro de asignación de acceso. |
 
 ### C. Tabla: `task_projects`
-Proyectos o sprints específicos contenidos dentro de un espacio de trabajo.
+Contenedores macro para agrupar tickets y requerimientos de un objetivo específico (sin mezclar la noción de ciclo temporal/sprint con el contenedor).
 | Campo | Tipo | Propósito |
 |---|---|---|
 | `id` | UUID (PK) | Identificador del proyecto. |
 | `organization_id` | UUID (FK) | Tenant propietario. |
 | `workspace_id` | UUID (FK, Opcional) | Espacio al que pertenece el proyecto. |
-| `name` | Text | Nombre del proyecto o sprint. |
+| `name` | Text | Nombre del proyecto. |
 | `color` | Text | Color hexadecimal del proyecto. |
 | `description` | Text | Descripción de alcance y objetivos. |
 | `status` | Text | `planning`, `active`, `completed`, `on_hold`. |
@@ -83,31 +84,40 @@ Unidad atómica de requerimiento técnico, tarea o ticket.
 | `status` | Text (`TaskStatus`) | `backlog`, `todo`, `in_progress`, `in_review`, `blocked`, `done`. |
 | `priority` | Text (`TaskPriority`) | `low`, `medium`, `high`, `urgent`. |
 | `type` | Text (`TaskType`) | `task`, `feature`, `bug`, `improvement`, `delivery`. |
-| `assigned_staff_id` | UUID (FK, Nullable) | Especialista responsable asignado (`organization_staff`). |
+| `assigned_staff_id` | UUID (FK, Nullable) | Especialista líder asignado (`organization_staff`). |
 | `created_by_staff_id` | UUID (FK, Nullable) | Creador de la tarea. |
 | `qa_staff_id` | UUID (FK, Nullable) | Tester o revisor de calidad asignado. |
 | `progress_percentage` | Integer | Avance registrado (0 - 100%). |
 | `estimated_hours` | Numeric | Horas estimadas de ejecución. |
 | `actual_hours` | Numeric | Horas reales reportadas. |
-| `checklist` | JSONB | Entregables y subtareas (`TaskChecklistItem[]`). |
+| `checklist` | JSONB | Subtareas y entregables (`TaskChecklistItem[]`) con soporte para `assigned_staff_id`, `estimated_hours` y `target_week`. |
+| `blocked_by_task_id` | UUID (FK, Nullable) | Ticket predecesor que bloquea esta tarea (`task_items.id`). Dispara auto-desbloqueo reactivo al completarse. |
 | `tags` | Text[] / JSONB | Etiquetas libres y etapas de flujo del sistema. |
 | `attachments` | JSONB | Referencias a Figma, GitHub, imágenes y documentos. |
 | `due_date` | Date / Timestamp | Fecha límite de entrega del entregable. |
 | `order_index` | Integer | Orden dentro de columnas Kanban. |
 
 ### E. Tabla: `task_comments`
-Canal de discusión contextual del ticket con soporte para menciones de equipo.
+Canal de discusión contextual del ticket con soporte para menciones de equipo y trazabilidad de eventos del sistema (Auditoría Integrada):
 | Campo | Tipo | Propósito |
 |---|---|---|
 | `id` | UUID (PK) | Identificador del comentario. |
 | `organization_id` | UUID (FK) | Tenant propietario. |
 | `task_id` | UUID (FK) | Ticket al que pertenece el comentario. |
-| `author_type` | Text | `owner`, `staff`, `system`. |
-| `author_id` | UUID (FK) | Colaborador emisor. |
-| `author_name` | Text | Nombre visible del autor. |
+| `author_type` | Text | `owner`, `staff`, `system` (notas automáticas de auditoría). |
+| `author_id` | UUID (FK) | Colaborador emisor (o null si es generado por el sistema). |
+| `author_name` | Text | Nombre visible del autor o "Sistema". |
 | `author_avatar` | Text | URL del avatar. |
-| `content` | Text | Mensaje con soporte para `@Nombre`. |
+| `content` | Text | Mensaje formateado o nota de auditoría (`📈`, `🔄`, `👤`, `📅`, `⚡`, `🚫`, `🔓`). |
 | `mentions` | JSONB | Metadatos de colaboradores mencionados para notificaciones. |
+
+### F. Mecanismo de Desbloqueo Reactivo (Auto-Unblock Engine)
+1. Cuando una tarea pasa a estado `done` o alcanza el 100% de progreso:
+   - Se ejecuta `handleTaskUnblocking(predecessorId, ticketCode, title)` en [`task-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/task-actions.ts) o `handlePortalTaskUnblocking` en [`collaborator-portal-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/collaborator-portal-actions.ts).
+   - Se localizan todas las tareas dependientes (`WHERE blocked_by_task_id = predecessorId`).
+   - Se registra una nota de auditoría del sistema: `🔓 Bloqueo resuelto automáticamente por finalización de #TK-xxx`.
+   - Si la tarea dependiente tenía estado `blocked`, avanza automáticamente a `todo` para desbloquear el flujo operativo sin intervención manual.
+   - Las tareas desbloqueadas alertan a sus responsables y eliminan el micro-badge `🚫` en Kanban y listas.
 
 ---
 

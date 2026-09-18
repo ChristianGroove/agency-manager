@@ -150,9 +150,12 @@ export function TaskWeeklyPacingMatrix({
       // Exclude backlog tickets from sprint pacing
       if (task.status === "backlog") return false
 
-      // Member
+      // Member filter (includes assigned lead, QA tester, or assigned deliverable / subtask)
       if (selectedMember !== "all") {
-        if (task.assigned_staff_id !== selectedMember) return false
+        const isAssigned = task.assigned_staff_id === selectedMember
+        const isQa = task.qa_staff_id === selectedMember
+        const hasSubtask = task.checklist && parseTaskChecklist(task.checklist).some((c) => c.assigned_staff_id === selectedMember)
+        if (!isAssigned && !isQa && !hasSubtask) return false
       }
 
       // Project / Workspace filter

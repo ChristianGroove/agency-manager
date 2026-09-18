@@ -49,6 +49,8 @@ import {
   Hash,
   RefreshCw,
   ChevronDown,
+  Ban,
+  AlertTriangle,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -61,12 +63,13 @@ import type {
   TaskAttachment,
   RecurrenceInterval,
 } from "../../types"
-import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
 import {
   portalCreateTask,
   portalUpdateTask,
   portalDeleteTask,
   portalToggleChecklist,
+  portalUpdateChecklistItemAssignee,
   portalGetTaskComments,
   portalAddTaskComment,
   portalUploadTaskAttachment
@@ -277,6 +280,8 @@ export function TaskPortalDetailModal({
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>(parseTaskChecklist(task?.checklist))
   const [newChecklistTitle, setNewChecklistTitle] = useState("")
   const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
+  const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
+  const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
 
   // Recurrence configuration
   const [isRecurring, setIsRecurring] = useState(task?.is_recurring ?? false)
@@ -342,7 +347,9 @@ export function TaskPortalDetailModal({
       setIsRecurring(task.is_recurring ?? false)
       setRecurrenceInterval(task.recurrence_interval || "monthly")
       setRecurrenceDay(task.recurrence_day || 1)
+      setBlockedByTaskId(task.blocked_by_task_id || "none")
       setNewChecklistWeek(null)
+      setNewChecklistAssignee("unassigned")
       loadComments(task.id)
     } else if (isCreating) {
       setSelectedProjectId(defaultProjectId || projects[0]?.id || "")
@@ -356,6 +363,7 @@ export function TaskPortalDetailModal({
       setSavedProgress(0)
       setAssignedStaffId("unassigned")
       setQaStaffId("unassigned")
+      setBlockedByTaskId("none")
       setEstimatedHours(0)
       setActualHours(0)
       setDueDate("")
@@ -367,6 +375,7 @@ export function TaskPortalDetailModal({
       setRecurrenceInterval("monthly")
       setRecurrenceDay(1)
       setNewChecklistWeek(null)
+      setNewChecklistAssignee("unassigned")
     }
   }, [task?.id, isCreating, isOpen])
 
@@ -429,10 +438,11 @@ export function TaskPortalDetailModal({
           isRecurring: isRecurring,
           recurrenceInterval: isRecurring ? recurrenceInterval : null,
           recurrenceDay: isRecurring ? recurrenceDay : null,
+          blockedByTaskId: blockedByTaskId === "none" ? null : blockedByTaskId,
         })
 
         if (res.success && res.task) {
-          toast.success("¡Ticket de sprint creado con éxito!")
+          toast.success("¡Ticket creado con éxito!")
           onTaskCreated?.(res.task)
           onClose()
         } else {
@@ -469,6 +479,7 @@ export function TaskPortalDetailModal({
           checklist,
           tags: isLeadOrPm || isQa ? tags : undefined,
           attachments,
+          blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
           isRecurring: isLeadOrPm ? isRecurring : undefined,
           recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
           recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
@@ -562,10 +573,12 @@ export function TaskPortalDetailModal({
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
+      assigned_staff_id: newChecklistAssignee === "unassigned" ? null : newChecklistAssignee,
     }
     setChecklist((prev) => [...prev, newItem])
     setNewChecklistTitle("")
     setNewChecklistWeek(null)
+    setNewChecklistAssignee("unassigned")
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
@@ -573,6 +586,28 @@ export function TaskPortalDetailModal({
     setChecklist((prev) =>
       prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
     )
+  }
+
+  const handleUpdateChecklistAssignee = async (itemId: string, staffId: string | null) => {
+    if (!isCreating && !isLeadOrPm) return
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, assigned_staff_id: staffId } : c))
+    )
+    if (!isCreating && task?.id) {
+      try {
+        const res = await portalUpdateChecklistItemAssignee(token, task.id, itemId, staffId)
+        if (!res.success) {
+          toast.error(res.error || "No se pudo actualizar el responsable del entregable")
+        } else if (onTaskUpdated && res.checklist) {
+          onTaskUpdated({
+            ...task,
+            checklist: res.checklist,
+          })
+        }
+      } catch (err: any) {
+        toast.error("Error al actualizar responsable")
+      }
+    }
   }
 
   const handleRemoveChecklistItem = (itemId: string) => {
@@ -818,7 +853,7 @@ export function TaskPortalDetailModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>{title || (isCreating ? "Nuevo Ticket de Sprint" : "Detalle de Tarea")}</DialogTitle>
+          <DialogTitle>{title || (isCreating ? "Nuevo Requerimiento / Ticket" : "Detalle de Tarea")}</DialogTitle>
         </DialogHeader>
 
         {/* Hidden input for local file upload */}
@@ -837,7 +872,7 @@ export function TaskPortalDetailModal({
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-                  Nuevo Ticket de Sprint
+                  Nuevo Requerimiento / Ticket
                 </h2>
               </div>
             ) : (
@@ -913,7 +948,7 @@ export function TaskPortalDetailModal({
             {isCreating && (
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                  Proyecto del Sprint *
+                  Proyecto Asignado *
                 </label>
                 <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                   <SelectTrigger className="w-full bg-background h-10 text-xs font-medium rounded-xl">
@@ -1013,13 +1048,13 @@ export function TaskPortalDetailModal({
               )}
             </div>
 
-            {/* Checklist of Deliverables */}
+            {/* Checklist of Deliverables & Subtasks */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckSquare className="w-4 h-4 text-primary" />
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Checklist de Entregables ({completedChecklistCount}/{checklist.length})
+                    Checklist de Entregables / Subtareas ({completedChecklistCount}/{checklist.length})
                   </span>
                 </div>
                 {checklist.length > 0 && (
@@ -1062,6 +1097,46 @@ export function TaskPortalDetailModal({
                     >
                       {item.title}
                     </span>
+
+                    {/* Subtask Assignee selector / badge */}
+                    {isLeadOrPm ? (
+                      <Select
+                        value={item.assigned_staff_id || "unassigned"}
+                        onValueChange={(val) =>
+                          handleUpdateChecklistAssignee(
+                            item.id,
+                            val === "unassigned" ? null : val
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-6 max-w-[120px] text-[10px] font-medium rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0 truncate">
+                          <SelectValue placeholder="Responsable" />
+                        </SelectTrigger>
+                        <SelectContent className="text-xs max-w-[220px]">
+                          <SelectItem value="unassigned" className="text-[11px] text-muted-foreground">
+                            Sin asignar
+                          </SelectItem>
+                          {teamMembers.map((m) => (
+                            <SelectItem key={m.id} value={m.id} className="text-[11px]">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="truncate">{m.first_name} {m.last_name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : item.assigned_staff_id ? (
+                      (() => {
+                        const assignedMember = teamMembers.find((m) => m.id === item.assigned_staff_id) || item.assigned_staff
+                        const name = assignedMember ? `${assignedMember.first_name} ${assignedMember.last_name?.slice(0, 1) || ""}.` : "Asignado"
+                        return (
+                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 shrink-0 border-border/60 bg-primary/5 text-primary gap-1">
+                            <User className="w-2.5 h-2.5" />
+                            <span className="truncate max-w-[80px]">{name}</span>
+                          </Badge>
+                        )
+                      })()
+                    ) : null}
 
                     {/* Week tag / selector */}
                     {isLeadOrPm ? (
@@ -1110,16 +1185,34 @@ export function TaskPortalDetailModal({
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item with optional week selector - Only for PM / Lead */}
+                {/* Add new checklist item with optional week selector and assignee - Only for PM / Lead */}
                 {(isCreating || isLeadOrPm) ? (
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1">
                     <Input
                       value={newChecklistTitle}
                       onChange={(e) => setNewChecklistTitle(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                      placeholder="Añadir nuevo entregable..."
-                      className="h-8 text-xs bg-background rounded-lg flex-1"
+                      placeholder="Añadir subtarea / entregable..."
+                      className="h-8 text-xs bg-background rounded-lg flex-1 min-w-[140px]"
                     />
+                    <Select
+                      value={newChecklistAssignee}
+                      onValueChange={setNewChecklistAssignee}
+                    >
+                      <SelectTrigger className="h-8 w-28 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
+                        <SelectValue placeholder="Responsable" />
+                      </SelectTrigger>
+                      <SelectContent className="text-xs max-w-[220px]">
+                        <SelectItem value="unassigned" className="text-xs text-muted-foreground">
+                          Sin asignar
+                        </SelectItem>
+                        {teamMembers.map((m) => (
+                          <SelectItem key={m.id} value={m.id} className="text-xs">
+                            <span className="truncate">{m.first_name} {m.last_name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Select
                       value={newChecklistWeek ? String(newChecklistWeek) : "general"}
                       onValueChange={(val) =>
@@ -1379,20 +1472,22 @@ export function TaskPortalDetailModal({
                   ) : (
                     <>
                       {displayedComments.map((c) => {
-                        const progressInfo = parseProgressAudit(c.content)
+                        const auditInfo = parseSystemAuditNote(c.content)
+                        const isSystemEvent = c.author_type === "system" || auditInfo.isAudit
 
-                        // Single-line sleek compact note for progress / regression audits
-                        if (progressInfo.isProgress) {
+                        // Single-line sleek compact note for system audit events (status, assignment, dates, blockers, progress)
+                        if (isSystemEvent) {
                           return (
                             <div
                               key={c.id}
-                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors"
+                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors border border-border/40"
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="font-semibold text-foreground text-xs shrink-0">{c.author_name}</span>
+                                <span className="text-xs shrink-0">{auditInfo.icon}</span>
+                                <span className="font-semibold text-foreground text-xs shrink-0">{c.author_name || "Sistema"}</span>
                                 <span className="text-muted-foreground/40 shrink-0">·</span>
-                                <span className="truncate text-xs text-foreground/80 font-normal">
-                                  {progressInfo.formattedContent}
+                                <span className="truncate text-xs text-foreground/85 font-normal">
+                                  {auditInfo.formattedText}
                                 </span>
                               </div>
                               <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
@@ -1597,6 +1692,109 @@ export function TaskPortalDetailModal({
                   <SelectItem value="blocked">Bloqueado</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Blocker Dependency (Bloqueado por) */}
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                <Ban className="w-3.5 h-3.5 text-destructive/80" />
+                Dependencia / Bloqueado por
+              </label>
+              {isCreating || isLeadOrPm ? (
+                <Select
+                  value={blockedByTaskId || "none"}
+                  onValueChange={(val) => {
+                    setBlockedByTaskId(val)
+                    if (val !== "none" && status !== "blocked") {
+                      setStatus("blocked")
+                    } else if (val === "none" && status === "blocked") {
+                      setStatus("todo")
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
+                    <SelectValue placeholder="Sin dependencia (Independiente)" className="truncate text-left" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[320px]">
+                    <SelectItem value="none" className="text-xs text-muted-foreground">
+                      Sin dependencia (Independiente)
+                    </SelectItem>
+                    {availableTasks
+                      .filter((t) => !task || t.id !== task.id)
+                      .map((t) => (
+                        <SelectItem key={t.id} value={t.id} className="text-xs">
+                          <div className="flex items-center gap-2 truncate max-w-[280px]">
+                            <span className="font-mono text-[10px] font-bold text-primary shrink-0">
+                              {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
+                            </span>
+                            <span className="truncate">{t.title}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                              ({TASK_STATUS_LABELS[t.status] || t.status})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              ) : task?.blocked_by ? (
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-background border border-destructive/30 text-xs">
+                  <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />
+                  <div className="min-w-0 flex-1 truncate">
+                    <span className="font-mono font-bold text-primary mr-1">
+                      {task.blocked_by.ticket_code || `TK-${task.blocked_by.id.slice(0, 4)}`}
+                    </span>
+                    <span className="text-foreground font-medium truncate">
+                      {task.blocked_by.title}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0 font-medium border-border/60">
+                    {TASK_STATUS_LABELS[task.blocked_by.status] || task.blocked_by.status}
+                  </Badge>
+                </div>
+              ) : (
+                <div className="p-2 rounded-xl bg-background border border-border/60 text-xs text-muted-foreground italic">
+                  Sin dependencias de bloqueo
+                </div>
+              )}
+
+              {/* Informative helper if there is an active blocker predecessor */}
+              {blockedByTaskId !== "none" && (() => {
+                const blk = availableTasks.find((t) => t.id === blockedByTaskId) || task?.blocked_by
+                if (!blk) return null
+                const isPredecessorDone = blk.status === "done"
+                return (
+                  <div
+                    className={cn(
+                      "mt-2 p-2.5 rounded-xl border text-xs space-y-1 transition-all",
+                      isPredecessorDone
+                        ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400"
+                        : "bg-destructive/5 border-destructive/20 text-destructive dark:text-red-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                      {isPredecessorDone ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-destructive" />
+                      )}
+                      <span>
+                        {isPredecessorDone ? "Predecesor completado" : "Ticket bloqueado"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-muted-foreground">
+                      {isPredecessorDone ? (
+                        <span>
+                          {blk.ticket_code || "El ticket predecesor"} ya se encuentra <strong>Completado</strong>. Esta tarea ya no tiene impedimentos.
+                        </span>
+                      ) : (
+                        <span>
+                          Requiere completar primero <strong>{blk.ticket_code || "el ticket predecesor"}</strong> ({TASK_STATUS_LABELS[blk.status as TaskStatus] || blk.status}). Se desbloqueará automáticamente al pasar a Completado.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Priority Selector */}

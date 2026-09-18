@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   ChevronRight,
   ChevronLeft,
-  GripVertical
+  GripVertical,
+  Ban,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -194,6 +195,21 @@ const SortableTaskCard = React.memo(
           >
             {task.ticket_code}
           </Badge>
+          {task.blocked_by && task.blocked_by.status !== "done" && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
+                    <Ban className="w-2.5 h-2.5" />
+                    {task.blocked_by.ticket_code || "Bloqueada"}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  Bloqueada por {task.blocked_by.ticket_code || "ticket predecesor"}: {task.blocked_by.title}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {task.project && (
             <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1 truncate max-w-[100px]">
               <span
@@ -322,7 +338,9 @@ const SortableTaskCard = React.memo(
     prev.isOverlay === next.isOverlay &&
     prev.brandColor === next.brandColor &&
     prev.task.tags?.length === next.task.tags?.length &&
-    prev.task.checklist === next.task.checklist
+    prev.task.checklist === next.task.checklist &&
+    prev.task.blocked_by_task_id === next.task.blocked_by_task_id &&
+    prev.task.blocked_by?.status === next.task.blocked_by?.status
   )
 })
 

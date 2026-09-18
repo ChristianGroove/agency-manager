@@ -340,7 +340,7 @@ export function TaskFormModal({
       })
 
       if (res.success && res.task) {
-        toast.success("¡Ticket de Sprint creado con éxito!")
+        toast.success("¡Ticket creado con éxito!")
         onTaskCreated?.(res.task)
         onClose()
       } else {
@@ -357,7 +357,7 @@ export function TaskFormModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>Nuevo Ticket de Sprint</DialogTitle>
+          <DialogTitle>Nuevo Requerimiento / Ticket</DialogTitle>
         </DialogHeader>
 
         {/* Hidden file input */}
@@ -374,7 +374,7 @@ export function TaskFormModal({
           <div className="flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-primary shrink-0" />
             <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-              Nuevo Ticket de Sprint
+              Nuevo Requerimiento / Ticket
             </h2>
           </div>
 
@@ -414,7 +414,7 @@ export function TaskFormModal({
             {/* Project Selector */}
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Proyecto / Sprint Asignado *
+                Proyecto Asignado *
               </label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger className="w-full bg-background h-10 text-xs font-medium rounded-xl">

@@ -17,6 +17,7 @@ import {
   Layers,
   ChevronRight,
   ChevronLeft,
+  Ban,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { SYSTEM_STAGE_TAGS } from "../../types"
@@ -130,12 +131,23 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
                     className="hover:bg-muted/30 transition-colors cursor-pointer group"
                   >
                     <td className="p-3.5 pl-4 whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
-                      >
-                        {task.ticket_code}
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
+                        >
+                          {task.ticket_code}
+                        </Badge>
+                        {task.blocked_by && task.blocked_by.status !== "done" && (
+                          <span
+                            title={`Bloqueada por ${task.blocked_by.ticket_code || "ticket predecesor"}: ${task.blocked_by.title}`}
+                            className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0"
+                          >
+                            <Ban className="w-2.5 h-2.5" />
+                            {task.blocked_by.ticket_code || "Bloqueada"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3.5">
                       <div className="space-y-1">

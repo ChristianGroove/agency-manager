@@ -1,5 +1,21 @@
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  backlog: 'Backlog',
+  todo: 'Por Hacer',
+  in_progress: 'En Curso',
+  in_review: 'En QA',
+  done: 'Completada',
+  blocked: 'Bloqueada',
+};
+
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
 export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery';
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
 export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer' | 'sales' | 'operations' | 'support' | 'consultant';
@@ -14,6 +30,15 @@ export type TaskChecklistItem = {
   completed_by?: string;
   target_week?: 1 | 2 | 3 | 4 | null;
   due_date?: string | null;
+  assigned_staff_id?: string | null;
+  assigned_staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    photo_url?: string | null;
+    role?: string;
+  } | null;
+  estimated_hours?: number | null;
 }
 
 export interface TaskAttachment {
@@ -221,6 +246,14 @@ export interface TaskItem {
     color: string;
   } | null;
   comments_count?: number;
+  // Blocker Dependency
+  blocked_by_task_id?: string | null;
+  blocked_by?: {
+    id: string;
+    ticket_code: string;
+    title: string;
+    status: TaskStatus;
+  } | null;
 }
 
 export interface TaskComment {
@@ -681,3 +714,109 @@ export function getTaskWeeklyPacing(
     };
   });
 }
+
+export interface ParsedAuditNote {
+  isAudit: boolean;
+  type: 'progress' | 'status' | 'assignment' | 'due_date' | 'priority' | 'blocker' | 'unblock' | 'other';
+  icon: string;
+  badgeClass?: string;
+  formattedText: string;
+}
+
+export function parseSystemAuditNote(content: string): ParsedAuditNote {
+  if (!content) return { isAudit: false, type: 'other', icon: '💬', formattedText: content };
+
+  // 1. Progress / Regression
+  if (
+    content.startsWith("📈") ||
+    content.startsWith("📉") ||
+    content.toLowerCase().includes("de tarea actualizado") ||
+    content.toLowerCase().includes("regres")
+  ) {
+    const isRegression = content.startsWith("📉") || content.toLowerCase().includes("regres");
+    return {
+      isAudit: true,
+      type: 'progress',
+      icon: isRegression ? "📉" : "📈",
+      badgeClass: isRegression ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400",
+      formattedText: content.replace(/^[📈📉]\s*/, '').trim()
+    };
+  }
+
+  // 2. Status change
+  if (
+    content.startsWith("🔄") ||
+    content.toLowerCase().includes("estado actualizado") ||
+    content.toLowerCase().includes("estado cambiado")
+  ) {
+    return {
+      isAudit: true,
+      type: 'status',
+      icon: "🔄",
+      badgeClass: "text-blue-600 dark:text-blue-400",
+      formattedText: content.replace(/^🔄\s*/, '').trim()
+    };
+  }
+
+  // 3. Assignment
+  if (
+    content.startsWith("👤") ||
+    content.toLowerCase().includes("asignado a") ||
+    content.toLowerCase().includes("reasignado a")
+  ) {
+    return {
+      isAudit: true,
+      type: 'assignment',
+      icon: "👤",
+      badgeClass: "text-purple-600 dark:text-purple-400",
+      formattedText: content.replace(/^👤\s*/, '').trim()
+    };
+  }
+
+  // 4. Due Date
+  if (content.startsWith("📅") || content.toLowerCase().includes("fecha límite")) {
+    return {
+      isAudit: true,
+      type: 'due_date',
+      icon: "📅",
+      badgeClass: "text-amber-600 dark:text-amber-400",
+      formattedText: content.replace(/^📅\s*/, '').trim()
+    };
+  }
+
+  // 5. Priority
+  if (content.startsWith("⚡") || content.toLowerCase().includes("prioridad cambiada")) {
+    return {
+      isAudit: true,
+      type: 'priority',
+      icon: "⚡",
+      badgeClass: "text-orange-600 dark:text-orange-400",
+      formattedText: content.replace(/^⚡\s*/, '').trim()
+    };
+  }
+
+  // 6. Blocker
+  if (content.startsWith("🚫") || content.toLowerCase().includes("bloqueado por")) {
+    return {
+      isAudit: true,
+      type: 'blocker',
+      icon: "🚫",
+      badgeClass: "text-red-600 dark:text-red-400",
+      formattedText: content.replace(/^🚫\s*/, '').trim()
+    };
+  }
+
+  // 7. Unblock
+  if (content.startsWith("🔓") || content.toLowerCase().includes("desbloqueo")) {
+    return {
+      isAudit: true,
+      type: 'unblock',
+      icon: "🔓",
+      badgeClass: "text-emerald-600 dark:text-emerald-400",
+      formattedText: content.replace(/^🔓\s*/, '').trim()
+    };
+  }
+
+  return { isAudit: false, type: 'other', icon: '💬', formattedText: content };
+}
+

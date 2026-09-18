@@ -12,11 +12,18 @@ import type {
   TaskCollaborator,
   TaskMetrics,
   TaskStatus,
+  TaskPriority,
   CollaboratorRole,
   TaskChecklistItem,
   TaskAttachment
 } from "../types";
-import { normalizeTask, parseTaskChecklist, inferTaskRole } from "../types";
+import {
+  normalizeTask,
+  parseTaskChecklist,
+  inferTaskRole,
+  TASK_STATUS_LABELS,
+  TASK_PRIORITY_LABELS
+} from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 /**
@@ -27,6 +34,62 @@ async function resolveOrgId(providedOrgId?: string): Promise<string> {
   const orgId = await getCurrentOrganizationId();
   if (!orgId) throw new Error("No se pudo resolver la organización activa");
   return orgId;
+}
+
+/**
+ * Helper to log single-line system audit notes into task_comments
+ */
+async function logTaskAuditComment(
+  orgId: string,
+  taskId: string,
+  content: string,
+  authorName: string = "Sistema"
+) {
+  try {
+    await supabaseAdmin.from("task_comments").insert({
+      organization_id: orgId,
+      task_id: taskId,
+      author_type: "system",
+      author_id: "system",
+      author_name: authorName,
+      author_avatar: null,
+      content,
+      mentions: []
+    });
+  } catch (err) {
+    console.error("Error inserting task audit comment:", err);
+  }
+}
+
+/**
+ * Automatic unblocker: When a task is marked done, notify and unblock dependent tasks
+ */
+async function handleTaskUnblocking(completedTaskId: string, ticketCode: string, title: string) {
+  try {
+    const { data: blockedTasks } = await supabaseAdmin
+      .from("task_items")
+      .select("id, ticket_code, title, status, organization_id")
+      .eq("blocked_by_task_id", completedTaskId);
+
+    if (!blockedTasks || blockedTasks.length === 0) return;
+
+    for (const bt of blockedTasks) {
+      await logTaskAuditComment(
+        bt.organization_id,
+        bt.id,
+        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.`
+      );
+
+      if (bt.status === "blocked") {
+        await supabaseAdmin
+          .from("task_items")
+          .update({ status: "todo", updated_at: new Date().toISOString() })
+          .eq("id", bt.id);
+      }
+    }
+  } catch (err) {
+    console.error("Error running task unblocking:", err);
+  }
 }
 
 /**
@@ -381,6 +444,9 @@ export async function getTasks(params?: {
       ),
       project:task_projects!task_items_project_id_fkey(
         id, name, color
+      ),
+      blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+        id, ticket_code, title, status
       )
     `)
     .eq("organization_id", activeOrgId)
@@ -487,6 +553,7 @@ export async function createTask(
         tags: data.tags || [],
         attachments: data.attachments || [],
         order_index: data.order_index ?? 0,
+        blocked_by_task_id: data.blocked_by_task_id || null,
         is_recurring: data.is_recurring ?? false,
         recurrence_interval: data.recurrence_interval || null,
         recurrence_day: data.recurrence_day || 1,
@@ -503,6 +570,9 @@ export async function createTask(
         ),
         project:task_projects!task_items_project_id_fkey(
           id, name, color
+        ),
+        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+          id, ticket_code, title, status
         )
       `)
       .single();
@@ -530,17 +600,17 @@ export async function updateTask(
     delete updateData.qa_staff;
     delete updateData.project;
     delete updateData.comments_count;
+    delete updateData.blocked_by;
+
+    // Fetch previous state for audit comparison
+    const { data: prevTask } = await supabaseAdmin
+      .from("task_items")
+      .select("status, priority, due_date, assigned_staff_id, blocked_by_task_id, ticket_code, title, organization_id, checklist")
+      .eq("id", taskId)
+      .single();
 
     // Fetch checklist to check if all deliverables are completed
-    let checklist = updateData.checklist !== undefined ? parseTaskChecklist(updateData.checklist) : null;
-    if (!checklist) {
-      const { data: currTask } = await supabaseAdmin
-        .from("task_items")
-        .select("checklist")
-        .eq("id", taskId)
-        .single();
-      checklist = parseTaskChecklist(currTask?.checklist);
-    }
+    let checklist = updateData.checklist !== undefined ? parseTaskChecklist(updateData.checklist) : parseTaskChecklist(prevTask?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
 
     if (hasUnfinishedDeliverables) {
@@ -598,11 +668,78 @@ export async function updateTask(
         ),
         project:task_projects!task_items_project_id_fkey(
           id, name, color
+        ),
+        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+          id, ticket_code, title, status
         )
       `)
       .single();
 
     if (error) throw error;
+
+    // Log audit events if fields changed
+    if (prevTask) {
+      const orgId = prevTask.organization_id;
+
+      // Status change audit
+      if (updateData.status && updateData.status !== prevTask.status) {
+        const oldLabel = TASK_STATUS_LABELS[prevTask.status as TaskStatus] || prevTask.status;
+        const newLabel = TASK_STATUS_LABELS[updateData.status as TaskStatus] || updateData.status;
+        await logTaskAuditComment(orgId, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`);
+
+        if (updateData.status === "done") {
+          await handleTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
+        }
+      }
+
+      // Priority change audit
+      if (updateData.priority && updateData.priority !== prevTask.priority) {
+        const oldP = TASK_PRIORITY_LABELS[prevTask.priority as TaskPriority] || prevTask.priority;
+        const newP = TASK_PRIORITY_LABELS[updateData.priority as TaskPriority] || updateData.priority;
+        await logTaskAuditComment(orgId, taskId, `⚡ Prioridad cambiada a ${newP} (anterior: ${oldP})`);
+      }
+
+      // Due date audit
+      if (updateData.due_date !== undefined && updateData.due_date !== prevTask.due_date) {
+        if (updateData.due_date) {
+          const dateFormatted = new Date(updateData.due_date + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+          await logTaskAuditComment(orgId, taskId, `📅 Fecha límite establecida para el ${dateFormatted}`);
+        } else {
+          await logTaskAuditComment(orgId, taskId, `📅 Fecha límite eliminada`);
+        }
+      }
+
+      // Assignment audit
+      if (updateData.assigned_staff_id !== undefined && updateData.assigned_staff_id !== prevTask.assigned_staff_id) {
+        if (updateData.assigned_staff_id) {
+          const { data: staffMember } = await supabaseAdmin
+            .from("organization_staff")
+            .select("first_name, last_name")
+            .eq("id", updateData.assigned_staff_id)
+            .single();
+          const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : "colaborador";
+          await logTaskAuditComment(orgId, taskId, `👤 Reasignado a ${staffName}`);
+        } else {
+          await logTaskAuditComment(orgId, taskId, `👤 Asignación de tarea removida`);
+        }
+      }
+
+      // Blocker dependency audit
+      if (updateData.blocked_by_task_id !== undefined && updateData.blocked_by_task_id !== prevTask.blocked_by_task_id) {
+        if (updateData.blocked_by_task_id) {
+          const { data: blockerTask } = await supabaseAdmin
+            .from("task_items")
+            .select("ticket_code, title")
+            .eq("id", updateData.blocked_by_task_id)
+            .single();
+          const blkCode = blockerTask ? `#${blockerTask.ticket_code}` : "ticket predecesor";
+          const blkTitle = blockerTask?.title ? ` (${blockerTask.title})` : "";
+          await logTaskAuditComment(orgId, taskId, `🚫 Bloqueado por ${blkCode}${blkTitle}`);
+        } else {
+          await logTaskAuditComment(orgId, taskId, `🔓 Bloqueo removido manualmente`);
+        }
+      }
+    }
 
     revalidatePath("/operations/tasks");
     return { success: true, task: normalizeTask(updatedTask) };
@@ -623,7 +760,7 @@ export async function updateTaskStatus(
   try {
     const { data: currentTask } = await supabaseAdmin
       .from("task_items")
-      .select("progress_percentage, status, checklist")
+      .select("progress_percentage, status, checklist, ticket_code, title, organization_id")
       .eq("id", taskId)
       .single();
 
@@ -663,6 +800,17 @@ export async function updateTaskStatus(
       .eq("id", taskId);
 
     if (error) throw error;
+
+    if (currentTask && currentTask.status !== effectiveStatus) {
+      const oldLabel = TASK_STATUS_LABELS[currentTask.status as TaskStatus] || currentTask.status;
+      const newLabel = TASK_STATUS_LABELS[effectiveStatus as TaskStatus] || effectiveStatus;
+      await logTaskAuditComment(currentTask.organization_id, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`);
+
+      if (effectiveStatus === "done") {
+        await handleTaskUnblocking(taskId, currentTask.ticket_code, currentTask.title);
+      }
+    }
+
     revalidatePath("/operations/tasks");
     return { success: true };
   } catch (err: any) {
@@ -681,7 +829,7 @@ export async function updateTaskProgress(
   try {
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist")
+      .select("status, checklist, ticket_code, title, organization_id")
       .eq("id", taskId)
       .single();
 
@@ -713,6 +861,11 @@ export async function updateTaskProgress(
       .eq("id", taskId);
 
     if (error) throw error;
+
+    if (clampedProgress === 100 && current && current.status !== "done") {
+      await handleTaskUnblocking(taskId, current.ticket_code, current.title);
+    }
+
     revalidatePath("/operations/tasks");
     return { success: true };
   } catch (err: any) {
@@ -773,6 +926,51 @@ export async function toggleChecklistItem(
     return { success: true, checklist, progress };
   } catch (err: any) {
     console.error("Error toggling checklist item:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Assign or reassign a specific deliverable / subtask to a collaborator
+ */
+export async function updateChecklistItemAssignee(
+  taskId: string,
+  checklistItemId: string,
+  assignedStaffId: string | null
+): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; error?: string }> {
+  try {
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("checklist")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) throw fetchErr || new Error("Task not found");
+
+    const checklist: TaskChecklistItem[] = parseTaskChecklist(task.checklist).map((item: TaskChecklistItem) => {
+      if (item.id === checklistItemId) {
+        return {
+          ...item,
+          assigned_staff_id: assignedStaffId || null
+        };
+      }
+      return item;
+    });
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        checklist,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", taskId);
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath("/operations/tasks");
+    return { success: true, checklist };
+  } catch (err: any) {
+    console.error("Error updating checklist item assignee:", err);
     return { success: false, error: err.message };
   }
 }

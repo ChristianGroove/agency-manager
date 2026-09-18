@@ -664,7 +664,7 @@ export function TaskManagerView({
                   <div className="space-y-0.5">
                     <span className="font-bold text-xs text-foreground block">Nuevo Proyecto</span>
                     <span className="text-[11px] text-muted-foreground block leading-tight">
-                      Sprint o módulo para agrupar tickets
+                      Contenedor o módulo para agrupar tickets
                     </span>
                   </div>
                 </DropdownMenuItem>

@@ -46,15 +46,18 @@ import {
   Hash,
   RefreshCw,
   ChevronDown,
+  Ban,
+  AlertTriangle,
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment, RecurrenceInterval } from "../../types"
-import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
 import {
   updateTask,
   deleteTask,
   getTaskComments,
   addTaskComment,
-  uploadTaskAttachment
+  uploadTaskAttachment,
+  updateChecklistItemAssignee,
 } from "../../actions/task-actions"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
@@ -219,6 +222,8 @@ export function TaskDetailModal({
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>(parseTaskChecklist(task.checklist))
   const [newChecklistTitle, setNewChecklistTitle] = useState("")
   const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
+  const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
+  const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task.blocked_by_task_id || "none")
 
   // Recurrence configuration
   const [isRecurring, setIsRecurring] = useState(task.is_recurring ?? false)
@@ -279,7 +284,9 @@ export function TaskDetailModal({
       setIsRecurring(task.is_recurring ?? false)
       setRecurrenceInterval(task.recurrence_interval || "monthly")
       setRecurrenceDay(task.recurrence_day || 1)
+      setBlockedByTaskId(task.blocked_by_task_id || "none")
       setNewChecklistWeek(null)
+      setNewChecklistAssignee("unassigned")
       setVisibleCommentsCount(10)
       loadComments(task.id)
     }
@@ -342,6 +349,7 @@ export function TaskDetailModal({
         is_recurring: isRecurring,
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_day: isRecurring ? recurrenceDay : null,
+        blocked_by_task_id: blockedByTaskId === "none" ? null : blockedByTaskId,
       })
 
       if (res.success && res.task) {
@@ -475,16 +483,39 @@ export function TaskDetailModal({
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
+      assigned_staff_id: newChecklistAssignee === "unassigned" ? null : newChecklistAssignee,
     }
     setChecklist((prev) => [...prev, newItem])
     setNewChecklistTitle("")
     setNewChecklistWeek(null)
+    setNewChecklistAssignee("unassigned")
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
     setChecklist((prev) =>
       prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
     )
+  }
+
+  const handleUpdateChecklistAssignee = async (itemId: string, staffId: string | null) => {
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, assigned_staff_id: staffId } : c))
+    )
+    if (task?.id) {
+      try {
+        const res = await updateChecklistItemAssignee(task.id, itemId, staffId)
+        if (!res.success) {
+          toast.error(res.error || "No se pudo actualizar el responsable del entregable")
+        } else if (onTaskUpdated && res.checklist) {
+          onTaskUpdated({
+            ...task,
+            checklist: res.checklist,
+          })
+        }
+      } catch (err: any) {
+        toast.error("Error al actualizar responsable")
+      }
+    }
   }
 
   const handleRemoveChecklistItem = (itemId: string) => {
@@ -750,13 +781,13 @@ export function TaskDetailModal({
               />
             </div>
 
-            {/* Interactive Checklist */}
+            {/* Interactive Checklist & Subtasks */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckSquare className="w-4 h-4 text-primary" />
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Checklist de Entregas ({completedChecklistCount}/{checklist.length})
+                    Checklist de Entregables / Subtareas ({completedChecklistCount}/{checklist.length})
                   </span>
                 </div>
                 {checklist.length > 0 && (
@@ -789,6 +820,33 @@ export function TaskDetailModal({
                     >
                       {item.title}
                     </span>
+
+                    {/* Subtask Assignee selector */}
+                    <Select
+                      value={item.assigned_staff_id || "unassigned"}
+                      onValueChange={(val) =>
+                        handleUpdateChecklistAssignee(
+                          item.id,
+                          val === "unassigned" ? null : val
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-6 max-w-[120px] text-[10px] font-medium rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0 truncate">
+                        <SelectValue placeholder="Responsable" />
+                      </SelectTrigger>
+                      <SelectContent className="text-xs max-w-[220px]">
+                        <SelectItem value="unassigned" className="text-[11px] text-muted-foreground">
+                          Sin asignar
+                        </SelectItem>
+                        {collaborators.map((c) => (
+                          <SelectItem key={c.id} value={c.id} className="text-[11px]">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate">{c.first_name} {c.last_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
                     {/* Week tag / selector */}
                     <Select
@@ -829,15 +887,33 @@ export function TaskDetailModal({
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item with week selector */}
-                <div className="flex items-center gap-2 pt-1">
+                {/* Add new checklist item with week selector and assignee */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1">
                   <Input
                     value={newChecklistTitle}
                     onChange={(e) => setNewChecklistTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                    placeholder="Añadir nuevo entregable o requisito de QA..."
-                    className="h-8 text-xs bg-background flex-1"
+                    placeholder="Añadir subtarea / entregable..."
+                    className="h-8 text-xs bg-background flex-1 min-w-[140px]"
                   />
+                  <Select
+                    value={newChecklistAssignee}
+                    onValueChange={setNewChecklistAssignee}
+                  >
+                    <SelectTrigger className="h-8 w-28 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
+                      <SelectValue placeholder="Responsable" />
+                    </SelectTrigger>
+                    <SelectContent className="text-xs max-w-[220px]">
+                      <SelectItem value="unassigned" className="text-xs text-muted-foreground">
+                        Sin asignar
+                      </SelectItem>
+                      {collaborators.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="truncate">{c.first_name} {c.last_name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select
                     value={newChecklistWeek ? String(newChecklistWeek) : "general"}
                     onValueChange={(val) =>
@@ -1078,20 +1154,22 @@ export function TaskDetailModal({
                 ) : (
                   <>
                     {displayedComments.map((comment) => {
-                      const progressInfo = parseProgressAudit(comment.content)
+                      const auditInfo = parseSystemAuditNote(comment.content)
+                      const isSystemEvent = comment.author_type === "system" || auditInfo.isAudit
 
-                      // Single-line sleek compact note for progress / regression audits
-                      if (progressInfo.isProgress) {
+                      // Single-line sleek compact note for system audit events (status, assignment, dates, blockers, progress)
+                      if (isSystemEvent) {
                         return (
                           <div
                             key={comment.id}
-                            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors"
+                            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors border border-border/40"
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="font-semibold text-foreground text-xs shrink-0">{comment.author_name}</span>
+                              <span className="text-xs shrink-0">{auditInfo.icon}</span>
+                              <span className="font-semibold text-foreground text-xs shrink-0">{comment.author_name || "Sistema"}</span>
                               <span className="text-muted-foreground/40 shrink-0">·</span>
-                              <span className="truncate text-xs text-foreground/80 font-normal">
-                                {progressInfo.formattedContent}
+                              <span className="truncate text-xs text-foreground/85 font-normal">
+                                {auditInfo.formattedText}
                               </span>
                             </div>
                             <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
@@ -1293,6 +1371,88 @@ export function TaskDetailModal({
                   <SelectItem value="blocked">Bloqueado</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Blocker Dependency (Bloqueado por) */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                <Ban className="w-3.5 h-3.5 text-destructive/80" />
+                Dependencia / Bloqueado por
+              </label>
+              <Select
+                value={blockedByTaskId || "none"}
+                onValueChange={(val) => {
+                  setBlockedByTaskId(val)
+                  if (val !== "none" && status !== "blocked") {
+                    setStatus("blocked")
+                  } else if (val === "none" && status === "blocked") {
+                    setStatus("todo")
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
+                  <SelectValue placeholder="Sin dependencia (Independiente)" className="truncate text-left" />
+                </SelectTrigger>
+                <SelectContent className="max-w-[320px]">
+                  <SelectItem value="none" className="text-xs text-muted-foreground">
+                    Sin dependencia (Independiente)
+                  </SelectItem>
+                  {(availableTasks || [])
+                    .filter((t) => t.id !== task.id)
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">
+                        <div className="flex items-center gap-2 truncate max-w-[280px]">
+                          <span className="font-mono text-[10px] font-bold text-primary shrink-0">
+                            {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
+                          </span>
+                          <span className="truncate">{t.title}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                            ({TASK_STATUS_LABELS[t.status] || t.status})
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+
+              {/* Informative helper if there is an active blocker predecessor */}
+              {blockedByTaskId !== "none" && (() => {
+                const blk = (availableTasks || []).find((t) => t.id === blockedByTaskId) || task?.blocked_by
+                if (!blk) return null
+                const isPredecessorDone = blk.status === "done"
+                return (
+                  <div
+                    className={cn(
+                      "mt-2 p-2.5 rounded-xl border text-xs space-y-1 transition-all",
+                      isPredecessorDone
+                        ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400"
+                        : "bg-destructive/5 border-destructive/20 text-destructive dark:text-red-400"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                      {isPredecessorDone ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-destructive" />
+                      )}
+                      <span>
+                        {isPredecessorDone ? "Predecesor completado" : "Ticket bloqueado"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-muted-foreground">
+                      {isPredecessorDone ? (
+                        <span>
+                          {blk.ticket_code || "El ticket predecesor"} ya se encuentra <strong>Completado</strong>. Esta tarea ya no tiene impedimentos.
+                        </span>
+                      ) : (
+                        <span>
+                          Requiere completar primero <strong>{blk.ticket_code || "el ticket predecesor"}</strong> ({TASK_STATUS_LABELS[blk.status as TaskStatus] || blk.status}). Se desbloqueará automáticamente al pasar a Completado.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Tags & Quality Stages */}

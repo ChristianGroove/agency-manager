@@ -185,7 +185,7 @@ export function ProjectFormModal({
             ) : (
               <FolderPlus className="w-5 h-5 text-primary" />
             )}
-            {isEditing ? "Editar Proyecto / Sprint" : "Nuevo Proyecto / Sprint"}
+            {isEditing ? "Editar Proyecto" : "Nuevo Proyecto"}
           </DialogTitle>
         </DialogHeader>
 
@@ -198,7 +198,7 @@ export function ProjectFormModal({
                 <span>¿Eliminar este proyecto definitivamente?</span>
               </div>
               <p className="text-muted-foreground leading-relaxed">
-                Esta acción eliminará el proyecto <strong className="text-foreground">{projectToEdit?.name}</strong>. Las tareas existentes pasarán a ser tickets independientes sin sprint asignado.
+                Esta acción eliminará el proyecto <strong className="text-foreground">{projectToEdit?.name}</strong>. Las tareas existentes pasarán a ser tickets independientes sin proyecto asignado.
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -263,7 +263,7 @@ export function ProjectFormModal({
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. Sprint 14 - Plataforma SaaS 2.0"
+                placeholder="Ej. Rediseño Web Corporativo 2026"
                 className="h-9 text-xs font-medium"
               />
             </div>
