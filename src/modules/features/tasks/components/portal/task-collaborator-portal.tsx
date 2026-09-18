@@ -412,25 +412,45 @@ export function TaskCollaboratorPortal({
   const [taskToComplete, setTaskToComplete] = useState<TaskItem | null>(null)
 
   // Computed metrics
+  // Computed metrics (Active tasks strictly excluding backlog and done)
   const myTotal = tasks.length
   const myCompleted = tasks.filter((t) => t.status === "done").length
   const myInProgress = tasks.filter((t) => t.status === "in_progress").length
   const myInReview = tasks.filter((t) => t.status === "in_review").length
-  const myPercentage = myTotal > 0 ? Math.round((myCompleted / myTotal) * 100) : 0
+  const myActiveTasks = tasks.filter(
+    (t) =>
+      t.status === "todo" ||
+      t.status === "in_progress" ||
+      t.status === "in_review" ||
+      t.status === "blocked"
+  )
+  const myActiveTotal = myActiveTasks.length
+  const myActiveProgress =
+    myActiveTotal > 0
+      ? Math.round(
+          myActiveTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0) /
+            myActiveTotal
+        )
+      : myCompleted > 0
+      ? 100
+      : 0
 
   const qaQueueTasks = allTeamTasks.filter((t) => t.status === "in_review")
 
   // Additional Sprint & Hero metrics
   const totalEstimatedHours = tasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0)
+  const myActiveEstimatedHours = myActiveTasks.reduce(
+    (acc, t) => acc + (Number(t.estimated_hours) || 0),
+    0
+  )
   const teamTotal = allTeamTasks.length
   const teamCompleted = allTeamTasks.filter((t) => t.status === "done").length
   const teamInProgress = allTeamTasks.filter((t) => t.status === "in_progress").length
-  const teamPercentage = teamTotal > 0 ? Math.round((teamCompleted / teamTotal) * 100) : 0
 
   // Focus Task: either currently in_progress or the next todo
   const focusTask =
     tasks.find((t) => t.status === "in_progress") ||
-    tasks.find((t) => t.status === "todo" || t.status === "backlog") ||
+    tasks.find((t) => t.status === "todo") ||
     null
 
   // Dynamic Greeting based on time of day (Dashboard style)
@@ -457,10 +477,10 @@ export function TaskCollaboratorPortal({
         lottieUrl: "/animations/creative-team-brainstorming-session-2025-10-20-06-25-38-utc.json",
         title,
         desc: "Supervisa la cadencia del sprint, destraba revisiones en QA y coordina las asignaciones del equipo.",
-        metricLabel: "Avance Global del Equipo",
-        percentage: teamPercentage,
-        completed: teamCompleted,
-        total: teamTotal,
+        metricLabel: "Avance del Equipo",
+        percentage: 0,
+        completed: 0,
+        total: 0,
       }
     }
 
@@ -470,49 +490,36 @@ export function TaskCollaboratorPortal({
         lottieUrl: "/animations/time-for-coffee-break-animated-icon-2025-10-20-06-00-36-utc.json",
         title,
         desc: "No tienes tareas pendientes asignadas por el momento en tu bandeja. Todo al día.",
-        metricLabel: "Tu Avance de Sprint",
+        metricLabel: "Tu Avance en Activas",
         percentage: 100,
         completed: 0,
         total: 0,
       }
     }
 
-    if (myPercentage === 100) {
+    if (myActiveTotal === 0 && myCompleted > 0) {
       return {
         key: "completed",
         lottieUrl: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
         title,
-        desc: `Has finalizado con éxito todas tus ${myTotal} tareas asignadas en este sprint.`,
-        metricLabel: "Tu Avance Global",
+        desc: `Has finalizado con éxito todas tus ${myCompleted} tareas asignadas en este sprint.`,
+        metricLabel: "Tu Avance en Activas",
         percentage: 100,
         completed: myCompleted,
-        total: myTotal,
+        total: myCompleted,
       }
     }
 
-    if (myPercentage >= 80) {
-      return {
-        key: "near_done",
-        lottieUrl: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
-        title,
-        desc: `Estás en la recta final con el ${myPercentage}% completado. Resta${myTotal - myCompleted > 1 ? "n" : ""} ${myTotal - myCompleted} ticket${myTotal - myCompleted > 1 ? "s" : ""} para culminar el sprint.`,
-        metricLabel: "Tu Avance Global",
-        percentage: myPercentage,
-        completed: myCompleted,
-        total: myTotal,
-      }
-    }
-
-    if (myInProgress > 0 || myPercentage > 0) {
+    if (myInProgress > 0 || myActiveProgress > 0) {
       return {
         key: "in_progress",
         lottieUrl: "/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json",
         title,
-        desc: `Tienes ${myInProgress} tarea${myInProgress > 1 ? "s" : ""} en curso y un avance del ${myPercentage}% en tus asignaciones.`,
-        metricLabel: "Tu Avance Global",
-        percentage: myPercentage,
+        desc: `Tienes ${myInProgress} tarea${myInProgress > 1 ? "s" : ""} en curso y un avance del ${myActiveProgress}% en tus tareas activas.`,
+        metricLabel: "Mi Avance en Activas",
+        percentage: myActiveProgress,
         completed: myCompleted,
-        total: myTotal,
+        total: myActiveTotal,
       }
     }
 
@@ -520,97 +527,22 @@ export function TaskCollaboratorPortal({
       key: "todo",
       lottieUrl: "/animations/cartoon-task-list-illustration-2025-10-20-03-26-27-utc.json",
       title,
-      desc: `Tienes ${myTotal} tarea${myTotal > 1 ? "s" : ""} asignada${myTotal > 1 ? "s" : ""} (${totalEstimatedHours > 0 ? `${totalEstimatedHours}h estimadas` : "listas para empezar"}).`,
-      metricLabel: "Tu Avance Global",
+      desc: `Tienes ${myActiveTotal} tarea${myActiveTotal > 1 ? "s" : ""} activa${myActiveTotal > 1 ? "s" : ""} (${myActiveEstimatedHours > 0 ? `${myActiveEstimatedHours}h estimadas` : "listas para empezar"}).`,
+      metricLabel: "Mi Avance en Activas",
       percentage: 0,
       completed: 0,
-      total: myTotal,
+      total: myActiveTotal,
     }
   }, [
     timeGreeting,
     collaboratorName,
     isLeadOrPm,
     myTotal,
-    myPercentage,
+    myActiveTotal,
+    myActiveProgress,
     myCompleted,
     myInProgress,
-    teamPercentage,
-    teamCompleted,
-    teamTotal,
-    totalEstimatedHours,
-  ])
-
-  // Dynamic metrics based on selected collaborator filter (Todos vs individual collaborator)
-  const contextualMetrics = useMemo(() => {
-    if (isLeadOrPm || isQa) {
-      if (selectedMemberFilter === "all") {
-        return {
-          label: "Avance Global del Equipo",
-          total: teamTotal,
-          completed: teamCompleted,
-          inProgress: teamInProgress,
-          inReview: qaQueueTasks.length,
-          percentage: teamPercentage,
-          chipLabel: "Equipo",
-          chipValue: `${teamMembers.length} staff`,
-          photoUrl: undefined as string | undefined,
-          initials: undefined as string | undefined,
-        }
-      } else {
-        const member = teamMembers.find((m) => m.id === selectedMemberFilter)
-        const memberTasks = allTeamTasks.filter((t) => t.assigned_staff_id === selectedMemberFilter)
-        const memberTotal = memberTasks.length
-        const memberCompleted = memberTasks.filter((t) => t.status === "done").length
-        const memberInProgress = memberTasks.filter((t) => t.status === "in_progress").length
-        const memberInReview = memberTasks.filter((t) => t.status === "in_review").length
-        const memberPercentage = memberTotal > 0 ? Math.round((memberCompleted / memberTotal) * 100) : 0
-        const memberHours = memberTasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0)
-
-        const memberName = member ? `${member.first_name} ${member.last_name}` : "Colaborador"
-        return {
-          label: `Avance de ${memberName}`,
-          total: memberTotal,
-          completed: memberCompleted,
-          inProgress: memberInProgress,
-          inReview: memberInReview,
-          percentage: memberPercentage,
-          chipLabel: "Estimado",
-          chipValue: `${memberHours}h`,
-          photoUrl: member?.photo_url || undefined,
-          initials: member ? `${member.first_name[0]}${member.last_name[0]}` : "CO",
-        }
-      }
-    } else {
-      return {
-        label: "Mi Avance en el Sprint",
-        total: myTotal,
-        completed: myCompleted,
-        inProgress: myInProgress,
-        inReview: myInReview,
-        percentage: myPercentage,
-        chipLabel: "Estimado",
-        chipValue: `${totalEstimatedHours}h`,
-        photoUrl: undefined as string | undefined,
-        initials: undefined as string | undefined,
-      }
-    }
-  }, [
-    isLeadOrPm,
-    isQa,
-    selectedMemberFilter,
-    teamTotal,
-    teamCompleted,
-    teamInProgress,
-    qaQueueTasks.length,
-    teamPercentage,
-    teamMembers,
-    allTeamTasks,
-    myTotal,
-    myCompleted,
-    myInProgress,
-    myInReview,
-    myPercentage,
-    totalEstimatedHours,
+    myActiveEstimatedHours,
   ])
 
   // Lottie Animation for dynamic Hero Banner
@@ -1364,48 +1296,77 @@ export function TaskCollaboratorPortal({
                 </p>
               </div>
 
-              {/* Tarea en Foco / Quick Actions para colaboradores */}
-              {focusTask && !isLeadOrPm && (
-                <div
-                  onClick={() => openTaskDetail(focusTask)}
-                  className="group flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl bg-zinc-50/80 dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/10 hover:border-primary/40 dark:hover:border-primary/40 hover:bg-primary/[0.03] transition-all cursor-pointer max-w-xl shadow-xs"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={cn(
-                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
-                      focusTask.status === "in_progress"
-                        ? "bg-primary/15 text-primary"
-                        : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                    )}>
-                      {focusTask.status === "in_progress" ? (
-                        <Flame className="w-3.5 h-3.5 animate-pulse" />
-                      ) : (
-                        <Sparkles className="w-3.5 h-3.5" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 leading-none">
-                        <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border border-primary/20">
-                          {focusTask.ticket_code || `TK-${focusTask.id.slice(0, 4)}`}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          • {focusTask.status === "in_progress" ? `En Curso (${focusTask.progress_percentage || 0}%)` : "Siguiente"}
-                        </span>
-                      </div>
-                      <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors mt-0.5">
-                        {focusTask.title}
-                      </p>
-                    </div>
+              {/* Bloque de Avance en Activas para colaboradores (Dentro del Hero) */}
+              {!isLeadOrPm && myActiveTotal > 0 && (
+                <div className="w-full max-w-xl rounded-2xl bg-zinc-50/90 dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/10 p-3 sm:p-3.5 space-y-2 shadow-2xs backdrop-blur-xs">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>Mi Avance en Activas</span>
+                    </span>
+                    <span className="font-mono font-bold text-foreground">
+                      {myActiveProgress}% ({myActiveTotal} {myActiveTotal === 1 ? "tarea activa" : "tareas activas"})
+                    </span>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-[11px] font-semibold text-primary group-hover:bg-primary/10 rounded-lg shrink-0"
-                  >
-                    {focusTask.status === "in_progress" ? "Continuar" : "Iniciar"}
-                    <ChevronRight className="w-3 h-3 ml-0.5 transition-transform group-hover:translate-x-0.5" />
-                  </Button>
+                  {/* Barra de Progreso */}
+                  <div className="h-2 w-full bg-zinc-200/70 dark:bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${myActiveProgress}%` }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                  </div>
+
+                  {/* Chips métricos e hipervínculo a la tarea prioritaria */}
+                  <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
+                      <span className="text-[10px] text-muted-foreground">En curso</span>
+                      <span className="font-mono font-bold text-indigo-500 text-[11px]">
+                        {myInProgress}
+                      </span>
+                    </div>
+                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
+                      <span className="text-[10px] text-muted-foreground">En QA</span>
+                      <span className="font-mono font-bold text-amber-500 text-[11px]">
+                        {myInReview}
+                      </span>
+                    </div>
+                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
+                      <span className="text-[10px] text-muted-foreground">Estimado</span>
+                      <span className="font-mono font-bold text-emerald-500 text-[11px]">
+                        {myActiveEstimatedHours}h
+                      </span>
+                    </div>
+                    {focusTask && (
+                      <button
+                        type="button"
+                        onClick={() => openTaskDetail(focusTask)}
+                        className="ml-auto text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                        title={focusTask.title}
+                      >
+                        <span className="font-mono font-bold">{focusTask.ticket_code || `TK-${focusTask.id.slice(0, 4)}`}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:inline">• {focusTask.title}</span>
+                        <ChevronRight className="w-3 h-3 text-primary" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Estado completado si no quedan activas pero completó tareas */}
+              {!isLeadOrPm && myActiveTotal === 0 && myCompleted > 0 && (
+                <div className="w-full max-w-xl rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3 sm:p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      ¡Sprint al día! Todas tus tareas están completadas ({myCompleted}/{myCompleted})
+                    </span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                    100%
+                  </span>
                 </div>
               )}
 
@@ -1702,62 +1663,6 @@ export function TaskCollaboratorPortal({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-          </div>
-        </div>
-
-        {/* Dynamic Contextual Progress & Insights Component (adapts to selected collaborator or team) */}
-        <div className="w-full rounded-2xl bg-zinc-50/80 dark:bg-white/[0.02] border border-zinc-200/80 dark:border-white/10 p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs transition-all">
-          <div className="flex-1 space-y-1.5 max-w-md">
-            <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className="text-zinc-700 dark:text-zinc-300 font-semibold flex items-center gap-2">
-                {contextualMetrics.photoUrl || contextualMetrics.initials ? (
-                  <Avatar className="w-5 h-5 rounded-md border border-border/60 shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
-                    <AvatarImage src={getCollaboratorAvatar(contextualMetrics.photoUrl, contextualMetrics.label)} className="object-cover" />
-                    <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                      {contextualMetrics.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
-                )}
-                <span>{contextualMetrics.label}</span>
-              </span>
-              <span className="font-mono font-bold text-foreground">
-                {contextualMetrics.percentage}% ({contextualMetrics.completed}/{contextualMetrics.total} tickets)
-              </span>
-            </div>
-            <div className="h-2 w-full bg-zinc-200/70 dark:bg-white/10 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${contextualMetrics.percentage}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-          </div>
-
-          {/* Chips Métricos Compactos */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="px-2.5 py-1 rounded-xl bg-white dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/10 flex items-center gap-2 shadow-2xs">
-              <span className="text-[11px] text-muted-foreground">En curso</span>
-              <span className="font-mono font-bold text-indigo-500 text-xs">
-                {contextualMetrics.inProgress}
-              </span>
-            </div>
-            <div className="px-2.5 py-1 rounded-xl bg-white dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/10 flex items-center gap-2 shadow-2xs">
-              <span className="text-[11px] text-muted-foreground">En QA</span>
-              <span className="font-mono font-bold text-amber-500 text-xs">
-                {contextualMetrics.inReview}
-              </span>
-            </div>
-            <div className="px-2.5 py-1 rounded-xl bg-white dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/10 flex items-center gap-2 shadow-2xs">
-              <span className="text-[11px] text-muted-foreground">
-                {contextualMetrics.chipLabel}
-              </span>
-              <span className="font-mono font-bold text-emerald-500 text-xs">
-                {contextualMetrics.chipValue}
-              </span>
-            </div>
           </div>
         </div>
 

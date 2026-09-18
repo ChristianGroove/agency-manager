@@ -80,6 +80,7 @@ export function TaskCollaboratorRibbon({
       string,
       {
         total: number
+        activeTotal: number
         completed: number
         inProgress: number
         inReview: number
@@ -90,20 +91,30 @@ export function TaskCollaboratorRibbon({
 
     teamMembers.forEach((m) => {
       const mTasks = allTasks.filter((t) => t.assigned_staff_id === m.id)
+      const mActiveTasks = mTasks.filter(
+        (t) =>
+          t.status === "todo" ||
+          t.status === "in_progress" ||
+          t.status === "in_review" ||
+          t.status === "blocked"
+      )
       const completed = mTasks.filter((t) => t.status === "done").length
       const inProgress = mTasks.filter((t) => t.status === "in_progress").length
       const inReview = mTasks.filter((t) => t.status === "in_review").length
-      const hours = mTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)
+      const hours = mActiveTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)
       const progress =
-        mTasks.length > 0
+        mActiveTasks.length > 0
           ? Math.round(
-              mTasks.reduce((sum, t) => sum + (t.progress_percentage || 0), 0) /
-                mTasks.length
+              mActiveTasks.reduce((sum, t) => sum + (t.progress_percentage || 0), 0) /
+                mActiveTasks.length
             )
+          : completed > 0
+          ? 100
           : 0
 
       map[m.id] = {
         total: mTasks.length,
+        activeTotal: mActiveTasks.length,
         completed,
         inProgress,
         inReview,
@@ -115,7 +126,61 @@ export function TaskCollaboratorRibbon({
     return map
   }, [teamMembers, allTasks])
 
+  // Active tasks metrics for the ribbon header (strictly active tasks, excluding backlog and done)
+  const activeMetrics = React.useMemo(() => {
+    const isAll = selectedMemberId === "all"
+    const relevantTasks = isAll
+      ? allTasks
+      : allTasks.filter((t) => t.assigned_staff_id === selectedMemberId)
+
+    const activeTasks = relevantTasks.filter(
+      (t) =>
+        t.status === "todo" ||
+        t.status === "in_progress" ||
+        t.status === "in_review" ||
+        t.status === "blocked"
+    )
+
+    const totalActive = activeTasks.length
+    const inProgress = activeTasks.filter((t) => t.status === "in_progress").length
+    const inReview = activeTasks.filter((t) => t.status === "in_review").length
+    const completed = relevantTasks.filter((t) => t.status === "done").length
+
+    const progress =
+      totalActive > 0
+        ? Math.round(
+            activeTasks.reduce((sum, t) => sum + (t.progress_percentage || 0), 0) /
+              totalActive
+          )
+        : completed > 0
+        ? 100
+        : 0
+
+    const selectedMember = !isAll
+      ? teamMembers.find((m) => m.id === selectedMemberId)
+      : null
+
+    const label = isAll
+      ? "Avance Global en Activas"
+      : `Avance de ${selectedMember ? selectedMember.first_name : "Colaborador"}`
+
+    return {
+      label,
+      totalActive,
+      inProgress,
+      inReview,
+      progress,
+    }
+  }, [allTasks, selectedMemberId, teamMembers])
+
   const totalSprintTasks = allTasks.length
+  const totalActiveTasks = allTasks.filter(
+    (t) =>
+      t.status === "todo" ||
+      t.status === "in_progress" ||
+      t.status === "in_review" ||
+      t.status === "blocked"
+  ).length
   const isAllSelected = selectedMemberId === "all"
   const isAnySpecificSelected = selectedMemberId !== "all"
 
@@ -181,14 +246,22 @@ export function TaskCollaboratorRibbon({
 
   return (
     <div className={cn("w-full space-y-2", className)}>
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+      <div className="flex items-center justify-between px-1 gap-2 flex-wrap">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 shrink-0">
           <Users className="w-3.5 h-3.5 text-primary" />
           Monitor de Equipo & Especialistas ({teamMembers.length})
         </span>
-        <span className="text-[10px] text-muted-foreground font-mono">
-          Haz clic en un colaborador para enfocar sus entregables
-        </span>
+        <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-muted-foreground flex-wrap justify-end">
+          <span>{activeMetrics.label}:</span>
+          <span className="font-mono font-bold text-foreground">
+            {activeMetrics.progress}%
+          </span>
+          <span className="text-muted-foreground/60 font-normal">
+            ({activeMetrics.totalActive} {activeMetrics.totalActive === 1 ? "activa" : "activas"}
+            {activeMetrics.inProgress > 0 ? ` • ${activeMetrics.inProgress} en curso` : ""}
+            {activeMetrics.inReview > 0 ? ` • ${activeMetrics.inReview} en QA` : ""})
+          </span>
+        </div>
       </div>
 
       {/* Horizontal Scroll Ribbon Container */}
@@ -225,16 +298,16 @@ export function TaskCollaboratorRibbon({
                   >
                     <Users className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  {totalSprintTasks > 0 && (
+                  {totalActiveTasks > 0 && (
                     <div className="absolute -top-1 -right-1.5 h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-mono font-bold bg-zinc-800 dark:bg-zinc-700 text-white shadow-xs">
-                      {totalSprintTasks}
+                      {totalActiveTasks}
                     </div>
                   )}
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-zinc-900/95 text-white p-3 rounded-2xl border-white/10 z-50 text-xs">
                 <p className="font-bold">Todo el Equipo</p>
-                <p className="text-[10px] text-zinc-400">Ver todas las tareas del sprint ({totalSprintTasks} tickets)</p>
+                <p className="text-[10px] text-zinc-400">Ver tareas activas del equipo ({totalActiveTasks} tickets)</p>
               </TooltipContent>
             </Tooltip>
 
