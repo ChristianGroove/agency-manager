@@ -759,9 +759,8 @@ export async function toggleChecklistItem(
       updated_at: new Date().toISOString()
     };
 
-    if (progress === 100) {
-      updateData.status = "done";
-    }
+    // Note: Checklist progress updates do not automatically force status to 'done'.
+    // Changing the task status to completed must be an intentional user or PM decision.
 
     const { error: updateErr } = await supabaseAdmin
       .from("task_items")

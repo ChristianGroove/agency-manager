@@ -462,6 +462,15 @@ Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmene
 - **Tipografía y Rol Focalizado**:
   - Se removió el insight redundante de porcentaje de la base de la tarjeta, exhibiendo con claridad el nombre del especialista y su rol corporativo (`member.role`).
 
+### G. Persistencia Atómica y Aislamiento de Estado Borrador en Modales de Edición (`TaskDetailModal` / `TaskPortalDetailModal`)
+- **Desacoplamiento de Mutaciones en Tiempo Real**:
+  - En los modales de edición, las operaciones de creación de entregables (`handleAddChecklistItem`), asignación de semana (`handleUpdateChecklistWeek`), eliminación (`handleRemoveChecklistItem`) y marcado de checks (`handleToggleChecklist`) operan exclusivamente sobre el estado local de React (`checklist`).
+  - Se eliminó la persistencia anticipada en tiempo real hacia la base de datos que causaba falsos completados cuando un usuario marcaba accidentalmente un entregable mientras redactaba la tarea.
+- **Transiciones de Estado Intencionales**:
+  - En `toggleChecklistItem` (acciones de servidor), se erradicó la regla de sobreescritura automática `if (progress === 100) status = 'done'`. El cierre o transición de estado de una tarea debe ser una decisión explícita del usuario o líder.
+  - Al presionar **Guardar Cambios**, se validan integralmente los entregables pendientes: si existen subtareas sin completar, la tarea no puede forzarse a `done` (se normaliza a `in_review` con tope de 95%), y todos los campos se persisten de manera atómica en una única transacción controlada.
+
+
 
 
 

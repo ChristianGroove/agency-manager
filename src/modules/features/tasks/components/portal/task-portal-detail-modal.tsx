@@ -500,72 +500,41 @@ export function TaskPortalDetailModal({
     }
   }
 
-  const handleToggleChecklist = async (itemId: string, currentVal: boolean) => {
+  const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
     const nextVal = !currentVal
     const updated = checklist.map((item) =>
-      item.id === itemId ? { ...item, completed: nextVal } : item
+      item.id === itemId
+        ? {
+            ...item,
+            completed: nextVal,
+            completed_at: nextVal ? new Date().toISOString() : undefined,
+          }
+        : item
     )
     setChecklist(updated)
-
-    if (task && !isCreating) {
-      const res = await portalToggleChecklist(token, task.id, itemId, nextVal)
-      if (res.success && res.checklist) {
-        setChecklist(res.checklist)
-        if (res.progress !== undefined && res.progress > progress) {
-          setProgress(res.progress)
-          setSavedProgress(res.progress)
-          if (res.progress === 100) setStatus("done")
-        }
-        toast.success("Subtarea actualizada")
-        onTaskUpdated?.({
-          ...task,
-          checklist: res.checklist,
-          progress_percentage: res.progress ?? progress,
-          status: res.progress === 100 ? "done" : status,
-        })
-      }
-    }
   }
 
   const handleAddChecklistItem = () => {
     if (!newChecklistTitle.trim()) return
     const newItem: TaskChecklistItem = {
-      id: `chk-${Date.now()}`,
+      id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
     }
-    const updated = [...checklist, newItem]
-    setChecklist(updated)
+    setChecklist((prev) => [...prev, newItem])
     setNewChecklistTitle("")
-
-    if (task && !isCreating) {
-      portalUpdateTask(token, task.id, { checklist: updated }).then((res) => {
-        if (res.success && res.task) onTaskUpdated?.(res.task)
-      })
-    }
+    setNewChecklistWeek(null)
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
-    const updated = checklist.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
-    setChecklist(updated)
-
-    if (task && !isCreating) {
-      portalUpdateTask(token, task.id, { checklist: updated }).then((res) => {
-        if (res.success && res.task) onTaskUpdated?.(res.task)
-      })
-    }
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
+    )
   }
 
   const handleRemoveChecklistItem = (itemId: string) => {
-    const updated = checklist.filter((c) => c.id !== itemId)
-    setChecklist(updated)
-
-    if (task && !isCreating) {
-      portalUpdateTask(token, task.id, { checklist: updated }).then((res) => {
-        if (res.success && res.task) onTaskUpdated?.(res.task)
-      })
-    }
+    setChecklist((prev) => prev.filter((c) => c.id !== itemId))
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

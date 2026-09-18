@@ -48,8 +48,6 @@ import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority,
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS } from "../../types"
 import {
   updateTask,
-  updateTaskProgress,
-  toggleChecklistItem,
   deleteTask,
   getTaskComments,
   addTaskComment,
@@ -227,18 +225,8 @@ export function TaskDetailModal({
     }
   }, [task?.id])
 
-  const handleTagsChange = async (newTags: string[]) => {
-    if (!task) return
+  const handleTagsChange = (newTags: string[]) => {
     setTags(newTags)
-    try {
-      const res = await updateTask(task.id, { tags: newTags })
-      if (res.success && res.task) {
-        onTaskUpdated?.(res.task)
-        toast.success("Etiquetas actualizadas")
-      }
-    } catch (err: any) {
-      toast.error("Error al actualizar etiquetas")
-    }
   }
 
   const loadComments = async (taskId: string) => {
@@ -257,13 +245,31 @@ export function TaskDetailModal({
     if (!task) return
     setIsSaving(true)
     try {
+      const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
+      let finalProgress = progress
+      let finalStatus = status
+
+      // Prevenir falso completado si aún existen entregables pendientes en el checklist
+      if (hasUnfinishedDeliverables) {
+        if (finalProgress > 95) finalProgress = 95
+        if (finalStatus === "done") {
+          finalStatus = "in_review"
+          finalProgress = 95
+          toast.warning("Entregables pendientes", {
+            description: "La tarea no puede marcarse completada mientras existan entregables pendientes. Avance fijado al 95%."
+          })
+        }
+      } else if (finalStatus === "done") {
+        finalProgress = 100
+      }
+
       const res = await updateTask(task.id, {
-        title,
-        description,
-        status,
+        title: title.trim(),
+        description: description.trim(),
+        status: finalStatus,
         priority,
         type,
-        progress_percentage: progress,
+        progress_percentage: finalProgress,
         assigned_staff_id: assignedStaffId === "unassigned" ? null : assignedStaffId,
         qa_staff_id: qaStaffId === "unassigned" ? null : qaStaffId,
         estimated_hours: Number(estimatedHours),
@@ -279,6 +285,9 @@ export function TaskDetailModal({
 
       if (res.success && res.task) {
         toast.success("Tarea actualizada con éxito")
+        setStatus(finalStatus)
+        setProgress(finalProgress)
+        initialStatusRef.current = finalStatus
         onTaskUpdated?.(res.task)
       } else {
         toast.error(res.error || "Error al actualizar la tarea")
@@ -323,31 +332,15 @@ export function TaskDetailModal({
       created_at: new Date().toISOString(),
     }
 
-    const updated = [...attachments, newAttachment]
-    setAttachments(updated)
+    setAttachments((prev) => [...prev, newAttachment])
     setNewRefUrl("")
     setNewRefName("")
     setNewRefType("auto")
     setShowAddRef(false)
-
-    updateTask(task.id, { attachments: updated }).then((res) => {
-      if (res.success && res.task) {
-        toast.success("Referencia añadida con éxito")
-        onTaskUpdated?.(res.task)
-      }
-    })
   }
 
   const handleRemoveAttachment = (attId: string) => {
-    if (!task) return
-    const updated = attachments.filter((a) => a.id !== attId)
-    setAttachments(updated)
-    updateTask(task.id, { attachments: updated }).then((res) => {
-      if (res.success && res.task) {
-        toast.success("Referencia eliminada")
-        onTaskUpdated?.(res.task)
-      }
-    })
+    setAttachments((prev) => prev.filter((a) => a.id !== attId))
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -361,12 +354,8 @@ export function TaskDetailModal({
 
       const res = await uploadTaskAttachment(formData)
       if (res.success && res.attachment) {
-        const updated = [...attachments, res.attachment]
-        setAttachments(updated)
-        toast.success(`Archivo "${file.name}" subido con éxito`)
-        updateTask(task.id, { attachments: updated }).then((uRes) => {
-          if (uRes.success && uRes.task) onTaskUpdated?.(uRes.task)
-        })
+        setAttachments((prev) => [...prev, res.attachment!])
+        toast.success(`Archivo "${file.name}" añadido`)
       } else {
         toast.error(res.error || "Error al subir archivo")
       }
@@ -380,82 +369,64 @@ export function TaskDetailModal({
 
   const handleProgressSliderDrag = (values: number[]) => {
     const val = values[0]
-    setProgress(val)
-    let nextStatus: TaskStatus = initialStatusRef.current
-    if (val === 100) {
-      nextStatus = "done"
-    } else if (val > 0) {
-      nextStatus = initialStatusRef.current === "todo" ? "in_progress" : initialStatusRef.current
-    } else {
-      nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
-    }
-    setStatus(nextStatus)
-  }
+    const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
 
-  const handleProgressSliderCommit = async (values: number[]) => {
-    const val = values[0]
-    setProgress(val)
-    let nextStatus: TaskStatus = initialStatusRef.current
-    if (val === 100) {
-      nextStatus = "done"
-    } else if (val > 0) {
-      nextStatus = initialStatusRef.current === "todo" ? "in_progress" : initialStatusRef.current
-    } else {
-      nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
-    }
-    setStatus(nextStatus)
-
-    if (task) {
-      await updateTaskProgress(task.id, val)
-      initialStatusRef.current = nextStatus
-      onTaskUpdated?.({ ...task, progress_percentage: val, status: nextStatus })
-      toast.success(`Progreso actualizado al ${val}%`)
-    }
-  }
-
-  const handleToggleChecklist = async (itemId: string, currentVal: boolean) => {
-    if (!task) return
-    const nextVal = !currentVal
-    const res = await toggleChecklistItem(task.id, itemId, nextVal)
-    if (res.success && res.checklist) {
-      setChecklist(res.checklist)
-      if (res.progress !== undefined) {
-        setProgress(res.progress)
-        if (res.progress === 100) setStatus("done")
-      }
-      toast.success("Subtarea actualizada")
-      onTaskUpdated?.({
-        ...task,
-        checklist: res.checklist,
-        progress_percentage: res.progress ?? progress,
-        status: res.progress === 100 ? "done" : status,
+    if (val === 100 && hasUnfinishedDeliverables) {
+      toast.warning("No puedes marcar 100% hasta completar todos los entregables (máximo 95%)", {
+        duration: 3500,
       })
+      setProgress(95)
+      return
     }
+
+    setProgress(val)
+    let nextStatus: TaskStatus = initialStatusRef.current
+    if (val === 100) {
+      nextStatus = "done"
+    } else if (val > 0) {
+      nextStatus = initialStatusRef.current === "todo" ? "in_progress" : initialStatusRef.current
+    } else {
+      nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
+    }
+    setStatus(nextStatus)
+  }
+
+  const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
+    const nextVal = !currentVal
+    setChecklist((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              completed: nextVal,
+              completed_at: nextVal ? new Date().toISOString() : undefined,
+            }
+          : item
+      )
+    )
   }
 
   const handleAddChecklistItem = () => {
-    if (!newChecklistTitle.trim() || !task) return
+    if (!newChecklistTitle.trim()) return
     const newItem: TaskChecklistItem = {
-      id: `chk-${Date.now()}`,
+      id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
     }
-    const updated = [...checklist, newItem]
-    setChecklist(updated)
+    setChecklist((prev) => [...prev, newItem])
     setNewChecklistTitle("")
-    updateTask(task.id, { checklist: updated }).then((res) => {
-      if (res.success && res.task) onTaskUpdated?.(res.task)
-    })
+    setNewChecklistWeek(null)
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
-    if (!task) return
-    const updated = checklist.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
-    setChecklist(updated)
-    updateTask(task.id, { checklist: updated }).then((res) => {
-      if (res.success && res.task) onTaskUpdated?.(res.task)
-    })
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
+    )
+  }
+
+  const handleRemoveChecklistItem = (itemId: string) => {
+    setChecklist((prev) => prev.filter((c) => c.id !== itemId))
   }
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -679,7 +650,6 @@ export function TaskDetailModal({
                   max={100}
                   step={5}
                   onValueChange={handleProgressSliderDrag}
-                  onValueCommit={handleProgressSliderCommit}
                   className="cursor-pointer"
                 />
               </div>
@@ -778,13 +748,7 @@ export function TaskDetailModal({
                       variant="ghost"
                       size="icon"
                       className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={() => {
-                        const updated = checklist.filter((c) => c.id !== item.id)
-                        setChecklist(updated)
-                        updateTask(task.id, { checklist: updated }).then((res) => {
-                          if (res.success && res.task) onTaskUpdated?.(res.task)
-                        })
-                      }}
+                      onClick={() => handleRemoveChecklistItem(item.id)}
                       title="Eliminar subtarea"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
