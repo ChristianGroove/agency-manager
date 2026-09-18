@@ -340,14 +340,12 @@ export function TaskCollaboratorRibbon({
               return (
                 <motion.div
                   key={member.id}
-                  whileHover={{ scale: 1.03, transition: { duration: 0.12, ease: "easeOut" } }}
-                  whileTap={{ scale: 0.98, transition: { duration: 0.08 } }}
                   onClick={() => onSelectMember(isSelected ? "all" : member.id)}
                   className={cn(
-                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[114px] sm:h-[118px] text-center group transition-colors duration-150 relative overflow-visible",
+                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[114px] sm:h-[118px] text-center group transition-all duration-200 relative overflow-visible",
                     isSelected
-                      ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs"
-                      : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10",
+                      ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs z-10"
+                      : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10 hover:shadow-xs",
                     isAnySpecificSelected && !isSelected && "opacity-60 hover:opacity-100"
                   )}
                   style={isSelected ? { borderColor: brandColor } : undefined}
@@ -429,16 +427,17 @@ export function TaskCollaboratorRibbon({
                     </Tooltip>
                   </div>
 
-                  {/* Free-floating 3D Avatar Bust - In active state, pops out of the top frame */}
-                  <div className="relative flex items-center justify-center w-full flex-1 min-h-[52px]">
+                  {/* Free-floating 3D Avatar Bust - Smooth in-place growth with origin-bottom */}
+                  <div className="relative flex items-end justify-center w-full flex-1 min-h-[50px] pb-0.5 overflow-visible">
                     <img
                       src={getCollaboratorAvatar(member.photo_url, member.first_name)}
                       alt={`${member.first_name} ${member.last_name}`}
                       className={cn(
-                        "object-contain select-none pointer-events-none transition-all duration-200 ease-out",
+                        "h-12 w-12 sm:h-[50px] sm:w-[50px] object-contain select-none pointer-events-none origin-bottom will-change-transform",
+                        "transition-all duration-300 ease-out",
                         isSelected
-                          ? "absolute -top-3 sm:-top-3.5 left-1/2 -translate-x-1/2 h-16 w-16 sm:h-[68px] sm:w-[68px] drop-shadow-[0_8px_14px_rgba(0,0,0,0.16)] scale-110 z-10"
-                          : "h-12 w-12 sm:h-[50px] sm:w-[50px] group-hover:scale-105 drop-shadow-[0_2px_6px_rgba(0,0,0,0.06)]"
+                          ? "translate-y-1 sm:translate-y-1.5 scale-140 sm:scale-145 drop-shadow-[0_10px_20px_rgba(0,0,0,0.22)] z-10"
+                          : "translate-y-0 scale-100 drop-shadow-[0_2px_6px_rgba(0,0,0,0.06)] group-hover:scale-110 group-hover:-translate-y-0.5"
                       )}
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = "/avatar%20task%20pack/Frame%2010.png"
