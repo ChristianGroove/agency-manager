@@ -451,5 +451,17 @@ Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmene
   - Cada fila expone código de ticket, título, proyecto, avatar del especialista, fecha límite (con alerta si está atrasada) y barra de progreso.
   - Al hacer clic en un ticket, se invoca `onSelectTask` abriendo instantáneamente el modal de detalle del ticket (`TaskPortalDetailModal`), facilitando la resolución de impedimentos sin abandonar el dashboard.
 
+### F. Microinteracciones de Alto Rendimiento en Cinta de Especialistas (`TaskCollaboratorRibbon`)
+- **Efecto 3D de Avatar Sobresaliente (Breakout) con Transición Fluida**:
+  - El avatar 3D se mantiene en el flujo Flexbox estático con anclaje `origin-bottom` y `will-change-transform`, evitando saltos y reacomodos bruscos entre estados.
+  - En estado activo (`isSelected`), escala suavemente a `scale-140 sm:scale-145` y se reposiciona sutilmente hacia abajo (`translate-y-1 sm:translate-y-1.5`), logrando que la cabeza del avatar sobresalga del marco redondeado superior sin ser recortada (`overflow-visible`) mientras el torso descansa firmemente sobre el rótulo del nombre.
+  - En estado hover, proporciona un suave realce visual (`group-hover:scale-110 group-hover:-translate-y-0.5`).
+- **Disparador de Información no Invasivo**:
+  - El tooltip/popover con información de tickets, métricas y botón de WhatsApp se desacopló del cuerpo de la tarjeta y se reubicó en un ícono circular sutil de información (`Info`) en la esquina superior derecha (`absolute top-1.5 right-1.5`).
+  - La interacción de hover sobre la tarjeta permanece limpia y dedicada a la selección del colaborador sin disparar popups emergentes involuntarios.
+- **Tipografía y Rol Focalizado**:
+  - Se removió el insight redundante de porcentaje de la base de la tarjeta, exhibiendo con claridad el nombre del especialista y su rol corporativo (`member.role`).
+
+
 
 
