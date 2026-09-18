@@ -12,6 +12,12 @@ import { PayrollStaffGrid } from "./payroll/payroll-staff-grid"
 import { NewJobModal } from "./new-job-modal"
 import { Sparkles, Users, Calendar, List, Columns, DollarSign } from "lucide-react"
 import { SectionHeader } from "@/components/layout/section-header"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 // Dynamic Dashboard Imports REMOVED
 // import { DashboardEngine } from "@/modules/core/dashboard/engine"
@@ -75,31 +81,56 @@ export function WorkOrdersDashboard() {
                         </TabsList>
 
                         {/* View Switcher */}
-                        <div className="flex items-center bg-muted p-1 rounded-md">
-                            <button
-                                onClick={() => setCurrentView('list')}
-                                className={`p-1.5 rounded-sm transition-all ${currentView === 'list' ? 'bg-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                                title="Vista de Lista"
-                            >
-                                <List className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => setCurrentView('grid')}
-                                className={`p-1.5 rounded-sm transition-all ${currentView === 'grid' ? 'bg-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                                title="Vista de Cards"
-                            >
-                                <Columns className="h-4 w-4 rotate-90" />
-                            </button>
-                            {activeTab === 'operations' && (
-                                <button
-                                    onClick={() => setCurrentView('calendar')}
-                                    className={`p-1.5 rounded-sm transition-all ${currentView === 'calendar' ? 'bg-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                                    title="Vista de Calendario"
-                                >
-                                    <Calendar className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
+                        <TooltipProvider delayDuration={150}>
+                            <div className="flex items-center bg-muted/60 dark:bg-white/5 p-1 rounded-xl border border-border/50">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => setCurrentView('list')}
+                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${currentView === 'list' ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                                            aria-label="Vista de Lista"
+                                        >
+                                            <List className="h-4 w-4" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <span>Vista de Lista</span>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => setCurrentView('grid')}
+                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${currentView === 'grid' ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                                            aria-label="Vista de Cards"
+                                        >
+                                            <Columns className="h-4 w-4 rotate-90" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <span>Vista de Tarjetas</span>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                {activeTab === 'operations' && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                onClick={() => setCurrentView('calendar')}
+                                                className={`p-1.5 rounded-lg transition-all cursor-pointer ${currentView === 'calendar' ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                                                aria-label="Vista de Calendario"
+                                            >
+                                                <Calendar className="h-4 w-4" />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                            <span>Vista de Calendario</span>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </div>
+                        </TooltipProvider>
                     </div>
                 </div>
 

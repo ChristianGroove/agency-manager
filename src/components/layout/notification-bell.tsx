@@ -13,6 +13,13 @@ import { NotificationList } from "./notification-list"
 // import { checkUpcomingPayments } from "@/modules/infrastructure/notifications/services/notifications"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 type Notification = {
     id: string
     type: string
@@ -143,12 +150,21 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
                         )}
                     </div>
                 ) : (
-                    <Button variant="ghost" size="icon" className="relative text-gray-500 hover:text-gray-900 transition-colors">
-                        <Bell className="h-5 w-5" />
-                        {unreadCount > 0 && (
-                            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
-                        )}
-                    </Button>
+                    <TooltipProvider delayDuration={150}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="relative text-gray-500 hover:text-gray-900 transition-colors cursor-pointer" aria-label="Notificaciones">
+                                    <Bell className="h-5 w-5" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
+                                    )}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <span>{unreadCount > 0 ? `Notificaciones (${unreadCount} pendientes)` : "Notificaciones al día"}</span>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 )}
             </DropdownMenuTrigger>
 

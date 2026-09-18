@@ -76,6 +76,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { TaskTagSelector } from "../tags/task-tag-selector"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 function renderFormattedComment(
   content: string,
@@ -97,27 +103,34 @@ function renderFormattedComment(
           `tk-${t.id.slice(0, 4)}`.toLowerCase() === code.toLowerCase()
       )
 
+      const tooltipTitle = matchedTask ? `${matchedTask.ticket_code || code}: ${matchedTask.title}` : `Ticket #${code}`
       return (
-        <button
-          key={index}
-          type="button"
-          onClick={() => {
-            if (matchedTask && onSelectTask) {
-              onSelectTask(matchedTask)
-              toast.info(`Abriendo ticket ${matchedTask.ticket_code || code}`)
-            }
-          }}
-          className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-semibold transition-all shadow-2xs mx-0.5 align-baseline",
-            matchedTask && onSelectTask
-              ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 cursor-pointer"
-              : "bg-muted text-foreground/90 border border-border/60"
-          )}
-          title={matchedTask ? `${matchedTask.ticket_code || code}: ${matchedTask.title}` : `Ticket #${code}`}
-        >
-          <Hash className="w-3 h-3 text-primary shrink-0" />
-          <span>{matchedTask?.ticket_code || code}</span>
-        </button>
+        <Tooltip key={index}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                if (matchedTask && onSelectTask) {
+                  onSelectTask(matchedTask)
+                  toast.info(`Abriendo ticket ${matchedTask.ticket_code || code}`)
+                }
+              }}
+              className={cn(
+                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-semibold transition-all shadow-2xs mx-0.5 align-baseline",
+                matchedTask && onSelectTask
+                  ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 cursor-pointer"
+                  : "bg-muted text-foreground/90 border border-border/60"
+              )}
+              aria-label={tooltipTitle}
+            >
+              <Hash className="w-3 h-3 text-primary shrink-0" />
+              <span>{matchedTask?.ticket_code || code}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <span>{tooltipTitle}</span>
+          </TooltipContent>
+        </Tooltip>
       )
     }
 

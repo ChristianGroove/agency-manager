@@ -11,6 +11,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export interface FilterSubOption {
     id: string
@@ -80,14 +86,21 @@ export function SearchFilterBar({
                     onChange={(e) => onSearchChange(e.target.value)}
                 />
                 {searchTerm && (
-                    <button
-                        type="button"
-                        onClick={() => onSearchChange("")}
-                        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shrink-0 cursor-pointer"
-                        title="Limpiar búsqueda"
-                    >
-                        <X className="h-3.5 w-3.5" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={() => onSearchChange("")}
+                                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shrink-0 cursor-pointer"
+                                aria-label="Limpiar búsqueda"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            <span>Limpiar búsqueda</span>
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
 
@@ -149,7 +162,7 @@ export function SearchFilterBar({
                                             handleClearSubOption(filter.id)
                                         }}
                                         className="p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-md cursor-pointer text-current opacity-70 hover:opacity-100 transition-opacity ml-0.5"
-                                        title={`Quitar filtro "${activeSub.label}" y volver a todas las ${filter.label.toLowerCase()}`}
+                                        aria-label={`Quitar filtro "${activeSub.label}" y volver a todas las ${filter.label.toLowerCase()}`}
                                     >
                                         <X className="h-3 w-3 stroke-[2.5]" />
                                     </button>
@@ -162,7 +175,7 @@ export function SearchFilterBar({
                                             <button
                                                 type="button"
                                                 className="p-0.5 pr-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-md cursor-pointer text-current opacity-70 hover:opacity-100 transition-opacity ml-0.5"
-                                                title={`Ver opciones de ${filter.label.toLowerCase()}`}
+                                                aria-label={`Ver opciones de ${filter.label.toLowerCase()}`}
                                             >
                                                 <ChevronDown className="h-3 w-3" />
                                             </button>
@@ -255,7 +268,7 @@ export function SearchFilterBar({
                                             "flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 animate-in fade-in transition-all cursor-pointer",
                                             getActiveFilterStyles(activeSub.color || filter.color || 'gray')
                                         )}
-                                        title={`${filter.label}: ${activeSub.label} (clic para ver filtros)`}
+                                        aria-label={`${filter.label}: ${activeSub.label} (clic para ver filtros)`}
                                     >
                                         <span>{filter.label}: {activeSub.label}</span>
                                         {activeSub.count !== undefined && (
@@ -275,7 +288,7 @@ export function SearchFilterBar({
                                             "flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 animate-in fade-in transition-all cursor-pointer",
                                             getActiveFilterStyles(filter.color || 'gray')
                                         )}
-                                        title={`${filter.label} (clic para ver filtros)`}
+                                        aria-label={`${filter.label} (clic para ver filtros)`}
                                     >
                                         <span>{filter.label}</span>
                                         {filter.count !== undefined && (
@@ -296,19 +309,26 @@ export function SearchFilterBar({
             <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5 shrink-0" />
 
             {/* Toggle Filters Button */}
-            <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border shrink-0 cursor-pointer",
-                    showFilters
-                        ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-white/10 shadow-inner"
-                        : "bg-white dark:bg-transparent text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
-                )}
-                title={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-            >
-                <ListFilter className="h-4 w-4" />
-            </button>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        type="button"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border shrink-0 cursor-pointer",
+                            showFilters
+                                ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-zinc-500 dark:text-zinc-400 border-transparent hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
+                        )}
+                        aria-label={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+                    >
+                        <ListFilter className="h-4 w-4" />
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                    <span>{showFilters ? "Ocultar barra de filtros" : "Mostrar barra de filtros"}</span>
+                </TooltipContent>
+            </Tooltip>
         </div>
     )
 }

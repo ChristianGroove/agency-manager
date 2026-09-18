@@ -440,14 +440,14 @@ export function TaskPacingPdfModal({
 
                           {/* Requerimiento (Title ONLY, NO descriptions) */}
                           <td className="px-2.5 py-2 font-medium text-zinc-900">
-                            <span className="line-clamp-1 text-[11px]" title={task.title}>
+                            <span className="line-clamp-1 text-[11px]">
                               {task.title}
                             </span>
                           </td>
 
                           {/* Assignee */}
                           <td className="px-2.5 py-2 text-zinc-600 text-[11px] truncate">
-                            <span className="truncate block" title={staffName}>
+                            <span className="truncate block">
                               {staffName}
                             </span>
                           </td>

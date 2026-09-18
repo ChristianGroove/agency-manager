@@ -783,13 +783,20 @@ export function TaskWeeklyPacingMatrix({
                               {task.ticket_code}
                             </Badge>
                             {task.is_recurring && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 px-1.5 py-0"
-                                title={`Recurrente: ${task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}`}
-                              >
-                                {task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}
-                              </Badge>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 px-1.5 py-0 cursor-help"
+                                    aria-label={`Recurrente: ${task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}`}
+                                  >
+                                    {task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <span>{`Frecuencia: ${task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval] : "Periódica"}`}</span>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                             <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                               {task.title}

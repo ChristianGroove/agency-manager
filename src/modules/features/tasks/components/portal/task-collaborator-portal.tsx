@@ -1142,7 +1142,7 @@ export function TaskCollaboratorPortal({
             )}
           </div>
 
-          {/* Switch Moderno Centrado para Gestores de Proyecto (Dashboard vs Gestión) */}
+          {/* Switch Moderno Centrado para Gestores de Proyecto (Dashboard vs Gestión vs Ritmo Semanal) */}
           {isLeadOrPm && (
             <div className="flex items-center bg-zinc-100/90 dark:bg-white/5 p-1 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-inner backdrop-blur-md">
               <button
@@ -1158,6 +1158,7 @@ export function TaskCollaboratorPortal({
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 <span>Dashboard</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setPmViewMode("gestion")}
@@ -1171,6 +1172,7 @@ export function TaskCollaboratorPortal({
                 <Kanban className="w-3.5 h-3.5" />
                 <span>Gestión</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setPmViewMode("pacing")}
@@ -1190,36 +1192,49 @@ export function TaskCollaboratorPortal({
           {/* Colaborador, Tema y Notificaciones a la derecha */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Botón Modo Claro / Oscuro (Afecta solo al portal) */}
-            <button
-              type="button"
-              onClick={togglePortalTheme}
-              className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              title={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-              aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            >
-              {portalTheme === "dark" ? (
-                <Sun className="w-5 h-5 text-amber-400 hover:rotate-45 transition-transform" />
-              ) : (
-                <Moon className="w-5 h-5 text-zinc-600 dark:text-zinc-300 hover:-rotate-12 transition-transform" />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={togglePortalTheme}
+                  className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                  aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                >
+                  {portalTheme === "dark" ? (
+                    <Sun className="w-5 h-5 text-amber-400 hover:rotate-45 transition-transform" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-zinc-600 dark:text-zinc-300 hover:-rotate-12 transition-transform" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <span>{portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}</span>
+              </TooltipContent>
+            </Tooltip>
 
             {/* Campanita de Notificaciones */}
             <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="relative p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label="Novedades y Notificaciones de Tareas"
-                >
-                  <Bell className="w-5 h-5" />
-                  {totalNotifications > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-extrabold shadow-sm animate-pulse">
-                      {totalNotifications}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="relative p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                      aria-label="Novedades y Notificaciones de Tareas"
+                    >
+                      <Bell className="w-5 h-5" />
+                      {totalNotifications > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-extrabold shadow-sm animate-pulse">
+                          {totalNotifications}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <span>{totalNotifications > 0 ? `Novedades (${totalNotifications} sin revisar)` : "Novedades y Notificaciones al día"}</span>
+                </TooltipContent>
+              </Tooltip>
               <PopoverContent
                 align="end"
                 className="w-80 sm:w-96 p-0 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-white/10 bg-card overflow-hidden"
@@ -1380,12 +1395,22 @@ export function TaskCollaboratorPortal({
               <span className="text-sm font-semibold text-foreground hidden sm:inline">
                 {staff.first_name} {staff.last_name}
               </span>
-              <div
-                className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center transition-colors bg-zinc-100 dark:bg-white/10 text-muted-foreground"
-                title={`${staff.first_name} ${staff.last_name}`}
-              >
-                <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center transition-colors bg-zinc-100 dark:bg-white/10 text-muted-foreground cursor-pointer"
+                    aria-label={`Perfil de ${staff.first_name} ${staff.last_name}`}
+                  >
+                    <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-foreground">{staff.first_name} {staff.last_name}</span>
+                    <span className="text-[10px] text-muted-foreground">{staff.role || "Colaborador del Equipo"}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -1449,35 +1474,66 @@ export function TaskCollaboratorPortal({
 
                   {/* Chips métricos e hipervínculo a la tarea prioritaria */}
                   <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
-                      <span className="text-[10px] text-muted-foreground">En curso</span>
-                      <span className="font-mono font-bold text-indigo-500 text-[11px]">
-                        {myInProgress}
-                      </span>
-                    </div>
-                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
-                      <span className="text-[10px] text-muted-foreground">En QA</span>
-                      <span className="font-mono font-bold text-amber-500 text-[11px]">
-                        {myInReview}
-                      </span>
-                    </div>
-                    <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs">
-                      <span className="text-[10px] text-muted-foreground">Estimado</span>
-                      <span className="font-mono font-bold text-emerald-500 text-[11px]">
-                        {myActiveEstimatedHours}h
-                      </span>
-                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs cursor-default">
+                          <span className="text-[10px] text-muted-foreground">En curso</span>
+                          <span className="font-mono font-bold text-indigo-500 text-[11px]">
+                            {myInProgress}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <span>Tareas en curso activo</span>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs cursor-default">
+                          <span className="text-[10px] text-muted-foreground">En QA</span>
+                          <span className="font-mono font-bold text-amber-500 text-[11px]">
+                            {myInReview}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <span>Tareas en revisión / QA</span>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/[0.05] border border-zinc-200/60 dark:border-white/10 flex items-center gap-1.5 shadow-2xs cursor-default">
+                          <span className="text-[10px] text-muted-foreground">Estimado</span>
+                          <span className="font-mono font-bold text-emerald-500 text-[11px]">
+                            {myActiveEstimatedHours}h
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <span>Total de horas estimadas activas</span>
+                      </TooltipContent>
+                    </Tooltip>
+
                     {focusTask && (
-                      <button
-                        type="button"
-                        onClick={() => openTaskDetail(focusTask)}
-                        className="ml-auto text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-                        title={focusTask.title}
-                      >
-                        <span className="font-mono font-bold">{focusTask.ticket_code || `TK-${focusTask.id.slice(0, 4)}`}</span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:inline">• {focusTask.title}</span>
-                        <ChevronRight className="w-3 h-3 text-primary" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => openTaskDetail(focusTask)}
+                            className="ml-auto text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                            aria-label={`Ver tarea prioritaria: ${focusTask.title}`}
+                          >
+                            <span className="font-mono font-bold">{focusTask.ticket_code || `TK-${focusTask.id.slice(0, 4)}`}</span>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:inline">• {focusTask.title}</span>
+                            <ChevronRight className="w-3 h-3 text-primary" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <span>{focusTask.title}</span>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
@@ -1726,15 +1782,22 @@ export function TaskCollaboratorPortal({
 
             {/* Dynamic Edit button for selected Workspace OR Project in Management Portal */}
             {isLeadOrPm && selectedProjectFilter !== "all" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEditCurrentScope}
-                className="h-10 w-9 p-0 text-muted-foreground hover:text-foreground shrink-0 rounded-2xl hover:bg-muted/50 cursor-pointer"
-                title={selectedProjectFilter.startsWith("workspace:") ? "Editar espacio de trabajo" : "Editar proyecto"}
-              >
-                <Pencil className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEditCurrentScope}
+                    className="h-10 w-9 p-0 text-muted-foreground hover:text-foreground shrink-0 rounded-2xl hover:bg-muted/50 cursor-pointer"
+                    aria-label={selectedProjectFilter.startsWith("workspace:") ? "Editar espacio de trabajo" : "Editar proyecto"}
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <span>{selectedProjectFilter.startsWith("workspace:") ? "Editar espacio de trabajo" : "Editar proyecto"}</span>
+                </TooltipContent>
+              </Tooltip>
             )}
 
             {/* View Mode Toggle: Grid, Compact, List, Kanban */}

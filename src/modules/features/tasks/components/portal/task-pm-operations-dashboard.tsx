@@ -1075,7 +1075,7 @@ export function TaskPmOperationsDashboard({
                     <div
                       className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 sm:mt-0"
                       style={{ backgroundColor: STATUS_COLORS[task.status] || "#94a3b8" }}
-                      title={STATUS_LABELS[task.status] || task.status}
+                      aria-label={STATUS_LABELS[task.status] || task.status}
                     />
 
                     <div className="min-w-0 flex-1 space-y-1">
@@ -1127,18 +1127,24 @@ export function TaskPmOperationsDashboard({
                     )}
 
                     {task.due_date && (
-                      <div
-                        className={cn(
-                          "flex items-center gap-1 text-[11px] font-mono font-medium",
-                          isOverdue
-                            ? "text-rose-600 dark:text-rose-400 font-bold"
-                            : "text-muted-foreground"
-                        )}
-                        title={isOverdue ? "Entrega atrasada" : "Fecha límite"}
-                      >
-                        {isOverdue && <AlertTriangle className="w-3 h-3 text-rose-500" />}
-                        <span>{format(parseISO(task.due_date), "d MMM", { locale: es })}</span>
-                      </div>
+                      <UiTooltip>
+                        <UiTooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "flex items-center gap-1 text-[11px] font-mono font-medium cursor-help",
+                              isOverdue
+                                ? "text-rose-600 dark:text-rose-400 font-bold"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {isOverdue && <AlertTriangle className="w-3 h-3 text-rose-500" />}
+                            <span>{format(parseISO(task.due_date), "d MMM", { locale: es })}</span>
+                          </div>
+                        </UiTooltipTrigger>
+                        <UiTooltipContent side="top">
+                          <span>{isOverdue ? "Entrega atrasada" : "Fecha límite pactada"}</span>
+                        </UiTooltipContent>
+                      </UiTooltip>
                     )}
 
                     {/* Mini progress bar */}

@@ -22,6 +22,12 @@ import { SpaceStatusBadge } from "@/modules/core/organizations/components/dashbo
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export function Header({ currentOrgId }: { currentOrgId: string | null | undefined }) {
     const [showMarquee, setShowMarquee] = useState(false)
@@ -105,15 +111,28 @@ export function Header({ currentOrgId }: { currentOrgId: string | null | undefin
                 <NotificationBell key={currentOrgId} />
 
                 {/* User Nav - Direct Profile Access */}
-                <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group">
-                    {/* Tooltip or simple hover effect could be added here if needed */}
-                    <Avatar className="h-9 w-9 border border-white shadow-sm group-hover:scale-105 transition-transform group-active:scale-95" suppressHydrationWarning>
-                        <AvatarImage src={user?.user_metadata?.avatar_url} />
-                        <AvatarFallback className="bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
-                </div>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div
+                                onClick={() => setIsProfileOpen(true)}
+                                className="cursor-pointer group"
+                                role="button"
+                                aria-label="Mi perfil y cuenta"
+                            >
+                                <Avatar className="h-9 w-9 border border-white shadow-sm group-hover:scale-105 transition-transform group-active:scale-95" suppressHydrationWarning>
+                                    <AvatarImage src={user?.user_metadata?.avatar_url} />
+                                    <AvatarFallback className="bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                            <span className="font-semibold">{user?.user_metadata?.full_name || user?.email || "Mi Perfil"}</span>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
 
                 {/* Profile Sheet */}
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />

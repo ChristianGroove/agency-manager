@@ -25,6 +25,12 @@ import {
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useRouter } from "next/navigation"
 
 export function ClientsTable({ 
@@ -109,23 +115,51 @@ export function ClientsTable({
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
                                             {isAgencyOrLegacy && (
-                                                <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} title="Centro de Envíos" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 mb-0 transition-colors">
-                                                    <SendHorizontal className="h-4 w-4" />
-                                                </Button>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} aria-label="Centro de Envíos" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 mb-0 transition-colors cursor-pointer">
+                                                            <SendHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="top">
+                                                        <span>Centro de Envíos</span>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             )}
                                             {isAgency && (
-                                                 <Button variant="ghost" size="icon" onClick={() => onInvoices(client)} title="Facturación" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 transition-colors">
-                                                     <FileText className="h-4 w-4" />
-                                                 </Button>
-                                             )}
-                                             {(spaceType === 'agency' || spaceType === 'platform') && (
-                                                 <Button variant="ghost" size="icon" onClick={() => onGoToPortal(client)} title="Ir al Portal" className="text-slate-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 h-8 w-8 transition-colors">
-                                                     <Globe className="h-4 w-4" />
-                                                 </Button>
-                                             )}
-                                            <Button variant="ghost" size="icon" onClick={() => onNotes?.(client)} title="Notas Rápidas" className="text-slate-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 w-8 transition-colors">
-                                                <StickyNote className="h-4 w-4" />
-                                            </Button>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => onInvoices(client)} aria-label="Facturación" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 transition-colors cursor-pointer">
+                                                            <FileText className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="top">
+                                                        <span>Facturación</span>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                            {(spaceType === 'agency' || spaceType === 'platform') && (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" size="icon" onClick={() => onGoToPortal(client)} aria-label="Ir al Portal" className="text-slate-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 h-8 w-8 transition-colors cursor-pointer">
+                                                            <Globe className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="top">
+                                                        <span>Ir al Portal del Cliente</span>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" onClick={() => onNotes?.(client)} aria-label="Notas Rápidas" className="text-slate-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 w-8 transition-colors cursor-pointer">
+                                                        <StickyNote className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top">
+                                                    <span>Notas Rápidas</span>
+                                                </TooltipContent>
+                                            </Tooltip>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">

@@ -91,8 +91,8 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                 <TooltipTrigger asChild>
                     {content}
                 </TooltipTrigger>
-                <TooltipContent side="right" className="font-semibold bg-brand-dark border-white/10 text-white">
-                    {label}
+                <TooltipContent side="right">
+                    <span>{label}</span>
                 </TooltipContent>
             </Tooltip>
         )
@@ -380,16 +380,24 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
                 {/* <SidebarParticles orgId={currentOrgId} /> */}
 
                 {/* Toggle Button */}
-                <button
-                    onClick={toggleCollapse}
-                    className="absolute -right-3 top-8 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50 border border-white/10"
-                >
-                    <div className={cn("transition-transform duration-300 text-white", isCollapsed ? "rotate-180" : "")}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15 18l-6-6 6-6" />
-                        </svg>
-                    </div>
-                </button>
+                <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                        <button
+                            onClick={toggleCollapse}
+                            className="absolute -right-3 top-8 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50 border border-white/10 cursor-pointer"
+                            aria-label={isCollapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
+                        >
+                            <div className={cn("transition-transform duration-300 text-white", isCollapsed ? "rotate-180" : "")}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 18l-6-6 6-6" />
+                                </svg>
+                            </div>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                        <span>{isCollapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}</span>
+                    </TooltipContent>
+                </Tooltip>
 
                 {/* Floating Actions (General + Admin) */}
                 <div className="absolute -right-3 bottom-5 z-50 flex flex-col items-end">

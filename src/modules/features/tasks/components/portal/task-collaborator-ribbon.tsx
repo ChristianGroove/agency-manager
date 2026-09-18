@@ -464,7 +464,6 @@ export function TaskCollaboratorRibbon({
                           ? "text-primary font-bold"
                           : "text-muted-foreground/75 font-medium"
                       )}
-                      title={member.role || "Especialista"}
                     >
                       {member.role || "Especialista"}
                     </span>

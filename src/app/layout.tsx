@@ -50,6 +50,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ViewContextProvider } from "@/modules/features/caa/context/view-context";
 import { ClientInit } from "@/modules/features/caa/client-init";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default async function RootLayout({
   children,
@@ -82,8 +83,10 @@ export default async function RootLayout({
                 disableTransitionOnChange
               >
                 <ViewContextProvider>
-                  <ClientInit />
-                  {children}
+                  <TooltipProvider delayDuration={150}>
+                    <ClientInit />
+                    {children}
+                  </TooltipProvider>
                 </ViewContextProvider>
                 <Toaster />
               </ThemeProvider>

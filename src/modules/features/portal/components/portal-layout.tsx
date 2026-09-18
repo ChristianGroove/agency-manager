@@ -17,6 +17,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { PortalHostingTab } from "./portal-hosting-tab"
 import { GlobalParticles } from "@/components/layout/global-particles"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface PortalLayoutProps {
     token: string
@@ -234,7 +240,6 @@ export function PortalLayout({ token, client, invoices = [], quotes = [], briefi
                         type="button"
                         onClick={togglePortalTheme}
                         className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/80 transition-all focus:outline-none"
-                        title={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
                         aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
                     >
                         {portalTheme === "dark" ? (
@@ -299,19 +304,27 @@ export function PortalLayout({ token, client, invoices = [], quotes = [], briefi
                 {/* Desktop Header (Theme Toggle + Notifs) */}
                 <header className="hidden md:flex items-center justify-end p-4 px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-2 bg-white/70 dark:bg-zinc-950/65 backdrop-blur-xl border border-white/50 dark:border-white/10 rounded-2xl p-1.5 px-2.5 shadow-sm">
-                        <button
-                            type="button"
-                            onClick={togglePortalTheme}
-                            className="p-1.5 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none"
-                            title={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                            aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                        >
-                            {portalTheme === "dark" ? (
-                                <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
-                            ) : (
-                                <Moon className="w-4 h-4 text-zinc-600 dark:text-zinc-300 hover:-rotate-12 transition-transform" />
-                            )}
-                        </button>
+                        <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={togglePortalTheme}
+                                        className="p-1.5 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none cursor-pointer"
+                                        aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                                    >
+                                        {portalTheme === "dark" ? (
+                                            <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+                                        ) : (
+                                            <Moon className="w-4 h-4 text-zinc-600 dark:text-zinc-300 hover:-rotate-12 transition-transform" />
+                                        )}
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                    <span>{portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}</span>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         <NotificationBell
                             count={notificationCount}
                             pendingInvoices={pendingInvoices}
