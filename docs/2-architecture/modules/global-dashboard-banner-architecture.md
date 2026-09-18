@@ -131,15 +131,14 @@ Para evitar que elementos multimedia alteren la altura del banner o desplace la 
 * Lottie ocupa el alto completo (`h-full max-h-[250px] aspect-square flex items-center justify-end drop-shadow-2xl`).
 * **Caché en Memoria:** Se utiliza `lottieCache = new Map<string, any>()` para almacenar las animaciones descargadas y garantizar transiciones instantáneas a 60 FPS sin peticiones de red repetitivas.
 
-### B. Columna de Textos con Autolayout Vertical
-* Montada dentro de `CardContent` con padding `p-6 sm:p-7 z-20`.
+### B. Columna de Textos con Autolayout Vertical & Aprovechamiento de Espacio
+* Montada dentro de `CardContent` con padding optimizado `p-5 sm:px-7 sm:pt-5.5 sm:pb-4 z-20` (reduciendo la holgura inferior excesiva para aproximar el CTA a los dots de paginación y maximizar el área vertical útil para títulos y frases).
 * Ancho restringido a `mr-auto max-w-[55%] sm:max-w-[58%] lg:max-w-[62%]` para garantizar zona de exclusión respecto a la animación.
 * Autolayout con `justify-between` entre el bloque de encabezados (Kicker, Título, Subtítulo), la rotación de frases con `SplitText` y el botón CTA.
 
 ### C. Contraste Quirúrgico del Badge Kicker
 Para evitar que el badge parezca "flotando o desalineado" debido a su padding interno en fondos claros:
-* **Modo Claro, Auto y Temas de Marca (`brand_primary` / `brand_secondary`):**
-  `bg-black/[0.07] dark:bg-white/12 border border-black/15 dark:border-white/20 shadow-xs`
+* **Fondo Claro Nítido:** Se utiliza un fill claro sutil (`bg-white/92 dark:bg-white/12 border border-black/[0.08] dark:border-white/20 shadow-2xs`) que aporta definición cristalina sin oscurecer ni generar conflicto cromático con los colores de marca del texto.
 * **Modo Oscuro Forzado (`dark`):**
   `bg-white/12 border border-white/20 shadow-xs`
 * Estructura Flex: `inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full w-fit mb-1.5`.
@@ -183,11 +182,15 @@ Ubicado en `src/modules/core/dashboard/components/banner-spotlight-modal.tsx`.
 
 El **Modal Cover Spotlight** es una ventana modal de nivel mundial inspirada en las *Product Release Sheets* de Linear y Apple Keynote:
 
-### Capacidades:
-1. **Hero Media Cover a Sangre:** Cabecera con gradiente dinámico y renderizado de animación Lottie 3D o imagen de alta resolución con drop-shadow pronunciado.
-2. **Jerarquía Tipográfica & Interpolación:** Kicker badge, título principal y subtítulo con soporte completo para tokens dinámicos (`{user_name}`, `{org_name}`, `{space_name}`).
-3. **Power Feature Cards (1 a 4 items):** Grid responsivo con tarjetas de características que integran íconos temáticos (Lucide o emojis libres) con títulos en negrita y descripciones concisas.
-4. **Conversión y Shimmer:** Botón de acción principal con efecto shimmer luminiscente de IA y botón secundario opcional (o cierre).
+### Capacidades y Principios de Diseño:
+1. **Composición Asimétrica Estilo Banner (Hero Header Cover):**
+   * **Multimedia en Posición Absoluta a la Derecha:** La animación Lottie (o imagen de producto) se posiciona de forma absoluta contra el borde derecho superior (`absolute right-0 top-0 bottom-0 h-full w-[170px] sm:w-[215px] flex items-center justify-end overflow-hidden pr-3`), replicando con fidelidad la composición visual del banner del dashboard.
+   * **Columna de Textos a la Izquierda:** El kicker badge, el título principal y la descripción/subtítulo se agrupan en una columna alineada a la izquierda (`relative z-20 max-w-[62%] sm:max-w-[66%] space-y-1.5 text-left`) con gradiente hero dinámico de fondo y botón flotante de cierre en la esquina superior derecha (`top-3.5 right-3.5`).
+2. **Jerarquía Tipográfica & Interpolación de Tokens:** Kicker badge con fill claro prémium, título principal con drop-shadow y subtítulo con clamp controlado, admitiendo tokens dinámicos en tiempo real (`{user_name}`, `{org_name}`, `{space_name}`).
+3. **Power Feature Cards Estáticas y Nítidas (1 a 4 items):** Grid responsivo con tarjetas de características. Los íconos temáticos (Lucide o emojis libres) se presentan con contenedores limpios `shadow-2xs` sin animaciones disruptivas de zoom en hover (`group-hover:scale-105` eliminado), preservando sobriedad y máxima legibilidad visual.
+4. **Footer Snug & Optimización de Espacio:**
+   * Contenedor del modal configurado como `flex flex-col` con `p-0` y `max-h-[92vh]`, erradicando por completo el espacio vacío vertical residual de las estructuras de grid desreguladas.
+   * Barra de pie de página compacta con `mt-auto` (`px-6 py-3 bg-slate-50/70 dark:bg-zinc-950/40 border-t border-border/50`) con distribución fluida: botón secundario de descarte / "Cerrar" a la izquierda y botón de conversión principal con efecto shimmer luminiscente de IA a la derecha.
 5. **Integración Directa en el Editor:** Subpanel dedicado en SuperAdmin con selector visual de íconos, catálogo de animaciones Lottie y botón de prueba rápida en vivo.
 6. **Cero Migraciones SQL:** Todos los datos se almacenan en el objeto JSONB `slides`, garantizando agilidad y estabilidad total.
 
