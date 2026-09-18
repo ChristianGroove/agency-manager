@@ -544,101 +544,127 @@ export function TaskPmOperationsDashboard({
         </div>
       </div>
 
-      {/* 4 Balanced High-Value KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* 4 Balanced High-Value KPI Cards - Low Profile Compact */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* KPI 1: Salud del Sprint */}
-        <Card className="p-5 rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-card to-card dark:from-blue-500/20 relative overflow-hidden group shadow-lg shadow-blue-500/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+        <Card className="p-4 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-card to-card dark:from-blue-500/20 relative overflow-hidden group shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               Salud del Sprint
             </span>
-            <div className="p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
-              <Rocket className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+              <Rocket className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-black text-foreground font-mono tracking-tight">
-              {sprintProgress}%
-            </h3>
-            <span className="text-xs font-semibold text-muted-foreground font-mono">
-              ({completedTasks.length}/{sprintTasks.length} tickets)
-            </span>
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+                {sprintProgress}%
+              </h3>
+              <span className="text-[11px] font-semibold text-muted-foreground font-mono">
+                ({completedTasks.length}/{sprintTasks.length})
+              </span>
+            </div>
+            {backlogTasks.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/10 text-muted-foreground font-mono">
+                {backlogTasks.length} backlog
+              </span>
+            )}
           </div>
-          <div className="mt-3 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+          <div className="mt-2.5 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1 overflow-hidden">
             <div
               className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
               style={{ width: `${sprintProgress}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 flex items-center justify-between font-medium">
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground font-medium">
             <span className="flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
-              <span>Avance activo: {activeProgress}%</span>
+              <TrendingUp className="w-3 h-3 text-blue-500" />
+              <span>Avance activo: <strong>{activeProgress}%</strong></span>
             </span>
-            {backlogTasks.length > 0 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/10 text-muted-foreground font-mono">
-                {backlogTasks.length} backlog
-              </span>
-            )}
-          </p>
+            <span>{sprintTasks.length - completedTasks.length} pendientes</span>
+          </div>
         </Card>
 
         {/* KPI 2: Pipeline de Calidad & QA */}
-        <Card className="p-5 rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-card dark:from-amber-500/20 relative overflow-hidden group shadow-lg shadow-amber-500/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+        <Card className="p-4 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-card dark:from-amber-500/20 relative overflow-hidden group shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
               Cola de QA & Validación
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              <ShieldCheck className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-black text-foreground font-mono tracking-tight">
-              {qaQueueTasks.length}
-            </h3>
-            <span className="text-xs font-semibold text-muted-foreground">
-              en revisión técnica
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+                {qaQueueTasks.length}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                en revisión
+              </span>
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground">
+              {inProgressTasks.length} en curso · {todoTasks.length} por iniciar
             </span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-            <span>En Curso: <strong className="text-foreground font-mono">{inProgressTasks.length}</strong></span>
-            <span>Por Iniciar: <strong className="text-foreground font-mono">{todoTasks.length}</strong></span>
+          <div className="mt-2.5 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                qaQueueTasks.length > 0 ? "bg-amber-500" : "bg-emerald-500"
+              )}
+              style={{
+                width: `${sprintTasks.length > 0 ? Math.min(100, Math.round((qaQueueTasks.length / sprintTasks.length) * 100)) : 0}%`,
+              }}
+            />
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 font-medium">
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium">
             {qaQueueTasks.length === 0 ? (
-              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" /> QA al día sin cola acumulada
+              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> QA al día
               </span>
             ) : (
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                Requiere validación de entregables
+              <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold">
+                <ShieldCheck className="w-3 h-3" /> Validación requerida
               </span>
             )}
-          </p>
+            <span className="text-muted-foreground font-mono">
+              {sprintTasks.length > 0 ? Math.round((qaQueueTasks.length / sprintTasks.length) * 100) : 0}% del sprint
+            </span>
+          </div>
         </Card>
 
         {/* KPI 3: Presupuesto y Horas / Capacidad */}
-        <Card className="p-5 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-card to-card dark:from-violet-500/20 relative overflow-hidden group shadow-lg shadow-violet-500/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+        <Card className="p-4 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-card to-card dark:from-violet-500/20 relative overflow-hidden group shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
               {totalEstimatedHours > 0 ? "Horas & Presupuesto" : "Volumen de Entrega"}
             </span>
-            <div className="p-2 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
-              <Clock className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+              <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
           {totalEstimatedHours > 0 ? (
             <>
-              <div className="flex items-baseline gap-1.5">
-                <h3 className="text-3xl font-black text-foreground font-mono tracking-tight">
-                  {totalActualHours}h
-                </h3>
-                <span className="text-xs text-muted-foreground font-mono">
-                  / {totalEstimatedHours}h est.
+              <div className="flex items-baseline justify-between gap-2 mt-1">
+                <div className="flex items-baseline gap-1.5">
+                  <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+                    {totalActualHours}h
+                  </h3>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    / {totalEstimatedHours}h est.
+                  </span>
+                </div>
+                <span className={cn(
+                  "text-[10px] font-bold font-mono",
+                  hoursEfficiencyDelta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
+                )}>
+                  {hoursEfficiencyDelta >= 0 ? `+${hoursEfficiencyDelta}h` : `${hoursEfficiencyDelta}h`}
                 </span>
               </div>
-              <div className="mt-3 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div className="mt-2.5 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
@@ -649,77 +675,88 @@ export function TaskPmOperationsDashboard({
                   style={{ width: `${Math.min(100, hoursBurnRate)}%` }}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 font-medium">
-                {hoursEfficiencyDelta >= 0 ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    +{hoursEfficiencyDelta}h de margen disponible
-                  </span>
-                ) : (
-                  <span className="text-rose-500 font-bold">
-                    {Math.abs(hoursEfficiencyDelta)}h sobre lo estimado
-                  </span>
-                )}
-              </p>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+                <span>{hoursBurnRate}% de ejecución</span>
+                <span>{hoursEfficiencyDelta >= 0 ? "Bajo presupuesto" : "Sobreestimado"}</span>
+              </div>
             </>
           ) : (
             <>
-              <div className="flex items-baseline gap-1.5">
-                <h3 className="text-3xl font-black text-foreground font-mono tracking-tight">
-                  {completedTasks.length}
-                </h3>
-                <span className="text-xs text-muted-foreground font-mono">
-                  / {sprintTasks.length} completadas
+              <div className="flex items-baseline justify-between gap-2 mt-1">
+                <div className="flex items-baseline gap-1.5">
+                  <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+                    {completedTasks.length}
+                  </h3>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    / {sprintTasks.length} listas
+                  </span>
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {activeTasks.length} en curso
                 </span>
               </div>
-              <div className="mt-3 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+              <div className="mt-2.5 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-400 transition-all duration-500"
                   style={{ width: `${sprintProgress}%` }}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2 font-medium">
-                <span className="text-foreground font-semibold">
-                  {activeTasks.length} activas
-                </span>{" "}
-                en ejecución directa
-              </p>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+                <span>{activeTasks.length} en ejecución</span>
+                <span>{sprintProgress}% sprint</span>
+              </div>
             </>
           )}
         </Card>
 
         {/* KPI 4: Radar de Riesgos */}
-        <Card className="p-5 rounded-3xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-card to-card dark:from-rose-500/20 relative overflow-hidden group shadow-lg shadow-rose-500/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+        <Card className="p-4 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 via-card to-card dark:from-rose-500/20 relative overflow-hidden group shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
               Radar de Riesgos
             </span>
-            <div className="p-2 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+              <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-              {criticalRiskCount}
-            </h3>
-            <span className="text-xs font-semibold text-muted-foreground">
-              críticas / riesgo
+          <div className="flex items-baseline justify-between gap-2 mt-1">
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                {criticalRiskCount}
+              </h3>
+              <span className="text-[11px] font-medium text-muted-foreground">
+                críticas
+              </span>
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground">
+              {blockedTasks.length} bloq. · {overdueTasks.length} venc.
             </span>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-            <span>Bloqueadas: <strong className="text-foreground font-mono">{blockedTasks.length}</strong></span>
-            <span>Vencidas: <strong className="text-foreground font-mono">{overdueTasks.length}</strong></span>
+          <div className="mt-2.5 w-full bg-zinc-200/60 dark:bg-white/10 rounded-full h-1 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                criticalRiskCount > 0 ? "bg-rose-500" : "bg-emerald-500"
+              )}
+              style={{
+                width: `${criticalRiskCount === 0 ? 100 : Math.min(100, (criticalRiskCount / (sprintTasks.length || 1)) * 100)}%`,
+              }}
+            />
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 font-medium">
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium">
             {criticalRiskCount === 0 ? (
               <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
-                <CheckCircle2 className="w-3.5 h-3.5" /> 0 bloqueos o vencimientos
+                <CheckCircle2 className="w-3 h-3" /> Sin riesgos
               </span>
             ) : (
               <span className="text-rose-500 font-semibold flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" /> Atención inmediata requerida
+                <AlertCircle className="w-3 h-3" /> Atención requerida
               </span>
             )}
-          </p>
+            <span className="text-muted-foreground font-mono">
+              {criticalRiskCount === 0 ? "0 impedimentos" : `${criticalRiskCount} por destrabar`}
+            </span>
+          </div>
         </Card>
       </div>
 
