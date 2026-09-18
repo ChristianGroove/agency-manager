@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -97,29 +103,38 @@ function AvatarUploader({
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-      <div
-        className="relative group cursor-pointer shrink-0"
-        onClick={() => fileInputRef.current?.click()}
-        title="Clic para cambiar foto"
-      >
-        <Avatar
-          className="w-16 h-16 border-2 border-primary/20 shadow-sm shrink-0 overflow-hidden"
-          style={{ backgroundColor: "#8ec045" }}
-        >
-          <AvatarImage src={getCollaboratorAvatar(photoUrl, firstName)} className="object-cover" />
-          <AvatarFallback className="text-base font-bold bg-primary/10 text-primary">
-            {firstName?.[0] || "C"}
-            {lastName?.[0] || "L"}
-          </AvatarFallback>
-        </Avatar>
-        <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-          {isUploading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <Camera className="w-5 h-5" />
-          )}
-        </div>
-      </div>
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className="relative group cursor-pointer shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Clic para cambiar foto"
+            >
+              <Avatar
+                className="w-16 h-16 border-2 border-primary/20 shadow-sm shrink-0 overflow-hidden"
+                style={{ backgroundColor: "#8ec045" }}
+              >
+                <AvatarImage src={getCollaboratorAvatar(photoUrl, firstName)} className="object-cover" />
+                <AvatarFallback className="text-base font-bold bg-primary/10 text-primary">
+                  {firstName?.[0] || "C"}
+                  {lastName?.[0] || "L"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                {isUploading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Camera className="w-5 h-5" />
+                )}
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="rounded-xl text-xs">
+            Clic para cambiar foto
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <div className="flex-1 space-y-2 text-center sm:text-left w-full min-w-0">
         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -656,7 +671,7 @@ export function TaskCollaboratorsManager({
                           size="sm"
                           onClick={() => handleOpenEdit(collab)}
                           className="h-8 text-xs font-medium gap-1 text-muted-foreground hover:text-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                          title="Editar colaborador"
+                          aria-label="Editar colaborador"
                         >
                           <Pencil className="w-3 h-3 text-primary" />
                           <span className="hidden lg:inline">Editar</span>
@@ -666,7 +681,7 @@ export function TaskCollaboratorsManager({
                           size="sm"
                           onClick={() => copyPortalLink(collab)}
                           className="h-8 text-xs font-medium gap-1 text-muted-foreground hover:text-foreground border-border/60"
-                          title="Copiar enlace directo"
+                          aria-label="Copiar enlace directo"
                         >
                           <Copy className="w-3 h-3" />
                           <span className="hidden xl:inline">Copiar</span>
@@ -675,20 +690,29 @@ export function TaskCollaboratorsManager({
                           size="sm"
                           onClick={() => openPortal(collab)}
                           className="h-8 text-xs font-medium gap-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
-                          title="Abrir portal del colaborador"
+                          aria-label="Abrir portal del colaborador"
                         >
                           <ExternalLink className="w-3 h-3" />
                           <span>Abrir</span>
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenDelete(collab)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors"
-                          title="Eliminar colaborador"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenDelete(collab)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors"
+                                aria-label="Eliminar colaborador"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              Eliminar colaborador
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </td>
                   </tr>

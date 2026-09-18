@@ -65,6 +65,12 @@ interface TaskManagerViewProps {
   initialCollaborators: TaskCollaborator[]
   initialMetrics?: TaskMetrics
   organizationId: string
+  tenantBranding?: {
+    name?: string
+    logoUrl?: string | null
+    isotypeUrl?: string | null
+    primaryColor?: string
+  }
 }
 
 export function TaskManagerView({
@@ -73,6 +79,7 @@ export function TaskManagerView({
   initialTasks,
   initialCollaborators,
   organizationId,
+  tenantBranding,
 }: TaskManagerViewProps) {
   const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
@@ -713,6 +720,7 @@ export function TaskManagerView({
             projects={projects}
             workspaces={workspaces}
             onSelectTask={handleSelectTask}
+            tenantBranding={tenantBranding}
           />
         )}
 

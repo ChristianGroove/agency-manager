@@ -400,7 +400,7 @@ export function TaskFormModal({
               size="icon"
               onClick={onClose}
               className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
-              title="Cerrar modal"
+              aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -571,7 +571,7 @@ export function TaskFormModal({
                       size="icon"
                       className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => handleRemoveChecklistItem(item.id)}
-                      title="Eliminar entregable"
+                      aria-label="Eliminar entregable"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -812,7 +812,7 @@ export function TaskFormModal({
                           size="icon"
                           onClick={() => handleRemoveAttachment(att.id)}
                           className="w-6 h-6 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Eliminar recurso"
+                          aria-label="Eliminar recurso"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>

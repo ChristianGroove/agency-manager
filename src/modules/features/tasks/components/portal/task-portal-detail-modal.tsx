@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ import {
   Layers,
   Sparkles,
   MessageSquare,
+  Activity,
   X,
   Paperclip,
   Link2,
@@ -40,12 +41,14 @@ import {
   Loader2,
   Upload,
   TrendingUp,
+  TrendingDown,
   SlidersHorizontal,
   AtSign,
   Download,
   FolderArchive,
   Hash,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -63,7 +66,6 @@ import {
   portalCreateTask,
   portalUpdateTask,
   portalDeleteTask,
-  portalUpdateTaskProgress,
   portalToggleChecklist,
   portalGetTaskComments,
   portalAddTaskComment,
@@ -151,6 +153,49 @@ function renderFormattedComment(
   })
 }
 
+function parseProgressAudit(content: string) {
+  const isProgress =
+    content.startsWith("📈") ||
+    content.startsWith("📉") ||
+    content.toLowerCase().includes("avance de tarea actualizado") ||
+    content.toLowerCase().includes("regresión de tarea actualizado") ||
+    content.toLowerCase().includes("regresion de tarea actualizado")
+
+  if (!isProgress) {
+    return { isProgress: false, isRegression: false, formattedContent: content }
+  }
+
+  const match = content.match(/del\s+(\d+)%\s+al\s+(\d+)%/i)
+  let isRegression =
+    content.startsWith("📉") ||
+    content.toLowerCase().includes("regresión") ||
+    content.toLowerCase().includes("regresion")
+
+  if (match) {
+    const fromVal = parseInt(match[1], 10)
+    const toVal = parseInt(match[2], 10)
+    if (toVal < fromVal) {
+      isRegression = true
+    } else if (toVal > fromVal) {
+      isRegression = false
+    }
+  }
+
+  let formattedContent = content
+  if (isRegression) {
+    formattedContent = content
+      .replace(/📈/g, "📉")
+      .replace(/Avance de tarea/gi, "Regresión de tarea")
+  } else {
+    formattedContent = content
+      .replace(/📉/g, "📈")
+      .replace(/Regresión de tarea/gi, "Avance de tarea")
+      .replace(/Regresion de tarea/gi, "Avance de tarea")
+  }
+
+  return { isProgress: true, isRegression, formattedContent }
+}
+
 interface TaskPortalDetailModalProps {
   task: TaskItem | null
   isOpen: boolean
@@ -236,6 +281,7 @@ export function TaskPortalDetailModal({
 
   // Comments & Mentions
   const [comments, setComments] = useState<TaskComment[]>([])
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState(10)
   const [newCommentText, setNewCommentText] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
   const [isSendingComment, setIsSendingComment] = useState(false)
@@ -243,6 +289,18 @@ export function TaskPortalDetailModal({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
+
+  const sortedComments = useMemo(() => {
+    return [...comments].sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return timeB - timeA
+    })
+  }, [comments])
+
+  const displayedComments = useMemo(() => {
+    return sortedComments.slice(0, visibleCommentsCount)
+  }, [sortedComments, visibleCommentsCount])
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false)
@@ -291,6 +349,7 @@ export function TaskPortalDetailModal({
       setChecklist([])
       setAttachments([])
       setComments([])
+      setVisibleCommentsCount(10)
       setIsRecurring(false)
       setRecurrenceInterval("monthly")
       setRecurrenceDay(1)
@@ -318,6 +377,7 @@ export function TaskPortalDetailModal({
     try {
       const data = await portalGetTaskComments(token, taskId)
       setComments(data)
+      setVisibleCommentsCount(10)
     } catch (err) {
       console.error("Error loading comments:", err)
     } finally {
@@ -407,6 +467,7 @@ export function TaskPortalDetailModal({
           setProgress(finalProgress)
           setStatus(finalStatus)
           onTaskUpdated?.(res.task)
+          onClose()
         } else {
           toast.error(res.error || "Error al actualizar la tarea")
         }
@@ -418,47 +479,23 @@ export function TaskPortalDetailModal({
     }
   }
 
-  // Visual drag update without saving to server
+  // Visual drag update without saving to server (Draft state inside modal)
   const handleProgressSliderDrag = (values: number[]) => {
     let val = values[0]
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
     if (hasUnfinishedDeliverables && val > 95) {
       val = 95
-    }
-    if (!isLeadOrPm && val < savedProgress) {
-      val = savedProgress
-    }
-    setProgress(val)
-    let nextStatus: TaskStatus = initialStatusRef.current
-    if (val === 100) {
-      nextStatus = "done"
-    } else if (val > 0) {
-      nextStatus = initialStatusRef.current === "todo" ? "in_progress" : initialStatusRef.current
-    } else {
-      nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
-    }
-    setStatus(nextStatus)
-  }
-
-  // Persist to server ONLY when user releases click/touch
-  const handleProgressSliderCommit = async (values: number[]) => {
-    let val = values[0]
-    const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
-    if (hasUnfinishedDeliverables && val > 95) {
-      toast.warning("Faltan entregables por completar", {
-        description: "Una tarea no puede avanzar del 95% hasta que todos sus entregables estén marcados al 100%."
+      toast.warning("Entregables pendientes por completar", {
+        description: "No puedes subir el avance al 100% mientras existan entregables pendientes en el checklist (avance limitado al 95%). Marca los entregables completados para desbloquear el 100%.",
+        id: "unfinished-deliverables-warning",
       })
-      val = 95
     }
-
-    // Rule: Collaborators cannot regress progress below their saved progress
     if (!isLeadOrPm && val < savedProgress) {
-      toast.info(`El avance no puede ser reducido por debajo del ${savedProgress}% registrado.`)
+      toast.info(`El avance no puede ser reducido por debajo del ${savedProgress}% registrado.`, {
+        id: "collaborator-progress-floor",
+      })
       val = savedProgress
-      setProgress(val)
-      return
     }
-
     setProgress(val)
     let nextStatus: TaskStatus = initialStatusRef.current
     if (val === 100) {
@@ -469,19 +506,6 @@ export function TaskPortalDetailModal({
       nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
     }
     setStatus(nextStatus)
-
-    if (task && !isCreating) {
-      const res = await portalUpdateTaskProgress(token, task.id, val)
-      if (res.success) {
-        setSavedProgress(val)
-        initialStatusRef.current = nextStatus
-        onTaskUpdated?.({ ...task, progress_percentage: val, status: nextStatus })
-        toast.success(`Avance guardado en ${val}%`)
-      } else {
-        toast.error("Error al actualizar progreso")
-        setProgress(savedProgress)
-      }
-    }
   }
 
   const handleSelectStatus = (newStatus: TaskStatus) => {
@@ -515,6 +539,10 @@ export function TaskPortalDetailModal({
   }
 
   const handleAddChecklistItem = () => {
+    if (!isCreating && !isLeadOrPm) {
+      toast.error("Solo los líderes o Project Managers pueden añadir nuevos entregables")
+      return
+    }
     if (!newChecklistTitle.trim()) return
     const newItem: TaskChecklistItem = {
       id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -528,12 +556,17 @@ export function TaskPortalDetailModal({
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
+    if (!isCreating && !isLeadOrPm) return
     setChecklist((prev) =>
       prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
     )
   }
 
   const handleRemoveChecklistItem = (itemId: string) => {
+    if (!isCreating && !isLeadOrPm) {
+      toast.error("Solo los líderes o Project Managers pueden eliminar entregables")
+      return
+    }
     setChecklist((prev) => prev.filter((c) => c.id !== itemId))
   }
 
@@ -727,7 +760,7 @@ export function TaskPortalDetailModal({
     try {
       const res = await portalAddTaskComment(token, task.id, newCommentText.trim())
       if (res.success && res.comment) {
-        setComments((prev) => [...prev, res.comment!])
+        setComments((prev) => [res.comment!, ...prev])
         setNewCommentText("")
         setMentionType(null)
         setMentionQuery(null)
@@ -852,7 +885,7 @@ export function TaskPortalDetailModal({
               size="icon"
               onClick={onClose}
               className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
-              title="Cerrar modal"
+              aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -908,32 +941,42 @@ export function TaskPortalDetailModal({
 
             {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
             {!isCreating && (
-              <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Avance
-                  </span>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Avance
+                    </span>
+                  </div>
+                  <div className="flex-1 px-1">
+                    <Slider
+                      value={[progress]}
+                      min={0}
+                      max={100}
+                      step={5}
+                      onValueChange={handleProgressSliderDrag}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                    <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
+                      {progress}%
+                    </span>
+                    {progress === 100 && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 px-1">
-                  <Slider
-                    value={[progress]}
-                    min={0}
-                    max={100}
-                    step={5}
-                    onValueChange={handleProgressSliderDrag}
-                    onValueCommit={handleProgressSliderCommit}
-                    className="cursor-pointer"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
-                  <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
-                    {progress}%
-                  </span>
-                  {progress === 100 && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  )}
-                </div>
+
+                {checklist.length > 0 && checklist.some((c) => !c.completed) && progress >= 95 && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium px-2 py-1 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    <span>
+                      Avance limitado al 95%: completa todos los entregables del checklist para habilitar el 100%.
+                    </span>
+                  </p>
+                )}
               </div>
             )}
 
@@ -1040,28 +1083,30 @@ export function TaskPortalDetailModal({
                         Listo
                       </Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={() => handleRemoveChecklistItem(item.id)}
-                      title="Eliminar subtarea"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    {(isCreating || isLeadOrPm) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => handleRemoveChecklistItem(item.id)}
+                        aria-label="Eliminar entregable"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item with optional week selector */}
-                <div className="flex items-center gap-2 pt-1">
-                  <Input
-                    value={newChecklistTitle}
-                    onChange={(e) => setNewChecklistTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                    placeholder="Añadir nueva subtarea..."
-                    className="h-8 text-xs bg-background rounded-lg flex-1"
-                  />
-                  {isLeadOrPm && (
+                {/* Add new checklist item with optional week selector - Only for PM / Lead */}
+                {(isCreating || isLeadOrPm) ? (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Input
+                      value={newChecklistTitle}
+                      onChange={(e) => setNewChecklistTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
+                      placeholder="Añadir nuevo entregable..."
+                      className="h-8 text-xs bg-background rounded-lg flex-1"
+                    />
                     <Select
                       value={newChecklistWeek ? String(newChecklistWeek) : "general"}
                       onValueChange={(val) =>
@@ -1079,17 +1124,21 @@ export function TaskPortalDetailModal({
                         <SelectItem value="4" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleAddChecklistItem}
-                    className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40 shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Añadir
-                  </Button>
-                </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAddChecklistItem}
+                      className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40 shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Añadir
+                    </Button>
+                  </div>
+                ) : checklist.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-1">
+                    No hay entregables asignados para este ticket.
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -1282,7 +1331,7 @@ export function TaskPortalDetailModal({
                           size="icon"
                           className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                           onClick={() => handleRemoveAttachment(att.id)}
-                          title="Eliminar recurso"
+                          aria-label="Eliminar recurso"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -1297,9 +1346,9 @@ export function TaskPortalDetailModal({
             {!isCreating && (
               <div className="space-y-4 pt-4 border-t border-border/60">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <Activity className="w-4 h-4 text-primary" />
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Historial de Discusión & Menciones (@) ({comments.length})
+                    Actividad & Discusión ({comments.length})
                   </span>
                 </div>
 
@@ -1315,48 +1364,88 @@ export function TaskPortalDetailModal({
                       No hay comentarios en este ticket aún. ¡Inicia la conversación usando @nombre!
                     </div>
                   ) : (
-                    comments.map((c) => {
-                      const isSystem = c.author_type === "system" || c.content.startsWith("📈")
-                      return (
-                        <div
-                          key={c.id}
-                          className={cn(
-                            "p-3 rounded-xl border text-xs space-y-1.5 shadow-2xs",
-                            isSystem
-                              ? "bg-emerald-500/[0.04] border-emerald-500/20 text-emerald-800 dark:text-emerald-300"
-                              : "bg-background border-border/60"
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {!isSystem && (
-                                <Avatar className="w-5 h-5 shrink-0" style={{ backgroundColor: brandColor }}>
-                                  <AvatarImage src={getCollaboratorAvatar(c.author_avatar, c.author_name)} className="object-cover" />
-                                  <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                                    {c.author_name.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
-                              <span className="font-semibold text-foreground">{c.author_name}</span>
-                              <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
-                                {isSystem ? "Sistema" : c.author_type === "owner" ? "Admin" : "Colaborador"}
-                              </Badge>
+                    <>
+                      {displayedComments.map((c) => {
+                        const progressInfo = parseProgressAudit(c.content)
+
+                        // Single-line sleek compact note for progress / regression audits
+                        if (progressInfo.isProgress) {
+                          return (
+                            <div
+                              key={c.id}
+                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="font-semibold text-foreground text-xs shrink-0">{c.author_name}</span>
+                                <span className="text-muted-foreground/40 shrink-0">·</span>
+                                <span className="truncate text-xs text-foreground/80 font-normal">
+                                  {progressInfo.formattedContent}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
+                                {new Date(c.created_at).toLocaleDateString("es-ES", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
                             </div>
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                              {new Date(c.created_at).toLocaleDateString("es-ES", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
+                          )
+                        }
+
+                        // Regular discussion comments (multi-line)
+                        return (
+                          <div
+                            key={c.id}
+                            className="p-3 rounded-xl border border-border/60 bg-background text-xs space-y-1.5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {c.author_name && (
+                                  <Avatar className="w-5 h-5 shrink-0" style={{ backgroundColor: brandColor }}>
+                                    <AvatarImage src={getCollaboratorAvatar(c.author_avatar, c.author_name)} className="object-cover" />
+                                    <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
+                                      {c.author_name.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
+                                <span className="font-semibold text-foreground">{c.author_name}</span>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                                  {c.author_type === "system" ? "Sistema" : c.author_type === "owner" ? "Admin" : "Colaborador"}
+                                </Badge>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {new Date(c.created_at).toLocaleDateString("es-ES", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <div className="text-foreground/90 leading-relaxed pl-7 whitespace-pre-wrap">
+                              {renderFormattedComment(c.content, availableTasks, onSelectTask)}
+                            </div>
                           </div>
-                          <div className="text-foreground/90 leading-relaxed pl-7 whitespace-pre-wrap">
-                            {renderFormattedComment(c.content, availableTasks, onSelectTask)}
-                          </div>
+                        )
+                      })}
+
+                      {sortedComments.length > visibleCommentsCount && (
+                        <div className="pt-1 pb-0.5 flex justify-center">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setVisibleCommentsCount((prev) => prev + 10)}
+                            className="text-xs text-muted-foreground hover:text-foreground h-7 gap-1.5 rounded-lg border border-border/40 hover:bg-muted/60 transition-colors"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                            <span>Cargar más ({sortedComments.length - visibleCommentsCount} anteriores)</span>
+                          </Button>
                         </div>
-                      )
-                    })
+                      )}
+                    </>
                   )}
                 </div>
 

@@ -164,9 +164,15 @@ export function TaskTagSelector({
   const allAvailableTags = useMemo(() => {
     const map = new Map<string, TenantTaskTag>()
 
-    // 1. Add catalog tags
+    // 1. Add catalog tags (with canonical label override for system stage tags)
     for (const ct of catalogTags) {
-      map.set(ct.id.toLowerCase(), ct)
+      const lower = ct.id.toLowerCase()
+      const sys = SYSTEM_STAGE_TAGS[lower]
+      map.set(lower, {
+        ...ct,
+        label: sys?.label || sys?.shortLabel || ct.label,
+        color: sys?.color || ct.color
+      })
     }
 
     // 2. Add current task tags if not present
@@ -177,7 +183,7 @@ export function TaskTagSelector({
         map.set(lower, {
           id: lower,
           name: lower,
-          label: sys?.shortLabel || sys?.label || lower,
+          label: sys?.label || sys?.shortLabel || lower,
           color: sys?.color || "blue",
           is_favorite: false
         })
@@ -366,8 +372,9 @@ export function TaskTagSelector({
             const found = allAvailableTags.find(
               (t) => t.id.toLowerCase() === tagKey.toLowerCase() || t.name.toLowerCase() === tagKey.toLowerCase()
             )
-            const colorInfo = getTagColorInfo(found?.color)
-            const label = found?.label || SYSTEM_STAGE_TAGS[tagKey]?.shortLabel || tagKey
+            const sys = SYSTEM_STAGE_TAGS[tagKey.toLowerCase()]
+            const colorInfo = getTagColorInfo(sys?.color || found?.color)
+            const label = sys?.label || sys?.shortLabel || found?.label || tagKey
 
             return (
               <span
@@ -505,7 +512,7 @@ export function TaskTagSelector({
                                 type="button"
                                 onClick={(e) => handleToggleFavorite(tag.id, e)}
                                 className="p-1 text-amber-500 hover:opacity-75 transition-opacity"
-                                title="Quitar de favoritas"
+                                aria-label="Quitar de favoritas"
                               >
                                 <Star className="w-3 h-3 fill-amber-500" />
                               </button>
@@ -513,7 +520,7 @@ export function TaskTagSelector({
                                 type="button"
                                 onClick={(e) => handleRequestDelete(tag, e)}
                                 className="p-1 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar del catálogo global"
+                                aria-label="Eliminar del catálogo global"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -560,7 +567,7 @@ export function TaskTagSelector({
                                 type="button"
                                 onClick={(e) => handleToggleFavorite(tag.id, e)}
                                 className="p-1 text-muted-foreground hover:text-amber-500 transition-colors"
-                                title="Marcar como favorita"
+                                aria-label="Marcar como favorita"
                               >
                                 <Star className="w-3 h-3" />
                               </button>
@@ -568,7 +575,7 @@ export function TaskTagSelector({
                                 type="button"
                                 onClick={(e) => handleRequestDelete(tag, e)}
                                 className="p-1 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar del catálogo global"
+                                aria-label="Eliminar del catálogo global"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>

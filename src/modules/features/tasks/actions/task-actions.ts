@@ -804,7 +804,7 @@ export async function getTaskComments(taskId: string): Promise<TaskComment[]> {
     .from("task_comments")
     .select("*")
     .eq("task_id", taskId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching task comments:", error);

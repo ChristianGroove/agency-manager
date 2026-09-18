@@ -305,9 +305,9 @@ export function TaskCollaboratorRibbon({
                   )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="bg-zinc-900/95 text-white p-3 rounded-2xl border-white/10 z-50 text-xs">
-                <p className="font-bold">Todo el Equipo</p>
-                <p className="text-[10px] text-zinc-400">Ver tareas activas del equipo ({totalActiveTasks} tickets)</p>
+              <TooltipContent side="bottom" className="rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 shadow-xl backdrop-blur-md p-2.5 z-50 text-xs">
+                <p className="font-bold text-foreground">Todo el Equipo</p>
+                <p className="text-[10px] text-muted-foreground">Ver tareas activas del equipo ({totalActiveTasks} tickets)</p>
               </TooltipContent>
             </Tooltip>
 
@@ -362,7 +362,6 @@ export function TaskCollaboratorRibbon({
                         <button
                           type="button"
                           className="w-4 h-4 rounded-full bg-zinc-200/70 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs opacity-60 hover:opacity-100 group-hover:opacity-100"
-                          title={`Información de ${member.first_name}`}
                           aria-label={`Información de ${member.first_name}`}
                         >
                           <Info className="w-2.5 h-2.5" />
@@ -371,13 +370,13 @@ export function TaskCollaboratorRibbon({
                       <TooltipContent
                         side="bottom"
                         align="end"
-                        className="bg-zinc-900/95 text-white p-3 rounded-2xl border-white/10 z-50 text-xs max-w-xs shadow-2xl pointer-events-auto"
+                        className="rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 shadow-xl backdrop-blur-md p-3.5 z-50 text-xs max-w-xs pointer-events-auto"
                       >
                         <div className="space-y-2">
                           {/* Header: Name + Role on Left, WhatsApp Share Button on Right */}
                           <div className="flex items-start justify-between gap-2.5">
                             <div className="space-y-0.5 min-w-0 flex-1">
-                              <p className="font-bold text-sm truncate text-white leading-tight">
+                              <p className="font-bold text-sm truncate text-foreground leading-tight">
                                 {member.first_name} {member.last_name}
                               </p>
                               <p className="text-[10px] text-primary font-semibold flex items-center gap-1">
@@ -395,22 +394,22 @@ export function TaskCollaboratorRibbon({
                                 handleShareWhatsApp(member)
                               }}
                               className="shrink-0 flex items-center justify-center w-7 h-7 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366] text-[#25D366] hover:text-white border border-[#25D366]/30 hover:border-[#25D366] transition-all duration-150 cursor-pointer shadow-xs active:scale-90"
-                              title="Compartir portal"
+                              aria-label="Compartir portal"
                             >
                               <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
 
-                          <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-[11px]">
+                          <div className="pt-2 border-t border-zinc-200/80 dark:border-white/10 grid grid-cols-2 gap-2 text-[11px]">
                             <div>
-                              <span className="text-zinc-400 block text-[10px]">Tickets:</span>
-                              <span className="font-mono font-bold">
+                              <span className="text-muted-foreground block text-[10px]">Tickets:</span>
+                              <span className="font-mono font-bold text-foreground">
                                 {stats.completed}/{stats.total} ({stats.progress}%)
                               </span>
                             </div>
                             <div>
-                              <span className="text-zinc-400 block text-[10px]">Estimado:</span>
-                              <span className="font-mono font-bold">{stats.hours}h</span>
+                              <span className="text-muted-foreground block text-[10px]">Estimado:</span>
+                              <span className="font-mono font-bold text-foreground">{stats.hours}h</span>
                             </div>
                           </div>
                           {isSelected ? (
@@ -418,7 +417,7 @@ export function TaskCollaboratorRibbon({
                               * Filtro activo (clic para quitar)
                             </p>
                           ) : (
-                            <p className="text-[10px] text-zinc-400 pt-1">
+                            <p className="text-[10px] text-muted-foreground pt-1">
                               Clic para filtrar sus entregables
                             </p>
                           )}

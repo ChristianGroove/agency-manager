@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ import {
   Layers,
   Sparkles,
   MessageSquare,
+  Activity,
   X,
   Paperclip,
   Link2,
@@ -38,11 +39,13 @@ import {
   FileText,
   Globe,
   TrendingUp,
+  TrendingDown,
   Upload,
   Loader2,
   AtSign,
   Hash,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment, RecurrenceInterval } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS } from "../../types"
@@ -134,6 +137,49 @@ function renderFormattedComment(
   })
 }
 
+function parseProgressAudit(content: string) {
+  const isProgress =
+    content.startsWith("📈") ||
+    content.startsWith("📉") ||
+    content.toLowerCase().includes("avance de tarea actualizado") ||
+    content.toLowerCase().includes("regresión de tarea actualizado") ||
+    content.toLowerCase().includes("regresion de tarea actualizado")
+
+  if (!isProgress) {
+    return { isProgress: false, isRegression: false, formattedContent: content }
+  }
+
+  const match = content.match(/del\s+(\d+)%\s+al\s+(\d+)%/i)
+  let isRegression =
+    content.startsWith("📉") ||
+    content.toLowerCase().includes("regresión") ||
+    content.toLowerCase().includes("regresion")
+
+  if (match) {
+    const fromVal = parseInt(match[1], 10)
+    const toVal = parseInt(match[2], 10)
+    if (toVal < fromVal) {
+      isRegression = true
+    } else if (toVal > fromVal) {
+      isRegression = false
+    }
+  }
+
+  let formattedContent = content
+  if (isRegression) {
+    formattedContent = content
+      .replace(/📈/g, "📉")
+      .replace(/Avance de tarea/gi, "Regresión de tarea")
+  } else {
+    formattedContent = content
+      .replace(/📉/g, "📈")
+      .replace(/Regresión de tarea/gi, "Avance de tarea")
+      .replace(/Regresion de tarea/gi, "Avance de tarea")
+  }
+
+  return { isProgress: true, isRegression, formattedContent }
+}
+
 interface TaskDetailModalProps {
   task: TaskItem | null
   isOpen: boolean
@@ -190,6 +236,7 @@ export function TaskDetailModal({
 
   // Comments & Mentions
   const [comments, setComments] = useState<TaskComment[]>([])
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState(10)
   const [newCommentText, setNewCommentText] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
   const [isSendingComment, setIsSendingComment] = useState(false)
@@ -198,6 +245,18 @@ export function TaskDetailModal({
   const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  const sortedComments = useMemo(() => {
+    return [...comments].sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return timeB - timeA
+    })
+  }, [comments])
+
+  const displayedComments = useMemo(() => {
+    return sortedComments.slice(0, visibleCommentsCount)
+  }, [sortedComments, visibleCommentsCount])
 
   // Sync state when task changes
   useEffect(() => {
@@ -221,6 +280,7 @@ export function TaskDetailModal({
       setRecurrenceInterval(task.recurrence_interval || "monthly")
       setRecurrenceDay(task.recurrence_day || 1)
       setNewChecklistWeek(null)
+      setVisibleCommentsCount(10)
       loadComments(task.id)
     }
   }, [task?.id])
@@ -234,6 +294,7 @@ export function TaskDetailModal({
     try {
       const data = await getTaskComments(taskId)
       setComments(data)
+      setVisibleCommentsCount(10)
     } catch (err) {
       console.error(err)
     } finally {
@@ -289,6 +350,7 @@ export function TaskDetailModal({
         setProgress(finalProgress)
         initialStatusRef.current = finalStatus
         onTaskUpdated?.(res.task)
+        onClose()
       } else {
         toast.error(res.error || "Error al actualizar la tarea")
       }
@@ -368,15 +430,15 @@ export function TaskDetailModal({
   }
 
   const handleProgressSliderDrag = (values: number[]) => {
-    const val = values[0]
+    let val = values[0]
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
 
-    if (val === 100 && hasUnfinishedDeliverables) {
-      toast.warning("No puedes marcar 100% hasta completar todos los entregables (máximo 95%)", {
-        duration: 3500,
+    if (hasUnfinishedDeliverables && val > 95) {
+      val = 95
+      toast.warning("Entregables pendientes por completar", {
+        description: "No puedes subir el avance al 100% mientras existan entregables pendientes en el checklist (avance limitado al 95%). Marca los entregables completados para desbloquear el 100%.",
+        id: "unfinished-deliverables-warning-platform",
       })
-      setProgress(95)
-      return
     }
 
     setProgress(val)
@@ -528,7 +590,7 @@ export function TaskDetailModal({
         authorName: "Auditor / Tenant Owner",
       })
       if (res.success && res.comment) {
-        setComments((prev) => [...prev, res.comment!])
+        setComments((prev) => [res.comment!, ...prev])
         setNewCommentText("")
         setMentionType(null)
         setMentionQuery(null)
@@ -611,7 +673,7 @@ export function TaskDetailModal({
               size="icon"
               onClick={onClose}
               className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
-              title="Cerrar modal"
+              aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -636,31 +698,42 @@ export function TaskDetailModal({
             </div>
 
             {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
-            <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Avance
-                </span>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Avance
+                  </span>
+                </div>
+                <div className="flex-1 px-1">
+                  <Slider
+                    value={[progress]}
+                    min={0}
+                    max={100}
+                    step={5}
+                    onValueChange={handleProgressSliderDrag}
+                    className="cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                  <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
+                    {progress}%
+                  </span>
+                  {progress === 100 && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  )}
+                </div>
               </div>
-              <div className="flex-1 px-1">
-                <Slider
-                  value={[progress]}
-                  min={0}
-                  max={100}
-                  step={5}
-                  onValueChange={handleProgressSliderDrag}
-                  className="cursor-pointer"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
-                <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
-                  {progress}%
-                </span>
-                {progress === 100 && (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                )}
-              </div>
+
+              {checklist.length > 0 && checklist.some((c) => !c.completed) && progress >= 95 && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium px-2 py-1 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  <span>
+                    Avance limitado al 95%: completa todos los entregables del checklist para habilitar el 100%.
+                  </span>
+                </p>
+              )}
             </div>
 
             {/* Description */}
@@ -749,7 +822,7 @@ export function TaskDetailModal({
                       size="icon"
                       className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => handleRemoveChecklistItem(item.id)}
-                      title="Eliminar subtarea"
+                      aria-label="Eliminar subtarea"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -969,7 +1042,7 @@ export function TaskDetailModal({
                           size="icon"
                           className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                           onClick={() => handleRemoveAttachment(att.id)}
-                          title="Eliminar referencia"
+                          aria-label="Eliminar referencia"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -984,9 +1057,9 @@ export function TaskDetailModal({
             <div className="space-y-4 pt-4 border-t border-border/60">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <Activity className="w-4 h-4 text-primary" />
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Historial de Discusión & Menciones (@ y #)
+                    Actividad & Discusión
                   </span>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
@@ -1003,36 +1076,86 @@ export function TaskDetailModal({
                     No hay comentarios aún. Usa @ para mencionar a colaboradores o # para vincular tickets.
                   </p>
                 ) : (
-                  comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="p-3 rounded-xl bg-background border border-border/60 text-xs space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-5 h-5">
-                            <AvatarImage src={comment.author_avatar || undefined} />
-                            <AvatarFallback className="text-[9px]">
-                              {comment.author_name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-semibold text-foreground">{comment.author_name}</span>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
-                            {comment.author_type === "owner" ? "Admin" : "Colaborador"}
-                          </Badge>
+                  <>
+                    {displayedComments.map((comment) => {
+                      const progressInfo = parseProgressAudit(comment.content)
+
+                      // Single-line sleek compact note for progress / regression audits
+                      if (progressInfo.isProgress) {
+                        return (
+                          <div
+                            key={comment.id}
+                            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="font-semibold text-foreground text-xs shrink-0">{comment.author_name}</span>
+                              <span className="text-muted-foreground/40 shrink-0">·</span>
+                              <span className="truncate text-xs text-foreground/80 font-normal">
+                                {progressInfo.formattedContent}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
+                              {new Date(comment.created_at).toLocaleDateString("es-ES", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )
+                      }
+
+                      // Regular discussion comments (multi-line)
+                      return (
+                        <div
+                          key={comment.id}
+                          className="p-3 rounded-xl border border-border/60 bg-background text-xs space-y-1.5 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-5 h-5">
+                                <AvatarImage src={comment.author_avatar || undefined} />
+                                <AvatarFallback className="text-[9px]">
+                                  {comment.author_name.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-semibold text-foreground">{comment.author_name}</span>
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                                {comment.author_type === "owner" ? "Admin" : "Colaborador"}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {new Date(comment.created_at).toLocaleDateString("es-ES", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground leading-relaxed pl-7 whitespace-pre-wrap">
+                            {renderFormattedComment(comment.content, availableTasks, onSelectTask)}
+                          </div>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(comment.created_at).toLocaleDateString("es-ES", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                      )
+                    })}
+
+                    {sortedComments.length > visibleCommentsCount && (
+                      <div className="pt-1 pb-0.5 flex justify-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setVisibleCommentsCount((prev) => prev + 10)}
+                          className="text-xs text-muted-foreground hover:text-foreground h-7 gap-1.5 rounded-lg border border-border/40 hover:bg-muted/60 transition-colors"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          <span>Cargar más ({sortedComments.length - visibleCommentsCount} anteriores)</span>
+                        </Button>
                       </div>
-                      <div className="text-muted-foreground leading-relaxed pl-7 whitespace-pre-wrap">
-                        {renderFormattedComment(comment.content, availableTasks, onSelectTask)}
-                      </div>
-                    </div>
-                  ))
+                    )}
+                  </>
                 )}
               </div>
 

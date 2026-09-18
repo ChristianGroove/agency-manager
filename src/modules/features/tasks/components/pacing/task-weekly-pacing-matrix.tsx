@@ -40,6 +40,8 @@ import {
   ChevronRight,
   Share2,
   Copy,
+  Download,
+  FileText,
   ExternalLink,
   Sparkles,
   Layers,
@@ -48,14 +50,22 @@ import {
   RefreshCw,
   Sliders,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  TrendingUp,
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import type { TaskItem, TaskProject, TaskWorkspace } from "../../types"
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
 import { getTaskWeeklyPacing, parseTaskChecklist } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { TaskPacingPdfModal } from "./task-pacing-pdf-modal"
 import { toast } from "sonner"
 import { format, addMonths, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
@@ -69,6 +79,13 @@ interface StaffMember {
   role?: string
 }
 
+interface TenantBranding {
+  name?: string
+  logoUrl?: string | null
+  isotypeUrl?: string | null
+  primaryColor?: string
+}
+
 interface TaskWeeklyPacingMatrixProps {
   tasks: TaskItem[]
   teamMembers?: StaffMember[]
@@ -76,6 +93,7 @@ interface TaskWeeklyPacingMatrixProps {
   workspaces?: TaskWorkspace[]
   onSelectTask?: (task: TaskItem) => void
   brandColor?: string
+  tenantBranding?: TenantBranding
   className?: string
 }
 
@@ -86,6 +104,7 @@ export function TaskWeeklyPacingMatrix({
   workspaces = [],
   onSelectTask,
   brandColor = "#8ec045",
+  tenantBranding,
   className,
 }: TaskWeeklyPacingMatrixProps) {
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
@@ -93,6 +112,12 @@ export function TaskWeeklyPacingMatrix({
   const [selectedMember, setSelectedMember] = useState("all")
   const [selectedProject, setSelectedProject] = useState("all")
   const [filterPreset, setFilterPreset] = useState<string>("all")
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+
+  // Selected collaborator object if filtering by specific member
+  const selectedStaff = useMemo(() => {
+    return teamMembers.find((m) => m.id === selectedMember)
+  }, [teamMembers, selectedMember])
 
   // Check if currentDate is in current month & year
   const now = new Date()
@@ -143,46 +168,46 @@ export function TaskWeeklyPacingMatrix({
         }
       }
 
+      // Monthly Period Scope:
+      // When moving to a future month (e.g. October), tasks completed in previous months (September or earlier) must not appear.
+      if (task.status === "done" || task.progress_percentage === 100) {
+        const completedDate = new Date(task.updated_at || task.created_at)
+        const startOfSelectedMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+        if (completedDate < startOfSelectedMonth) {
+          return false
+        }
+      }
+
+      // If a task was created after the end of the selected month, it did not exist yet in this period
+      const endOfSelectedMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+      const createdDate = new Date(task.created_at)
+      if (createdDate > endOfSelectedMonth) {
+        return false
+      }
+
       return true
     })
-  }, [tasks, selectedMember, selectedProject, projects])
+  }, [tasks, selectedMember, selectedProject, projects, currentDate])
 
   // Dynamic counts for SearchFilterBar pills
   const countAll = baseTasks.length
-  const countDelayed = useMemo(() => {
-    return baseTasks.filter((t) => {
-      const pacing = getTaskWeeklyPacing(t, currentDate)
-      return pacing.some((p) => p.status === "delayed") || t.status === "blocked"
-    }).length
-  }, [baseTasks, currentDate])
-
-  const countRecurring = useMemo(() => {
-    return baseTasks.filter((t) => t.is_recurring).length
+  const countActive = useMemo(() => {
+    return baseTasks.filter((t) => t.status !== "done" && t.progress_percentage < 100).length
   }, [baseTasks])
-
-  const countAtRisk = useMemo(() => {
-    return baseTasks.filter((t) => {
-      const pacing = getTaskWeeklyPacing(t, currentDate)
-      const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-      return currentWeekPacing?.status === "at_risk"
-    }).length
-  }, [baseTasks, currentDate, activeMonthWeek])
-
-  const countOnTrack = useMemo(() => {
-    return baseTasks.filter((t) => {
-      if (t.status === "done" || t.progress_percentage === 100) return true
-      if (t.status === "blocked") return false
-      const pacing = getTaskWeeklyPacing(t, currentDate)
-      const hasDelayedWeek = pacing.some((p) => p.status === "delayed")
-      if (hasDelayedWeek) return false
-      const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-      return currentWeekPacing?.status !== "at_risk"
-    }).length
-  }, [baseTasks, currentDate, activeMonthWeek])
+  const countCompleted = useMemo(() => {
+    return baseTasks.filter((t) => t.status === "done" || t.progress_percentage === 100).length
+  }, [baseTasks])
 
   // Final filtered tasks
   const filteredTasks = useMemo(() => {
     return baseTasks.filter((task) => {
+      // Filter preset from SearchFilterBar pills (active vs all vs completed)
+      if (filterPreset === "active") {
+        if (task.status === "done" || task.progress_percentage === 100) return false
+      } else if (filterPreset === "completed") {
+        if (task.status !== "done" && task.progress_percentage < 100) return false
+      }
+
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim()
@@ -194,31 +219,9 @@ export function TaskWeeklyPacingMatrix({
         if (!matchTitle && !matchCode && !matchAssignee) return false
       }
 
-      // Filter preset from SearchFilterBar
-      if (filterPreset === "delayed") {
-        const pacing = getTaskWeeklyPacing(task, currentDate)
-        const hasDelayedWeek = pacing.some((p) => p.status === "delayed")
-        if (!hasDelayedWeek && task.status !== "blocked") return false
-      } else if (filterPreset === "recurring") {
-        if (!task.is_recurring) return false
-      } else if (filterPreset === "at_risk") {
-        const pacing = getTaskWeeklyPacing(task, currentDate)
-        const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-        if (currentWeekPacing?.status !== "at_risk") return false
-      } else if (filterPreset === "on_track") {
-        if (task.status === "done" || task.progress_percentage === 100) return true
-        if (task.status === "blocked") return false
-        const pacing = getTaskWeeklyPacing(task, currentDate)
-        const hasDelayedWeek = pacing.some((p) => p.status === "delayed")
-        if (hasDelayedWeek) return false
-        const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
-        if (currentWeekPacing?.status === "at_risk") return false
-        return true
-      }
-
       return true
     })
-  }, [baseTasks, searchQuery, filterPreset, currentDate, activeMonthWeek])
+  }, [baseTasks, searchQuery, filterPreset])
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize))
@@ -237,6 +240,12 @@ export function TaskWeeklyPacingMatrix({
     let atRiskCount = 0
     let delayedCount = 0
     let completedCount = 0
+
+    const activeTasks = filteredTasks.filter((t) => t.status !== "done" && t.progress_percentage < 100)
+    const totalActiveProgress = activeTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
+    const averageActiveProgress = activeTasks.length > 0
+      ? Math.round(totalActiveProgress / activeTasks.length)
+      : (filteredTasks.length > 0 ? 100 : 0)
 
     filteredTasks.forEach((task) => {
       if (task.status === "done" || task.progress_percentage === 100) {
@@ -260,156 +269,101 @@ export function TaskWeeklyPacingMatrix({
     return {
       total,
       completedCount,
+      activeCount: activeTasks.length,
+      averageActiveProgress,
       onTrackCount,
       atRiskCount,
       delayedCount,
-      healthScore: total > 0 ? Math.round(((completedCount + onTrackCount) / total) * 100) : 100,
     }
   }, [filteredTasks, currentDate, activeMonthWeek])
 
-  // Copy Executive Report to Clipboard
-  const handleCopySummary = () => {
+  // Scope label for currently selected space or project
+  const scopeLabel = useMemo(() => {
+    if (selectedProject === "all") return "Todos los espacios"
+    if (selectedProject.startsWith("workspace:")) {
+      const wsId = selectedProject.replace("workspace:", "")
+      const ws = workspaces.find((w) => w.id === wsId)
+      return ws ? `Espacio: ${ws.name}` : "Espacio específico"
+    }
+    const proj = projects.find((p) => p.id === selectedProject)
+    return proj ? `Proyecto: ${proj.name}` : "Proyecto específico"
+  }, [selectedProject, workspaces, projects])
+
+  // Copy Executive Report to Clipboard (Concise, Clean & Productive - No Bloated Descriptions)
+  const handleCopySummary = async () => {
     const monthName = format(currentDate, "MMMM yyyy", { locale: es })
-    let report = `📊 *REPORTE DE RITMO SEMANAL - ${monthName.toUpperCase()}*\n`
-    report += `• Total Tickets: ${metrics.total}\n`
-    report += `• A Tiempo / Listos: ${metrics.completedCount + metrics.onTrackCount} (${metrics.healthScore}%)\n`
-    report += `• En Riesgo: ${metrics.atRiskCount}\n`
-    report += `• Rezagados / Bloqueados: ${metrics.delayedCount}\n\n`
-    report += `🚨 *Casos que requieren atención:*\n`
+    const memberLabel = selectedStaff
+      ? `${selectedStaff.first_name} ${selectedStaff.last_name}`
+      : "Todo el equipo"
+    const filterLabel =
+      filterPreset === "active"
+        ? "Activas"
+        : filterPreset === "completed"
+        ? "Completas"
+        : "Todas"
 
-    const delayed = filteredTasks.filter((t) => {
-      const pacing = getTaskWeeklyPacing(t, currentDate)
-      return pacing.some((p) => p.status === "delayed") || t.status === "blocked"
-    })
+    let report = `📊 *RITMO SEMANAL — ${monthName.toUpperCase()}*\n`
+    report += `👤 *Responsable:* ${memberLabel} | 🏢 *Alcance:* ${scopeLabel} | 🔍 *Filtro:* ${filterLabel} (${filteredTasks.length})\n\n`
 
-    if (delayed.length === 0) {
-      report += `✅ ¡Todos los tickets se encuentran en ritmo óptimo!\n`
+    report += `📈 *INSIGHTS CLAVE:*\n`
+    report += `• Avance Activo: ${metrics.averageActiveProgress}%\n`
+    report += `• Total Periodo: ${metrics.total} (${metrics.activeCount} en curso · ${metrics.completedCount} listas)\n`
+    report += `• A Tiempo: ${metrics.onTrackCount} · En Riesgo: ${metrics.atRiskCount} · Rezagadas: ${metrics.delayedCount}\n\n`
+
+    report += `📋 *TICKETS (${filteredTasks.length}):*\n`
+    if (filteredTasks.length === 0) {
+      report += `(Sin tareas para los filtros activos)\n`
     } else {
-      delayed.slice(0, 8).forEach((t) => {
-        const staff = t.assigned_staff ? `${t.assigned_staff.first_name}` : "Sin asignar"
-        report += `- [${t.ticket_code}] ${t.title} (${staff}): Avance ${t.progress_percentage}%\n`
+      const maxVisualizedInReport = 35
+      const tasksToPrint = filteredTasks.slice(0, maxVisualizedInReport)
+
+      tasksToPrint.forEach((t) => {
+        const staff = t.assigned_staff ? t.assigned_staff.first_name : "Sin asignar"
+        report += `• [${t.ticket_code}] ${t.title} [${staff}] (${t.progress_percentage}%)\n`
       })
+
+      if (filteredTasks.length > maxVisualizedInReport) {
+        report += `... y ${filteredTasks.length - maxVisualizedInReport} tickets más en el portal.\n`
+      }
     }
 
-    navigator.clipboard.writeText(report)
-    toast.success("Resumen ejecutivo copiado al portapapeles", {
-      description: "Listo para compartir en Slack, WhatsApp o presentar en el comité.",
-    })
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(report)
+      } else {
+        const textArea = document.createElement("textarea")
+        textArea.value = report
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textArea)
+      }
+      toast.success("Resumen copiado al portapapeles", {
+        description: `Se copiaron las métricas y los ${Math.min(35, filteredTasks.length)} tickets visualizados.`,
+      })
+    } catch (err) {
+      console.error("Failed to copy summary:", err)
+      toast.error("No se pudo copiar automáticamente al portapapeles.")
+    }
   }
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* 1. Executive Scoreboard (Compact & Sleek) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Salud del Ciclo */}
-        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
-          <CardContent className="p-3 sm:p-3.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
-                  Salud del Ciclo
-                </span>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[9px] font-bold px-1.5 py-0 rounded-md shrink-0",
-                    metrics.healthScore >= 75
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                      : metrics.healthScore >= 50
-                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                      : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
-                  )}
-                >
-                  {metrics.healthScore >= 75 ? "Óptimo" : metrics.healthScore >= 50 ? "Atención" : "Crítico"}
-                </Badge>
-              </div>
-              <span className="text-xl sm:text-2xl font-black font-mono text-primary shrink-0 leading-none">
-                {metrics.healthScore}%
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground truncate">
-              {metrics.completedCount} de {metrics.total} tickets finalizados
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* A Tiempo */}
-        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
-          <CardContent className="p-3 sm:p-3.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 truncate">
-                  A Tiempo (En Ritmo)
-                </span>
-              </div>
-              <span className="text-xl sm:text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 shrink-0 leading-none">
-                {metrics.onTrackCount}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground truncate">
-              Entregables de la semana al día
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* En Riesgo */}
-        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
-          <CardContent className="p-3 sm:p-3.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 inline-block" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 truncate">
-                  En Riesgo
-                </span>
-              </div>
-              <span className="text-xl sm:text-2xl font-black font-mono text-amber-600 dark:text-amber-400 shrink-0 leading-none">
-                {metrics.atRiskCount}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground truncate">
-              Avance lento en la semana actual
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Rezagadas / Críticas */}
-        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
-          <CardContent className="p-3 sm:p-3.5 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 inline-block" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 truncate">
-                  Rezagadas / Críticas
-                </span>
-              </div>
-              <span className="text-xl sm:text-2xl font-black font-mono text-red-600 dark:text-red-400 shrink-0 leading-none">
-                {metrics.delayedCount}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground truncate">
-              Semanas previas sin completar
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 3. Extended Toolbar: SearchFilterBar Combobox + Workspace & Team Selectors */}
+      {/* 1. Extended Toolbar: SearchFilterBar Combobox + Workspace & Team Selectors + Month + Copy */}
       <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 w-full pt-1">
-        {/* Combobox Search & Pacing Filter Pills - Exactly like Gestión Tab */}
+        {/* Combobox Search & Active/Completed Filter Pills */}
         <SearchFilterBar
           searchTerm={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Buscar por código, título o colaborador..."
           filters={[
-            { id: "all", label: "Todas", count: countAll },
-            { id: "delayed", label: "Con Retraso", count: countDelayed, color: "red" },
-            { id: "recurring", label: "Periódicas", count: countRecurring, color: "purple" },
-            { id: "at_risk", label: "En Riesgo", count: countAtRisk, color: "amber" },
-            { id: "on_track", label: "En Ritmo", count: countOnTrack, color: "emerald" },
+            { id: "all", label: "Todas", count: countAll, color: "gray" },
+            { id: "active", label: "Activas", count: countActive, color: "emerald" },
+            { id: "completed", label: "Completas", count: countCompleted, color: "slate" },
           ]}
           activeFilter={filterPreset}
           onFilterChange={setFilterPreset}
+          defaultShowFilters={true}
           className="flex-1 min-w-0"
         />
 
@@ -559,48 +513,188 @@ export function TaskWeeklyPacingMatrix({
 
           {/* Month Selector — al lado del botón copiar */}
           <div className="flex items-center h-10 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-white/10 p-1 shadow-sm">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-xl cursor-pointer"
-              onClick={() => setCurrentDate((prev) => subMonths(prev, 1))}
-              title="Mes anterior"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </Button>
-            <span className="px-2 text-xs font-bold capitalize select-none min-w-[115px] text-center">
-              {format(currentDate, "MMMM yyyy", { locale: es })}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-xl cursor-pointer"
-              onClick={() => setCurrentDate((prev) => addMonths(prev, 1))}
-              title="Mes siguiente"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-xl cursor-pointer"
+                    onClick={() => setCurrentDate((prev) => subMonths(prev, 1))}
+                    aria-label="Mes anterior"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="rounded-xl text-xs">
+                  Mes anterior
+                </TooltipContent>
+              </Tooltip>
+
+              <span className="px-2 text-xs font-bold capitalize select-none min-w-[115px] text-center">
+                {format(currentDate, "MMMM yyyy", { locale: es })}
+              </span>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-xl cursor-pointer"
+                    onClick={() => setCurrentDate((prev) => addMonths(prev, 1))}
+                    aria-label="Mes siguiente"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="rounded-xl text-xs">
+                  Mes siguiente
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
-          {/* Copy Summary Icon Button with Tooltip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopySummary}
-                  className="h-10 w-10 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer text-muted-foreground hover:text-foreground shrink-0"
-                >
+          {/* Export Dropdown Menu (Icon-only trigger with 2 options: Copy Summary & PDF Preview) */}
+          <DropdownMenu>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-sm hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                      aria-label="Exportar reporte"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent className="rounded-xl text-xs">
+                  Exportar reporte
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <DropdownMenuContent
+              align="end"
+              className="w-64 p-1.5 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-white/10 bg-card z-50"
+            >
+              <DropdownMenuItem
+                onClick={handleCopySummary}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                   <Copy className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="rounded-xl text-xs">
-                Copiar resumen ejecutivo al portapapeles
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Copiar Resumen</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Texto conciso para WhatsApp o Slack
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setIsPdfModalOpen(true)}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Documento PDF</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Previsualizar reporte ejecutivo imprimible
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </div>
+
+      {/* 2. Executive Scoreboard (Compact 4-KPI Grid placed below the Toolbar) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        {/* Avance Global Activo (Executive Insight) */}
+        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
+          <CardContent className="p-3 sm:p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                  {selectedStaff ? `Avance ${selectedStaff.first_name}` : "Avance Activo"}
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-black font-mono text-primary shrink-0 leading-none">
+                {metrics.averageActiveProgress}%
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground truncate">
+              Suma sobre {metrics.activeCount} en curso
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* A Tiempo */}
+        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
+          <CardContent className="p-3 sm:p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 truncate">
+                  A Tiempo (En Ritmo)
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 shrink-0 leading-none">
+                {metrics.onTrackCount}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground truncate">
+              Entregables de la semana al día
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* En Riesgo */}
+        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
+          <CardContent className="p-3 sm:p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 inline-block" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 truncate">
+                  En Riesgo
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-black font-mono text-amber-600 dark:text-amber-400 shrink-0 leading-none">
+                {metrics.atRiskCount}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground truncate">
+              Avance lento en la semana actual
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Rezagadas / Críticas */}
+        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
+          <CardContent className="p-3 sm:p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 inline-block" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 truncate">
+                  Rezagadas / Críticas
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-black font-mono text-red-600 dark:text-red-400 shrink-0 leading-none">
+                {metrics.delayedCount}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground truncate">
+              Semanas previas sin completar
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 4. The Pacing Matrix Table */}
@@ -609,7 +703,7 @@ export function TaskWeeklyPacingMatrix({
           <table className="w-full min-w-[920px] text-left text-xs border-collapse">
             <thead className="bg-muted/40 border-b border-border/80 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="px-5 py-4 w-72">Ticket & Requerimiento</th>
+                <th className="px-5 py-4 w-80">Ticket & Requerimiento</th>
                 {[
                   { week: 1, label: "Semana 1", range: "Días 1 - 7" },
                   { week: 2, label: "Semana 2", range: "Días 8 - 14" },
@@ -621,7 +715,7 @@ export function TaskWeeklyPacingMatrix({
                     <th
                       key={w}
                       className={cn(
-                        "px-4 py-3.5 w-44 text-center transition-colors relative",
+                        "px-4 py-3.5 w-48 text-center transition-colors relative",
                         isCurrent && "bg-primary/10 text-primary border-b-2 border-primary dark:bg-primary/15"
                       )}
                     >
@@ -654,14 +748,13 @@ export function TaskWeeklyPacingMatrix({
                     </th>
                   )
                 })}
-                <th className="px-5 py-4 w-40 text-center">Avance Global</th>
-                <th className="px-4 py-4 w-20 text-right"></th>
+                <th className="px-4 py-4 w-14 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {filteredTasks.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-muted-foreground space-y-2">
+                  <td colSpan={6} className="py-16 text-center text-muted-foreground space-y-2">
                     <CalendarDays className="w-10 h-10 text-muted-foreground/30 mx-auto" />
                     <p className="font-semibold text-sm text-foreground">No hay tareas para los filtros seleccionados</p>
                     <p className="text-xs">Prueba cambiando el mes o retirando los filtros activos.</p>
@@ -703,12 +796,25 @@ export function TaskWeeklyPacingMatrix({
                             </span>
                           </div>
 
-                          {resolvedProject && (
-                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                              <Layers className="w-3 h-3" />
-                              {resolvedProject.name}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground flex-wrap">
+                            {resolvedProject && (
+                              <div className="flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-muted-foreground/70 shrink-0" />
+                                <span className="truncate max-w-[140px]">{resolvedProject.name}</span>
+                              </div>
+                            )}
+                            {task.assigned_staff && (
+                              <div className="flex items-center gap-1 text-muted-foreground/80">
+                                <Avatar className="w-3.5 h-3.5 shrink-0">
+                                  <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} />
+                                  <AvatarFallback className="text-[7px]">
+                                    {task.assigned_staff.first_name.slice(0, 1)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate max-w-[120px] font-medium">{task.assigned_staff.first_name}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -767,55 +873,26 @@ export function TaskWeeklyPacingMatrix({
                         )
                       })}
 
-                      {/* Global Progress */}
-                      <td className="px-5 py-3.5 text-center">
-                        <div className="space-y-1 max-w-[120px] mx-auto">
-                          <div className="flex items-center justify-between text-[11px] font-bold">
-                            <span className="font-mono text-primary">
-                              {task.progress_percentage}%
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[9px] py-0 px-1.5",
-                                task.status === "done"
-                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                                  : task.status === "in_review"
-                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                  : task.status === "blocked"
-                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                                  : "bg-muted text-muted-foreground"
-                              )}
-                            >
-                              {task.status === "done"
-                                ? "Completado"
-                                : task.status === "in_review"
-                                ? "En QA"
-                                : task.status === "blocked"
-                                ? "Bloqueado"
-                                : "En Curso"}
-                            </Badge>
-                          </div>
-                          <div className="h-1.5 w-full bg-zinc-200/80 dark:bg-zinc-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${task.progress_percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
                       {/* View Action */}
                       <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-7 h-7 text-muted-foreground hover:text-foreground rounded-lg"
-                          onClick={() => onSelectTask?.(task)}
-                          title="Ver detalle del ticket"
-                        >
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Button>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-7 h-7 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                                onClick={() => onSelectTask?.(task)}
+                                aria-label="Ver detalle del ticket"
+                              >
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              Ver detalle del ticket
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </td>
                     </tr>
                   )
@@ -857,34 +934,66 @@ export function TaskWeeklyPacingMatrix({
               </div>
 
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-xl cursor-pointer"
-                  disabled={safePage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  title="Página anterior"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </Button>
-                <span className="px-2 text-[11px] font-mono font-medium text-foreground">
-                  {safePage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-xl cursor-pointer"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  title="Página siguiente"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-xl cursor-pointer"
+                        disabled={safePage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="rounded-xl text-xs">
+                      Página anterior
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <span className="px-2 text-[11px] font-mono font-medium text-foreground">
+                    {safePage} / {totalPages}
+                  </span>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-xl cursor-pointer"
+                        disabled={safePage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        aria-label="Página siguiente"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="rounded-xl text-xs">
+                      Página siguiente
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* 5. PDF Executive Preview & Export Modal */}
+      <TaskPacingPdfModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        tasks={filteredTasks}
+        currentDate={currentDate}
+        selectedStaff={selectedStaff}
+        scopeLabel={scopeLabel}
+        filterPreset={filterPreset}
+        metrics={metrics}
+        tenantBranding={tenantBranding}
+        brandColor={brandColor}
+      />
     </div>
   )
 }

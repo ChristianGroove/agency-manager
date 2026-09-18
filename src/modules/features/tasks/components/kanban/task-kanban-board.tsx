@@ -3,6 +3,12 @@
 import React, { useState, useMemo, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -458,15 +464,24 @@ export function TaskKanbanBoard({
                       </span>
                     )}
                     {onNewTaskInColumn && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-6 h-6 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                        onClick={() => onNewTaskInColumn(col.id)}
-                        title="Añadir tarea a esta columna"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </Button>
+                      <TooltipProvider delayDuration={150}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-6 h-6 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-pointer"
+                              onClick={() => onNewTaskInColumn(col.id)}
+                              aria-label="Añadir tarea a esta columna"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="rounded-xl text-xs">
+                            Añadir tarea a esta columna
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 </div>

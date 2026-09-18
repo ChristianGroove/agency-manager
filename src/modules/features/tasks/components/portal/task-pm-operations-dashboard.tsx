@@ -10,6 +10,12 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip as UiTooltip,
+  TooltipTrigger as UiTooltipTrigger,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+} from "@/components/ui/tooltip"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Select,
@@ -530,17 +536,26 @@ export function TaskPmOperationsDashboard({
           </Select>
 
           {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            className="h-8 w-8 rounded-xl border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer"
-            title="Actualizar telemetría"
-          >
-            <RefreshCw
-              className={cn("w-3.5 h-3.5 text-muted-foreground", isRefreshing && "animate-spin text-primary")}
-            />
-          </Button>
+          <UiTooltipProvider delayDuration={150}>
+            <UiTooltip>
+              <UiTooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRefresh}
+                  className="h-8 w-8 rounded-xl border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer"
+                  aria-label="Actualizar telemetría"
+                >
+                  <RefreshCw
+                    className={cn("w-3.5 h-3.5 text-muted-foreground", isRefreshing && "animate-spin text-primary")}
+                  />
+                </Button>
+              </UiTooltipTrigger>
+              <UiTooltipContent className="rounded-xl text-xs">
+                Actualizar telemetría
+              </UiTooltipContent>
+            </UiTooltip>
+          </UiTooltipProvider>
         </div>
       </div>
 

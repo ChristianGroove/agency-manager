@@ -94,32 +94,32 @@ export interface SystemStageTagConfig {
 export const SYSTEM_STAGE_TAGS: Record<string, SystemStageTagConfig> = {
   'qa-failed': {
     tag: 'qa-failed',
-    label: 'QA: Rechazado / Erróneo',
-    shortLabel: 'QA Erróneo',
+    label: 'QA Rechazado',
+    shortLabel: 'QA Rechazado',
     color: 'red',
     badgeClass: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
     icon: 'AlertTriangle'
   },
   'uat': {
     tag: 'uat',
-    label: 'Pruebas de Usuario (UAT)',
-    shortLabel: 'UAT',
+    label: 'Pruebas UAT',
+    shortLabel: 'Pruebas UAT',
     color: 'purple',
     badgeClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30',
     icon: 'UserCheck'
   },
   'vendor-blocked': {
     tag: 'vendor-blocked',
-    label: 'Espera Proveedor / Bloqueada',
-    shortLabel: 'Espera Proveedor',
+    label: 'Bloqueo Proveedor',
+    shortLabel: 'Bloqueo Proveedor',
     color: 'amber',
     badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
     icon: 'Clock'
   },
   'ready-for-release': {
     tag: 'ready-for-release',
-    label: 'Aprobado para Release',
-    shortLabel: 'Listo Release',
+    label: 'Listo para Release',
+    shortLabel: 'Listo para Release',
     color: 'emerald',
     badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
     icon: 'CheckCircle2'
@@ -138,7 +138,7 @@ export interface TenantTaskTag {
 
 export const DEFAULT_TENANT_TASK_TAGS: TenantTaskTag[] = [
   // Favoritas Predeterminadas (predominan arriba en el selector)
-  { id: "qa-failed", name: "qa-failed", label: "QA: Rechazado", color: "red", is_favorite: true },
+  { id: "qa-failed", name: "qa-failed", label: "QA Rechazado", color: "red", is_favorite: true },
   { id: "uat", name: "uat", label: "Pruebas UAT", color: "purple", is_favorite: true },
   { id: "vendor-blocked", name: "vendor-blocked", label: "Bloqueo Proveedor", color: "amber", is_favorite: true },
   { id: "ready-for-release", name: "ready-for-release", label: "Listo para Release", color: "emerald", is_favorite: true },
@@ -234,6 +234,16 @@ export interface TaskComment {
   content: string;
   mentions: string[];
   created_at: string;
+}
+
+export interface TaskProgressAuditSummary {
+  taskId: string;
+  authorName: string;
+  authorAvatar?: string | null;
+  fromProgress: number;
+  toProgress: number;
+  isRegression: boolean;
+  createdAt: string;
 }
 
 export interface TaskCollaborator {
@@ -492,17 +502,47 @@ export function getTaskWeeklyPacing(
     let hasSchedule = false;
     let status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending' = 'pending';
 
-    // If task is globally completed, all weeks reflect complete status
+    // If task is globally completed, evaluate based on week timing
     if (isTaskDone) {
+      if (hasTargetWeeks) {
+        // Evaluate deliverables explicitly planned for this week w
+        const itemsInWeek = checklist.filter((c) => c.target_week === w);
+        totalItems = itemsInWeek.length;
+        doneItems = itemsInWeek.filter((c) => c.completed).length;
+        hasSchedule = totalItems > 0;
+        progress = hasSchedule ? Math.round((doneItems / totalItems) * 100) : 0;
+
+        if (!hasSchedule) {
+          status = 'pending';
+        } else if (doneItems === totalItems) {
+          status = 'completed';
+        } else {
+          status = 'on_track';
+        }
+      } else {
+        // Standard task without weekly deliverables
+        if (isFutureWeek) {
+          // Future week cannot be completed in advance if no future schedule
+          progress = 0;
+          status = 'pending';
+          hasSchedule = false;
+        } else {
+          // Past week or current active week when task was finished
+          progress = 100;
+          status = 'completed';
+          hasSchedule = true;
+        }
+      }
+
       return {
         week: w,
         label: `Semana ${w}`,
         dateRange: dateRanges[idx],
-        progress: 100,
-        totalDeliverables: 0,
-        completedDeliverables: 0,
-        status: 'completed',
-        hasSchedule: true,
+        progress,
+        totalDeliverables: totalItems,
+        completedDeliverables: doneItems,
+        status,
+        hasSchedule,
       };
     }
 

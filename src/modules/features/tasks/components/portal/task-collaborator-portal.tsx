@@ -46,6 +46,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip"
+import {
   Bell,
   CheckCheck,
   CheckCircle2,
@@ -87,7 +93,7 @@ import {
   User,
   CalendarDays,
 } from "lucide-react"
-import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
@@ -124,6 +130,7 @@ interface PortalTaskSliderProps {
   hasUnfinishedDeliverables: boolean
   savedProg: number
   isLeadOrPm: boolean
+  latestAudit?: TaskProgressAuditSummary | null
   onCommit: (taskId: string, val: number) => void
   className?: string
   trackClassName?: string
@@ -131,14 +138,30 @@ interface PortalTaskSliderProps {
   labelClassName?: string
 }
 
+function formatAuditShortDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr)
+    const day = d.getDate()
+    const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+    const month = months[d.getMonth()] || "sep"
+    const hours = d.getHours().toString().padStart(2, "0")
+    const minutes = d.getMinutes().toString().padStart(2, "0")
+    return `${day} ${month}, ${hours}:${minutes}`
+  } catch {
+    return dateStr
+  }
+}
+
 // Self-contained memoized slider: holds local progress state during dragging
 // and only commits on release, eliminating 60fps whole-page re-renders.
+// Includes 2-second hover tooltip with compact previous change audit for Project Managers.
 const PortalTaskSlider = React.memo(function PortalTaskSlider({
   taskId,
   progress,
   hasUnfinishedDeliverables,
   savedProg,
   isLeadOrPm,
+  latestAudit,
   onCommit,
   className,
   trackClassName,
@@ -146,12 +169,38 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   labelClassName,
 }: PortalTaskSliderProps) {
   const [localVal, setLocalVal] = useState(progress)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     setLocalVal(progress)
   }, [progress])
 
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    }
+  }, [])
+
+  const handleMouseEnter = () => {
+    // Only PMs/Leads get the 2-second quick audit inspection tooltip
+    if (!latestAudit || isDragging) return
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = setTimeout(() => {
+      setShowTooltip(true)
+    }, 1000) // 1-second hover delay as requested!
+  }
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setShowTooltip(false)
+  }
+
   const handleChange = ([val]: number[]) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setShowTooltip(false)
+    setIsDragging(true)
     let clamped = Math.max(0, Math.min(100, Math.round(val)))
     if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
     if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
@@ -159,6 +208,9 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   }
 
   const handleCommit = ([val]: number[]) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setShowTooltip(false)
+    setIsDragging(false)
     let clamped = Math.max(0, Math.min(100, Math.round(val)))
     if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
     if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
@@ -166,8 +218,65 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
     onCommit(taskId, clamped)
   }
 
+  const firstName = latestAudit?.authorName ? latestAudit.authorName.trim().split(" ")[0] : "Colaborador"
+
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div
+      className={cn("relative flex items-center gap-2", className)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <AnimatePresence>
+        {showTooltip && latestAudit && (
+          <motion.div
+            initial={{ opacity: 0, y: 5, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 3, scale: 0.95 }}
+            transition={{ duration: 0.16 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 z-50 pointer-events-none"
+          >
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 backdrop-blur-md border border-zinc-200/90 dark:border-white/10 shadow-xl whitespace-nowrap text-[11px] select-none">
+              {/* Avatar chiquito */}
+              <Avatar className="w-4 h-4 rounded-full ring-1 ring-zinc-300 dark:ring-white/20 shrink-0">
+                <AvatarImage
+                  src={getCollaboratorAvatar(latestAudit.authorAvatar, latestAudit.authorName)}
+                  className="object-cover"
+                />
+                <AvatarFallback className="text-[7px] font-bold bg-primary text-primary-foreground">
+                  {firstName.slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+
+              {/* Nombre 1 no más */}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{firstName}</span>
+
+              <span className="text-zinc-400 dark:text-zinc-500">·</span>
+
+              {/* anterior: 10%-40% (verde si avance, rojo si regresión) */}
+              <span
+                className={cn(
+                  "font-bold flex items-center gap-1",
+                  latestAudit.isRegression ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                )}
+              >
+                <span>{latestAudit.isRegression ? "📉" : "📈"}</span>
+                <span>anterior: {latestAudit.fromProgress}%-{latestAudit.toProgress}%</span>
+              </span>
+
+              <span className="text-zinc-400 dark:text-zinc-500">·</span>
+
+              {/* 18sep,13:05 */}
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                {formatAuditShortDate(latestAudit.createdAt)}
+              </span>
+
+              {/* Tooltip arrow down */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-solid border-t-white dark:border-t-zinc-900 border-t-[5px] border-x-transparent border-x-[5px] border-b-0" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Slider
         value={[localVal]}
         min={0}
@@ -202,6 +311,7 @@ export function TaskCollaboratorPortal({
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(portalData.tasks)
   const [allTeamTasks, setAllTeamTasks] = useState<TaskItem[]>(portalData.allTeamTasks || [])
+  const [latestAudits, setLatestAudits] = useState<Record<string, TaskProgressAuditSummary>>(portalData.latestAudits || {})
   const teamMembers = portalData.teamMembers || []
 
   // Workspace & Project Edit Modal States for PM Portal
@@ -564,7 +674,7 @@ export function TaskCollaboratorPortal({
   const triggerCelebration = (task: TaskItem) => {
     setCelebrationTask(task)
     if (!celebrationLottie) {
-      fetch("/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json")
+      fetch("/animations/cartoon-marketing-target-illustration-2025-10-20-02-32-54-utc.json")
         .then((r) => r.json())
         .then((data) => setCelebrationLottie(data))
         .catch((e) => console.error("Error loading celebration Lottie:", e))
@@ -785,6 +895,24 @@ export function TaskCollaboratorPortal({
         } else if (clamped > 0 && savedStatus === "todo") {
           initialStatusMap.current[taskId] = "in_progress"
         }
+
+        // Immediately update local latestAudits so hover tooltip reflects the change right away!
+        if (clamped !== savedProg) {
+          const isRegression = clamped < savedProg
+          setLatestAudits((prev) => ({
+            ...prev,
+            [taskId]: {
+              taskId,
+              authorName: `${staff.first_name} ${staff.last_name}`.trim(),
+              authorAvatar: staff.photo_url || null,
+              fromProgress: savedProg,
+              toProgress: clamped,
+              isRegression,
+              createdAt: new Date().toISOString()
+            }
+          }))
+        }
+
         toast.success(`Progreso actualizado al ${clamped}%`)
       }
     } catch (err: any) {
@@ -1082,7 +1210,7 @@ export function TaskCollaboratorPortal({
                 <button
                   type="button"
                   className="relative p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  title="Novedades y Notificaciones de Tareas"
+                  aria-label="Novedades y Notificaciones de Tareas"
                 >
                   <Bell className="w-5 h-5" />
                   {totalNotifications > 0 && (
@@ -1442,6 +1570,12 @@ export function TaskCollaboratorPortal({
               workspaces={workspaces}
               onSelectTask={openTaskDetail}
               brandColor={brandColor}
+              tenantBranding={{
+                name: organization?.name,
+                logoUrl: organization?.logo_url,
+                isotypeUrl: organization?.isotipo_url,
+                primaryColor: organization?.primary_color || brandColor,
+              }}
             />
           </div>
         )}
@@ -1860,6 +1994,7 @@ export function TaskCollaboratorPortal({
                         hasUnfinishedDeliverables={safeChecklist.length > 0 && safeChecklist.some((c) => !c.completed)}
                         savedProg={getSavedProgress(task.id)}
                         isLeadOrPm={isLeadOrPm}
+                        latestAudit={latestAudits[task.id]}
                         onCommit={handleSliderCommit}
                         className="py-1"
                       />
@@ -1963,7 +2098,7 @@ export function TaskCollaboratorPortal({
                         size="sm"
                         onClick={() => openTaskDetail(task)}
                         className="h-8 text-xs text-muted-foreground hover:text-foreground rounded-xl flex items-center gap-1.5"
-                        title="Gestionar tarea"
+                        aria-label="Gestionar tarea"
                       >
                         <Settings className="w-3.5 h-3.5" />
                         <span>Gestionar</span>
@@ -2080,6 +2215,7 @@ export function TaskCollaboratorPortal({
                       hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
                       savedProg={getSavedProgress(task.id)}
                       isLeadOrPm={isLeadOrPm}
+                      latestAudit={latestAudits[task.id]}
                       onCommit={handleSliderCommit}
                     />
                   </div>
@@ -2103,7 +2239,7 @@ export function TaskCollaboratorPortal({
                       size="sm"
                       onClick={() => openTaskDetail(task)}
                       className="w-6 h-6 p-0 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg flex items-center justify-center shrink-0"
-                      title="Gestionar tarea"
+                      aria-label="Gestionar tarea"
                     >
                       <Settings className="w-3 h-3" />
                     </Button>
@@ -2256,6 +2392,7 @@ export function TaskCollaboratorPortal({
                             hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
                             savedProg={getSavedProgress(task.id)}
                             isLeadOrPm={isLeadOrPm}
+                            latestAudit={latestAudits[task.id]}
                             onCommit={handleSliderCommit}
                             showLabel={true}
                             labelClassName="text-xs sm:text-[13px] font-black w-11 text-right tracking-tight"
@@ -2299,7 +2436,7 @@ export function TaskCollaboratorPortal({
                                 size="sm"
                                 onClick={() => setTaskToComplete(task)}
                                 className="w-7 h-7 p-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
-                                title="Marcar como listo"
+                                aria-label="Marcar como listo"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                               </Button>
@@ -2309,7 +2446,7 @@ export function TaskCollaboratorPortal({
                               size="sm"
                               onClick={() => openTaskDetail(task)}
                               className="w-7 h-7 p-0 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg flex items-center justify-center shrink-0"
-                              title="Gestionar tarea"
+                              aria-label="Gestionar tarea"
                             >
                               <Settings className="w-3.5 h-3.5" />
                             </Button>
@@ -2372,29 +2509,47 @@ export function TaskCollaboratorPortal({
               </div>
 
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
-                  disabled={safePage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  title="Página anterior"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </Button>
-                <span className="px-2 text-[11px] font-mono font-medium text-foreground">
-                  {safePage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  title="Página siguiente"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
+                        disabled={safePage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="rounded-xl text-xs">
+                      Página anterior
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <span className="px-2 text-[11px] font-mono font-medium text-foreground">
+                    {safePage} / {totalPages}
+                  </span>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
+                        disabled={safePage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        aria-label="Página siguiente"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="rounded-xl text-xs">
+                      Página siguiente
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </div>
@@ -2449,6 +2604,23 @@ export function TaskCollaboratorPortal({
         availableTasks={allTeamTasks || tasks}
         onSelectTask={(task) => setSelectedTask(task)}
         onTaskUpdated={(updatedTask) => {
+          const oldProg = committedProgressMap.current[updatedTask.id] ?? (selectedTask?.progress_percentage || 0)
+          const newProg = updatedTask.progress_percentage || 0
+          if (newProg !== oldProg) {
+            const isRegression = newProg < oldProg
+            setLatestAudits((prev) => ({
+              ...prev,
+              [updatedTask.id]: {
+                taskId: updatedTask.id,
+                authorName: `${staff.first_name} ${staff.last_name}`.trim(),
+                authorAvatar: staff.photo_url || null,
+                fromProgress: oldProg,
+                toProgress: newProg,
+                isRegression,
+                createdAt: new Date().toISOString()
+              }
+            }))
+          }
           committedProgressMap.current[updatedTask.id] = updatedTask.progress_percentage || 0
           initialStatusMap.current[updatedTask.id] = updatedTask.status
           setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))

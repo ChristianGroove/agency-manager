@@ -1,11 +1,12 @@
 "use server"
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
-import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval } from "../types";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary } from "../types";
 import { normalizeTask, parseTaskChecklist } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 export interface CollaboratorPortalData {
+  latestAudits?: Record<string, TaskProgressAuditSummary>;
   staff: {
     id: string;
     organization_id: string;
@@ -353,7 +354,40 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     created_at: m.created_at,
   }));
 
+  // Fetch latest progress audit comments for tasks in this organization
+  const { data: auditsData } = await supabaseAdmin
+    .from("task_comments")
+    .select("task_id, author_name, author_avatar, content, created_at")
+    .eq("organization_id", staff.organization_id)
+    .or("content.ilike.%de tarea actualizado del%,content.ilike.%de tarea actualizada del%,content.ilike.%📈%,content.ilike.%📉%")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const latestAudits: Record<string, TaskProgressAuditSummary> = {};
+  if (auditsData) {
+    for (const a of auditsData) {
+      if (!latestAudits[a.task_id]) {
+        const match = a.content.match(/del\s+(\d+)%\s+al\s+(\d+)%/i);
+        if (match) {
+          const fromProgress = parseInt(match[1], 10);
+          const toProgress = parseInt(match[2], 10);
+          const isRegression = toProgress < fromProgress || a.content.includes("📉") || a.content.toLowerCase().includes("regresi");
+          latestAudits[a.task_id] = {
+            taskId: a.task_id,
+            authorName: a.author_name || "Colaborador",
+            authorAvatar: a.author_avatar || null,
+            fromProgress,
+            toProgress,
+            isRegression,
+            createdAt: a.created_at
+          };
+        }
+      }
+    }
+  }
+
   return {
+    latestAudits,
     staff: {
       id: staff.id,
       organization_id: staff.organization_id,
@@ -458,16 +492,25 @@ export async function portalUpdateTaskProgress(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, organization_id")
+      .select("id, organization_id, first_name, last_name, photo_url, role")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
 
+    const roleLower = (staff.role || "").toLowerCase();
+    const isLeadOrPm =
+      roleLower.includes("pm") ||
+      roleLower.includes("lead") ||
+      roleLower.includes("project") ||
+      roleLower.includes("gerente") ||
+      roleLower.includes("manager") ||
+      roleLower.includes("qa");
+
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist")
+      .select("status, checklist, progress_percentage")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
@@ -478,6 +521,22 @@ export async function portalUpdateTaskProgress(
     let clamped = Math.max(0, Math.min(100, Math.round(progress)));
     if (hasUnfinishedDeliverables && clamped > 95) {
       clamped = 95;
+    }
+
+    if (current && current.progress_percentage !== clamped) {
+      const isRegression = clamped < (current.progress_percentage ?? 0);
+      const icon = isRegression ? "📉" : "📈";
+      const actionWord = isRegression ? "Regresión" : "Avance";
+      await supabaseAdmin.from("task_comments").insert({
+        organization_id: staff.organization_id,
+        task_id: taskId,
+        author_type: isLeadOrPm ? "owner" : "staff",
+        author_id: staff.id,
+        author_name: `${staff.first_name} ${staff.last_name}`.trim(),
+        author_avatar: staff.photo_url || null,
+        content: `${icon} ${actionWord} de tarea actualizado del ${current.progress_percentage ?? 0}% al ${clamped}%`,
+        mentions: []
+      });
     }
 
     const updateData: any = {
@@ -700,7 +759,7 @@ export async function portalGetTaskComments(
       .select("*")
       .eq("task_id", taskId)
       .eq("organization_id", staff.organization_id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
     return (data || []) as TaskComment[];
@@ -880,6 +939,9 @@ export async function portalUpdateTask(
 
       if (curTask && curTask.progress_percentage !== clamped) {
         // Automatically record progress audit in discussion feed
+        const isRegression = clamped < (curTask.progress_percentage ?? 0);
+        const icon = isRegression ? "📉" : "📈";
+        const actionWord = isRegression ? "Regresión" : "Avance";
         await supabaseAdmin.from("task_comments").insert({
           organization_id: staff.organization_id,
           task_id: taskId,
@@ -887,7 +949,7 @@ export async function portalUpdateTask(
           author_id: staff.id,
           author_name: `${staff.first_name} ${staff.last_name}`.trim(),
           author_avatar: staff.photo_url || null,
-          content: `📈 Avance de tarea actualizado del ${curTask.progress_percentage}% al ${clamped}%`,
+          content: `${icon} ${actionWord} de tarea actualizado del ${curTask.progress_percentage ?? 0}% al ${clamped}%`,
           mentions: []
         });
       }
@@ -907,7 +969,36 @@ export async function portalUpdateTask(
       updateData.actual_hours = Number(data.actualHours);
     }
     if (data.checklist !== undefined) {
-      updateData.checklist = data.checklist;
+      if (!isLeadOrPm) {
+        // Enforce: Normal collaborators cannot delete deliverables, only mark completion
+        const { data: curTask } = await supabaseAdmin
+          .from("task_items")
+          .select("checklist")
+          .eq("id", taskId)
+          .maybeSingle();
+
+        const currentChecklist: TaskChecklistItem[] = Array.isArray(curTask?.checklist)
+          ? curTask.checklist
+          : [];
+
+        const safeChecklist = currentChecklist.map((existing) => {
+          const match = Array.isArray(data.checklist)
+            ? data.checklist.find((c: any) => c.id === existing.id)
+            : null;
+          if (match) {
+            return {
+              ...existing,
+              completed: Boolean(match.completed),
+              completed_at: match.completed ? (match.completed_at || new Date().toISOString()) : undefined,
+            };
+          }
+          return existing;
+        });
+
+        updateData.checklist = safeChecklist;
+      } else {
+        updateData.checklist = data.checklist;
+      }
     }
     if (data.attachments !== undefined) {
       updateData.attachments = data.attachments;
