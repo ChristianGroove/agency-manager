@@ -3285,12 +3285,15 @@ export type Database = {
           cta_text: string | null
           cta_url: string | null
           description: Json | null
+          expires_at: string | null
           id: string
           is_active: boolean | null
           layout_pos: string | null
           media_type: string | null
           media_url: string | null
+          slides: Json | null
           space_type: string
+          starts_at: string | null
           theme: string | null
           title: string | null
           updated_at: string | null
@@ -3300,12 +3303,15 @@ export type Database = {
           cta_text?: string | null
           cta_url?: string | null
           description?: Json | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean | null
           layout_pos?: string | null
           media_type?: string | null
           media_url?: string | null
+          slides?: Json | null
           space_type: string
+          starts_at?: string | null
           theme?: string | null
           title?: string | null
           updated_at?: string | null
@@ -3315,12 +3321,15 @@ export type Database = {
           cta_text?: string | null
           cta_url?: string | null
           description?: Json | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean | null
           layout_pos?: string | null
           media_type?: string | null
           media_url?: string | null
+          slides?: Json | null
           space_type?: string
+          starts_at?: string | null
           theme?: string | null
           title?: string | null
           updated_at?: string | null

@@ -144,11 +144,26 @@ export async function getDashboardPayload() {
 
             if (!banners || banners.length === 0) return { data: null }
 
+            const now = new Date().getTime()
+            const validBanners = banners.filter(b => {
+                if (b.starts_at) {
+                    const start = new Date(b.starts_at).getTime()
+                    if (now < start) return false
+                }
+                if (b.expires_at) {
+                    const expiry = new Date(b.expires_at).getTime()
+                    if (now > expiry) return false
+                }
+                return true
+            })
+
+            if (validBanners.length === 0) return { data: null }
+
             for (const candidate of candidateSpaceTypes) {
-                const match = banners.find(b => b.space_type === candidate)
+                const match = validBanners.find(b => b.space_type === candidate)
                 if (match) return { data: match }
             }
-            return { data: banners[0] }
+            return { data: validBanners[0] }
         } catch {
             return { data: null }
         }

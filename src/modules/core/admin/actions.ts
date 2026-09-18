@@ -1095,7 +1095,24 @@ export async function getGlobalBanners() {
         console.error("Error fetching global banners:", error)
         return []
     }
-    return data
+
+    // Normalizar si vinieran slides serializados en description como fallback
+    const cleanBanners = (data || []).map((b: any) => {
+        if ((!b.slides || (Array.isArray(b.slides) && b.slides.length === 0)) && typeof b.description === 'string') {
+            const trimmed = b.description.trim()
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(trimmed)
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return { ...b, slides: parsed }
+                    }
+                } catch {}
+            }
+        }
+        return b
+    })
+
+    return cleanBanners
 }
 
 export async function upsertGlobalBanner(bannerData: any) {
@@ -1109,16 +1126,79 @@ export async function upsertGlobalBanner(bannerData: any) {
             .eq('space_type', bannerData.space_type)
     }
 
-    const cleanData = { ...bannerData, updated_at: new Date().toISOString() }
+    // Normalizar slides y sincronizar con columnas legacy
+    const slides = Array.isArray(bannerData.slides) && bannerData.slides.length > 0
+        ? bannerData.slides
+        : []
+
+    const firstSlide = slides[0] || null
+
+    const legacyTitle = firstSlide?.title || bannerData.title || 'Nuevo Banner'
+    const legacyPhrases = firstSlide?.phrases
+        ? firstSlide.phrases.map((p: any) => (typeof p === 'string' ? p : p.text))
+        : (Array.isArray(bannerData.description) ? bannerData.description : [bannerData.description || ''])
+    const cleanLegacyDesc = legacyPhrases.filter(Boolean)
+
+    let validStartsAt: string | null = null
+    if (bannerData.starts_at) {
+        try {
+            const d = new Date(bannerData.starts_at)
+            if (!isNaN(d.getTime())) validStartsAt = d.toISOString()
+        } catch {}
+    }
+
+    let validExpiresAt: string | null = null
+    if (bannerData.expires_at) {
+        try {
+            const d = new Date(bannerData.expires_at)
+            if (!isNaN(d.getTime())) validExpiresAt = d.toISOString()
+        } catch {}
+    }
+
+    const cleanData: any = {
+        ...bannerData,
+        title: legacyTitle,
+        description: cleanLegacyDesc.length > 0 ? cleanLegacyDesc : ['Mensaje de bienvenida'],
+        cta_text: firstSlide ? (firstSlide.cta_text || '') : (bannerData.cta_text || ''),
+        cta_url: firstSlide ? (firstSlide.cta_url || '') : (bannerData.cta_url || ''),
+        media_type: firstSlide ? (firstSlide.media_type || 'json_lottie') : (bannerData.media_type || 'json_lottie'),
+        media_url: firstSlide ? (firstSlide.media_url || '') : (bannerData.media_url || ''),
+        layout_pos: firstSlide ? (firstSlide.layout_pos || 'right') : (bannerData.layout_pos || 'right'),
+        theme: firstSlide ? (firstSlide.theme || 'brand_primary') : (bannerData.theme || 'brand_primary'),
+        slides: slides.length > 0 ? slides : null,
+        starts_at: validStartsAt,
+        expires_at: validExpiresAt,
+        updated_at: new Date().toISOString()
+    }
+
     if (!cleanData.id) {
         delete cleanData.id
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
         .from('global_dashboard_banners')
         .upsert(cleanData, { onConflict: 'space_type' })
         .select()
         .single()
+
+    // Fallback defensivo en caso de desincronización transitoria de columnas en PostgREST
+    if (error && error.message && (error.message.includes('schema cache') || error.message.includes('column') || (error as any).code === 'PGRST204')) {
+        console.warn("[upsertGlobalBanner] Detectado desfase de schema cache en PostgREST:", error.message, ". Reintentando con payload resiliente...")
+        const fallbackData = { ...cleanData }
+        if (error.message.includes('slides') || !fallbackData.slides) {
+            fallbackData.description = JSON.stringify(slides)
+            delete fallbackData.slides
+        }
+        delete fallbackData.starts_at
+        delete fallbackData.expires_at
+        const retry = await supabaseAdmin
+            .from('global_dashboard_banners')
+            .upsert(fallbackData, { onConflict: 'space_type' })
+            .select()
+            .single()
+        data = retry.data
+        error = retry.error
+    }
 
     if (error) {
         console.error("Error upserting banner:", error)

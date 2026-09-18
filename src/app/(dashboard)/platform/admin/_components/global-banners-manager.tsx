@@ -1,40 +1,342 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { es } from "date-fns/locale/es"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { Loader2, Plus, Save, Trash2, Edit2, PlayCircle, Eye, X, Image as ImageIcon, LayoutTemplate, Palette, Globe, Target, Trash, Sparkles, Film } from "lucide-react"
+import {
+    Loader2,
+    Plus,
+    Save,
+    Trash2,
+    Play,
+    Pause,
+    Copy,
+    ArrowLeft,
+    ArrowRight,
+    Clock,
+    Sparkles,
+    Film,
+    Image as ImageIcon,
+    Target,
+    Calendar as CalendarIcon,
+    ExternalLink,
+    X,
+    Layers,
+    Type,
+    ChevronLeft,
+    ChevronRight,
+    MonitorPlay,
+    CalendarDays,
+    Infinity as InfinityIcon
+} from "lucide-react"
 
 import { getGlobalBanners, upsertGlobalBanner, toggleBannerActive, deleteGlobalBanner } from "@/modules/core/admin/actions"
-import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
+import {
+    GlobalBannerConfig,
+    GlobalBannerSlide,
+    GlobalDashboardBanner,
+    TextColorRole,
+    normalizeBannerSlides
+} from "@/modules/core/dashboard/components/global-dashboard-banner"
 import { LottieVisualPickerModal } from "./lottie-visual-picker-modal"
 import lottieCatalog from "./lottie-catalog.json"
 
-const DEFAULT_BANNER: GlobalBannerConfig = {
-    space_type: 'all',
-    title: 'Nuevo Banner',
-    description: ['Ingresa tu primer mensaje dinámico'],
-    cta_text: '',
-    cta_url: '',
-    media_type: 'json_lottie',
-    media_url: '',
-    layout_pos: 'right',
-    theme: 'brand_primary',
-    is_active: false
+// Roles de color para texto compatibles con Dark y Light
+const COLOR_ROLES: { value: TextColorRole; label: string; previewClass: string }[] = [
+    { value: "default", label: "Auto", previewClass: "bg-gray-900 dark:bg-white border border-gray-400" },
+    { value: "brand_primary", label: "Primario", previewClass: "bg-[var(--primary,#F205E2)]" },
+    { value: "brand_secondary", label: "Secundario", previewClass: "bg-[var(--brand-cyan,#00E0FF)]" },
+    { value: "muted", label: "Gris", previewClass: "bg-gray-400" },
+    { value: "emerald", label: "Verde", previewClass: "bg-emerald-500" },
+    { value: "amber", label: "Ámbar", previewClass: "bg-amber-500" },
+    { value: "cyan", label: "Cyan", previewClass: "bg-cyan-400" },
+    { value: "white", label: "Blanco", previewClass: "bg-white border border-gray-300" }
+]
+
+const DEFAULT_SLIDE: GlobalBannerSlide = {
+    id: "slide-1",
+    kicker: "NOVEDAD",
+    kickerColor: "brand_primary",
+    title: "Bienvenido a {org_name}",
+    titleColor: "default",
+    subtitle: "Todo lo que necesitas para escalar tu operación hoy",
+    subtitleColor: "muted",
+    showSubtitle: true,
+    phrases: [
+        { text: "Explora tus herramientas de {space_name} en tiempo real", durationSeconds: 6 },
+        { text: "Optimiza tus procesos y aumenta tu productividad", durationSeconds: 6 }
+    ],
+    phrasesColor: "default",
+    cta_text: "Comenzar Ahora",
+    cta_url: "/dashboard",
+    cta_open_new_tab: false,
+    cta_variant: "default",
+    media_type: "json_lottie",
+    media_url: "/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json",
+    layout_pos: "right",
+    theme: "auto"
 }
 
-// 1. Destinos principales de Red
+const DEFAULT_BANNER: GlobalBannerConfig = {
+    space_type: "all",
+    is_active: false,
+    starts_at: null,
+    expires_at: null,
+    slides: [{ ...DEFAULT_SLIDE }]
+}
+
+// Destinos principales de Red
 const NETWORK_DESTINATIONS = [
-    { value: 'all', label: '🌐 Toda la Red (Global - Todos los Dashboards)' },
-    { value: 'reseller', label: '🤝 Red de Resellers & Aliados' },
+    { value: "all", label: "🌐 Toda la Red (Global - Todos los Dashboards)" },
+    { value: "reseller", label: "🤝 Red de Resellers & Aliados" }
 ]
+
+/**
+ * Componente Selector de Fecha & Hora Moderno con Radix Popover y Calendar
+ */
+function ModernDateTimePicker({
+    value,
+    onChange,
+    placeholder = "Sin fecha (Inmediato)",
+    label
+}: {
+    value: string | null | undefined
+    onChange: (val: string | null) => void
+    placeholder?: string
+    label: string
+}) {
+    const [open, setOpen] = useState(false)
+
+    const dateObj = useMemo(() => {
+        if (!value) return undefined
+        const d = new Date(value)
+        return isNaN(d.getTime()) ? undefined : d
+    }, [value])
+
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(dateObj)
+    const [hours, setHours] = useState<string>(dateObj ? String(dateObj.getHours()).padStart(2, "0") : "09")
+    const [minutes, setMinutes] = useState<string>(dateObj ? String(dateObj.getMinutes()).padStart(2, "0") : "00")
+
+    useEffect(() => {
+        if (dateObj) {
+            setSelectedDate(dateObj)
+            setHours(String(dateObj.getHours()).padStart(2, "0"))
+            setMinutes(String(dateObj.getMinutes()).padStart(2, "0"))
+        } else {
+            setSelectedDate(undefined)
+        }
+    }, [dateObj])
+
+    const applyChange = (day: Date | undefined, h: string, m: string) => {
+        if (!day) {
+            onChange(null)
+            return
+        }
+        const updated = new Date(day)
+        updated.setHours(parseInt(h, 10) || 0)
+        updated.setMinutes(parseInt(m, 10) || 0)
+        updated.setSeconds(0)
+        onChange(updated.toISOString())
+    }
+
+    const handleSelectDay = (day: Date | undefined) => {
+        setSelectedDate(day)
+        if (day) {
+            applyChange(day, hours, minutes)
+        } else {
+            onChange(null)
+        }
+    }
+
+    const handleHours = (h: string) => {
+        setHours(h)
+        if (selectedDate) applyChange(selectedDate, h, minutes)
+    }
+
+    const handleMinutes = (m: string) => {
+        setMinutes(m)
+        if (selectedDate) applyChange(selectedDate, hours, m)
+    }
+
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        setSelectedDate(undefined)
+        onChange(null)
+        setOpen(false)
+    }
+
+    return (
+        <div className="space-y-1 min-w-[200px]">
+            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                <CalendarIcon className="w-3 h-3 text-primary" />
+                {label}
+            </span>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <div
+                        className={cn(
+                            "h-9 px-3 rounded-xl border text-xs flex items-center justify-between gap-2 cursor-pointer transition-all select-none shadow-2xs",
+                            dateObj
+                                ? "bg-primary/5 border-primary/40 text-foreground font-medium hover:border-primary"
+                                : "bg-white dark:bg-zinc-900 border-input text-muted-foreground hover:bg-slate-50 dark:hover:bg-zinc-800"
+                        )}
+                    >
+                        <div className="flex items-center gap-2 truncate">
+                            <span className="truncate font-mono">
+                                {dateObj
+                                    ? format(dateObj, "d MMM yyyy, HH:mm", { locale: es })
+                                    : placeholder}
+                            </span>
+                        </div>
+
+                        {dateObj ? (
+                            <button
+                                type="button"
+                                onClick={handleClear}
+                                className="p-0.5 rounded-full hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/50 text-muted-foreground transition-colors shrink-0"
+                                title="Borrar fecha"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        ) : (
+                            <CalendarDays className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                        )}
+                    </div>
+                </PopoverTrigger>
+
+                <PopoverContent
+                    className="w-auto p-3 z-50 bg-white dark:bg-zinc-950 border shadow-2xl rounded-2xl"
+                    align="start"
+                >
+                    <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleSelectDay}
+                        initialFocus
+                    />
+
+                    <div className="flex items-center justify-between pt-2.5 mt-2 border-t text-xs gap-2">
+                        <span className="text-muted-foreground font-medium flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-primary" /> Hora:
+                        </span>
+                        <div className="flex items-center gap-1 font-mono">
+                            <Select value={hours} onValueChange={handleHours}>
+                                <SelectTrigger className="h-7 w-[56px] text-xs px-1.5">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                    {Array.from({ length: 24 }).map((_, i) => {
+                                        const val = String(i).padStart(2, "0")
+                                        return <SelectItem key={val} value={val} className="text-xs">{val}</SelectItem>
+                                    })}
+                                </SelectContent>
+                            </Select>
+                            <span>:</span>
+                            <Select value={minutes} onValueChange={handleMinutes}>
+                                <SelectTrigger className="h-7 w-[56px] text-xs px-1.5">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                    {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(val => (
+                                        <SelectItem key={val} value={val} className="text-xs">{val}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[11px] px-2 text-muted-foreground hover:text-red-500"
+                            onClick={handleClear}
+                        >
+                            Limpiar
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        </div>
+    )
+}
+
+/**
+ * Calcula y genera el estado de visibilidad dinámico en vivo
+ */
+function getCampaignVisibilityStatus(
+    isActive: boolean,
+    startsAt: string | null | undefined,
+    expiresAt: string | null | undefined
+) {
+    if (!isActive) {
+        return {
+            badge: "Borrador Oculto",
+            message: "El banner está apagado manualmente. Ningún usuario lo visualizará.",
+            dotColor: "bg-zinc-400",
+            pillClasses: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700"
+        }
+    }
+
+    const now = Date.now()
+    const startMs = startsAt ? new Date(startsAt).getTime() : null
+    const expireMs = expiresAt ? new Date(expiresAt).getTime() : null
+
+    if (expireMs && now > expireMs) {
+        const formattedEnd = format(new Date(expireMs), "d MMM yyyy, HH:mm", { locale: es })
+        return {
+            badge: "Campaña Expirada",
+            message: `Finalizó el ${formattedEnd}. El banner se encuentra oculto automáticamente.`,
+            dotColor: "bg-red-500",
+            pillClasses: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/50"
+        }
+    }
+
+    if (startMs && now < startMs) {
+        const formattedStart = format(new Date(startMs), "d MMM yyyy, HH:mm", { locale: es })
+        return {
+            badge: "Programado a Futuro",
+            message: `Oculto actualmente. Se activará automáticamente el ${formattedStart}.`,
+            dotColor: "bg-amber-500 animate-pulse",
+            pillClasses: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/50"
+        }
+    }
+
+    if (expireMs) {
+        const formattedEnd = format(new Date(expireMs), "d MMM yyyy, HH:mm", { locale: es })
+        return {
+            badge: "En Emisión Activa",
+            message: `Visible actualmente para los usuarios. Concluirá el ${formattedEnd}.`,
+            dotColor: "bg-emerald-500 animate-ping",
+            pillClasses: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50"
+        }
+    }
+
+    return {
+        badge: "Visible Permanente",
+        message: "Visible de forma continua e indefinida (sin fecha de vencimiento).",
+        dotColor: "bg-emerald-500",
+        pillClasses: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50"
+    }
+}
 
 export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const [banners, setBanners] = useState<any[]>([])
@@ -42,11 +344,43 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const [saving, setSaving] = useState(false)
     const [isLottiePickerOpen, setIsLottiePickerOpen] = useState(false)
 
-    // El banner que estamos editando en el formulario
+    // Formulario del banner y diapositiva activa
     const [formData, setFormData] = useState<GlobalBannerConfig>(DEFAULT_BANNER)
+    const [activeSlideIdx, setActiveSlideIdx] = useState(0)
     const [isPristine, setIsPristine] = useState(true)
 
-    // 2. Spaces registrados en el SaaS Engine (sin duplicados, mapeados a su space_category o slug)
+    // Modo de vigencia de campaña: Permanente o Programada
+    const hasAnySchedule = Boolean(formData.starts_at || formData.expires_at)
+    const [scheduleModeActive, setScheduleModeActive] = useState<boolean>(false)
+
+    // Sincronizar scheduleModeActive si el banner cargado tiene fechas
+    useEffect(() => {
+        if (hasAnySchedule) {
+            setScheduleModeActive(true)
+        }
+    }, [hasAnySchedule])
+
+    // Controles de previsualización en vivo
+    const [previewIsPlaying, setPreviewIsPlaying] = useState(false)
+    const [previewSlideIdx, setPreviewSlideIdx] = useState(0)
+    const [focusedField, setFocusedField] = useState<string>("title")
+
+    const insertTokenToActiveField = (token: string) => {
+        if (focusedField === "subtitle") {
+            updateCurrentSlide({ subtitle: (currentSlide.subtitle || "") + ` ${token}` })
+        } else if (focusedField.startsWith("phrase-")) {
+            const pIdx = parseInt(focusedField.replace("phrase-", ""), 10)
+            const currentPhrases = currentSlide.phrases || []
+            if (currentPhrases[pIdx]) {
+                handleUpdatePhrase(pIdx, (currentPhrases[pIdx].text || "") + ` ${token}`)
+            }
+        } else {
+            updateCurrentSlide({ title: (currentSlide.title || "") + ` ${token}` })
+        }
+        toast.info(`Variable ${token} agregada`)
+    }
+
+    // Spaces registrados en SaaS Engine
     const saasEngineSpaces = useMemo(() => {
         return (apps || [])
             .filter(app => app && app.is_active !== false)
@@ -67,19 +401,38 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     }, [saasEngineSpaces])
 
     const getDestinationLabel = (val?: string) => {
-        if (!val) return 'Sin Destino'
+        if (!val) return "Sin Destino"
         const found = allDestinations.find(d => d.value === val)
         return found ? found.label : `🎯 ${val} (Personalizado)`
     }
 
+    const slidesList = useMemo(() => {
+        return normalizeBannerSlides(formData)
+    }, [formData])
+
+    const safeSlideIdx = Math.min(activeSlideIdx, Math.max(0, slidesList.length - 1))
+    const currentSlide: GlobalBannerSlide = slidesList[safeSlideIdx] || DEFAULT_SLIDE
+
+    // Duración total calculada del slide actual
+    const currentSlideTotalDuration = useMemo(() => {
+        if (!currentSlide || !currentSlide.phrases) return 0
+        return currentSlide.phrases.reduce((acc, p) => acc + (Number(p.durationSeconds) || 6), 0)
+    }, [currentSlide])
+
     const selectedLottieItem = useMemo(() => {
-        if (!formData.media_url) return null
-        return (lottieCatalog as any[]).find(item => item.value === formData.media_url)
-    }, [formData.media_url])
+        if (!currentSlide?.media_url) return null
+        return (lottieCatalog as any[]).find(item => item.value === currentSlide.media_url)
+    }, [currentSlide?.media_url])
 
     useEffect(() => {
         loadBanners()
     }, [])
+
+    useEffect(() => {
+        if (!previewIsPlaying) {
+            setPreviewSlideIdx(safeSlideIdx)
+        }
+    }, [safeSlideIdx, previewIsPlaying])
 
     const loadBanners = async () => {
         setLoading(true)
@@ -91,64 +444,283 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const handleSelectBanner = (bannerId: string) => {
         if (bannerId === "new") {
             setFormData(DEFAULT_BANNER)
+            setActiveSlideIdx(0)
             setIsPristine(false)
+            setScheduleModeActive(false)
             return
         }
         const found = banners.find(b => b.id === bannerId)
         if (found) {
-            let desc = found.description
-            if (typeof desc === 'string') {
-                desc = [desc]
-            }
-            setFormData({ ...found, description: desc || [''] })
+            const normalized = normalizeBannerSlides(found)
+            setFormData({
+                ...found,
+                slides: normalized,
+                starts_at: found.starts_at || null,
+                expires_at: found.expires_at || null
+            })
+            setActiveSlideIdx(0)
             setIsPristine(false)
+            setScheduleModeActive(Boolean(found.starts_at || found.expires_at))
         }
     }
 
-    // Al cambiar el destino (Space), si ya existe un banner para ese destino, lo cargamos para editarlo
     const handleSpaceChange = (newSpaceType: string) => {
         const existing = banners.find(b => b.space_type === newSpaceType)
         if (existing) {
-            let desc = existing.description
-            if (typeof desc === 'string') desc = [desc]
-            setFormData({ ...existing, description: desc || [''] })
+            const normalized = normalizeBannerSlides(existing)
+            setFormData({
+                ...existing,
+                slides: normalized,
+                starts_at: existing.starts_at || null,
+                expires_at: existing.expires_at || null
+            })
+            setActiveSlideIdx(0)
             setIsPristine(false)
+            setScheduleModeActive(Boolean(existing.starts_at || existing.expires_at))
             toast.info(`Cargando configuración de "${getDestinationLabel(newSpaceType)}"`)
         } else {
             setFormData(prev => ({ ...prev, space_type: newSpaceType }))
         }
     }
 
+    const updateCurrentSlide = (patch: Partial<GlobalBannerSlide>) => {
+        const newSlides = [...slidesList]
+        newSlides[safeSlideIdx] = {
+            ...newSlides[safeSlideIdx],
+            ...patch
+        }
+        setFormData(prev => ({
+            ...prev,
+            slides: newSlides
+        }))
+    }
+
+    const handleAddSlide = () => {
+        if (slidesList.length >= 5) {
+            toast.error("Máximo 5 diapositivas permitidas")
+            return
+        }
+        const newSlide: GlobalBannerSlide = {
+            ...DEFAULT_SLIDE,
+            id: `slide-${Date.now()}`,
+            title: `Nueva Diapositiva ${slidesList.length + 1}`,
+            phrases: [{ text: "Mensaje dinámico de la diapositiva", durationSeconds: 6 }]
+        }
+        const newSlides = [...slidesList, newSlide]
+        setFormData(prev => ({ ...prev, slides: newSlides }))
+        setActiveSlideIdx(newSlides.length - 1)
+        toast.success(`Diapositiva ${newSlides.length} creada`)
+    }
+
+    const handleDuplicateSlide = (idx: number) => {
+        if (slidesList.length >= 5) {
+            toast.error("Límite de 5 diapositivas alcanzado")
+            return
+        }
+        const target = slidesList[idx]
+        const duplicated: GlobalBannerSlide = {
+            ...target,
+            id: `slide-${Date.now()}`,
+            title: `${target.title} (Copia)`
+        }
+        const newSlides = [...slidesList]
+        newSlides.splice(idx + 1, 0, duplicated)
+        setFormData(prev => ({ ...prev, slides: newSlides }))
+        setActiveSlideIdx(idx + 1)
+        toast.success("Diapositiva duplicada")
+    }
+
+    const handleDeleteSlide = (idx: number) => {
+        if (slidesList.length <= 1) {
+            toast.error("El banner requiere al menos 1 diapositiva")
+            return
+        }
+        const newSlides = slidesList.filter((_, i) => i !== idx)
+        setFormData(prev => ({ ...prev, slides: newSlides }))
+        setActiveSlideIdx(Math.max(0, idx - 1))
+        toast.info("Diapositiva eliminada")
+    }
+
+    const handleMoveSlide = (idx: number, direction: "left" | "right") => {
+        const targetIdx = direction === "left" ? idx - 1 : idx + 1
+        if (targetIdx < 0 || targetIdx >= slidesList.length) return
+
+        const newSlides = [...slidesList]
+        const [moved] = newSlides.splice(idx, 1)
+        newSlides.splice(targetIdx, 0, moved)
+        setFormData(prev => ({ ...prev, slides: newSlides }))
+        setActiveSlideIdx(targetIdx)
+    }
+
+    const handleAddPhrase = () => {
+        const phrases = [...(currentSlide.phrases || [])]
+        phrases.push({ text: "", durationSeconds: 6 })
+        updateCurrentSlide({ phrases })
+    }
+
+    const handleUpdatePhrase = (phraseIdx: number, text: string, durationSeconds?: number) => {
+        const phrases = [...(currentSlide.phrases || [])]
+        if (!phrases[phraseIdx]) return
+        phrases[phraseIdx] = {
+            text,
+            durationSeconds: typeof durationSeconds === "number" ? durationSeconds : phrases[phraseIdx].durationSeconds || 6
+        }
+        updateCurrentSlide({ phrases })
+    }
+
+    const handleRemovePhrase = (phraseIdx: number) => {
+        const phrases = [...(currentSlide.phrases || [])]
+        if (phrases.length <= 1) {
+            toast.error("Debe haber al menos 1 frase")
+            return
+        }
+        phrases.splice(phraseIdx, 1)
+        updateCurrentSlide({ phrases })
+    }
+
+    const applyPreset = (type: "launch" | "tip" | "promo" | "notice") => {
+        let presetData: Partial<GlobalBannerSlide> = {}
+
+        if (type === "launch") {
+            presetData = {
+                kicker: "🚀 NUEVO LANZAMIENTO",
+                kickerColor: "cyan",
+                title: "Descubre la nueva función de {space_name}",
+                titleColor: "default",
+                showSubtitle: true,
+                subtitle: "Diseñada especialmente para potenciar el crecimiento de {org_name}",
+                subtitleColor: "muted",
+                phrases: [
+                    { text: "Flujos de trabajo acelerados con automatización nativa", durationSeconds: 6 },
+                    { text: "Métricas en tiempo real con reportes de alto rendimiento", durationSeconds: 6 }
+                ],
+                phrasesColor: "cyan",
+                cta_text: "Explorar Ahora",
+                cta_url: "/dashboard",
+                cta_variant: "default",
+                theme: "brand_primary",
+                media_type: "json_lottie",
+                media_url: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
+                layout_pos: "right"
+            }
+            toast.success("Plantilla 'Lanzamiento' aplicada a este slide")
+        } else if (type === "tip") {
+            presetData = {
+                kicker: "💡 CONSEJO PRO",
+                kickerColor: "amber",
+                title: "Aumenta la retención de tus clientes",
+                titleColor: "default",
+                showSubtitle: true,
+                subtitle: "Un tip rápido para los administradores de {org_name}",
+                subtitleColor: "muted",
+                phrases: [
+                    { text: "Paso 1: Configura alertas inmediatas en tu bandeja de entrada", durationSeconds: 5 },
+                    { text: "Paso 2: Responde cotizaciones en menos de 15 minutos", durationSeconds: 5 },
+                    { text: "Paso 3: Automatiza el seguimiento con recordatorios de WhatsApp", durationSeconds: 6 }
+                ],
+                phrasesColor: "amber",
+                cta_text: "Ver Guía Paso a Paso",
+                cta_url: "/knowledge",
+                cta_variant: "secondary",
+                theme: "brand_secondary",
+                media_type: "json_lottie",
+                media_url: "/animations/animated-data-presentation-woman-explaining-chart-2025-10-20-06-25-36-utc.json",
+                layout_pos: "right"
+            }
+            toast.success("Plantilla 'Pro Tip' aplicada a este slide")
+        } else if (type === "promo") {
+            presetData = {
+                kicker: "🎁 OFERTA EXCLUSIVA",
+                kickerColor: "emerald",
+                title: "Desbloquea el potencial completo",
+                titleColor: "emerald",
+                showSubtitle: true,
+                subtitle: "Aprovecha beneficios preferenciales para {org_name} este mes",
+                subtitleColor: "default",
+                phrases: [
+                    { text: "Acceso a módulos prémium y soporte prioritario 24/7", durationSeconds: 5 },
+                    { text: "Integración ilimitada con pasarelas de pago y CRM", durationSeconds: 5 }
+                ],
+                phrasesColor: "emerald",
+                cta_text: "Mejorar Mi Plan",
+                cta_url: "/billing",
+                cta_variant: "default",
+                theme: "dark",
+                media_type: "json_lottie",
+                media_url: "/animations/big-sale-tag-animation-2025-10-20-04-33-47-utc.json",
+                layout_pos: "right"
+            }
+            toast.success("Plantilla 'Promoción' aplicada a este slide")
+        } else if (type === "notice") {
+            presetData = {
+                kicker: "⚠️ AVISO OPERATIVO",
+                kickerColor: "amber",
+                title: "Mantenimiento Programado",
+                titleColor: "default",
+                showSubtitle: true,
+                subtitle: "Actualización de infraestructura para mayor velocidad",
+                subtitleColor: "muted",
+                phrases: [
+                    { text: "Fecha: Este domingo de 02:00 a 04:00 AM", durationSeconds: 7 },
+                    { text: "Tu información y backups están 100% seguros y respaldados", durationSeconds: 7 }
+                ],
+                phrasesColor: "muted",
+                cta_text: "Estado del Sistema",
+                cta_url: "/status",
+                cta_variant: "outline",
+                theme: "light",
+                media_type: "json_lottie",
+                media_url: "/animations/cartoon-calendar-illustration-2025-10-20-02-24-50-utc.json",
+                layout_pos: "right"
+            }
+            toast.success("Plantilla 'Aviso Operativo' aplicada a este slide")
+        }
+
+        updateCurrentSlide(presetData)
+    }
+
     const handleSave = async () => {
-        if (!formData.title || !formData.space_type) {
-            toast.error("El Título y el Destino (Space) son obligatorios")
+        if (!formData.space_type) {
+            toast.error("El Destino (Space) es obligatorio")
             return
         }
 
-        // Limpiar descripciones vacías
-        const cleanDescriptions = (Array.isArray(formData.description) ? formData.description : [formData.description])
-            .filter((d: string) => d.trim() !== "")
-
-        if (cleanDescriptions.length === 0) {
-            toast.error("Debes agregar al menos una línea de descripción")
+        if (slidesList.length === 0) {
+            toast.error("Debes incluir al menos una diapositiva")
             return
+        }
+
+        for (let i = 0; i < slidesList.length; i++) {
+            const slide = slidesList[i]
+            if (!slide.title?.trim()) {
+                toast.error(`La Diapositiva ${i + 1} requiere un título`)
+                setActiveSlideIdx(i)
+                return
+            }
+            const cleanPhrases = (slide.phrases || []).filter(p => p.text?.trim() !== "")
+            if (cleanPhrases.length === 0) {
+                toast.error(`La Diapositiva ${i + 1} debe tener al menos una frase con texto`)
+                setActiveSlideIdx(i)
+                return
+            }
         }
 
         setSaving(true)
         const payload = {
             ...formData,
-            description: cleanDescriptions
+            slides: slidesList
         }
 
         const res = await upsertGlobalBanner(payload)
         if (res.success) {
-            toast.success("Banner guardado exitosamente")
+            toast.success("Secuencia de banner guardada exitosamente")
             await loadBanners()
-            // Sincronizar datos actualizados al form
-            if ('data' in res && res.data) {
-                let desc = (res.data as any).description
-                if (typeof desc === 'string') desc = [desc]
-                setFormData({ ...(res.data as any), description: desc || cleanDescriptions })
+            if ("data" in res && res.data) {
+                const normalized = normalizeBannerSlides(res.data)
+                setFormData({
+                    ...res.data,
+                    slides: normalized
+                })
             }
         } else {
             toast.error(res.error || "Error al guardar el banner")
@@ -159,7 +731,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
     const handleToggleActive = async (banner: any) => {
         const res = await toggleBannerActive(banner.id, banner.space_type, !banner.is_active)
         if (res.success) {
-            toast.success(`Banner ${!banner.is_active ? 'activado' : 'desactivado'}`)
+            toast.success(`Banner ${!banner.is_active ? "activado" : "desactivado"}`)
             await loadBanners()
             if (formData.id === banner.id) {
                 setFormData(prev => ({ ...prev, is_active: !banner.is_active }))
@@ -181,24 +753,21 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
         }
     }
 
-    // Handlers para el array dinámico de Textos
-    const addTip = () => {
-        const currentTips = Array.isArray(formData.description) ? formData.description : [formData.description]
-        setFormData({ ...formData, description: [...currentTips, ""] })
+    const resetToPermanent = () => {
+        setFormData(prev => ({
+            ...prev,
+            starts_at: null,
+            expires_at: null
+        }))
+        setScheduleModeActive(false)
+        toast.info("Campaña configurada como permanente (sin vencimiento)")
     }
 
-    const updateTip = (index: number, value: string) => {
-        const currentTips = Array.isArray(formData.description) ? [...formData.description] : [formData.description as string]
-        currentTips[index] = value
-        setFormData({ ...formData, description: currentTips })
-    }
-
-    const removeTip = (index: number) => {
-        const currentTips = Array.isArray(formData.description) ? [...formData.description] : [formData.description as string]
-        currentTips.splice(index, 1)
-        if (currentTips.length === 0) currentTips.push("") // Mantener al menos 1
-        setFormData({ ...formData, description: currentTips })
-    }
+    const visibilityStatus = getCampaignVisibilityStatus(
+        formData.is_active || false,
+        formData.starts_at,
+        formData.expires_at
+    )
 
     if (loading && banners.length === 0) {
         return (
@@ -208,362 +777,991 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
         )
     }
 
-    const tipsArray = Array.isArray(formData.description) ? formData.description : [formData.description as string]
-
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-xl font-bold tracking-tight">Gestor de Banners Globales</h2>
-                    <p className="text-sm text-muted-foreground">Configura los anuncios y mensajes dinámicos que se inyectan en los Dashboards según el destino.</p>
-                </div>
+        <TooltipProvider delayDuration={200}>
+            <div className="space-y-6 w-full max-w-7xl mx-auto pb-16">
 
-                {/* SELECTOR DE BANNER A EDITAR O CREAR */}
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <Select
-                        value={formData.id || (isPristine ? "" : "new")}
-                        onValueChange={handleSelectBanner}
-                    >
-                        <SelectTrigger className="w-full md:w-[320px]">
-                            <SelectValue placeholder="Seleccionar un banner para editar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="new" className="font-bold text-primary">
-                                <span className="flex items-center"><Plus className="w-4 h-4 mr-2" /> Configurar Nuevo Destino</span>
-                            </SelectItem>
-                            {banners.map(b => (
-                                <SelectItem key={b.id} value={b.id}>
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full shrink-0 ${b.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                                        <span className="truncate">{b.title}</span>
-                                        <Badge variant="outline" className="text-[10px] ml-auto shrink-0 font-mono">
-                                            {b.space_type}
-                                        </Badge>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                {/* ========================================================================= */}
+                {/* 1. BARRA SUPERIOR UNIFICADA DE CONTROL Y CAMPAÑA (Compacta, De Lado a Lado) */}
+                {/* ========================================================================= */}
+                <div className="rounded-2xl border shadow-sm bg-white dark:bg-zinc-950 p-4 sm:p-5 space-y-4">
+                    {/* Fila A: Título, Selector de Banner, Estado y Guardar */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-border/50">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                    <Layers className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
+                                        Gestor de Banners Multi-Slide
+                                    </h2>
+                                </div>
+                            </div>
 
-                    {formData.id && (
-                        <Button variant="outline" size="icon" className="text-red-500 hover:bg-red-50 border-red-200" onClick={() => handleDelete(formData.id!)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
-            </div>
+                            {/* Selector de Banner a editar */}
+                            <Select
+                                value={formData.id || (isPristine ? "" : "new")}
+                                onValueChange={handleSelectBanner}
+                            >
+                                <SelectTrigger className="w-[280px] sm:w-[320px] max-w-full h-8 text-xs bg-slate-50 dark:bg-zinc-900 whitespace-nowrap overflow-hidden">
+                                    <SelectValue placeholder="Seleccionar banner a editar" />
+                                </SelectTrigger>
+                                <SelectContent className="max-w-[420px]">
+                                    <SelectItem value="new" className="font-bold text-primary">
+                                        <span className="flex items-center whitespace-nowrap">
+                                            <Plus className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Configurar Nuevo Destino
+                                        </span>
+                                    </SelectItem>
+                                    {banners.map(b => {
+                                        const bSlides = normalizeBannerSlides(b)
+                                        return (
+                                            <SelectItem key={b.id} value={b.id} className="text-xs">
+                                                <div className="flex items-center gap-2 w-full min-w-0">
+                                                    <div className={`w-2 h-2 rounded-full shrink-0 ${b.is_active ? "bg-green-500" : "bg-gray-300"}`} />
+                                                    <span className="truncate min-w-0 font-medium">{b.title}</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0 ml-auto pl-1">
+                                                        [{b.space_type} · {bSlides.length}]
+                                                    </span>
+                                                </div>
+                                            </SelectItem>
+                                        )
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-
-                {/* COLUMNA IZQUIERDA: EDITOR (5 columnas) */}
-                <div className="xl:col-span-5 flex flex-col gap-6">
-                    <Card className="border shadow-sm">
-                        <CardHeader className="bg-slate-50 dark:bg-zinc-900 border-b pb-4">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <Edit2 className="h-4 w-4 text-primary" />
-                                    {formData.id ? 'Editando Banner' : 'Configuración de Banner'}
+                        {/* Controles de Publicación y Guardar */}
+                        <div className="flex items-center gap-2.5 ml-auto lg:ml-0">
+                            {/* Toggle Estado */}
+                            <div className="flex items-center gap-2 px-3 h-8 rounded-xl border bg-slate-50/80 dark:bg-zinc-900/60">
+                                <span className="text-[11px] font-semibold text-muted-foreground">
+                                    {formData.is_active ? "🟢 En Vivo" : "⚪ Borrador"}
                                 </span>
-                                {formData.id && (
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant={formData.is_active ? "default" : "secondary"} className={formData.is_active ? "bg-green-500 hover:bg-green-600" : ""}>
-                                            {formData.is_active ? "Activo en Vivo" : "Inactivo"}
-                                        </Badge>
+                                <Switch
+                                    checked={formData.is_active}
+                                    onCheckedChange={c => {
+                                        if (formData.id) {
+                                            handleToggleActive(formData)
+                                        } else {
+                                            setFormData(prev => ({ ...prev, is_active: c }))
+                                        }
+                                    }}
+                                    className="scale-90"
+                                />
+                            </div>
+
+                            {formData.id && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
                                         <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 text-xs"
-                                            onClick={() => handleToggleActive(formData)}
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200 dark:border-red-950"
+                                            onClick={() => handleDelete(formData.id!)}
                                         >
-                                            {formData.is_active ? "Desactivar" : "Activar"}
+                                            <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Eliminar banner permanentemente</TooltipContent>
+                                </Tooltip>
+                            )}
+
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="h-8 px-4 text-xs font-bold gap-2 shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                            >
+                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                Guardar Cambios
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Fila B: Destino, Modalidad de Campaña, Fechas y Estado Dinámico en Tiempo Real */}
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        {/* Selector de Destino */}
+                        <div className="space-y-1 min-w-[220px]">
+                            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                🎯 Destino (Space / Industria)
+                            </span>
+                            <Select value={formData.space_type} onValueChange={handleSpaceChange}>
+                                <SelectTrigger className="h-9 text-xs bg-slate-50 dark:bg-zinc-900">
+                                    <SelectValue placeholder="Seleccionar destino" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                    {NETWORK_DESTINATIONS.map(d => (
+                                        <SelectItem key={d.value} value={d.value} className="font-semibold text-xs">
+                                            {d.label}
+                                        </SelectItem>
+                                    ))}
+                                    {saasEngineSpaces.length > 0 && (
+                                        <>
+                                            <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t mt-1 pt-1.5">
+                                                Spaces SaaS Engine
+                                            </div>
+                                            {saasEngineSpaces.map(space => (
+                                                <SelectItem key={space.value} value={space.value} className="text-xs">
+                                                    {space.label}
+                                                </SelectItem>
+                                            ))}
+                                        </>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Modalidad de Vigencia: Permanente vs Programada */}
+                        <div className="space-y-1">
+                            <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-primary" /> Modalidad de Emisión
+                            </span>
+                            <div className="flex items-center gap-1.5 p-0.5 rounded-xl border bg-slate-100 dark:bg-zinc-900">
+                                <button
+                                    type="button"
+                                    onClick={resetToPermanent}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
+                                        !scheduleModeActive && !hasAnySchedule
+                                            ? "bg-white dark:bg-zinc-800 text-primary shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <InfinityIcon className="w-3.5 h-3.5" />
+                                    <span>Permanente (Sin Vencimiento)</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setScheduleModeActive(true)}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
+                                        scheduleModeActive || hasAnySchedule
+                                            ? "bg-white dark:bg-zinc-800 text-primary shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <CalendarDays className="w-3.5 h-3.5" />
+                                    <span>Programar Fechas</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Selectores de Fechas Modernos (Si se elige modo Programado) */}
+                        {(scheduleModeActive || hasAnySchedule) && (
+                            <div className="flex flex-wrap items-center gap-3 animate-in fade-in duration-200">
+                                <ModernDateTimePicker
+                                    label="Inicio (Opcional)"
+                                    placeholder="Inmediato al guardar"
+                                    value={formData.starts_at}
+                                    onChange={val => setFormData(prev => ({ ...prev, starts_at: val }))}
+                                />
+                                <ModernDateTimePicker
+                                    label="Caducidad (Opcional)"
+                                    placeholder="Sin fin / Permanente"
+                                    value={formData.expires_at}
+                                    onChange={val => setFormData(prev => ({ ...prev, expires_at: val }))}
+                                />
+                            </div>
+                        )}
+
+                        {/* Pill de Visibilidad Dinámico en Vivo */}
+                        <div className="flex flex-col justify-end space-y-1 ml-auto">
+                            <span className="text-[11px] font-semibold text-muted-foreground">
+                                Regla de Visibilidad en Vivo
+                            </span>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className={cn(
+                                        "h-9 px-3 rounded-xl border text-xs flex items-center gap-2 cursor-help transition-all shadow-2xs font-semibold",
+                                        visibilityStatus.pillClasses
+                                    )}>
+                                        <div className={cn("w-2 h-2 rounded-full shrink-0", visibilityStatus.dotColor)} />
+                                        <span>{visibilityStatus.badge}</span>
                                     </div>
-                                )}
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Selecciona el destino donde se mostrará este banner (Toda la red, Resellers o Spaces de SaaS Engine).
-                            </CardDescription>
-                        </CardHeader>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs p-3 font-normal leading-relaxed">
+                                    <p className="font-bold mb-1">Condición de Despliegue:</p>
+                                    {visibilityStatus.message}
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
+                    </div>
+                </div>
 
-                        <CardContent className="p-0 divide-y">
-                            {/* SECCIÓN 1: GENERAL */}
-                            <div className="p-5 space-y-4">
-                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-                                    <Target className="h-3 w-3" /> Configuración Principal
-                                </h3>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Título Principal</Label>
-                                        <Input
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className="font-semibold text-lg"
+                {/* ========================================================================= */}
+                {/* 2. BARRA MULTITAB DE DIAPOSITIVAS & ACCIONES (Línea Horizontal Slim)      */}
+                {/* ========================================================================= */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-950 p-2.5 px-4 rounded-2xl border shadow-sm">
+                    {/* Pestañas de Diapositivas */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                        {slidesList.map((slide, idx) => {
+                            const isSelected = idx === safeSlideIdx
+                            const slideDuration = (slide.phrases || []).reduce(
+                                (acc, p) => acc + (Number(p.durationSeconds) || 6),
+                                0
+                            )
+                            return (
+                                <button
+                                    key={slide.id || idx}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveSlideIdx(idx)
+                                        setPreviewSlideIdx(idx)
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer",
+                                        isSelected
+                                            ? "bg-primary text-primary-foreground shadow-xs"
+                                            : "bg-slate-100 dark:bg-zinc-900 text-foreground hover:bg-slate-200 dark:hover:bg-zinc-800"
+                                    )}
+                                >
+                                    <span>Diapositiva {idx + 1}</span>
+                                    <span className={cn(
+                                        "text-[10px] font-mono px-1.5 py-0.2 rounded-full",
+                                        isSelected ? "bg-black/25 text-white" : "bg-black/10 dark:bg-white/10"
+                                    )}>
+                                        {slideDuration}s
+                                    </span>
+                                </button>
+                            )
+                        })}
+
+                        {slidesList.length < 5 && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleAddSlide}
+                                        className="h-7 px-2.5 text-xs text-primary hover:bg-primary/10 gap-1 rounded-xl"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>Nueva</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Añadir nueva diapositiva (hasta 5)</TooltipContent>
+                            </Tooltip>
+                        )}
+                    </div>
+
+                    {/* Acciones de Diapositiva & Menú de Plantillas */}
+                    <div className="flex items-center gap-1.5 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs gap-1.5 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-semibold rounded-xl"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Plantillas</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 text-xs">
+                                <DropdownMenuLabel className="text-[11px] font-bold text-muted-foreground uppercase">
+                                    Cargar Plantilla en Slide {safeSlideIdx + 1}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => applyPreset("launch")} className="gap-2 cursor-pointer">
+                                    <span>🚀</span>
+                                    <div>
+                                        <div className="font-semibold">Lanzamiento de Feature</div>
+                                        <div className="text-[10px] text-muted-foreground">Nueva funcionalidad en la app</div>
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => applyPreset("tip")} className="gap-2 cursor-pointer">
+                                    <span>💡</span>
+                                    <div>
+                                        <div className="font-semibold">Pro Tip de Operación</div>
+                                        <div className="text-[10px] text-muted-foreground">Recomendación para optimizar tiempo</div>
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => applyPreset("promo")} className="gap-2 cursor-pointer">
+                                    <span>🎁</span>
+                                    <div>
+                                        <div className="font-semibold">Promoción / Beneficio</div>
+                                        <div className="text-[10px] text-muted-foreground">Descuento o upgrade especial</div>
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => applyPreset("notice")} className="gap-2 cursor-pointer">
+                                    <span>⚠️</span>
+                                    <div>
+                                        <div className="font-semibold">Aviso Operativo</div>
+                                        <div className="text-[10px] text-muted-foreground">Mantenimiento o ventana técnica</div>
+                                    </div>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <div className="flex items-center gap-0.5 border-l pl-2 ml-1">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground"
+                                        disabled={safeSlideIdx === 0}
+                                        onClick={() => handleMoveSlide(safeSlideIdx, "left")}
+                                    >
+                                        <ArrowLeft className="w-3.5 h-3.5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Mover a la izquierda</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground"
+                                        disabled={safeSlideIdx === slidesList.length - 1}
+                                        onClick={() => handleMoveSlide(safeSlideIdx, "right")}
+                                    >
+                                        <ArrowRight className="w-3.5 h-3.5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Mover a la derecha</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground"
+                                        disabled={slidesList.length >= 5}
+                                        onClick={() => handleDuplicateSlide(safeSlideIdx)}
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Duplicar diapositiva</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                        disabled={slidesList.length <= 1}
+                                        onClick={() => handleDeleteSlide(safeSlideIdx)}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Eliminar diapositiva</TooltipContent>
+                            </Tooltip>
+                        </div>
+                    </div>
+                </div>
+
+
+                {/* ========================================================================= */}
+                {/* 3. CONFIGURACIÓN COMPACTA EN FRANJAS HORIZONTALES (Sin Cajas Anidadas)    */}
+                {/* ========================================================================= */}
+                <div className="rounded-2xl border shadow-sm bg-white dark:bg-zinc-950 p-4 sm:p-5 space-y-5">
+
+                    {/* FRANJA 1: TEXTOS PRINCIPALES & VARIABLES DINÁMICAS */}
+                    <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Type className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                    1. Textos & Jerarquía Tipográfica
+                                </span>
+                            </div>
+
+                            {/* Barra Interactiva de Inserción de Tokens */}
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs bg-primary/5 p-1 px-2.5 rounded-xl border border-primary/20">
+                                <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-amber-500" /> Insertar variable:
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => insertTokenToActiveField("{user_name}")}
+                                    className="px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 border hover:border-primary hover:text-primary transition-all font-mono font-bold text-[10px] shadow-2xs cursor-pointer"
+                                    title="Inserta {user_name} en el campo activo"
+                                >
+                                    + {"{user_name}"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => insertTokenToActiveField("{org_name}")}
+                                    className="px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 border hover:border-primary hover:text-primary transition-all font-mono font-bold text-[10px] shadow-2xs cursor-pointer"
+                                    title="Inserta {org_name} en el campo activo"
+                                >
+                                    + {"{org_name}"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => insertTokenToActiveField("{space_name}")}
+                                    className="px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 border hover:border-primary hover:text-primary transition-all font-mono font-bold text-[10px] shadow-2xs cursor-pointer"
+                                    title="Inserta {space_name} en el campo activo"
+                                >
+                                    + {"{space_name}"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grid Horizontal de Título y Badge */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                            {/* Título Principal */}
+                            <div className="lg:col-span-8 space-y-1">
+                                <Label className="text-xs font-bold flex items-center justify-between">
+                                    <span>Título Principal *</span>
+                                    <span className="text-[10px] font-normal text-muted-foreground font-mono">
+                                        h2 text-2xl font-black
+                                    </span>
+                                </Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        placeholder="Ej: Bienvenido a {org_name}"
+                                        value={currentSlide.title || ""}
+                                        onFocus={() => setFocusedField("title")}
+                                        onChange={e => updateCurrentSlide({ title: e.target.value })}
+                                        className="h-9 font-bold text-sm bg-slate-50/50 dark:bg-zinc-900/50 flex-1"
+                                    />
+                                    <Select
+                                        value={currentSlide.titleColor || "default"}
+                                        onValueChange={(val: TextColorRole) => updateCurrentSlide({ titleColor: val })}
+                                    >
+                                        <SelectTrigger className="h-9 w-[115px] text-xs shrink-0 whitespace-nowrap overflow-hidden">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COLOR_ROLES.map(role => (
+                                                <SelectItem key={role.value} value={role.value} className="text-xs">
+                                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${role.previewClass}`} />
+                                                        <span className="whitespace-nowrap">{role.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Badge Kicker */}
+                            <div className="lg:col-span-4 space-y-1">
+                                <Label className="text-xs font-semibold flex items-center justify-between">
+                                    <span>Badge Superior (Kicker)</span>
+                                    <span className="text-[10px] font-normal text-muted-foreground font-mono">
+                                        badge uppercase
+                                    </span>
+                                </Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Input
+                                        placeholder="Ej: NUEVO, PRO TIP"
+                                        value={currentSlide.kicker || ""}
+                                        onFocus={() => setFocusedField("kicker")}
+                                        onChange={e => updateCurrentSlide({ kicker: e.target.value })}
+                                        className="h-9 text-xs bg-slate-50/50 dark:bg-zinc-900/50 flex-1"
+                                    />
+                                    <Select
+                                        value={currentSlide.kickerColor || "brand_primary"}
+                                        onValueChange={(val: TextColorRole) => updateCurrentSlide({ kickerColor: val })}
+                                    >
+                                        <SelectTrigger className="h-9 w-[115px] text-xs shrink-0 whitespace-nowrap overflow-hidden">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {COLOR_ROLES.map(role => (
+                                                <SelectItem key={role.value} value={role.value} className="text-xs">
+                                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${role.previewClass}`} />
+                                                        <span className="whitespace-nowrap">{role.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Fila Horizontal de Subtítulo */}
+                        <div className="pt-2 border-t border-border/40">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                                <div className="lg:col-span-3 flex items-center justify-between gap-2">
+                                    <Label htmlFor="toggle-subtitle-h" className="text-xs font-bold cursor-pointer">
+                                        Subtítulo Explicativo
+                                    </Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-semibold text-muted-foreground">
+                                            {currentSlide.showSubtitle ? "Activo" : "Inactivo"}
+                                        </span>
+                                        <Switch
+                                            id="toggle-subtitle-h"
+                                            checked={currentSlide.showSubtitle}
+                                            onCheckedChange={checked => updateCurrentSlide({ showSubtitle: checked })}
+                                            className="scale-90"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Inyectar en (Destino del Banner)</Label>
-                                        <Select value={formData.space_type} onValueChange={handleSpaceChange}>
-                                            <SelectTrigger><SelectValue placeholder="Selecciona el destino del banner" /></SelectTrigger>
-                                            <SelectContent className="max-h-[320px]">
-                                                {NETWORK_DESTINATIONS.map(d => (
-                                                    <SelectItem key={d.value} value={d.value} className="font-semibold">
-                                                        {d.label}
+                                </div>
+
+                                {currentSlide.showSubtitle ? (
+                                    <div className="lg:col-span-9 flex items-center gap-1.5">
+                                        <Input
+                                            placeholder="Ej: Gestiona tu negocio y potencia tu equipo desde un solo panel..."
+                                            value={currentSlide.subtitle || ""}
+                                            onFocus={() => setFocusedField("subtitle")}
+                                            onChange={e => updateCurrentSlide({ subtitle: e.target.value })}
+                                            className="h-9 text-xs font-semibold bg-slate-50/50 dark:bg-zinc-900/50 flex-1"
+                                        />
+                                        <Select
+                                            value={currentSlide.subtitleColor || "muted"}
+                                            onValueChange={(val: TextColorRole) => updateCurrentSlide({ subtitleColor: val })}
+                                        >
+                                            <SelectTrigger className="h-9 w-[115px] text-xs shrink-0 whitespace-nowrap overflow-hidden">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {COLOR_ROLES.map(role => (
+                                                    <SelectItem key={role.value} value={role.value} className="text-xs">
+                                                        <div className="flex items-center gap-2 whitespace-nowrap">
+                                                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${role.previewClass}`} />
+                                                            <span className="whitespace-nowrap">{role.label}</span>
+                                                        </div>
                                                     </SelectItem>
                                                 ))}
-                                                {saasEngineSpaces.length > 0 && (
-                                                    <>
-                                                        <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t mt-1 pt-2">
-                                                            Spaces Registrados en SaaS Engine
-                                                        </div>
-                                                        {saasEngineSpaces.map(space => (
-                                                            <SelectItem key={space.value} value={space.value}>
-                                                                {space.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </>
-                                                )}
-                                                {formData.space_type && !allDestinations.some(o => o.value === formData.space_type) && (
-                                                    <SelectItem value={formData.space_type}>
-                                                        🎯 {formData.space_type} (Personalizado)
-                                                    </SelectItem>
-                                                )}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-[11px] text-muted-foreground">Nota: Cada destino (Space) tiene su banner dedicado en el dashboard.</p>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="lg:col-span-9 text-[11px] text-muted-foreground italic">
+                                        El subtítulo está apagado para esta diapositiva. Activa el switch si deseas mostrar una frase destacada superior.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* FRANJA 2: FRASES ROTATIVAS & COREOGRAFÍA (Horizontal Continua) */}
+                    <div className="space-y-3 pt-3 border-t border-border/50">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                    2. Frases Rotativas & Coreografía
+                                </span>
+                                <Badge variant="outline" className="text-[11px] font-mono gap-1">
+                                    <span>⏱️ Duración Slide: {currentSlideTotalDuration}s</span>
+                                </Badge>
                             </div>
 
-                            {/* SECCIÓN 2: TEXTOS DINÁMICOS */}
-                            <div className="p-5 space-y-4 border-b bg-slate-50/50 dark:bg-black/10">
-                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-                                    <LayoutTemplate className="h-3 w-3" /> Textos Animados (Fade-in)
-                                </h3>
-                                <p className="text-xs text-muted-foreground mb-2">Agrega líneas de texto que rotarán mágicamente cada 8 segundos.</p>
-
-                                <div className="space-y-3">
-                                    {tipsArray.map((tip, idx) => (
-                                        <div key={idx} className="flex gap-2">
-                                            <Textarea
-                                                value={tip}
-                                                onChange={(e) => updateTip(idx, e.target.value)}
-                                                placeholder={`Línea ${idx + 1}...`}
-                                                rows={2}
-                                                className="resize-none text-sm"
-                                            />
-                                            {tipsArray.length > 1 && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-muted-foreground hover:text-red-500 shrink-0"
-                                                    onClick={() => removeTip(idx)}
-                                                >
-                                                    <Trash className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    <Button variant="outline" size="sm" onClick={addTip} className="w-full text-xs">
-                                        <Plus className="h-3.5 w-3.5 mr-1" /> Agregar otra frase rotativa
-                                    </Button>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Botón - Texto (Opcional)</Label>
-                                        <Input
-                                            placeholder="Ej: Probar Ahora"
-                                            value={formData.cta_text || ''}
-                                            onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Botón - URL</Label>
-                                        <Input
-                                            placeholder="https://..."
-                                            value={formData.cta_url || ''}
-                                            onChange={(e) => setFormData({ ...formData, cta_url: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* SECCIÓN 3: MEDIA & UX */}
-                            <div className="p-5 space-y-4">
-                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-                                    <ImageIcon className="h-3 w-3" /> Apariencia y Multimedia
-                                </h3>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Tema (Variación de Fondo)</Label>
-                                        <Select value={formData.theme} onValueChange={(v: any) => setFormData({ ...formData, theme: v })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="brand_primary">Marca Primario</SelectItem>
-                                                <SelectItem value="brand_secondary">Marca Secundario</SelectItem>
-                                                <SelectItem value="dark">Dark (Vidrio)</SelectItem>
-                                                <SelectItem value="light">Light (Sólido)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Alineación de Media</Label>
-                                        <Select value={formData.layout_pos} onValueChange={(v: any) => setFormData({ ...formData, layout_pos: v })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="right">A la Derecha</SelectItem>
-                                                <SelectItem value="left">A la Izquierda</SelectItem>
-                                                <SelectItem value="center">Imagen de Fondo (Marca de Agua)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 pt-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs">Animación / Imagen</Label>
-                                        <Select
-                                            value={formData.media_type}
-                                            onValueChange={(v) => {
-                                                setFormData({ ...formData, media_type: v, media_url: '' })
-                                            }}
-                                        >
-                                            <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="json_lottie">Lottie 3D (JSON)</SelectItem>
-                                                <SelectItem value="image">URL de Imagen</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {formData.media_type === 'json_lottie' ? (
-                                        <div className="space-y-2">
-                                            {/* Visual preview card & open modal button */}
-                                            <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                                                        {formData.media_url ? (
-                                                            <Film className="h-6 w-6 text-primary animate-pulse" />
-                                                        ) : (
-                                                            <Sparkles className="h-6 w-6 text-muted-foreground/40" />
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-semibold text-foreground truncate">
-                                                            {selectedLottieItem?.label || (formData.media_url ? 'Animación seleccionada' : 'Ninguna animación')}
-                                                        </p>
-                                                        <p className="text-[11px] text-muted-foreground font-mono truncate">
-                                                            {formData.media_url ? formData.media_url.split('/').pop() : 'Selecciona una miniatura visual'}
-                                                        </p>
-                                                    </div>
+                            <div className="flex items-center gap-2">
+                                <Select
+                                    value={currentSlide.phrasesColor || "default"}
+                                    onValueChange={(val: TextColorRole) => updateCurrentSlide({ phrasesColor: val })}
+                                >
+                                    <SelectTrigger className="w-[115px] h-8 text-xs shrink-0 whitespace-nowrap overflow-hidden">
+                                        <SelectValue placeholder="Color" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {COLOR_ROLES.map(role => (
+                                            <SelectItem key={role.value} value={role.value} className="text-xs">
+                                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${role.previewClass}`} />
+                                                    <span className="whitespace-nowrap">{role.label}</span>
                                                 </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setIsLottiePickerOpen(true)}
-                                                    className="gap-1.5 shrink-0 bg-white dark:bg-zinc-800 hover:bg-primary hover:text-primary-foreground transition-colors text-xs h-9 px-3 border-primary/30"
-                                                >
-                                                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                                    Galería ({lottieCatalog.length})
-                                                </Button>
-                                            </div>
-
-                                            {/* Input direct URL / path with Clear button */}
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    placeholder="Ruta JSON ej: /animations/..."
-                                                    value={formData.media_url || ''}
-                                                    onChange={(e) => setFormData({ ...formData, media_url: e.target.value })}
-                                                    className="text-xs h-8 font-mono"
-                                                />
-                                                {formData.media_url && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => setFormData({ ...formData, media_url: '' })}
-                                                        className="h-8 px-2 text-xs text-muted-foreground hover:text-red-500"
-                                                        title="Quitar animación"
-                                                    >
-                                                        <X className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                )}
-                                            </div>
-
-                                            <LottieVisualPickerModal
-                                                open={isLottiePickerOpen}
-                                                onOpenChange={setIsLottiePickerOpen}
-                                                selectedValue={formData.media_url}
-                                                onSelect={(val) => setFormData({ ...formData, media_url: val })}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <Input
-                                            placeholder="Pega la URL pública de la imagen (JPG, PNG, GIF)"
-                                            value={formData.media_url || ''}
-                                            onChange={(e) => setFormData({ ...formData, media_url: e.target.value })}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-
-                        <CardFooter className="bg-slate-50 dark:bg-zinc-900 border-t py-4 flex justify-between items-center rounded-b-xl">
-                            {!formData.id && (
-                                <div className="flex items-center space-x-2">
-                                    <Switch
-                                        id="active-new"
-                                        checked={formData.is_active}
-                                        onCheckedChange={(c) => setFormData({ ...formData, is_active: c })}
-                                    />
-                                    <Label htmlFor="active-new" className="text-xs cursor-pointer">Publicar Inmediato</Label>
-                                </div>
-                            )}
-                            <div className="flex-1 flex justify-end">
-                                <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                    Guardar Cambios
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleAddPhrase}
+                                    className="h-8 text-xs gap-1 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-semibold"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Añadir Frase</span>
                                 </Button>
                             </div>
-                        </CardFooter>
-                    </Card>
+                        </div>
+
+                        {/* Filas directas de frases */}
+                        <div className="space-y-2">
+                            {(currentSlide.phrases || []).map((phrase, pIdx) => (
+                                <div
+                                    key={pIdx}
+                                    className="flex items-center gap-2.5 bg-slate-50/70 dark:bg-zinc-900/40 p-2 px-3 rounded-xl border border-slate-200 dark:border-zinc-800"
+                                >
+                                    <span className="w-5 text-center font-mono font-bold text-xs text-muted-foreground shrink-0">
+                                        {pIdx + 1}.
+                                    </span>
+
+                                    <div className="flex-1 min-w-0">
+                                        <Input
+                                            value={phrase.text}
+                                            onFocus={() => setFocusedField(`phrase-${pIdx}`)}
+                                            onChange={e => handleUpdatePhrase(pIdx, e.target.value)}
+                                            placeholder={`Frase rotativa ${pIdx + 1}...`}
+                                            className="h-8 text-xs bg-white dark:bg-zinc-900"
+                                        />
+                                    </div>
+
+                                    {/* Selector de Segundos por frase */}
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex items-center gap-1 bg-white dark:bg-zinc-800 px-2 py-1 rounded-lg border shadow-2xs shrink-0">
+                                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                                <input
+                                                    type="number"
+                                                    min={2}
+                                                    max={30}
+                                                    value={phrase.durationSeconds || 6}
+                                                    onChange={e => handleUpdatePhrase(pIdx, phrase.text, parseInt(e.target.value, 10) || 6)}
+                                                    className="w-7 text-xs font-mono font-bold bg-transparent text-center focus:outline-none"
+                                                />
+                                                <span className="text-[10px] text-muted-foreground font-mono">s</span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Duración de esta frase en pantalla</TooltipContent>
+                                    </Tooltip>
+
+                                    {(currentSlide.phrases || []).length > 1 && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-red-500 shrink-0"
+                                                    onClick={() => handleRemovePhrase(pIdx)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Eliminar esta frase</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+
+                    {/* FRANJA 3: BOTÓN CTA & MULTIMEDIA / TEMA (Lado a Lado de 2 Columnas Limpias) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-3 border-t border-border/50">
+
+                        {/* Columna Izquierda: Botón de Acción (CTA) */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Target className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                    3. Botón de Acción (CTA)
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                <div className="sm:col-span-5 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground">Texto del Botón</Label>
+                                    <Input
+                                        placeholder="Ej: Comenzar Ahora"
+                                        value={currentSlide.cta_text || ""}
+                                        onChange={e => updateCurrentSlide({ cta_text: e.target.value })}
+                                        className="h-8 text-xs bg-slate-50/50 dark:bg-zinc-900/50"
+                                    />
+                                </div>
+                                <div className="sm:col-span-4 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground">URL de Destino</Label>
+                                    <Input
+                                        placeholder="/dashboard o https://..."
+                                        value={currentSlide.cta_url || ""}
+                                        onChange={e => updateCurrentSlide({ cta_url: e.target.value })}
+                                        className="h-8 text-xs font-mono bg-slate-50/50 dark:bg-zinc-900/50"
+                                    />
+                                </div>
+                                <div className="sm:col-span-3 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground">Estilo</Label>
+                                    <Select
+                                        value={currentSlide.cta_variant || "default"}
+                                        onValueChange={(val: any) => updateCurrentSlide({ cta_variant: val })}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="default">Primario</SelectItem>
+                                            <SelectItem value="secondary">Secundario</SelectItem>
+                                            <SelectItem value="outline">Contorno</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="cta-tab-switch"
+                                        checked={currentSlide.cta_open_new_tab}
+                                        onCheckedChange={checked => updateCurrentSlide({ cta_open_new_tab: checked })}
+                                        className="scale-90"
+                                    />
+                                    <Label htmlFor="cta-tab-switch" className="text-xs cursor-pointer flex items-center gap-1">
+                                        <span>Abrir enlace en pestaña nueva</span>
+                                        <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                                    </Label>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-mono">target="_blank"</span>
+                            </div>
+                        </div>
+
+                        {/* Columna Derecha: Multimedia & Tema */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ImageIcon className="w-4 h-4 text-primary" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                        4. Multimedia & Tema Visual
+                                    </span>
+                                </div>
+
+                                <Select
+                                    value={currentSlide.theme || "auto"}
+                                    onValueChange={(v: any) => updateCurrentSlide({ theme: v })}
+                                >
+                                    <SelectTrigger className="w-[170px] h-8 text-xs bg-slate-50/50 dark:bg-zinc-900/50 whitespace-nowrap overflow-hidden">
+                                        <SelectValue placeholder="Tema Visual" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="auto" className="text-xs font-semibold">
+                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                <span className="whitespace-nowrap">✨ Auto (Tenant)</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="brand_primary" className="text-xs">
+                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-[var(--primary,#F205E2)] shrink-0" />
+                                                <span className="whitespace-nowrap">Marca Primario</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="brand_secondary" className="text-xs">
+                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand-cyan,#00E0FF)] shrink-0" />
+                                                <span className="whitespace-nowrap">Marca Secundario</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="dark" className="text-xs">
+                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-zinc-900 border border-zinc-700 shrink-0" />
+                                                <span className="whitespace-nowrap">Dark (Oscuro)</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="light" className="text-xs">
+                                            <div className="flex items-center gap-2 whitespace-nowrap">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 shrink-0" />
+                                                <span className="whitespace-nowrap">Light (Claro)</span>
+                                            </div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground">Tipo de Media</Label>
+                                    <Select
+                                        value={currentSlide.media_type || "json_lottie"}
+                                        onValueChange={v => updateCurrentSlide({ media_type: v as any, media_url: "" })}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="json_lottie">Animación Lottie 3D</SelectItem>
+                                            <SelectItem value="image">URL de Imagen</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground">Alineación</Label>
+                                    <Select
+                                        value={currentSlide.layout_pos || "right"}
+                                        onValueChange={(v: any) => updateCurrentSlide({ layout_pos: v })}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="right">A la Derecha</SelectItem>
+                                            <SelectItem value="left">A la Izquierda</SelectItem>
+                                            <SelectItem value="center">Fondo Marca de Agua</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {currentSlide.media_type === "json_lottie" ? (
+                                <div className="flex items-center gap-2 pt-0.5">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsLottiePickerOpen(true)}
+                                        className="gap-1.5 shrink-0 bg-white dark:bg-zinc-800 hover:bg-primary hover:text-primary-foreground text-xs h-8 px-3 border-primary/30"
+                                    >
+                                        <Film className="h-3.5 w-3.5 text-primary" />
+                                        <span>Catálogo ({lottieCatalog.length})</span>
+                                    </Button>
+
+                                    <Input
+                                        placeholder="Ruta JSON ej: /animations/..."
+                                        value={currentSlide.media_url || ""}
+                                        onChange={e => updateCurrentSlide({ media_url: e.target.value })}
+                                        className="text-xs h-8 font-mono flex-1"
+                                    />
+
+                                    {currentSlide.media_url && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => updateCurrentSlide({ media_url: "" })}
+                                                    className="h-8 w-8 text-muted-foreground hover:text-red-500 shrink-0"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Quitar animación</TooltipContent>
+                                        </Tooltip>
+                                    )}
+
+                                    <LottieVisualPickerModal
+                                        open={isLottiePickerOpen}
+                                        onOpenChange={setIsLottiePickerOpen}
+                                        selectedValue={currentSlide.media_url}
+                                        onSelect={val => updateCurrentSlide({ media_url: val })}
+                                    />
+                                </div>
+                            ) : (
+                                <Input
+                                    placeholder="URL pública de imagen (JPG, PNG, WebP, GIF)"
+                                    value={currentSlide.media_url || ""}
+                                    onChange={e => updateCurrentSlide({ media_url: e.target.value })}
+                                    className="text-xs h-8"
+                                />
+                            )}
+                        </div>
+                    </div>
+
                 </div>
 
-                {/* COLUMNA DERECHA: PREVIEW (7 columnas), Fixed o Sticky para que siempre se vea */}
-                <div className="xl:col-span-7 sticky top-6">
-                    <Card className="border-0 shadow-none bg-transparent">
-                        <div className="flex items-center justify-between mb-4 px-2">
-                            <h3 className="font-semibold flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-brand-cyan" />
-                                Renderización en Tiempo Real
-                            </h3>
-                            <Badge variant="outline" className="bg-white/50 dark:bg-black/50 backdrop-blur font-medium">
-                                {getDestinationLabel(formData.space_type)}
-                            </Badge>
-                        </div>
 
-                        <div className="bg-slate-100 dark:bg-black/20 p-2 sm:p-6 lg:p-10 rounded-3xl border border-dashed border-slate-300 dark:border-white/10 shadow-inner min-h-[400px] flex items-center justify-center relative overflow-hidden">
-                            {/* Revestimiento que marca que es un canvas simulado */}
-                            <div className="absolute top-4 left-4 text-xs font-mono text-muted-foreground flex items-center gap-1 opacity-50 z-0">
-                                <LayoutTemplate className="w-3 h-3" /> Dashboard Slot (Responsive Frame)
-                            </div>
-
-                            <div className="w-full max-w-5xl z-10 transition-all duration-300">
-                                <GlobalDashboardBanner config={{ ...formData, is_active: true }} />
+                {/* ========================================================================= */}
+                {/* 4. SIMULADOR EN VIVO (Al Final / Ancho Completo con comparador de 250px)   */}
+                {/* ========================================================================= */}
+                <div className="rounded-2xl border shadow-md bg-white dark:bg-zinc-950 overflow-hidden">
+                    <div className="p-3 px-5 border-b bg-slate-50 dark:bg-zinc-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <MonitorPlay className="h-4 w-4 text-primary animate-pulse" />
+                            <div>
+                                <span className="text-xs font-bold text-foreground">
+                                    Simulador en Tiempo Real (Vista Viewport 1:1)
+                                </span>
                             </div>
                         </div>
-                        <p className="text-center text-xs text-muted-foreground mt-4">
-                            Los colores `Brand Primary` y `Brand Secondary` se renderizan utilizando los códigos de color dinámicos injectados por la organización actualmente autenticada en su navegador.
-                        </p>
-                    </Card>
+
+                        {/* Controles de Reproducción del Simulador */}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant={previewIsPlaying ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setPreviewIsPlaying(!previewIsPlaying)}
+                                className="h-7 text-xs gap-1.5 font-semibold"
+                            >
+                                {previewIsPlaying ? (
+                                    <>
+                                        <Pause className="h-3.5 w-3.5" /> Pausar
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="h-3.5 w-3.5" /> Probar Secuencia
+                                    </>
+                                )}
+                            </Button>
+
+                            <div className="flex items-center gap-1 border rounded-lg p-0.5 bg-background">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                                const prev = (previewSlideIdx - 1 + slidesList.length) % slidesList.length
+                                                setPreviewSlideIdx(prev)
+                                                setActiveSlideIdx(prev)
+                                            }}
+                                        >
+                                            <ChevronLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Diapositiva anterior</TooltipContent>
+                                </Tooltip>
+
+                                <span className="text-[11px] font-mono font-semibold px-2">
+                                    {previewSlideIdx + 1} / {slidesList.length}
+                                </span>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                                const next = (previewSlideIdx + 1) % slidesList.length
+                                                setPreviewSlideIdx(next)
+                                                setActiveSlideIdx(next)
+                                            }}
+                                        >
+                                            <ChevronRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Diapositiva siguiente</TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 sm:p-8 bg-slate-100/80 dark:bg-black/40 flex items-center justify-center">
+                        <div className="w-full max-w-4xl mx-auto">
+                            <GlobalDashboardBanner
+                                config={{
+                                    ...formData,
+                                    is_active: true,
+                                    slides: slidesList
+                                }}
+                                controlledSlideIndex={previewIsPlaying ? undefined : previewSlideIdx}
+                                controlledIsPlaying={previewIsPlaying}
+                                onSlideChange={idx => {
+                                    setPreviewSlideIdx(idx)
+                                    setActiveSlideIdx(idx)
+                                }}
+                            />
+                        </div>
+                    </div>
                 </div>
 
             </div>
-        </div>
+        </TooltipProvider>
     )
 }

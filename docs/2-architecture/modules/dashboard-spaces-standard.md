@@ -91,3 +91,13 @@ El espacio **SaaS Space** cuenta con un dashboard especializado (`saas-dashboard
 - **Ergonomía Visual Global**:
   - Padding de `SectionHeader` reducido a `pt-1 pb-2` para un layout sin espacios muertos.
   - Padding compacto en `MagicStatCard` (`px-5 pt-4 pb-1.5`) y `QuickAction` (`px-4 py-3`).
+
+---
+
+## 8. Integración del Banner Global Multi-Slide
+
+El banner global de cabecera acompaña a `GlassCard3D` respetando rigurosamente su altura de `250px`:
+- **Documentación Completa**: Consulte [`global-dashboard-banner-architecture.md`](./global-dashboard-banner-architecture.md).
+- **Mecánica Multi-Slide**: Admite múltiples diapositivas rotativas con frases dinámicas (`SplitText`), tiempos independientes y vigencia temporal (`starts_at` / `expires_at`).
+- **Simetría y Autolayout**: El multimedia (Lottie o imagen) se posiciona de forma absoluta contra el borde derecho con alto total de 250px (`aspect-square`), mientras que la columna de textos utiliza autolayout vertical (`justify-between`) con zona protegida para evitar solapamientos.
+
