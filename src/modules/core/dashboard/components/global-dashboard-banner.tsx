@@ -39,6 +39,7 @@ export interface GlobalBannerSlide {
     id: string
     kicker?: string
     kickerColor?: TextColorRole
+    kicker_shimmer?: boolean
     title: string
     titleColor?: TextColorRole
     subtitle?: string
@@ -52,6 +53,7 @@ export interface GlobalBannerSlide {
     cta_url?: string
     cta_open_new_tab?: boolean
     cta_variant?: "default" | "secondary" | "outline"
+    cta_shimmer?: boolean
 
     media_type?: "json_lottie" | "image"
     media_url?: string
@@ -141,6 +143,7 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
                 id: s.id || `slide-${idx + 1}`,
                 kicker: s.kicker || "",
                 kickerColor: s.kickerColor || "brand_primary",
+                kicker_shimmer: Boolean(s.kicker_shimmer ?? (s as any).kickerShimmer),
                 title: s.title || "Título del Banner",
                 titleColor: s.titleColor || "default",
                 subtitle: s.subtitle || "",
@@ -152,6 +155,7 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
                 cta_url: s.cta_url || "",
                 cta_open_new_tab: Boolean(s.cta_open_new_tab),
                 cta_variant: s.cta_variant || "default",
+                cta_shimmer: Boolean(s.cta_shimmer ?? (s as any).ctaShimmer),
                 media_type: s.media_type || "json_lottie",
                 media_url: s.media_url || "",
                 layout_pos: s.layout_pos || "right",
@@ -175,6 +179,7 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
             id: `legacy-${config.id || "1"}`,
             kicker: "NOVEDAD",
             kickerColor: "brand_primary",
+            kicker_shimmer: false,
             title: config.title || "Bienvenido a tu Dashboard",
             titleColor: "default",
             subtitle: "",
@@ -186,6 +191,7 @@ export function normalizeBannerSlides(config?: GlobalBannerConfig | null): Globa
             cta_url: config.cta_url || "",
             cta_open_new_tab: false,
             cta_variant: "default",
+            cta_shimmer: false,
             media_type: (config.media_type as any) || "json_lottie",
             media_url: config.media_url || "",
             layout_pos: config.layout_pos || "right",
@@ -205,6 +211,37 @@ export function interpolateTokens(
         .replace(/\{user_name\}/gi, context.userName || "Usuario")
         .replace(/\{org_name\}/gi, context.orgName || "Tu Empresa")
         .replace(/\{space_name\}/gi, context.spaceName || "Pixy")
+}
+
+export function ShimmerText({
+    children,
+    active = false,
+    className = "",
+}: {
+    children: React.ReactNode
+    active?: boolean
+    className?: string
+}) {
+    if (!active || !children) {
+        return <>{children}</>
+    }
+
+    if (typeof children !== "string") {
+        return <span className={cn("animate-text-shimmer", className)}>{children}</span>
+    }
+
+    // Aislar emoji o pictograma inicial para conservar sus colores nativos y aplicar shimmer al texto
+    const emojiMatch = children.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\s*)(.*)$/u)
+    if (emojiMatch) {
+        return (
+            <span className={cn("inline-flex items-center gap-1.5", className)}>
+                <span className="shrink-0">{emojiMatch[1]}</span>
+                <span className="animate-text-shimmer">{emojiMatch[2]}</span>
+            </span>
+        )
+    }
+
+    return <span className={cn("animate-text-shimmer", className)}>{children}</span>
 }
 
 export function GlobalDashboardBanner({
@@ -378,7 +415,7 @@ export function GlobalDashboardBanner({
         borderClasses = "border border-[var(--primary,#F205E2)]/30"
         titleClasses = getTextColorClass(currentSlide.titleColor, "text-gray-900 dark:text-white")
         kickerClasses = getTextColorClass(currentSlide.kickerColor, "text-[var(--primary,#F205E2)]")
-        kickerBgClasses = "bg-black/[0.07] dark:bg-white/12 border border-black/15 dark:border-white/20 shadow-xs"
+        kickerBgClasses = "bg-white/92 dark:bg-white/12 border border-black/[0.08] dark:border-white/20 shadow-2xs"
         subtitleClasses = getTextColorClass(currentSlide.subtitleColor, "text-gray-700 dark:text-gray-300")
         descClasses = getTextColorClass(currentSlide.phrasesColor, "text-gray-800 dark:text-gray-200")
         defaultCtaVariant = "default"
@@ -388,7 +425,7 @@ export function GlobalDashboardBanner({
         borderClasses = "border border-[var(--brand-cyan,#00E0FF)]/30"
         titleClasses = getTextColorClass(currentSlide.titleColor, "text-gray-900 dark:text-white")
         kickerClasses = getTextColorClass(currentSlide.kickerColor, "text-[var(--brand-cyan,#00E0FF)]")
-        kickerBgClasses = "bg-black/[0.07] dark:bg-white/12 border border-black/15 dark:border-white/20 shadow-xs"
+        kickerBgClasses = "bg-white/92 dark:bg-white/12 border border-black/[0.08] dark:border-white/20 shadow-2xs"
         subtitleClasses = getTextColorClass(currentSlide.subtitleColor, "text-gray-700 dark:text-gray-300")
         descClasses = getTextColorClass(currentSlide.phrasesColor, "text-gray-800 dark:text-gray-200")
         defaultCtaVariant = "secondary"
@@ -408,7 +445,7 @@ export function GlobalDashboardBanner({
         borderClasses = "border border-slate-200/90"
         titleClasses = getTextColorClass(currentSlide.titleColor, "text-zinc-900")
         kickerClasses = getTextColorClass(currentSlide.kickerColor, "text-[var(--brand-pink,#F205E2)]")
-        kickerBgClasses = "bg-black/[0.07] border border-black/15 shadow-xs"
+        kickerBgClasses = "bg-white border border-slate-200/90 shadow-2xs"
         subtitleClasses = getTextColorClass(currentSlide.subtitleColor, "text-zinc-700")
         descClasses = getTextColorClass(currentSlide.phrasesColor, "text-zinc-600")
         defaultCtaVariant = "default"
@@ -418,7 +455,7 @@ export function GlobalDashboardBanner({
         borderClasses = "border border-black/10 dark:border-white/10"
         titleClasses = getTextColorClass(currentSlide.titleColor, "text-gray-900 dark:text-white")
         kickerClasses = getTextColorClass(currentSlide.kickerColor, "text-[var(--brand-pink,var(--primary,#F205E2))]")
-        kickerBgClasses = "bg-black/[0.07] dark:bg-white/12 border border-black/15 dark:border-white/20 shadow-xs"
+        kickerBgClasses = "bg-white/92 dark:bg-white/12 border border-black/[0.08] dark:border-white/20 shadow-2xs"
         subtitleClasses = getTextColorClass(currentSlide.subtitleColor, "text-gray-600 dark:text-gray-300")
         descClasses = getTextColorClass(currentSlide.phrasesColor, "text-gray-700 dark:text-gray-300")
         defaultCtaVariant = "default"
@@ -533,7 +570,9 @@ export function GlobalDashboardBanner({
                                 animate={{ opacity: 1, y: 0 }}
                                 className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full w-fit mb-1.5 backdrop-blur-sm truncate ${kickerBgClasses} ${kickerClasses}`}
                             >
-                                {resolvedKicker}
+                                <ShimmerText active={Boolean(currentSlide.kicker_shimmer)}>
+                                    {resolvedKicker}
+                                </ShimmerText>
                             </motion.span>
                         )}
 
@@ -601,8 +640,10 @@ export function GlobalDashboardBanner({
                                     className="rounded-xl shadow-xs transition-transform duration-200 hover:scale-105 active:scale-95 px-5 h-8 text-xs font-bold gap-2 cursor-pointer"
                                     variant={currentSlide.cta_variant || defaultCtaVariant}
                                 >
-                                    <span>{currentSlide.cta_text}</span>
-                                    {currentSlide.cta_open_new_tab && <ExternalLink className="w-3 h-3 opacity-70" />}
+                                    <ShimmerText active={Boolean(currentSlide.cta_shimmer)}>
+                                        {currentSlide.cta_text}
+                                    </ShimmerText>
+                                    {currentSlide.cta_open_new_tab && <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />}
                                 </Button>
                             </Link>
                         </motion.div>

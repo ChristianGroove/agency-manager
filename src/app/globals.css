@@ -100,7 +100,41 @@
   }
 }
 
+@keyframes text-shimmer-wave {
+  0% {
+    -webkit-mask-position: 130% 0;
+    mask-position: 130% 0;
+  }
+  100% {
+    -webkit-mask-position: -30% 0;
+    mask-position: -30% 0;
+  }
+}
+
 @layer utilities {
+  .animate-text-shimmer {
+    display: inline-block;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.42) 28%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.42) 72%,
+      rgba(0, 0, 0, 0.42) 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.42) 28%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.42) 72%,
+      rgba(0, 0, 0, 0.42) 100%
+    );
+    -webkit-mask-size: 250% 100%;
+    mask-size: 250% 100%;
+    animation: text-shimmer-wave 2.2s linear infinite;
+  }
+
   .animate-alert-enter {
     animation: alert-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }

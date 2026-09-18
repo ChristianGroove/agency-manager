@@ -65,6 +65,7 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
                         id: "s1",
                         kicker: "PROMO",
                         kickerColor: "amber",
+                        kicker_shimmer: true,
                         title: "Gran Venta",
                         titleColor: "emerald",
                         showSubtitle: true,
@@ -79,6 +80,7 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
                         cta_url: "/shop",
                         cta_open_new_tab: true,
                         cta_variant: "secondary",
+                        cta_shimmer: true,
                         media_type: "image",
                         media_url: "https://example.com/promo.png",
                         layout_pos: "left",
@@ -102,6 +104,7 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
             // Slide 1 checks
             expect(slides[0].kicker).toBe("PROMO")
             expect(slides[0].kickerColor).toBe("amber")
+            expect(slides[0].kicker_shimmer).toBe(true)
             expect(slides[0].title).toBe("Gran Venta")
             expect(slides[0].titleColor).toBe("emerald")
             expect(slides[0].showSubtitle).toBe(true)
@@ -110,9 +113,12 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
             expect(slides[0].phrases[0].durationSeconds).toBe(4)
             expect(slides[0].phrases[1].durationSeconds).toBe(7)
             expect(slides[0].cta_open_new_tab).toBe(true)
+            expect(slides[0].cta_shimmer).toBe(true)
             expect(slides[0].layout_pos).toBe("left")
 
-            // Slide 2 checks
+            // Slide 2 checks (shimmer should default to false)
+            expect(slides[1].kicker_shimmer).toBe(false)
+            expect(slides[1].cta_shimmer).toBe(false)
             expect(slides[1].title).toBe("Nueva Colección")
             expect(slides[1].phrases[0].durationSeconds).toBe(5)
             expect(slides[1].theme).toBe("light")

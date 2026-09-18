@@ -37,6 +37,7 @@ export interface GlobalBannerSlide {
     // Kicker (Badge superior)
     kicker?: string
     kickerColor?: TextColorRole // "brand_primary" | "brand_secondary" | "muted" | "emerald" | "amber" | "cyan" | "indigo" | "white" | "default"
+    kicker_shimmer?: boolean // Efecto shimmer text tipo ChatGPT Thinking
     
     // Título y Subtítulo
     title: string
@@ -54,6 +55,7 @@ export interface GlobalBannerSlide {
     cta_url?: string
     cta_open_new_tab?: boolean
     cta_variant?: "default" | "secondary" | "outline"
+    cta_shimmer?: boolean // Efecto shimmer text en botón CTA
     
     // Multimedia
     media_type?: "json_lottie" | "image"
@@ -123,6 +125,12 @@ Para evitar que el badge parezca "flotando o desalineado" debido a su padding in
 * Diapositiva activa: Micro-píldora dinámica `w-4 h-1.5 bg-[var(--primary,#F205E2)] shadow-xs rounded-full`.
 * Diapositivas inactivas: Círculos discretos `w-1.5 h-1.5 bg-black/25 dark:bg-white/30`.
 
+### E. Microinteracción Shimmer Text (Efecto IA estilo ChatGPT)
+Inspirada en la onda de pensamiento de ChatGPT cuando genera respuestas, disponible de forma independiente tanto para el **Badge Kicker** como para el **Botón CTA**:
+* **Aceleración por Hardware (`mask-image`):** Utiliza una máscara de gradiente de opacidad continua (`42%` ➔ `100%` ➔ `42%`) con `@keyframes text-shimmer-wave`, garantizando compatibilidad universal con cualquier color de texto (blanco, verde, cyan, magenta, etc.) sin interferir con `-webkit-text-fill-color`.
+* **Aislamiento Inteligente de Emojis:** El componente `<ShimmerText>` detecta y preserva emojis iniciales (ej. `🚀`, `💡`, `🎁`, `⚠️`) para que no pierdan sus colores gráficos nativos mientras el texto adyacente vibra con el barrido luminoso.
+* **Control Individual en SuperAdmin:** Cada slide dispone de switches independientes `kicker_shimmer` y `cta_shimmer` en el editor.
+
 ---
 
 ## 5. Gestor de Administración en SuperAdmin (`GlobalBannersManager`)
@@ -132,6 +140,7 @@ Ubicado en `src/app/(dashboard)/platform/admin/_components/global-banners-manage
 ### Características Principales:
 1. **Layout Horizontal Full-Width:** Aprovecha el ancho de pantalla completo sin cajas comprimidas ni scrolls internos innecesarios.
 2. **Selector de Diapositivas Multi-Tab:** Navegación entre slides con badges de estado, soporte para reordenar (izquierda/derecha), duplicar y eliminar.
+3. **Controles de Efecto Shimmer (IA):** Switches dedicados en la cabecera del Kicker Badge y en las opciones del Botón CTA para activar o desactivar el barrido luminoso en cada slide.
 3. **Plantillas Rápidas (Presets):**
    * *🚀 Lanzamiento:* Configura anuncio de nuevas funciones con tema primario y Lottie corporativo.
    * *💡 Pro Tip:* Configura consejos prácticos de operaciones con tema secundario (Cyan) y tiempos de rotación ágiles.

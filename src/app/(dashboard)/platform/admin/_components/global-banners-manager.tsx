@@ -76,6 +76,7 @@ const DEFAULT_SLIDE: GlobalBannerSlide = {
     id: "slide-1",
     kicker: "NOVEDAD",
     kickerColor: "brand_primary",
+    kicker_shimmer: true,
     title: "Bienvenido a {org_name}",
     titleColor: "default",
     subtitle: "Todo lo que necesitas para escalar tu operación hoy",
@@ -90,10 +91,13 @@ const DEFAULT_SLIDE: GlobalBannerSlide = {
     cta_url: "/dashboard",
     cta_open_new_tab: false,
     cta_variant: "default",
+    cta_shimmer: true,
     media_type: "json_lottie",
     media_url: "/animations/animated-office-workspace-desk-with-computer-and-b-2025-10-20-06-00-41-utc.json",
     layout_pos: "right",
-    theme: "auto"
+    theme: "auto",
+    starts_at: null,
+    expires_at: null
 }
 
 const DEFAULT_BANNER: GlobalBannerConfig = {
@@ -585,6 +589,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
             presetData = {
                 kicker: "🚀 NUEVO LANZAMIENTO",
                 kickerColor: "cyan",
+                kicker_shimmer: true,
                 title: "Descubre la nueva función de {space_name}",
                 titleColor: "default",
                 showSubtitle: true,
@@ -598,6 +603,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                 cta_text: "Explorar Ahora",
                 cta_url: "/dashboard",
                 cta_variant: "default",
+                cta_shimmer: true,
                 theme: "brand_primary",
                 media_type: "json_lottie",
                 media_url: "/animations/business-goal-achievement-and-target-success-2025-10-20-06-18-35-utc.json",
@@ -608,6 +614,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
             presetData = {
                 kicker: "💡 CONSEJO PRO",
                 kickerColor: "amber",
+                kicker_shimmer: true,
                 title: "Aumenta la retención de tus clientes",
                 titleColor: "default",
                 showSubtitle: true,
@@ -622,6 +629,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                 cta_text: "Ver Guía Paso a Paso",
                 cta_url: "/knowledge",
                 cta_variant: "secondary",
+                cta_shimmer: true,
                 theme: "brand_secondary",
                 media_type: "json_lottie",
                 media_url: "/animations/animated-data-presentation-woman-explaining-chart-2025-10-20-06-25-36-utc.json",
@@ -632,6 +640,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
             presetData = {
                 kicker: "🎁 OFERTA EXCLUSIVA",
                 kickerColor: "emerald",
+                kicker_shimmer: true,
                 title: "Desbloquea el potencial completo",
                 titleColor: "emerald",
                 showSubtitle: true,
@@ -645,6 +654,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                 cta_text: "Mejorar Mi Plan",
                 cta_url: "/billing",
                 cta_variant: "default",
+                cta_shimmer: true,
                 theme: "dark",
                 media_type: "json_lottie",
                 media_url: "/animations/big-sale-tag-animation-2025-10-20-04-33-47-utc.json",
@@ -655,6 +665,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
             presetData = {
                 kicker: "⚠️ AVISO OPERATIVO",
                 kickerColor: "amber",
+                kicker_shimmer: false,
                 title: "Mantenimiento Programado",
                 titleColor: "default",
                 showSubtitle: true,
@@ -668,6 +679,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                 cta_text: "Estado del Sistema",
                 cta_url: "/status",
                 cta_variant: "outline",
+                cta_shimmer: false,
                 theme: "light",
                 media_type: "json_lottie",
                 media_url: "/animations/cartoon-calendar-illustration-2025-10-20-02-24-50-utc.json",
@@ -1253,12 +1265,26 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
 
                             {/* Badge Kicker */}
                             <div className="lg:col-span-4 space-y-1">
-                                <Label className="text-xs font-semibold flex items-center justify-between">
-                                    <span>Badge Superior (Kicker)</span>
-                                    <span className="text-[10px] font-normal text-muted-foreground font-mono">
-                                        badge uppercase
-                                    </span>
-                                </Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-semibold">
+                                        Badge Superior (Kicker)
+                                    </Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <Switch
+                                            id={`kicker-shimmer-${safeSlideIdx}`}
+                                            checked={Boolean(currentSlide.kicker_shimmer)}
+                                            onCheckedChange={checked => updateCurrentSlide({ kicker_shimmer: checked })}
+                                            className="scale-75"
+                                        />
+                                        <Label
+                                            htmlFor={`kicker-shimmer-${safeSlideIdx}`}
+                                            className="text-[10px] cursor-pointer flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground"
+                                        >
+                                            <Sparkles className={cn("w-3 h-3", currentSlide.kicker_shimmer ? "text-amber-500 animate-pulse" : "text-muted-foreground")} />
+                                            <span>Shimmer</span>
+                                        </Label>
+                                    </div>
+                                </div>
                                 <div className="flex items-center gap-1.5">
                                     <Input
                                         placeholder="Ej: NUEVO, PRO TIP"
@@ -1504,20 +1530,32 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-1">
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <div className="flex items-center space-x-2">
                                     <Switch
-                                        id="cta-tab-switch"
+                                        id={`cta-tab-switch-${safeSlideIdx}`}
                                         checked={currentSlide.cta_open_new_tab}
                                         onCheckedChange={checked => updateCurrentSlide({ cta_open_new_tab: checked })}
                                         className="scale-90"
                                     />
-                                    <Label htmlFor="cta-tab-switch" className="text-xs cursor-pointer flex items-center gap-1">
-                                        <span>Abrir enlace en pestaña nueva</span>
+                                    <Label htmlFor={`cta-tab-switch-${safeSlideIdx}`} className="text-xs cursor-pointer flex items-center gap-1">
+                                        <span>Pestaña nueva</span>
                                         <ExternalLink className="w-3 h-3 text-muted-foreground" />
                                     </Label>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground font-mono">target="_blank"</span>
+
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id={`cta-shimmer-${safeSlideIdx}`}
+                                        checked={Boolean(currentSlide.cta_shimmer)}
+                                        onCheckedChange={checked => updateCurrentSlide({ cta_shimmer: checked })}
+                                        className="scale-90"
+                                    />
+                                    <Label htmlFor={`cta-shimmer-${safeSlideIdx}`} className="text-xs cursor-pointer flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground">
+                                        <Sparkles className={cn("w-3.5 h-3.5", currentSlide.cta_shimmer ? "text-amber-500 animate-pulse" : "text-muted-foreground")} />
+                                        <span>Efecto Shimmer (Brillo IA)</span>
+                                    </Label>
+                                </div>
                             </div>
                         </div>
 
