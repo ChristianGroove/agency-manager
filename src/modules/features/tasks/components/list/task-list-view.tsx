@@ -207,8 +207,8 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask }: TaskListV
                     <td className="p-3.5">{getPriorityBadge(task.priority)}</td>
                     <td className="p-3.5">
                       <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="font-mono font-semibold text-foreground">
+                        <div className="flex items-center justify-between text-xs sm:text-[13px]">
+                          <span className="font-mono font-bold text-foreground">
                             {task.progress_percentage}%
                           </span>
                         </div>

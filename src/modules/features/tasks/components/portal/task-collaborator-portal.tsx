@@ -179,7 +179,7 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
         trackClassName={trackClassName}
       />
       {showLabel && (
-        <span className={cn("font-mono font-bold text-primary shrink-0", labelClassName || "text-xs")}>
+        <span className={cn("font-mono font-black text-primary shrink-0", labelClassName || "text-xs sm:text-[13px]")}>
           {localVal}%
         </span>
       )}
@@ -2072,7 +2072,7 @@ export function TaskCollaboratorPortal({
                   <div className="space-y-1.5 py-1">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-muted-foreground">Avance</span>
-                      <span className="font-mono font-bold text-primary">{task.progress_percentage}%</span>
+                      <span className="font-mono font-black text-primary text-xs sm:text-[13px]">{task.progress_percentage}%</span>
                     </div>
                     <PortalTaskSlider
                       taskId={task.id}
@@ -2258,7 +2258,7 @@ export function TaskCollaboratorPortal({
                             isLeadOrPm={isLeadOrPm}
                             onCommit={handleSliderCommit}
                             showLabel={true}
-                            labelClassName="text-[11px] w-8 text-right"
+                            labelClassName="text-xs sm:text-[13px] font-black w-11 text-right tracking-tight"
                           />
                         </td>
                         <td className="px-4 py-3.5">
