@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
-import { Users, CheckCircle2, Clock, ShieldCheck, Code2, Palette, Briefcase } from "lucide-react"
+import { Users, CheckCircle2, Clock, ShieldCheck, Code2, Palette, Briefcase, Info } from "lucide-react"
 import type { TaskItem } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 
@@ -267,7 +267,7 @@ export function TaskCollaboratorRibbon({
       {/* Horizontal Scroll Ribbon Container */}
       <div
         ref={ribbonRef}
-        className="bg-card/40 dark:bg-white/[0.03] backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-xs relative flex flex-nowrap overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700/60 pb-2 snap-x items-center gap-2.5 sm:gap-3"
+        className="bg-card/40 dark:bg-white/[0.03] backdrop-blur-xl border border-zinc-200/80 dark:border-white/10 rounded-2xl pt-5 sm:pt-6 pb-2.5 px-2.5 sm:px-3 shadow-xs relative flex flex-nowrap overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700/60 snap-x items-center gap-2.5 sm:gap-3"
       >
         <TooltipProvider delayDuration={100}>
           {/* 1. "Todo el Equipo" Master Bubble */}
@@ -276,7 +276,7 @@ export function TaskCollaboratorRibbon({
             whileTap={{ scale: 0.98, transition: { duration: 0.08 } }}
             onClick={() => onSelectMember("all")}
             className={cn(
-              "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-20 sm:w-22 h-[114px] sm:h-[118px] text-center transition-colors duration-150",
+              "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-20 sm:w-22 h-[114px] sm:h-[118px] text-center transition-colors duration-150 relative overflow-visible",
               isAllSelected
                 ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs"
                 : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10",
@@ -344,7 +344,7 @@ export function TaskCollaboratorRibbon({
                   whileTap={{ scale: 0.98, transition: { duration: 0.08 } }}
                   onClick={() => onSelectMember(isSelected ? "all" : member.id)}
                   className={cn(
-                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[114px] sm:h-[118px] text-center group transition-colors duration-150 relative",
+                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[114px] sm:h-[118px] text-center group transition-colors duration-150 relative overflow-visible",
                     isSelected
                       ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs"
                       : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10",
@@ -352,84 +352,102 @@ export function TaskCollaboratorRibbon({
                   )}
                   style={isSelected ? { borderColor: brandColor } : undefined}
                 >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="relative flex items-center justify-center w-full flex-1 min-h-[52px]">
-                        {/* Free-floating 3D Avatar Bust - No container, no background fill */}
-                        <img
-                          src={getCollaboratorAvatar(member.photo_url, member.first_name)}
-                          alt={`${member.first_name} ${member.last_name}`}
-                          className={cn(
-                            "object-contain select-none pointer-events-none transition-all duration-150 ease-out",
-                            isSelected
-                              ? "h-16 w-16 sm:h-[68px] sm:w-[68px] drop-shadow-[0_6px_14px_rgba(0,0,0,0.12)] scale-105"
-                              : "h-12 w-12 sm:h-[50px] sm:w-[50px] group-hover:scale-105 drop-shadow-[0_2px_6px_rgba(0,0,0,0.06)]"
+                  {/* Subtle grey info icon in top-right corner to trigger popup info & WhatsApp share */}
+                  <div
+                    className="absolute top-1.5 right-1.5 z-20"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                    }}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-4 h-4 rounded-full bg-zinc-200/70 dark:bg-white/10 hover:bg-zinc-300 dark:hover:bg-white/20 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs opacity-60 hover:opacity-100 group-hover:opacity-100"
+                          title={`Información de ${member.first_name}`}
+                          aria-label={`Información de ${member.first_name}`}
+                        >
+                          <Info className="w-2.5 h-2.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="bottom"
+                        align="end"
+                        className="bg-zinc-900/95 text-white p-3 rounded-2xl border-white/10 z-50 text-xs max-w-xs shadow-2xl pointer-events-auto"
+                      >
+                        <div className="space-y-2">
+                          {/* Header: Name + Role on Left, WhatsApp Share Button on Right */}
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="space-y-0.5 min-w-0 flex-1">
+                              <p className="font-bold text-sm truncate text-white leading-tight">
+                                {member.first_name} {member.last_name}
+                              </p>
+                              <p className="text-[10px] text-primary font-semibold flex items-center gap-1">
+                                {getRoleIcon(member.role)}
+                                <span className="truncate">{member.role || "Colaborador"}</span>
+                              </p>
+                            </div>
+
+                            {/* Botón WhatsApp para compartir portal al colaborador */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleShareWhatsApp(member)
+                              }}
+                              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366] text-[#25D366] hover:text-white border border-[#25D366]/30 hover:border-[#25D366] transition-all duration-150 cursor-pointer shadow-xs active:scale-90"
+                              title="Compartir portal"
+                            >
+                              <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
+                            </button>
+                          </div>
+
+                          <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="text-zinc-400 block text-[10px]">Tickets:</span>
+                              <span className="font-mono font-bold">
+                                {stats.completed}/{stats.total} ({stats.progress}%)
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400 block text-[10px]">Estimado:</span>
+                              <span className="font-mono font-bold">{stats.hours}h</span>
+                            </div>
+                          </div>
+                          {isSelected ? (
+                            <p className="text-[10px] text-primary font-bold pt-1">
+                              * Filtro activo (clic para quitar)
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-zinc-400 pt-1">
+                              Clic para filtrar sus entregables
+                            </p>
                           )}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = "/avatar%20task%20pack/Frame%2010.png"
-                          }}
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      className="bg-zinc-900/95 text-white p-3 rounded-2xl border-white/10 z-50 text-xs max-w-xs shadow-2xl pointer-events-auto"
-                    >
-                      <div className="space-y-2">
-                        {/* Header: Name + Role on Left, WhatsApp Share Button on Right */}
-                        <div className="flex items-start justify-between gap-2.5">
-                          <div className="space-y-0.5 min-w-0 flex-1">
-                            <p className="font-bold text-sm truncate text-white leading-tight">
-                              {member.first_name} {member.last_name}
-                            </p>
-                            <p className="text-[10px] text-primary font-semibold flex items-center gap-1">
-                              {getRoleIcon(member.role)}
-                              <span className="truncate">{member.role || "Colaborador"}</span>
-                            </p>
-                          </div>
-
-                          {/* Botón WhatsApp para compartir portal al colaborador */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleShareWhatsApp(member)
-                            }}
-                            className="shrink-0 flex items-center justify-center w-7 h-7 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366] text-[#25D366] hover:text-white border border-[#25D366]/30 hover:border-[#25D366] transition-all duration-150 cursor-pointer shadow-xs active:scale-90"
-                            title="Compartir portal"
-                          >
-                            <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
-                          </button>
                         </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
 
-                        <div className="pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-[11px]">
-                          <div>
-                            <span className="text-zinc-400 block text-[10px]">Tickets:</span>
-                            <span className="font-mono font-bold">
-                              {stats.completed}/{stats.total} ({stats.progress}%)
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-zinc-400 block text-[10px]">Estimado:</span>
-                            <span className="font-mono font-bold">{stats.hours}h</span>
-                          </div>
-                        </div>
-                        {isSelected ? (
-                          <p className="text-[10px] text-primary font-bold pt-1">
-                            * Filtro activo (clic para quitar)
-                          </p>
-                        ) : (
-                          <p className="text-[10px] text-zinc-400 pt-1">
-                            Clic para filtrar sus entregables
-                          </p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  {/* Free-floating 3D Avatar Bust - In active state, pops out of the top frame */}
+                  <div className="relative flex items-center justify-center w-full flex-1 min-h-[52px]">
+                    <img
+                      src={getCollaboratorAvatar(member.photo_url, member.first_name)}
+                      alt={`${member.first_name} ${member.last_name}`}
+                      className={cn(
+                        "object-contain select-none pointer-events-none transition-all duration-200 ease-out",
+                        isSelected
+                          ? "absolute -top-3 sm:-top-3.5 left-1/2 -translate-x-1/2 h-16 w-16 sm:h-[68px] sm:w-[68px] drop-shadow-[0_8px_14px_rgba(0,0,0,0.16)] scale-110 z-10"
+                          : "h-12 w-12 sm:h-[50px] sm:w-[50px] group-hover:scale-105 drop-shadow-[0_2px_6px_rgba(0,0,0,0.06)]"
+                      )}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/avatar%20task%20pack/Frame%2010.png"
+                      }}
+                    />
+                  </div>
 
-                  {/* Name and Role/Progress Container */}
-                  <div className="flex flex-col items-center justify-center w-full min-h-[30px]">
+                  {/* Name and Role Container (Clean, without percentage insight) */}
+                  <div className="flex flex-col items-center justify-center w-full min-h-[30px] px-1">
                     <span
                       className={cn(
                         "truncate w-full leading-tight",
@@ -441,15 +459,17 @@ export function TaskCollaboratorRibbon({
                       {member.first_name}
                     </span>
 
-                    {!isSelected && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/75 truncate max-w-full font-mono leading-tight mt-0.5">
-                        <span>{stats.progress}%</span>
-                        <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                        <span className="truncate max-w-[45px]">
-                          {member.role?.split(" ")[0] || "Staff"}
-                        </span>
-                      </div>
-                    )}
+                    <span
+                      className={cn(
+                        "truncate max-w-full text-[10px] leading-tight mt-0.5",
+                        isSelected
+                          ? "text-primary font-bold"
+                          : "text-muted-foreground/75 font-medium"
+                      )}
+                      title={member.role || "Especialista"}
+                    >
+                      {member.role || "Especialista"}
+                    </span>
                   </div>
                 </motion.div>
               )
