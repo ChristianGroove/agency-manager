@@ -154,8 +154,8 @@ export function BannerSpotlightModal({
                 <DialogOverlay className="bg-black/60 backdrop-blur-md z-[100]" />
                 <DialogPrimitive.Content
                     className={cn(
-                        "fixed left-[50%] top-[50%] z-[101] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%]",
-                        "p-0 overflow-hidden rounded-3xl border border-white/20 dark:border-white/10 bg-background shadow-2xl",
+                        "fixed left-[50%] top-[50%] z-[101] flex flex-col w-full max-w-lg translate-x-[-50%] translate-y-[-50%]",
+                        "p-0 overflow-hidden rounded-3xl border border-white/20 dark:border-white/10 bg-background shadow-2xl max-h-[92vh]",
                         "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-250 data-[state=open]:ease-out",
                         "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-200"
                     )}
@@ -165,75 +165,75 @@ export function BannerSpotlightModal({
                         <DialogPrimitive.Description>{resolvedSubtitle}</DialogPrimitive.Description>
                     </VisuallyHidden.Root>
 
-                    {/* 1. Hero Media Cover a Sangre */}
-                    <div className={cn("relative w-full h-44 sm:h-48 overflow-hidden flex items-center justify-center select-none", heroBgClass)}>
+                    {/* 1. Header Hero con Composición estilo Banner (Lottie absoluto a la derecha, Textos a la izquierda) */}
+                    <div className={cn("relative w-full overflow-hidden p-6 sm:p-7 pb-5 select-none", heroBgClass)}>
                         {/* Gradiente de mezcla inferior */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background pointer-events-none z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 pointer-events-none z-10" />
 
-                        {/* Multimedia Lottie o Imagen */}
+                        {/* Multimedia Lottie o Imagen ABSOLUTA en la esquina superior derecha */}
                         {mediaUrl && (
-                            <div className="relative z-0 h-full w-full flex items-center justify-center p-3">
+                            <div className="absolute right-0 top-0 bottom-0 h-full w-[170px] sm:w-[215px] pointer-events-none z-10 flex items-center justify-end overflow-hidden pr-3">
                                 {mediaType === "image" ? (
                                     <img
                                         src={mediaUrl}
                                         alt={resolvedTitle}
-                                        className="max-h-full max-w-full object-contain drop-shadow-2xl"
+                                        className="h-full w-auto max-h-[140px] sm:max-h-[160px] object-contain drop-shadow-xl"
                                     />
                                 ) : (
                                     animationData && (
                                         <Lottie
                                             animationData={animationData}
                                             loop={true}
-                                            className="h-full w-auto max-h-[175px] aspect-square flex items-center justify-center drop-shadow-2xl"
+                                            className="h-full w-auto max-h-[140px] sm:max-h-[160px] aspect-square flex items-center justify-end drop-shadow-xl"
+                                            style={{ height: "100%", maxHeight: "160px", width: "auto" }}
                                         />
                                     )
                                 )}
                             </div>
                         )}
 
-                        {/* Botón flotante para cerrar */}
+                        {/* Botón flotante para cerrar en la esquina superior derecha */}
                         <button
                             type="button"
                             onClick={onClose}
-                            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/40 hover:bg-black/65 text-white backdrop-blur-md flex items-center justify-center transition-all shadow-md cursor-pointer group"
+                            className="absolute top-3.5 right-3.5 z-30 w-7 h-7 rounded-full bg-black/40 hover:bg-black/65 text-white backdrop-blur-md flex items-center justify-center transition-all shadow-md cursor-pointer group"
                             aria-label="Cerrar modal"
                         >
-                            <X className="w-4 h-4 transition-transform group-hover:scale-110" />
+                            <X className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                         </button>
-                    </div>
 
-                    {/* 2. Cuerpo del Spotlight Modal */}
-                    <div className="p-5 sm:p-6 pt-3 space-y-4">
-                        {/* Cabecera de Texto */}
-                        <div className="space-y-1">
+                        {/* Columna de Textos a la Izquierda: Badge, Título y Descripción */}
+                        <div className="relative z-20 max-w-[62%] sm:max-w-[66%] space-y-1.5 text-left">
                             {resolvedBadge && (
-                                <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shadow-2xs">
+                                <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white/95 dark:bg-white/12 text-primary border border-black/[0.08] dark:border-white/20 shadow-2xs w-fit">
                                     {resolvedBadge}
                                 </span>
                             )}
-                            <h3 className="text-lg sm:text-xl font-black tracking-tight text-foreground leading-snug">
+                            <h3 className="text-xl sm:text-2xl font-black tracking-tight text-foreground leading-tight drop-shadow-xs">
                                 {resolvedTitle}
                             </h3>
                             {resolvedSubtitle && (
-                                <p className="text-xs sm:text-sm font-medium text-muted-foreground leading-relaxed">
+                                <p className="text-xs sm:text-sm font-medium text-muted-foreground leading-relaxed line-clamp-3">
                                     {resolvedSubtitle}
                                 </p>
                             )}
                         </div>
+                    </div>
 
-                        {/* Grid de Capacidades Clave (Power Highlights) */}
-                        {features.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {/* 2. Grid de Capacidades Clave (Power Highlights) */}
+                    {features.length > 0 && (
+                        <div className="px-6 py-3.5 space-y-2.5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 {features.map((feat, idx) => (
                                     <div
                                         key={idx}
-                                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 flex items-start gap-2.5 transition-all hover:border-primary/40 hover:shadow-xs group"
+                                        className="p-3 rounded-2xl bg-slate-50/80 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 flex items-start gap-2.5 transition-colors hover:border-slate-300 dark:hover:border-zinc-700"
                                     >
-                                        <div className="w-7 h-7 rounded-lg bg-background border border-border/80 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform mt-0.5">
+                                        <div className="w-7 h-7 rounded-lg bg-background border border-border/80 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
                                             {renderFeatureIcon(feat.icon)}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className="text-xs font-bold text-foreground truncate">
+                                            <div className="text-xs font-bold text-foreground leading-snug truncate">
                                                 {interpolateTokens(feat.title, userContext)}
                                             </div>
                                             <div className="text-[11px] font-medium text-muted-foreground leading-snug line-clamp-2 mt-0.5">
@@ -243,17 +243,19 @@ export function BannerSpotlightModal({
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Footer de Acciones y Conversión */}
-                        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2 border-t border-border/50">
-                            {modalConfig.secondary_cta_text && (
+                    {/* 3. Footer de Acciones y Conversión con Padding Ajustado y Mejor Aprovechamiento */}
+                    <div className="px-6 py-3 bg-slate-50/70 dark:bg-zinc-950/40 border-t border-border/50 flex items-center justify-between gap-3 mt-auto">
+                        <div className="flex items-center">
+                            {modalConfig.secondary_cta_text ? (
                                 modalConfig.secondary_cta_url ? (
-                                    <Link href={modalConfig.secondary_cta_url} onClick={onClose} className="w-full sm:w-auto">
+                                    <Link href={modalConfig.secondary_cta_url} onClick={onClose}>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="w-full sm:w-auto text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                                            className="h-8 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                                         >
                                             {modalConfig.secondary_cta_text}
                                         </Button>
@@ -263,29 +265,37 @@ export function BannerSpotlightModal({
                                         variant="ghost"
                                         size="sm"
                                         onClick={onClose}
-                                        className="w-full sm:w-auto text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                                        className="h-8 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                                     >
                                         {modalConfig.secondary_cta_text}
                                     </Button>
                                 )
-                            )}
-
-                            <Link
-                                href={modalConfig.primary_cta_url || "/dashboard"}
-                                onClick={onClose}
-                                className="w-full sm:w-auto"
-                            >
+                            ) : (
                                 <Button
+                                    variant="ghost"
                                     size="sm"
-                                    className="w-full sm:w-auto rounded-xl h-9 px-5 text-xs font-bold gap-2 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary text-primary-foreground"
+                                    onClick={onClose}
+                                    className="h-8 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                                 >
-                                    <ShimmerText active={modalConfig.primary_cta_shimmer !== false}>
-                                        {modalConfig.primary_cta_text || "Probar Ahora"}
-                                    </ShimmerText>
-                                    <ArrowRight className="w-3.5 h-3.5" />
+                                    Cerrar
                                 </Button>
-                            </Link>
+                            )}
                         </div>
+
+                        <Link
+                            href={modalConfig.primary_cta_url || "/dashboard"}
+                            onClick={onClose}
+                        >
+                            <Button
+                                size="sm"
+                                className="rounded-xl h-8.5 px-5 text-xs font-bold gap-2 cursor-pointer shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary text-primary-foreground"
+                            >
+                                <ShimmerText active={modalConfig.primary_cta_shimmer !== false}>
+                                    {modalConfig.primary_cta_text || "Probar Ahora"}
+                                </ShimmerText>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </Button>
+                        </Link>
                     </div>
                 </DialogPrimitive.Content>
             </DialogPortal>

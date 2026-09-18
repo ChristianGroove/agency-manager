@@ -603,7 +603,7 @@ export function GlobalDashboardBanner({
             )}
 
             {/* 4. Columna de Textos y Controles con Autolayout Vertical (Desacoplada y con espacio garantizado) */}
-            <CardContent className="flex-1 w-full h-full min-h-0 p-6 sm:p-7 z-20 overflow-hidden flex flex-col justify-between">
+            <CardContent className="flex-1 w-full h-full min-h-0 p-5 sm:px-7 sm:pt-5.5 sm:pb-4 z-20 overflow-hidden flex flex-col justify-between">
                 <div
                     className={cn(
                         "flex flex-col justify-between h-full min-h-0 z-20 overflow-visible relative w-full",
