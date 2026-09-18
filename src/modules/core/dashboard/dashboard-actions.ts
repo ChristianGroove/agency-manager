@@ -394,8 +394,8 @@ export async function getDashboardPayload() {
             supabase.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('deleted_at', null),
             // New contacts this week (count only)
             supabase.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).is('deleted_at', null).gte('created_at', sevenDaysAgo),
-            // Task statuses (minimal columns for aggregation — uses admin to bypass RLS, consistent with task-actions.ts)
-            supabaseAdmin.from('task_items').select('status').eq('organization_id', orgId),
+            // Task statuses and progress (minimal columns for aggregation — uses admin to bypass RLS, consistent with task-actions.ts)
+            supabaseAdmin.from('task_items').select('status, progress_percentage').eq('organization_id', orgId),
             // Tasks completed this month (count only)
             supabaseAdmin.from('task_items').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'done').gte('updated_at', monthStart),
             // Open inbox conversations (count only)
@@ -404,15 +404,33 @@ export async function getDashboardPayload() {
             supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).neq('state', 'archived').neq('status', 'snoozed').gt('unread_count', 0)
         ])
 
-        // Aggregate task statuses in-memory (single pass)
+        // Aggregate task statuses and progress metrics in-memory (single pass)
         const taskStatuses = taskStatusesRes.data || []
         const statusCounts: Record<string, number> = { backlog: 0, todo: 0, in_progress: 0, in_review: 0, done: 0, blocked: 0 }
+        let sprintTasksSumPercentage = 0
+        let sprintTasksCount = 0
+        let activeTasksSumPercentage = 0
+        let activeTasksCount = 0
+
         taskStatuses.forEach((t: any) => {
             if (t.status in statusCounts) statusCounts[t.status]++
+            // Domain rule: done tasks normalize to 100%
+            const progress = t.status === 'done' ? 100 : (Number(t.progress_percentage) || 0)
+            if (t.status !== 'backlog') {
+                sprintTasksCount++
+                sprintTasksSumPercentage += progress
+                if (t.status !== 'done') {
+                    activeTasksCount++
+                    activeTasksSumPercentage += progress
+                }
+            }
         })
 
         const totalTasks = taskStatuses.length
-        const activeTasks = statusCounts.todo + statusCounts.in_progress + statusCounts.in_review + statusCounts.blocked
+        const activeTasks = activeTasksCount // todo + in_progress + in_review + blocked
+        const sprintTotal = sprintTasksCount // Sprint scope (strictly excludes backlog!)
+        const sprintProgress = sprintTotal > 0 ? Math.round(sprintTasksSumPercentage / sprintTotal) : 0
+        const activeProgress = activeTasksCount > 0 ? Math.round(activeTasksSumPercentage / activeTasksCount) : (statusCounts.done > 0 ? 100 : 0)
         const completedThisMonth = tasksCompletedMonthRes.count || 0
 
         // Velocity: completed tasks per week this month (avoid division by zero)
@@ -433,11 +451,15 @@ export async function getDashboardPayload() {
                 totalContacts: leadsCountRes.count || 0,
                 newContactsThisWeek: leadsWeekCountRes.count || 0,
                 activeTasks,
+                activeProgress,
                 completedThisMonth,
                 totalTasks,
                 taskVelocity,
                 resolutionRate,
+                sprintProgress,
+                sprintTotal,
                 statusCounts,
+                backlogCount: statusCounts.backlog || 0,
                 openConversations: openConvsCountRes.count || 0,
                 unansweredConversations: unreadConvsCountRes.count || 0
             }

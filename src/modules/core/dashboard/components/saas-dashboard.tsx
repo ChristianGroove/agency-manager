@@ -33,11 +33,15 @@ export function SaasDashboard({ dashboardData, extraData, userRole: initialRole,
         totalContacts: 0,
         newContactsThisWeek: 0,
         activeTasks: 0,
+        activeProgress: 0,
         completedThisMonth: 0,
         totalTasks: 0,
         taskVelocity: 0,
         resolutionRate: 0,
+        sprintProgress: 0,
+        sprintTotal: 0,
         statusCounts: { backlog: 0, todo: 0, in_progress: 0, in_review: 0, done: 0, blocked: 0 },
+        backlogCount: 0,
         openConversations: 0,
         unansweredConversations: 0
     }
@@ -138,7 +142,10 @@ export function SaasDashboard({ dashboardData, extraData, userRole: initialRole,
         <>
             <ModularDashboardLayout data={data} userRole={initialRole}>
                 {/* Sprint Board Mini — injected between Quick Actions and SmartAlert */}
-                <SprintBoardMini statusCounts={metrics.statusCounts} />
+                <SprintBoardMini
+                    statusCounts={metrics.statusCounts}
+                    sprintProgress={metrics.sprintProgress}
+                />
             </ModularDashboardLayout>
             <CreateClientSheet
                 open={isClientModalOpen}
