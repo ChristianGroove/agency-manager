@@ -554,7 +554,7 @@ export async function updateTask(
         }
       }
     } else {
-      if (updateData.status === "done" && updateData.progress_percentage === undefined) {
+      if (updateData.status === "done") {
         updateData.progress_percentage = 100;
       }
     }

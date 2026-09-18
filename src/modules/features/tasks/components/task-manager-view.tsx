@@ -86,7 +86,7 @@ export function TaskManagerView({
 
   // Search & Status filters
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("active")
 
   // Modal states
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
@@ -229,8 +229,11 @@ export function TaskManagerView({
       else if (t.status === "done") completed++
     })
 
+    const active = todo + inProgress + inQa + blocked
+
     return {
       total: baseTasks.length,
+      active,
       backlog,
       todo,
       inProgress,
@@ -242,6 +245,7 @@ export function TaskManagerView({
 
   const {
     total: totalCount,
+    active: activeCount,
     backlog: backlogCount,
     todo: todoCount,
     inProgress: inProgressCount,
@@ -255,12 +259,13 @@ export function TaskManagerView({
     const q = searchTerm.trim().toLowerCase()
     return baseTasks.filter((t: TaskItem) => {
       let matchesStatus = true
-      if (statusFilter === "backlog") matchesStatus = t.status === "backlog"
-      else if (statusFilter === "todo") matchesStatus = t.status === "todo"
-      else if (statusFilter === "in_progress") matchesStatus = t.status === "in_progress"
-      else if (statusFilter === "in_review") matchesStatus = t.status === "in_review"
-      else if (statusFilter === "blocked") matchesStatus = t.status === "blocked"
-      else if (statusFilter === "done") matchesStatus = t.status === "done"
+      if (statusFilter === "active") {
+        matchesStatus = t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+      } else if (statusFilter === "all") {
+        matchesStatus = true
+      } else {
+        matchesStatus = t.status === statusFilter
+      }
 
       if (!matchesStatus) return false
 
@@ -470,14 +475,23 @@ export function TaskManagerView({
             filters={[
               { id: "all", label: "Todas", count: totalCount },
               { id: "backlog", label: "Backlog", count: backlogCount, color: "slate" },
-              { id: "todo", label: "Por Hacer", count: todoCount, color: "sky" },
-              { id: "in_progress", label: "En Curso", count: inProgressCount, color: "indigo" },
-              { id: "in_review", label: "En QA", count: inQaCount, color: "amber" },
-              { id: "blocked", label: "Bloqueadas", count: blockedCount, color: "red" },
+              {
+                id: "active",
+                label: "Activas",
+                count: activeCount,
+                color: "emerald",
+                subOptions: [
+                  { id: "todo", label: "Por Hacer", count: todoCount, color: "sky" },
+                  { id: "in_progress", label: "En Curso", count: inProgressCount, color: "indigo" },
+                  { id: "in_review", label: "En QA", count: inQaCount, color: "amber" },
+                  { id: "blocked", label: "Bloqueadas", count: blockedCount, color: "red" },
+                ],
+              },
               { id: "done", label: "Completadas", count: completedCount, color: "emerald" },
             ]}
             activeFilter={statusFilter}
             onFilterChange={setStatusFilter}
+            defaultShowFilters={true}
             className="flex-1"
           />
 

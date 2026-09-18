@@ -268,7 +268,7 @@ export function TaskCollaboratorPortal({
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("active")
 
   // Pagination State for Management / Tasks views
   const [pageSize, setPageSize] = useState<number>(25)
@@ -1009,21 +1009,20 @@ export function TaskCollaboratorPortal({
   const countInReview = baseSourceTasks.filter((t) => t.status === "in_review").length
   const countBlocked = baseSourceTasks.filter((t) => t.status === "blocked").length
   const countDone = baseSourceTasks.filter((t) => t.status === "done").length
+  const countActive = baseSourceTasks.filter((t) =>
+    t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+  ).length
 
   // Apply status filter
   let filteredTasks = baseSourceTasks
-  if (statusFilter === "backlog") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "backlog")
-  } else if (statusFilter === "todo") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "todo")
-  } else if (statusFilter === "in_progress") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "in_progress")
-  } else if (statusFilter === "in_review") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "in_review")
-  } else if (statusFilter === "blocked") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "blocked")
-  } else if (statusFilter === "done") {
-    filteredTasks = filteredTasks.filter((t) => t.status === "done")
+  if (statusFilter === "active") {
+    filteredTasks = filteredTasks.filter((t) =>
+      t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+    )
+  } else if (statusFilter === "all") {
+    // Show all tasks
+  } else {
+    filteredTasks = filteredTasks.filter((t) => t.status === statusFilter)
   }
 
   // Apply search query
@@ -1512,14 +1511,23 @@ export function TaskCollaboratorPortal({
             filters={[
               { id: "all", label: "Todas", count: countAll },
               { id: "backlog", label: "Backlog", count: countBacklog, color: "slate" },
-              { id: "todo", label: "Por Hacer", count: countTodo, color: "sky" },
-              { id: "in_progress", label: "En Curso", count: countInProgress, color: "indigo" },
-              { id: "in_review", label: "En QA", count: countInReview, color: "amber" },
-              { id: "blocked", label: "Bloqueadas", count: countBlocked, color: "red" },
+              {
+                id: "active",
+                label: "Activas",
+                count: countActive,
+                color: "emerald",
+                subOptions: [
+                  { id: "todo", label: "Por Hacer", count: countTodo, color: "sky" },
+                  { id: "in_progress", label: "En Curso", count: countInProgress, color: "indigo" },
+                  { id: "in_review", label: "En QA", count: countInReview, color: "amber" },
+                  { id: "blocked", label: "Bloqueadas", count: countBlocked, color: "red" },
+                ],
+              },
               { id: "done", label: "Completadas", count: countDone, color: "emerald" },
             ]}
             activeFilter={statusFilter}
             onFilterChange={setStatusFilter}
+            defaultShowFilters={true}
             className="flex-1"
           />
 
@@ -2489,14 +2497,30 @@ export function TaskCollaboratorPortal({
 
         {/* Empty State (Para vistas Grid, Compact y List) */}
         {displayedTasks.length === 0 && viewMode !== "kanban" && (
-          <div className="py-16 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-white/10 bg-zinc-50/40 dark:bg-white/5 space-y-2">
+          <div className="py-16 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-white/10 bg-zinc-50/40 dark:bg-white/5 space-y-3">
             <CheckCircle2 className="w-10 h-10 text-muted-foreground/40 mx-auto" />
             <h4 className="text-sm font-bold text-foreground">
-              No hay tareas en esta sección
+              {statusFilter === "active" && countActive === 0 && countAll > 0
+                ? "No hay tareas activas"
+                : "No hay tareas en esta sección"}
             </h4>
-            <p className="text-xs text-muted-foreground">
-              Ajusta los filtros o la búsqueda para encontrar otras tareas del sprint.
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              {statusFilter === "active" && countActive === 0 && countAll > 0
+                ? `Tienes ${countBacklog} tickets en Backlog y ${countDone} completados. Puedes visualizarlos haciendo clic en sus filtros.`
+                : "Ajusta los filtros o la búsqueda para encontrar otras tareas del sprint."}
             </p>
+            {statusFilter === "active" && countBacklog > 0 && (
+              <div className="pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStatusFilter("backlog")}
+                  className="text-xs rounded-xl border-zinc-200 dark:border-white/10 cursor-pointer"
+                >
+                  Ver tickets en Backlog ({countBacklog})
+                </Button>
+              </div>
+            )}
           </div>
         )}
           </>

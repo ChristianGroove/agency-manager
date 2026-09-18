@@ -330,12 +330,13 @@ export function parseTaskChecklist(rawChecklist: any): TaskChecklistItem[] {
  * Normalize all dynamic JSON fields of a TaskItem
  */
 export function normalizeTask(task: any): TaskItem {
+  const isDone = task.status === "done";
   return {
     ...task,
     checklist: parseTaskChecklist(task.checklist),
     tags: Array.isArray(task.tags) ? task.tags : [],
     attachments: Array.isArray(task.attachments) ? task.attachments : [],
-    progress_percentage: Number(task.progress_percentage || 0),
+    progress_percentage: isDone ? 100 : Number(task.progress_percentage || 0),
     estimated_hours: Number(task.estimated_hours || 0),
     actual_hours: Number(task.actual_hours || 0),
     weekly_snapshots: task.weekly_snapshots && typeof task.weekly_snapshots === "object" ? task.weekly_snapshots : {},
