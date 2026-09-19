@@ -70,8 +70,41 @@ Se ejecutó una auditoría profunda y reestructuración del módulo de Gestión 
 
 ---
 
-## 4. Estado de Validación Técnica
+## 4. Fase 2: Aislamiento de Subtareas, Microinteracciones de Enfoque y Auditoría Documental (2026-09-18 / 2026-09-19)
+
+### A. Gobernanza y Aislamiento de Subtareas
+- **Problema**: Cualquier colaborador con acceso al ticket podía marcar subtareas asignadas a otros miembros y manipular el slider de porcentaje general del ticket padre sin ser el responsable directo.
+- **Acción**:
+  - Aislamiento frontend y backend: los colaboradores de subtarea únicamente pueden marcar o desmarcar el entregable donde `item.assigned_staff_id === staff.id`.
+  - El slider de progreso y el estado `done` se bloquean estrictamente (`disabled`, icono `Lock`, banner explicativo y rechazo 403 en servidor) para cualquier usuario que no sea el dueño directo del ticket, Lead/PM o QA.
+  - Al completar todas las subtareas (100%), el ticket no se cierra automáticamente a `done`, sino que avanza a `in_review` (QA) para control de calidad formal.
+  - Generación automática de notas de auditoría en el feed de discusión: `☑️ Subtarea completada: "..." por @Colaborador | Notificando a @Dueño @PM`.
+
+### B. Microinteracciones de Enfoque Visual
+- **Border Beam Permanente (`animate-border-beam`)**: Gradiente cónico animado continuo (`border-beam-spin 4s linear infinite`) con el color corporativo de la organización (`brandColor`), rodeando exclusivamente la subtarea propia mientras esté pendiente.
+- **Shimmer de Texto Temporal (`ShimmerText duration={3000}`)**: Efecto de brillo que se activa al abrir el ticket o cargar la tarjeta y se desvanece suavemente a texto normal a los 3 segundos (cross-fade con `duration-700`), sin generar cortes bruscos ni fatiga visual.
+- **Micro-badge con Tooltip en Tablas (`TaskSubtasksTooltipBadge`)**: Píldora compacta `x/y` con barra de progreso mini y tooltip enriquecido detallando subtareas, estado tachado, semana y responsable.
+
+### C. Auditoría Documental Exhaustiva
+- Se auditó integralmente [`task-management-architecture.md`](file:///G:/Pixy/agency-manager/docs/2-architecture/modules/task-management-architecture.md), erradicando referencias a archivos inexistentes (`task-management-actions.ts`), actualizando la estructura de directorios con los nuevos módulos (`task-tag-actions.ts`, `task-metrics-view.tsx`, `task-pacing-pdf-modal.tsx`, `task-subtasks-tooltip-badge.tsx`, `task-blocker-selector.tsx`), y documentando de forma fidedigna los contratos técnicos, modelos de datos y guías de desarrollo para futuros agentes y desarrolladores.
+
+### D. Sistema Unificado de Bloqueo, Dependencias Predecesoras y Desbloqueo Inteligente
+- **Motivo de Bloqueo Neutral (`blocked_reason`)**: Incorporada la columna en `task_items` para registrar motivos de texto libre neutrales a cualquier industria cuando una tarea se detiene.
+- **Selector Unificado ([`TaskBlockerSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/shared/task-blocker-selector.tsx))**:
+  - Combobox versátil que busca tickets predecesores o registra motivos de texto libre en un solo input.
+  - Visibilidad 100% condicional: solo se renderiza cuando `status === 'blocked'`.
+  - Priorización inteligente (mismo proyecto, tareas incompletas y coincidencia por código) y límite de 25 elementos (`MAX_DISPLAY_TASKS`) para renderizado instantáneo sin sobrecarga en el DOM.
+  - Aislamiento de eventos de scroll nativo (`wheel`, `touchmove`) para resolver interferencias con el bloqueo de scroll de Radix UI (`react-remove-scroll`).
+- **Interpretación en Modales y Tablas**:
+  - Banner reactivo en [`TaskDetailModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-detail-modal.tsx) y [`TaskPortalDetailModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx) que identifica el ticket bloqueador, ofrece navegación directa y alerta en verde cuando el predecesor concluye.
+  - Limpieza visual en [`task-list-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/list/task-list-view.tsx), centralizando la información de dependencias en el tooltip moderno de la columna Estado con delay de 1000ms.
+- **Auto-Desbloqueo y Restauración Inteligente**:
+  - Al completarse el ticket predecesor, las tareas dependientes se restauran reactivamente a `in_progress` (si su avance es >0%) o a `todo` (si su avance es 0%), limpiando automáticamente el motivo de bloqueo.
+
+---
+
+## 5. Estado de Validación Técnica
 
 - **Chequeo de Tipos (`tsc`)**: `npx tsc --noEmit` ejecutado con éxito sin ningún error de TypeScript (código de salida 0).
 - **Servidor de Desarrollo**: Operativo en el puerto `3001` sin advertencias de renderizado.
-- **Deuda Técnica**: 0 deuda técnica pendiente en el flujo de tareas, modales y portales.
+- **Deuda Técnica**: 0 deuda técnica pendiente en el flujo de tareas, modales, portales y documentación.

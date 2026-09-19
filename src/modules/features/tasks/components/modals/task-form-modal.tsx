@@ -45,6 +45,7 @@ import {
   TrendingUp,
   FolderArchive,
   RefreshCw,
+  Ban,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -104,6 +105,8 @@ export function TaskFormModal({
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([])
   const [newChecklistTitle, setNewChecklistTitle] = useState("")
   const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
+  const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
+  const [blockedReason, setBlockedReason] = useState("")
 
   // Recurrence configuration
   const [isRecurring, setIsRecurring] = useState(false)
@@ -132,6 +135,7 @@ export function TaskFormModal({
       setTitle("")
       setDescription("")
       setStatus(defaultStatus || "todo")
+      setBlockedReason("")
       setPriority("medium")
       setType("task")
       setTags([])
@@ -171,15 +175,24 @@ export function TaskFormModal({
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
+      assigned_staff_id: newChecklistAssignee === "unassigned" ? null : newChecklistAssignee,
     }
     const updated = [...checklist, newItem]
     setChecklist(updated)
     setNewChecklistTitle("")
+    setNewChecklistWeek(null)
+    setNewChecklistAssignee("unassigned")
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
     setChecklist((prev) =>
       prev.map((c) => (c.id === itemId ? { ...c, target_week: week } : c))
+    )
+  }
+
+  const handleUpdateChecklistAssignee = (itemId: string, staffId: string | null) => {
+    setChecklist((prev) =>
+      prev.map((c) => (c.id === itemId ? { ...c, assigned_staff_id: staffId } : c))
     )
   }
 
@@ -337,6 +350,7 @@ export function TaskFormModal({
         is_recurring: isRecurring,
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_day: isRecurring ? recurrenceDay : null,
+        blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
       })
 
       if (res.success && res.task) {
@@ -539,6 +553,33 @@ export function TaskFormModal({
                       {item.title}
                     </span>
 
+                    {/* Subtask Assignee selector */}
+                    <Select
+                      value={item.assigned_staff_id || "unassigned"}
+                      onValueChange={(val) =>
+                        handleUpdateChecklistAssignee(
+                          item.id,
+                          val === "unassigned" ? null : val
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-6 max-w-[120px] text-[10px] font-medium rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0 truncate">
+                        <SelectValue placeholder="Responsable" />
+                      </SelectTrigger>
+                      <SelectContent className="text-xs max-w-[220px]">
+                        <SelectItem value="unassigned" className="text-[11px] text-muted-foreground">
+                          Sin asignar
+                        </SelectItem>
+                        {collaborators.map((c) => (
+                          <SelectItem key={c.id} value={c.id} className="text-[11px]">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate">{c.first_name} {c.last_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     {/* Week tag / selector */}
                     <Select
                       value={item.target_week ? String(item.target_week) : "general"}
@@ -578,15 +619,33 @@ export function TaskFormModal({
                   </motion.div>
                 ))}
 
-                {/* Add new checklist item input with week selector */}
-                <div className="flex items-center gap-2 pt-1">
+                {/* Add new checklist item input with week selector and assignee */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1">
                   <Input
                     value={newChecklistTitle}
                     onChange={(e) => setNewChecklistTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
                     placeholder="Añadir nuevo entregable o requisito de QA..."
-                    className="h-8 text-xs bg-background rounded-lg flex-1"
+                    className="h-8 text-xs bg-background rounded-lg flex-1 min-w-[140px]"
                   />
+                  <Select
+                    value={newChecklistAssignee}
+                    onValueChange={setNewChecklistAssignee}
+                  >
+                    <SelectTrigger className="h-8 w-28 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
+                      <SelectValue placeholder="Responsable" />
+                    </SelectTrigger>
+                    <SelectContent className="text-xs max-w-[220px]">
+                      <SelectItem value="unassigned" className="text-xs text-muted-foreground">
+                        Sin asignar
+                      </SelectItem>
+                      {collaborators.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          <span className="truncate">{c.first_name} {c.last_name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select
                     value={newChecklistWeek ? String(newChecklistWeek) : "general"}
                     onValueChange={(val) =>
@@ -844,6 +903,25 @@ export function TaskFormModal({
                   <SelectItem value="done">Completado</SelectItem>
                 </SelectContent>
               </Select>
+
+              {status === "blocked" && (
+                <div className="mt-3 p-3 rounded-xl bg-destructive/5 border border-destructive/20 space-y-1.5">
+                  <label className="text-[11px] font-semibold text-destructive dark:text-red-400 flex items-center gap-1.5">
+                    <Ban className="w-3.5 h-3.5 shrink-0" />
+                    Motivo del bloqueo
+                  </label>
+                  <Textarea
+                    value={blockedReason}
+                    onChange={(e) => setBlockedReason(e.target.value)}
+                    placeholder="Motivo del bloqueo..."
+                    className="text-xs bg-background min-h-[64px] resize-none border-border/80 focus-visible:ring-destructive/30 rounded-lg"
+                    rows={2}
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Describe el motivo o impedimento que detiene esta tarea.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Priority */}

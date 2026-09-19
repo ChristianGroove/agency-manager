@@ -51,7 +51,12 @@ import {
   ChevronDown,
   Ban,
   AlertTriangle,
+  Lock,
+  Edit3,
+  Check,
 } from "lucide-react"
+import { TaskBlockerSelector } from "../shared/task-blocker-selector"
+import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type {
   TaskItem,
   TaskProject,
@@ -234,6 +239,7 @@ interface TaskPortalDetailModalProps {
   onTaskCreated?: (task: TaskItem) => void
   onTaskUpdated?: (task: TaskItem) => void
   onTaskDeleted?: (taskId: string) => void
+  currentStaffId?: string
   availableTasks?: TaskItem[]
   onSelectTask?: (task: TaskItem) => void
 }
@@ -251,6 +257,7 @@ export function TaskPortalDetailModal({
   defaultStatus,
   defaultProjectId,
   brandColor = "#8ec045",
+  currentStaffId,
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
@@ -258,6 +265,15 @@ export function TaskPortalDetailModal({
   onSelectTask,
 }: TaskPortalDetailModalProps) {
   const isCreating = isCreateMode || !task
+  const isMainAssignee = Boolean(
+    task?.assigned_staff_id && currentStaffId && task.assigned_staff_id === currentStaffId
+  )
+  const canCloseParentTask = isCreating || isLeadOrPm || isQa || isMainAssignee
+
+  const canToggleItem = (item: TaskChecklistItem) => {
+    if (isCreating || isLeadOrPm || isQa || isMainAssignee) return true
+    return Boolean(item.assigned_staff_id && item.assigned_staff_id === currentStaffId)
+  }
 
   // Core task state
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
@@ -282,6 +298,19 @@ export function TaskPortalDetailModal({
   const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
   const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
+  const [blockedReason, setBlockedReason] = useState<string>(task?.blocked_reason || "")
+
+  const currentBlocker = useMemo(() => {
+    if (!blockedByTaskId || blockedByTaskId === "none") return null
+    return availableTasks.find((t) => t.id === blockedByTaskId) || task?.blocked_by || null
+  }, [blockedByTaskId, availableTasks, task])
+
+  const fullBlockerTask = useMemo(() => {
+    if (!currentBlocker) return null
+    return availableTasks.find((t) => t.id === currentBlocker.id) || null
+  }, [currentBlocker, availableTasks])
+
+  const hasUnresolvedBlocker = Boolean(currentBlocker && currentBlocker.status !== "done")
 
   // Recurrence configuration
   const [isRecurring, setIsRecurring] = useState(task?.is_recurring ?? false)
@@ -348,6 +377,7 @@ export function TaskPortalDetailModal({
       setRecurrenceInterval(task.recurrence_interval || "monthly")
       setRecurrenceDay(task.recurrence_day || 1)
       setBlockedByTaskId(task.blocked_by_task_id || "none")
+      setBlockedReason(task.blocked_reason || "")
       setNewChecklistWeek(null)
       setNewChecklistAssignee("unassigned")
       loadComments(task.id)
@@ -364,6 +394,7 @@ export function TaskPortalDetailModal({
       setAssignedStaffId("unassigned")
       setQaStaffId("unassigned")
       setBlockedByTaskId("none")
+      setBlockedReason("")
       setEstimatedHours(0)
       setActualHours(0)
       setDueDate("")
@@ -421,6 +452,15 @@ export function TaskPortalDetailModal({
     setIsSaving(true)
     try {
       if (isCreating) {
+        if (status === "done" && hasUnresolvedBlocker) {
+          toast.warning("Ticket con dependencia pendiente", {
+            description: `No se puede crear el ticket como completado: depende de #${currentBlocker?.ticket_code || "ticket predecesor"}, el cual aún está pendiente.`,
+            id: "blocker-close-lock",
+          })
+          setIsSaving(false)
+          return
+        }
+
         const res = await portalCreateTask(token, {
           projectId: selectedProjectId,
           title: title.trim(),
@@ -464,13 +504,36 @@ export function TaskPortalDetailModal({
           }
         }
 
+        if (hasUnresolvedBlocker) {
+          if (finalProgress > 95) finalProgress = 95
+          if (finalStatus === "done") {
+            toast.warning("Ticket con dependencia pendiente", {
+              description: `No se puede marcar el ticket como completado: depende de #${currentBlocker?.ticket_code || "ticket predecesor"}, el cual aún está pendiente.`,
+              id: "blocker-close-lock",
+            })
+            setIsSaving(false)
+            return
+          }
+        }
+
+        if (!canCloseParentTask) {
+          if (finalProgress > 95) finalProgress = 95
+          if (finalStatus === "done") {
+            finalStatus = "in_review"
+            finalProgress = 95
+            toast.warning("Cierre reservado", {
+              description: "Al no ser el responsable directo del ticket ni PM, el avance máximo es 95% y el cierre formal queda reservado al dueño o líder."
+            })
+          }
+        }
+
         const res = await portalUpdateTask(token, task.id, {
           title: isLeadOrPm ? title : undefined,
           description,
           status: finalStatus,
           priority: isLeadOrPm ? priority : undefined,
           type: isLeadOrPm ? type : undefined,
-          progressPercentage: finalProgress,
+          progressPercentage: canCloseParentTask ? finalProgress : undefined,
           assignedStaffId: isLeadOrPm ? (assignedStaffId === "unassigned" ? null : assignedStaffId) : undefined,
           qaStaffId: isLeadOrPm ? (qaStaffId === "unassigned" ? null : qaStaffId) : undefined,
           estimatedHours: isLeadOrPm ? Number(estimatedHours) : undefined,
@@ -483,6 +546,7 @@ export function TaskPortalDetailModal({
           isRecurring: isLeadOrPm ? isRecurring : undefined,
           recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
           recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
+          blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
         })
 
         if (res.success && res.task) {
@@ -505,6 +569,13 @@ export function TaskPortalDetailModal({
 
   // Visual drag update without saving to server (Draft state inside modal)
   const handleProgressSliderDrag = (values: number[]) => {
+    if (!canCloseParentTask) {
+      toast.warning("Control de avance bloqueado", {
+        description: "Al participar como colaborador de subtarea, el avance general del ticket solo puede ser modificado por el responsable directo del ticket o el PM.",
+        id: "collaborator-close-lock",
+      })
+      return
+    }
     let val = values[0]
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
     if (hasUnfinishedDeliverables && val > 95) {
@@ -512,6 +583,13 @@ export function TaskPortalDetailModal({
       toast.warning("Entregables pendientes por completar", {
         description: "No puedes subir el avance al 100% mientras existan entregables pendientes en el checklist (avance limitado al 95%). Marca los entregables completados para desbloquear el 100%.",
         id: "unfinished-deliverables-warning",
+      })
+    }
+    if (val === 100 && hasUnresolvedBlocker) {
+      val = 95
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No puedes subir el avance al 100%: depende de #${currentBlocker?.ticket_code || "ticket predecesor"} (${currentBlocker?.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock",
       })
     }
     if (!isLeadOrPm && val < savedProgress) {
@@ -524,31 +602,53 @@ export function TaskPortalDetailModal({
     let nextStatus: TaskStatus = initialStatusRef.current
     if (val === 100) {
       nextStatus = "done"
-    } else if (val > 0) {
-      nextStatus = initialStatusRef.current === "todo" ? "in_progress" : initialStatusRef.current
-    } else {
-      nextStatus = initialStatusRef.current === "in_progress" ? "todo" : initialStatusRef.current
+    } else if (val > 0 && initialStatusRef.current === "todo") {
+      nextStatus = "in_progress"
     }
     setStatus(nextStatus)
   }
 
   const handleSelectStatus = (newStatus: TaskStatus) => {
+    if (newStatus === "done" && !canCloseParentTask) {
+      toast.warning("Cierre reservado al responsable directo", {
+        description: "Solo el responsable directo de la tarea o un Líder/PM puede marcarla como Completada.",
+        id: "collaborator-close-permission-denied",
+      })
+      return
+    }
+    if (newStatus === "done" && hasUnresolvedBlocker) {
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No se puede marcar la tarea como completada: depende de #${currentBlocker?.ticket_code || "ticket predecesor"} (${currentBlocker?.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock",
+      })
+      return
+    }
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
     if (newStatus === "done" && hasUnfinishedDeliverables) {
       toast.warning("Entregables pendientes", {
-        description: "No se puede marcar la tarea como completada (100%) porque aún tiene entregables sin finalizar. Avance limitado al 95%."
+        description: "No se puede marcar la tarea como completada (100%) porque aún tiene entregables sin finalizar. Avance limitado al 95%.",
       })
       setStatus("in_review")
       setProgress(95)
       return
     }
     setStatus(newStatus)
+    if (newStatus !== "blocked") {
+      setBlockedByTaskId("none")
+      setBlockedReason("")
+    }
     if (newStatus === "done") {
       setProgress(100)
     }
   }
 
   const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
+    const targetItem = checklist.find((c) => c.id === itemId)
+    if (!targetItem) return
+    if (!canToggleItem(targetItem)) {
+      toast.error("No tienes autorización para modificar subtareas asignadas a otros colaboradores.")
+      return
+    }
     const nextVal = !currentVal
     const updated = checklist.map((item) =>
       item.id === itemId
@@ -990,7 +1090,12 @@ export function TaskPortalDetailModal({
             {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
             {!isCreating && (
               <div className="space-y-1.5">
-                <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
+                <div className={cn(
+                  "flex items-center gap-3 px-3.5 py-2 rounded-xl border transition-opacity",
+                  canCloseParentTask
+                    ? "bg-muted/30 border-border/60"
+                    : "bg-muted/15 border-border/40 opacity-75"
+                )}>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1003,11 +1108,24 @@ export function TaskPortalDetailModal({
                       min={0}
                       max={100}
                       step={5}
+                      disabled={!canCloseParentTask}
                       onValueChange={handleProgressSliderDrag}
-                      className="cursor-pointer"
+                      className={cn(canCloseParentTask ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
+                    {!canCloseParentTask && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex shrink-0 cursor-help">
+                            <Lock className="w-3.5 h-3.5 text-muted-foreground/70" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
+                          Control bloqueado: solo el responsable directo o PM pueden ajustar el avance general
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <span className="text-sm sm:text-base font-black font-mono text-primary tracking-tight">
                       {progress}%
                     </span>
@@ -1017,12 +1135,64 @@ export function TaskPortalDetailModal({
                   </div>
                 </div>
 
-                {checklist.length > 0 && checklist.some((c) => !c.completed) && progress >= 95 && (
+                {checklist.length > 0 && checklist.some((c) => !c.completed) && progress >= 95 && canCloseParentTask && (
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium px-2 py-1 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
                     <span>
                       Avance limitado al 95%: completa todos los entregables del checklist para habilitar el 100%.
                     </span>
+                  </p>
+                )}
+
+                {!canCloseParentTask && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 px-2.5 py-1.5 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <Lock className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span>Control de avance bloqueado: Al participar como colaborador de subtarea, el avance del ticket general solo puede ser modificado por el responsable directo (@{task?.assigned_staff?.first_name || "Responsable"}) o el Gestor del Proyecto.</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Blocker Alert Banner */}
+            {status === "blocked" && (
+              <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/25 text-destructive dark:text-red-400 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <Ban className="w-4 h-4 shrink-0" />
+                  <span>Tarea Bloqueada</span>
+                </div>
+                {currentBlocker ? (
+                  <div className="pl-5.5 text-xs text-foreground/90 font-normal leading-relaxed space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-muted-foreground">Bloqueada por el ticket:</span>
+                      <button
+                        type="button"
+                        disabled={!fullBlockerTask || !onSelectTask}
+                        onClick={() => fullBlockerTask && onSelectTask?.(fullBlockerTask)}
+                        className={cn(
+                          "inline-flex items-center gap-1 font-mono text-[11px] font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20",
+                          fullBlockerTask && onSelectTask ? "hover:bg-primary/20 transition-colors cursor-pointer" : "cursor-default"
+                        )}
+                        title={fullBlockerTask && onSelectTask ? "Ver ticket predecesor" : undefined}
+                      >
+                        {currentBlocker.ticket_code || `TK-${currentBlocker.id.slice(0, 4)}`}
+                      </button>
+                      <span className="font-medium text-foreground truncate max-w-[320px]">
+                        {currentBlocker.title}
+                      </span>
+                    </div>
+                    {currentBlocker.status === "done" && (
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ El ticket predecesor ya ha sido completado. Esta tarea puede desbloquearse.
+                      </p>
+                    )}
+                  </div>
+                ) : blockedReason ? (
+                  <p className="text-xs text-foreground/90 font-normal leading-relaxed pl-5.5 whitespace-pre-wrap">
+                    {blockedReason}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground font-normal leading-relaxed pl-5.5">
+                    Esta tarea se encuentra detenida. Puedes indicar el motivo o vincular un ticket en el panel lateral.
                   </p>
                 )}
               </div>
@@ -1076,27 +1246,51 @@ export function TaskPortalDetailModal({
 
               {/* Checklist items */}
               <div className="space-y-2">
-                {checklist.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={() => handleToggleChecklist(item.id, item.completed)}
-                      className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer accent-primary shrink-0"
-                    />
-                    <span
-                      className={`text-xs sm:text-sm flex-1 ${
-                        item.completed
-                          ? "line-through text-muted-foreground"
-                          : "text-foreground font-medium"
-                      }`}
+                {checklist.map((item) => {
+                  const isToggleAllowed = canToggleItem(item)
+                  const isMySubtask = !isCreating && Boolean(item.assigned_staff_id && currentStaffId && item.assigned_staff_id === currentStaffId)
+                  return (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      className={cn(
+                        "flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors group",
+                        isToggleAllowed
+                          ? "bg-background border-border/60 hover:border-primary/40"
+                          : "bg-muted/20 border-border/40 opacity-75",
+                        isMySubtask && !item.completed && "animate-border-beam"
+                      )}
+                      style={isMySubtask && !item.completed ? { "--beam-color": brandColor } as React.CSSProperties : undefined}
                     >
-                      {item.title}
-                    </span>
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        disabled={!isToggleAllowed}
+                        onChange={() => handleToggleChecklist(item.id, item.completed)}
+                        className={cn(
+                          "w-4 h-4 rounded text-primary focus:ring-primary accent-primary shrink-0 transition-opacity",
+                          isToggleAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                        )}
+                        title={!isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
+                      />
+                      <span
+                        className={`text-xs sm:text-sm flex-1 ${
+                          item.completed
+                            ? "line-through text-muted-foreground"
+                            : "text-foreground font-medium"
+                        }`}
+                      >
+                        {isMySubtask && !item.completed ? (
+                          <ShimmerText key={`${item.id}-${isOpen}`} active duration={3000}>{item.title}</ShimmerText>
+                        ) : (
+                          item.title
+                        )}
+                      </span>
+                      {!isToggleAllowed && (
+                        <span title="Subtarea asignada a otro colaborador" className="inline-flex shrink-0">
+                          <Lock className="w-3.5 h-3.5 text-muted-foreground/60" />
+                        </span>
+                      )}
 
                     {/* Subtask Assignee selector / badge */}
                     {isLeadOrPm ? (
@@ -1183,7 +1377,7 @@ export function TaskPortalDetailModal({
                       </Button>
                     )}
                   </motion.div>
-                ))}
+                )})}
 
                 {/* Add new checklist item with optional week selector and assignee - Only for PM / Lead */}
                 {(isCreating || isLeadOrPm) ? (
@@ -1487,7 +1681,7 @@ export function TaskPortalDetailModal({
                                 <span className="font-semibold text-foreground text-xs shrink-0">{c.author_name || "Sistema"}</span>
                                 <span className="text-muted-foreground/40 shrink-0">·</span>
                                 <span className="truncate text-xs text-foreground/85 font-normal">
-                                  {auditInfo.formattedText}
+                                  {renderFormattedComment(auditInfo.formattedText, availableTasks, onSelectTask)}
                                 </span>
                               </div>
                               <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
@@ -1674,127 +1868,46 @@ export function TaskPortalDetailModal({
 
           {/* Right Column (Sidebar Controls) */}
           <div className="p-5 sm:p-6 bg-muted/10 space-y-5">
-            {/* Status Selector */}
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Estado
-              </label>
-              <Select value={status} onValueChange={(val: TaskStatus) => handleSelectStatus(val)}>
-                <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
-                  <SelectValue className="truncate text-left" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="todo">Por Hacer</SelectItem>
-                  <SelectItem value="in_progress">En Progreso</SelectItem>
-                  <SelectItem value="in_review">Revisión / QA</SelectItem>
-                  <SelectItem value="done">Completado</SelectItem>
-                  <SelectItem value="blocked">Bloqueado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Blocker Dependency (Bloqueado por) */}
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                <Ban className="w-3.5 h-3.5 text-destructive/80" />
-                Dependencia / Bloqueado por
-              </label>
-              {isCreating || isLeadOrPm ? (
-                <Select
-                  value={blockedByTaskId || "none"}
-                  onValueChange={(val) => {
-                    setBlockedByTaskId(val)
-                    if (val !== "none" && status !== "blocked") {
-                      setStatus("blocked")
-                    } else if (val === "none" && status === "blocked") {
-                      setStatus("todo")
-                    }
-                  }}
-                >
+            {/* Status Selector & Conditional Blocker */}
+            <div className="space-y-2">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Estado
+                </label>
+                <Select value={status} onValueChange={(val: TaskStatus) => handleSelectStatus(val)}>
                   <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
-                    <SelectValue placeholder="Sin dependencia (Independiente)" className="truncate text-left" />
+                    <SelectValue className="truncate text-left" />
                   </SelectTrigger>
-                  <SelectContent className="max-w-[320px]">
-                    <SelectItem value="none" className="text-xs text-muted-foreground">
-                      Sin dependencia (Independiente)
+                  <SelectContent>
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="todo">Por Hacer</SelectItem>
+                    <SelectItem value="in_progress">En Progreso</SelectItem>
+                    <SelectItem value="in_review" disabled={hasUnresolvedBlocker}>
+                      Revisión / QA {hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
                     </SelectItem>
-                    {availableTasks
-                      .filter((t) => !task || t.id !== task.id)
-                      .map((t) => (
-                        <SelectItem key={t.id} value={t.id} className="text-xs">
-                          <div className="flex items-center gap-2 truncate max-w-[280px]">
-                            <span className="font-mono text-[10px] font-bold text-primary shrink-0">
-                              {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
-                            </span>
-                            <span className="truncate">{t.title}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                              ({TASK_STATUS_LABELS[t.status] || t.status})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                    <SelectItem value="done" disabled={!canCloseParentTask || hasUnresolvedBlocker}>
+                      Completado {!canCloseParentTask ? "(Solo responsable / PM)" : hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
+                    </SelectItem>
+                    <SelectItem value="blocked">Bloqueado</SelectItem>
                   </SelectContent>
                 </Select>
-              ) : task?.blocked_by ? (
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-background border border-destructive/30 text-xs">
-                  <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />
-                  <div className="min-w-0 flex-1 truncate">
-                    <span className="font-mono font-bold text-primary mr-1">
-                      {task.blocked_by.ticket_code || `TK-${task.blocked_by.id.slice(0, 4)}`}
-                    </span>
-                    <span className="text-foreground font-medium truncate">
-                      {task.blocked_by.title}
-                    </span>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0 font-medium border-border/60">
-                    {TASK_STATUS_LABELS[task.blocked_by.status] || task.blocked_by.status}
-                  </Badge>
-                </div>
-              ) : (
-                <div className="p-2 rounded-xl bg-background border border-border/60 text-xs text-muted-foreground italic">
-                  Sin dependencias de bloqueo
-                </div>
-              )}
+              </div>
 
-              {/* Informative helper if there is an active blocker predecessor */}
-              {blockedByTaskId !== "none" && (() => {
-                const blk = availableTasks.find((t) => t.id === blockedByTaskId) || task?.blocked_by
-                if (!blk) return null
-                const isPredecessorDone = blk.status === "done"
-                return (
-                  <div
-                    className={cn(
-                      "mt-2 p-2.5 rounded-xl border text-xs space-y-1 transition-all",
-                      isPredecessorDone
-                        ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400"
-                        : "bg-destructive/5 border-destructive/20 text-destructive dark:text-red-400"
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 font-semibold text-[11px]">
-                      {isPredecessorDone ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-                      ) : (
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-destructive" />
-                      )}
-                      <span>
-                        {isPredecessorDone ? "Predecesor completado" : "Ticket bloqueado"}
-                      </span>
-                    </div>
-                    <p className="text-[10px] leading-relaxed text-muted-foreground">
-                      {isPredecessorDone ? (
-                        <span>
-                          {blk.ticket_code || "El ticket predecesor"} ya se encuentra <strong>Completado</strong>. Esta tarea ya no tiene impedimentos.
-                        </span>
-                      ) : (
-                        <span>
-                          Requiere completar primero <strong>{blk.ticket_code || "el ticket predecesor"}</strong> ({TASK_STATUS_LABELS[blk.status as TaskStatus] || blk.status}). Se desbloqueará automáticamente al pasar a Completado.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )
-              })()}
+              {/* Blocker input (only visible when status is Bloqueado) */}
+              {status === "blocked" && (
+                <TaskBlockerSelector
+                  blockedByTaskId={blockedByTaskId}
+                  blockedReason={blockedReason}
+                  onChange={({ blockedByTaskId: newId, blockedReason: newReason }) => {
+                    setBlockedByTaskId(newId || "none")
+                    setBlockedReason(newReason || "")
+                  }}
+                  availableTasks={availableTasks}
+                  currentTaskId={task?.id}
+                  disabled={!isCreating && !isLeadOrPm && !canCloseParentTask}
+                  isBlockedStatus={true}
+                />
+              )}
             </div>
 
             {/* Priority Selector */}

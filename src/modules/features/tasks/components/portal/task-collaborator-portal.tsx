@@ -92,9 +92,12 @@ import {
   Kanban,
   User,
   CalendarDays,
+  Lock,
+  Ban,
 } from "lucide-react"
+import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary } from "../../types"
-import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
   portalUpdateTaskProgress,
@@ -121,15 +124,23 @@ import { TaskCollaboratorRibbon } from "./task-collaborator-ribbon"
 import { TaskWeeklyPacingMatrix } from "../pacing/task-weekly-pacing-matrix"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
+import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
 interface PortalTaskSliderProps {
   taskId: string
   progress: number
-  hasUnfinishedDeliverables: boolean
+  hasUnfinishedDeliverables?: boolean
   savedProg: number
   isLeadOrPm: boolean
+  isMainAssignee?: boolean
+  blockedBy?: {
+    id: string
+    ticket_code?: string | null
+    title?: string
+    status?: string
+  } | null
   latestAudit?: TaskProgressAuditSummary | null
   onCommit: (taskId: string, val: number) => void
   className?: string
@@ -161,6 +172,8 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   hasUnfinishedDeliverables,
   savedProg,
   isLeadOrPm,
+  isMainAssignee = false,
+  blockedBy,
   latestAudit,
   onCommit,
   className,
@@ -168,6 +181,8 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   showLabel = false,
   labelClassName,
 }: PortalTaskSliderProps) {
+  const canClose = isLeadOrPm || isMainAssignee
+  const isSliderDisabled = !canClose
   const [localVal, setLocalVal] = useState(progress)
   const [showTooltip, setShowTooltip] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -184,6 +199,7 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   }, [])
 
   const handleMouseEnter = () => {
+    if (isSliderDisabled) return
     // Only PMs/Leads get the 2-second quick audit inspection tooltip
     if (!latestAudit || isDragging) return
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
@@ -198,21 +214,41 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   }
 
   const handleChange = ([val]: number[]) => {
+    if (isSliderDisabled) return
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     setShowTooltip(false)
     setIsDragging(true)
     let clamped = Math.max(0, Math.min(100, Math.round(val)))
     if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
+    if (!canClose && clamped > 95) clamped = 95
+    const hasUnresolvedBlocker = blockedBy && blockedBy.status !== "done"
+    if (clamped === 100 && hasUnresolvedBlocker) clamped = 95
     if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
     setLocalVal(clamped)
   }
 
   const handleCommit = ([val]: number[]) => {
+    if (isSliderDisabled) return
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     setShowTooltip(false)
     setIsDragging(false)
     let clamped = Math.max(0, Math.min(100, Math.round(val)))
     if (hasUnfinishedDeliverables && clamped > 95) clamped = 95
+    if (!canClose && clamped > 95) {
+      clamped = 95
+      toast.warning("Cierre reservado al responsable directo", {
+        description: "Al tener solo una subtarea asignada en este ticket, tu avance máximo permitido es del 95%. La aprobación y cierre formal corresponden al responsable directo del ticket o PM.",
+        id: "collaborator-close-lock",
+      })
+    }
+    const hasUnresolvedBlocker = blockedBy && blockedBy.status !== "done"
+    if (clamped === 100 && hasUnresolvedBlocker) {
+      clamped = 95
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No puedes completar este ticket al 100%: depende de #${blockedBy.ticket_code || "ticket predecesor"} (${blockedBy.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock",
+      })
+    }
     if (!isLeadOrPm && clamped < savedProg) clamped = savedProg
     setLocalVal(clamped)
     onCommit(taskId, clamped)
@@ -277,16 +313,51 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
         )}
       </AnimatePresence>
 
-      <Slider
-        value={[localVal]}
-        min={0}
-        max={100}
-        step={5}
-        onValueChange={handleChange}
-        onValueCommit={handleCommit}
-        className="cursor-pointer flex-1"
-        trackClassName={trackClassName}
-      />
+      {isSliderDisabled ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex-1 cursor-not-allowed">
+              <Slider
+                value={[localVal]}
+                min={0}
+                max={100}
+                step={5}
+                disabled={true}
+                className="cursor-not-allowed opacity-50"
+                trackClassName={trackClassName}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-center max-w-[270px] text-xs font-normal">
+            Control bloqueado: el avance general solo puede ser modificado por el responsable directo del ticket o el Gestor de Proyecto.
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <Slider
+          value={[localVal]}
+          min={0}
+          max={100}
+          step={5}
+          disabled={false}
+          onValueChange={handleChange}
+          onValueCommit={handleCommit}
+          className="cursor-pointer flex-1"
+          trackClassName={trackClassName}
+        />
+      )}
+
+      {isSliderDisabled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex shrink-0 cursor-help">
+              <Lock className="w-3 h-3 text-muted-foreground/60" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
+            Control bloqueado: solo el responsable directo o PM pueden modificar el avance
+          </TooltipContent>
+        </Tooltip>
+      )}
       {showLabel && (
         <span className={cn("font-mono font-black text-primary shrink-0", labelClassName || "text-xs sm:text-[13px]")}>
           {localVal}%
@@ -710,7 +781,9 @@ export function TaskCollaboratorPortal({
       // Find active tasks assigned to this collaborator that haven't been seen yet
       const assignedToMe = tasks.filter(
         (t) =>
-          (t.assigned_staff_id === staff.id || (isQa && t.qa_staff_id === staff.id)) &&
+          (t.assigned_staff_id === staff.id ||
+            (isQa && t.qa_staff_id === staff.id) ||
+            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === staff.id))) &&
           t.status !== "done"
       )
       const unseen = assignedToMe.filter((t) => !seenList.includes(t.id))
@@ -770,7 +843,10 @@ export function TaskCollaboratorPortal({
     isLeadOrPm && !tasks.some((t) => t.assigned_staff_id === staff.id)
       ? allTeamTasks
       : tasks.filter(
-          (t) => t.assigned_staff_id === staff.id || (isQa && t.qa_staff_id === staff.id)
+          (t) =>
+            t.assigned_staff_id === staff.id ||
+            (isQa && t.qa_staff_id === staff.id) ||
+            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === staff.id))
         )
   const unseenTasks = myAssignedTasks.filter(
     (t) => t.status !== "done" && !seenTaskIds.includes(t.id)
@@ -854,6 +930,18 @@ export function TaskCollaboratorPortal({
   const handleSliderCommit = async (taskId: string, finalProgress: number) => {
     let clamped = Math.max(0, Math.min(100, Math.round(finalProgress)))
     const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
+    const isMainAssignee = task?.assigned_staff_id === staff.id
+    const canManageParent = isLeadOrPm || isQa || isMainAssignee
+
+    if (!canManageParent) {
+      toast.warning("Control de avance reservado", {
+        description: "El avance general del ticket solo puede ser modificado por el responsable directo del ticket o el PM.",
+        id: "collaborator-slider-disabled"
+      })
+      handleSliderDrag(taskId, getSavedProgress(taskId))
+      return
+    }
+
     const checklist = task?.checklist || []
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
 
@@ -875,6 +963,16 @@ export function TaskCollaboratorPortal({
       return
     }
 
+    // Blocker dependency check
+    if (clamped === 100 && task?.blocked_by && task.blocked_by.status !== "done") {
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No se puede completar este ticket al 100%: depende de #${task.blocked_by.ticket_code || "ticket predecesor"} (${task.blocked_by.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock",
+      })
+      handleSliderDrag(taskId, savedProg)
+      return
+    }
+
     if (clamped === 100) {
       const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
       if (task) {
@@ -885,7 +983,7 @@ export function TaskCollaboratorPortal({
     try {
       const res = await portalUpdateTaskProgress(token, taskId, clamped)
       if (!res.success) {
-        toast.error("Error al actualizar progreso")
+        toast.error(res.error || "Error al actualizar progreso")
         handleSliderDrag(taskId, savedProg)
       } else {
         // Update the committed baseline on successful save
@@ -913,6 +1011,17 @@ export function TaskCollaboratorPortal({
           }))
         }
 
+        const updateTaskState = (prev: TaskItem[]) =>
+          prev.map((t) => {
+            if (t.id === taskId) {
+              const nextStatus = clamped === 100 ? "done" : clamped > 0 && savedStatus === "todo" ? "in_progress" : t.status
+              return { ...t, progress_percentage: clamped, status: nextStatus }
+            }
+            return t
+          })
+
+        setTasks(updateTaskState)
+        setAllTeamTasks(updateTaskState)
         toast.success(`Progreso actualizado al ${clamped}%`)
       }
     } catch (err: any) {
@@ -956,6 +1065,8 @@ export function TaskCollaboratorPortal({
             triggerCelebration({ ...task, progress_percentage: 100, status: "done" })
           }
         }
+      } else if (res.error) {
+        toast.error(res.error)
       }
     } catch (err: any) {
       toast.error(err.message || "Error al actualizar checklist")
@@ -965,6 +1076,25 @@ export function TaskCollaboratorPortal({
   // Status Change
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
+    const isMainAssignee = task?.assigned_staff_id === staff.id
+    const canCloseParentTask = isLeadOrPm || isQa || isMainAssignee
+
+    if (newStatus === "done" && !canCloseParentTask) {
+      toast.warning("Permiso de cierre restringido", {
+        description: "Solo el responsable directo de la tarea o un Líder/PM puede marcarla como Completada.",
+        id: "collaborator-close-permission-denied"
+      })
+      return
+    }
+
+    if (newStatus === "done" && task?.blocked_by && task.blocked_by.status !== "done") {
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No se puede completar este ticket: depende de #${task.blocked_by.ticket_code || "ticket predecesor"} (${task.blocked_by.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock",
+      })
+      return
+    }
+
     const checklist = task?.checklist || []
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
 
@@ -1015,9 +1145,22 @@ export function TaskCollaboratorPortal({
           }`
         )
       } else {
-        toast.error("Error al actualizar estado")
+        // Revert optimistic state
+        const savedStatus = getSavedStatus(taskId)
+        const savedProgress = getSavedProgress(taskId)
+        const revertState = (prev: TaskItem[]) =>
+          prev.map((t) => (t.id === taskId ? { ...t, status: savedStatus, progress_percentage: savedProgress } : t))
+        setTasks(revertState)
+        setAllTeamTasks(revertState)
+        toast.error(res.error || "Error al actualizar estado")
       }
     } catch {
+      const savedStatus = getSavedStatus(taskId)
+      const savedProgress = getSavedProgress(taskId)
+      const revertState = (prev: TaskItem[]) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: savedStatus, progress_percentage: savedProgress } : t))
+      setTasks(revertState)
+      setAllTeamTasks(revertState)
       toast.error("Error al actualizar estado")
     }
   }
@@ -1045,9 +1188,13 @@ export function TaskCollaboratorPortal({
   // Task filtering logic: for PM/Lead or QA, base source is all team tasks; for individual collaborator, base is their tasks
   let baseSourceTasks = (isLeadOrPm || isQa) ? allTeamTasks : tasks
 
-  // Filter by selected collaborator if applicable
   if ((isLeadOrPm || isQa) && selectedMemberFilter !== "all") {
-    baseSourceTasks = allTeamTasks.filter((t) => t.assigned_staff_id === selectedMemberFilter)
+    baseSourceTasks = allTeamTasks.filter(
+      (t) =>
+        t.assigned_staff_id === selectedMemberFilter ||
+        t.qa_staff_id === selectedMemberFilter ||
+        (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter))
+    )
   }
 
   // Project / Workspace filter
@@ -1092,7 +1239,11 @@ export function TaskCollaboratorPortal({
       (t) =>
         t.title.toLowerCase().includes(q) ||
         t.ticket_code.toLowerCase().includes(q) ||
-        (t.description && t.description.toLowerCase().includes(q))
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.assigned_staff &&
+          `${t.assigned_staff.first_name} ${t.assigned_staff.last_name || ""}`
+            .toLowerCase()
+            .includes(q))
     )
   }
 
@@ -1289,35 +1440,48 @@ export function TaskCollaboratorPortal({
                               isUnseen && "bg-primary/[0.04] dark:bg-primary/[0.08]"
                             )}
                           >
-                            <Avatar className="w-6 h-6 rounded-lg shrink-0 mt-0.5 border border-border/60" style={{ backgroundColor: brandColor }}>
-                              <AvatarImage src={getCollaboratorAvatar(mention.author_avatar, mention.author_name)} className="object-cover" />
-                              <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                                {mention.author_name?.[0] || "U"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0 space-y-0.5">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-xs font-semibold text-foreground truncate">
-                                  {mention.author_name}
-                                </span>
-                                {isUnseen && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-primary/10 text-primary">
-                                    Nueva
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-zinc-600 dark:text-zinc-300 line-clamp-2">
-                                {mention.content}
-                              </p>
-                              <span className="text-[9px] text-muted-foreground">
-                                {new Date(mention.created_at).toLocaleDateString("es-ES", {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
+                            {(() => {
+                              const auditInfo = parseSystemAuditNote(mention.content)
+                              return (
+                                <>
+                                  {auditInfo.isAudit ? (
+                                    <div className="w-6 h-6 rounded-lg shrink-0 mt-0.5 flex items-center justify-center bg-zinc-100 dark:bg-white/10 text-xs">
+                                      {auditInfo.icon}
+                                    </div>
+                                  ) : (
+                                    <Avatar className="w-6 h-6 rounded-lg shrink-0 mt-0.5 border border-border/60" style={{ backgroundColor: brandColor }}>
+                                      <AvatarImage src={getCollaboratorAvatar(mention.author_avatar, mention.author_name)} className="object-cover" />
+                                      <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
+                                        {mention.author_name?.[0] || "U"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  )}
+                                  <div className="flex-1 min-w-0 space-y-0.5">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="text-xs font-semibold text-foreground truncate">
+                                        {mention.author_name || (auditInfo.isAudit ? "Sistema" : "Colaborador")}
+                                      </span>
+                                      {isUnseen && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-primary/10 text-primary">
+                                          Nueva
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className={cn("text-[11px] line-clamp-2", auditInfo.isAudit ? (auditInfo.badgeClass || "text-foreground font-medium") : "text-zinc-600 dark:text-zinc-300")}>
+                                      {auditInfo.isAudit ? auditInfo.formattedText : mention.content}
+                                    </p>
+                                    <span className="text-[9px] text-muted-foreground block">
+                                      {new Date(mention.created_at).toLocaleDateString("es-ES", {
+                                        day: "numeric",
+                                        month: "short",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+                                </>
+                              )
+                            })()}
                           </div>
                         )
                       })}
@@ -1658,7 +1822,7 @@ export function TaskCollaboratorPortal({
           <SearchFilterBar
             searchTerm={searchQuery}
             onSearchChange={setSearchQuery}
-            searchPlaceholder="Buscar por código, título o descripción..."
+            searchPlaceholder="Buscar por ticket, título o responsable..."
             filters={[
               { id: "all", label: "Todas", count: countAll },
               { id: "backlog", label: "Backlog", count: countBacklog, color: "slate" },
@@ -1941,9 +2105,16 @@ export function TaskCollaboratorPortal({
 
                     {/* Title & Description */}
                     <div className="space-y-1">
-                      <h4 className="text-base font-bold text-zinc-900 dark:text-white leading-snug">
-                        {task.title}
-                      </h4>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-base font-bold text-zinc-900 dark:text-white leading-snug flex-1">
+                          {task.title}
+                        </h4>
+                        <TaskSubtasksTooltipBadge
+                          checklist={safeChecklist}
+                          teamMembers={teamMembers}
+                          onClick={() => openTaskDetail(task)}
+                        />
+                      </div>
                       {task.description && (
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
                           {task.description}
@@ -2057,6 +2228,8 @@ export function TaskCollaboratorPortal({
                         hasUnfinishedDeliverables={safeChecklist.length > 0 && safeChecklist.some((c) => !c.completed)}
                         savedProg={getSavedProgress(task.id)}
                         isLeadOrPm={isLeadOrPm}
+                        isMainAssignee={task.assigned_staff_id === staff.id}
+                        blockedBy={task.blocked_by}
                         latestAudit={latestAudits[task.id]}
                         onCommit={handleSliderCommit}
                         className="py-1"
@@ -2073,34 +2246,68 @@ export function TaskCollaboratorPortal({
                           </span>
                         </div>
                         <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                          {safeChecklist.map((item) => (
-                            <div
-                              key={item.id}
-                              onClick={() => handleToggleChecklist(task.id, item.id, item.completed)}
-                              className="flex items-center gap-2 text-xs p-2 rounded-xl bg-zinc-50/50 dark:bg-white/5 hover:bg-zinc-100/70 dark:hover:bg-white/10 cursor-pointer transition-colors border border-zinc-100 dark:border-white/5"
-                            >
+                          {safeChecklist.map((item) => {
+                            const canToggle = isLeadOrPm || task.assigned_staff_id === staff.id || (item.assigned_staff_id === staff.id)
+                            const assignedCollab = item.assigned_staff_id ? teamMembers.find((m) => m.id === item.assigned_staff_id) : null
+                            const isMySubtask = Boolean(item.assigned_staff_id && item.assigned_staff_id === staff.id)
+
+                            return (
                               <div
+                                key={item.id}
+                                onClick={() => {
+                                  if (!canToggle) {
+                                    toast.error("Solo el colaborador asignado a esta subtarea puede marcarla.", {
+                                      id: `subtask-lock-${item.id}`
+                                    })
+                                    return
+                                  }
+                                  handleToggleChecklist(task.id, item.id, item.completed)
+                                }}
                                 className={cn(
-                                  "w-4 h-4 rounded flex items-center justify-center transition-colors border shrink-0",
-                                  item.completed
-                                    ? "bg-primary border-primary text-primary-foreground"
-                                    : "border-muted-foreground/30 bg-background"
+                                  "flex items-center gap-2 text-xs p-2 rounded-xl transition-colors border",
+                                  canToggle
+                                    ? "bg-zinc-50/50 dark:bg-white/5 hover:bg-zinc-100/70 dark:hover:bg-white/10 cursor-pointer border-zinc-100 dark:border-white/5"
+                                    : "bg-zinc-50/20 dark:bg-white/[0.02] border-zinc-100/40 dark:border-white/[0.02] opacity-60 cursor-not-allowed",
+                                  isMySubtask && !item.completed && "animate-border-beam"
                                 )}
+                                title={!canToggle ? `Subtarea asignada a ${assignedCollab?.first_name || "otro colaborador"}` : undefined}
+                                style={isMySubtask && !item.completed ? { "--beam-color": brandColor } as React.CSSProperties : undefined}
                               >
-                                {item.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                                <div
+                                  className={cn(
+                                    "w-4 h-4 rounded flex items-center justify-center transition-colors border shrink-0",
+                                    item.completed
+                                      ? "bg-primary border-primary text-primary-foreground"
+                                      : "border-muted-foreground/30 bg-background"
+                                  )}
+                                >
+                                  {item.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                                </div>
+                                <span
+                                  className={cn(
+                                    "flex-1 leading-tight",
+                                    item.completed
+                                      ? "line-through text-muted-foreground"
+                                      : "text-foreground font-medium"
+                                  )}
+                                >
+                                  {isMySubtask && !item.completed ? (
+                                    <ShimmerText active duration={3000}>{item.title}</ShimmerText>
+                                  ) : (
+                                    item.title
+                                  )}
+                                </span>
+                                {assignedCollab && (
+                                  <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 font-medium">
+                                    @{assignedCollab.first_name}
+                                  </span>
+                                )}
+                                {!canToggle && (
+                                  <Lock className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                                )}
                               </div>
-                              <span
-                                className={cn(
-                                  "flex-1 leading-tight",
-                                  item.completed
-                                    ? "line-through text-muted-foreground"
-                                    : "text-foreground font-medium"
-                                )}
-                              >
-                                {item.title}
-                              </span>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -2142,7 +2349,7 @@ export function TaskCollaboratorPortal({
                               </Button>
                             )}
 
-                            {task.status !== "done" && (
+                            {task.status !== "done" && (isLeadOrPm || isQa || task.assigned_staff_id === staff.id) && (
                               <Button
                                 size="sm"
                                 onClick={() => setTaskToComplete(task)}
@@ -2233,9 +2440,16 @@ export function TaskCollaboratorPortal({
                       </Badge>
                     </div>
 
-                    <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-1">
-                      {task.title}
-                    </h4>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <h4 className="text-sm font-bold text-foreground leading-snug line-clamp-1 flex-1">
+                        {task.title}
+                      </h4>
+                      <TaskSubtasksTooltipBadge
+                        checklist={task.checklist}
+                        teamMembers={teamMembers}
+                        onClick={() => openTaskDetail(task)}
+                      />
+                    </div>
                     {task.tags && task.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-0.5">
                         {task.tags.map((tag) => {
@@ -2278,6 +2492,8 @@ export function TaskCollaboratorPortal({
                       hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
                       savedProg={getSavedProgress(task.id)}
                       isLeadOrPm={isLeadOrPm}
+                      isMainAssignee={task.assigned_staff_id === staff.id}
+                      blockedBy={task.blocked_by}
                       latestAudit={latestAudits[task.id]}
                       onCommit={handleSliderCommit}
                     />
@@ -2348,10 +2564,15 @@ export function TaskCollaboratorPortal({
                         </td>
                         <td className="px-4 py-3.5 font-medium">
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[340px]">
                                 {task.title}
                               </span>
+                              <TaskSubtasksTooltipBadge
+                                checklist={task.checklist}
+                                teamMembers={teamMembers}
+                                onClick={() => openTaskDetail(task)}
+                              />
                               {task.tags && task.tags.length > 0 && (
                                 <div className="flex items-center gap-1 shrink-0 flex-wrap">
                                   {task.tags.map((tag) => {
@@ -2455,6 +2676,8 @@ export function TaskCollaboratorPortal({
                             hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
                             savedProg={getSavedProgress(task.id)}
                             isLeadOrPm={isLeadOrPm}
+                            isMainAssignee={task.assigned_staff_id === staff.id}
+                            blockedBy={task.blocked_by}
                             latestAudit={latestAudits[task.id]}
                             onCommit={handleSliderCommit}
                             showLabel={true}
@@ -2462,39 +2685,63 @@ export function TaskCollaboratorPortal({
                           />
                         </td>
                         <td className="px-4 py-3.5">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
-                              task.status === "done"
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          {task.status === "blocked" ? (
+                            <TooltipProvider delayDuration={1000}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 cursor-help inline-flex items-center gap-1 hover:bg-rose-500/20 transition-colors"
+                                  >
+                                    <Ban className="w-2.5 h-2.5 shrink-0" />
+                                    <span>Bloqueado</span>
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="top"
+                                  className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5"
+                                >
+                                  <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
+                                    <Ban className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Motivo del Bloqueo</span>
+                                  </div>
+                                  <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
+                                    {task.blocked_reason || (task.blocked_by ? `Bloqueado por dependencia #${task.blocked_by.ticket_code}: ${task.blocked_by.title}` : "Esta tarea se encuentra bloqueada.")}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
+                                task.status === "done"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                  : task.status === "in_review"
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                  : task.status === "in_progress"
+                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                  : task.status === "backlog"
+                                  ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
+                                  : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                              )}
+                            >
+                              {task.status === "done"
+                                ? "Completado"
                                 : task.status === "in_review"
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                ? "En QA"
                                 : task.status === "in_progress"
-                                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                                : task.status === "blocked"
-                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                ? "En Curso"
                                 : task.status === "backlog"
-                                ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
-                                : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                            )}
-                          >
-                            {task.status === "done"
-                              ? "Completado"
-                              : task.status === "in_review"
-                              ? "En QA"
-                              : task.status === "in_progress"
-                              ? "En Curso"
-                              : task.status === "blocked"
-                              ? "Bloqueado"
-                              : task.status === "backlog"
-                              ? "Backlog"
-                              : "Por Hacer"}
-                          </Badge>
+                                ? "Backlog"
+                                : "Por Hacer"}
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
-                            {task.status !== "done" && (
+                            {task.status !== "done" && (isLeadOrPm || isQa || task.assigned_staff_id === staff.id) && (
                               <Button
                                 size="sm"
                                 onClick={() => setTaskToComplete(task)}
@@ -2661,6 +2908,7 @@ export function TaskCollaboratorPortal({
         token={token}
         isLeadOrPm={isLeadOrPm}
         isQa={isQa}
+        currentStaffId={staff.id}
         projects={projects}
         teamMembers={teamMembers}
         brandColor={brandColor}
@@ -2712,6 +2960,7 @@ export function TaskCollaboratorPortal({
           token={token}
           isLeadOrPm={isLeadOrPm}
           isQa={isQa}
+          currentStaffId={staff.id}
           projects={projects}
           teamMembers={teamMembers}
           brandColor={brandColor}

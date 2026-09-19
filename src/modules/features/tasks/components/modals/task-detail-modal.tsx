@@ -48,9 +48,12 @@ import {
   ChevronDown,
   Ban,
   AlertTriangle,
+  Edit3,
+  Check,
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment, RecurrenceInterval } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
+import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import {
   updateTask,
   deleteTask,
@@ -224,6 +227,19 @@ export function TaskDetailModal({
   const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
   const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task.blocked_by_task_id || "none")
+  const [blockedReason, setBlockedReason] = useState<string>(task.blocked_reason || "")
+
+  const currentBlocker = useMemo(() => {
+    if (!blockedByTaskId || blockedByTaskId === "none") return null
+    return (availableTasks || []).find((t) => t.id === blockedByTaskId) || task?.blocked_by || null
+  }, [blockedByTaskId, availableTasks, task])
+
+  const fullBlockerTask = useMemo(() => {
+    if (!currentBlocker) return null
+    return (availableTasks || []).find((t) => t.id === currentBlocker.id) || null
+  }, [currentBlocker, availableTasks])
+
+  const hasUnresolvedBlocker = Boolean(currentBlocker && currentBlocker.status !== "done")
 
   // Recurrence configuration
   const [isRecurring, setIsRecurring] = useState(task.is_recurring ?? false)
@@ -285,6 +301,7 @@ export function TaskDetailModal({
       setRecurrenceInterval(task.recurrence_interval || "monthly")
       setRecurrenceDay(task.recurrence_day || 1)
       setBlockedByTaskId(task.blocked_by_task_id || "none")
+      setBlockedReason(task.blocked_reason || "")
       setNewChecklistWeek(null)
       setNewChecklistAssignee("unassigned")
       setVisibleCommentsCount(10)
@@ -327,6 +344,18 @@ export function TaskDetailModal({
             description: "La tarea no puede marcarse completada mientras existan entregables pendientes. Avance fijado al 95%."
           })
         }
+      }
+
+      if (hasUnresolvedBlocker) {
+        if (finalProgress > 95) finalProgress = 95
+        if (finalStatus === "done") {
+          toast.warning("Ticket con dependencia pendiente", {
+            description: `No se puede marcar el ticket como completado: depende de #${currentBlocker?.ticket_code || "ticket predecesor"}, el cual aún está pendiente.`,
+            id: "blocker-close-lock-modal",
+          })
+          setIsSaving(false)
+          return
+        }
       } else if (finalStatus === "done") {
         finalProgress = 100
       }
@@ -350,6 +379,7 @@ export function TaskDetailModal({
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_day: isRecurring ? recurrenceDay : null,
         blocked_by_task_id: blockedByTaskId === "none" ? null : blockedByTaskId,
+        blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
       })
 
       if (res.success && res.task) {
@@ -446,6 +476,14 @@ export function TaskDetailModal({
       toast.warning("Entregables pendientes por completar", {
         description: "No puedes subir el avance al 100% mientras existan entregables pendientes en el checklist (avance limitado al 95%). Marca los entregables completados para desbloquear el 100%.",
         id: "unfinished-deliverables-warning-platform",
+      })
+    }
+
+    if (val === 100 && hasUnresolvedBlocker) {
+      val = 95
+      toast.warning("Ticket con dependencia pendiente", {
+        description: `No puedes subir el avance al 100%: depende de #${currentBlocker?.ticket_code || "ticket predecesor"} (${currentBlocker?.title || ""}), el cual aún está pendiente.`,
+        id: "blocker-close-lock-slider",
       })
     }
 
@@ -766,6 +804,51 @@ export function TaskDetailModal({
                 </p>
               )}
             </div>
+
+            {/* Blocker Alert Banner */}
+            {status === "blocked" && (
+              <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/25 text-destructive dark:text-red-400 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <Ban className="w-4 h-4 shrink-0" />
+                  <span>Tarea Bloqueada</span>
+                </div>
+                {currentBlocker ? (
+                  <div className="pl-5.5 text-xs text-foreground/90 font-normal leading-relaxed space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-muted-foreground">Bloqueada por el ticket:</span>
+                      <button
+                        type="button"
+                        disabled={!fullBlockerTask || !onSelectTask}
+                        onClick={() => fullBlockerTask && onSelectTask?.(fullBlockerTask)}
+                        className={cn(
+                          "inline-flex items-center gap-1 font-mono text-[11px] font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20",
+                          fullBlockerTask && onSelectTask ? "hover:bg-primary/20 transition-colors cursor-pointer" : "cursor-default"
+                        )}
+                        title={fullBlockerTask && onSelectTask ? "Ver ticket predecesor" : undefined}
+                      >
+                        {currentBlocker.ticket_code || `TK-${currentBlocker.id.slice(0, 4)}`}
+                      </button>
+                      <span className="font-medium text-foreground truncate max-w-[320px]">
+                        {currentBlocker.title}
+                      </span>
+                    </div>
+                    {currentBlocker.status === "done" && (
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ El ticket predecesor ya ha sido completado. Esta tarea puede desbloquearse.
+                      </p>
+                    )}
+                  </div>
+                ) : blockedReason ? (
+                  <p className="text-xs text-foreground/90 font-normal leading-relaxed pl-5.5 whitespace-pre-wrap">
+                    {blockedReason}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground font-normal leading-relaxed pl-5.5">
+                    Esta tarea se encuentra detenida. Puedes indicar el motivo o vincular un ticket en el panel lateral.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             <div>
@@ -1353,106 +1436,54 @@ export function TaskDetailModal({
 
           {/* Right Column (Jira Metadata Sidebar) */}
           <div className="p-6 bg-muted/10 space-y-5">
-            {/* Status */}
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Estado
-              </label>
-              <Select value={status} onValueChange={(val: TaskStatus) => setStatus(val)}>
-                <SelectTrigger className="w-full bg-background h-9 text-xs font-medium">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="todo">Por Hacer</SelectItem>
-                  <SelectItem value="in_progress">En Progreso</SelectItem>
-                  <SelectItem value="in_review">Revisión / QA</SelectItem>
-                  <SelectItem value="done">Completado</SelectItem>
-                  <SelectItem value="blocked">Bloqueado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Status & Conditional Blocker */}
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Estado
+                </label>
+                <Select
+                  value={status}
+                  onValueChange={(val: TaskStatus) => {
+                    setStatus(val)
+                    if (val !== "blocked") {
+                      setBlockedByTaskId("none")
+                      setBlockedReason("")
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-background h-9 text-xs font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="todo">Por Hacer</SelectItem>
+                    <SelectItem value="in_progress">En Progreso</SelectItem>
+                    <SelectItem value="in_review" disabled={hasUnresolvedBlocker}>
+                      Revisión / QA {hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
+                    </SelectItem>
+                    <SelectItem value="done" disabled={hasUnresolvedBlocker}>
+                      Completado {hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
+                    </SelectItem>
+                    <SelectItem value="blocked">Bloqueado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Blocker Dependency (Bloqueado por) */}
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                <Ban className="w-3.5 h-3.5 text-destructive/80" />
-                Dependencia / Bloqueado por
-              </label>
-              <Select
-                value={blockedByTaskId || "none"}
-                onValueChange={(val) => {
-                  setBlockedByTaskId(val)
-                  if (val !== "none" && status !== "blocked") {
-                    setStatus("blocked")
-                  } else if (val === "none" && status === "blocked") {
-                    setStatus("todo")
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
-                  <SelectValue placeholder="Sin dependencia (Independiente)" className="truncate text-left" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[320px]">
-                  <SelectItem value="none" className="text-xs text-muted-foreground">
-                    Sin dependencia (Independiente)
-                  </SelectItem>
-                  {(availableTasks || [])
-                    .filter((t) => t.id !== task.id)
-                    .map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-xs">
-                        <div className="flex items-center gap-2 truncate max-w-[280px]">
-                          <span className="font-mono text-[10px] font-bold text-primary shrink-0">
-                            {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
-                          </span>
-                          <span className="truncate">{t.title}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                            ({TASK_STATUS_LABELS[t.status] || t.status})
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-
-              {/* Informative helper if there is an active blocker predecessor */}
-              {blockedByTaskId !== "none" && (() => {
-                const blk = (availableTasks || []).find((t) => t.id === blockedByTaskId) || task?.blocked_by
-                if (!blk) return null
-                const isPredecessorDone = blk.status === "done"
-                return (
-                  <div
-                    className={cn(
-                      "mt-2 p-2.5 rounded-xl border text-xs space-y-1 transition-all",
-                      isPredecessorDone
-                        ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-400"
-                        : "bg-destructive/5 border-destructive/20 text-destructive dark:text-red-400"
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 font-semibold text-[11px]">
-                      {isPredecessorDone ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-                      ) : (
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-destructive" />
-                      )}
-                      <span>
-                        {isPredecessorDone ? "Predecesor completado" : "Ticket bloqueado"}
-                      </span>
-                    </div>
-                    <p className="text-[10px] leading-relaxed text-muted-foreground">
-                      {isPredecessorDone ? (
-                        <span>
-                          {blk.ticket_code || "El ticket predecesor"} ya se encuentra <strong>Completado</strong>. Esta tarea ya no tiene impedimentos.
-                        </span>
-                      ) : (
-                        <span>
-                          Requiere completar primero <strong>{blk.ticket_code || "el ticket predecesor"}</strong> ({TASK_STATUS_LABELS[blk.status as TaskStatus] || blk.status}). Se desbloqueará automáticamente al pasar a Completado.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )
-              })()}
+              {/* Blocker input (only visible when status is Bloqueado) */}
+              {status === "blocked" && (
+                <TaskBlockerSelector
+                  blockedByTaskId={blockedByTaskId}
+                  blockedReason={blockedReason}
+                  onChange={({ blockedByTaskId: newId, blockedReason: newReason }) => {
+                    setBlockedByTaskId(newId || "none")
+                    setBlockedReason(newReason || "")
+                  }}
+                  availableTasks={availableTasks || []}
+                  currentTaskId={task.id}
+                  isBlockedStatus={true}
+                />
+              )}
             </div>
 
             {/* Tags & Quality Stages */}

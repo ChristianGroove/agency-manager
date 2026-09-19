@@ -165,8 +165,12 @@ export function TaskPmOperationsDashboard({
         }
       }
       // Member filter
-      if (selectedMemberFilter !== "all" && t.assigned_staff_id !== selectedMemberFilter) {
-        return false
+      if (selectedMemberFilter !== "all") {
+        const isAssigned =
+          t.assigned_staff_id === selectedMemberFilter ||
+          t.qa_staff_id === selectedMemberFilter ||
+          (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter))
+        if (!isAssigned) return false
       }
       // Date filter for historical completed tasks (active tasks always remain visible in the sprint)
       if (cutoffDate && selectedPeriod !== "all") {
@@ -251,15 +255,19 @@ export function TaskPmOperationsDashboard({
   const criticalRiskCount = overdueTasks.length + blockedTasks.length
 
   // Active contributors count
-  const activeMembersSet = useMemo(
-    () =>
-      new Set(
-        sprintTasks
-          .map((t) => t.assigned_staff_id)
-          .filter((id): id is string => Boolean(id))
-      ),
-    [sprintTasks]
-  )
+  const activeMembersSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of sprintTasks) {
+      if (t.assigned_staff_id) set.add(t.assigned_staff_id)
+      if (t.qa_staff_id) set.add(t.qa_staff_id)
+      if (Array.isArray(t.checklist)) {
+        for (const c of t.checklist) {
+          if (c.assigned_staff_id) set.add(c.assigned_staff_id)
+        }
+      }
+    }
+    return set
+  }, [sprintTasks])
   const activeCollaboratorsCount = activeMembersSet.size
 
   // 3. Status Donut Chart Data (Pure Sprint Workflow)
@@ -278,7 +286,12 @@ export function TaskPmOperationsDashboard({
   const memberPerformanceData = useMemo(() => {
     return teamMembers
       .map((member) => {
-        const mTasks = sprintTasks.filter((t) => t.assigned_staff_id === member.id)
+        const mTasks = sprintTasks.filter(
+          (t) =>
+            t.assigned_staff_id === member.id ||
+            t.qa_staff_id === member.id ||
+            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === member.id))
+        )
         const mActive = mTasks.filter((t) => t.status !== "done").length
         const mCompleted = mTasks.filter((t) => t.status === "done").length
         const mEstimated = mTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)
@@ -1086,6 +1099,24 @@ export function TaskPmOperationsDashboard({
                         {task.ticket_code && (
                           <span className="text-[10px] font-mono text-muted-foreground">
                             {task.ticket_code}
+                          </span>
+                        )}
+                        {task.blocked_by && task.blocked_by.status !== "done" && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                            title={`Bloqueado por #${task.blocked_by.ticket_code} (${task.blocked_by.title})`}
+                          >
+                            <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                            <span>🚫 #{task.blocked_by.ticket_code}</span>
+                          </span>
+                        )}
+                        {task.status === "blocked" && task.blocked_reason && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 max-w-[220px] truncate"
+                            title={`Motivo del bloqueo: ${task.blocked_reason}`}
+                          >
+                            <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">Motivo: {task.blocked_reason}</span>
                           </span>
                         )}
                         {project && (

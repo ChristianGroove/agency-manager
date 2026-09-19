@@ -785,6 +785,21 @@ export function TaskWeeklyPacingMatrix({
                             >
                               {task.ticket_code}
                             </Badge>
+                            {task.blocked_by && task.blocked_by.status !== "done" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 px-1.5 py-0 cursor-help flex items-center gap-0.5"
+                                  >
+                                    <span>🚫 #{task.blocked_by.ticket_code}</span>
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <span>{`Bloqueado por #${task.blocked_by.ticket_code} (${task.blocked_by.title})`}</span>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                             {task.is_recurring && (
                               <Tooltip>
                                 <TooltipTrigger asChild>

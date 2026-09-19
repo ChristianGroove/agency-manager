@@ -1,3 +1,9 @@
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
@@ -100,6 +106,15 @@
   }
 }
 
+@keyframes border-beam-spin {
+  0% {
+    --beam-angle: 0deg;
+  }
+  100% {
+    --beam-angle: 360deg;
+  }
+}
+
 @keyframes text-shimmer-wave {
   0% {
     -webkit-mask-position: 130% 0;
@@ -133,6 +148,36 @@
     -webkit-mask-size: 250% 100%;
     mask-size: 250% 100%;
     animation: text-shimmer-wave 2.2s linear infinite;
+  }
+
+  .animate-border-beam {
+    --beam-color: #8ec045;
+    --beam-angle: 0deg;
+    position: relative;
+    overflow: hidden;
+    border-color: transparent !important;
+  }
+  .animate-border-beam::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--beam-angle),
+      transparent 0%,
+      transparent 70%,
+      var(--beam-color) 78%,
+      color-mix(in srgb, var(--beam-color) 60%, white) 84%,
+      var(--beam-color) 90%,
+      transparent 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: border-beam-spin 4s linear infinite;
+    pointer-events: none;
   }
 
   .animate-alert-enter {

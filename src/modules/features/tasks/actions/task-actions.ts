@@ -68,22 +68,24 @@ async function handleTaskUnblocking(completedTaskId: string, ticketCode: string,
   try {
     const { data: blockedTasks } = await supabaseAdmin
       .from("task_items")
-      .select("id, ticket_code, title, status, organization_id")
+      .select("id, ticket_code, title, status, progress_percentage, organization_id, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(first_name)")
       .eq("blocked_by_task_id", completedTaskId);
 
     if (!blockedTasks || blockedTasks.length === 0) return;
 
     for (const bt of blockedTasks) {
+      const mentionTag = (bt as any)?.assigned_staff?.first_name ? ` @${(bt as any).assigned_staff.first_name}` : "";
       await logTaskAuditComment(
         bt.organization_id,
         bt.id,
-        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.`
+        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
       );
 
       if (bt.status === "blocked") {
+        const restoredStatus = ((bt as any)?.progress_percentage || 0) > 0 ? "in_progress" : "todo";
         await supabaseAdmin
           .from("task_items")
-          .update({ status: "todo", updated_at: new Date().toISOString() })
+          .update({ status: restoredStatus, blocked_reason: null, updated_at: new Date().toISOString() })
           .eq("id", bt.id);
       }
     }
@@ -445,7 +447,7 @@ export async function getTasks(params?: {
       project:task_projects!task_items_project_id_fkey(
         id, name, color
       ),
-      blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+      blocked_by:blocked_by_task_id(
         id, ticket_code, title, status
       )
     `)
@@ -571,13 +573,49 @@ export async function createTask(
         project:task_projects!task_items_project_id_fkey(
           id, name, color
         ),
-        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+        blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
         )
       `)
       .single();
 
     if (error) throw error;
+
+    // Log audit notes for assignments upon creation
+    if (data.assigned_staff_id) {
+      const { data: mainStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("first_name, last_name")
+        .eq("id", data.assigned_staff_id)
+        .maybeSingle();
+      if (mainStaff) {
+        await logTaskAuditComment(
+          orgId,
+          newTask.id,
+          `👤 Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`
+        );
+      }
+    }
+
+    if (data.checklist && Array.isArray(data.checklist)) {
+      for (const item of data.checklist) {
+        if (item.assigned_staff_id) {
+          const { data: assignedStaff } = await supabaseAdmin
+            .from("organization_staff")
+            .select("first_name, last_name")
+            .eq("id", item.assigned_staff_id)
+            .maybeSingle();
+          if (assignedStaff) {
+            const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+            await logTaskAuditComment(
+              orgId,
+              newTask.id,
+              `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
+            );
+          }
+        }
+      }
+    }
 
     revalidatePath("/operations/tasks");
     return { success: true, task: normalizeTask(newTask) };
@@ -605,13 +643,45 @@ export async function updateTask(
     // Fetch previous state for audit comparison
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
-      .select("status, priority, due_date, assigned_staff_id, blocked_by_task_id, ticket_code, title, organization_id, checklist")
+      .select(`
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
+        creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
+      `)
       .eq("id", taskId)
       .single();
+
+    // If unblocking status, clear blocked_reason automatically if not explicitly provided
+    if (prevTask?.status === "blocked" && updateData.status && updateData.status !== "blocked") {
+      if (updateData.blocked_reason === undefined) {
+        updateData.blocked_reason = null;
+      }
+    }
 
     // Fetch checklist to check if all deliverables are completed
     let checklist = updateData.checklist !== undefined ? parseTaskChecklist(updateData.checklist) : parseTaskChecklist(prevTask?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
+
+    // Validate dependency blocking rule: cannot complete or reach 100% if blocker is unfinished
+    const effectiveBlockerId = updateData.blocked_by_task_id !== undefined
+      ? (updateData.blocked_by_task_id || null)
+      : prevTask?.blocked_by_task_id;
+
+    if ((updateData.status === "done" || updateData.status === "in_review" || updateData.progress_percentage === 100) && effectiveBlockerId) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", effectiveBlockerId)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        const actionLabel = updateData.status === "in_review" ? "enviar a revisión / QA" : "completar";
+        return {
+          success: false,
+          error: `No se puede ${actionLabel} el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        };
+      }
+    }
 
     if (hasUnfinishedDeliverables) {
       if (updateData.progress_percentage !== undefined && updateData.progress_percentage > 95) {
@@ -669,7 +739,7 @@ export async function updateTask(
         project:task_projects!task_items_project_id_fkey(
           id, name, color
         ),
-        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+        blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
         )
       `)
@@ -717,8 +787,9 @@ export async function updateTask(
             .select("first_name, last_name")
             .eq("id", updateData.assigned_staff_id)
             .single();
+          const staffTag = staffMember ? `@${staffMember.first_name}` : "colaborador";
           const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : "colaborador";
-          await logTaskAuditComment(orgId, taskId, `👤 Reasignado a ${staffName}`);
+          await logTaskAuditComment(orgId, taskId, `👤 Asignado a ${staffTag} (${staffName})`);
         } else {
           await logTaskAuditComment(orgId, taskId, `👤 Asignación de tarea removida`);
         }
@@ -739,6 +810,73 @@ export async function updateTask(
           await logTaskAuditComment(orgId, taskId, `🔓 Bloqueo removido manualmente`);
         }
       }
+
+      // Blocker reason audit
+      if (updateData.blocked_reason !== undefined && updateData.blocked_reason !== prevTask.blocked_reason) {
+        if (updateData.blocked_reason && updateData.blocked_reason.trim()) {
+          await logTaskAuditComment(orgId, taskId, `🚫 Motivo del bloqueo: ${updateData.blocked_reason.trim()}`);
+        } else if (prevTask.blocked_reason) {
+          await logTaskAuditComment(orgId, taskId, `🔓 Motivo del bloqueo removido`);
+        }
+      }
+
+      // Subtask resolution and assignment audit loop
+      if (updateData.checklist && Array.isArray(updateData.checklist)) {
+        const prevChecklist = parseTaskChecklist(prevTask.checklist);
+        const newChecklist = parseTaskChecklist(updateData.checklist);
+
+        // Resolve stakeholder mention tags
+        const assignedFirstName = (prevTask as any)?.assigned_staff?.first_name;
+        const creatorFirstName = (prevTask as any)?.creator_staff?.first_name;
+        const notifyTags: string[] = [];
+        if (assignedFirstName) {
+          notifyTags.push(`@${assignedFirstName}`);
+        }
+        if (creatorFirstName && creatorFirstName !== assignedFirstName) {
+          notifyTags.push(`@${creatorFirstName}`);
+        }
+        const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
+
+        for (const item of newChecklist) {
+          const prevItem = prevChecklist.find((p) => p.id === item.id);
+          const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+
+          // 1. Completion / Reactivation detection
+          if (prevItem && !prevItem.completed && item.completed) {
+            await logTaskAuditComment(
+              orgId,
+              taskId,
+              `☑️ Subtarea completada: ${itemTitle}${notifyMsg}`
+            );
+          } else if (prevItem && prevItem.completed && !item.completed) {
+            await logTaskAuditComment(
+              orgId,
+              taskId,
+              `⬜ Subtarea reactivada: ${itemTitle}`
+            );
+          }
+
+          // 2. Assignment / Reassignment detection
+          if (item.assigned_staff_id) {
+            const isNewlyAssigned = !prevItem || prevItem.assigned_staff_id !== item.assigned_staff_id;
+            if (isNewlyAssigned) {
+              const { data: assignedStaff } = await supabaseAdmin
+                .from("organization_staff")
+                .select("first_name, last_name")
+                .eq("id", item.assigned_staff_id)
+                .maybeSingle();
+
+              if (assignedStaff) {
+                await logTaskAuditComment(
+                  orgId,
+                  taskId,
+                  `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
+                );
+              }
+            }
+          }
+        }
+      }
     }
 
     revalidatePath("/operations/tasks");
@@ -755,14 +893,31 @@ export async function updateTask(
 export async function updateTaskStatus(
   taskId: string,
   status: TaskStatus,
-  progress?: number
+  progress?: number,
+  blockedReason?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: currentTask } = await supabaseAdmin
       .from("task_items")
-      .select("progress_percentage, status, checklist, ticket_code, title, organization_id")
+      .select("progress_percentage, status, checklist, ticket_code, title, organization_id, blocked_by_task_id, blocked_reason")
       .eq("id", taskId)
       .single();
+
+    if ((status === "done" || status === "in_review" || progress === 100) && currentTask?.blocked_by_task_id) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", currentTask.blocked_by_task_id)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        const actionLabel = status === "in_review" ? "enviar a revisión / QA" : "completar";
+        return {
+          success: false,
+          error: `No se puede ${actionLabel} el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        };
+      }
+    }
 
     const checklist = parseTaskChecklist(currentTask?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
@@ -779,6 +934,12 @@ export async function updateTaskStatus(
       status: effectiveStatus,
       updated_at: new Date().toISOString()
     };
+
+    if (effectiveStatus === "blocked" && blockedReason !== undefined) {
+      updateData.blocked_reason = blockedReason;
+    } else if (effectiveStatus !== "blocked" && currentTask?.status === "blocked") {
+      updateData.blocked_reason = null;
+    }
 
     if (effectiveProgress !== undefined) {
       updateData.progress_percentage = hasUnfinishedDeliverables && effectiveProgress > 95 ? 95 : effectiveProgress;
@@ -806,6 +967,10 @@ export async function updateTaskStatus(
       const newLabel = TASK_STATUS_LABELS[effectiveStatus as TaskStatus] || effectiveStatus;
       await logTaskAuditComment(currentTask.organization_id, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`);
 
+      if (effectiveStatus === "blocked" && blockedReason && blockedReason.trim()) {
+        await logTaskAuditComment(currentTask.organization_id, taskId, `🚫 Motivo del bloqueo: ${blockedReason.trim()}`);
+      }
+
       if (effectiveStatus === "done") {
         await handleTaskUnblocking(taskId, currentTask.ticket_code, currentTask.title);
       }
@@ -829,14 +994,30 @@ export async function updateTaskProgress(
   try {
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist, ticket_code, title, organization_id")
+      .select("status, checklist, ticket_code, title, organization_id, blocked_by_task_id")
       .eq("id", taskId)
       .single();
+
+    let clampedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+    if (clampedProgress === 100 && current?.blocked_by_task_id) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", current.blocked_by_task_id)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        return {
+          success: false,
+          error: `No se puede completar el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        };
+      }
+    }
 
     const checklist = parseTaskChecklist(current?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
 
-    let clampedProgress = Math.max(0, Math.min(100, Math.round(progress)));
     if (hasUnfinishedDeliverables && clampedProgress > 95) {
       clampedProgress = 95;
     }
@@ -885,7 +1066,7 @@ export async function toggleChecklistItem(
   try {
     const { data: task, error: fetchErr } = await supabaseAdmin
       .from("task_items")
-      .select("checklist, progress_percentage, status")
+      .select("checklist, progress_percentage, status, organization_id")
       .eq("id", taskId)
       .single();
 
@@ -922,6 +1103,16 @@ export async function toggleChecklistItem(
 
     if (updateErr) throw updateErr;
 
+    // Log audit note for subtask completion
+    const toggledItem = checklist.find((i) => i.id === checklistItemId);
+    if (toggledItem && task.organization_id) {
+      const itemTitle = toggledItem.title ? `"${toggledItem.title}"` : "subtarea";
+      const auditMsg = completed
+        ? `☑️ Subtarea completada: ${itemTitle}`
+        : `⬜ Subtarea reactivada: ${itemTitle}`;
+      await logTaskAuditComment(task.organization_id, taskId, auditMsg);
+    }
+
     revalidatePath("/operations/tasks");
     return { success: true, checklist, progress };
   } catch (err: any) {
@@ -941,7 +1132,7 @@ export async function updateChecklistItemAssignee(
   try {
     const { data: task, error: fetchErr } = await supabaseAdmin
       .from("task_items")
-      .select("checklist")
+      .select("checklist, organization_id")
       .eq("id", taskId)
       .single();
 
@@ -966,6 +1157,24 @@ export async function updateChecklistItemAssignee(
       .eq("id", taskId);
 
     if (updateErr) throw updateErr;
+
+    // Log audit note for subtask assignment
+    if (assignedStaffId && task.organization_id) {
+      const { data: staffMember } = await supabaseAdmin
+        .from("organization_staff")
+        .select("first_name, last_name")
+        .eq("id", assignedStaffId)
+        .single();
+      const item = checklist.find((i) => i.id === checklistItemId);
+      if (staffMember && item) {
+        const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+        await logTaskAuditComment(
+          task.organization_id,
+          taskId,
+          `👤 Subtarea ${itemTitle} asignada a @${staffMember.first_name} (${staffMember.first_name} ${staffMember.last_name})`
+        );
+      }
+    }
 
     revalidatePath("/operations/tasks");
     return { success: true, checklist };

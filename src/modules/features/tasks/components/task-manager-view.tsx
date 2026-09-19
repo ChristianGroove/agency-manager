@@ -298,6 +298,15 @@ export function TaskManagerView({
   }
 
   const handleQuickMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+    const targetTask = tasks.find((t) => t.id === taskId)
+    if ((newStatus === "done" || newStatus === "in_review") && targetTask?.blocked_by && targetTask.blocked_by.status !== "done") {
+      const actionLabel = newStatus === "in_review" ? "enviar a Revisión / QA" : "completar"
+      toast.error(
+        `No se puede ${actionLabel} este ticket porque depende de #${targetTask.blocked_by.ticket_code} (${targetTask.blocked_by.title}), el cual aún está pendiente.`
+      )
+      return
+    }
+
     // Optimistic UI update
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
@@ -308,9 +317,16 @@ export function TaskManagerView({
       if (res.success) {
         toast.success(`Tarea movida a: ${newStatus === 'done' ? 'Completado' : newStatus === 'in_review' ? 'Revisión / QA' : newStatus === 'in_progress' ? 'En Progreso' : newStatus}`)
       } else {
-        toast.error("Error al mover la tarea")
+        // Revert optimistic update
+        setTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+        )
+        toast.error(res.error || "Error al mover la tarea")
       }
     } catch (err: any) {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+      )
       toast.error(err.message || "Error al actualizar estado")
     }
   }
@@ -478,7 +494,7 @@ export function TaskManagerView({
           <SearchFilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            searchPlaceholder="Buscar por código, título o responsable..."
+            searchPlaceholder="Buscar por ticket, título o responsable..."
             filters={[
               { id: "all", label: "Todas", count: totalCount },
               { id: "backlog", label: "Backlog", count: backlogCount, color: "slate" },
@@ -708,6 +724,7 @@ export function TaskManagerView({
         {activeTab === "list" && (
           <TaskListView
             tasks={visibleTasks}
+            teamMembers={collaborators}
             onSelectTask={handleSelectTask}
             onQuickMoveTask={handleQuickMoveTask}
           />

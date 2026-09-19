@@ -50,6 +50,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 
 interface TaskKanbanBoardProps {
   tasks: TaskItem[]
@@ -235,9 +236,23 @@ const SortableTaskCard = React.memo(
       </div>
 
       {/* Title */}
-      <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-snug">
-        {task.title}
-      </h4>
+      <div className="flex items-start justify-between gap-1.5">
+        <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-snug flex-1">
+          {task.title}
+        </h4>
+        <TaskSubtasksTooltipBadge
+          checklist={task.checklist}
+          onClick={() => onSelectTask && onSelectTask(task)}
+        />
+      </div>
+
+      {/* Blocker Reason Note */}
+      {task.status === "blocked" && task.blocked_reason && (
+        <div className="px-2 py-1 rounded-md bg-destructive/10 border border-destructive/20 text-destructive dark:text-red-400 text-[10px] leading-tight flex items-start gap-1">
+          <Ban className="w-3 h-3 shrink-0 mt-0.5" />
+          <span className="line-clamp-2 font-medium">{task.blocked_reason}</span>
+        </div>
+      )}
 
       {/* Semantic Stage / QA Badges */}
       {task.tags && task.tags.length > 0 && (
@@ -423,6 +438,15 @@ export function TaskKanbanBoard({
       if (targetStatus === "done" && hasUnfinishedDeliverables) {
         toast.warning("Entregables pendientes", {
           description: "No se puede mover la tarea a 'Completado' porque aún tiene entregables sin finalizar. Debe estar al 100% de entregables."
+        })
+        return
+      }
+
+      if ((targetStatus === "done" || targetStatus === "in_review") && currentTask.blocked_by && currentTask.blocked_by.status !== "done") {
+        const actionLabel = targetStatus === "in_review" ? "enviar a Revisión / QA" : "mover a 'Completado'"
+        toast.warning("Ticket con dependencia pendiente", {
+          description: `No se puede ${actionLabel} porque depende de #${currentTask.blocked_by.ticket_code || "ticket predecesor"} (${currentTask.blocked_by.title || ""}), el cual aún está pendiente.`,
+          id: "blocker-close-lock",
         })
         return
       }

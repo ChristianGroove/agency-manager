@@ -5,7 +5,8 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { revalidatePath } from "next/cache"
 import {
   TenantTaskTag,
-  DEFAULT_TENANT_TASK_TAGS
+  DEFAULT_TENANT_TASK_TAGS,
+  isStaffLeadOrPmRole
 } from "../types"
 
 /**
@@ -24,13 +25,7 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
       throw new Error("Acceso de colaborador no autorizado o token inválido")
     }
 
-    const roleLower = (staff.role || "").toLowerCase()
-    const isLeadOrPm =
-      roleLower.includes("pm") ||
-      roleLower.includes("lead") ||
-      roleLower.includes("project") ||
-      roleLower.includes("gerente") ||
-      roleLower.includes("manager")
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role)
 
     return {
       organizationId: staff.organization_id,

@@ -269,31 +269,83 @@ export function ShimmerText({
     children,
     active = false,
     className = "",
+    duration,
 }: {
     children: React.ReactNode
     active?: boolean
     className?: string
+    duration?: number
 }) {
-    if (!active || !children) {
+    const [isFading, setIsFading] = useState(false)
+    const [isDone, setIsDone] = useState(false)
+
+    useEffect(() => {
+        if (!active || !duration) {
+            setIsDone(false)
+            setIsFading(false)
+            return
+        }
+
+        setIsDone(false)
+        setIsFading(false)
+
+        const fadeStartTime = Math.max(0, duration - 700)
+        const fadeTimer = setTimeout(() => {
+            setIsFading(true)
+        }, fadeStartTime)
+
+        const doneTimer = setTimeout(() => {
+            setIsDone(true)
+        }, duration)
+
+        return () => {
+            clearTimeout(fadeTimer)
+            clearTimeout(doneTimer)
+        }
+    }, [active, duration, children])
+
+    if (!active || !children || isDone) {
         return <>{children}</>
     }
 
-    if (typeof children !== "string") {
-        return <span className={cn("animate-text-shimmer", className)}>{children}</span>
+    const renderShimmerContent = (content: React.ReactNode) => {
+        if (typeof content !== "string") {
+            return <span className={cn("animate-text-shimmer", className)}>{content}</span>
+        }
+
+        // Aislar emoji o pictograma inicial para conservar sus colores nativos y aplicar shimmer al texto
+        const emojiMatch = content.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\s*)(.*)$/u)
+        if (emojiMatch) {
+            return (
+                <span className={cn("inline-flex items-center gap-1.5", className)}>
+                    <span className="shrink-0">{emojiMatch[1]}</span>
+                    <span className="animate-text-shimmer">{emojiMatch[2]}</span>
+                </span>
+            )
+        }
+
+        return <span className={cn("animate-text-shimmer", className)}>{content}</span>
     }
 
-    // Aislar emoji o pictograma inicial para conservar sus colores nativos y aplicar shimmer al texto
-    const emojiMatch = children.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\s*)(.*)$/u)
-    if (emojiMatch) {
-        return (
-            <span className={cn("inline-flex items-center gap-1.5", className)}>
-                <span className="shrink-0">{emojiMatch[1]}</span>
-                <span className="animate-text-shimmer">{emojiMatch[2]}</span>
+    if (!duration) {
+        return renderShimmerContent(children)
+    }
+
+    return (
+        <span className="relative inline-block max-w-full">
+            <span className={cn("transition-opacity duration-700", isFading ? "opacity-100" : "opacity-0")}>
+                {children}
             </span>
-        )
-    }
-
-    return <span className={cn("animate-text-shimmer", className)}>{children}</span>
+            <span
+                className={cn(
+                    "absolute inset-0 transition-opacity duration-700 pointer-events-none select-none",
+                    isFading ? "opacity-0" : "opacity-100"
+                )}
+            >
+                {renderShimmerContent(children)}
+            </span>
+        </span>
+    )
 }
 
 export function GlobalDashboardBanner({

@@ -1,29 +1,30 @@
 # Arquitectura Integral del Módulo de Gestión de Tareas (Task Management)
 
-Este documento describe la estructura técnica, modelo de datos relacional, mecanismos de control de acceso (RBAC granular por espacios), flujos operativos, estándares de interfaz y optimizaciones de rendimiento del módulo de **Gestión de Tareas (`tasks`)** y sus **Portales de Colaboradores**, en el ecosistema de PIXY Agency Manager.
+Este documento describe la estructura técnica, modelo de datos relacional, mecanismos de control de acceso (RBAC granular por espacios y roles), flujos operativos, arquitectura del sistema de subtareas colaborativas, estándares de interfaz, efectos visuales de enfoque y optimizaciones de rendimiento del módulo de **Gestión de Tareas (`tasks`)** y sus **Portales de Colaboradores**, en el ecosistema de PIXY Agency Manager.
 
 ---
 
 ## 1. Visión General y Jerarquía de Trabajo
 
-El módulo orquesta el ciclo de vida operativo de los requerimientos y sprints de la agencia a través de una jerarquía de tres niveles:
+El módulo orquesta el ciclo de vida operativo de los requerimientos y sprints de la agencia a través de una jerarquía de cuatro niveles:
 
 ```mermaid
 graph TD
-    A["Espacio de Trabajo (Workspace)"] --> B["Proyecto (Contenedor Macro)"]
-    B --> C["Ticket / Requerimiento (Task Item)"]
-    C --> D["Subtareas Colaborativas (Checklist con Responsables)"]
+    A["Espacio de Trabajo (Workspace)"] --> B["Proyecto / Sprint (Contenedor Macro)"]
+    B --> C["Ticket / Requerimiento Principal (Task Item)"]
+    C --> D["Subtareas Colaborativas (Checklist con Responsable & Semana)"]
     C --> E["Dependencias de Bloqueo (blocked_by_task_id)"]
-    C --> F["Etiquetas & Etapas QA"]
-    C --> G["Recursos & Adjuntos"]
-    C --> H["Hilo Unificado: Actividad, Auditoría & Discusión"]
+    C --> F["Catálogo de Etiquetas & Etapas QA"]
+    C --> G["Recursos & Adjuntos (Figma, GitHub, Docs, Archivos)"]
+    C --> H["Hilo Unificado: Actividad, Auditoría de Avance & Discusión"]
 ```
 
 ### Componentes Principales del Sistema
-1. **Plataforma Central (`/operations/tasks`)**: Panel de control administrativo para dueños de agencia, administradores y personal interno con acceso a métricas globales, tableros Kanban interactivos con detección de bloqueos `🚫`, matriz de ritmo semanal (S1..S4), vistas de lista paginadas y gestión de espacios y proyectos.
+1. **Plataforma Central (`/operations/tasks`)**: Panel administrativo para directores, administradores y personal interno con acceso a métricas globales (`TaskMetricsView`), tableros Kanban interactivos (`TaskKanbanBoard`) con detección de bloqueos `🚫`, matriz de ritmo semanal (`TaskWeeklyPacingMatrix`), vistas de lista paginadas (`TaskListView`) y gestión integral de espacios y proyectos.
 2. **Portales Seguros por Token (`/portal/tasks/[token]`)**: Entornos web aislados accesibles mediante tokens criptográficos únicos por colaborador (`organization_staff.access_token`), sin requerir autenticación directa a la base de datos:
-   - **Modo Colaborador (Ejecución)**: Enfocado en entregables y subtareas propias (tanto tareas asignadas como subtareas delegadas en tickets de otros miembros), minimizando ruido visual, con slider de progreso seguro y checklist interactivo.
-   - **Modo Gestor de Proyecto (PM / Lead)**: Puesto de mando avanzado con telemetría de ritmo mensual, cinta interactiva de especialistas, delegación de subtareas individuales con responsable, control de dependencias de bloqueo y facultad de crear proyectos y tickets según sus espacios autorizados.
+   - **Modo Colaborador (Ejecución)**: Enfocado en entregables y subtareas asignadas al colaborador (tanto si es el responsable principal del ticket como si participa como colaborador de subtarea en tickets ajenos). Cuenta con microinteracciones de enfoque visual (**Border Beam permanente** y **Shimmer temporal**), controles de cierre seguros y aislamiento estricto de permisos.
+   - **Modo Gestor de Proyecto (PM / Lead)**: Puesto de mando táctico (`TaskPmOperationsDashboard`) con telemetría de ritmo, cinta interactiva de especialistas (`TaskCollaboratorRibbon`), delegación de subtareas individuales con asignación de responsable y semana, control de dependencias de bloqueo y facultad de crear proyectos y tickets según sus espacios autorizados.
+   - **Modo Aseguramiento de Calidad (QA)**: Detección semántica de roles (`isStaffLeadOrPmRole` con keywords QA) con botones de acción rápida para aprobar requerimientos a producción o reportar hallazgos.
 
 ---
 
@@ -38,12 +39,15 @@ Define los espacios o unidades operativas macro (ej. *Desarrollo Web*, *App Móv
 | `id` | UUID (PK) | Identificador único del espacio. |
 | `organization_id` | UUID (FK) | Tenant propietario. |
 | `name` | Text | Nombre descriptivo del espacio de trabajo. |
+| `slug` | Text | Identificador URL amigable. |
+| `key_prefix` | Text | Prefijo para códigos de tickets (ej: `WEB`, `APP`, `MKT`). |
 | `color` | Text | Color hexadecimal para identificación visual. |
 | `description` | Text | Descripción opcional del alcance del espacio. |
 | `icon` | Text | Identificador de icono de Lucide. |
+| `lead_staff_id` | UUID (FK, Nullable) | Responsable o líder del espacio. |
 | `order_index` | Integer | Posicionamiento en menús y selectores. |
 | `is_active` | Boolean | Estado de vigencia (default: `true`). |
-| `created_at` | Timestamp | Fecha y hora de creación. |
+| `created_at` / `updated_at` | Timestamp | Registro temporal de creación y actualización. |
 
 ### B. Tabla: `task_workspace_members`
 Gobierna el control de acceso granular por espacio para colaboradores.
@@ -63,11 +67,14 @@ Contenedores macro para agrupar tickets y requerimientos de un objetivo específ
 | `organization_id` | UUID (FK) | Tenant propietario. |
 | `workspace_id` | UUID (FK, Opcional) | Espacio al que pertenece el proyecto. |
 | `name` | Text | Nombre del proyecto. |
+| `slug` | Text | Slug único del proyecto. |
 | `color` | Text | Color hexadecimal del proyecto. |
+| `icon` | Text | Ícono representativo. |
 | `description` | Text | Descripción de alcance y objetivos. |
-| `status` | Text | `planning`, `active`, `completed`, `on_hold`. |
+| `status` | Text (`ProjectStatus`) | `active`, `paused`, `completed`, `archived`. |
+| `lead_staff_id` | UUID (FK, Nullable) | Líder técnico asignado. |
 | `start_date` | Timestamp | Fecha de inicio programada. |
-| `end_date` | Timestamp | Fecha de cierre estimada. |
+| `target_date` | Timestamp | Fecha de cierre estimada. |
 | `is_active` | Boolean | Indicador de proyecto activo. |
 | `order_index` | Integer | Orden de presentación visual. |
 
@@ -78,24 +85,32 @@ Unidad atómica de requerimiento técnico, tarea o ticket.
 | `id` | UUID (PK) | Identificador único del ticket. |
 | `organization_id` | UUID (FK) | Tenant propietario. |
 | `project_id` | UUID (FK) | Proyecto asociado (`task_projects`). |
-| `ticket_code` | Text | Código autogenerado secuencial (ej: `TK-101`, `PRJ-102`). |
+| `ticket_code` | Text | Código autogenerado secuencial (ej: `WEB-101`, `APP-204`). |
 | `title` | Text | Título descriptivo y conciso de la tarea. |
 | `description` | Text | Criterios de aceptación y especificaciones técnicas. |
 | `status` | Text (`TaskStatus`) | `backlog`, `todo`, `in_progress`, `in_review`, `blocked`, `done`. |
 | `priority` | Text (`TaskPriority`) | `low`, `medium`, `high`, `urgent`. |
 | `type` | Text (`TaskType`) | `task`, `feature`, `bug`, `improvement`, `delivery`. |
-| `assigned_staff_id` | UUID (FK, Nullable) | Especialista líder asignado (`organization_staff`). |
-| `created_by_staff_id` | UUID (FK, Nullable) | Creador de la tarea. |
+| `assigned_staff_id` | UUID (FK, Nullable) | Especialista líder asignado (`organization_staff`). Dueño del ticket padre. |
+| `created_by_staff_id` | UUID (FK, Nullable) | Creador del ticket. |
 | `qa_staff_id` | UUID (FK, Nullable) | Tester o revisor de calidad asignado. |
 | `progress_percentage` | Integer | Avance registrado (0 - 100%). |
 | `estimated_hours` | Numeric | Horas estimadas de ejecución. |
 | `actual_hours` | Numeric | Horas reales reportadas. |
-| `checklist` | JSONB | Subtareas y entregables (`TaskChecklistItem[]`) con soporte para `assigned_staff_id`, `estimated_hours` y `target_week`. |
+| `checklist` | JSONB (`TaskChecklistItem[]`) | Subtareas y entregables granulares con asignación de colaborador individual, semana objetivo y horas. |
 | `blocked_by_task_id` | UUID (FK, Nullable) | Ticket predecesor que bloquea esta tarea (`task_items.id`). Dispara auto-desbloqueo reactivo al completarse. |
-| `tags` | Text[] / JSONB | Etiquetas libres y etapas de flujo del sistema. |
-| `attachments` | JSONB | Referencias a Figma, GitHub, imágenes y documentos. |
+| `blocked_reason` | Text (Nullable) | Motivo o nota de impedimento registrada cuando la tarea está en estado `blocked`. Neutral y aplicable a cualquier tipo de negocio. Se limpia automáticamente a `null` al salir del estado bloqueado. |
+| `tags` | Text[] / JSONB | Etiquetas libres y etapas de flujo del catálogo del tenant. |
+| `attachments` | JSONB (`TaskAttachment[]`) | Enlaces externos (Figma, GitHub, Docs) y archivos subidos a storage. |
 | `due_date` | Date / Timestamp | Fecha límite de entrega del entregable. |
 | `order_index` | Integer | Orden dentro de columnas Kanban. |
+| `is_recurring` | Boolean | Indicador de tarea periódica recurrente. |
+| `recurrence_interval` | Text | Intervalo (`daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `biannual`, `yearly`). |
+| `recurrence_day` | Integer | Día del ciclo programado (1-7 semanal, 1-31 mensual). |
+| `parent_recurring_id` | UUID (FK, Nullable) | Tarea matriz de la que se derivó la recurrencia. |
+| `last_recurred_at` | Timestamp | Última fecha en que se renovó. |
+| `next_recurrence_at` | Timestamp | Próxima fecha programada para renovación. |
+| `weekly_snapshots` | JSONB | Cortes inmutables congelados por semana (`{"s1": number, "s2": number, "s3": number, "s4": number}`). |
 
 ### E. Tabla: `task_comments`
 Canal de discusión contextual del ticket con soporte para menciones de equipo y trazabilidad de eventos del sistema (Auditoría Integrada):
@@ -108,20 +123,148 @@ Canal de discusión contextual del ticket con soporte para menciones de equipo y
 | `author_id` | UUID (FK) | Colaborador emisor (o null si es generado por el sistema). |
 | `author_name` | Text | Nombre visible del autor o "Sistema". |
 | `author_avatar` | Text | URL del avatar. |
-| `content` | Text | Mensaje formateado o nota de auditoría (`📈`, `🔄`, `👤`, `📅`, `⚡`, `🚫`, `🔓`). |
-| `mentions` | JSONB | Metadatos de colaboradores mencionados para notificaciones. |
+| `content` | Text | Mensaje formateado o nota de auditoría (`📈`, `📉`, `🔄`, `👤`, `📅`, `⚡`, `🚫`, `🔓`, `☑️`, `⬜`). Incluye notas de bloqueo `🚫 Motivo del bloqueo: ...` y resolución `🔓 Motivo del bloqueo removido`. |
+| `mentions` | JSONB / Text[] | Metadatos de colaboradores mencionados para notificaciones. |
 
-### F. Mecanismo de Desbloqueo Reactivo (Auto-Unblock Engine)
+### F. Mecanismo de Desbloqueo Reactivo y Restauración Inteligente
 1. Cuando una tarea pasa a estado `done` o alcanza el 100% de progreso:
    - Se ejecuta `handleTaskUnblocking(predecessorId, ticketCode, title)` en [`task-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/task-actions.ts) o `handlePortalTaskUnblocking` en [`collaborator-portal-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/collaborator-portal-actions.ts).
    - Se localizan todas las tareas dependientes (`WHERE blocked_by_task_id = predecessorId`).
    - Se registra una nota de auditoría del sistema: `🔓 Bloqueo resuelto automáticamente por finalización de #TK-xxx`.
-   - Si la tarea dependiente tenía estado `blocked`, avanza automáticamente a `todo` para desbloquear el flujo operativo sin intervención manual.
-   - Las tareas desbloqueadas alertan a sus responsables y eliminan el micro-badge `🚫` en Kanban y listas.
+   - Si la tarea dependiente tenía estado `blocked`:
+     - Se restaura a `in_progress` si su progreso previo es `> 0%` (preservando el trabajo ya iniciado por el colaborador).
+     - Se restaura a `todo` si su progreso previo es `=== 0%`.
+     - Se limpia automáticamente `blocked_reason = null` para reabrir el flujo sin residuos.
+   - Las tareas desbloqueadas alertan a sus responsables y eliminan el micro-badge `🚫` en Kanban, listas y portales.
+2. **Blindaje de Bloqueos:**
+   - Una tarea bloqueada no puede pasar a `done` ni a `in_review` mientras la dependencia esté pendiente.
+   - Si se desvincula manualmente la dependencia (`val === "none"`), el estado se restaura inteligentemente a `in_progress` o `todo`.
 
 ---
 
-## 3. Control de Acceso y Aislamiento por Espacios (RBAC Granular)
+## 3. Arquitectura del Sistema de Subtareas y Entregables Colaborativos
+
+El sistema de subtareas transforma el checklist tradicional en un motor de delegación multidireccional dentro del mismo ticket principal.
+
+```mermaid
+graph TD
+    subgraph Ticket Padre: Responsable Directo
+        T["Ticket #WEB-1920: Implementar Módulo de Pagos"]
+        Owner["Responsable Principal: Jefferson"]
+    end
+    subgraph Checklist: Subtareas Asignadas
+        S1["Subtarea 1: Maquetar UI de Tarjetas -> Juan C."]
+        S2["Subtarea 2: Integrar Webhooks Backend -> Christian G."]
+        S3["Subtarea 3: Revisión de Seguridad -> Sin Asignar"]
+    end
+    T --> S1
+    T --> S2
+    T --> S3
+    
+    Owner -->|"Puede mover slider & cerrar"| T
+    Juan["Juan C."] -->|"Solo marca Subtarea 1"| S1
+    Christian["Christian G."] -->|"Solo marca Subtarea 2"| S2
+    Juan -.->|"Bloqueado / Readonly"| S2
+    Christian -.->|"Bloqueado / Readonly"| S1
+    Juan -.->|"Slider Bloqueado"| T
+    Christian -.->|"Slider Bloqueado"| T
+```
+
+### A. Estructura de Datos de una Subtarea (`TaskChecklistItem`)
+```typescript
+export type TaskChecklistItem = {
+  id: string;                         // Identificador único (ej: "item-1726712345678")
+  title: string;                      // Descripción del entregable
+  completed: boolean;                 // Estado completado / pendiente
+  completed_at?: string;              // ISO Timestamp de resolución
+  completed_by?: string;              // Primer nombre del colaborador que resolvió
+  target_week?: 1 | 2 | 3 | 4 | null; // Semana asignada del mes para la Matriz de Ritmo
+  due_date?: string | null;           // Fecha límite específica del entregable
+  assigned_staff_id?: string | null;  // Colaborador especialista delegado
+  assigned_staff?: {                  // Hidratación visual del especialista
+    id: string;
+    first_name: string;
+    last_name: string;
+    photo_url?: string | null;
+    role?: string;
+  } | null;
+  estimated_hours?: number | null;    // Horas estimadas para la subtarea
+};
+```
+
+### B. Matriz de Permisos y Reglas de Aislamiento (Seguridad Frontend & Backend)
+
+| Acción / Elemento | Colaborador con Subtarea Propia | Responsable del Ticket Padre | Gestor PM / Lead / Admin |
+|---|---|---|---|
+| **Marcar su propia subtarea** | ✅ Permitido | ✅ Permitido | ✅ Permitido |
+| **Marcar subtarea de otro colaborador** | ❌ **BLOQUEADO** (Disabled + Rechazo) | ✅ Permitido | ✅ Permitido |
+| **Marcar subtarea sin asignar** | ❌ **BLOQUEADO** (Disabled + Rechazo) | ✅ Permitido | ✅ Permitido |
+| **Arrastrar Slider de Progreso General** | ❌ **BLOQUEADO** (Slider disabled + Lock) | ✅ Permitido | ✅ Permitido |
+| **Cerrar Ticket a 100% / estado `done`** | ❌ **BLOQUEADO** (Rechazo en Server) | ✅ Permitido (si checklist completo) | ✅ Permitido (si checklist completo) |
+| **Reasignar responsable de subtarea** | ❌ Solo lectura | ❌ Solo lectura | ✅ Permitido (Select interactivo) |
+| **Cambiar semana objetivo (`target_week`)** | ❌ Solo lectura | ❌ Solo lectura | ✅ Permitido (Select interactivo) |
+| **Eliminar subtarea del checklist** | ❌ Solo lectura | ❌ Solo lectura | ✅ Permitido (Botón papelera) |
+
+#### Implementación en Servidor ([`collaborator-portal-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/collaborator-portal-actions.ts)):
+1. **En `portalToggleChecklist`**:
+   - Resuelve si el solicitante es el dueño directo (`task.assigned_staff_id === staff.id`) o PM (`isStaffLeadOrPmRole`).
+   - Si no lo es, valida estrictamente: `targetItem.assigned_staff_id === staff.id`.
+   - Si un colaborador intenta alterar la subtarea de otro, la acción falla con error 403: *"No tienes autorización para marcar subtareas asignadas a otros colaboradores."*
+   - Si intenta marcar una subtarea sin asignar: *"Solo el responsable directo de la tarea o un PM pueden marcar subtareas generales."*
+2. **En `portalUpdateTaskProgress`**:
+   - Valida `canCloseParentTask = isLeadOrPm || isMainAssignee`.
+   - Si un colaborador ajeno intenta modificar el slider vía API: *"Solo el responsable directo de la tarea o un PM pueden ajustar el avance general del ticket."*
+3. **En `portalUpdateTask`**:
+   - Para no propietarios: `delete data.progressPercentage` descarta cualquier intento de sobreescribir el avance general del ticket.
+   - El payload del checklist se sanitiza en el backend: solo se aceptan mutaciones de `completed` sobre los ítems donde `existing.assigned_staff_id === staff.id`.
+   - El progreso se recalcula matemáticamente según los entregables válidos completados.
+   - **Regla de Paso a QA**: Si todas las subtareas se completan y el progreso llega a 100%, el ticket avanza a `in_review` (QA) y **nunca directamente a `done`**, garantizando que el responsable o el PM hagan la entrega formal.
+
+---
+
+## 4. Experiencia Visual de Enfoque en Subtareas (Microinteracciones Premium)
+
+Para que los colaboradores identifiquen de forma instantánea qué entregable les corresponde al abrir un ticket sin confundirse con las tareas de sus compañeros:
+
+### A. Border Beam Permanente (`.animate-border-beam`)
+- **Propósito**: Delimitar de manera continua la caja de la subtarea que pertenece al colaborador conectado.
+- **Implementación Técnica** ([`globals.css`](file:///G:/Pixy/agency-manager/src/app/globals.css)):
+  - `@property --beam-angle`: Registra la propiedad CSS tipada `<angle>` para que el motor del navegador interpole suavemente los 360 grados del gradiente cónico.
+  - `@keyframes border-beam-spin`: Rotación infinita continua de `0deg` a `360deg`.
+  - Contenedor con `mask-composite: exclude` y pseudo-elemento `::before` de 1.5px de grosor.
+  - Inyección dinámica del color corporativo de la organización mediante la variable `--beam-color: brandColor`.
+  - **Permanencia**: La animación corre con `animation: border-beam-spin 4s linear infinite;`, manteniéndose activa mientras la subtarea permanezca pendiente.
+  - Al completarse la subtarea, la clase se retira automáticamente, pasando al estado estándar con check esmeralda y texto tachado.
+
+### B. Shimmer de Texto Temporal con Desvanecimiento Suave (`ShimmerText`)
+- **Propósito**: Destacar el título de la subtarea con una ola de brillo reflectante en el momento en que se abre el modal o se cargan las tarjetas, y luego disolverse suavemente hacia el texto normal para evitar fatiga visual.
+- **Implementación Técnica** ([`global-dashboard-banner.tsx`](file:///G:/Pixy/agency-manager/src/modules/core/dashboard/components/global-dashboard-banner.tsx)):
+  - Propiedad opcional `duration?: number` (fijada en `3000` ms para subtareas).
+  - Durante los primeros ~2.3s corre la ola de máscara `text-shimmer-wave`.
+  - A los 2.3s (`duration - 700ms`), se activa una transición de opacidad cruzada (`duration-700`): la capa con la máscara de brillo transiciona a `opacity-0` mientras el texto sólido normal transiciona a `opacity-100`.
+  - A los 3.0s, el efecto se desmonta por completo, retornando el texto limpio `{children}` sin sobrecarga en el DOM.
+  - **Reactivación por Apertura**: En el modal de detalle se monta con `key={`${item.id}-${isOpen}`}`, garantizando que cada vez que el colaborador abre el modal de un ticket, el destello de 3 segundos se ejecuta nuevamente de forma impecable.
+
+### C. Estado de Subtareas de Terceros
+- Checkbox inhabilitado (`cursor-not-allowed opacity-40`).
+- Icono de candado ([`Lock`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx)) de 14x14px envuelto en contenedor semántico con tooltip nativo.
+- Fondo atenuado (`bg-muted/20 border-border/40 opacity-75`).
+- Al hacer clic en una tarjeta bloqueada en el Grid, se emite un toast de advertencia inmediato: *"Solo el colaborador asignado a esta subtarea puede marcarla."*
+
+### D. Burbuja de Subtareas en Tablas de Requerimientos (`TaskSubtasksTooltipBadge`)
+- Componente compartido: [`task-subtasks-tooltip-badge.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/shared/task-subtasks-tooltip-badge.tsx).
+- Ubicado en la columna del título en las tablas de `/operations/tasks` y `/portal/tasks/[token]`.
+- Muestra una píldora con icono `CheckSquare` y contador `completadas/total` (ej: `1/3`):
+  - 🟢 Verde esmeralda si están 100% completas (`CheckCircle2`).
+  - 🔵 Azul cielo si hay avance parcial (> 0).
+  - ⚪ Gris neutro si están todas pendientes.
+- Al posar el cursor (`hover`), despliega un `TooltipContent` translúcido estilizado con:
+  - Mini barra de progreso porcentual.
+  - Lista detallada de subtareas: nombre, estado (tachado y atenuado si está lista), indicador de semana (`S1`..`S4`) y chip con mención del responsable asignado (`@Juan C.`).
+
+---
+
+## 5. Control de Acceso y Aislamiento por Espacios (RBAC Granular)
 
 Para permitir que una agencia gestione múltiples unidades operativas (ej. *Espacio Web* y *Espacio App Móvil*) sin que colaboradores ajenos tengan visibilidad no autorizada:
 
@@ -143,7 +286,7 @@ Para permitir que una agencia gestione múltiples unidades operativas (ej. *Espa
 
 ---
 
-## 4. Patrones de Interfaz y Navegación
+## 6. Patrones de Interfaz y Navegación
 
 ### A. Combobox Unificado en Árbol (Espacios y Proyectos)
 En lugar de selectores separados que consumen espacio horizontal, se diseñó un combobox jerárquico integrado en [`task-manager-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx) y [`task-collaborator-portal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx):
@@ -161,7 +304,7 @@ El botón principal despliega un menú contextual según permisos:
 
 ---
 
-## 5. Estándar de Diseño de Modales (Estilo Linear / Jira)
+## 7. Estándar de Diseño de Modales (Estilo Linear / Jira)
 
 Para evitar contaminación visual y antipatrones de interfaz:
 
@@ -181,62 +324,65 @@ Para evitar contaminación visual y antipatrones de interfaz:
 
 ---
 
-## 6. Sistema Integral de Etiquetas (Tags & Etapas de Flujo)
+## 8. Sistema Integral de Etiquetas (Tags & Catálogo Dinámico del Tenant)
 
-### Componente Unificado: [`TaskTagSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/tags/task-tag-selector.tsx)
-Centraliza la gestión visual y funcional de etiquetas:
+### A. Catálogo Dinámico en `organizations.app_metadata.task_tags`
+A diferencia de esquemas rígidos con tablas SQL dedicadas, el catálogo de etiquetas del tenant se persiste y versiona en la columna `app_metadata` de la organización mediante [`task-tag-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/task-tag-actions.ts):
+- **Tipado (`TenantTaskTag`)**:
+  ```typescript
+  export interface TenantTaskTag {
+    id: string;            // slug/key único sanitizado (ej: "qa-failed", "frontend")
+    name: string;          // nombre de la etiqueta
+    label: string;         // etiqueta visible para el usuario
+    color: string;         // 'blue' | 'emerald' | 'purple' | 'amber' | 'red' | 'indigo' | 'rose' | 'cyan' | 'slate'
+    is_favorite: boolean;  // si es favorita para predominar arriba en el selector
+    created_at?: string;
+    created_by?: string;
+  }
+  ```
+- **Inicialización Automática**: Si el tenant aún no tiene etiquetas configuradas, `getTenantTaskTags` siembra y persiste automáticamente el array `DEFAULT_TENANT_TASK_TAGS`.
+- **Gobernanza de Catálogo**:
+  - `createTenantTaskTag`: Exclusivo para PMs, Leads y administradores (`canManageCatalog`). Sanitiza el nombre (slug en minúsculas sin símbolos `#` o `@`).
+  - `toggleFavoriteTenantTaskTag`: Permite fijar o desfijar etiquetas para que aparezcan en el bloque superior de acceso rápido.
+  - `deleteTenantTaskTag`: Valida antes con `getTagUsageCount` para evitar eliminar etiquetas con alto volumen de uso activo en tickets.
 
-```mermaid
-graph LR
-    subgraph TaskTagSelector
-        A["SYSTEM_STAGE_TAGS (Etapas Clave)"] --> C["Array tags: string[]"]
-        B["Custom Tags (Input Libre '#')"] --> C
-    end
-    C --> D["Persistencia en DB (task_items.tags)"]
-    C --> E["Filtros Rápidos en Toolbar"]
-    C --> F["Chips en Kanban, Lista & Portales"]
-```
+### B. Componente Unificado: [`TaskTagSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/tags/task-tag-selector.tsx)
+Centraliza la gestión visual en creación, edición y portales:
+- Despliega primero las etiquetas favoritas en píldoras coloreadas de un solo clic.
+- Barra de búsqueda reactiva para localizar etiquetas del catálogo por nombre.
+- Input para crear nuevas etiquetas al presionar `Enter` (si el usuario tiene permisos de gestión).
+- Píldoras activas removibles con botón `×`.
 
-#### A. Etapas Semánticas del Sistema (`SYSTEM_STAGE_TAGS`)
-Pre-configuradas para conectar con los filtros analíticos de la agencia:
-| Clave | Etiqueta Visible | Color / BadgeClass | Propósito Operativo |
-|---|---|---|---|
-| `qa-failed` | QA Erróneo | Rojo (`bg-red-500/10 text-red-600 border-red-500/30`) | Ticket rechazado en pruebas de calidad. |
-| `uat` | UAT | Púrpura (`bg-purple-500/10 text-purple-600 border-purple-500/30`) | En validación por parte del cliente o usuario final. |
-| `vendor-blocked` | Espera Proveedor | Ámbar (`bg-amber-500/10 text-amber-600 border-amber-500/30`) | Bloqueo externo por APIs, credenciales o terceros. |
-| `ready-for-release` | Listo Release | Esmeralda (`bg-emerald-500/10 text-emerald-600 border-emerald-500/30`) | Aprobado técnicamente para pase a producción. |
-
-#### B. Etiquetas Personalizadas Libres (Custom Tags)
-- Input con prefijo visual `#`.
-- Normalización automática al presionar `Enter` o click en `Añadir`:
-  - Conversión a minúsculas (`toLowerCase`).
-  - Reemplazo de espacios por guiones medios (`slugify`).
-  - Eliminación de `#` o `@` iniciales duplicados.
-  - Prevención de duplicados en el array de la tarea.
-
-#### C. Visualización Transversal
-- **Tablero Kanban ([`task-kanban-board.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/kanban/task-kanban-board.tsx))**: Renderiza las etapas del sistema con su estilo semántico y las etiquetas personalizadas con chips sutiles `#{tag}`.
+### C. Visualización Transversal
+- **Tablero Kanban ([`task-kanban-board.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/kanban/task-kanban-board.tsx))**: Renderiza las etapas del sistema con su estilo semántico y las etiquetas del catálogo con chips sutiles `#{tag}`.
 - **Vista de Lista ([`task-list-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/list/task-list-view.tsx))**: Badges compactos junto al título del ticket.
-- **Portal de Colaboradores ([`task-collaborator-portal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx))**: Visualización en tarjetas Kanban individuales, tarjetas del monitor de equipo y filas de la tabla de tareas.
+- **Portal de Colaboradores ([`task-collaborator-portal.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx))**: Chips visibles en tarjetas individuales y en la tabla de tareas.
 
 ---
 
-## 7. Reglas de Negocio y Restricciones Operativas
+## 9. Reglas de Negocio y Restricciones Operativas
 
-1. **Regla del 95% en Entregables**:
-   - Una tarea **no puede alcanzar el 100% de progreso ni cambiar al estado `done`** si tiene entregables sin completar en su checklist (`TaskChecklistItem[]`).
-   - El sistema frena automáticamente el avance en **95%**, ajusta el estado a `in_review` y notifica al colaborador.
-2. **Slider de Progreso Seguro**:
+1. **Aislamiento de Subtareas por Colaborador**:
+   - Un colaborador que participa en un ticket ajeno únicamente puede marcar o desmarcar la subtarea que tenga asignada su `assigned_staff_id`.
+   - No puede alterar subtareas asignadas a sus compañeros ni subtareas generales sin asignar.
+   - Cualquier intento es bloqueado en la interfaz y rechazado con código 403 en servidor (`portalToggleChecklist` y `portalUpdateTask`).
+2. **Bloqueo del Slider y Cierre para Colaboradores de Subtareas**:
+   - El slider de porcentaje general y el cambio de estado a `done` están estrictamente reservados para el **responsable principal del ticket** (`task.assigned_staff_id === staff.id`), el **Gestor de Proyecto / Lead** o el **Revisor QA**.
+   - Para colaboradores de subtarea, el slider se presenta deshabilitado con icono de candado `Lock` y el servidor ignora cualquier valor de `progressPercentage` enviado por el cliente.
+3. **Regla del 95% y Transición Automática a QA (`in_review`)**:
+   - Una tarea **no puede alcanzar el 100% de progreso ni cambiar al estado `done`** si tiene subtareas sin completar en su checklist. El sistema frena el avance en **95%** y ajusta el estado a `in_review`.
+   - Cuando todas las subtareas son completadas por los colaboradores (100% de entregables listos), el ticket avanza automáticamente a `in_review` (QA) y **nunca a `done`**, garantizando que el responsable o el PM hagan la entrega formal.
+4. **Slider de Progreso Seguro (Debounce de Commits)**:
    - La manipulación continua del control deslizante actualiza el estado local en memoria (`onValueChange`), evitando ráfagas de escrituras a la base de datos.
    - El commit en base de datos únicamente se dispara al soltar el ratón (`onValueCommit`), optimizando la red y previniendo pérdidas de estado.
-3. **Aseguramiento de Calidad (QA Flow)**:
-   - El campo `qa_staff_id` permite designar a un tester responsable. Si el ticket es rechazado, se asigna el tag `qa-failed`, contabilizándose en las alertas del dashboard de telemetría del PM.
-4. **Visibilidad Condicional de Asignaciones**:
-   - En portales de colaboradores independientes, las columnas o controles de asignación a terceros se ocultan para mantener el foco en sus propias entregas y proteger la privacidad del equipo.
+5. **Circuito de QA (`Aprobar QA` vs `Hallazgo`)**:
+   - En estado `in_review`, los usuarios con rol QA o PM disponen de dos acciones directas:
+     - **Aprobar QA**: Establece estado `done`, progreso 100% y dispara celebración.
+     - **Hallazgo**: Devuelve la tarea a `in_progress` y permite reportar los motivos del rechazo.
 
 ---
 
-## 8. Optimización de Rendimiento y Escalabilidad
+## 10. Optimización de Rendimiento y Escalabilidad
 
 Se aplicó una reestructuración de ingeniería para garantizar fluidez con miles de tickets concurrentes:
 
@@ -294,7 +440,7 @@ Implementado en [`task-detail-modal.tsx`](file:///G:/Pixy/agency-manager/src/mod
 
 ---
 
-## 11. Motor de Tareas Recurrentes / Periódicas (Recurrence Engine)
+## 12. Motor de Tareas Recurrentes / Periódicas (Recurrence Engine)
 
 Para automatizar procesos cíclicos (mantenimientos preventivos, auditorías semanales, cierres contables mensuales, backups diarios, etc.), el sistema incorpora un motor nativo de recurrencia:
 
@@ -314,7 +460,7 @@ Para automatizar procesos cíclicos (mantenimientos preventivos, auditorías sem
 
 ---
 
-## 12. Sistema de Avance Fraccionado & Matriz Ejecutiva de Ritmo Semanal (Weekly Pacing Matrix)
+## 13. Sistema de Avance Fraccionado & Matriz Ejecutiva de Ritmo Semanal (Weekly Pacing Matrix)
 
 Diseñado para sustituir los controles manuales estáticos e ineficientes (como las tablas de Excel tradicionales donde se preguntan avances de forma empírica en reuniones semanales), este sistema conecta el avance porcentual con entregables tangibles verificables:
 
@@ -369,53 +515,58 @@ graph LR
 
 ---
 
-## 13. Estructura de Directorios del Módulo
+## 14. Estructura de Directorios del Módulo
 
 ```
 src/
 ├── app/
-│   └── api/
-│       └── cron/
-│           ├── tasks-pacing-snapshot/
-│           │   └── route.ts                 # Endpoint cron de congelamiento de cortes semanales
-│           └── tasks-recurrence/
-│               └── route.ts                 # Endpoint cron de renovación recurrente
+│   ├── (dashboard)/operations/tasks/page.tsx    # Ruta principal en plataforma (/operations/tasks)
+│   ├── (public)/portal/tasks/[token]/page.tsx   # Ruta pública de acceso por token seguro
+│   └── api/cron/
+│       ├── tasks-pacing-snapshot/route.ts       # Cron dominical de congelamiento de cortes semanales
+│       └── tasks-recurrence/route.ts            # Cron de renovación de tareas periódicas
 └── modules/features/tasks/
     ├── actions/
-    │   ├── collaborator-portal-actions.ts   # Acciones autenticadas por token de portal
-    │   ├── task-actions.ts                  # Server Actions administrativas internas
-    │   └── task-management-actions.ts       # Consultas de métricas y workspaces
+    │   ├── collaborator-portal-actions.ts       # Acciones del portal autenticadas por access_token
+    │   ├── task-actions.ts                      # Server Actions administrativas internas
+    │   └── task-tag-actions.ts                  # Catálogo de etiquetas dinámicas en tenant app_metadata
     ├── components/
     │   ├── collaborators/
-    │   │   └── task-collaborators-manager.tsx   # Panel de miembros y asignación de accesos
+    │   │   └── task-collaborators-manager.tsx   # Asignación de colaboradores y roles de tarea
     │   ├── kanban/
-    │   │   └── task-kanban-board.tsx            # Tablero Kanban con agrupación O(n) y React.memo
+    │   │   └── task-kanban-board.tsx            # Tablero Kanban O(n) con React.memo y dependencias
     │   ├── list/
-    │   │   └── task-list-view.tsx               # Vista de lista paginada de tickets
+    │   │   └── task-list-view.tsx               # Vista de lista paginada con ordenamiento
+    │   ├── metrics/
+    │   │   └── task-metrics-view.tsx            # Telemetría analítica global de tareas
     │   ├── modals/
-    │   │   ├── project-form-modal.tsx           # Creación y edición de proyectos/sprints
-    │   │   ├── task-detail-modal.tsx            # Detalle y edición completa de tickets en plataforma
-    │   │   ├── task-form-modal.tsx              # Modal de nuevo ticket con cabecera limpia
+    │   │   ├── project-form-modal.tsx           # Creación y edición de proyectos
+    │   │   ├── task-detail-modal.tsx            # Modal de detalle y edición completa en plataforma
+    │   │   ├── task-form-modal.tsx              # Modal de nuevo ticket con cabecera minimalista
     │   │   └── workspace-form-modal.tsx         # Creación y edición de espacios de trabajo
     │   ├── pacing/
-    │   │   └── task-weekly-pacing-matrix.tsx    # Matriz ejecutiva de ritmo semanal (4 semanas)
+    │   │   ├── task-pacing-pdf-modal.tsx        # Previsualizador e impresor de PDF vertical A4
+    │   │   └── task-weekly-pacing-matrix.tsx    # Matriz ejecutiva de ritmo semanal (4 cuadrantes)
     │   ├── portal/
-    │   │   ├── task-collaborator-portal.tsx     # Portal raíz con combobox en árbol y vistas
-    │   │   ├── task-collaborator-ribbon.tsx     # Monitor interactivo de especialistas (cinta)
-    │   │   ├── task-pm-operations-dashboard.tsx # Telemetría de sprint y gráficos de velocidad
-    │   │   └── task-portal-detail-modal.tsx     # Modal de tickets para portal (crear y editar)
+    │   │   ├── task-collaborator-portal.tsx     # Portal principal con vistas Grid, Lista y Kanban
+    │   │   ├── task-collaborator-ribbon.tsx     # Monitor interactivo de especialistas (cinta con WhatsApp)
+    │   │   ├── task-pm-operations-dashboard.tsx # Dashboard operacional de sprints y cola QA
+    │   │   └── task-portal-detail-modal.tsx     # Modal de ticket para portales con beam y shimmer
+    │   ├── shared/
+    │   │   ├── task-blocker-selector.tsx        # Combobox ultra-versátil de causa de bloqueo y dependencias de tickets
+    │   │   └── task-subtasks-tooltip-badge.tsx  # Píldora con tooltip desplegable de subtareas
     │   ├── tags/
-    │   │   └── task-tag-selector.tsx            # Componente unificado de etapas QA y tags libres
-    │   └── task-manager-view.tsx                # Vista central de la plataforma (/operations/tasks)
-    ├── types.ts                             # Tipos TypeScript (Recurrence, TaskChecklistItem, SYSTEM_STAGE_TAGS)
+    │   │   └── task-tag-selector.tsx            # Selector unificado de tags del tenant
+    │   └── task-manager-view.tsx                # Orquestador visual central de la plataforma
+    ├── types.ts                                 # Tipos TypeScript, constantes, normalizadores y helpers
     └── utils/
-        ├── avatar-presets.ts                # Avatares 3D y helpers visuales
-        └── recurrence-utils.ts              # Utilidades de cálculo de próximas recurrencias
+        ├── avatar-presets.ts                    # Mapeo de avatares 3D y visualizadores
+        └── recurrence-utils.ts                  # Lógica de cálculo temporal de recurrencias
 ```
 
 ---
 
-## 14. Experiencia de Usuario (UX), Filtros Avanzados y Escalabilidad de Portales
+## 15. Experiencia de Usuario (UX), Filtros Avanzados y Escalabilidad de Portales
 
 Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmenes masivos de requerimientos, se incorporaron los siguientes estándares arquitectónicos:
 
@@ -482,7 +633,7 @@ Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmene
 
 ---
 
-## 15. Matriz Ejecutiva de Ritmo Semanal (Weekly Pacing Matrix), Auditoría Continua y Suite de Exportación
+## 16. Matriz Ejecutiva de Ritmo Semanal (Weekly Pacing Matrix), Auditoría Continua y Suite de Exportación
 
 Con el fin de reemplazar los sistemas manuales estáticos tipo Excel de seguimiento semanal por una solución digital automatizada, reactiva y fidedigna:
 
@@ -565,8 +716,56 @@ Con el fin de reemplazar los sistemas manuales estáticos tipo Excel de seguimie
 - **Modernización del Tooltip de Auditoría de Sliders y Cinta**:
   - El tooltip del slider de porcentaje y el popover de la cinta de colaboradores ([`task-collaborator-ribbon.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-ribbon.tsx)) adoptaron las tarjetas claras, luminosas y estilizadas sin fondos negros pesados.
 
+---
 
+## 17. Guía Rápida para Agentes y Desarrolladores Futuros
 
+Al extender o modificar el módulo de tareas, respetar rigurosamente los siguientes contratos:
 
+1. **Gobernanza del Slider de Progreso y Cierre del Ticket**:
+   - En frontend: evaluar `canCloseParentTask = isCreating || isLeadOrPm || isQa || isMainAssignee`. Si es falso, el `Slider` debe estar `disabled` (`opacity-50 cursor-not-allowed`) con icono `Lock` y tooltip informativo.
+   - En backend: en `portalUpdateTaskProgress` y `portalUpdateTask`, rechazar con error si un colaborador ajeno intenta modificar el progreso general o marcar el estado en `done`.
+2. **Aislamiento de Subtareas**:
+   - En frontend: evaluar `canToggleItem(item)`. Si `item.assigned_staff_id && item.assigned_staff_id !== currentStaffId` (y no es Lead/PM ni dueño directo), el checkbox debe estar `disabled` con icono `Lock`.
+   - En backend: en `portalToggleChecklist`, validar `targetItem.assigned_staff_id === staff.id`. En `portalUpdateTask`, filtrar el array de checklist para ignorar mutaciones en ítems no pertenecientes al colaborador.
+3. **Regla de Transición a QA (`in_review`)**:
+   - Cuando todas las subtareas se marcan como listas (progreso al 100%), el estado del ticket transiciona a `in_review` (QA) y **NUNCA a `done`** automáticamente. El cierre formal a `done` requiere aprobación explícita de un PM, Revisor QA o Dueño del Ticket.
+4. **Efectos Visuales de Enfoque en Subtareas**:
+   - **Border Beam**: Permanente mientras la subtarea propia esté pendiente (`animate-border-beam` con variable `--beam-color: brandColor`). Al completarse, se retira.
+   - **Shimmer de Texto**: Duración máxima de 3 segundos con desvanecimiento suave (`<ShimmerText key={`${item.id}-${isOpen}`} active duration={3000}>`).
+5. **Detección de Roles Centralizada**:
+   - Usar siempre `isStaffLeadOrPmRole(role)` de [`types.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/types.ts). Contempla roles de PM, Dirección y Aseguramiento de Calidad (QA).
+6. **Normalización de Datos**:
+   - Utilizar siempre `normalizeTask(task)` al hidratar tareas en componentes para garantizar que `checklist`, `tags` y `attachments` sean arreglos seguros y que tickets con `status === 'done'` reflejen 100% de progreso.
+7. **Catálogo de Tags del Tenant**:
+   - No crear tablas SQL para etiquetas. Utilizar [`task-tag-actions.ts`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/actions/task-tag-actions.ts), las cuales se persisten en `organizations.app_metadata.task_tags`.
+8. **Arquitectura de Bloqueos y Dependencias ([`TaskBlockerSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/shared/task-blocker-selector.tsx))**:
+   - El selector de causa de bloqueo solo se renderiza cuando `status === 'blocked'`.
+   - Soporta doble propósito: escribir una causa textual libre o seleccionar un ticket predecesor del sistema.
+   - Para evitar saturación en el DOM y garantizar 0 lag al abrir el menú, el componente limita el renderizado a un máximo de 25 tickets (`MAX_DISPLAY_TASKS = 25`), aplicando ordenamiento inteligente por proyecto actual, estado incompleto y recencia.
+   - En modales Radix (`DialogContent`), para evitar que `react-remove-scroll` congele el scroll de popovers portaleados en `body`, el contenedor del listado implementa escuchadores DOM nativos de `wheel` y `touchmove` con `e.stopPropagation()`.
+9. **Interpretación de Bloqueos en Modales y Tablas**:
+   - En [`TaskDetailModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-detail-modal.tsx) y [`TaskPortalDetailModal`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx), el banner izquierdo evalúa reactivamente si existe un ticket predecesor (`currentBlocker`) y muestra su código interactivo y título, avisando en verde si el predecesor ya fue completado.
+   - En las tablas de tareas ([`task-list-view.tsx`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/list/task-list-view.tsx)), la columna **Ticket** solo muestra el badge del ticket principal. La información del bloqueo queda centralizada en la columna **Estado** mediante un tooltip flotante con `delayDuration={1000}`.
 
+---
+
+## 18. Arquitectura del Sistema de Bloqueo y Dependencias Predecesoras
+
+### A. Dualidad Operativa: Dependencia de Ticket vs Motivo Libre
+Un ticket puede ingresar al estado `blocked` por dos razones operativas:
+1. **Dependencia Interna de Ticket (`blocked_by_task_id`)**: Requiere que otro ticket del sistema concluya antes de poder avanzar. El sistema bloquea automáticamente transiciones a `in_review` o `done` y auto-desbloquea reactivamente la tarea dependiente cuando el ticket predecesor se completa.
+2. **Impedimento Textual Libre (`blocked_reason`)**: Motivo externo (ej: *"Esperando confirmación del cliente"*, *"Falta credencial de API externa"*). Neutral y aplicable a cualquier industria.
+
+### B. Componente Unificado: [`TaskBlockerSelector`](file:///G:/Pixy/agency-manager/src/modules/features/tasks/components/shared/task-blocker-selector.tsx)
+- **Input Versátil con Autocompletado**: Al hacer focus o clic, despliega la lista flotante de tickets. Al escribir texto libre, detecta la intención y muestra un icono de check verde (`✓`) para guardar el motivo con `Enter` o clic.
+- **Filtrado y Priorización Inteligente en Memoria**:
+  - `MAX_DISPLAY_TASKS = 25`: Tope de renderizado en DOM para apertura instantánea (0ms de latencia).
+  - Prioriza tickets del **mismo proyecto** (`project_id`).
+  - Prioriza tickets **activos o incompletos** (`todo`, `in_progress`, `in_review`, `blocked`) sobre tickets ya completados (`done`).
+  - Prioriza coincidencia directa por prefijo de código (`TK-...`).
+- **Aislamiento de Scroll en Radix UI**:
+  - Resuelve el conflicto entre `RemoveScroll` del diálogo modal y el popover portaleado a `document.body` mediante escuchadores nativos con `e.stopPropagation()`, normalización de `deltaMode` (líneas/píxeles/páginas) y `scrollbar-thin`.
+- **Aislamiento de Acciones**:
+  - Pulsar la `X` dentro del input en edición únicamente limpia el texto escrito; la tarea conserva su estado `Bloqueado` para prevenir cambios accidentales de flujo.
 

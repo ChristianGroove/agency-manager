@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary } from "../types";
-import { normalizeTask, parseTaskChecklist, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
+import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 /**
@@ -12,16 +12,28 @@ async function logPortalTaskAuditComment(
   orgId: string,
   taskId: string,
   content: string,
-  staff?: { id: string; first_name: string; last_name: string; photo_url?: string | null; role?: string }
+  staff?: { id?: string; first_name?: string; last_name?: string; photo_url?: string | null; role?: string } | string
 ) {
   try {
+    let authorName = "Sistema";
+    let authorId = "system";
+    let authorAvatar: string | null = null;
+
+    if (typeof staff === "string") {
+      authorName = staff;
+    } else if (staff) {
+      authorId = staff.id || "system";
+      authorName = `${staff.first_name || ""} ${staff.last_name || ""}`.trim() || "Sistema";
+      authorAvatar = staff.photo_url || null;
+    }
+
     await supabaseAdmin.from("task_comments").insert({
       organization_id: orgId,
       task_id: taskId,
       author_type: "system",
-      author_id: staff?.id || "system",
-      author_name: staff ? `${staff.first_name} ${staff.last_name}`.trim() : "Sistema",
-      author_avatar: staff?.photo_url || null,
+      author_id: authorId,
+      author_name: authorName,
+      author_avatar: authorAvatar,
       content,
       mentions: []
     });
@@ -37,22 +49,24 @@ async function handlePortalTaskUnblocking(completedTaskId: string, ticketCode: s
   try {
     const { data: blockedTasks } = await supabaseAdmin
       .from("task_items")
-      .select("id, ticket_code, title, status, organization_id")
+      .select("id, ticket_code, title, status, progress_percentage, organization_id, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(first_name)")
       .eq("blocked_by_task_id", completedTaskId);
 
     if (!blockedTasks || blockedTasks.length === 0) return;
 
     for (const bt of blockedTasks) {
+      const mentionTag = (bt as any)?.assigned_staff?.first_name ? ` @${(bt as any).assigned_staff.first_name}` : "";
       await logPortalTaskAuditComment(
         bt.organization_id,
         bt.id,
-        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.`
+        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
       );
 
       if (bt.status === "blocked") {
+        const restoredStatus = ((bt as any)?.progress_percentage || 0) > 0 ? "in_progress" : "todo";
         await supabaseAdmin
           .from("task_items")
-          .update({ status: "todo", updated_at: new Date().toISOString() })
+          .update({ status: restoredStatus, blocked_reason: null, updated_at: new Date().toISOString() })
           .eq("id", bt.id);
       }
     }
@@ -195,19 +209,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   // 3. Determine role permissions
   const roleLower = (staff.role || "").toLowerCase();
-  const hasLeadKeywords =
-    roleLower.includes("pm") ||
-    roleLower.includes("lead") ||
-    roleLower.includes("project") ||
-    roleLower.includes("proyecto") ||
-    roleLower.includes("gestor") ||
-    roleLower.includes("gestora") ||
-    roleLower.includes("gerente") ||
-    roleLower.includes("manager") ||
-    roleLower.includes("lider") ||
-    roleLower.includes("líder") ||
-    roleLower.includes("coordinad") ||
-    roleLower.includes("director");
+  const hasLeadKeywords = isStaffLeadOrPmRole(staff.role);
 
   // Also check if this collaborator is designated lead of any workspace or project
   const { data: leadWorkspaces } = await supabaseAdmin
@@ -305,11 +307,12 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       project:task_projects!task_items_project_id_fkey(
         id, name, color
       ),
-      blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+      blocked_by:blocked_by_task_id(
         id, ticket_code, title, status
       )
     `)
     .eq("organization_id", staff.organization_id)
+    .order("order_index", { ascending: true })
     .order("created_at", { ascending: false });
 
   const { data: allTasksData } = await tasksQuery;
@@ -565,22 +568,22 @@ export async function portalUpdateTaskProgress(
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
-
-    const roleLower = (staff.role || "").toLowerCase();
-    const isLeadOrPm =
-      roleLower.includes("pm") ||
-      roleLower.includes("lead") ||
-      roleLower.includes("project") ||
-      roleLower.includes("gerente") ||
-      roleLower.includes("manager") ||
-      roleLower.includes("qa");
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist, progress_percentage")
+      .select("status, checklist, progress_percentage, assigned_staff_id, blocked_by_task_id, ticket_code, title")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
+
+    const isMainAssignee = current?.assigned_staff_id === staff.id;
+    const canCloseParentTask = isLeadOrPm || isMainAssignee;
+    const canManageParent = canCloseParentTask;
+
+    if (!canManageParent) {
+      throw new Error("Solo el responsable directo de la tarea o un PM pueden ajustar el avance general del ticket.");
+    }
 
     const checklist = parseTaskChecklist(current?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
@@ -588,6 +591,25 @@ export async function portalUpdateTaskProgress(
     let clamped = Math.max(0, Math.min(100, Math.round(progress)));
     if (hasUnfinishedDeliverables && clamped > 95) {
       clamped = 95;
+    }
+    if (!canCloseParentTask && clamped >= 100) {
+      clamped = 95;
+    }
+
+    // Dependency restriction: Cannot complete or reach 100% if predecessor is not done
+    if (clamped === 100 && current?.blocked_by_task_id) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", current.blocked_by_task_id)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        return {
+          success: false,
+          error: `No se puede completar el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        };
+      }
     }
 
     if (current && current.progress_percentage !== clamped) {
@@ -612,7 +634,12 @@ export async function portalUpdateTaskProgress(
     };
 
     if (clamped === 100) {
-      updateData.status = "done";
+      if (canCloseParentTask) {
+        updateData.status = "done";
+      } else {
+        clamped = 95;
+        updateData.progress_percentage = 95;
+      }
     } else if (clamped > 0) {
       if (current && (current.status === "todo" || current.status === "backlog")) {
         updateData.status = "in_progress";
@@ -626,6 +653,11 @@ export async function portalUpdateTaskProgress(
       .eq("organization_id", staff.organization_id);
 
     if (error) throw error;
+
+    if (clamped === 100 && canCloseParentTask && current && current.status !== "done") {
+      await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error("Portal update progress error:", err);
@@ -639,7 +671,8 @@ export async function portalUpdateTaskProgress(
 export async function portalUpdateTaskStatus(
   token: string,
   taskId: string,
-  status: TaskStatus
+  status: TaskStatus,
+  blockedReason?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
@@ -653,10 +686,26 @@ export async function portalUpdateTaskStatus(
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("checklist, progress_percentage, status, ticket_code, title")
+      .select("checklist, progress_percentage, status, ticket_code, title, blocked_by_task_id, blocked_reason")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
+
+    if ((status === "done" || status === "in_review") && current?.blocked_by_task_id) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", current.blocked_by_task_id)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        const actionLabel = status === "in_review" ? "enviar a revisión / QA" : "completar";
+        return {
+          success: false,
+          error: `No se puede ${actionLabel} el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        };
+      }
+    }
 
     const checklist = parseTaskChecklist(current?.checklist);
     const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed);
@@ -665,6 +714,12 @@ export async function portalUpdateTaskStatus(
       status,
       updated_at: new Date().toISOString()
     };
+
+    if (status === "blocked" && blockedReason !== undefined) {
+      updateData.blocked_reason = blockedReason;
+    } else if (status !== "blocked" && current?.status === "blocked") {
+      updateData.blocked_reason = null;
+    }
 
     if (status === "done") {
       if (hasUnfinishedDeliverables) {
@@ -695,6 +750,15 @@ export async function portalUpdateTaskStatus(
         staff
       );
 
+      if (updateData.status === "blocked" && blockedReason && blockedReason.trim()) {
+        await logPortalTaskAuditComment(
+          staff.organization_id,
+          taskId,
+          `🚫 Motivo del bloqueo: ${blockedReason.trim()}`,
+          staff
+        );
+      }
+
       if (updateData.status === "done") {
         await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
       }
@@ -719,7 +783,7 @@ export async function portalToggleChecklist(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, organization_id")
+      .select("id, first_name, last_name, photo_url, role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -728,14 +792,33 @@ export async function portalToggleChecklist(
 
     const { data: task, error: fetchErr } = await supabaseAdmin
       .from("task_items")
-      .select("checklist, progress_percentage, status, ticket_code, title")
+      .select(`
+        checklist, progress_percentage, status, ticket_code, title, assigned_staff_id, created_by_staff_id,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
+        creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
+      `)
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
 
     if (fetchErr || !task) throw fetchErr || new Error("Tarea no encontrada");
 
-    const checklist: TaskChecklistItem[] = parseTaskChecklist(task.checklist).map((item: TaskChecklistItem) => {
+    const currentChecklist = parseTaskChecklist(task.checklist);
+    const targetItem = currentChecklist.find((i) => i.id === checklistItemId);
+    if (!targetItem) throw new Error("Subtarea no encontrada");
+
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isMainAssignee = task.assigned_staff_id === staff.id;
+    const canToggleAny = isLeadOrPm || isMainAssignee;
+
+    if (!canToggleAny && targetItem.assigned_staff_id && targetItem.assigned_staff_id !== staff.id) {
+      throw new Error("No tienes autorización para marcar subtareas asignadas a otros colaboradores.");
+    }
+    if (!canToggleAny && !targetItem.assigned_staff_id) {
+      throw new Error("Solo el responsable directo de la tarea o un PM pueden marcar subtareas generales.");
+    }
+
+    const checklist: TaskChecklistItem[] = currentChecklist.map((item: TaskChecklistItem) => {
       if (item.id === checklistItemId) {
         return {
           ...item,
@@ -756,8 +839,9 @@ export async function portalToggleChecklist(
       updated_at: new Date().toISOString()
     };
 
-    if (progress === 100) {
-      updateData.status = "done";
+    // When all deliverables are completed, move to in_review (QA), NOT directly to done
+    if (progress === 100 && task.status !== "done") {
+      updateData.status = "in_review";
     }
 
     const { error: updateErr } = await supabaseAdmin
@@ -767,6 +851,41 @@ export async function portalToggleChecklist(
       .eq("organization_id", staff.organization_id);
 
     if (updateErr) throw updateErr;
+
+    // Log audit note for subtask completion with stakeholder mentions
+    const toggledItem = checklist.find((i) => i.id === checklistItemId);
+    if (toggledItem) {
+      const itemTitle = toggledItem.title ? `"${toggledItem.title}"` : "subtarea";
+
+      const assignedFirstName = (task as any)?.assigned_staff?.first_name;
+      let creatorFirstName = (task as any)?.creator_staff?.first_name;
+      if (!creatorFirstName) {
+        const { data: pmStaff } = await supabaseAdmin
+          .from("organization_staff")
+          .select("id, first_name")
+          .eq("organization_id", staff.organization_id)
+          .or("role.ilike.%gestor%,role.ilike.%pm%,role.ilike.%lead%")
+          .neq("id", staff.id)
+          .limit(1)
+          .maybeSingle();
+        if (pmStaff) {
+          creatorFirstName = pmStaff.first_name;
+        }
+      }
+      const notifyTags: string[] = [];
+      if (assignedFirstName && task.assigned_staff_id !== staff.id) {
+        notifyTags.push(`@${assignedFirstName}`);
+      }
+      if (creatorFirstName && creatorFirstName !== assignedFirstName && task.created_by_staff_id !== staff.id) {
+        notifyTags.push(`@${creatorFirstName}`);
+      }
+      const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
+
+      const auditMsg = completed
+        ? `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}${notifyMsg}`
+        : `⬜ Subtarea reactivada: ${itemTitle} por @${staff.first_name}`;
+      await logPortalTaskAuditComment(staff.organization_id, taskId, auditMsg, staff);
+    }
 
     if (progress === 100 && task.status !== "done") {
       await handlePortalTaskUnblocking(taskId, task.ticket_code, task.title);
@@ -891,12 +1010,7 @@ export async function portalCreateTask(
 
     if (!staff) throw new Error("Acceso no autorizado");
 
-    const roleLower = (staff.role || "").toLowerCase();
-    const isLeadOrPm =
-      roleLower.includes("pm") ||
-      roleLower.includes("lead") ||
-      roleLower.includes("project") ||
-      roleLower.includes("qa");
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
 
     if (!isLeadOrPm) {
       throw new Error("Solo los líderes o Project Managers tienen permiso para crear tareas.");
@@ -957,13 +1071,52 @@ export async function portalCreateTask(
         project:task_projects!task_items_project_id_fkey(
           id, name, color
         ),
-        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+        blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
         )
       `)
       .single();
 
     if (error) throw error;
+
+    // Log audit notes for assignments upon creation
+    if (taskData.assignedStaffId && taskData.assignedStaffId !== "unassigned") {
+      const { data: mainStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("first_name, last_name")
+        .eq("id", taskData.assignedStaffId)
+        .maybeSingle();
+      if (mainStaff) {
+        await logPortalTaskAuditComment(
+          staff.organization_id,
+          newTask.id,
+          `👤 Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`,
+          staff
+        );
+      }
+    }
+
+    if (taskData.checklist && Array.isArray(taskData.checklist)) {
+      for (const item of taskData.checklist) {
+        if (item.assigned_staff_id && item.assigned_staff_id !== "unassigned") {
+          const { data: assignedStaff } = await supabaseAdmin
+            .from("organization_staff")
+            .select("first_name, last_name")
+            .eq("id", item.assigned_staff_id)
+            .maybeSingle();
+          if (assignedStaff) {
+            const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+            await logPortalTaskAuditComment(
+              staff.organization_id,
+              newTask.id,
+              `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+              staff
+            );
+          }
+        }
+      }
+    }
+
     return { success: true, task: normalizeTask(newTask) };
   } catch (err: any) {
     console.error("Portal create task error:", err);
@@ -996,6 +1149,7 @@ export async function portalUpdateTask(
     recurrenceInterval?: RecurrenceInterval | null;
     recurrenceDay?: number | null;
     blockedByTaskId?: string | null;
+    blockedReason?: string | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -1007,23 +1161,32 @@ export async function portalUpdateTask(
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
 
-    const roleLower = (staff.role || "").toLowerCase();
-    const isLeadOrPm =
-      roleLower.includes("pm") ||
-      roleLower.includes("lead") ||
-      roleLower.includes("project") ||
-      roleLower.includes("gerente") ||
-      roleLower.includes("manager") ||
-      roleLower.includes("qa");
-
-    // Fetch previous state for audit comparison
+    // Fetch previous state for audit comparison and stakeholder notifications
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
-      .select("status, priority, due_date, assigned_staff_id, blocked_by_task_id, ticket_code, title")
+      .select(`
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
+        creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
+      `)
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .maybeSingle();
+
+    const isMainAssignee = prevTask?.assigned_staff_id === staff.id;
+    const canCloseParentTask = isLeadOrPm || isMainAssignee;
+
+    if (!canCloseParentTask) {
+      if (data.status === "done") {
+        throw new Error("Solo el responsable asignado al ticket o el Gestor de Proyecto pueden marcar la tarea como Completada.");
+      }
+      // Subtask-only contributors cannot manually override the parent task's progress
+      if (data.progressPercentage !== undefined) {
+        delete data.progressPercentage;
+      }
+    }
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -1071,7 +1234,7 @@ export async function portalUpdateTask(
     }
     if (data.checklist !== undefined) {
       if (!isLeadOrPm) {
-        // Enforce: Normal collaborators cannot delete deliverables, only mark completion
+        // Enforce: Normal collaborators cannot delete deliverables
         const { data: curTask } = await supabaseAdmin
           .from("task_items")
           .select("checklist")
@@ -1087,16 +1250,34 @@ export async function portalUpdateTask(
             ? data.checklist.find((c: any) => c.id === existing.id)
             : null;
           if (match) {
-            return {
-              ...existing,
-              completed: Boolean(match.completed),
-              completed_at: match.completed ? (match.completed_at || new Date().toISOString()) : undefined,
-            };
+            // Main assignee can toggle any deliverable; subtask-only contributor can ONLY toggle their own
+            const canToggleThisItem = isMainAssignee || (existing.assigned_staff_id && existing.assigned_staff_id === staff.id);
+            if (canToggleThisItem) {
+              return {
+                ...existing,
+                completed: Boolean(match.completed),
+                completed_at: match.completed ? (match.completed_at || new Date().toISOString()) : undefined,
+                completed_by: match.completed ? (match.completed_by || staff.first_name) : undefined,
+              };
+            }
           }
           return existing;
         });
 
         updateData.checklist = safeChecklist;
+
+        if (!canCloseParentTask) {
+          const completedCount = safeChecklist.filter((i: any) => i.completed).length;
+          const computedProgress = safeChecklist.length > 0
+            ? Math.round((completedCount / safeChecklist.length) * 100)
+            : undefined;
+          if (computedProgress !== undefined) {
+            updateData.progress_percentage = computedProgress;
+            if (computedProgress === 100 && (!updateData.status || updateData.status === "done")) {
+              updateData.status = "in_review";
+            }
+          }
+        }
       } else {
         updateData.checklist = data.checklist;
       }
@@ -1164,6 +1345,37 @@ export async function portalUpdateTask(
       if (data.description !== undefined) updateData.description = data.description;
     }
 
+    if (data.blockedReason !== undefined) {
+      updateData.blocked_reason = data.blockedReason || null;
+    }
+
+    // If unblocking status, clear blocked_reason automatically if not explicitly provided
+    if (prevTask?.status === "blocked" && updateData.status && updateData.status !== "blocked") {
+      if (updateData.blocked_reason === undefined) {
+        updateData.blocked_reason = null;
+      }
+    }
+
+    // Validate dependency blocking rule: cannot complete or reach 100% if blocker is unfinished
+    const effectiveBlockerId = updateData.blocked_by_task_id !== undefined
+      ? updateData.blocked_by_task_id
+      : prevTask?.blocked_by_task_id;
+
+    if ((updateData.status === "done" || updateData.status === "in_review" || updateData.progress_percentage === 100) && effectiveBlockerId) {
+      const { data: blocker } = await supabaseAdmin
+        .from("task_items")
+        .select("id, ticket_code, title, status")
+        .eq("id", effectiveBlockerId)
+        .maybeSingle();
+
+      if (blocker && blocker.status !== "done") {
+        const actionLabel = updateData.status === "in_review" ? "enviar a revisión / QA" : "completar";
+        throw new Error(
+          `No se puede ${actionLabel} el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
+        );
+      }
+    }
+
     const { data: updatedTask, error } = await supabaseAdmin
       .from("task_items")
       .update(updateData)
@@ -1180,7 +1392,7 @@ export async function portalUpdateTask(
         project:task_projects!task_items_project_id_fkey(
           id, name, color
         ),
-        blocked_by:task_items!task_items_blocked_by_task_id_fkey(
+        blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
         )
       `)
@@ -1195,7 +1407,16 @@ export async function portalUpdateTask(
       if (updateData.status && updateData.status !== prevTask.status) {
         const oldLabel = TASK_STATUS_LABELS[prevTask.status as TaskStatus] || prevTask.status;
         const newLabel = TASK_STATUS_LABELS[updateData.status as TaskStatus] || updateData.status;
-        await logPortalTaskAuditComment(orgId, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`, staff);
+
+        let statusNotify = "";
+        if (updateData.status === "done") {
+          const creatorFirstName = (prevTask as any)?.creator_staff?.first_name;
+          if (creatorFirstName && prevTask.created_by_staff_id !== staff.id) {
+            statusNotify = ` | Notificando a @${creatorFirstName} (Gestor de Proyecto)`;
+          }
+        }
+
+        await logPortalTaskAuditComment(orgId, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")${statusNotify}`, staff);
 
         if (updateData.status === "done") {
           await handlePortalTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
@@ -1227,8 +1448,9 @@ export async function portalUpdateTask(
             .select("first_name, last_name")
             .eq("id", updateData.assigned_staff_id)
             .single();
+          const staffTag = staffMember ? `@${staffMember.first_name}` : "colaborador";
           const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : "colaborador";
-          await logPortalTaskAuditComment(orgId, taskId, `👤 Reasignado a ${staffName}`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `👤 Asignado a ${staffTag} (${staffName})`, staff);
         } else {
           await logPortalTaskAuditComment(orgId, taskId, `👤 Asignación de tarea removida`, staff);
         }
@@ -1247,6 +1469,89 @@ export async function portalUpdateTask(
           await logPortalTaskAuditComment(orgId, taskId, `🚫 Bloqueado por ${blkCode}${blkTitle}`, staff);
         } else {
           await logPortalTaskAuditComment(orgId, taskId, `🔓 Bloqueo removido manualmente`, staff);
+        }
+      }
+
+      // Blocker reason audit
+      if (updateData.blocked_reason !== undefined && updateData.blocked_reason !== prevTask.blocked_reason) {
+        if (updateData.blocked_reason && updateData.blocked_reason.trim()) {
+          await logPortalTaskAuditComment(orgId, taskId, `🚫 Motivo del bloqueo: ${updateData.blocked_reason.trim()}`, staff);
+        } else if (prevTask.blocked_reason) {
+          await logPortalTaskAuditComment(orgId, taskId, `🔓 Motivo del bloqueo removido`, staff);
+        }
+      }
+
+      // Subtask resolution and assignment audit loop
+      if (updateData.checklist && Array.isArray(updateData.checklist)) {
+        const prevChecklist = parseTaskChecklist(prevTask.checklist);
+        const newChecklist = parseTaskChecklist(updateData.checklist);
+
+        // Resolve stakeholder mention tags
+        const assignedFirstName = (prevTask as any)?.assigned_staff?.first_name;
+        let creatorFirstName = (prevTask as any)?.creator_staff?.first_name;
+        if (!creatorFirstName) {
+          const { data: pmStaff } = await supabaseAdmin
+            .from("organization_staff")
+            .select("id, first_name")
+            .eq("organization_id", staff.organization_id)
+            .or("role.ilike.%gestor%,role.ilike.%pm%,role.ilike.%lead%")
+            .neq("id", staff.id)
+            .limit(1)
+            .maybeSingle();
+          if (pmStaff) {
+            creatorFirstName = pmStaff.first_name;
+          }
+        }
+        const notifyTags: string[] = [];
+        if (assignedFirstName && prevTask.assigned_staff_id !== staff.id) {
+          notifyTags.push(`@${assignedFirstName}`);
+        }
+        if (creatorFirstName && creatorFirstName !== assignedFirstName && prevTask.created_by_staff_id !== staff.id) {
+          notifyTags.push(`@${creatorFirstName}`);
+        }
+        const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
+
+        for (const item of newChecklist) {
+          const prevItem = prevChecklist.find((p) => p.id === item.id);
+          const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+
+          // 1. Completion / Reactivation detection
+          if (prevItem && !prevItem.completed && item.completed) {
+            await logPortalTaskAuditComment(
+              orgId,
+              taskId,
+              `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}${notifyMsg}`,
+              staff
+            );
+          } else if (prevItem && prevItem.completed && !item.completed) {
+            await logPortalTaskAuditComment(
+              orgId,
+              taskId,
+              `⬜ Subtarea reactivada: ${itemTitle} por @${staff.first_name}`,
+              staff
+            );
+          }
+
+          // 2. Assignment / Reassignment detection
+          if (item.assigned_staff_id) {
+            const isNewlyAssigned = !prevItem || prevItem.assigned_staff_id !== item.assigned_staff_id;
+            if (isNewlyAssigned) {
+              const { data: assignedStaff } = await supabaseAdmin
+                .from("organization_staff")
+                .select("first_name, last_name")
+                .eq("id", item.assigned_staff_id)
+                .maybeSingle();
+
+              if (assignedStaff) {
+                await logPortalTaskAuditComment(
+                  orgId,
+                  taskId,
+                  `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+                  staff
+                );
+              }
+            }
+          }
         }
       }
     }
@@ -1270,7 +1575,7 @@ export async function portalUpdateChecklistItemAssignee(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, organization_id")
+      .select("id, organization_id, first_name, last_name, photo_url, role")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1303,6 +1608,26 @@ export async function portalUpdateChecklistItemAssignee(
       .eq("organization_id", staff.organization_id);
 
     if (updateErr) throw updateErr;
+
+    // Log audit note for subtask assignment in portal
+    if (assignedStaffId) {
+      const { data: assignedStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("first_name, last_name")
+        .eq("id", assignedStaffId)
+        .single();
+      const item = checklist.find((i) => i.id === checklistItemId);
+      if (assignedStaff && item) {
+        const itemTitle = item.title ? `"${item.title}"` : "subtarea";
+        await logPortalTaskAuditComment(
+          staff.organization_id,
+          taskId,
+          `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+          staff
+        );
+      }
+    }
+
     return { success: true, checklist };
   } catch (err: any) {
     console.error("Portal update checklist assignee error:", err);
@@ -1327,13 +1652,7 @@ export async function portalDeleteTask(
 
     if (!staff) throw new Error("Acceso no autorizado");
 
-    const roleLower = (staff.role || "").toLowerCase();
-    const isLeadOrPm =
-      roleLower.includes("pm") ||
-      roleLower.includes("lead") ||
-      roleLower.includes("project") ||
-      roleLower.includes("gerente") ||
-      roleLower.includes("manager");
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
 
     if (!isLeadOrPm) {
       throw new Error("Solo los líderes o Project Managers tienen permiso para eliminar tareas.");

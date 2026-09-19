@@ -254,6 +254,7 @@ export interface TaskItem {
     title: string;
     status: TaskStatus;
   } | null;
+  blocked_reason?: string | null;
 }
 
 export interface TaskComment {
@@ -481,7 +482,9 @@ export function getTaskWeeklyPacing(
 
   const globalProg = task.progress_percentage || 0;
   const isTaskDone = task.status === 'done' || globalProg === 100;
-  const isBlocked = task.status === 'blocked';
+  const isBlocked =
+    task.status === 'blocked' ||
+    (Boolean(task.blocked_by_task_id) && Boolean(task.blocked_by) && task.blocked_by?.status !== 'done');
 
   // Parse due date if present to determine if a week is overdue
   let dueWeek: number | null = null;
@@ -717,7 +720,7 @@ export function getTaskWeeklyPacing(
 
 export interface ParsedAuditNote {
   isAudit: boolean;
-  type: 'progress' | 'status' | 'assignment' | 'due_date' | 'priority' | 'blocker' | 'unblock' | 'other';
+  type: 'progress' | 'status' | 'assignment' | 'due_date' | 'priority' | 'blocker' | 'unblock' | 'subtask' | 'other';
   icon: string;
   badgeClass?: string;
   formattedText: string;
@@ -817,6 +820,54 @@ export function parseSystemAuditNote(content: string): ParsedAuditNote {
     };
   }
 
+  // 8. Subtask / Deliverable
+  if (
+    content.startsWith("☑️") ||
+    content.startsWith("⬜") ||
+    content.toLowerCase().includes("subtarea") ||
+    content.toLowerCase().includes("entregable")
+  ) {
+    const isCompleted = content.startsWith("☑️") || content.toLowerCase().includes("completad");
+    return {
+      isAudit: true,
+      type: 'subtask',
+      icon: isCompleted ? "☑️" : "⬜",
+      badgeClass: isCompleted ? "text-teal-600 dark:text-teal-400" : "text-zinc-500 dark:text-zinc-400",
+      formattedText: content.replace(/^(?:☑️|☑|⬜)\s*/, '').trim()
+    };
+  }
+
   return { isAudit: false, type: 'other', icon: '💬', formattedText: content };
+}
+
+/**
+ * Standardized role matcher: Checks if a staff member has PM, Lead, QA, or Management permissions
+ * Matches Spanish and English role variations (Gestor de Proyecto, Líder Técnico, PM, etc.)
+ */
+export function isStaffLeadOrPmRole(role?: string | null): boolean {
+  if (!role) return false;
+  const r = role.toLowerCase();
+  return (
+    r.includes("pm") ||
+    r.includes("lead") ||
+    r.includes("project") ||
+    r.includes("proyecto") ||
+    r.includes("gestor") ||
+    r.includes("gestora") ||
+    r.includes("gerente") ||
+    r.includes("manager") ||
+    r.includes("lider") ||
+    r.includes("líder") ||
+    r.includes("coordinad") ||
+    r.includes("director") ||
+    r.includes("directora") ||
+    r.includes("qa") ||
+    r.includes("tester") ||
+    r.includes("calidad") ||
+    r.includes("revisor") ||
+    r.includes("pruebas") ||
+    r.includes("owner") ||
+    r.includes("admin")
+  );
 }
 
