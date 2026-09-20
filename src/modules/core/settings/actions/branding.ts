@@ -89,9 +89,9 @@ export async function getOrganizationBranding() {
 
     const { data, error } = await supabase
         .from('organization_settings')
-        .select('portal_primary_color, portal_secondary_color, portal_title, portal_logo_url, isotipo_url')
+        .select('portal_primary_color, portal_secondary_color, portal_title, portal_logo_url, isotipo_url, agency_name')
         .eq('organization_id', orgId)
-        .single()
+        .maybeSingle()
 
     if (error) {
         logBrandingActionError("[getOrganizationBranding] Error:", error)

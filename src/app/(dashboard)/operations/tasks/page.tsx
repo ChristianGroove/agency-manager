@@ -38,7 +38,7 @@ export default async function TasksPage() {
         initialCollaborators={collaborators}
         organizationId={orgId}
         tenantBranding={{
-          name: branding?.portal_title,
+          name: branding?.portal_title || branding?.agency_name,
           logoUrl: branding?.portal_logo_url,
           isotypeUrl: branding?.isotipo_url,
           primaryColor: branding?.portal_primary_color
