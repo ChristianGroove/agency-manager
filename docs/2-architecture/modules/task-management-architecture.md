@@ -861,3 +861,28 @@ Tanto el portal del colaborador ([`task-collaborator-portal.tsx`](file:///g:/Pix
 4. **Sincronización Multipestaña en Vivo**:
    - `TaskManagerView` suscribe un canal Supabase Realtime a `task_sprints` con filtro `organization_id=eq.${orgId}`, reaccionando de inmediato a cualquier inserción, edición o borrado de ciclo ágil realizado por otros usuarios.
 
+---
+
+## 20. Suite Universal de Importación Masiva (Pixy a Pixy, CSV Tabular & Adaptador de Jira)
+
+### A. Arquitectura Canónica con Adaptadores (*Canonical Schema & Adapter Pattern*)
+Para garantizar migraciones impecables sin importar la fuente original, el sistema implementa el **Esquema Canónico Universal de Pixy (`PixyUniversalBundle`)** ([`import-types.ts`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/import-types.ts)):
+1. **Pixy Bundle JSON (`.json`)**: Migración nativa de alta fidelidad entre organizaciones Pixy o respaldos completos que incluye colaboradores, espacios de trabajo, proyectos, sprints, tareas, subtareas con horas y dependencias.
+2. **CSV Tabular Estándar (`.csv`)**: Formato plano estructurado con mapeo flexible de encabezados en español/inglés, soporte de horas estimadas y decodificación de checklists complejas mediante sintaxis `[x] Subtarea (3h @email)`.
+3. **Adaptador Jira Cloud (`parseJiraCsv`)**: Detección automática de encabezados de Jira (`Issue key`, `Issue Type`, `Summary`, `Priority`, `Status`, `Original Estimate`, `Sprint`, `Labels`), con traducción de estados a flujo Pixy y conversión de segundos a horas.
+
+### B. Ingesta Secuencial en Orden Topológico (`executeUniversalImport`)
+Para preservar la integridad referencial sin colisiones de UUIDs entre bases de datos, el motor en [`task-import-actions.ts`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/actions/task-import-actions.ts) procesa la carga en 7 etapas estrictas:
+1. **Resolución de Colaboradores**: Búsqueda por `email` en `organization_staff`. Si no existen y la opción está habilitada, se crean automáticamente con permisos globales de tareas y se mapean en memoria.
+2. **Espacios de Trabajo (`task_workspaces`)**: Creación y resolución por `key_prefix`.
+3. **Proyectos (`task_projects`)**: Vinculación por `slug` o nombre dentro del espacio correspondiente.
+4. **Sprints (`task_sprints`)**: Creación de ciclos correlativos con fechas automáticas si están ausentes.
+5. **Tareas (`task_items`)**: Generación de códigos oficiales correlativos (`TK-XXX`, `TECH-XXX`), asignación de colaboradores/QA y transformación de subtareas con UUIDs únicos.
+6. **Segunda Pasada (Fase de Bloqueos)**: Resolución de dependencias circulares y predecesores (`blocked_by_ref_id` $\rightarrow$ `blocked_by_task_id`) una vez que todos los tickets cuentan con ID asignado.
+7. **Auditoría Transparente**: Registro en `task_activity_feed` notificando el lote de importación masiva y revalidación de caché.
+
+### C. Experiencia de Usuario & Previsualización Dry-Run ([`TaskImportModal`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-import-modal.tsx))
+- **Dropzone Inteligente**: Detección automática del tipo de archivo y descarga de plantillas oficiales con un clic.
+- **Auditoría Previa sin Efectos Secundarios (Dry Run)**: Análisis preventivo que totaliza tareas, subtareas, proyectos y clasifica a los colaboradores entre existentes y nuevos.
+- **Acceso Global**: Disponible desde el menú `+ Nuevo` -> `Importar Datos / Tareas` en [`task-manager-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx).
+

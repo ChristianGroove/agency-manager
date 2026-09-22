@@ -29,6 +29,7 @@ import {
   CalendarDays,
   RefreshCw,
   Rocket,
+  UploadCloud,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -61,6 +62,7 @@ import { ProjectFormModal } from "./modals/project-form-modal"
 import { WorkspaceFormModal } from "./modals/workspace-form-modal"
 import { TaskLogWorkModal } from "./shared/task-log-work-modal"
 import { TaskSprintModal } from "./modals/task-sprint-modal"
+import { TaskImportModal } from "./modals/task-import-modal"
 import { updateTaskStatus, getTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -275,6 +277,7 @@ export function TaskManagerView({
   const [projectToEdit, setProjectToEdit] = useState<TaskProject | null>(null)
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
   const [workspaceToEdit, setWorkspaceToEdit] = useState<TaskWorkspace | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<TaskStatus>("todo")
   const [logWorkState, setLogWorkState] = useState<{ task: TaskItem; targetStatus: TaskStatus } | null>(null)
 
@@ -1002,6 +1005,23 @@ export function TaskManagerView({
                     </span>
                   </div>
                 </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 bg-border/60" />
+
+                <DropdownMenuItem
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <UploadCloud className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-foreground block">Importar Datos / Tareas</span>
+                    <span className="text-[11px] text-muted-foreground block leading-tight">
+                      Carga masiva desde Pixy JSON, CSV o Jira
+                    </span>
+                  </div>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1170,6 +1190,21 @@ export function TaskManagerView({
         }}
         onSprintCompleted={handleSprintCompleted}
         onSprintDeleted={handleSprintDeleted}
+      />
+
+      {/* Task & Collaborators Universal Import Modal */}
+      <TaskImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        collaborators={collaborators}
+        projects={projects}
+        workspaces={workspaces}
+        sprints={sprints}
+        organizationId={organizationId}
+        onImportComplete={() => {
+          router.refresh()
+          getTasks({ orgId: organizationId }).then(setTasks)
+        }}
       />
     </div>
   )
