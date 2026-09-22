@@ -146,6 +146,7 @@ export async function createConnection(params: CreateConnectionParams) {
     const adapter = integrationRegistry.getAdapter(params.provider_key)
 
     if (adapter) {
+        if (params.credentials?._private || params.credentials?._encrypted) throw new Error('Invalid credential input')
         // Validate credentials before connecting
         const verification = await adapter.verifyCredentials(params.credentials)
         if (!verification.isValid) {

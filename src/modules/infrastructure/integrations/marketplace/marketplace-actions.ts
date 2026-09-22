@@ -6,7 +6,9 @@ import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { IntegrationProvider, InstalledIntegration } from "./types"
 import { integrationRegistry } from "../registry"
-import { createMetaOAuthState } from "@/modules/infrastructure/meta/services/oauth-state"
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
+import { assertRawCredentialInput } from '@/modules/infrastructure/integrations/connection-secrets'
+import { issueMetaOAuthSession } from "@/modules/infrastructure/meta/services/oauth-session"
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV
@@ -130,6 +132,7 @@ export async function installIntegration(input: {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: 'No organization context' }
 
+    assertRawCredentialInput(input.credentials || {})
     // ... credentials cleaning ...
     const cleanCredentials: Record<string, any> = {}
     if (input.credentials) {
@@ -207,7 +210,7 @@ export async function installIntegration(input: {
 
         // Only update credentials if provided and not empty
         if (input.credentials && Object.keys(input.credentials).length > 0) {
-            updateData.credentials = input.credentials
+            updateData.credentials = encryptObject(input.credentials)
         }
 
         // Merge metadata if provided
@@ -244,7 +247,7 @@ export async function installIntegration(input: {
             provider_id: provider.id,
             provider_key: input.providerKey,
             connection_name: input.connectionName,
-            credentials: input.credentials || {},
+            credentials: encryptObject(input.credentials || {}),
             config: input.config || {},
             metadata: input.metadata || {},
             status: input.status || 'active',
@@ -348,7 +351,7 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
 
     // State includes orgId and optional channelType for filtering in callback
     // Format: Base64 JSON
-    const state = createMetaOAuthState({ orgId, channelType });
+    const state = await issueMetaOAuthSession(orgId, { channelType, flow: "org" });
 
     const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

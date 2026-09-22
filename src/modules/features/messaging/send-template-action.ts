@@ -1,5 +1,8 @@
 "use server"
 
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
+
+import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { revalidatePath } from "next/cache"
@@ -141,18 +144,6 @@ export async function sendTemplateMessage(input: {
         connection = boundConn
     }
     if (!connection) {
-        const { data: defaultConn } = await supabase
-            .from('integration_connections')
-            .select('*')
-            .eq('organization_id', orgId)
-            .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-        connection = defaultConn
-    }
-    if (!connection) {
         return { success: false, error: "No active WhatsApp connection. Configure one in Settings > Integrations." }
     }
 
@@ -162,23 +153,16 @@ export async function sendTemplateMessage(input: {
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch (e) { /* noop */ }
     }
-    creds = decryptObject(creds)
+    creds = await resolveConnectionCredentials(creds)
 
     const phoneNumberId = creds?.phoneNumberId || creds?.phone_number_id ||
         (connection as any).metadata?.asset_id
     const accessToken = creds?.accessToken || creds?.access_token
 
-    if (!phoneNumberId || !accessToken) {
-        // Fallback to env vars for mock/dev
-        const envToken = process.env.META_API_TOKEN
-        const envPhoneId = process.env.META_PHONE_NUMBER_ID
-        if (!envToken || !envPhoneId) {
-            return { success: false, error: "Missing Meta credentials. Please re-configure the channel." }
-        }
-    }
-
-    const finalToken = accessToken || process.env.META_API_TOKEN!
-    const finalPhoneId = phoneNumberId || process.env.META_PHONE_NUMBER_ID!
+    if (!phoneNumberId || !accessToken) return { success: false, error: 'Missing channel credentials' }
+    const finalToken = accessToken
+    const finalPhoneId = phoneNumberId
+    await assertMetaSendAllowed(connection, conversation, { type: 'template', templateName: input.templateName })
 
     // 5. Build HSM Template Payload (Graph API v24.0)
     const templateComponents: any[] = []
@@ -246,9 +230,6 @@ export async function sendTemplateMessage(input: {
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`
 
-    // === DIAGNOSTIC: Log full payload ===
-    console.log('[sendTemplateMessage] DIAGNOSTIC - Full payload:', JSON.stringify(metaPayload, null, 2))
-    console.log('[sendTemplateMessage] DIAGNOSTIC - API URL:', apiUrl)
 
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -261,9 +242,6 @@ export async function sendTemplateMessage(input: {
 
     const result = await response.json()
 
-    // === DIAGNOSTIC: Log full Meta response ===
-    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Status:', response.status)
-    console.log('[sendTemplateMessage] DIAGNOSTIC - Meta Response Body:', JSON.stringify(result, null, 2))
 
     if (!response.ok) {
         logTemplateError('[sendTemplateMessage] Meta API Error:', result, {
@@ -273,7 +251,7 @@ export async function sendTemplateMessage(input: {
             templateName: input.templateName,
         })
         const errorMsg = result?.error?.error_data?.details || result?.error?.message || result?.error?.error_user_msg || 'Failed to send template'
-        return { success: false, error: errorMsg }
+        return { success: false, error: publicTemplateMessageError(errorMsg) }
     }
 
     const messageId = result?.messages?.[0]?.id || `tmpl_${Date.now()}`
@@ -311,8 +289,8 @@ export async function sendTemplateMessage(input: {
     revalidatePath('/inbox')
     return { success: true, messageId }
     } catch (e: any) {
-        console.error('[sendTemplateMessage] Unhandled error:', e)
-        return { success: false, error: e.message || 'Error interno inesperado' }
+        logTemplateError('[sendTemplateMessage] Unhandled error:', e)
+        return { success: false, error: publicTemplateMessageError(e) }
     }
 }
 

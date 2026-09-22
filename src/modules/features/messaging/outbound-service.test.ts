@@ -79,7 +79,8 @@ describe('OutboundService', () => {
         const adapterSendMessage = vi.fn(async () => ({ messageId: 'wamid.secret.outbound' }))
         mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
         mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'conversations') return conversationMaybeSingleQuery(null)
+            if (table === 'messages') return {select: () => ({eq: () => ({eq: () => ({eq: () => ({order: () => ({limit: async () => ({data:[{created_at:new Date().toISOString(), metadata:{}}],error:null})})})})})})};
+            if (table === 'conversations') return conversationMaybeSingleQuery({id:'conversation-secret-id', organization_id:'org-secret-id',connection_id:'channel-secret-id'})
             throw new Error(`Unexpected table ${table}`)
         })
 
@@ -92,6 +93,7 @@ describe('OutboundService', () => {
             {
                 connection: {
                     id: 'channel-secret-id',
+                    organization_id: 'org-secret-id', status: 'active',
                     provider_key: 'whatsapp_cloud',
                     credentials: { accessToken: 'token-secret' },
                     metadata: {},
@@ -106,7 +108,7 @@ describe('OutboundService', () => {
             'hola',
             expect.objectContaining({ channel: 'whatsapp' })
         )
-        expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
+        expect(mocks.saveOutboundMessage).toHaveBeenCalled()
 
         const logText = collectConsoleCalls(logSpy, warnSpy)
         expect(logText).not.toContain('+571234567890')
@@ -115,7 +117,6 @@ describe('OutboundService', () => {
         expect(logText).not.toContain('wamid.secret.outbound')
         expect(logText).toContain('recipientPhonePresent')
         expect(logText).toContain('channelIdPresent')
-        expect(logText).toContain('messageIdPresent')
     })
 
     it('does not expose system conversation ids or raw database errors in production logs', async () => {

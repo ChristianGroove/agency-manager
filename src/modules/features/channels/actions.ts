@@ -1,5 +1,7 @@
 "use server"
 
+import { resolveConnectionCredentials, assertRawCredentialInput } from '@/modules/infrastructure/integrations/connection-secrets'
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
@@ -136,7 +138,7 @@ export async function checkChannelStatus(id: string) {
     }
 
     try {
-        return await adapter.checkConnectionStatus(channel.credentials)
+        return await adapter.checkConnectionStatus(await resolveConnectionCredentials(channel.credentials))
     } catch (error: any) {
         console.error(`[checkChannelStatus] Error checking status:`, error)
         return { status: 'error', message: error.message }
@@ -152,6 +154,7 @@ export async function getChannelQrCode(providerKey: string, credentials: Record<
 
     await requireOrgRole('admin')
 
+    assertRawCredentialInput(credentials)
     const adapter = integrationRegistry.getAdapter(providerKey)
     if (!adapter) {
         throw new Error(`Provider ${providerKey} not found`)
@@ -178,6 +181,7 @@ export async function createChannel(input: {
 
     await requireOrgRole('admin') // Only admins can connect lines
 
+    assertRawCredentialInput(input.credentials)
     // 1. Verify Credentials
     if (input.force_validation !== false) {
         const adapter = integrationRegistry.getAdapter(input.provider_key)
@@ -211,7 +215,7 @@ export async function createChannel(input: {
             organization_id: orgId,
             provider_key: input.provider_key,
             connection_name: input.connection_name,
-            credentials: input.credentials,
+            credentials: encryptObject(input.credentials),
             config: input.config,
             metadata: input.metadata || {},
             is_primary: input.is_primary || false,

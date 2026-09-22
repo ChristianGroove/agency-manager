@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
 const PUBLIC_META_SEND_ERROR = 'Meta send failed'
@@ -138,7 +140,7 @@ export class MetaAdapter implements IntegrationAdapter {
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
         return await globalCircuitBreaker.execute('meta_status', async () => {
             const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
-            const creds = decryptObject(credentials);
+            const creds = await resolveConnectionCredentials(credentials);
         const accessToken = creds.accessToken || creds.access_token;
 
         if (!accessToken) return { status: 'inactive', message: 'No access token' };
@@ -166,7 +168,7 @@ export class MetaAdapter implements IntegrationAdapter {
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds); } catch (e) { throw new Error("Invalid credentials format"); }
         }
-        creds = decryptObject(creds);
+        creds = await resolveConnectionCredentials(creds);
 
         // Merge passed metadata (context) with credentials defaults
         const phoneNumberId = metadata?.phoneNumberId || creds.phoneNumberId || creds.phone_number_id;
@@ -288,7 +290,12 @@ export class MetaAdapter implements IntegrationAdapter {
             };
 
             const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker'];
-            if (mediaTypes.includes(contentObj.type)) {
+            if (contentObj.type === 'template') {
+                if (!contentObj.templateName) throw new Error('Template name is required');
+                payload.type = 'template';
+                payload.template = {name:contentObj.templateName,language:{code:contentObj.templateLanguage || 'es'},
+                    ...(contentObj.templateComponents?.length ? {components:contentObj.templateComponents} : {})};
+            } else if (mediaTypes.includes(contentObj.type)) {
                 const type = contentObj.type;
                 const isUrl = String(contentObj.mediaUrl || '').startsWith('http');
                 

@@ -1,5 +1,7 @@
 "use server"
 
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
+
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
@@ -252,7 +254,7 @@ async function resolveMetaCredentials(orgId: string, channelId?: string): Promis
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch (e) { /* noop */ }
     }
-    creds = decryptObject(creds)
+    creds = await resolveConnectionCredentials(creds)
 
     // 3. Extract metadata (NOT encrypted â€” stored as plain jsonb)
     const metadata = connection.metadata as any || {}
@@ -271,21 +273,16 @@ async function resolveMetaCredentials(orgId: string, channelId?: string): Promis
     // 4. Resolve access token (credentials â†’ env var)
     const accessToken = creds?.accessToken
         || creds?.access_token
-        || process.env.META_API_TOKEN
-        || process.env.META_ACCESS_TOKEN
 
     // 5. Resolve WABA ID (credentials â†’ metadata â†’ env var)
     const wabaId = creds?.wabaId
         || creds?.waba_id
         || metadata?.waba_id
-        || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID
-        || process.env.WABA_ID
 
     // 6. Resolve Phone Number ID (credentials â†’ metadata â†’ env var)
     const phoneNumberId = creds?.phoneNumberId
         || creds?.phone_number_id
         || metadata?.asset_id
-        || process.env.META_PHONE_NUMBER_ID
 
     if (!accessToken) {
         throw new Error("Missing Meta access token. Check connection credentials.")

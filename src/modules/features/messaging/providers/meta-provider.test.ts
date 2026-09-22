@@ -142,9 +142,9 @@ describe('MetaProvider', () => {
                 changes: [{
                     value: {
                         metadata: { phone_number_id: 'phone_secret_id' },
-                        messages: [{
+                        message_echoes: [{
                             id: 'wamid.secret.echo',
-                            from: 'phone_secret_id',
+                            from: '15551230000', to: '15551239999',
                             timestamp: '1710000000',
                             type: 'text',
                             text: { body: 'sent by business' },

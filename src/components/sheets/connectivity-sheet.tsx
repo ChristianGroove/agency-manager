@@ -85,15 +85,13 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
         setLoadingConfig(false)
     }
 
-    const handleConnectMeta = () => {
-        const appId = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305'; // Fallback to avoid crash, but should be env
-        const redirectUri = `${window.location.origin}/api/integrations/meta/callback`;
-        const scope = 'ads_read,pages_show_list,pages_read_engagement';
-        const state = `contact_connect:${client.id}`;
-
-        const url = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&response_type=code`;
-
-        window.open(url, 'Connect Meta', 'width=600,height=700');
+    const handleConnectMeta = async () => {
+        const popup = window.open('', 'Connect Meta', 'width=600,height=700');
+        try {
+            const { getMetaContactAuthUrl } = await import('@/modules/infrastructure/meta/services/contact-oauth-actions');
+            const url = await getMetaContactAuthUrl(client.id);
+            if (popup) popup.location.href = url;
+        } catch { popup?.close(); toast.error('No se pudo iniciar la conexión con Meta'); }
     }
 
     const handleSaveMetaConnection = async (formData: FormData) => {

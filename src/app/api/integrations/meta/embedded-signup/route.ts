@@ -1,3 +1,4 @@
+import { consumeMetaOAuthSession } from '@/modules/infrastructure/meta/services/oauth-session';
 import { NextRequest, NextResponse } from "next/server";
 import { embeddedSignupHandler } from "@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler";
 import { createClient } from "@/modules/core/database/supabase-server";
@@ -72,7 +73,14 @@ async function requireMetaOnboardingAccess(orgId: string) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { orgId, code, wabaId } = body;
+        const { orgId, code, wabaId, phoneNumberId, mode, state } = body;
+        if (typeof orgId !== 'string' || !orgId) return NextResponse.json({ error: 'Missing organization' }, { status: 400 });
+        const unauthorized = await requireMetaOnboardingAccess(orgId);
+        if (unauthorized) return unauthorized;
+        if (typeof code !== 'string' || typeof state !== 'string' || !['cloud','coexistence'].includes(mode)) return NextResponse.json({ error: 'Invalid signup session' }, { status: 400 });
+        let session;
+        try { session = await consumeMetaOAuthSession(state); } catch { return NextResponse.json({ error: 'Invalid or expired signup session' }, { status: 403 }); }
+        if (session.orgId !== orgId || session.flow !== 'embedded') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         if (!orgId || !code) {
             return NextResponse.json(
@@ -81,12 +89,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const unauthorized = await requireMetaOnboardingAccess(orgId);
-        if (unauthorized) return unauthorized;
 
         logEmbeddedSignupInfo("[EmbeddedSignup API] Processing request", { orgId });
 
-        const result = await embeddedSignupHandler.completeOnboarding(orgId, code, wabaId);
+        const result = await embeddedSignupHandler.completeOnboarding(orgId, code, wabaId, phoneNumberId, mode);
 
         if (!result.success) {
             logEmbeddedSignupError("[EmbeddedSignup API] Onboarding failed:", result.error);
@@ -99,12 +105,14 @@ export async function POST(request: NextRequest) {
         logEmbeddedSignupInfo("[EmbeddedSignup API] Onboarding completed", {
             connectionId: result.connectionId,
             wabaId: result.wabaId,
+            syncStatus: result.syncStatus,
         });
 
         return NextResponse.json({
             success: true,
             connectionId: result.connectionId,
             wabaId: result.wabaId,
+            syncStatus: result.syncStatus,
         });
 
     } catch (error: any) {

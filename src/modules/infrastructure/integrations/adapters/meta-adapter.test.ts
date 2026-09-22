@@ -90,3 +90,10 @@ describe('MetaAdapter', () => {
         expect(logText).not.toContain('metadata-secret')
     })
 })
+
+it('sends a WhatsApp template instead of silently converting it into free-form text', async () => {
+ const fetcher=vi.fn(async (_url:any,_init:any)=>new Response(JSON.stringify({messages:[{id:'wamid.template'}]}),{status:200}));vi.stubGlobal('fetch',fetcher)
+ const {MetaAdapter}=await import('./meta-adapter')
+ await new MetaAdapter().sendMessage({phoneNumberId:'phone',accessToken:'token'},'573001234567',{type:'template',templateName:'hello',templateLanguage:'es',templateComponents:[{type:'body',parameters:[{type:'text',text:'Ana'}]}]},{channel:'whatsapp'})
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({type:'template',template:{name:'hello',language:{code:'es'},components:[{type:'body',parameters:[{type:'text',text:'Ana'}]}]}})
+})

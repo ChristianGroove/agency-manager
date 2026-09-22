@@ -1,3 +1,4 @@
+import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
@@ -112,10 +113,13 @@ export class OutboundService {
                 .from('integration_connections')
                 .select('*')
                 .eq('id', channelId)
+                .eq('organization_id', organizationId)
+                .eq('status', 'active')
                 .single()
             channel = fetchedChannel
         }
 
+        if (channel && (channel.id !== channelId || channel.organization_id !== organizationId || channel.status !== 'active')) throw new Error('Channel organization mismatch')
         if (!channel) throw new Error(`Channel ${channelId} not found`)
 
         // 2. Get Adapter
@@ -141,9 +145,10 @@ export class OutboundService {
         if (!conv) {
              const { data: fetchedConv } = await supabase
                 .from('conversations')
-                .select('id, channel, metadata')
+                .select('id, channel, metadata, organization_id, connection_id, lead_id')
                 .eq('organization_id', organizationId)
                 .eq('phone', normalizedRecipient)
+                .eq('connection_id', channelId)
                 .neq('state', 'archived')
                 .order('updated_at', { ascending: false })
                 .limit(1)
@@ -168,28 +173,7 @@ export class OutboundService {
             metadata.channel = 'instagram'
         }
 
-        // Fallback for archived if still no conversationId
-        if (!conversationId) {
-            const { data: archived } = await supabase
-                .from('conversations')
-                .select('id, channel, metadata')
-                .eq('organization_id', organizationId)
-                .eq('phone', normalizedRecipient)
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
-
-            if (archived) {
-                conversationId = archived.id
-                const meta = archived.metadata || {}
-                if (archived.channel === 'whatsapp' && meta.phoneNumberId) {
-                    metadata.phoneNumberId = meta.phoneNumberId
-                } else if (archived.channel === 'messenger' && meta.pageId) {
-                    metadata.pageId = meta.pageId
-                }
-            }
-        }
-
+        await assertMetaSendAllowed(channel, conv, content)
         // 4. Send via Adapter
         const result = await adapter.sendMessage(channel.credentials, recipientPhone, content, metadata)
 
@@ -199,7 +183,9 @@ export class OutboundService {
                 conversationId,
                 content,
                 externalId: result.messageId,
-                sender: 'Agent'
+                sender: 'Agent',
+                channel: metadata.channel,
+                organizationId
             })
         } else {
             logOutboundWarning('[OutboundService] No conversation found; message sent but not logged.', {

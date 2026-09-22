@@ -1,4 +1,6 @@
 "use server"
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { MetaProvider } from "@/modules/features/messaging/providers/meta-provider"
 import { MessagingPersistence } from "@/modules/features/messaging/services/persistence"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
@@ -246,7 +248,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds) } catch (e) { }
         }
-        creds = decryptObject(creds)
+        creds = await resolveConnectionCredentials(creds)
 
         const accessToken = creds.accessToken || creds.apiToken || creds.access_token || ''
         const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id || ''
@@ -364,7 +366,7 @@ export async function handleRejectionReasonSelected(
             if (typeof creds === 'string') {
                 try { creds = JSON.parse(creds) } catch (e) { }
             }
-            creds = decryptObject(creds)
+            creds = await resolveConnectionCredentials(creds)
 
             const accessToken = creds.accessToken || creds.apiToken || ''
             const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || (connection as any).metadata?.asset_id || (connection as any).metadata?.phone_number_id || ''

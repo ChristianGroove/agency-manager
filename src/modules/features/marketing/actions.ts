@@ -1,4 +1,7 @@
+
 'use server'
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 
 import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
@@ -19,12 +22,12 @@ function sanitizeMetaConfigForClient(config: any) {
     const credentials = config.credentials && typeof config.credentials === 'object'
         ? config.credentials
         : {}
-    const { access_token: _accessToken, ...safeCredentials } = credentials
+    const safeCredentials = { ad_account_id: credentials.ad_account_id, page_id: credentials.page_id }
 
     return {
         ...config,
         credentials: safeCredentials,
-        has_access_token: Boolean(credentials.access_token),
+        has_access_token: Boolean(credentials.access_token || credentials.accessToken),
     }
 }
 
@@ -54,7 +57,7 @@ export async function getOrgMetaConfig() {
         
     let config = data
     if (config && config.credentials) {
-        config.credentials = decryptObject(config.credentials)
+        config.credentials = await resolveConnectionCredentials(config.credentials)
     }
 
     return { config: sanitizeMetaConfigForClient(config), error }
@@ -91,7 +94,7 @@ export async function saveOrgMetaConfig(formData: FormData) {
         .eq('provider_key', META_PROVIDER_KEY)
         .single()
 
-    const existingCredentials = existing?.credentials ? decryptObject(existing.credentials) : {}
+    const existingCredentials = existing?.credentials ? await resolveConnectionCredentials(existing.credentials) : {}
     const accessToken = submittedAccessToken || existingCredentials.access_token
 
     if (!accessToken) {
@@ -182,7 +185,7 @@ export async function syncOrgAdsMetrics(datePreset: string = 'last_30d') {
         .limit(1)
         .maybeSingle()
 
-    const creds = config?.credentials ? decryptObject(config.credentials) : {}
+    const creds = config?.credentials ? await resolveConnectionCredentials(config.credentials) : {}
     const accessToken = creds?.access_token
     const adAccountId = creds?.ad_account_id
 

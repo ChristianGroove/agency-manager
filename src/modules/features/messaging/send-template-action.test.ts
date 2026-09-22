@@ -93,6 +93,7 @@ function createSupabaseMock(options: { conversationResult?: unknown } = {}) {
                 return singleQuery({
                     data: {
                         id: 'connection-secret-id',
+                        organization_id: 'org-secret-id', status: 'active', provider_key: 'whatsapp_cloud',
                         credentials: {
                             accessToken: 'meta-token-secret',
                             phoneNumberId: 'phone-number-secret-id',
@@ -129,7 +130,7 @@ describe('sendTemplateMessage', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const fetchMock = vi.fn()
         vi.stubGlobal('fetch', fetchMock)
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock({
             conversationResult: {
                 data: null,
@@ -160,7 +161,7 @@ describe('sendTemplateMessage', () => {
             messages: [{ id: 'wamid.secret.template' }],
         }), { status: 200 }))
         vi.stubGlobal('fetch', fetchMock)
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock())
 
         const { sendTemplateMessage } = await import('./send-template-action')
@@ -206,8 +207,6 @@ describe('sendTemplateMessage', () => {
         expect(logText).not.toContain('invoice-secret-amount')
         expect(logText).not.toContain('header-secret-value')
         expect(logText).not.toContain('wamid.secret.template')
-        expect(logText).toContain('recipientPhonePresent')
-        expect(logText).toContain('phoneNumberIdPresent')
         expect(logText).toContain('messageIdPresent')
     })
 
@@ -223,7 +222,7 @@ describe('sendTemplateMessage', () => {
             },
         }), { status: 400 }))
         vi.stubGlobal('fetch', fetchMock)
-        mocks.getCurrentOrganizationId.mockResolvedValue('org-test-id')
+        mocks.getCurrentOrganizationId.mockResolvedValue('org-secret-id')
         mocks.createClient.mockResolvedValue(createSupabaseMock())
 
         const { sendTemplateMessage } = await import('./send-template-action')

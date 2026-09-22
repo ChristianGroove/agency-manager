@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
 import { addMinutes, addHours, addDays, isBefore } from "date-fns"
 import { createClient } from "@/modules/core/database/supabase-server";
@@ -171,49 +173,14 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
         let result: any
 
         if (content.template_name && step.type === 'whatsapp') {
-            // HSM Template Dispatch via MarketingAPIManager
-            debugLogs.push(`[${enrollment.id}] Using HSM Template: ${content.template_name}`)
-
-            const { marketingAPIManager } = await import('@/modules/infrastructure/meta/services/marketing-api-manager')
-
-            // Resolve phone_number_id from the org's connection
-            const { data: connection } = await supabase
-                .from('integration_connections')
-                .select('credentials, metadata')
-                .eq('organization_id', lead.organization_id)
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
-                .eq('status', 'active')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
-
-            const creds = connection?.credentials as any
-            const phoneNumberId = creds?.phoneNumberId || creds?.phone_number_id ||
-                (connection?.metadata as any)?.asset_id || process.env.META_PHONE_NUMBER_ID!
-
-            // Substitute lead-specific values into template params
-            const params: Record<string, string> = {}
-            if (content.template_params) {
-                for (const [key, val] of Object.entries(content.template_params as Record<string, string>)) {
-                    params[key] = val
-                        .replace('{{nombre}}', lead.name || '')
-                        .replace('{{empresa}}', lead.company || '')
-                        .replace('{{telefono}}', lead.phone || '')
-                }
-            }
-
-            try {
-                const hsmResult = await marketingAPIManager.sendMarketingMessage({
-                    phoneNumberId,
-                    to: lead.phone,
-                    template_name: content.template_name,
-                    ttl_seconds: content.ttl_seconds || 86400,
-                    parameters: params
-                })
-                result = { success: true, externalId: hsmResult.message_id }
-            } catch (e: any) {
-                result = { success: false, error: e.message }
-            }
+            // Scheduled sends use the same tenant binding and suppression policy as inbox sends.
+            const { outboundService } = await import('@/modules/features/messaging/outbound-service')
+            const parameters = Object.values(content.template_params || {}).map((value: any) => String(value)
+                .replace('{{nombre}}', lead.name || '').replace('{{empresa}}', lead.company || '').replace('{{telefono}}', lead.phone || ''))
+            result = await outboundService.sendSystemMessage(conversationId, {
+                type: 'template', templateName: content.template_name,
+                templateLanguage: content.template_language || 'es', templateComponents: parameters.length ? [{type:'body',parameters:parameters.map(text=>({type:'text',text}))}] : [],
+            }, 'whatsapp')
         } else {
             // Plain text dispatch (non-template or non-WhatsApp)
             result = await sendOutboundMessage(conversationId, content, step.type)
@@ -296,7 +263,7 @@ async function getOrCreateOutboundConversation(
     // 1. Try Find Existing Active Conversation
     const { data: existing } = await supabase
         .from('conversations')
-        .select('id')
+        .select('id,connection_id')
         .eq('organization_id', organizationId) // Strict Tenant
         .eq('lead_id', leadId)
         .eq('channel', channel)
@@ -304,8 +271,19 @@ async function getOrCreateOutboundConversation(
         .limit(1)
         .single()
 
-    if (existing) return existing.id
-
+    if (existing?.connection_id || (existing && channel !== 'whatsapp')) return existing.id
+    let connectionId: string | null = null
+    if (channel === 'whatsapp') {
+        const { data: channels, error: channelError } = await supabase.from('integration_connections').select('id')
+            .eq('organization_id',organizationId).eq('status','active').in('provider_key',['whatsapp_cloud','meta_whatsapp']).limit(2)
+        if (channelError || channels?.length !== 1) throw new Error('Selecciona un canal de WhatsApp para la campaña; no hay un único canal disponible.')
+        connectionId = channels[0].id
+        if (existing) {
+            const bound = await supabase.from('conversations').update({connection_id:connectionId}).eq('id',existing.id).eq('organization_id',organizationId).is('connection_id',null).select('id').single()
+            if (bound.error || !bound.data) throw new Error('Could not bind the campaign conversation')
+            return existing.id
+        }
+    }
     // 2. Create New
     // We need to resolve a default connection to bind it if possible, 
     // but inbox-service handles auto-binding if we leave it null.
@@ -319,7 +297,8 @@ async function getOrCreateOutboundConversation(
             phone: leadPhone,
             status: 'open',
             state: 'active',
-            source: 'marketing_campaign'
+            source: 'marketing_campaign',
+            connection_id: connectionId
         })
         .select('id')
         .single()

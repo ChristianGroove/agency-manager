@@ -191,10 +191,12 @@ describe('message actions logging', () => {
                         error: null,
                     })
                 }
+                if (table === 'messages') return {select: () => ({eq: () => ({eq: () => ({eq: () => ({order: () => ({limit: async () => ({data:[{created_at:new Date().toISOString(), metadata:{}}],error:null})})})})})})};
                 if (table === 'integration_connections') {
                     return singleQuery({
                         data: {
                             id: 'connection-secret-id',
+                            organization_id: 'org-secret-id', status: 'active',
                             credentials: {
                                 accessToken: 'meta-token-secret',
                                 verifyToken: 'verify-token-secret',
@@ -218,7 +220,8 @@ describe('message actions logging', () => {
         expect(mocks.MetaProvider).toHaveBeenCalledWith('meta-token-secret', 'phone-number-secret-id', 'verify-token-secret')
         expect(mocks.saveOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
             conversationId: 'conversation-secret-id',
-            messageId: 'message-secret-id',
+            id: 'message-secret-id',
+            status: 'sending',
             sender: 'Agent Secret',
         }))
 

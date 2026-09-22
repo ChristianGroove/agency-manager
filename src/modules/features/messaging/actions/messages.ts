@@ -1,5 +1,7 @@
 "use server"
 
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
+import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { MetaProvider } from "../providers/meta-provider"
@@ -154,13 +156,13 @@ async function internalSend({
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
+            .eq("organization_id", conversation.organization_id)
+            .eq("status", "active")
             .single()
 
         if (!connection) throw new Error("Connection not found")
 
-        const credentials = typeof connection.credentials === 'string' 
-            ? JSON.parse(connection.credentials) 
-            : connection.credentials
+        const credentials = await resolveConnectionCredentials(connection.credentials)
 
         const providerKey = connection.provider_key
         const assetId = connection.metadata?.asset_id || connection.external_id
@@ -168,7 +170,7 @@ async function internalSend({
         let provider: any
         if (['whatsapp_cloud', 'meta_whatsapp', 'facebook_page', 'instagram_dm', 'instagram_dme', 'meta_business'].includes(providerKey)) {
             provider = new MetaProvider(
-                credentials.accessToken || credentials.apiToken,
+                credentials.accessToken || credentials.apiToken || credentials.access_token,
                 assetId,
                 credentials.verifyToken || 'pixy_webhook_2026'
             )
@@ -181,17 +183,21 @@ async function internalSend({
             'meta_whatsapp': 'whatsapp',
             'meta_business': 'whatsapp',
             'facebook_page': 'messenger',
-            'instagram_dme': 'instagram'
+            'instagram_dme': 'instagram',
+            'instagram_dm': 'instagram'
         }
         const dbChannel = channelMap[providerKey] || 'whatsapp'
         const messageId = msgId || crypto.randomUUID()
+        await assertMetaSendAllowed(connection, conversation, content)
         
         if (!isRetry) {
             await MessagingPersistence.saveOutboundMessage({
                 conversationId,
                 content,
                 sender,
-                messageId,
+                id: messageId,
+                status: "sending",
+                organizationId: conversation.organization_id,
                 channel: dbChannel
             })
 
@@ -209,7 +215,7 @@ async function internalSend({
         const providerOptions = {
             to: recipientPhone,
             content: content,
-            credentials: connection.credentials,
+            credentials,
             metadata: {
                 channel: providerKey,
                 conversationId: conversationId,
@@ -221,7 +227,8 @@ async function internalSend({
             try {
                 const result = await provider.sendMessage(providerOptions)
                 if (result.success && result.messageId) {
-                    await (await createClient()).from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
+                    const saved = await (await createClient()).from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId).eq('organization_id', conversation.organization_id).select('id').single()
+                    if (saved.error) throw new Error('Could not persist send result')
                 } else {
                     await (await createClient()).from('messages').update({
                         status: 'failed',

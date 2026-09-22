@@ -1,11 +1,13 @@
 import { randomBytes, createCipheriv, createDecipheriv } from 'crypto'
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-dev-key-must-be-32-bytes' // 32 chars
+// Existing key derivation is retained so deployed ciphertext remains readable.
 const IV_LENGTH = 16
 
 // Helper to ensure key is 32 bytes
 function getKey() {
-    return Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32))
+    const key = process.env.ENCRYPTION_KEY
+    if (!key || Buffer.byteLength(key) < 32) throw new Error('ENCRYPTION_KEY must contain at least 32 bytes')
+    return Buffer.from(key.padEnd(32, '0').slice(0, 32))
 }
 
 export function encrypt(text: string): string {

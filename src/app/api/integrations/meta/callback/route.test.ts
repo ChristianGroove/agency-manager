@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
+import { decryptObject } from '@/modules/infrastructure/integrations/encryption'
+import { createMetaOAuthState, parseMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
 
 function setupMetaCallbackEnv() {
+    vi.doMock('@/modules/infrastructure/meta/services/oauth-session', () => ({consumeMetaOAuthSession: vi.fn(async (state: string) => {const parsed = parseMetaOAuthState(state); if (!parsed.ok) throw new Error('Invalid state'); return parsed.state})}))
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321')
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key')
@@ -38,6 +40,7 @@ describe('/api/integrations/meta/callback', () => {
         vi.unstubAllEnvs()
         vi.restoreAllMocks()
         vi.resetModules()
+        vi.doUnmock('@/modules/infrastructure/meta/services/oauth-session')
         vi.doUnmock('@supabase/supabase-js')
         vi.doUnmock('@/modules/infrastructure/meta/services/graph-api')
         vi.doUnmock('@/modules/infrastructure/meta/services/waba-subscription-manager')
@@ -137,11 +140,7 @@ describe('/api/integrations/meta/callback', () => {
             expect.objectContaining({
                 organization_id: 'org_123',
                 provider_key: 'meta_business',
-                credentials: expect.objectContaining({
-                    access_token: 'long-lived-token',
-                    user_id: 'meta_user_123',
-                    user_name: 'Meta User',
-                }),
+                credentials: expect.objectContaining({ _encrypted: expect.any(String) }),
             }),
         ])
     })
@@ -196,7 +195,7 @@ describe('/api/integrations/meta/callback', () => {
         expect(insertedConnections).toHaveLength(1)
         const payloadText = JSON.stringify(insertedConnections[0])
         expect(payloadText).not.toContain('page-token-secret-value')
-        expect(insertedConnections[0].credentials).toEqual(expect.objectContaining({
+        expect(decryptObject(insertedConnections[0].credentials)).toEqual(expect.objectContaining({
             access_token: 'long-lived-token',
         }))
         expect(insertedConnections[0].metadata.assets_preview).toEqual([

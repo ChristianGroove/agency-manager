@@ -1,6 +1,7 @@
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption';
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { parseMetaOAuthState } from "@/modules/infrastructure/meta/services/oauth-state";
+import { consumeMetaOAuthSession } from "@/modules/infrastructure/meta/services/oauth-session";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
@@ -151,22 +152,20 @@ export async function GET(request: Request) {
     }
 
     // 2. Verify State before exchanging code or mutating credentials.
-    const parsedState = parseMetaOAuthState(state);
-    if (!parsedState.ok) {
-        logMetaCallbackError("Meta OAuth Invalid State:", parsedState.error);
-        return createClientRedirect(
-            appUrl,
-            '/platform/integrations',
-            errorRedirectParams('invalid_state', 'Invalid Meta OAuth state', parsedState.error)
-        );
+    let verifiedState: Record<string, any>;
+    try { verifiedState = await consumeMetaOAuthSession(state); } catch {
+        return createClientRedirect(appUrl, '/platform/integrations', { error: 'invalid_state' });
     }
-
+    const parsedState = { state: verifiedState };
     // NEW: Contact Connectivity Flow
     if (parsedState.state.flow === 'contact_connect') {
         const clientId = parsedState.state.clientId;
         if (!clientId) return createClientRedirect(appUrl, '/platform/integrations', { error: 'missing_client_id' });
 
         try {
+            const { createClient: sessionClient } = await import('@/modules/core/database/supabase-server');
+            const { data: authorizedClient } = await (await sessionClient()).from('clients').select('id').eq('id', clientId).eq('organization_id', verifiedState.orgId).single();
+            if (!authorizedClient) return createClientRedirect(appUrl, '/platform/integrations', { error: 'forbidden' });
             const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api');
             const metaApi = new MetaGraphAPI(appUrl);
 
@@ -385,7 +384,7 @@ export async function GET(request: Request) {
         }
 
         // 5. Handle based on source (Granular vs Full)
-        if (isGranularConnection && filteredAssets.length > 0) {
+        if (isGranularConnection && filteredAssets.length === 1) {
             const { activateMetaChannel } = await import('@/modules/infrastructure/integrations/marketplace/meta-channel-actions');
 
             let successCount = 0;
@@ -457,11 +456,11 @@ export async function GET(request: Request) {
             provider_key: 'meta_business',
             connection_name: `Meta: ${userProfile.name}`,
             status: 'action_required',
-            credentials: {
+            credentials: encryptObject({
                 access_token: longLivedToken,
                 user_id: userProfile.id,
                 user_name: userProfile.name
-            },
+            }),
             metadata: {
                 total_assets_available: filteredAssets.length,
                 assets_preview: sanitizeAssetsPreviewForMetadata(filteredAssets),

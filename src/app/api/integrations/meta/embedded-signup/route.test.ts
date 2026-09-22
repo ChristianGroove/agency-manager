@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 function onboardingRequest() {
     return new Request('https://pixy.test/api/integrations/meta/embedded-signup', {
         method: 'POST',
-        body: JSON.stringify({ orgId: 'org_123', code: 'code_123' }),
+        body: JSON.stringify({ orgId: 'org_123', code: 'code_123', state: 'signed-session', mode: 'cloud' }),
     }) as any
 }
 
@@ -21,6 +21,7 @@ function collectConsoleCalls(spy: ReturnType<typeof vi.spyOn>) {
 }
 
 function mockAuthorizedUser() {
+    vi.doMock('@/modules/infrastructure/meta/services/oauth-session', () => ({ consumeMetaOAuthSession: vi.fn(async () => ({orgId:'org_123',flow:'embedded'})) }))
     vi.doMock('@/modules/core/database/supabase-server', () => ({
         createClient: vi.fn(async () => ({
             auth: {
@@ -38,6 +39,7 @@ describe('/api/integrations/meta/embedded-signup', () => {
         vi.unstubAllEnvs()
         vi.restoreAllMocks()
         vi.resetModules()
+        vi.doUnmock('@/modules/infrastructure/meta/services/oauth-session')
         vi.doUnmock('@/modules/core/database/supabase-server')
         vi.doUnmock('@/modules/core/iam/services/org-roles')
         vi.doUnmock('@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler')
@@ -129,7 +131,7 @@ describe('/api/integrations/meta/embedded-signup', () => {
             connectionId: 'connection_123',
             wabaId: 'waba_123',
         })
-        expect(completeOnboarding).toHaveBeenCalledWith('org_123', 'code_123', undefined)
+        expect(completeOnboarding).toHaveBeenCalledWith('org_123', 'code_123', undefined, undefined, 'cloud')
 
         const infoLogText = collectConsoleCalls(logSpy)
         expect(infoLogText).not.toContain('org_123')

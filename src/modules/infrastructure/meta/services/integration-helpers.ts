@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 /**
  * Integration Action: Automatically subscribe WABA to webhooks on connection
  * 
@@ -80,7 +82,7 @@ export async function autoSubscribeWABA(
         }
 
         // Decrypt credentials
-        const creds = decryptObject(connection.credentials);
+        const creds = await resolveConnectionCredentials(connection.credentials);
         const accessToken = creds.access_token || creds.accessToken;
 
         if (!accessToken) {
@@ -154,7 +156,7 @@ export async function verifyAllWABASubscriptions(
         const notSubscribed: string[] = [];
 
         for (const connection of connections) {
-            const creds = decryptObject(connection.credentials);
+            const creds = await resolveConnectionCredentials(connection.credentials);
             const accessToken = creds.access_token || creds.accessToken;
             const wabas = (connection.metadata?.selected_assets || [])
                 .filter((a: any) => a.type === 'whatsapp');

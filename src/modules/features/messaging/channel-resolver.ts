@@ -46,7 +46,7 @@ export class ChannelResolver {
             if (!phoneNumberId) return null
 
             // Primary: Modern whatsapp_cloud
-            const { data: direct } = await supabase
+            const { data: direct, error: directError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'whatsapp_cloud')
@@ -54,6 +54,7 @@ export class ChannelResolver {
                 .eq('metadata->>asset_id', phoneNumberId)
                 .maybeSingle()
 
+            if (directError) throw new Error("Could not uniquely resolve Meta channel")
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
 
             // Fallback: Legacy meta_business/meta_whatsapp
@@ -64,11 +65,13 @@ export class ChannelResolver {
                 .in('status', ['active', 'connected'])
 
             if (legacy) {
-                const matched = legacy.find((c: any) => {
+                const matches = legacy.filter((c: any) => {
                     const assetId = c.metadata?.asset_id
                     const selectedAssets = c.metadata?.selected_assets || []
                     return assetId === phoneNumberId || selectedAssets.some((a: any) => a.id === phoneNumberId)
                 })
+                if (matches.length > 1) throw new Error("Ambiguous legacy Meta asset ownership")
+                const matched = matches[0]
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
             }
         }
@@ -78,7 +81,7 @@ export class ChannelResolver {
             const pageId = metadata?.pageId || metadata?.page_id
             if (!pageId) return null
 
-            const { data: direct } = await supabase
+            const { data: direct, error: directError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'facebook_page')
@@ -86,6 +89,7 @@ export class ChannelResolver {
                 .eq('metadata->>asset_id', pageId)
                 .maybeSingle()
 
+            if (directError) throw new Error("Could not uniquely resolve Meta channel")
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
 
             // Legacy
@@ -96,14 +100,15 @@ export class ChannelResolver {
                 .in('status', ['active', 'connected'])
 
             if (legacy) {
-                const matched = legacy.find((c: any) => {
+                const matches = legacy.filter((c: any) => {
                     const assetId = c.metadata?.asset_id
                     const selectedAssets = c.metadata?.selected_assets || []
                     const assetsPreview = c.metadata?.assets_preview || []
                     return assetId === pageId || 
-                           selectedAssets.some((a: any) => a.id === pageId) ||
-                           assetsPreview.some((a: any) => a.id === pageId && a.type === 'page')
+                           selectedAssets.some((a: any) => a.id === pageId)
                 })
+                if (matches.length > 1) throw new Error("Ambiguous legacy Meta asset ownership")
+                const matched = matches[0]
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
             }
         }
@@ -119,8 +124,8 @@ export class ChannelResolver {
                 .in('provider_key', ['instagram_dm', 'instagram_dme'])
                 .in('status', ['active', 'connected'])
 
-            const direct = Array.isArray(directConnections)
-                ? directConnections.find((c: any) => {
+            const candidates = Array.isArray(directConnections)
+                ? directConnections.filter((c: any) => {
                     const metadata = c.metadata || {}
                     return metadata.asset_id === igId ||
                         metadata.page_id === igId ||
@@ -128,7 +133,9 @@ export class ChannelResolver {
                         metadata.instagram_business_id === igId ||
                         metadata.id === igId
                 })
-                : null
+                : []
+            if (candidates.length > 1) throw new Error("Ambiguous Meta asset ownership")
+            const direct = candidates[0]
 
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
 
@@ -140,7 +147,7 @@ export class ChannelResolver {
                 .in('status', ['active', 'connected'])
 
             if (legacy) {
-                const matched = legacy.find((c: any) => {
+                const matches = legacy.filter((c: any) => {
                     const selectedAssets = c.metadata?.selected_assets || []
                     const assetsPreview = c.metadata?.assets_preview || []
                     const assetId = c.metadata?.asset_id || c.metadata?.page_id || c.metadata?.pageId
@@ -149,9 +156,10 @@ export class ChannelResolver {
                     return assetId === igId ||
                            connectionPageId === igId || // Match by Linked Page ID
                            selectedAssets.some((a: any) => a.id === igId) ||
-                           assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram') ||
                            c.provider_key === 'instagram_dme' // Support for DME provider variants
                 })
+                if (matches.length > 1) throw new Error("Ambiguous legacy Meta asset ownership")
+                const matched = matches[0]
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
             }
         }

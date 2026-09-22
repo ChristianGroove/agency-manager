@@ -230,7 +230,10 @@ import { processIncomingMessage } from "@/inngest/messaging";
 import { processStripeWebhook } from "@/inngest/stripe";
 import { trashCleanup } from "@/inngest/trash-cleanup";
 
+import { processMetaWebhook } from '@/inngest/meta-messaging';
+
 export const functions = [
+    processMetaWebhook,
     runWorkflow, 
     vaultSnapshotScheduler, 
     contractOrchestrator, 

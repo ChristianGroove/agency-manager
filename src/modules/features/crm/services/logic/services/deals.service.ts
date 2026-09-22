@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { DealsRepository, CartItem, DealCart } from '../repositories/deals.repository'
 
@@ -125,13 +127,17 @@ export class DealsService {
 
         if (!connection) throw new Error("No hay una conexión de WhatsApp activa para enviar la cotización.")
 
-        const creds = connection.credentials as any
+        const creds = await resolveConnectionCredentials(connection?.credentials)
         const providerKey = connection.provider_key
 
         if (providerKey === 'evolution_api') {
             throw new Error("Las cotizaciones interactivas solo están disponibles para WhatsApp Oficial (Meta). Evolution API no soporta mensajes interactivos.")
         }
 
+        const { assertMetaSendAllowed } = await import('@/modules/infrastructure/meta/services/send-policy')
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+        const { data: sendConversation } = await supabaseAdmin.from('conversations').select('*').eq('id',conversationId).eq('organization_id',cart.organization_id).single()
+        await assertMetaSendAllowed(connection, sendConversation, { type: 'interactive_buttons' })
         // 5. Build Meta Provider & dispatch HTTP
         const { MetaProvider } = await import("@/modules/features/messaging/providers/meta-provider")
         const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')

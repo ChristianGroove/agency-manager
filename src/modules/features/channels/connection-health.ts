@@ -1,4 +1,6 @@
 "use server"
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption"
 import { createClient } from "@/modules/core/database/supabase-server";
@@ -65,7 +67,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
     }
 
     try {
-        const credentials = decryptObject(connection.credentials)
+        const credentials = await resolveConnectionCredentials(connection.credentials)
         const result = await adapter.checkConnectionStatus(credentials)
 
         const newStatus = result.status === 'active' ? 'active' : 'disconnected'

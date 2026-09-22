@@ -1,5 +1,8 @@
 "use server"
 
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
+import { getCurrentOrgRole } from '@/modules/core/iam/services/org-roles'
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
@@ -123,6 +126,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
     if (isCallbackInput(input)) {
         // Called from OAuth callback - orgId is provided
         orgId = input.orgId;
+        const role = await getCurrentOrgRole(orgId);
+        if (role !== "owner" && role !== "admin") return { success: false, error: "Forbidden" };
         providerKey = input.providerKey;
         accessToken = input.pageAccessToken || input.accessToken;
         assetId = input.assetId;
@@ -157,7 +162,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             .eq('provider_key', 'meta_business')
             .maybeSingle();
 
-        const parentCredentials = parentConnection?.credentials as { access_token?: string } | undefined;
+        const parentCredentials = parentConnection ? await resolveConnectionCredentials(parentConnection.credentials) : undefined;
         if (parentError || !parentCredentials?.access_token) {
             logMetaChannelError(
                 '[activateMetaChannel] Parent Meta connection unavailable:',
@@ -181,8 +186,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
         if ((assetType === "page" || assetType === "instagram") && accessToken) {
             try {
-                // For both Page and Instagram, we need a Long-Lived Page Access Token
-                finalAccessToken = await metaApi.exchangeForLongLivedPageToken(accessToken);
+                const pageId = input.pageId || assetId;
+                finalAccessToken = await metaApi.getPageAccessToken(pageId, accessToken, assetType === 'instagram' ? assetId : undefined);
 
                 // For Instagram, we still subscribe the Page ID because Meta delivers 
                 // Instagram Webhooks via the Page's subscribed_apps entry.
@@ -219,6 +224,10 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 logMetaChannelError('[activateMetaChannel] WABA subscription error:', e);
                 webhookStatus = "failed";
             }
+        }
+
+        if (assetType !== 'ads' && !['active','app_level'].includes(webhookStatus)) {
+            return { success: false, error: 'No se pudo verificar la suscripción del canal. Revisa los permisos de Meta y vuelve a intentarlo.' };
         }
 
         // Ads channels: no webhooks needed, use encrypted credentials
@@ -281,19 +290,14 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 return { success: true, channelId: existingChannel.id, reactivated: true };
             }
 
-            if (existingChannel.status === 'active') {
-                return {
-                    success: false,
-                    error: `Este canal ya está activado`
-                };
-            }
+
 
             // Reactivate deleted/disconnected channel
             const { error } = await (await createClient())
                 .from('integration_connections')
                 .update({
                     status: 'active',
-                    credentials: { access_token: finalAccessToken },
+                    credentials: encryptObject({ access_token: finalAccessToken }),
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', existingChannel.id)
@@ -315,7 +319,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         }
 
         // Create new channel connection
-        let channelCredentials: any = { access_token: finalAccessToken };
+        let channelCredentials: any = encryptObject({ access_token: finalAccessToken });
         let channelMetadata: any = {
             asset_id: assetId,
             asset_type: assetType,

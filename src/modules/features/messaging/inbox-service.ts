@@ -87,27 +87,6 @@ export class InboxService {
         if (!supabase) supabase = await createClient()
         logInboxInfo('[InboxService] handleIncomingMessage', { from: msg.from, channel: msg.channel })
 
-        // 1. Idempotency Check (Primary)
-        if (msg.externalId) {
-            const { data: existingMsg } = await supabase
-                .from('messages')
-                .select('id, conversation_id, conversations(lead_id)')
-                .eq('external_id', msg.externalId)
-                .maybeSingle()
-
-            if (existingMsg) {
-                logInboxInfo('[InboxService] Duplicate message detected', { externalId: msg.externalId })
-                const convId = existingMsg.conversation_id;
-                const leadId = (existingMsg.conversations as any)?.lead_id;
-
-                if (convId && leadId) {
-                    // Duplicate detected: Do NOT trigger automation again.
-                    // It's already running or completed for this message ID.
-                    return { success: true, conversationId: convId }
-                }
-            }
-        }
-
         // 2. Resolve Context (Tenant, Lead, Conversation)
         const match = await ChannelResolver.resolveConnection(msg, supabase)
         if (!match) {
@@ -122,6 +101,34 @@ export class InboxService {
             organizationId: match.organizationId,
         })
 
+        // 1. Idempotency Check scoped to the resolved channel
+        if (msg.externalId) {
+            const { data: existingMsg } = await supabase
+                .from('messages')
+                .select('id, conversation_id, metadata, conversations!inner(lead_id,connection_id)')
+                .eq('external_id', msg.externalId)
+                .eq('organization_id', match.organizationId)
+                .eq('conversations.connection_id', match.connectionId)
+                .maybeSingle()
+
+            if (existingMsg) {
+                if (msg.metadata?.historical && !msg.metadata?.media_placeholder && existingMsg.metadata?.metadata?.media_placeholder) {
+                    const enriched = await supabase.from('messages').update({content:msg.content,metadata:{...existingMsg.metadata,metadata:msg.metadata}})
+                        .eq('id',existingMsg.id).eq('organization_id',match.organizationId)
+                    if (enriched.error) throw new Error('Could not enrich historical media')
+                }
+                logInboxInfo('[InboxService] Duplicate message detected', { externalId: msg.externalId })
+                const convId = existingMsg.conversation_id;
+                const leadId = (existingMsg.conversations as any)?.lead_id;
+
+                if (convId && leadId) {
+                    // Duplicate detected: Do NOT trigger automation again.
+                    // It's already running or completed for this message ID.
+                    return { success: true, conversationId: convId }
+                }
+            }
+        }
+
         const { conversation, lead, isNewLead } = await this.resolveMetadataContext(msg, match, supabase)
         if (!conversation) return null
 
@@ -129,13 +136,13 @@ export class InboxService {
         const isEcho = msg.origin === 'outbound'
         const direction = isEcho ? 'outbound' : 'inbound'
         const status = isEcho ? 'sent' : 'received'
-        
+
         // If it's an echo, we check if the conversation is assigned to a human.
         // If assigned, we treat the echo as 'human' to prevent bot icon re-activation.
-        const effectiveSenderType = isEcho 
-            ? (conversation.assigned_to ? 'human' : 'bot') 
+        const effectiveSenderType = isEcho
+            ? (msg.metadata?.source === 'business_app' || conversation.assigned_to ? 'human' : 'bot')
             : 'human'
-            
+
         const sender = isEcho ? (effectiveSenderType === 'bot' ? 'System' : 'Agent') : (msg.senderName || msg.from)
 
         const { data: insertedMsg, error: msgError } = await supabase.from('messages').insert({
@@ -173,7 +180,7 @@ export class InboxService {
 
         // 4. Trigger Automations (Welcome, Pipeline, AI)
         // Background triggers to avoid webhook timeouts
-        if (!isEcho) {
+        if (!isEcho && !msg.metadata?.historical) {
             // New Lead/Conversation Automation (Welcome, Stage, Offline)
             await this.handleConnectionAutomation(
                 supabase,
@@ -183,7 +190,7 @@ export class InboxService {
                 conversation.id,
                 msg.from
             )
-            
+
             // Workflow Automation Triggers
             // Meta 2026: Triggers generally fire AFTER welcome/offline if applicable
             await this.triggerAutomation(msg, conversation.id, lead.id, match.connectionId)
@@ -192,7 +199,7 @@ export class InboxService {
             if (lead?.id) {
                 const lifecycleManager = new LeadLifecycleManager(supabase);
                 // Background execution to maintain high-frequency inbox performance
-                lifecycleManager.handleLeadIncomingActivity(lead.id, match.organizationId).catch(err => 
+                lifecycleManager.handleLeadIncomingActivity(lead.id, match.organizationId).catch(err =>
                     logInboxError('[InboxService] Lifecycle Manager Error:', err, {
                         leadId: lead.id,
                         organizationId: match.organizationId,
@@ -227,7 +234,7 @@ export class InboxService {
     private async resolveMetadataContext(msg: IncomingMessage, match: ConnectionMatch, supabase: SupabaseClient) {
         const { organizationId, connectionId } = match
         const normalizedPhone = normalizePhone(msg.from)
-        
+
         logInboxInfo('[InboxService] Resolving context', {
             organizationId,
             phone: normalizedPhone,
@@ -293,24 +300,29 @@ export class InboxService {
         if (conversation) {
             // Update Existing Conversation (Metadata & State)
             const updates: any = {}
-            if (conversation.state !== 'active' && msg.origin !== 'outbound') {
+            if (conversation.state !== 'active' && msg.origin !== 'outbound' && !msg.metadata?.historical) {
                 updates.state = 'active'
                 updates.status = 'open'
             }
-            
+
             // Sync Preview & Metadata
             updates.last_message = typeof msg.content === 'object' ? msg.content : { type: 'text', text: msg.content }
             updates.last_message_preview = typeof msg.content === 'object' ? (msg.content as any).text : msg.content
-            updates.last_message_at = new Date().toISOString()
+            updates.last_message_at = msg.timestamp.toISOString()
 
+            if (msg.metadata?.source === 'business_app') updates.is_bot_active = false
             const metadataChange = { ...((conversation as any).metadata || {}), ...msg.metadata }
             if (msg.referral) {
                 metadataChange.referral = {
                     ...msg.referral,
-                    free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+                    entry_received_at: msg.timestamp.toISOString()
                 }
             }
             updates.metadata = metadataChange
+            if (msg.metadata?.historical || (conversation.last_message_at && new Date(conversation.last_message_at) > msg.timestamp)) {
+                delete updates.last_message; delete updates.last_message_preview; delete updates.last_message_at;
+                delete updates.metadata;
+            }
 
             if (Object.keys(updates).length > 0) {
                 await supabase.from('conversations').update(updates).eq('id', conversation.id)
@@ -328,7 +340,7 @@ export class InboxService {
             if (msg.referral) {
                 initialMetadata.referral = {
                     ...msg.referral,
-                    free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+                    entry_received_at: msg.timestamp.toISOString()
                 }
             }
 
@@ -339,10 +351,10 @@ export class InboxService {
                 phone: normalizedPhone,
                 status: 'open',
                 state: 'active',
-                is_bot_active: true, // Meta 2026: Bot handles new chats by default
+                is_bot_active: !msg.metadata?.historical && msg.origin !== 'outbound',
                 last_message: typeof msg.content === 'object' ? msg.content : { type: 'text', text: msg.content },
                 last_message_preview: typeof msg.content === 'object' ? (msg.content as any).text : msg.content,
-                last_message_at: new Date().toISOString(),
+                last_message_at: msg.timestamp.toISOString(),
                 connection_id: connectionId,
                 metadata: initialMetadata,
                 tags: initialTags
@@ -368,10 +380,10 @@ export class InboxService {
     ) {
         const { connection, organizationId: orgId } = match
         const { outboundService } = await import("./outbound-service")
-        
+
         // 1. Pipeline Auto-Assignment (New Leads Only)
         if (!existingLead && connection.default_pipeline_stage_id) {
-            // We only update status to the status_key of the stage if we could resolve it, 
+            // We only update status to the status_key of the stage if we could resolve it,
             // but for now, we leave this for the LeadLifecycleManager or simple status update.
             // Removing direct reference to pipeline_stage_id as it is not in the schema.
         }
@@ -379,7 +391,7 @@ export class InboxService {
         // 2. Working Hours & Auto-Reply (Offline Message) with RATE LIMITING
         const timezone = connection.working_hours?.timezone || 'America/Bogota'
         const isOnline = this.isWithinWorkingHours(connection.working_hours, timezone)
-        
+
         logInboxInfo('[InboxService] Business hours status', { isOnline, timezone });
 
         if (!isOnline && connection.auto_reply_when_offline) {
@@ -410,7 +422,7 @@ export class InboxService {
                         orgId,
                         { connection }
                     );
-                    
+
                     if (conversationId) {
                         await supabase
                             .from('conversations')
