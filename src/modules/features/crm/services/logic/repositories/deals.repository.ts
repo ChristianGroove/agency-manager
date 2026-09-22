@@ -125,7 +125,7 @@ export class DealsRepository {
     async getConversationDetails(conversationId: string) {
         const { data, error } = await this.supabase
             .from('conversations')
-            .select('id, phone, metadata, connection_id, leads(phone)')
+            .select('id, phone, metadata, connection_id, organization_id, leads(phone)')
             .eq('id', conversationId)
             .single()
 

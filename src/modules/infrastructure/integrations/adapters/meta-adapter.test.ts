@@ -151,3 +151,16 @@ it('uploads WhatsApp image before the Graph send and uses its media ID', async (
   type:'image',image:{id:'uploaded-media-id',caption:'Producto'},
  })
 })
+
+it('preserves the WhatsApp list header used by CRM quote rejection', async () => {
+ const fetcher = vi.fn(async (_url: string, _init?: RequestInit) =>
+  new Response(JSON.stringify({messages:[{id:'wamid.list'}]}),{status:200}))
+ vi.stubGlobal('fetch', fetcher)
+ const {MetaAdapter}=await import('./meta-adapter')
+ await new MetaAdapter().sendMessage({phoneNumberId:'wa-phone',accessToken:'token'},'573001234567',
+  {type:'interactive_list',header:'Motivo',body:'Seleccione',buttonText:'Opciones',
+   sections:[{title:'Razones',rows:[{id:'one',title:'Precio'}]}]}, {channel:'whatsapp'})
+ expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({
+  type:'interactive',interactive:{type:'list',header:{type:'text',text:'Motivo'}},
+ })
+})

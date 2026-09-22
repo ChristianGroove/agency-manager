@@ -103,7 +103,8 @@ export class OutboundService {
         recipientPhone: string,
         content: string | any,
         organizationId: string,
-        context?: { connection?: any, conversation?: any, operationKey?: string, sender?: string }
+        context?: { connection?: any, conversation?: any, operationKey?: string, sender?: string,
+            requiredChannel?: 'whatsapp' | 'messenger' | 'instagram' }
     ) {
         const supabase = supabaseAdmin
         
@@ -138,7 +139,11 @@ export class OutboundService {
 
         // 3. Resolve Metadata for Send
         const normalizedRecipient = normalizePhone(recipientPhone)
-        let metadata: any = { channel: channel.provider_key === 'whatsapp_cloud' ? 'whatsapp' : (channel.provider_key === 'facebook_page' ? 'messenger' : 'instagram') }
+        let metadata: any = { channel: ['whatsapp_cloud', 'meta_whatsapp', 'meta_business'].includes(channel.provider_key)
+            ? 'whatsapp' : (channel.provider_key === 'facebook_page' ? 'messenger' : 'instagram') }
+        if (context?.requiredChannel && context.requiredChannel !== metadata.channel) {
+            throw new Error('Conversation channel does not support this message')
+        }
         let conversationId: string | null = context?.conversation?.id || null
 
         // Use context conversation if available, otherwise fetch
@@ -165,6 +170,15 @@ export class OutboundService {
         const convMeta = conv?.metadata || {}
         const connMeta = channel.metadata || {}
         const currentChannel = conv?.channel || metadata.channel
+        if (context?.requiredChannel && currentChannel !== context.requiredChannel) {
+            throw new Error('Conversation channel does not support this message')
+        }
+        if (context?.requiredChannel === 'whatsapp') {
+            const storedRecipient = conv?.phone || conv?.metadata?.phone || conv?.metadata?.external_id
+            if (!storedRecipient || normalizePhone(storedRecipient) !== normalizedRecipient) {
+                throw new Error('Recipient does not match conversation')
+            }
+        }
 
         if (currentChannel === 'whatsapp') {
             metadata.phoneNumberId = convMeta.phoneNumberId || connMeta.asset_id || connMeta.phone_number_id

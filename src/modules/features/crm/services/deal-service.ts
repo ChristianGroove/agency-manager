@@ -1,5 +1,4 @@
 
-import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { DealCart, CartItem } from '../types'
 
@@ -137,14 +136,17 @@ export class DealService {
         // 2. Fetch Conversation details 
         const { data: conversation } = await this.supabase
             .from('conversations')
-            .select('id, phone, metadata, connection_id, leads(phone)')
+            .select('id, phone, metadata, connection_id, organization_id, leads(phone)')
             .eq('id', conversationId)
             .single()
 
         if (!conversation) throw new Error("Conversation not found")
+        if (conversation.organization_id !== cart.organization_id || !conversation.connection_id) {
+            throw new Error('La cotización no tiene un canal vinculado a esta organización')
+        }
 
         const convAny = conversation as any
-        let recipientPhone = convAny.leads?.phone || convAny.phone || convAny.metadata?.phone_number || convAny.metadata?.displayPhoneNumber || ''
+        const recipientPhone = convAny.phone || convAny.metadata?.phone || convAny.metadata?.external_id || ''
         if (!recipientPhone) throw new Error("No phone number found for recipient")
 
         // 3. Load UI Settings
@@ -168,88 +170,14 @@ export class DealService {
         })
         bodyText += `----------------------------------\n*TOTAL: $${cart.total_amount?.toLocaleString()}*`
 
-        // 4. Resolve Connection
-        let connection: any = null
-        if (conversation.connection_id) {
-            const { data } = await this.supabase
-                .from('integration_connections')
-                .select('*')
-                .eq('id', conversation.connection_id)
-                .single()
-            connection = data
-        }
-        
-        if (!connection && cart.organization_id) {
-            const { data } = await this.supabase
-                .from('integration_connections')
-                .select('*')
-                .eq('organization_id', cart.organization_id)
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'evolution_api'])
-                .eq('status', 'active')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
-            connection = data
-        }
-
-        if (!connection) throw new Error("No hay una conexión de WhatsApp activa.")
-
-        const creds = await resolveConnectionCredentials(connection?.credentials)
-        const providerKey = connection.provider_key
-
-        if (providerKey === 'evolution_api') {
-            throw new Error("Evolution API no soporta mensajes interactivos.")
-        }
-
-        const { assertMetaSendAllowed } = await import('@/modules/infrastructure/meta/services/send-policy')
-        const { data: sendConversation } = await this.supabase.from('conversations').select('*').eq('id',conversationId).eq('organization_id',cart.organization_id).single()
-        await assertMetaSendAllowed(connection, sendConversation, { type: 'interactive_buttons' })
-        // 5. Dispatch via Meta Provider
-        const { MetaProvider } = await import("@/modules/features/messaging/providers/meta-provider")
-        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
-        const finalCreds = decryptObject(creds)
-
-        const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token
-        const phoneId = finalCreds.phoneNumberId || finalCreds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id
-
-        if (!token || !phoneId) throw new Error(`Credenciales de Meta incompletas.`)
-
-        const provider = new MetaProvider(token, phoneId, finalCreds.verifyToken || '')
-        
-        const result = await provider.sendMessage({
-            to: recipientPhone,
-            content: {
-                type: 'interactive_buttons',
-                body: bodyText,
-                header: { type: 'text', text: headerText },
-                footer: footerText,
-                buttons: [
-                    { id: `approve_cart_${cartId}`, title: approveLabel },
-                    { id: `reject_cart_${cartId}`, title: rejectLabel }
-                ]
-            }
-        })
-
-        if (!result.success) throw new Error("Meta API Error: " + result.error)
-
-        // 6. Save reflection
-        const { MessagingPersistence } = await import('@/modules/features/messaging/services/persistence')
-        await MessagingPersistence.saveOutboundMessage({
-            conversationId,
-            content: {
-                type: 'interactive_buttons',
-                text: `[COTIZACIÓN] ${headerText}\n\n${bodyText}\n\n${footerText}\n\n[Botones: ${approveLabel} | ${rejectLabel}]`,
-                header: { type: 'text', text: headerText },
-                body: bodyText,
-                footer: footerText,
-                buttons: [
-                    { id: `approve_cart_${cartId}`, title: approveLabel },
-                    { id: `reject_cart_${cartId}`, title: rejectLabel }
-                ]
-            },
-            messageId: result.messageId,
-            sender: 'Agent',
-            channel: 'whatsapp'
-        })
+        const { outboundService } = await import('@/modules/features/messaging/outbound-service')
+        await outboundService.sendMessage(conversation.connection_id, recipientPhone, {
+            type: 'interactive_buttons', body: bodyText,
+            header: { type: 'text', text: headerText }, footer: footerText,
+            buttons: [
+                { id: `approve_cart_${cartId}`, title: approveLabel },
+                { id: `reject_cart_${cartId}`, title: rejectLabel },
+            ],
+        }, cart.organization_id, { conversation, sender: 'Agent', requiredChannel: 'whatsapp' })
     }
 }

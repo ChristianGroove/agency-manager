@@ -1,5 +1,4 @@
 
-import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { DealsRepository, CartItem, DealCart } from '../repositories/deals.repository'
 
@@ -88,9 +87,12 @@ export class DealsService {
         // 2. Fetch Conversation details 
         const conversation = await this.repo.getConversationDetails(conversationId)
         if (!conversation) throw new Error("Conversation not found")
+        if (!cart.organization_id || conversation.organization_id !== cart.organization_id || !conversation.connection_id) {
+            throw new Error('La cotización no tiene un canal vinculado a esta organización')
+        }
 
         const convAny = conversation as any
-        let recipientPhone = convAny.leads?.phone || convAny.phone || convAny.metadata?.phone_number || convAny.metadata?.displayPhoneNumber || ''
+        const recipientPhone = convAny.phone || convAny.metadata?.phone || convAny.metadata?.external_id || ''
         if (!recipientPhone) throw new Error("No phone number found for recipient")
 
         // 3. Load UI Settings for template rendering
@@ -114,79 +116,14 @@ export class DealsService {
         })
         bodyText += `----------------------------------\n*TOTAL: $${cart.total_amount?.toLocaleString()}*`
 
-        // 4. Resolve Meta Connection logic
-        let connection: any = null
-        if (conversation.connection_id) {
-            connection = await this.repo.getConnectionById(conversation.connection_id)
-        }
-        
-        // Fallback connection
-        if (!connection && cart.organization_id) {
-            connection = await this.repo.getDefaultWhatsAppConnection(cart.organization_id)
-        }
-
-        if (!connection) throw new Error("No hay una conexión de WhatsApp activa para enviar la cotización.")
-
-        const creds = await resolveConnectionCredentials(connection?.credentials)
-        const providerKey = connection.provider_key
-
-        if (providerKey === 'evolution_api') {
-            throw new Error("Las cotizaciones interactivas solo están disponibles para WhatsApp Oficial (Meta). Evolution API no soporta mensajes interactivos.")
-        }
-
-        const { assertMetaSendAllowed } = await import('@/modules/infrastructure/meta/services/send-policy')
-        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
-        const { data: sendConversation } = await supabaseAdmin.from('conversations').select('*').eq('id',conversationId).eq('organization_id',cart.organization_id).single()
-        await assertMetaSendAllowed(connection, sendConversation, { type: 'interactive_buttons' })
-        // 5. Build Meta Provider & dispatch HTTP
-        const { MetaProvider } = await import("@/modules/features/messaging/providers/meta-provider")
-        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
-        const finalCreds = decryptObject(creds)
-
-        const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token
-        const phoneId = finalCreds.phoneNumberId || finalCreds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id
-
-        if (!token || !phoneId) {
-            throw new Error(`Credenciales de Meta incompletas. Token: ${!!token}, PhoneId: ${!!phoneId}`)
-        }
-
-        const provider = new MetaProvider(token, phoneId, finalCreds.verifyToken || '')
-        
-        // POST to Meta
-        const result = await provider.sendMessage({
-            to: recipientPhone,
-            content: {
-                type: 'interactive_buttons',
-                body: bodyText,
-                header: { type: 'text', text: headerText },
-                footer: footerText,
-                buttons: [
-                    { id: `approve_cart_${cartId}`, title: approveLabel },
-                    { id: `reject_cart_${cartId}`, title: rejectLabel }
-                ]
-            }
-        })
-
-        if (!result.success) throw new Error("Meta API Error: " + result.error)
-
-        // 6. DB Storage reflection for CRM Inbox Rendering
-        const { MessagingPersistence } = await import('@/modules/features/messaging/services/persistence')
-        await MessagingPersistence.saveOutboundMessage({
-            conversationId,
-            content: {
-                type: 'interactive_buttons',
-                text: `[COTIZACIÓN] ${headerText}\n\n${bodyText}\n\n${footerText}\n\n[Botones: ${approveLabel} | ${rejectLabel}]`,
-                header: { type: 'text', text: headerText },
-                body: bodyText,
-                footer: footerText,
-                buttons: [
-                    { id: `approve_cart_${cartId}`, title: approveLabel },
-                    { id: `reject_cart_${cartId}`, title: rejectLabel }
-                ]
-            },
-            messageId: result.messageId,
-            sender: 'Agent',
-            channel: 'whatsapp'
-        })
+        const { outboundService } = await import('@/modules/features/messaging/outbound-service')
+        await outboundService.sendMessage(conversation.connection_id, recipientPhone, {
+            type: 'interactive_buttons', body: bodyText,
+            header: { type: 'text', text: headerText }, footer: footerText,
+            buttons: [
+                { id: `approve_cart_${cartId}`, title: approveLabel },
+                { id: `reject_cart_${cartId}`, title: rejectLabel },
+            ],
+        }, cart.organization_id, { conversation, sender: 'Agent', requiredChannel: 'whatsapp' })
     }
 }

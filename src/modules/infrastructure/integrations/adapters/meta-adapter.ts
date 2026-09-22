@@ -405,6 +405,12 @@ export class MetaAdapter implements IntegrationAdapter {
                         }))
                     }
                 };
+                if (contentObj.header) {
+                    payload.interactive.header = typeof contentObj.header === 'string'
+                        ? { type: 'text', text: contentObj.header }
+                        : contentObj.header;
+                }
+                if (contentObj.footer) payload.interactive.footer = { text: contentObj.footer };
             } else if (contentObj.type === 'location') {
                 payload.type = 'location';
                 payload.location = {

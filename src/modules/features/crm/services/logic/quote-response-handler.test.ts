@@ -4,11 +4,6 @@ const mocks = vi.hoisted(() => {
     const sendMessage = vi.fn()
 
     return {
-        decryptObject: vi.fn((value: unknown) => value),
-        MetaProvider: vi.fn(function () {
-            return { sendMessage }
-        }),
-        saveOutboundMessage: vi.fn(),
         sendMessage,
         supabaseFrom: vi.fn(),
     }
@@ -20,18 +15,8 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
     }
 }))
 
-vi.mock('@/modules/features/messaging/providers/meta-provider', () => ({
-    MetaProvider: mocks.MetaProvider,
-}))
-
-vi.mock('@/modules/features/messaging/services/persistence', () => ({
-    MessagingPersistence: {
-        saveOutboundMessage: mocks.saveOutboundMessage,
-    },
-}))
-
-vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
-    decryptObject: mocks.decryptObject,
+vi.mock('@/modules/features/messaging/outbound-service', () => ({
+    outboundService: { sendMessage: mocks.sendMessage },
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -69,17 +54,6 @@ function singleQuery(result: unknown) {
     return query
 }
 
-function limitQuery(result: unknown) {
-    const query: any = {
-        eq: vi.fn(() => query),
-        in: vi.fn(() => query),
-        select: vi.fn(() => query),
-        limit: vi.fn(async () => result),
-    }
-
-    return query
-}
-
 function updateEq(result: unknown) {
     const query: any = {
         eq: vi.fn(async () => result),
@@ -112,22 +86,6 @@ function quoteSettings(data: unknown = {
     return singleQuery({ data, error: null })
 }
 
-function connectionQuery() {
-    return singleQuery({
-        data: {
-            id: 'connection-secret-id',
-            credentials: {
-                accessToken: 'meta-token-secret',
-                phoneNumberId: 'phone-number-secret-id',
-            },
-            metadata: {
-                asset_id: 'phone-number-secret-id',
-            },
-        },
-        error: null,
-    })
-}
-
 const context = {
     conversationId: 'conversation-secret-id',
     cartId: 'cart-secret-id',
@@ -139,13 +97,6 @@ afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     vi.resetModules()
-    mocks.decryptObject.mockReset()
-    mocks.decryptObject.mockImplementation((value: unknown) => value)
-    mocks.MetaProvider.mockReset()
-    mocks.MetaProvider.mockImplementation(function () {
-        return { sendMessage: mocks.sendMessage }
-    })
-    mocks.saveOutboundMessage.mockReset()
     mocks.sendMessage.mockReset()
     mocks.supabaseFrom.mockReset()
 })
@@ -172,11 +123,10 @@ describe('quote response handler logging and failures', () => {
     it('does not expose quote settings lookup details while keeping rejection flow usable', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.sendMessage.mockResolvedValue({ success: true, messageId: 'wamid.secret.quote' })
-        mocks.saveOutboundMessage.mockResolvedValue({ success: true })
+        mocks.sendMessage.mockResolvedValue({ messageId: 'wamid.secret.quote' })
         useSupabaseQueues({
             conversations: [
-                singleQuery({ data: { organization_id: 'org-secret-id' }, error: null }),
+                singleQuery({ data: { id: context.conversationId, phone: context.recipientPhone, organization_id: 'org-secret-id', connection_id: context.connectionId }, error: null }),
             ],
             quote_settings: [
                 singleQuery({
@@ -186,10 +136,6 @@ describe('quote response handler logging and failures', () => {
                         message: 'settings denied for org-secret-id using policy-secret',
                     },
                 }),
-                quoteSettings(null),
-            ],
-            integration_connections: [
-                connectionQuery(),
             ],
         })
 
@@ -197,14 +143,11 @@ describe('quote response handler logging and failures', () => {
         const result = await handleQuoteRejection(context)
 
         expect(result).toEqual({ success: true })
-        expect(mocks.MetaProvider).toHaveBeenCalledWith('meta-token-secret', 'phone-number-secret-id', '')
-        expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
-            to: '+573001112233',
-        }))
-        expect(mocks.saveOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
-            conversationId: 'conversation-secret-id',
-            messageId: 'wamid.secret.quote',
-        }))
+        expect(mocks.sendMessage).toHaveBeenCalledWith(
+            context.connectionId, context.recipientPhone,
+            expect.objectContaining({ type: 'interactive_list' }), 'org-secret-id',
+            expect.objectContaining({ sender: 'System' }),
+        )
 
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('org-secret-id')
@@ -216,19 +159,13 @@ describe('quote response handler logging and failures', () => {
     it('does not expose Meta send failures in quote rejection responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.sendMessage.mockResolvedValue({
-            success: false,
-            error: 'Graph rejected +573001112233 with meta-token-secret for phone-number-secret-id',
-        })
+        mocks.sendMessage.mockRejectedValue(new Error('Graph rejected +573001112233 with meta-token-secret for phone-number-secret-id'))
         useSupabaseQueues({
             conversations: [
-                singleQuery({ data: { organization_id: 'org-secret-id' }, error: null }),
+                singleQuery({ data: { id: context.conversationId, phone: context.recipientPhone, organization_id: 'org-secret-id', connection_id: context.connectionId }, error: null }),
             ],
             quote_settings: [
                 quoteSettings(),
-            ],
-            integration_connections: [
-                connectionQuery(),
             ],
         })
 
@@ -242,28 +179,18 @@ describe('quote response handler logging and failures', () => {
         expect(logText).not.toContain('phone-number-secret-id')
         expect(logText).not.toContain('Graph rejected')
         expect(logText).toContain('Error')
-        expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
+        expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
     })
 
-    it('does not expose fallback connection query failures in quote rejection responses or logs', async () => {
+    it('rejects a quote callback bound to a different channel without sending', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         useSupabaseQueues({
             conversations: [
-                singleQuery({ data: { organization_id: 'org-secret-id' }, error: null }),
+                singleQuery({ data: { id: context.conversationId, organization_id: 'org-secret-id', connection_id: 'different-channel' }, error: null }),
             ],
             quote_settings: [
                 quoteSettings(),
-            ],
-            integration_connections: [
-                singleQuery({ data: null, error: null }),
-                limitQuery({
-                    data: null,
-                    error: {
-                        code: '42501',
-                        message: 'fallback connection denied connection-secret-id with token-secret',
-                    },
-                }),
             ],
         })
 
@@ -274,8 +201,8 @@ describe('quote response handler logging and failures', () => {
         const logText = collectConsoleCalls(errorSpy)
         expect(logText).not.toContain('connection-secret-id')
         expect(logText).not.toContain('token-secret')
-        expect(logText).not.toContain('fallback connection denied')
-        expect(logText).toContain('42501')
+        expect(mocks.sendMessage).not.toHaveBeenCalled()
+        expect(logText).toContain('Error')
     })
 
     it('does not expose rejection reason failures in deployed runtimes', async () => {
@@ -295,5 +222,32 @@ describe('quote response handler logging and failures', () => {
         expect(logText).not.toContain('db-token-secret')
         expect(logText).not.toContain('reason update denied')
         expect(logText).toContain('Error')
+    })
+
+    it('sends a rejection acknowledgment only through the conversation channel', async () => {
+        const update: any = { eq: vi.fn(), select: vi.fn(), single: vi.fn(async () => ({
+            data: { id: context.cartId }, error: null,
+        })) }
+        update.eq.mockReturnValue(update)
+        update.select.mockReturnValue(update)
+        mocks.sendMessage.mockResolvedValue({ messageId: 'wamid.ack' })
+        useSupabaseQueues({
+            conversations: [singleQuery({ data: {
+                id: context.conversationId, phone: context.recipientPhone,
+                organization_id: 'org-secret-id', connection_id: context.connectionId,
+            }, error: null })],
+            deal_carts: [{ update: vi.fn(() => update) }],
+            quote_settings: [quoteSettings({ actions_config: { reject: {
+                acknowledgment_message: 'Recibimos: ${reason}',
+            } } })],
+        })
+        const { handleRejectionReasonSelected } = await import('./quote-response-handler')
+        expect(await handleRejectionReasonSelected(context.cartId, 'precio', context.conversationId))
+            .toEqual({ success: true })
+        expect(mocks.sendMessage).toHaveBeenCalledWith(
+            context.connectionId, context.recipientPhone,
+            { type: 'text', text: 'Recibimos: precio' }, 'org-secret-id',
+            expect.objectContaining({ sender: 'System' }),
+        )
     })
 })

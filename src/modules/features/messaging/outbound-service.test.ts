@@ -95,6 +95,34 @@ describe('OutboundService', () => {
         expect(adapterSendMessage).not.toHaveBeenCalled()
     })
 
+    it('rejects a CRM WhatsApp quote bound to an incompatible provider', async () => {
+        mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn() })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage('evolution-channel', 'recipient',
+            { type: 'interactive_buttons', body: 'Quote', buttons: [] }, 'tenant-a', {
+                connection: { id: 'evolution-channel', organization_id: 'tenant-a',
+                    status: 'active', provider_key: 'evolution_api', metadata: {} },
+                conversation: { id: 'conversation-a', organization_id: 'tenant-a',
+                    connection_id: 'evolution-channel', channel: 'whatsapp' },
+                requiredChannel: 'whatsapp',
+            })).rejects.toThrow('Conversation channel does not support this message')
+        expect(mocks.enqueueMetaOutbound).not.toHaveBeenCalled()
+    })
+
+    it('rejects a CRM recipient different from the conversation customer', async () => {
+        mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn() })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage('wa-channel', '573009999999',
+            { type: 'interactive_buttons', body: 'Quote', buttons: [] }, 'tenant-a', {
+                connection: { id: 'wa-channel', organization_id: 'tenant-a',
+                    status: 'active', provider_key: 'whatsapp_cloud', metadata: {} },
+                conversation: { id: 'conversation-a', organization_id: 'tenant-a',
+                    connection_id: 'wa-channel', channel: 'whatsapp', phone: '573001111111' },
+                requiredChannel: 'whatsapp',
+            })).rejects.toThrow('Recipient does not match conversation')
+        expect(mocks.enqueueMetaOutbound).not.toHaveBeenCalled()
+    })
+
     it('does not expose outbound recipient, channel, org, or external ids in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)

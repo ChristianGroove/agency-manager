@@ -1,8 +1,6 @@
 "use server"
 
-import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
-import { MetaProvider } from "@/modules/features/messaging/providers/meta-provider"
-import { MessagingPersistence } from "@/modules/features/messaging/services/persistence"
+import { outboundService } from '@/modules/features/messaging/outbound-service'
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 /**
@@ -124,7 +122,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         // 1. Get the organization's quote settings
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id')
+            .select('id, phone, organization_id, connection_id')
             .eq('id', context.conversationId)
             .single()
 
@@ -159,142 +157,19 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
 
 
-        // 2. Build interactive list message
-        const listMessage = {
-            type: 'interactive' as const,
-            interactive: {
-                type: 'list',
-                header: {
-                    type: 'text',
-                    text: '¿Por qué rechaza la cotización?'
-                },
-                body: {
-                    text: 'Por favor seleccione una razón para ayudarnos a mejorar.'
-                },
-                action: {
-                    button: 'Ver Opciones',
-                    sections: [{
-                        title: 'Razones',
-                        rows: reasons.map((reason: string, idx: number) => ({
-                            id: `rejection_reason_${context.cartId}_${idx}`,
-                            title: reason.substring(0, 24), // WhatsApp limit
-                            description: reason.length > 24 ? reason : undefined
-                        }))
-                    }]
-                }
-            }
+        if (!conversation.connection_id || (context.connectionId && context.connectionId !== conversation.connection_id)) {
+            throw new Error('La conversación no tiene el canal de WhatsApp esperado')
         }
-
-        // 3. Get connection credentials to send via Meta
-
-
-        // If connectionId is missing, try to get it from conversation
-        let connectionId = context.connectionId
-        if (!connectionId) {
-            const { data: convData } = await supabaseAdmin
-                .from('conversations')
-                .select('connection_id')
-                .eq('id', context.conversationId)
-                .eq('organization_id', conversation.organization_id)
-                .single()
-            connectionId = convData?.connection_id || ''
-
-        }
-
-        if (!connectionId) {
-            throw new Error("No connection ID available")
-        }
-
-        let connection = null
-
-        // Try direct lookup first
-        const { data: directConn } = await supabaseAdmin
-            .from('integration_connections')
-            .select('*, credentials')
-            .eq('id', connectionId)
-            .eq('organization_id', conversation.organization_id)
-            .single()
-
-        connection = directConn
-
-        // Fallback: find any active meta_whatsapp connection
-        if (!connection) {
-
-            const { data: fallbackConns, error: fallbackError } = await supabaseAdmin
-                .from('integration_connections')
-                .select('*, credentials')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
-                .eq('organization_id', conversation.organization_id)
-                .eq('status', 'active')
-                .limit(1)
-
-            if (fallbackError) {
-                logQuoteHandlerError(`[QuoteHandler] Fallback query error:`, fallbackError)
-            }
-
-
-            connection = fallbackConns?.[0] || null
-        }
-
-        if (!connection) {
-            throw new Error("No active WhatsApp connection found")
-        }
-
-
-
-        // Decrypt credentials
-        const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
-        let creds = connection.credentials || {}
-        if (typeof creds === 'string') {
-            try { creds = JSON.parse(creds) } catch (e) { }
-        }
-        creds = await resolveConnectionCredentials(creds)
-
-        const accessToken = creds.accessToken || creds.apiToken || creds.access_token || ''
-        const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id || ''
-
-
-
-        if (!accessToken || !phoneNumberId) {
-            throw new Error("Missing WhatsApp credentials")
-        }
-
-        // 4. Send the list message
-        const provider = new MetaProvider(accessToken, phoneNumberId, '')
-        const result = await provider.sendMessage({
-            to: context.recipientPhone,
-            content: {
-                type: 'interactive_list',
-                body: 'Por favor seleccione una razón para ayudarnos a mejorar.',
-                header: '¿Por qué rechaza la cotización?',
-                buttonText: 'Ver Opciones',
-                sections: [{
-                    title: 'Razones',
-                    rows: reasons.map((reason: string, idx: number) => ({
-                        id: `rejection_reason_${context.cartId}_${idx}`,
-                        title: reason.substring(0, 24)
-                    }))
-                }]
-            }
-        })
-
-        if (!result.success) {
-            throw new Error("Failed to send rejection list: " + result.error)
-        }
-
-        // 5. Save outbound message to chat
-        await MessagingPersistence.saveOutboundMessage({
-            conversationId: context.conversationId,
-            content: {
-                type: 'text',
-                text: '📋 Se ha enviado un formulario para conocer el motivo del rechazo.'
-            },
-            messageId: result.messageId || 'unknown',
-            sender: 'sent', // The original code used 'sent' as sender_id, which is weird but I'll keep the intent
-            channel: 'whatsapp'
-        })
-
-
+        if (!conversation.phone) throw new Error('La conversación no tiene destinatario')
+        await outboundService.sendMessage(conversation.connection_id, conversation.phone, {
+            type: 'interactive_list',
+            body: 'Por favor seleccione una razón para ayudarnos a mejorar.',
+            header: '¿Por qué rechaza la cotización?',
+            buttonText: 'Ver Opciones',
+            sections: [{ title: 'Razones', rows: reasons.map((reason: string, idx: number) => ({
+                id: `rejection_reason_${context.cartId}_${idx}`, title: reason.substring(0, 24),
+            })) }],
+        }, conversation.organization_id, { conversation, sender: 'System', requiredChannel: 'whatsapp' })
         return { success: true }
     } catch (error: any) {
         return quoteHandlerFailure("[QuoteHandler] Rejection error:", error, PUBLIC_QUOTE_REJECTION_ERROR)
@@ -318,7 +193,7 @@ export async function handleRejectionReasonSelected(
         // 1. Get conversation info for tenant scoping and messaging
         const { data: conv } = await supabaseAdmin
             .from('conversations')
-            .select('phone, organization_id, connection_id')
+            .select('id, phone, organization_id, connection_id')
             .eq('id', conversationId)
             .single()
 
@@ -328,13 +203,15 @@ export async function handleRejectionReasonSelected(
         }
 
         // 2. Update cart with rejection reason and status
-        await supabaseAdmin
+        const { data: updatedCart, error: cartError } = await supabaseAdmin
             .from('deal_carts')
             .update({
                 status: 'rejected'
             })
             .eq('id', cartId)
             .eq('organization_id', conv.organization_id)
+            .select('id').single()
+        if (cartError || !updatedCart) throw new Error('La cotización no pertenece a esta organización')
 
         // 3. Get quote settings for configurable message
         let settings = null
@@ -350,51 +227,10 @@ export async function handleRejectionReasonSelected(
         const ackMessage = settings?.actions_config?.reject?.acknowledgment_message ||
             `Gracias por su respuesta. Hemos registrado: "${reason}". Un asesor se comunicará pronto.`
 
-        // 4. Get connection to send via WhatsApp
-        const { data: connections } = await supabaseAdmin
-            .from('integration_connections')
-            .select('*, credentials')
-            .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
-            .eq('organization_id', conv.organization_id)
-            .eq('status', 'active')
-            .limit(1)
-
-        const connection = connections?.[0]
-        if (connection) {
-            const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption')
-            let creds = connection.credentials || {}
-            if (typeof creds === 'string') {
-                try { creds = JSON.parse(creds) } catch (e) { }
-            }
-            creds = await resolveConnectionCredentials(creds)
-
-            const accessToken = creds.accessToken || creds.apiToken || ''
-            const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || (connection as any).metadata?.asset_id || (connection as any).metadata?.phone_number_id || ''
-
-            if (accessToken && phoneNumberId) {
-                const provider = new MetaProvider(accessToken, phoneNumberId, '')
-                const result = await provider.sendMessage({
-                    to: conv.phone,
-                    content: {
-                        type: 'text',
-                        text: ackMessage.replace('${reason}', reason)
-                    }
-                })
-
-
-
-                // Save to inbox
-                await MessagingPersistence.saveOutboundMessage({
-                    conversationId,
-                    content: { type: 'text', text: ackMessage.replace('${reason}', reason) },
-                    messageId: result.messageId || 'ack_' + Date.now(),
-                    sender: 'sent',
-                    channel: 'whatsapp'
-                })
-            }
-        }
-
-
+        if (!conv.connection_id) throw new Error('La conversación no tiene un canal vinculado')
+        await outboundService.sendMessage(conv.connection_id, conv.phone, {
+            type: 'text', text: ackMessage.replace('${reason}', reason),
+        }, conv.organization_id, { conversation: conv, sender: 'System', requiredChannel: 'whatsapp' })
         return { success: true }
     } catch (error: any) {
         return quoteHandlerFailure("[QuoteHandler] Rejection reason error:", error, PUBLIC_REJECTION_REASON_ERROR)
