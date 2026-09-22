@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Ban,
+  Timer,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { SYSTEM_STAGE_TAGS } from "../../types"
@@ -123,6 +124,12 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
                 <th className="p-3.5 w-32">Estado</th>
                 <th className="p-3.5 w-24">Prioridad</th>
                 <th className="p-3.5 w-36">Progreso</th>
+                <th className="p-3.5 w-28 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Timer className="w-3 h-3 text-muted-foreground" />
+                    <span>Horas</span>
+                  </div>
+                </th>
                 <th className="p-3.5 w-40">Asignado</th>
                 <th className="p-3.5 w-28">Fecha límite</th>
                 <th className="p-3.5 w-16 text-right pr-4"></th>
@@ -131,7 +138,7 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
             <tbody className="divide-y divide-border/40">
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     No se encontraron tareas con los filtros seleccionados.
                   </td>
                 </tr>
@@ -289,6 +296,31 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
                           </span>
                         </div>
                         <Progress value={task.progress_percentage} className="h-1.5 w-28" />
+                      </div>
+                    </td>
+                    <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={cn(
+                          "text-xs font-semibold",
+                          Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                            ? "text-rose-600 dark:text-rose-400 font-bold"
+                            : "text-foreground"
+                        )}>
+                          {Number(task.actual_hours) || 0}h
+                          <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
+                        </span>
+                        {Number(task.estimated_hours) > 0 && (
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                            Number(task.actual_hours) > Number(task.estimated_hours)
+                              ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
+                              : Number(task.actual_hours) === Number(task.estimated_hours)
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "text-muted-foreground"
+                          )}>
+                            {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3.5">

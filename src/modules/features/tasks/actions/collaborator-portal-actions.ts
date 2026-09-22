@@ -1,7 +1,7 @@
 "use server"
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
-import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary } from "../types";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint } from "../types";
 import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
@@ -12,7 +12,8 @@ async function logPortalTaskAuditComment(
   orgId: string,
   taskId: string,
   content: string,
-  staff?: { id?: string; first_name?: string; last_name?: string; photo_url?: string | null; role?: string } | string
+  staff?: { id?: string; first_name?: string; last_name?: string; photo_url?: string | null; role?: string | null } | string,
+  explicitMentions?: string[]
 ) {
   try {
     let authorName = "Sistema";
@@ -27,6 +28,10 @@ async function logPortalTaskAuditComment(
       authorAvatar = staff.photo_url || null;
     }
 
+    const extracted = explicitMentions && explicitMentions.length > 0
+      ? explicitMentions
+      : Array.from(content.matchAll(/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g)).map((m) => m[1]);
+
     await supabaseAdmin.from("task_comments").insert({
       organization_id: orgId,
       task_id: taskId,
@@ -35,7 +40,7 @@ async function logPortalTaskAuditComment(
       author_name: authorName,
       author_avatar: authorAvatar,
       content,
-      mentions: []
+      mentions: Array.from(new Set(extracted.filter(Boolean)))
     });
   } catch (err) {
     console.error("Error inserting portal task audit comment:", err);
@@ -45,15 +50,16 @@ async function logPortalTaskAuditComment(
 /**
  * Automatic unblocker: When a task is marked done in portal, notify and unblock dependent tasks
  */
-async function handlePortalTaskUnblocking(completedTaskId: string, ticketCode: string, title: string) {
+async function handlePortalTaskUnblocking(completedTaskId: string, ticketCode: string, title: string): Promise<TaskItem[]> {
   try {
     const { data: blockedTasks } = await supabaseAdmin
       .from("task_items")
       .select("id, ticket_code, title, status, progress_percentage, organization_id, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(first_name)")
       .eq("blocked_by_task_id", completedTaskId);
 
-    if (!blockedTasks || blockedTasks.length === 0) return;
+    if (!blockedTasks || blockedTasks.length === 0) return [];
 
+    const unblockedIds: string[] = [];
     for (const bt of blockedTasks) {
       const mentionTag = (bt as any)?.assigned_staff?.first_name ? ` @${(bt as any).assigned_staff.first_name}` : "";
       await logPortalTaskAuditComment(
@@ -68,10 +74,142 @@ async function handlePortalTaskUnblocking(completedTaskId: string, ticketCode: s
           .from("task_items")
           .update({ status: restoredStatus, blocked_reason: null, updated_at: new Date().toISOString() })
           .eq("id", bt.id);
+        unblockedIds.push(bt.id);
       }
     }
+
+    if (unblockedIds.length === 0) return [];
+
+    const { data: refreshedUnblocked } = await supabaseAdmin
+      .from("task_items")
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(*),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(*),
+        project:task_projects(*),
+        blocked_by:task_items!task_items_blocked_by_task_id_fkey(id, ticket_code, title, status)
+      `)
+      .in("id", unblockedIds);
+
+    return (refreshedUnblocked || []).map(normalizeTask);
   } catch (err) {
     console.error("Error running portal task unblocking:", err);
+    return [];
+  }
+}
+
+/**
+ * Universal stakeholder notifier for key task lifecycle transitions:
+ * - in_review: notifies active PMs/leads and assigned QA specialist
+ * - done: notifies active PMs/leads and original ticket creator
+ * - blocked: notifies active PMs/leads with reason
+ * - in_progress (when previously blocked): notifies assigned staff and PMs
+ */
+async function notifyStakeholdersOnStatusChange(
+  orgId: string,
+  taskId: string,
+  newStatus: TaskStatus,
+  prevStatus: TaskStatus,
+  currentActorStaff: { id: string; first_name: string; last_name: string; role?: string | null; photo_url?: string | null },
+  blockedReason?: string | null
+) {
+  if (newStatus === prevStatus) return;
+
+  try {
+    // 1. Fetch task details
+    const { data: task } = await supabaseAdmin
+      .from("task_items")
+      .select(`
+        id, ticket_code, title, assigned_staff_id, qa_staff_id, created_by_staff_id,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name, last_name, role),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(id, first_name, last_name, role),
+        creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name, last_name, role)
+      `)
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (!task) return;
+
+    // 2. Fetch active PMs/Leads in this organization
+    const { data: pmStaffList } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, first_name, last_name, role")
+      .eq("organization_id", orgId)
+      .eq("is_active", true)
+      .or("role.ilike.%gestor%,role.ilike.%pm%,role.ilike.%lead%,role.ilike.%lider%,role.ilike.%líder%");
+
+    const targetStaff: { id: string; first_name: string; roleDesc: string }[] = [];
+
+    const addRecipient = (member?: { id: string; first_name: string; role?: string | null } | null, roleDesc: string = "") => {
+      if (!member || !member.first_name) return;
+      if (member.id === currentActorStaff.id) return; // Do not self-notify
+      if (!targetStaff.some((s) => s.id === member.id)) {
+        targetStaff.push({ id: member.id, first_name: member.first_name, roleDesc });
+      }
+    };
+
+    if (newStatus === "in_review") {
+      // Notify PMs
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      // Notify QA specialist if assigned
+      if ((task as any).qa_staff) {
+        addRecipient((task as any).qa_staff, "QA");
+      }
+      // Notify creator if different
+      if ((task as any).creator_staff) {
+        addRecipient((task as any).creator_staff, "Creador");
+      }
+    } else if (newStatus === "done") {
+      // Notify PMs
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      // Notify creator
+      if ((task as any).creator_staff) {
+        addRecipient((task as any).creator_staff, "Creador");
+      }
+    } else if (newStatus === "blocked") {
+      // Notify PMs
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+    } else if (newStatus === "in_progress" && prevStatus === "blocked") {
+      // Unblocked: notify assigned staff and PMs
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      if ((task as any).assigned_staff) {
+        addRecipient((task as any).assigned_staff, "Responsable");
+      }
+    }
+
+    const newLabel = TASK_STATUS_LABELS[newStatus] || newStatus;
+    const oldLabel = TASK_STATUS_LABELS[prevStatus] || prevStatus;
+
+    let icon = "🔄";
+    let actionDesc = `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
+
+    if (newStatus === "in_review") {
+      icon = "🔍";
+      actionDesc = `Requerimiento enviado a Revisión / QA por @${currentActorStaff.first_name}`;
+    } else if (newStatus === "done") {
+      icon = "✅";
+      actionDesc = `Tarea completada exitosamente por @${currentActorStaff.first_name}`;
+    } else if (newStatus === "blocked") {
+      icon = "🚫";
+      const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
+      actionDesc = `Tarea bloqueada${reasonText}`;
+    } else if (newStatus === "in_progress" && prevStatus === "blocked") {
+      icon = "🔓";
+      actionDesc = `Tarea desbloqueada y en progreso`;
+    }
+
+    const auditContent = `${icon} ${actionDesc}`;
+    const explicitNames = targetStaff.map((s) => s.first_name);
+
+    await logPortalTaskAuditComment(
+      orgId,
+      taskId,
+      auditContent,
+      currentActorStaff,
+      explicitNames
+    );
+  } catch (err) {
+    console.error("Error notifying stakeholders on status change:", err);
   }
 }
 
@@ -102,6 +240,7 @@ export interface CollaboratorPortalData {
   projects: TaskProject[];
   tasks: TaskItem[];
   allTeamTasks?: TaskItem[]; // For PMs or QA Leads
+  availableTasks?: TaskItem[]; // Authorized workspace/project tasks for blockers and #mentions
   teamMembers?: {
     id: string;
     first_name: string;
@@ -129,6 +268,8 @@ export interface CollaboratorPortalData {
   }[];
   isLeadOrPm: boolean;
   isQa: boolean;
+  sprints?: TaskSprint[];
+  activeSprint?: TaskSprint | null;
   metrics: {
     totalAssigned: number;
     completed: number;
@@ -408,10 +549,10 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       task:task_items!task_comments_task_id_fkey(id, ticket_code, title)
     `)
     .eq("organization_id", staff.organization_id)
-    .ilike("content", `%@${staff.first_name}%`)
+    .or(`content.ilike.%@${staff.first_name}%,mentions.cs.{"${staff.first_name}"}`)
     .neq("author_id", staff.id)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(30);
 
   const recentMentions = (mentionsData || []).map((m: any) => ({
     id: m.id,
@@ -456,6 +597,43 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     }
   }
 
+  // Fetch sprints for organization
+  const { data: sprintsData } = await supabaseAdmin
+    .from("task_sprints")
+    .select("*")
+    .eq("organization_id", staff.organization_id)
+    .order("start_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  const sprintTasksBySprint: Record<string, TaskItem[]> = {};
+  allTasks.forEach((t) => {
+    if (t.sprint_id) {
+      if (!sprintTasksBySprint[t.sprint_id]) sprintTasksBySprint[t.sprint_id] = [];
+      sprintTasksBySprint[t.sprint_id].push(t);
+    }
+  });
+
+  const sprints: TaskSprint[] = (sprintsData || []).map((s) => {
+    const sTasks = sprintTasksBySprint[s.id] || [];
+    const total_tasks = sTasks.length;
+    const completed_tasks = sTasks.filter((t) => t.status === "done").length;
+    const total_hours = sTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0);
+    const completed_hours = sTasks
+      .filter((t) => t.status === "done")
+      .reduce((sum, t) => sum + (Number(t.actual_hours) || Number(t.estimated_hours) || 0), 0);
+    const progress_percentage = total_tasks > 0 ? Math.round((completed_tasks / total_tasks) * 100) : 0;
+    return {
+      ...s,
+      total_tasks,
+      completed_tasks,
+      total_hours,
+      completed_hours,
+      progress_percentage
+    };
+  });
+
+  const activeSprint = sprints.find((s) => s.status === "active") || null;
+
   return {
     latestAudits,
     staff: {
@@ -473,10 +651,13 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     projects,
     tasks: myTasks,
     allTeamTasks: isLeadOrPm || isQa ? allTasks : undefined,
+    availableTasks: allTasks,
     teamMembers,
     recentMentions,
     isLeadOrPm,
     isQa,
+    sprints,
+    activeSprint,
     metrics: {
       totalAssigned: myTasks.length,
       completed,
@@ -558,7 +739,7 @@ export async function portalUpdateTaskProgress(
   token: string,
   taskId: string,
   progress: number
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
@@ -583,6 +764,14 @@ export async function portalUpdateTaskProgress(
 
     if (!canManageParent) {
       throw new Error("Solo el responsable directo de la tarea o un PM pueden ajustar el avance general del ticket.");
+    }
+
+    // Backlog Governance: Collaborators cannot advance tickets that are pending PM approval in Backlog
+    if (current?.status === "backlog" && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento se encuentra en el Backlog y debe ser evaluado y aprobado por el Gestor de Proyecto / PM antes de registrar avances."
+      };
     }
 
     const checklist = parseTaskChecklist(current?.checklist);
@@ -654,11 +843,22 @@ export async function portalUpdateTaskProgress(
 
     if (error) throw error;
 
-    if (clamped === 100 && canCloseParentTask && current && current.status !== "done") {
-      await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
+    if (updateData.status && current && updateData.status !== current.status) {
+      await notifyStakeholdersOnStatusChange(
+        staff.organization_id,
+        taskId,
+        updateData.status,
+        current.status as TaskStatus,
+        staff
+      );
     }
 
-    return { success: true };
+    let unblockedTasks: TaskItem[] = [];
+    if (clamped === 100 && canCloseParentTask && current && current.status !== "done") {
+      unblockedTasks = await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
+    }
+
+    return { success: true, unblockedTasks };
   } catch (err: any) {
     console.error("Portal update progress error:", err);
     return { success: false, error: err.message };
@@ -672,8 +872,10 @@ export async function portalUpdateTaskStatus(
   token: string,
   taskId: string,
   status: TaskStatus,
-  blockedReason?: string | null
-): Promise<{ success: boolean; error?: string }> {
+  blockedReason?: string | null,
+  loggedHours?: number,
+  note?: string
+): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
@@ -686,10 +888,20 @@ export async function portalUpdateTaskStatus(
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("checklist, progress_percentage, status, ticket_code, title, blocked_by_task_id, blocked_reason")
+      .select("checklist, progress_percentage, status, ticket_code, title, blocked_by_task_id, blocked_reason, actual_hours")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
+
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+
+    // Backlog Governance: Only PM/Lead can promote a task from Backlog
+    if (current?.status === "backlog" && status !== "backlog" && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento se encuentra en el Backlog y debe ser aprobado por el Gestor de Proyecto / PM antes de iniciarse."
+      };
+    }
 
     if ((status === "done" || status === "in_review") && current?.blocked_by_task_id) {
       const { data: blocker } = await supabaseAdmin
@@ -714,6 +926,28 @@ export async function portalUpdateTaskStatus(
       status,
       updated_at: new Date().toISOString()
     };
+
+    if (loggedHours !== undefined && loggedHours > 0) {
+      const prevActual = Number(current?.actual_hours) || 0;
+      updateData.actual_hours = Math.round((prevActual + loggedHours) * 100) / 100;
+
+      if (checklist.length > 0) {
+        let allocated = false;
+        const updatedChecklist = checklist.map((c: any) => {
+          if (!allocated && c.assigned_staff_id === staff.id) {
+            allocated = true;
+            return {
+              ...c,
+              actual_hours: Math.round(((Number(c.actual_hours) || 0) + loggedHours) * 100) / 100,
+            };
+          }
+          return c;
+        });
+        if (allocated) {
+          updateData.checklist = updatedChecklist;
+        }
+      }
+    }
 
     if (status === "blocked" && blockedReason !== undefined) {
       updateData.blocked_reason = blockedReason;
@@ -740,28 +974,31 @@ export async function portalUpdateTaskStatus(
 
     if (error) throw error;
 
-    if (current && current.status !== updateData.status) {
-      const oldLabel = TASK_STATUS_LABELS[current.status as TaskStatus] || current.status;
-      const newLabel = TASK_STATUS_LABELS[updateData.status as TaskStatus] || updateData.status;
+    if (loggedHours !== undefined && loggedHours > 0) {
+      const noteStr = note && note.trim() ? ` — "${note.trim()}"` : "";
       await logPortalTaskAuditComment(
         staff.organization_id,
         taskId,
-        `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`,
+        `⏱️ Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours}h)${noteStr}`,
         staff
       );
+    }
 
-      if (updateData.status === "blocked" && blockedReason && blockedReason.trim()) {
-        await logPortalTaskAuditComment(
-          staff.organization_id,
-          taskId,
-          `🚫 Motivo del bloqueo: ${blockedReason.trim()}`,
-          staff
-        );
-      }
+    if (current && current.status !== updateData.status) {
+      await notifyStakeholdersOnStatusChange(
+        staff.organization_id,
+        taskId,
+        updateData.status,
+        current.status as TaskStatus,
+        staff,
+        blockedReason
+      );
 
+      let unblockedTasks: TaskItem[] = [];
       if (updateData.status === "done") {
-        await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
+        unblockedTasks = await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
       }
+      return { success: true, unblockedTasks };
     }
 
     return { success: true };
@@ -779,7 +1016,7 @@ export async function portalToggleChecklist(
   taskId: string,
   checklistItemId: string,
   completed: boolean
-): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; progress?: number; error?: string }> {
+): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; progress?: number; status?: TaskStatus; task?: TaskItem; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
@@ -842,13 +1079,31 @@ export async function portalToggleChecklist(
     // When all deliverables are completed, move to in_review (QA), NOT directly to done
     if (progress === 100 && task.status !== "done") {
       updateData.status = "in_review";
+    } else if (progress < 100 && task.status === "in_review") {
+      updateData.status = "in_progress";
     }
 
-    const { error: updateErr } = await supabaseAdmin
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
       .from("task_items")
       .update(updateData)
       .eq("id", taskId)
-      .eq("organization_id", staff.organization_id);
+      .eq("organization_id", staff.organization_id)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
 
     if (updateErr) throw updateErr;
 
@@ -879,19 +1134,34 @@ export async function portalToggleChecklist(
       if (creatorFirstName && creatorFirstName !== assignedFirstName && task.created_by_staff_id !== staff.id) {
         notifyTags.push(`@${creatorFirstName}`);
       }
-      const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
-
+      const explicitNames = notifyTags.map((t) => t.replace("@", ""));
       const auditMsg = completed
-        ? `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}${notifyMsg}`
+        ? `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}`
         : `⬜ Subtarea reactivada: ${itemTitle} por @${staff.first_name}`;
-      await logPortalTaskAuditComment(staff.organization_id, taskId, auditMsg, staff);
+      await logPortalTaskAuditComment(staff.organization_id, taskId, auditMsg, staff, explicitNames);
+    }
+
+    if (updateData.status && updateData.status !== task.status) {
+      await notifyStakeholdersOnStatusChange(
+        staff.organization_id,
+        taskId,
+        updateData.status,
+        task.status as TaskStatus,
+        staff
+      );
     }
 
     if (progress === 100 && task.status !== "done") {
       await handlePortalTaskUnblocking(taskId, task.ticket_code, task.title);
     }
 
-    return { success: true, checklist, progress };
+    return {
+      success: true,
+      checklist,
+      progress,
+      status: updateData.status || task.status,
+      task: updatedTask ? normalizeTask(updatedTask) : undefined
+    };
   } catch (err: any) {
     console.error("Portal toggle checklist error:", err);
     return { success: false, error: err.message };
@@ -998,12 +1268,13 @@ export async function portalCreateTask(
     recurrenceInterval?: RecurrenceInterval | null;
     recurrenceDay?: number | null;
     blockedByTaskId?: string | null;
+    sprintId?: string | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1012,9 +1283,31 @@ export async function portalCreateTask(
 
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
 
-    if (!isLeadOrPm) {
-      throw new Error("Solo los líderes o Project Managers tienen permiso para crear tareas.");
-    }
+    // Standard Collaborator Governance:
+    // 1. Forced into "backlog" (no uncontrolled scope creep in active sprints).
+    // 2. Estimated hours forced to 0 (only PM can authorize contract hours).
+    // 3. Due date left null (only PM can set contractual deadlines).
+    // 4. Assigned staff defaults to creator or unassigned.
+    // 5. QA staff defaults to unassigned.
+    // 6. Subtasks can only be assigned to self or unassigned (no imposing subtasks on peers).
+    const finalStatus: TaskStatus = isLeadOrPm ? (taskData.status || "todo") : "backlog";
+    const finalEstimatedHours = isLeadOrPm ? Number(taskData.estimatedHours || 0) : 0;
+    const finalDueDate = isLeadOrPm ? (taskData.dueDate || null) : null;
+    const finalPriority: TaskPriority = taskData.priority || "medium";
+    const finalAssignedStaffId = isLeadOrPm
+      ? (taskData.assignedStaffId === "unassigned" ? null : taskData.assignedStaffId || null)
+      : (taskData.assignedStaffId === "unassigned" ? null : taskData.assignedStaffId || staff.id);
+    const finalQaStaffId = isLeadOrPm
+      ? (taskData.qaStaffId === "unassigned" ? null : taskData.qaStaffId || null)
+      : null;
+
+    const finalChecklist = (taskData.checklist || []).map((item) => ({
+      ...item,
+      assigned_staff_id: isLeadOrPm
+        ? (item.assigned_staff_id === "unassigned" ? null : item.assigned_staff_id || null)
+        : (item.assigned_staff_id === staff.id ? staff.id : null),
+      estimated_hours: isLeadOrPm ? item.estimated_hours : null,
+    }));
 
     const { data: latest } = await supabaseAdmin
       .from("task_items")
@@ -1041,24 +1334,25 @@ export async function portalCreateTask(
         ticket_code: ticketCode,
         title: taskData.title,
         description: taskData.description || null,
-        status: taskData.status || "todo",
-        priority: taskData.priority || "medium",
+        status: finalStatus,
+        priority: finalPriority,
         type: taskData.type || "task",
         progress_percentage: 0,
-        assigned_staff_id: taskData.assignedStaffId === "unassigned" ? null : taskData.assignedStaffId || null,
-        qa_staff_id: taskData.qaStaffId === "unassigned" ? null : taskData.qaStaffId || null,
-        due_date: taskData.dueDate || null,
+        assigned_staff_id: finalAssignedStaffId,
+        qa_staff_id: finalQaStaffId,
+        due_date: finalDueDate,
         created_by_staff_id: staff.id,
-        estimated_hours: Number(taskData.estimatedHours || 0),
-        checklist: taskData.checklist || [],
+        estimated_hours: finalEstimatedHours,
+        checklist: finalChecklist,
         tags: taskData.tags || [],
         attachments: taskData.attachments || [],
         order_index: 0,
+        sprint_id: taskData.sprintId && taskData.sprintId !== "none" ? taskData.sprintId : null,
         blocked_by_task_id: taskData.blockedByTaskId || null,
-        is_recurring: taskData.isRecurring ?? false,
-        recurrence_interval: taskData.recurrenceInterval || null,
-        recurrence_day: taskData.recurrenceDay || 1,
-        next_recurrence_at: taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null
+        is_recurring: isLeadOrPm ? (taskData.isRecurring ?? false) : false,
+        recurrence_interval: isLeadOrPm ? (taskData.recurrenceInterval || null) : null,
+        recurrence_day: isLeadOrPm ? (taskData.recurrenceDay || 1) : 1,
+        next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null
       })
       .select(`
         *,
@@ -1079,12 +1373,33 @@ export async function portalCreateTask(
 
     if (error) throw error;
 
+    if (!isLeadOrPm) {
+      // Find PMs/Leads in this organization to tag and notify them directly
+      const { data: pms } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, first_name, last_name")
+        .eq("organization_id", staff.organization_id)
+        .eq("is_active", true)
+        .or("role.ilike.%gestor%,role.ilike.%pm%,role.ilike.%lead%,role.ilike.%lider%,role.ilike.%líder%,role.ilike.%manager%,role.ilike.%project%");
+
+      const pmNames = (pms || []).map((p) => p.first_name);
+      const pmMentions = pmNames.map((name) => `@${name}`).join(" ");
+
+      await logPortalTaskAuditComment(
+        staff.organization_id,
+        newTask.id,
+        `📋 Nueva solicitud de requerimiento registrada por ${staff.first_name} ${staff.last_name} en el Backlog. Requiere revisión y aprobación de ${pmMentions || "@Gestor de Proyecto"}.`,
+        staff,
+        pmNames.length > 0 ? pmNames : undefined
+      );
+    }
+
     // Log audit notes for assignments upon creation
-    if (taskData.assignedStaffId && taskData.assignedStaffId !== "unassigned") {
+    if (finalAssignedStaffId) {
       const { data: mainStaff } = await supabaseAdmin
         .from("organization_staff")
         .select("first_name, last_name")
-        .eq("id", taskData.assignedStaffId)
+        .eq("id", finalAssignedStaffId)
         .maybeSingle();
       if (mainStaff) {
         await logPortalTaskAuditComment(
@@ -1096,8 +1411,8 @@ export async function portalCreateTask(
       }
     }
 
-    if (taskData.checklist && Array.isArray(taskData.checklist)) {
-      for (const item of taskData.checklist) {
+    if (finalChecklist && Array.isArray(finalChecklist)) {
+      for (const item of finalChecklist) {
         if (item.assigned_staff_id && item.assigned_staff_id !== "unassigned") {
           const { data: assignedStaff } = await supabaseAdmin
             .from("organization_staff")
@@ -1120,6 +1435,110 @@ export async function portalCreateTask(
     return { success: true, task: normalizeTask(newTask) };
   } catch (err: any) {
     console.error("Portal create task error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Update checklist item hours from portal (worklog directly on subtask)
+ */
+export async function portalUpdateChecklistItemHours(
+  token: string,
+  taskId: string,
+  checklistItemId: string,
+  hours: { estimated_hours?: number | null; actual_hours?: number | null }
+): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; task?: TaskItem; error?: string }> {
+  try {
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, role, first_name, last_name, organization_id")
+      .eq("access_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staff) throw new Error("Acceso no autorizado");
+
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("checklist, organization_id, estimated_hours, actual_hours, assigned_staff_id, ticket_code")
+      .eq("id", taskId)
+      .eq("organization_id", staff.organization_id)
+      .single();
+
+    if (fetchErr || !task) throw fetchErr || new Error("Tarea no encontrada");
+
+    const prevChecklist = parseTaskChecklist(task.checklist);
+    const targetItem = prevChecklist.find((i) => i.id === checklistItemId);
+    if (!targetItem) throw new Error("Subtarea no encontrada");
+
+    const isOwner = targetItem.assigned_staff_id === staff.id || task.assigned_staff_id === staff.id;
+    if (!isLeadOrPm && !isOwner) {
+      throw new Error("No tienes permiso para registrar horas en subtareas de otros compañeros.");
+    }
+
+    const checklist: TaskChecklistItem[] = prevChecklist.map((item: TaskChecklistItem) => {
+      if (item.id === checklistItemId) {
+        return {
+          ...item,
+          ...(isLeadOrPm && hours.estimated_hours !== undefined ? { estimated_hours: hours.estimated_hours } : {}),
+          ...(hours.actual_hours !== undefined ? { actual_hours: hours.actual_hours } : {}),
+        };
+      }
+      return item;
+    });
+
+    const totalSubEstimated = checklist.reduce((sum, i) => sum + (Number(i.estimated_hours) || 0), 0);
+    const totalSubActual = checklist.reduce((sum, i) => sum + (Number(i.actual_hours) || 0), 0);
+
+    const updateData: any = {
+      checklist,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (isLeadOrPm && totalSubEstimated > 0) {
+      updateData.estimated_hours = totalSubEstimated;
+    }
+    if (totalSubActual > 0) {
+      updateData.actual_hours = totalSubActual;
+    }
+
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update(updateData)
+      .eq("id", taskId)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    if (hours.actual_hours !== undefined && hours.actual_hours !== targetItem.actual_hours) {
+      await logPortalTaskAuditComment(
+        staff.organization_id,
+        taskId,
+        `⏱️ Subtarea "${targetItem.title}": horas registradas ajustadas a ${hours.actual_hours}h por ${staff.first_name} ${staff.last_name}`,
+        staff
+      );
+    }
+
+    return { success: true, checklist, task: normalizeTask(updatedTask) };
+  } catch (err: any) {
+    console.error("Portal update checklist item hours error:", err);
     return { success: false, error: err.message };
   }
 }
@@ -1150,6 +1569,7 @@ export async function portalUpdateTask(
     recurrenceDay?: number | null;
     blockedByTaskId?: string | null;
     blockedReason?: string | null;
+    sprintId?: string | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -1167,7 +1587,7 @@ export async function portalUpdateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -1177,6 +1597,16 @@ export async function portalUpdateTask(
 
     const isMainAssignee = prevTask?.assigned_staff_id === staff.id;
     const canCloseParentTask = isLeadOrPm || isMainAssignee;
+
+    // Backlog Governance: Only PM/Lead can promote or move a task out of Backlog, or adjust progress on it
+    if (prevTask?.status === "backlog" && !isLeadOrPm) {
+      if (data.status && data.status !== "backlog") {
+        throw new Error("Este requerimiento se encuentra en el Backlog y debe ser aprobado por el Gestor de Proyecto / PM antes de iniciarse.");
+      }
+      if (data.progressPercentage !== undefined && data.progressPercentage > 0) {
+        throw new Error("No se puede registrar avance en un requerimiento en Backlog hasta que sea aprobado por el PM.");
+      }
+    }
 
     if (!canCloseParentTask) {
       if (data.status === "done") {
@@ -1310,6 +1740,9 @@ export async function portalUpdateTask(
       if (data.blockedByTaskId !== undefined) {
         updateData.blocked_by_task_id = data.blockedByTaskId || null;
       }
+      if (data.sprintId !== undefined) {
+        updateData.sprint_id = data.sprintId === "none" || !data.sprintId ? null : data.sprintId;
+      }
       if (data.isRecurring !== undefined) {
         updateData.is_recurring = data.isRecurring;
         if (data.isRecurring && data.recurrenceInterval) {
@@ -1403,20 +1836,16 @@ export async function portalUpdateTask(
     if (prevTask) {
       const orgId = staff.organization_id;
 
-      // Status change audit
+      // Status change audit and stakeholder notification
       if (updateData.status && updateData.status !== prevTask.status) {
-        const oldLabel = TASK_STATUS_LABELS[prevTask.status as TaskStatus] || prevTask.status;
-        const newLabel = TASK_STATUS_LABELS[updateData.status as TaskStatus] || updateData.status;
-
-        let statusNotify = "";
-        if (updateData.status === "done") {
-          const creatorFirstName = (prevTask as any)?.creator_staff?.first_name;
-          if (creatorFirstName && prevTask.created_by_staff_id !== staff.id) {
-            statusNotify = ` | Notificando a @${creatorFirstName} (Gestor de Proyecto)`;
-          }
-        }
-
-        await logPortalTaskAuditComment(orgId, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")${statusNotify}`, staff);
+        await notifyStakeholdersOnStatusChange(
+          orgId,
+          taskId,
+          updateData.status,
+          prevTask.status as TaskStatus,
+          staff,
+          updateData.blocked_reason || prevTask.blocked_reason
+        );
 
         if (updateData.status === "done") {
           await handlePortalTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
@@ -1481,6 +1910,21 @@ export async function portalUpdateTask(
         }
       }
 
+      // Sprint assignment audit
+      if (updateData.sprint_id !== undefined && updateData.sprint_id !== prevTask.sprint_id) {
+        if (updateData.sprint_id) {
+          const { data: sprintRecord } = await supabaseAdmin
+            .from("task_sprints")
+            .select("name")
+            .eq("id", updateData.sprint_id)
+            .maybeSingle();
+          const sprintName = sprintRecord?.name || "Sprint";
+          await logPortalTaskAuditComment(orgId, taskId, `🎯 Asignada al ${sprintName}`, staff);
+        } else {
+          await logPortalTaskAuditComment(orgId, taskId, `📦 Retirada del sprint al Backlog`, staff);
+        }
+      }
+
       // Subtask resolution and assignment audit loop
       if (updateData.checklist && Array.isArray(updateData.checklist)) {
         const prevChecklist = parseTaskChecklist(prevTask.checklist);
@@ -1502,14 +1946,13 @@ export async function portalUpdateTask(
             creatorFirstName = pmStaff.first_name;
           }
         }
-        const notifyTags: string[] = [];
+        const notifyStaffNames: string[] = [];
         if (assignedFirstName && prevTask.assigned_staff_id !== staff.id) {
-          notifyTags.push(`@${assignedFirstName}`);
+          notifyStaffNames.push(assignedFirstName);
         }
         if (creatorFirstName && creatorFirstName !== assignedFirstName && prevTask.created_by_staff_id !== staff.id) {
-          notifyTags.push(`@${creatorFirstName}`);
+          notifyStaffNames.push(creatorFirstName);
         }
-        const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
 
         for (const item of newChecklist) {
           const prevItem = prevChecklist.find((p) => p.id === item.id);
@@ -1520,8 +1963,9 @@ export async function portalUpdateTask(
             await logPortalTaskAuditComment(
               orgId,
               taskId,
-              `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}${notifyMsg}`,
-              staff
+              `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}`,
+              staff,
+              notifyStaffNames
             );
           } else if (prevItem && prevItem.completed && !item.completed) {
             await logPortalTaskAuditComment(
@@ -1581,6 +2025,11 @@ export async function portalUpdateChecklistItemAssignee(
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
+
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    if (!isLeadOrPm) {
+      throw new Error("Solo un Líder o Project Manager puede reasignar subtareas a otros colaboradores.");
+    }
 
     const { data: task, error: fetchErr } = await supabaseAdmin
       .from("task_items")

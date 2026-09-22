@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   GripVertical,
   Ban,
+  Timer,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -305,6 +306,20 @@ const SortableTaskCard = React.memo(
             </span>
           )}
 
+          {(Number(task.estimated_hours) > 0 || Number(task.actual_hours) > 0) && (
+            <span
+              className={cn(
+                "flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded",
+                Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20"
+                  : "bg-zinc-100 dark:bg-white/5 text-muted-foreground"
+              )}
+            >
+              <Timer className="w-2.5 h-2.5" />
+              <span>{Number(task.actual_hours) || 0}h{Number(task.estimated_hours) > 0 ? `/${task.estimated_hours}h` : ""}</span>
+            </span>
+          )}
+
           {task.due_date && (
             <span
               className={cn(
@@ -349,6 +364,8 @@ const SortableTaskCard = React.memo(
     prev.task.title === next.task.title &&
     prev.task.due_date === next.task.due_date &&
     prev.task.assigned_staff_id === next.task.assigned_staff_id &&
+    prev.task.estimated_hours === next.task.estimated_hours &&
+    prev.task.actual_hours === next.task.actual_hours &&
     prev.task.updated_at === next.task.updated_at &&
     prev.isOverlay === next.isOverlay &&
     prev.brandColor === next.brandColor &&

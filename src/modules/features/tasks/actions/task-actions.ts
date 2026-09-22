@@ -37,15 +37,20 @@ async function resolveOrgId(providedOrgId?: string): Promise<string> {
 }
 
 /**
- * Helper to log single-line system audit notes into task_comments
+ * Helper to log single-line system audit notes into task_comments with @mentions indexing
  */
 async function logTaskAuditComment(
   orgId: string,
   taskId: string,
   content: string,
-  authorName: string = "Sistema"
+  authorName: string = "Sistema",
+  explicitMentions?: string[]
 ) {
   try {
+    const extracted = explicitMentions && explicitMentions.length > 0
+      ? explicitMentions
+      : Array.from(content.matchAll(/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g)).map((m) => m[1]);
+
     await supabaseAdmin.from("task_comments").insert({
       organization_id: orgId,
       task_id: taskId,
@@ -54,7 +59,7 @@ async function logTaskAuditComment(
       author_name: authorName,
       author_avatar: null,
       content,
-      mentions: []
+      mentions: Array.from(new Set(extracted.filter(Boolean)))
     });
   } catch (err) {
     console.error("Error inserting task audit comment:", err);
@@ -64,15 +69,16 @@ async function logTaskAuditComment(
 /**
  * Automatic unblocker: When a task is marked done, notify and unblock dependent tasks
  */
-async function handleTaskUnblocking(completedTaskId: string, ticketCode: string, title: string) {
+async function handleTaskUnblocking(completedTaskId: string, ticketCode: string, title: string): Promise<TaskItem[]> {
   try {
     const { data: blockedTasks } = await supabaseAdmin
       .from("task_items")
       .select("id, ticket_code, title, status, progress_percentage, organization_id, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(first_name)")
       .eq("blocked_by_task_id", completedTaskId);
 
-    if (!blockedTasks || blockedTasks.length === 0) return;
+    if (!blockedTasks || blockedTasks.length === 0) return [];
 
+    const unblockedIds: string[] = [];
     for (const bt of blockedTasks) {
       const mentionTag = (bt as any)?.assigned_staff?.first_name ? ` @${(bt as any).assigned_staff.first_name}` : "";
       await logTaskAuditComment(
@@ -87,10 +93,136 @@ async function handleTaskUnblocking(completedTaskId: string, ticketCode: string,
           .from("task_items")
           .update({ status: restoredStatus, blocked_reason: null, updated_at: new Date().toISOString() })
           .eq("id", bt.id);
+        unblockedIds.push(bt.id);
       }
     }
+
+    if (unblockedIds.length > 0) {
+      const { data: updatedList } = await supabaseAdmin
+        .from("task_items")
+        .select(`
+          *,
+          assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+            id, first_name, last_name, photo_url, role, email
+          ),
+          qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+            id, first_name, last_name, photo_url, role
+          ),
+          project:task_projects!task_items_project_id_fkey(
+            id, name, color
+          ),
+          blocked_by:blocked_by_task_id(
+            id, ticket_code, title, status
+          )
+        `)
+        .in("id", unblockedIds);
+
+      return (updatedList || []).map(normalizeTask);
+    }
+
+    return [];
   } catch (err) {
     console.error("Error running task unblocking:", err);
+    return [];
+  }
+}
+
+/**
+ * Universal stakeholder notifier for key task lifecycle transitions (Task Actions):
+ * - in_review: notifies active PMs/leads and assigned QA specialist
+ * - done: notifies active PMs/leads and original ticket creator
+ * - blocked: notifies active PMs/leads with reason
+ * - in_progress (when previously blocked): notifies assigned staff and PMs
+ */
+async function notifyStakeholdersOnStatusChange(
+  orgId: string,
+  taskId: string,
+  newStatus: TaskStatus,
+  prevStatus: TaskStatus,
+  authorName: string = "Sistema",
+  currentActorStaffId?: string,
+  blockedReason?: string | null
+) {
+  if (newStatus === prevStatus) return;
+
+  try {
+    const { data: task } = await supabaseAdmin
+      .from("task_items")
+      .select(`
+        id, ticket_code, title, assigned_staff_id, qa_staff_id, created_by_staff_id,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name, last_name, role),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(id, first_name, last_name, role),
+        creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name, last_name, role)
+      `)
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (!task) return;
+
+    const { data: pmStaffList } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, first_name, last_name, role")
+      .eq("organization_id", orgId)
+      .eq("is_active", true)
+      .or("role.ilike.%gestor%,role.ilike.%pm%,role.ilike.%lead%,role.ilike.%lider%,role.ilike.%líder%");
+
+    const targetStaff: { id: string; first_name: string; roleDesc: string }[] = [];
+
+    const addRecipient = (member?: { id: string; first_name: string; role?: string | null } | null, roleDesc: string = "") => {
+      if (!member || !member.first_name) return;
+      if (currentActorStaffId && member.id === currentActorStaffId) return;
+      if (!targetStaff.some((s) => s.id === member.id)) {
+        targetStaff.push({ id: member.id, first_name: member.first_name, roleDesc });
+      }
+    };
+
+    if (newStatus === "in_review") {
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      if ((task as any).qa_staff) addRecipient((task as any).qa_staff, "QA");
+      if ((task as any).creator_staff) addRecipient((task as any).creator_staff, "Creador");
+    } else if (newStatus === "done") {
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      if ((task as any).creator_staff) addRecipient((task as any).creator_staff, "Creador");
+    } else if (newStatus === "blocked") {
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+    } else if (newStatus === "in_progress" && prevStatus === "blocked") {
+      (pmStaffList || []).forEach((pm) => addRecipient(pm, "Gestor de Proyecto"));
+      if ((task as any).assigned_staff) addRecipient((task as any).assigned_staff, "Responsable");
+    }
+
+    const newLabel = TASK_STATUS_LABELS[newStatus] || newStatus;
+    const oldLabel = TASK_STATUS_LABELS[prevStatus] || prevStatus;
+
+    let icon = "🔄";
+    let actionDesc = `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
+
+    if (newStatus === "in_review") {
+      icon = "🔍";
+      actionDesc = `Requerimiento enviado a Revisión / QA por ${authorName}`;
+    } else if (newStatus === "done") {
+      icon = "✅";
+      actionDesc = `Tarea completada exitosamente por ${authorName}`;
+    } else if (newStatus === "blocked") {
+      icon = "🚫";
+      const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
+      actionDesc = `Tarea bloqueada${reasonText}`;
+    } else if (newStatus === "in_progress" && prevStatus === "blocked") {
+      icon = "🔓";
+      actionDesc = `Tarea desbloqueada y en progreso`;
+    }
+
+    const auditContent = `${icon} ${actionDesc}`;
+    const explicitNames = targetStaff.map((s) => s.first_name);
+
+    await logTaskAuditComment(
+      orgId,
+      taskId,
+      auditContent,
+      authorName,
+      explicitNames
+    );
+  } catch (err) {
+    console.error("Error notifying stakeholders on status change:", err);
   }
 }
 
@@ -631,7 +763,7 @@ export async function createTask(
 export async function updateTask(
   taskId: string,
   data: Partial<TaskItem>
-): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+): Promise<{ success: boolean; task?: TaskItem; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
     delete updateData.assigned_staff;
@@ -747,18 +879,26 @@ export async function updateTask(
 
     if (error) throw error;
 
+    let unblockedTasks: TaskItem[] = [];
+
     // Log audit events if fields changed
     if (prevTask) {
       const orgId = prevTask.organization_id;
 
-      // Status change audit
+      // Status change audit and stakeholder notification
       if (updateData.status && updateData.status !== prevTask.status) {
-        const oldLabel = TASK_STATUS_LABELS[prevTask.status as TaskStatus] || prevTask.status;
-        const newLabel = TASK_STATUS_LABELS[updateData.status as TaskStatus] || updateData.status;
-        await logTaskAuditComment(orgId, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`);
+        await notifyStakeholdersOnStatusChange(
+          orgId,
+          taskId,
+          updateData.status,
+          prevTask.status as TaskStatus,
+          "Gestor de Proyecto",
+          undefined,
+          updateData.blocked_reason || prevTask.blocked_reason
+        );
 
         if (updateData.status === "done") {
-          await handleTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
+          unblockedTasks = await handleTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
         }
       }
 
@@ -828,14 +968,13 @@ export async function updateTask(
         // Resolve stakeholder mention tags
         const assignedFirstName = (prevTask as any)?.assigned_staff?.first_name;
         const creatorFirstName = (prevTask as any)?.creator_staff?.first_name;
-        const notifyTags: string[] = [];
+        const notifyStaffNames: string[] = [];
         if (assignedFirstName) {
-          notifyTags.push(`@${assignedFirstName}`);
+          notifyStaffNames.push(assignedFirstName);
         }
         if (creatorFirstName && creatorFirstName !== assignedFirstName) {
-          notifyTags.push(`@${creatorFirstName}`);
+          notifyStaffNames.push(creatorFirstName);
         }
-        const notifyMsg = notifyTags.length > 0 ? ` | Notificando a ${notifyTags.join(" ")}` : "";
 
         for (const item of newChecklist) {
           const prevItem = prevChecklist.find((p) => p.id === item.id);
@@ -846,7 +985,9 @@ export async function updateTask(
             await logTaskAuditComment(
               orgId,
               taskId,
-              `☑️ Subtarea completada: ${itemTitle}${notifyMsg}`
+              `☑️ Subtarea completada: ${itemTitle}`,
+              "Sistema",
+              notifyStaffNames
             );
           } else if (prevItem && prevItem.completed && !item.completed) {
             await logTaskAuditComment(
@@ -880,7 +1021,7 @@ export async function updateTask(
     }
 
     revalidatePath("/operations/tasks");
-    return { success: true, task: normalizeTask(updatedTask) };
+    return { success: true, task: normalizeTask(updatedTask), unblockedTasks };
   } catch (err: any) {
     console.error("Error updating task:", err);
     return { success: false, error: err.message };
@@ -894,12 +1035,14 @@ export async function updateTaskStatus(
   taskId: string,
   status: TaskStatus,
   progress?: number,
-  blockedReason?: string | null
-): Promise<{ success: boolean; error?: string }> {
+  blockedReason?: string | null,
+  loggedHours?: number,
+  note?: string
+): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const { data: currentTask } = await supabaseAdmin
       .from("task_items")
-      .select("progress_percentage, status, checklist, ticket_code, title, organization_id, blocked_by_task_id, blocked_reason")
+      .select("progress_percentage, status, checklist, ticket_code, title, organization_id, blocked_by_task_id, blocked_reason, actual_hours")
       .eq("id", taskId)
       .single();
 
@@ -935,6 +1078,11 @@ export async function updateTaskStatus(
       updated_at: new Date().toISOString()
     };
 
+    if (loggedHours !== undefined && loggedHours > 0) {
+      const prevActual = Number(currentTask?.actual_hours) || 0;
+      updateData.actual_hours = Math.round((prevActual + loggedHours) * 100) / 100;
+    }
+
     if (effectiveStatus === "blocked" && blockedReason !== undefined) {
       updateData.blocked_reason = blockedReason;
     } else if (effectiveStatus !== "blocked" && currentTask?.status === "blocked") {
@@ -962,22 +1110,34 @@ export async function updateTaskStatus(
 
     if (error) throw error;
 
-    if (currentTask && currentTask.status !== effectiveStatus) {
-      const oldLabel = TASK_STATUS_LABELS[currentTask.status as TaskStatus] || currentTask.status;
-      const newLabel = TASK_STATUS_LABELS[effectiveStatus as TaskStatus] || effectiveStatus;
-      await logTaskAuditComment(currentTask.organization_id, taskId, `🔄 Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`);
+    if (loggedHours !== undefined && loggedHours > 0 && currentTask?.organization_id) {
+      const noteStr = note && note.trim() ? ` — "${note.trim()}"` : "";
+      await logTaskAuditComment(
+        currentTask.organization_id,
+        taskId,
+        `⏱️ Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours}h)${noteStr}`
+      );
+    }
 
-      if (effectiveStatus === "blocked" && blockedReason && blockedReason.trim()) {
-        await logTaskAuditComment(currentTask.organization_id, taskId, `🚫 Motivo del bloqueo: ${blockedReason.trim()}`);
-      }
+    let unblockedTasks: TaskItem[] = [];
+    if (currentTask && currentTask.status !== effectiveStatus) {
+      await notifyStakeholdersOnStatusChange(
+        currentTask.organization_id,
+        taskId,
+        effectiveStatus as TaskStatus,
+        currentTask.status as TaskStatus,
+        "Gestor de Proyecto",
+        undefined,
+        blockedReason
+      );
 
       if (effectiveStatus === "done") {
-        await handleTaskUnblocking(taskId, currentTask.ticket_code, currentTask.title);
+        unblockedTasks = await handleTaskUnblocking(taskId, currentTask.ticket_code, currentTask.title);
       }
     }
 
     revalidatePath("/operations/tasks");
-    return { success: true };
+    return { success: true, unblockedTasks };
   } catch (err: any) {
     console.error("Error updating task status:", err);
     return { success: false, error: err.message };
@@ -990,7 +1150,7 @@ export async function updateTaskStatus(
 export async function updateTaskProgress(
   taskId: string,
   progress: number
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const { data: current } = await supabaseAdmin
       .from("task_items")
@@ -1043,12 +1203,23 @@ export async function updateTaskProgress(
 
     if (error) throw error;
 
+    if (updateData.status && current && updateData.status !== current.status) {
+      await notifyStakeholdersOnStatusChange(
+        current.organization_id,
+        taskId,
+        updateData.status,
+        current.status as TaskStatus,
+        "Gestor de Proyecto"
+      );
+    }
+
+    let unblockedTasks: TaskItem[] = [];
     if (clampedProgress === 100 && current && current.status !== "done") {
-      await handleTaskUnblocking(taskId, current.ticket_code, current.title);
+      unblockedTasks = await handleTaskUnblocking(taskId, current.ticket_code, current.title);
     }
 
     revalidatePath("/operations/tasks");
-    return { success: true };
+    return { success: true, unblockedTasks };
   } catch (err: any) {
     console.error("Error updating task progress:", err);
     return { success: false, error: err.message };
@@ -1062,7 +1233,7 @@ export async function toggleChecklistItem(
   taskId: string,
   checklistItemId: string,
   completed: boolean
-): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; progress?: number; error?: string }> {
+): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; progress?: number; task?: TaskItem; error?: string }> {
   try {
     const { data: task, error: fetchErr } = await supabaseAdmin
       .from("task_items")
@@ -1096,10 +1267,26 @@ export async function toggleChecklistItem(
     // Note: Checklist progress updates do not automatically force status to 'done'.
     // Changing the task status to completed must be an intentional user or PM decision.
 
-    const { error: updateErr } = await supabaseAdmin
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
       .from("task_items")
       .update(updateData)
-      .eq("id", taskId);
+      .eq("id", taskId)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role, email
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
 
     if (updateErr) throw updateErr;
 
@@ -1114,7 +1301,7 @@ export async function toggleChecklistItem(
     }
 
     revalidatePath("/operations/tasks");
-    return { success: true, checklist, progress };
+    return { success: true, checklist, progress, task: updatedTask ? normalizeTask(updatedTask) : undefined };
   } catch (err: any) {
     console.error("Error toggling checklist item:", err);
     return { success: false, error: err.message };
@@ -1180,6 +1367,66 @@ export async function updateChecklistItemAssignee(
     return { success: true, checklist };
   } catch (err: any) {
     console.error("Error updating checklist item assignee:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Update estimated or actual hours on a specific checklist deliverable / subtask
+ */
+export async function updateChecklistItemHours(
+  taskId: string,
+  checklistItemId: string,
+  hours: { estimated_hours?: number | null; actual_hours?: number | null }
+): Promise<{ success: boolean; checklist?: TaskChecklistItem[]; task?: TaskItem; error?: string }> {
+  try {
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("checklist, organization_id, estimated_hours, actual_hours")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) throw fetchErr || new Error("Task not found");
+
+    const checklist: TaskChecklistItem[] = parseTaskChecklist(task.checklist).map((item: TaskChecklistItem) => {
+      if (item.id === checklistItemId) {
+        return {
+          ...item,
+          ...(hours.estimated_hours !== undefined ? { estimated_hours: hours.estimated_hours } : {}),
+          ...(hours.actual_hours !== undefined ? { actual_hours: hours.actual_hours } : {}),
+        };
+      }
+      return item;
+    });
+
+    const totalSubEstimated = checklist.reduce((sum, i) => sum + (Number(i.estimated_hours) || 0), 0);
+    const totalSubActual = checklist.reduce((sum, i) => sum + (Number(i.actual_hours) || 0), 0);
+
+    const updateData: any = {
+      checklist,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (totalSubEstimated > 0) {
+      updateData.estimated_hours = totalSubEstimated;
+    }
+    if (totalSubActual > 0) {
+      updateData.actual_hours = totalSubActual;
+    }
+
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update(updateData)
+      .eq("id", taskId)
+      .select("*")
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath("/operations/tasks");
+    return { success: true, checklist, task: updatedTask ? normalizeTask(updatedTask) : undefined };
+  } catch (err: any) {
+    console.error("Error updating checklist item hours:", err);
     return { success: false, error: err.message };
   }
 }

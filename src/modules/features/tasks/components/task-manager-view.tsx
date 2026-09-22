@@ -27,7 +27,13 @@ import {
   ChevronDown,
   CheckSquare,
   CalendarDays,
+  RefreshCw,
+  Rocket,
+  UploadCloud,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,7 +47,8 @@ import type {
   TaskItem,
   TaskCollaborator,
   TaskMetrics,
-  TaskStatus
+  TaskStatus,
+  TaskSprint,
 } from "../types"
 import { TaskKanbanBoard } from "./kanban/task-kanban-board"
 import { TaskListView } from "./list/task-list-view"
@@ -53,6 +60,9 @@ import { TaskDetailModal } from "./modals/task-detail-modal"
 import { TaskFormModal } from "./modals/task-form-modal"
 import { ProjectFormModal } from "./modals/project-form-modal"
 import { WorkspaceFormModal } from "./modals/workspace-form-modal"
+import { TaskLogWorkModal } from "./shared/task-log-work-modal"
+import { TaskSprintModal } from "./modals/task-sprint-modal"
+import { TaskImportModal } from "./modals/task-import-modal"
 import { updateTaskStatus, getTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -64,6 +74,7 @@ interface TaskManagerViewProps {
   initialTasks: TaskItem[]
   initialCollaborators: TaskCollaborator[]
   initialMetrics?: TaskMetrics
+  initialSprints?: TaskSprint[]
   organizationId: string
   tenantBranding?: {
     name?: string
@@ -78,18 +89,181 @@ export function TaskManagerView({
   initialProjects,
   initialTasks,
   initialCollaborators,
+  initialSprints = [],
   organizationId,
   tenantBranding,
 }: TaskManagerViewProps) {
+  const router = useRouter()
+  const [isSyncing, setIsSyncing] = useState(false)
+
   const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks)
   const [collaborators, setCollaborators] = useState<TaskCollaborator[]>(initialCollaborators)
+  const [sprints, setSprints] = useState<TaskSprint[]>(initialSprints)
+
+  // Reactive Prop Synchronization with Server Component revalidations
+  useEffect(() => {
+    setWorkspaces(initialWorkspaces)
+  }, [initialWorkspaces])
+
+  useEffect(() => {
+    setProjects(initialProjects)
+  }, [initialProjects])
+
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
+
+  useEffect(() => {
+    setCollaborators(initialCollaborators)
+  }, [initialCollaborators])
+
+  useEffect(() => {
+    setSprints(initialSprints)
+  }, [initialSprints])
+
+  // Realtime WebSocket Subscription via singleton manager (Zero-Thundering-Herd)
+  useEffect(() => {
+    if (!organizationId) return
+
+    const channelName = `realtime_tasks_org_${organizationId}`
+    let isMounted = true
+
+    realtimeManager.getOrCreateChannel(channelName, (channel) => {
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_items",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+
+          if (payload.eventType === "UPDATE") {
+            const updatedRow = payload.new as Partial<TaskItem>
+            setTasks((prev) =>
+              prev.map((t) => {
+                if (t.id === updatedRow.id) {
+                  return {
+                    ...t,
+                    ...updatedRow,
+                    assigned_staff: t.assigned_staff,
+                    qa_staff: t.qa_staff,
+                    project: t.project,
+                    blocked_by: t.blocked_by,
+                  }
+                }
+                return t
+              })
+            )
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+            }
+          } else if (payload.eventType === "INSERT") {
+            router.refresh()
+          }
+        }
+      )
+
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_sprints",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+
+          if (payload.eventType === "INSERT") {
+            const newSprint = payload.new as TaskSprint
+            setSprints((prev) => {
+              if (prev.some((s) => s.id === newSprint.id)) return prev
+              return [newSprint, ...prev]
+            })
+          } else if (payload.eventType === "UPDATE") {
+            const updatedSprint = payload.new as TaskSprint
+            setSprints((prev) =>
+              prev.map((s) => (s.id === updatedSprint.id ? { ...s, ...updatedSprint } : s))
+            )
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setSprints((prev) => prev.filter((s) => s.id !== deletedId))
+            }
+          }
+        }
+      )
+    })
+
+    return () => {
+      isMounted = false
+      realtimeManager.releaseChannel(channelName)
+    }
+  }, [organizationId, router])
+
+  const handleManualSync = async () => {
+    setIsSyncing(true)
+    try {
+      const freshTasks = await getTasks({ orgId: organizationId })
+      if (freshTasks) {
+        setTasks(freshTasks)
+      }
+      router.refresh()
+      toast.success("Datos sincronizados con éxito")
+    } catch (err: any) {
+      toast.error("Error al sincronizar datos")
+    } finally {
+      setTimeout(() => setIsSyncing(false), 500)
+    }
+  }
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators">("list")
+
+  // Sprint state
+  const activeSprintObj = useMemo(() => {
+    return sprints.find((s) => s.status === "active") || null
+  }, [sprints])
+
+  // Sprint modal state
+  const [sprintModalState, setSprintModalState] = useState<{
+    isOpen: boolean
+    mode: "create" | "edit" | "complete"
+    sprint?: TaskSprint | null
+  }>({
+    isOpen: false,
+    mode: "create",
+    sprint: null,
+  })
+
+  const handleSprintCompleted = (completedSprintId: string, nextSprint?: TaskSprint) => {
+    setSprints((prev) => {
+      const updated = prev.map((s) => (s.id === completedSprintId ? { ...s, status: "completed" as const } : s))
+      if (nextSprint && !updated.some((s) => s.id === nextSprint.id)) {
+        return [nextSprint, ...updated]
+      }
+      return updated
+    })
+    getTasks({ orgId: organizationId }).then(setTasks)
+    router.refresh()
+  }
+
+  const handleSprintDeleted = (deletedSprintId: string) => {
+    setSprints((prev) => prev.filter((s) => s.id !== deletedSprintId))
+    setTasks((prev) =>
+      prev.map((t) => (t.sprint_id === deletedSprintId ? { ...t, sprint_id: null } : t))
+    )
+    router.refresh()
+  }
 
   // Search & Status filters
   const [searchTerm, setSearchTerm] = useState("")
@@ -103,7 +277,9 @@ export function TaskManagerView({
   const [projectToEdit, setProjectToEdit] = useState<TaskProject | null>(null)
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
   const [workspaceToEdit, setWorkspaceToEdit] = useState<TaskWorkspace | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<TaskStatus>("todo")
+  const [logWorkState, setLogWorkState] = useState<{ task: TaskItem; targetStatus: TaskStatus } | null>(null)
 
   // Unified Scope filter (hierarchical tree: all | workspace:id | project_id)
   const currentScopeValue =
@@ -297,7 +473,12 @@ export function TaskManagerView({
     setIsDetailModalOpen(true)
   }
 
-  const handleQuickMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+  const handleQuickMoveTask = async (
+    taskId: string,
+    newStatus: TaskStatus,
+    loggedHours?: number,
+    note?: string
+  ) => {
     const targetTask = tasks.find((t) => t.id === taskId)
     if ((newStatus === "done" || newStatus === "in_review") && targetTask?.blocked_by && targetTask.blocked_by.status !== "done") {
       const actionLabel = newStatus === "in_review" ? "enviar a Revisión / QA" : "completar"
@@ -307,33 +488,110 @@ export function TaskManagerView({
       return
     }
 
+    // When moving to in_review or done without loggedHours explicitly defined, trigger the agile log work modal!
+    if (
+      (newStatus === "in_review" || newStatus === "done") &&
+      loggedHours === undefined &&
+      targetTask &&
+      targetTask.status !== newStatus
+    ) {
+      setLogWorkState({ task: targetTask, targetStatus: newStatus })
+      return
+    }
+
+    const incrementalHours = loggedHours ? Number(loggedHours) : 0
+
     // Optimistic UI update
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus,
+              actual_hours: (Number(t.actual_hours) || 0) + incrementalHours,
+              progress_percentage: newStatus === "done" ? 100 : t.progress_percentage,
+            }
+          : t
+      )
     )
 
     try {
-      const res = await updateTaskStatus(taskId, newStatus)
+      const res = await updateTaskStatus(
+        taskId,
+        newStatus,
+        newStatus === "done" ? 100 : undefined,
+        undefined,
+        incrementalHours,
+        note
+      )
       if (res.success) {
-        toast.success(`Tarea movida a: ${newStatus === 'done' ? 'Completado' : newStatus === 'in_review' ? 'Revisión / QA' : newStatus === 'in_progress' ? 'En Progreso' : newStatus}`)
+        const hoursMessage = incrementalHours > 0 ? ` (+${incrementalHours}h imputadas)` : ""
+        toast.success(
+          `Tarea movida a: ${
+            newStatus === "done"
+              ? "Completado"
+              : newStatus === "in_review"
+              ? "Revisión / QA"
+              : newStatus === "in_progress"
+              ? "En Progreso"
+              : newStatus
+          }${hoursMessage}`
+        )
+        if (res.unblockedTasks && res.unblockedTasks.length > 0) {
+          const unblockedMap = new Map<string, TaskItem>(res.unblockedTasks.map((u: TaskItem) => [u.id, u]))
+          setTasks((prev: TaskItem[]) => prev.map((t) => unblockedMap.get(t.id) || t))
+          toast.success(`${res.unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+            id: "unblocked-cascade-toast"
+          })
+        }
       } else {
         // Revert optimistic update
         setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  status: targetTask?.status || t.status,
+                  actual_hours: Number(targetTask?.actual_hours) || 0,
+                  progress_percentage: targetTask?.progress_percentage ?? t.progress_percentage,
+                }
+              : t
+          )
         )
         toast.error(res.error || "Error al mover la tarea")
       }
     } catch (err: any) {
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: targetTask?.status || t.status,
+                actual_hours: Number(targetTask?.actual_hours) || 0,
+                progress_percentage: targetTask?.progress_percentage ?? t.progress_percentage,
+              }
+            : t
+        )
       )
       toast.error(err.message || "Error al actualizar estado")
     }
   }
 
-  const handleTaskUpdated = (updatedTask: TaskItem) => {
-    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
+  const handleTaskUpdated = (updatedTask: TaskItem, unblockedTasks?: TaskItem[]) => {
+    setTasks((prev: TaskItem[]) => {
+      const unblockedMap = unblockedTasks && unblockedTasks.length > 0 ? new Map<string, TaskItem>(unblockedTasks.map((u: TaskItem) => [u.id, u])) : null
+      return prev.map((t) => {
+        if (t.id === updatedTask.id) return updatedTask
+        if (unblockedMap?.has(t.id)) return unblockedMap.get(t.id)!
+        return t
+      })
+    })
     setSelectedTask(updatedTask)
+    if (unblockedTasks && unblockedTasks.length > 0) {
+      toast.success(`${unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+        id: "unblocked-cascade-toast"
+      })
+    }
   }
 
   const handleTaskDeleted = (taskId: string) => {
@@ -353,6 +611,21 @@ export function TaskManagerView({
 
   const handleProjectUpdated = (updatedProject: TaskProject) => {
     setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)))
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.project_id === updatedProject.id
+          ? {
+              ...t,
+              project: {
+                ...t.project,
+                id: updatedProject.id,
+                name: updatedProject.name,
+                color: updatedProject.color,
+              },
+            }
+          : t
+      )
+    )
   }
 
   const handleProjectDeleted = (projectId: string) => {
@@ -418,6 +691,7 @@ export function TaskManagerView({
       setSelectedMemberFilter("all")
     }
     getTasks({ orgId: organizationId }).then(setTasks)
+    router.refresh()
   }
 
   return (
@@ -633,6 +907,19 @@ export function TaskManagerView({
               )}
             </div>
 
+            {/* Manual Sync Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="h-9 px-2.5 text-xs font-medium rounded-lg border-zinc-200/80 dark:border-white/10 shadow-sm gap-1.5 cursor-pointer bg-card hover:bg-muted/50"
+              title="Sincronizar datos con el servidor"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+              <span className="hidden sm:inline font-semibold">Sincronizar</span>
+            </Button>
+
             {/* Unified + Nuevo Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -669,6 +956,23 @@ export function TaskManagerView({
 
                 <DropdownMenuItem
                   onClick={() => {
+                    setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  }}
+                  className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-foreground block">Nuevo Sprint</span>
+                    <span className="text-[11px] text-muted-foreground block leading-tight">
+                      Ciclo ágil de trabajo con fechas y meta
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => {
                     setProjectToEdit(null)
                     setIsProjectModalOpen(true)
                   }}
@@ -698,6 +1002,23 @@ export function TaskManagerView({
                     <span className="font-bold text-xs text-foreground block">Nuevo Espacio</span>
                     <span className="text-[11px] text-muted-foreground block leading-tight">
                       Espacio padre de jerarquía y prefijo [KEY]
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 bg-border/60" />
+
+                <DropdownMenuItem
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <UploadCloud className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-foreground block">Importar Datos / Tareas</span>
+                    <span className="text-[11px] text-muted-foreground block leading-tight">
+                      Carga masiva desde Pixy JSON, CSV o Jira
                     </span>
                   </div>
                 </DropdownMenuItem>
@@ -747,6 +1068,18 @@ export function TaskManagerView({
             tasks={projectTasks}
             collaborators={collaborators}
             projects={availableProjects}
+            sprints={sprints}
+            activeSprint={activeSprintObj}
+            onSprintCreated={(newSprint) => {
+              setSprints((prev) => [newSprint, ...prev])
+              router.refresh()
+            }}
+            onSprintUpdated={(updated) => {
+              setSprints((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+              router.refresh()
+            }}
+            onSprintCompleted={handleSprintCompleted}
+            onSprintDeleted={handleSprintDeleted}
             onSelectTask={handleSelectTask}
             onSwitchToGeneral={() => setActiveTab("list")}
           />
@@ -817,6 +1150,61 @@ export function TaskManagerView({
         onWorkspaceUpdated={handleWorkspaceUpdated}
         onWorkspaceDeleted={handleWorkspaceDeleted}
         collaborators={collaborators}
+      />
+
+      {/* Agile Work Hours Imputation Modal (Jira-style on transition to QA or Done) */}
+      {logWorkState && (
+        <TaskLogWorkModal
+          isOpen={!!logWorkState}
+          onClose={() => setLogWorkState(null)}
+          task={logWorkState.task}
+          targetStatus={logWorkState.targetStatus}
+          onConfirm={(hours, note) => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleQuickMoveTask(task.id, targetStatus, hours, note)
+          }}
+          onSkip={() => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleQuickMoveTask(task.id, targetStatus, 0)
+          }}
+        />
+      )}
+
+      {/* Task Sprint Management Modal */}
+      <TaskSprintModal
+        isOpen={sprintModalState.isOpen}
+        onClose={() => setSprintModalState((prev) => ({ ...prev, isOpen: false }))}
+        mode={sprintModalState.mode}
+        sprint={sprintModalState.sprint}
+        activeSprint={activeSprintObj}
+        allSprints={sprints}
+        onSprintCreated={(newSprint) => {
+          setSprints((prev) => [newSprint, ...prev])
+          router.refresh()
+        }}
+        onSprintUpdated={(updated) => {
+          setSprints((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+          router.refresh()
+        }}
+        onSprintCompleted={handleSprintCompleted}
+        onSprintDeleted={handleSprintDeleted}
+      />
+
+      {/* Task & Collaborators Universal Import Modal */}
+      <TaskImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        collaborators={collaborators}
+        projects={projects}
+        workspaces={workspaces}
+        sprints={sprints}
+        organizationId={organizationId}
+        onImportComplete={() => {
+          router.refresh()
+          getTasks({ orgId: organizationId }).then(setTasks)
+        }}
       />
     </div>
   )

@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Layers,
 } from "lucide-react"
-import type { TaskMetrics, TaskItem, TaskCollaborator, TaskProject } from "../../types"
+import type { TaskMetrics, TaskItem, TaskCollaborator, TaskProject, TaskSprint } from "../../types"
 import { TaskPmOperationsDashboard } from "../portal/task-pm-operations-dashboard"
 
 interface TaskMetricsViewProps {
@@ -21,6 +21,12 @@ interface TaskMetricsViewProps {
   collaborators?: TaskCollaborator[]
   projects?: TaskProject[]
   brandColor?: string
+  sprints?: TaskSprint[]
+  activeSprint?: TaskSprint | null
+  onSprintCreated?: (sprint: TaskSprint) => void
+  onSprintUpdated?: (sprint: TaskSprint) => void
+  onSprintCompleted?: (completedSprintId: string, nextSprint?: TaskSprint) => void
+  onSprintDeleted?: (deletedSprintId: string) => void
   onSelectTask?: (task: TaskItem) => void
   onSwitchToGeneral?: () => void
 }
@@ -31,6 +37,12 @@ export function TaskMetricsView({
   collaborators = [],
   projects = [],
   brandColor = "#8ec045",
+  sprints = [],
+  activeSprint,
+  onSprintCreated,
+  onSprintUpdated,
+  onSprintCompleted,
+  onSprintDeleted,
   onSelectTask,
   onSwitchToGeneral,
 }: TaskMetricsViewProps) {
@@ -43,6 +55,12 @@ export function TaskMetricsView({
           projects={projects}
           organization={{ name: "Plataforma" }}
           brandColor={brandColor}
+          sprints={sprints}
+          activeSprint={activeSprint}
+          onSprintCreated={onSprintCreated}
+          onSprintUpdated={onSprintUpdated}
+          onSprintCompleted={onSprintCompleted}
+          onSprintDeleted={onSprintDeleted}
           onSwitchToGestion={onSwitchToGeneral || (() => {})}
           onSelectTask={onSelectTask}
         />

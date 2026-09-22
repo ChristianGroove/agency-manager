@@ -54,6 +54,7 @@ import {
 import {
   Bell,
   CheckCheck,
+  Trash2,
   CheckCircle2,
   Clock,
   Flame,
@@ -96,7 +97,7 @@ import {
   Ban,
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
-import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
@@ -109,9 +110,12 @@ import {
   portalUpdateTaskPriority,
   portalAssignTask
 } from "../../actions/collaborator-portal-actions"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import dynamic from "next/dynamic"
+import { formatDistanceToNow } from "date-fns"
+import { es } from "date-fns/locale"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -125,6 +129,7 @@ import { TaskWeeklyPacingMatrix } from "../pacing/task-weekly-pacing-matrix"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
+import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -135,6 +140,7 @@ interface PortalTaskSliderProps {
   savedProg: number
   isLeadOrPm: boolean
   isMainAssignee?: boolean
+  isBacklog?: boolean
   blockedBy?: {
     id: string
     ticket_code?: string | null
@@ -163,6 +169,87 @@ function formatAuditShortDate(dateStr: string): string {
   }
 }
 
+const ODOMETER_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+/**
+ * Animated Rolling Odometer Digit using standard easeOutExpo easing [0.16, 1, 0.3, 1]
+ */
+const OdometerDigit = React.memo(function OdometerDigit({
+  digit,
+  index,
+}: {
+  digit: string
+  index: number
+}) {
+  const num = parseInt(digit, 10)
+  const isNumber = !isNaN(num)
+
+  if (!isNumber) {
+    return <span>{digit}</span>
+  }
+
+  // 20 items: target digit on the second cycle (10 + num) for a full mechanical roll
+  const targetPercent = (10 + num) * 5
+
+  return (
+    <span className="relative inline-block h-[1.3em] overflow-hidden leading-none select-none [mask-image:linear-gradient(to_bottom,transparent_0%,black_20%,black_80%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_20%,black_80%,transparent_100%)]">
+      <motion.span
+        className="flex flex-col"
+        initial={{ y: "0%" }}
+        animate={{ y: `-${targetPercent}%` }}
+        transition={{
+          duration: 1.3 + index * 0.15,
+          ease: [0.16, 1, 0.3, 1], // easeOutExpo
+        }}
+      >
+        {ODOMETER_DIGITS.map((d, i) => (
+          <span
+            key={i}
+            className="h-[1.3em] flex items-center justify-center leading-none"
+          >
+            {d}
+          </span>
+        ))}
+      </motion.span>
+    </span>
+  )
+})
+
+/**
+ * Rolling Number / Odometer Counter for active progress watermark
+ * Renders the % symbol directly underneath the rightmost digit column
+ */
+const RollingOdometer = React.memo(function RollingOdometer({
+  value,
+  showPercent = true,
+}: {
+  value: number
+  showPercent?: boolean
+}) {
+  const digits = value.toString().split("")
+
+  return (
+    <span className="inline-flex items-start -space-x-[0.06em]">
+      {digits.map((digit, idx) => {
+        const isRightmost = idx === digits.length - 1
+
+        if (isRightmost && showPercent) {
+          return (
+            <span key={idx} className="inline-flex flex-col items-center">
+              <OdometerDigit digit={digit} index={idx} />
+              <span className="text-[17px] sm:text-[20px] md:text-[22px] font-black font-sans leading-none opacity-80 select-none -mt-1.5 sm:-mt-2">
+                %
+              </span>
+            </span>
+          )
+        }
+
+        return <OdometerDigit key={idx} digit={digit} index={idx} />
+      })}
+    </span>
+  )
+})
+
 // Self-contained memoized slider: holds local progress state during dragging
 // and only commits on release, eliminating 60fps whole-page re-renders.
 // Includes 2-second hover tooltip with compact previous change audit for Project Managers.
@@ -173,6 +260,7 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   savedProg,
   isLeadOrPm,
   isMainAssignee = false,
+  isBacklog = false,
   blockedBy,
   latestAudit,
   onCommit,
@@ -182,7 +270,8 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
   labelClassName,
 }: PortalTaskSliderProps) {
   const canClose = isLeadOrPm || isMainAssignee
-  const isSliderDisabled = !canClose
+  const isBacklogLocked = Boolean(isBacklog && !isLeadOrPm)
+  const isSliderDisabled = !canClose || isBacklogLocked
   const [localVal, setLocalVal] = useState(progress)
   const [showTooltip, setShowTooltip] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -329,7 +418,9 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-center max-w-[270px] text-xs font-normal">
-            Control bloqueado: el avance general solo puede ser modificado por el responsable directo del ticket o el Gestor de Proyecto.
+            {isBacklogLocked
+              ? "Requerimiento en Backlog: debe ser evaluado y aprobado por el PM antes de poder registrar avances."
+              : "Control bloqueado: el avance general solo puede ser modificado por el responsable directo del ticket o el Gestor de Proyecto."}
           </TooltipContent>
         </Tooltip>
       ) : (
@@ -354,7 +445,9 @@ const PortalTaskSlider = React.memo(function PortalTaskSlider({
             </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
-            Control bloqueado: solo el responsable directo o PM pueden modificar el avance
+            {isBacklogLocked
+              ? "Requerimiento en Backlog: aprobación requerida por el PM"
+              : "Control bloqueado: solo el responsable directo o PM pueden modificar el avance"}
           </TooltipContent>
         </Tooltip>
       )}
@@ -376,14 +469,232 @@ export function TaskCollaboratorPortal({
   portalData,
   token,
 }: TaskCollaboratorPortalProps) {
-  const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa, recentMentions = [] } = portalData
+  const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa } = portalData
   const brandColor = organization?.primary_color || "#8ec045"
   const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(portalData.tasks)
   const [allTeamTasks, setAllTeamTasks] = useState<TaskItem[]>(portalData.allTeamTasks || [])
+  const [availableTasks, setAvailableTasks] = useState<TaskItem[]>(portalData.availableTasks || portalData.allTeamTasks || portalData.tasks || [])
   const [latestAudits, setLatestAudits] = useState<Record<string, TaskProgressAuditSummary>>(portalData.latestAudits || {})
+  const [sprints, setSprints] = useState<TaskSprint[]>(portalData.sprints || [])
+  const [activeSprint, setActiveSprint] = useState<TaskSprint | null>(portalData.activeSprint || null)
+  const [recentMentions, setRecentMentions] = useState(portalData.recentMentions || [])
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([])
   const teamMembers = portalData.teamMembers || []
+
+  // Prop Synchronization
+  useEffect(() => {
+    setSprints(portalData.sprints || [])
+  }, [portalData.sprints])
+
+  useEffect(() => {
+    setActiveSprint(portalData.activeSprint || null)
+  }, [portalData.activeSprint])
+
+  useEffect(() => {
+    setTasks(portalData.tasks)
+  }, [portalData.tasks])
+
+  useEffect(() => {
+    setAllTeamTasks(portalData.allTeamTasks || [])
+  }, [portalData.allTeamTasks])
+
+  useEffect(() => {
+    setAvailableTasks(portalData.availableTasks || portalData.allTeamTasks || portalData.tasks || [])
+  }, [portalData.availableTasks, portalData.allTeamTasks, portalData.tasks])
+
+  useEffect(() => {
+    setProjects(portalData.projects || [])
+  }, [portalData.projects])
+
+  useEffect(() => {
+    setWorkspaces(portalData.workspaces || [])
+  }, [portalData.workspaces])
+
+  useEffect(() => {
+    setRecentMentions(portalData.recentMentions || [])
+  }, [portalData.recentMentions])
+
+  // Realtime subscription for collaborator portal (task_items and task_comments)
+  useEffect(() => {
+    if (!organization?.id) return
+
+    const channelName = `realtime_portal_tasks_org_${organization.id}`
+    let isMounted = true
+
+    realtimeManager.getOrCreateChannel(channelName, (channel) => {
+      // 1. Task Items changes
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_items",
+          filter: `organization_id=eq.${organization.id}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+
+          if (payload.eventType === "UPDATE") {
+            const updatedRow = payload.new as Partial<TaskItem>
+
+            // Check for status change alerts to PM and stakeholders
+            const existingTask = tasks.find((t) => t.id === updatedRow.id) || allTeamTasks.find((t) => t.id === updatedRow.id)
+            if (existingTask && updatedRow.status && existingTask.status !== updatedRow.status) {
+              const ticketCode = updatedRow.ticket_code || existingTask.ticket_code || "TK"
+              const taskTitle = updatedRow.title || existingTask.title || "Tarea"
+              const merged = { ...existingTask, ...updatedRow } as TaskItem
+
+              if (updatedRow.status === "in_review" && (isLeadOrPm || (isQa && existingTask.qa_staff_id === staff.id))) {
+                toast.info(`🔍 #${ticketCode} pasó a Revisión / QA`, {
+                  description: `"${taskTitle}" está listo para revisión.`,
+                  action: {
+                    label: "Revisar",
+                    onClick: () => openTaskDetail(merged),
+                  },
+                })
+              } else if (updatedRow.status === "done" && (isLeadOrPm || existingTask.created_by_staff_id === staff.id)) {
+                toast.success(`✅ #${ticketCode} completado`, {
+                  description: `"${taskTitle}" ha sido finalizado.`,
+                  action: {
+                    label: "Ver",
+                    onClick: () => openTaskDetail(merged),
+                  },
+                })
+              } else if (updatedRow.status === "blocked" && isLeadOrPm) {
+                toast.error(`🚫 #${ticketCode} fue bloqueado`, {
+                  description: updatedRow.blocked_reason || `"${taskTitle}" requiere asistencia del PM.`,
+                  action: {
+                    label: "Ver",
+                    onClick: () => openTaskDetail(merged),
+                  },
+                })
+              }
+            }
+
+            const mergeTask = (prev: TaskItem[]) =>
+              prev.map((t) => {
+                if (t.id === updatedRow.id) {
+                  return {
+                    ...t,
+                    ...updatedRow,
+                    assigned_staff: t.assigned_staff,
+                    qa_staff: t.qa_staff,
+                    project: t.project,
+                    blocked_by: t.blocked_by,
+                  }
+                }
+                return t
+              })
+            setTasks(mergeTask)
+            setAllTeamTasks(mergeTask)
+            setAvailableTasks(mergeTask)
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+              setAllTeamTasks((prev) => prev.filter((t) => t.id !== deletedId))
+              setAvailableTasks((prev) => prev.filter((t) => t.id !== deletedId))
+            }
+          }
+        }
+      )
+
+      // 2. Task Comments changes (mentions & real-time alerts)
+      channel.on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "task_comments",
+          filter: `organization_id=eq.${organization.id}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+          const newComment = payload.new as any
+          if (!newComment) return
+
+          const isMentioned =
+            (newComment.content && newComment.content.toLowerCase().includes(`@${staff.first_name.toLowerCase()}`)) ||
+            (Array.isArray(newComment.mentions) && newComment.mentions.some((m: string) => m.toLowerCase() === staff.first_name.toLowerCase()))
+
+          if (isMentioned && newComment.author_id !== staff.id) {
+            setRecentMentions((prev) => {
+              if (prev.some((m) => m.id === newComment.id)) return prev
+              const targetTask =
+                tasks.find((t) => t.id === newComment.task_id) ||
+                allTeamTasks.find((t) => t.id === newComment.task_id) ||
+                availableTasks.find((t) => t.id === newComment.task_id)
+
+              const newMention = {
+                id: newComment.id,
+                task_id: newComment.task_id,
+                ticket_code: targetTask?.ticket_code || `TK-${newComment.task_id.slice(0, 4)}`,
+                task_title: targetTask?.title || "Tarea",
+                author_name: newComment.author_name,
+                author_avatar: newComment.author_avatar,
+                content: newComment.content,
+                created_at: newComment.created_at,
+              }
+              return [newMention, ...prev]
+            })
+
+            const auditInfo = parseSystemAuditNote(newComment.content)
+            const sanitizedDescription = auditInfo.formattedText || (newComment.content || "").replace(/\s*\|\s*[Nn]otificando a\s+.*$/i, "").trim()
+            toast.info(`🔔 Notificación para @${staff.first_name}`, {
+              description: sanitizedDescription.slice(0, 100),
+            })
+          }
+        }
+      )
+
+      // 3. Task Sprints realtime synchronization
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_sprints",
+          filter: `organization_id=eq.${organization.id}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+          if (payload.eventType === "INSERT") {
+            const newSprint = payload.new as TaskSprint
+            setSprints((prev) => {
+              if (prev.some((s) => s.id === newSprint.id)) return prev
+              return [newSprint, ...prev]
+            })
+            if (newSprint.status === "active") {
+              setActiveSprint(newSprint)
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const updatedSprint = payload.new as TaskSprint
+            setSprints((prev) => prev.map((s) => (s.id === updatedSprint.id ? { ...s, ...updatedSprint } : s)))
+            if (updatedSprint.status === "active") {
+              setActiveSprint(updatedSprint)
+            } else if (updatedSprint.status === "completed" && activeSprint?.id === updatedSprint.id) {
+              setActiveSprint(null)
+            }
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setSprints((prev) => prev.filter((s) => s.id !== deletedId))
+              if (activeSprint?.id === deletedId) {
+                setActiveSprint(null)
+              }
+            }
+          }
+        }
+      )
+    })
+
+    return () => {
+      isMounted = false
+      realtimeManager.releaseChannel(channelName)
+    }
+  }, [organization?.id])
 
   // Workspace & Project Edit Modal States for PM Portal
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
@@ -592,6 +903,9 @@ export function TaskCollaboratorPortal({
   // Confirmation modal state for completing tasks
   const [taskToComplete, setTaskToComplete] = useState<TaskItem | null>(null)
 
+  // Agile log work modal state (transition to QA or Complete)
+  const [logWorkState, setLogWorkState] = useState<{ task: TaskItem; targetStatus: TaskStatus } | null>(null)
+
   // Computed metrics
   // Computed metrics (Active tasks strictly excluding backlog and done)
   const myTotal = tasks.length
@@ -628,6 +942,29 @@ export function TaskCollaboratorPortal({
   const teamCompleted = allTeamTasks.filter((t) => t.status === "done").length
   const teamInProgress = allTeamTasks.filter((t) => t.status === "in_progress").length
 
+  const teamActiveTasks = useMemo(
+    () =>
+      allTeamTasks.filter(
+        (t) =>
+          t.status === "todo" ||
+          t.status === "in_progress" ||
+          t.status === "in_review" ||
+          t.status === "blocked"
+      ),
+    [allTeamTasks]
+  )
+  const teamActiveProgress = useMemo(() => {
+    if (teamActiveTasks.length === 0) {
+      return teamCompleted > 0 ? 100 : 0
+    }
+    return Math.round(
+      teamActiveTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0) /
+        teamActiveTasks.length
+    )
+  }, [teamActiveTasks, teamCompleted])
+
+  const heroActiveProgress = isLeadOrPm ? teamActiveProgress : myActiveProgress
+
   // Focus Task: either currently in_progress or the next todo
   const focusTask =
     tasks.find((t) => t.status === "in_progress") ||
@@ -659,9 +996,9 @@ export function TaskCollaboratorPortal({
         title,
         desc: "Supervisa la cadencia del sprint, destraba revisiones en QA y coordina las asignaciones del equipo.",
         metricLabel: "Avance del Equipo",
-        percentage: 0,
-        completed: 0,
-        total: 0,
+        percentage: teamActiveProgress,
+        completed: teamCompleted,
+        total: teamActiveTasks.length,
       }
     }
 
@@ -724,6 +1061,9 @@ export function TaskCollaboratorPortal({
     myCompleted,
     myInProgress,
     myActiveEstimatedHours,
+    teamActiveProgress,
+    teamCompleted,
+    teamActiveTasks.length,
   ])
 
   // Lottie Animation for dynamic Hero Banner
@@ -779,12 +1119,15 @@ export function TaskCollaboratorPortal({
       setSeenTaskIds(seenList)
 
       // Find active tasks assigned to this collaborator that haven't been seen yet
+      // Exclude tasks created by the collaborator themselves and tasks in backlog
       const assignedToMe = tasks.filter(
         (t) =>
           (t.assigned_staff_id === staff.id ||
             (isQa && t.qa_staff_id === staff.id) ||
             (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === staff.id))) &&
-          t.status !== "done"
+          t.status !== "done" &&
+          t.status !== "backlog" &&
+          t.created_by_staff_id !== staff.id
       )
       const unseen = assignedToMe.filter((t) => !seenList.includes(t.id))
 
@@ -802,10 +1145,21 @@ export function TaskCollaboratorPortal({
     }
   }, [staff.id])
 
-  const markTaskAsSeen = (taskId: string) => {
+  // Load dismissed notifications from localStorage on mount
+  useEffect(() => {
+    try {
+      const storageKey = `pixy_dismissed_notifications_${staff.id}`
+      const stored = localStorage.getItem(storageKey)
+      if (stored) setDismissedNotificationIds(JSON.parse(stored))
+    } catch (e) {
+      console.error("Error loading dismissed notifications:", e)
+    }
+  }, [staff.id])
+
+  const markTaskAsSeen = (id: string) => {
     setSeenTaskIds((prev) => {
-      if (prev.includes(taskId)) return prev
-      const next = [...prev, taskId]
+      if (prev.includes(id)) return prev
+      const next = [...prev, id]
       try {
         localStorage.setItem(`pixy_seen_tasks_${staff.id}`, JSON.stringify(next))
       } catch (e) {
@@ -815,14 +1169,318 @@ export function TaskCollaboratorPortal({
     })
   }
 
+  const handleDismissNotification = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setDismissedNotificationIds((prev) => {
+      if (prev.includes(id)) return prev
+      const next = [...prev, id]
+      try {
+        localStorage.setItem(`pixy_dismissed_notifications_${staff.id}`, JSON.stringify(next))
+      } catch (err) {
+        console.error(err)
+      }
+      return next
+    })
+  }
+
+  const handleSelectNotificationTask = (task: TaskItem, notifKey?: string) => {
+    if (notifKey) markTaskAsSeen(notifKey)
+    markTaskAsSeen(task.id)
+    setIsNotificationsOpen(false)
+    openTaskDetail(task)
+  }
+
+  // Format relative timestamp safely
+  const formatNotifTime = (dateStr?: string) => {
+    if (!dateStr) return ""
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ""
+      return formatDistanceToNow(d, { addSuffix: true, locale: es })
+    } catch {
+      return ""
+    }
+  }
+
+  // 1. Backlog tasks (PM / Lead only)
+  const backlogNotifs = isLeadOrPm
+    ? (allTeamTasks || [])
+        .filter((t) => t.status === "backlog" && !dismissedNotificationIds.includes(`backlog-${t.id}`))
+        .map((t) => {
+          const notifKey = `backlog-${t.id}`
+          const isUnseen = !seenTaskIds.includes(notifKey) && !seenTaskIds.includes(t.id)
+          const creator = teamMembers.find((m) => m.id === t.created_by_staff_id)
+          return {
+            id: notifKey,
+            notifKey,
+            type: "backlog" as const,
+            tag: "Backlog",
+            ticketCode: t.ticket_code || `TK-${t.id.slice(0, 4)}`,
+            title: t.title,
+            content: creator ? `Propuesto por: ${creator.first_name} ${creator.last_name || ""}`.trim() : "Pendiente de aprobación",
+            createdAt: t.created_at || t.updated_at,
+            isUnseen,
+            semantic: {
+              dotColor: "bg-amber-500",
+              bgUnseen: "bg-amber-500/[0.05] dark:bg-amber-500/[0.08]",
+              tagUnseen: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25",
+              codeUnseen: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
+            },
+            onClick: () => handleSelectNotificationTask(t, notifKey),
+          }
+        })
+    : []
+
+  // 2. Mentions & System Audits
+  const mentionNotifs = (recentMentions || [])
+    .filter((m) => !dismissedNotificationIds.includes(`mention-${m.id}`))
+    .map((m) => {
+      const notifKey = `mention-${m.id}`
+      const isUnseen = !seenTaskIds.includes(notifKey)
+      const auditInfo = parseSystemAuditNote(m.content)
+      const targetTask =
+        tasks.find((t) => t.id === m.task_id) ||
+        allTeamTasks.find((t) => t.id === m.task_id) ||
+        availableTasks.find((t) => t.id === m.task_id)
+
+      let tag = "Mención"
+      let dotColor = "bg-primary"
+      let bgUnseen = "bg-primary/[0.04] dark:bg-primary/[0.08]"
+      let tagUnseen = "bg-primary/15 text-primary border-primary/25"
+      let codeUnseen = "text-primary bg-primary/10 border-primary/20"
+
+      if (auditInfo.isAudit) {
+        if (auditInfo.type === "progress") {
+          const isRegression = m.content.toLowerCase().includes("regres") || m.content.includes("📉")
+          tag = isRegression ? "Regresión" : "Avance"
+          dotColor = isRegression ? "bg-rose-500" : "bg-emerald-500"
+          bgUnseen = isRegression ? "bg-rose-500/[0.05] dark:bg-rose-500/[0.08]" : "bg-emerald-500/[0.05] dark:bg-emerald-500/[0.08]"
+          tagUnseen = isRegression
+            ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/25"
+            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25"
+          codeUnseen = isRegression
+            ? "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20"
+            : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+        } else if (auditInfo.type === "status") {
+          const isQaStatus = m.content.toLowerCase().includes("qa") || m.content.toLowerCase().includes("revisión")
+          tag = isQaStatus ? "QA" : "Estado"
+          dotColor = "bg-violet-500"
+          bgUnseen = "bg-violet-500/[0.05] dark:bg-violet-500/[0.08]"
+          tagUnseen = "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/25"
+          codeUnseen = "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20"
+        } else if (auditInfo.type === "blocker") {
+          tag = "Bloqueada"
+          dotColor = "bg-rose-500"
+          bgUnseen = "bg-rose-500/[0.05] dark:bg-rose-500/[0.08]"
+          tagUnseen = "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/25"
+          codeUnseen = "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20"
+        } else if (auditInfo.type === "subtask") {
+          tag = "Subtarea"
+          dotColor = "bg-blue-500"
+          bgUnseen = "bg-blue-500/[0.05] dark:bg-blue-500/[0.08]"
+          tagUnseen = "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25"
+          codeUnseen = "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+        }
+      }
+
+      return {
+        id: notifKey,
+        notifKey,
+        type: "mention" as const,
+        tag,
+        ticketCode: m.ticket_code || targetTask?.ticket_code || `TK-${m.task_id.slice(0, 4)}`,
+        title: targetTask?.title || m.task_title || "Tarea",
+        content: auditInfo.formattedText || (m.content || "").replace(/\s*\|\s*[Nn]otificando a\s+.*$/i, "").trim(),
+        createdAt: m.created_at,
+        isUnseen,
+        semantic: {
+          dotColor,
+          bgUnseen,
+          tagUnseen,
+          codeUnseen,
+        },
+        onClick: () => {
+          markTaskAsSeen(notifKey)
+          if (targetTask) openTaskDetail(targetTask)
+          setIsNotificationsOpen(false)
+        },
+      }
+    })
+
+  // 3. QA / Revisión (PM or QA staff)
+  const qaNotifs = (isLeadOrPm || isQa)
+    ? (allTeamTasks || [])
+        .filter((t) => {
+          if (t.status !== "in_review" || dismissedNotificationIds.includes(`qa-${t.id}`)) return false
+          const hasMention = (recentMentions || []).some(
+            (m) => m.task_id === t.id && (m.content.toLowerCase().includes("qa") || m.content.toLowerCase().includes("revisión"))
+          )
+          return !hasMention
+        })
+        .map((t) => {
+          const notifKey = `qa-${t.id}`
+          const isUnseen = !seenTaskIds.includes(notifKey)
+          const assignee = teamMembers.find((m) => m.id === t.assigned_staff_id)
+          return {
+            id: notifKey,
+            notifKey,
+            type: "qa" as const,
+            tag: "QA",
+            ticketCode: t.ticket_code || `TK-${t.id.slice(0, 4)}`,
+            title: t.title,
+            content: assignee ? `Entregado por: ${assignee.first_name} ${assignee.last_name || ""}`.trim() : "Lista para validación",
+            createdAt: t.updated_at || t.created_at,
+            isUnseen,
+            semantic: {
+              dotColor: "bg-violet-500",
+              bgUnseen: "bg-violet-500/[0.05] dark:bg-violet-500/[0.08]",
+              tagUnseen: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/25",
+              codeUnseen: "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20",
+            },
+            onClick: () => handleSelectNotificationTask(t, notifKey),
+          }
+        })
+    : []
+
+  // 4. Blocked tasks (PM / Lead only)
+  const blockedNotifs = isLeadOrPm
+    ? (allTeamTasks || [])
+        .filter((t) => {
+          if (t.status !== "blocked" || dismissedNotificationIds.includes(`blocked-${t.id}`)) return false
+          const hasMention = (recentMentions || []).some(
+            (m) => m.task_id === t.id && (m.content.toLowerCase().includes("bloqueada") || m.content.toLowerCase().includes("bloqueo"))
+          )
+          return !hasMention
+        })
+        .map((t) => {
+          const notifKey = `blocked-${t.id}`
+          const isUnseen = !seenTaskIds.includes(notifKey)
+          return {
+            id: notifKey,
+            notifKey,
+            type: "blocked" as const,
+            tag: "Bloqueada",
+            ticketCode: t.ticket_code || `TK-${t.id.slice(0, 4)}`,
+            title: t.title,
+            content: t.blocked_reason ? `Motivo: ${t.blocked_reason}` : "Requiere soporte",
+            createdAt: t.updated_at || t.created_at,
+            isUnseen,
+            semantic: {
+              dotColor: "bg-rose-500",
+              bgUnseen: "bg-rose-500/[0.05] dark:bg-rose-500/[0.08]",
+              tagUnseen: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/25",
+              codeUnseen: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20",
+            },
+            onClick: () => handleSelectNotificationTask(t, notifKey),
+          }
+        })
+    : []
+
+  // 5. Recent Completed tasks (PM / Lead only)
+  const doneNotifs = isLeadOrPm
+    ? (allTeamTasks || [])
+        .filter((t) => {
+          if (t.status !== "done" || dismissedNotificationIds.includes(`done-${t.id}`)) return false
+          const hasMention = (recentMentions || []).some(
+            (m) => m.task_id === t.id && (m.content.toLowerCase().includes("completada") || m.content.toLowerCase().includes("finalizada"))
+          )
+          return !hasMention
+        })
+        .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+        .slice(0, 8)
+        .map((t) => {
+          const notifKey = `done-${t.id}`
+          const isUnseen = !seenTaskIds.includes(notifKey)
+          const assignee = teamMembers.find((m) => m.id === t.assigned_staff_id)
+          return {
+            id: notifKey,
+            notifKey,
+            type: "done" as const,
+            tag: "Completada",
+            ticketCode: t.ticket_code || `TK-${t.id.slice(0, 4)}`,
+            title: t.title,
+            content: assignee ? `Completada por: ${assignee.first_name} ${assignee.last_name || ""}`.trim() : "Finalizada",
+            createdAt: t.updated_at || t.created_at,
+            isUnseen,
+            semantic: {
+              dotColor: "bg-emerald-500",
+              bgUnseen: "bg-emerald-500/[0.05] dark:bg-emerald-500/[0.08]",
+              tagUnseen: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25",
+              codeUnseen: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+            },
+            onClick: () => handleSelectNotificationTask(t, notifKey),
+          }
+        })
+    : []
+
+  // 6. Assigned tasks for standard collaborators (non-PM)
+  const assignedNotifs = !isLeadOrPm
+    ? (tasks || [])
+        .filter(
+          (t) =>
+            (t.assigned_staff_id === staff.id ||
+              (isQa && t.qa_staff_id === staff.id) ||
+              (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === staff.id))) &&
+            t.status !== "done" &&
+            !(t.created_by_staff_id === staff.id && t.status === "backlog") &&
+            !dismissedNotificationIds.includes(t.id)
+        )
+        .map((t) => {
+          const notifKey = t.id
+          const isUnseen = !seenTaskIds.includes(notifKey)
+          const proj = projects.find((p) => p.id === t.project_id)
+          const priorityLabel =
+            t.priority === "urgent"
+              ? "Urgente"
+              : t.priority === "high"
+              ? "Alta"
+              : t.priority === "medium"
+              ? "Media"
+              : "Baja"
+          return {
+            id: notifKey,
+            notifKey,
+            type: "assigned" as const,
+            tag: "Asignada",
+            ticketCode: t.ticket_code || `TK-${t.id.slice(0, 4)}`,
+            title: t.title,
+            content: proj ? `${proj.name} • Prioridad ${priorityLabel}` : `Prioridad ${priorityLabel}`,
+            createdAt: t.created_at || t.updated_at,
+            isUnseen,
+            semantic: {
+              dotColor: "bg-blue-500",
+              bgUnseen: "bg-blue-500/[0.05] dark:bg-blue-500/[0.08]",
+              tagUnseen: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25",
+              codeUnseen: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
+            },
+            onClick: () => handleSelectNotificationTask(t, notifKey),
+          }
+        })
+    : []
+
+  // UNIFIED & CHRONOLOGICALLY SORTED STREAM (arrival order descending)
+  const unifiedNotifications = useMemo(() => {
+    return [
+      ...backlogNotifs,
+      ...mentionNotifs,
+      ...qaNotifs,
+      ...blockedNotifs,
+      ...doneNotifs,
+      ...assignedNotifs,
+    ].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return timeB - timeA
+    })
+  }, [backlogNotifs, mentionNotifs, qaNotifs, blockedNotifs, doneNotifs, assignedNotifs])
+
+  const totalNotifications = unifiedNotifications.filter((n) => n.isUnseen).length
+  const hasAnyRead = unifiedNotifications.some((n) => !n.isUnseen)
+
   const handleMarkAllAsSeen = () => {
-    const allRelevantIds = (
-      isLeadOrPm && !tasks.some((t) => t.assigned_staff_id === staff.id)
-        ? allTeamTasks.map((t) => t.id)
-        : tasks.map((t) => t.id)
-    )
-    const allMentionIds = (recentMentions || []).map((m) => `mention-${m.id}`)
-    const merged = Array.from(new Set([...seenTaskIds, ...allRelevantIds, ...allMentionIds]))
+    const keysToMark = unifiedNotifications.map((n) => n.notifKey)
+    const backlogBaseIds = backlogNotifs.map((n) => n.notifKey.replace("backlog-", ""))
+    const merged = Array.from(new Set([...seenTaskIds, ...keysToMark, ...backlogBaseIds]))
     setSeenTaskIds(merged)
     try {
       localStorage.setItem(`pixy_seen_tasks_${staff.id}`, JSON.stringify(merged))
@@ -832,29 +1490,21 @@ export function TaskCollaboratorPortal({
     toast.success("Todas las notificaciones marcadas como leídas")
   }
 
-  const handleSelectNotificationTask = (task: TaskItem) => {
-    setIsNotificationsOpen(false)
-    setAlertTask(task)
-    setIsAlertModalOpen(true)
+  const handleDismissAllRead = () => {
+    const readKeys = unifiedNotifications.filter((n) => !n.isUnseen).map((n) => n.notifKey)
+    if (readKeys.length === 0) {
+      toast.info("No hay notificaciones leídas para limpiar")
+      return
+    }
+    const merged = Array.from(new Set([...dismissedNotificationIds, ...readKeys]))
+    setDismissedNotificationIds(merged)
+    try {
+      localStorage.setItem(`pixy_dismissed_notifications_${staff.id}`, JSON.stringify(merged))
+    } catch (e) {
+      console.error(e)
+    }
+    toast.success(`Se limpiaron ${readKeys.length} notificaciones leídas`)
   }
-
-  // Notifications list & badge count
-  const myAssignedTasks =
-    isLeadOrPm && !tasks.some((t) => t.assigned_staff_id === staff.id)
-      ? allTeamTasks
-      : tasks.filter(
-          (t) =>
-            t.assigned_staff_id === staff.id ||
-            (isQa && t.qa_staff_id === staff.id) ||
-            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === staff.id))
-        )
-  const unseenTasks = myAssignedTasks.filter(
-    (t) => t.status !== "done" && !seenTaskIds.includes(t.id)
-  )
-  const unseenMentions = (recentMentions || []).filter(
-    (m) => !seenTaskIds.includes(`mention-${m.id}`)
-  )
-  const totalNotifications = unseenTasks.length + unseenMentions.length
 
   // Committed progress & initial status map: stores the saved baseline in DB so drag gestures
   // can move freely between [savedProgress, 100] without ratcheting upwards before release
@@ -1023,6 +1673,17 @@ export function TaskCollaboratorPortal({
         setTasks(updateTaskState)
         setAllTeamTasks(updateTaskState)
         toast.success(`Progreso actualizado al ${clamped}%`)
+
+        if (res.unblockedTasks && res.unblockedTasks.length > 0) {
+          const unblockedMap = new Map(res.unblockedTasks.map((u) => [u.id, u]))
+          const applyUnblocked = (prev: TaskItem[]) =>
+            prev.map((t) => unblockedMap.get(t.id) || t)
+          setTasks(applyUnblocked)
+          setAllTeamTasks(applyUnblocked)
+          toast.success(`${res.unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+            id: "portal-unblocked-cascade-toast"
+          })
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Error al actualizar progreso")
@@ -1074,7 +1735,12 @@ export function TaskCollaboratorPortal({
   }
 
   // Status Change
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+  const handleStatusChange = async (
+    taskId: string,
+    newStatus: TaskStatus,
+    loggedHours?: number,
+    note?: string
+  ) => {
     const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
     const isMainAssignee = task?.assigned_staff_id === staff.id
     const canCloseParentTask = isLeadOrPm || isQa || isMainAssignee
@@ -1106,6 +1772,19 @@ export function TaskCollaboratorPortal({
       return
     }
 
+    // Agile log work interceptor: when moving to in_review or done without loggedHours explicitly defined
+    if (
+      (newStatus === "in_review" || newStatus === "done") &&
+      loggedHours === undefined &&
+      task &&
+      task.status !== newStatus
+    ) {
+      setLogWorkState({ task, targetStatus: newStatus })
+      return
+    }
+
+    const incrementalHours = loggedHours ? Number(loggedHours) : 0
+
     initialStatusMap.current[taskId] = newStatus
     if (newStatus === "done") {
       committedProgressMap.current[taskId] = 100
@@ -1116,6 +1795,7 @@ export function TaskCollaboratorPortal({
           return {
             ...t,
             status: newStatus,
+            actual_hours: (Number(t.actual_hours) || 0) + incrementalHours,
             progress_percentage: newStatus === "done" ? 100 : t.progress_percentage,
           }
         }
@@ -1133,8 +1813,9 @@ export function TaskCollaboratorPortal({
     }
 
     try {
-      const res = await portalUpdateTaskStatus(token, taskId, newStatus)
+      const res = await portalUpdateTaskStatus(token, taskId, newStatus, undefined, incrementalHours, note)
       if (res.success) {
+        const hoursMessage = incrementalHours > 0 ? ` (+${incrementalHours}h registradas)` : ""
         toast.success(
           `Estado actualizado a: ${
             newStatus === "in_review"
@@ -1142,8 +1823,18 @@ export function TaskCollaboratorPortal({
               : newStatus === "done"
               ? "Completado"
               : newStatus
-          }`
+          }${hoursMessage}`
         )
+        if (res.unblockedTasks && res.unblockedTasks.length > 0) {
+          const unblockedMap = new Map(res.unblockedTasks.map((u) => [u.id, u]))
+          const applyUnblocked = (prev: TaskItem[]) =>
+            prev.map((t) => unblockedMap.get(t.id) || t)
+          setTasks(applyUnblocked)
+          setAllTeamTasks(applyUnblocked)
+          toast.success(`${res.unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+            id: "portal-unblocked-cascade-toast"
+          })
+        }
       } else {
         // Revert optimistic state
         const savedStatus = getSavedStatus(taskId)
@@ -1192,7 +1883,6 @@ export function TaskCollaboratorPortal({
     baseSourceTasks = allTeamTasks.filter(
       (t) =>
         t.assigned_staff_id === selectedMemberFilter ||
-        t.qa_staff_id === selectedMemberFilter ||
         (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter))
     )
   }
@@ -1390,9 +2080,9 @@ export function TaskCollaboratorPortal({
                 align="end"
                 className="w-80 sm:w-96 p-0 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-white/10 bg-card overflow-hidden"
               >
-                <div className="p-3.5 border-b border-zinc-100 dark:border-white/10 flex items-center justify-between bg-muted/30">
+                <div className="p-3 border-b border-zinc-100 dark:border-white/10 flex items-center justify-between bg-muted/30">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-foreground">Novedades y Notificaciones</span>
+                    <span className="font-bold text-xs text-foreground">Notificaciones</span>
                     {totalNotifications > 0 ? (
                       <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] px-1.5 py-0 font-bold rounded-full">
                         {totalNotifications} nueva{totalNotifications > 1 ? "s" : ""}
@@ -1403,150 +2093,138 @@ export function TaskCollaboratorPortal({
                       </Badge>
                     )}
                   </div>
-                  {totalNotifications > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleMarkAllAsSeen}
-                      className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground rounded-lg"
-                    >
-                      <CheckCheck className="w-3.5 h-3.5 mr-1 text-primary" />
-                      Marcar leídas
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {hasAnyRead && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDismissAllRead}
+                        className="h-7 text-[11px] px-2 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 rounded-lg flex items-center gap-1"
+                        title="Limpiar todas las notificaciones leídas de la lista"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Limpiar leídas</span>
+                      </Button>
+                    )}
+                    {totalNotifications > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleMarkAllAsSeen}
+                        className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground rounded-lg flex items-center gap-1"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5 text-primary" />
+                        Marcar leídas
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="max-h-80 overflow-y-auto divide-y divide-zinc-100 dark:divide-white/5">
-                  {/* Seccion Menciones @ */}
-                  {recentMentions.length > 0 && (
-                    <div className="border-b border-zinc-100 dark:border-white/5">
-                      <div className="px-3 py-1.5 bg-zinc-50 dark:bg-white/[0.02] text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                        <AtSign className="w-3 h-3 text-primary" />
-                        <span>Menciones ({recentMentions.length})</span>
-                      </div>
-                      {recentMentions.map((mention) => {
-                        const isUnseen = !seenTaskIds.includes(`mention-${mention.id}`)
-                        return (
-                          <div
-                            key={mention.id}
-                            onClick={() => {
-                              markTaskAsSeen(`mention-${mention.id}`)
-                              const target = tasks.find((t) => t.id === mention.task_id) || allTeamTasks.find((t) => t.id === mention.task_id)
-                              if (target) openTaskDetail(target)
-                              setIsNotificationsOpen(false)
-                            }}
-                            className={cn(
-                              "p-3 cursor-pointer transition-colors hover:bg-muted/50 flex items-start gap-2.5 text-left",
-                              isUnseen && "bg-primary/[0.04] dark:bg-primary/[0.08]"
-                            )}
-                          >
-                            {(() => {
-                              const auditInfo = parseSystemAuditNote(mention.content)
-                              return (
-                                <>
-                                  {auditInfo.isAudit ? (
-                                    <div className="w-6 h-6 rounded-lg shrink-0 mt-0.5 flex items-center justify-center bg-zinc-100 dark:bg-white/10 text-xs">
-                                      {auditInfo.icon}
-                                    </div>
-                                  ) : (
-                                    <Avatar className="w-6 h-6 rounded-lg shrink-0 mt-0.5 border border-border/60" style={{ backgroundColor: brandColor }}>
-                                      <AvatarImage src={getCollaboratorAvatar(mention.author_avatar, mention.author_name)} className="object-cover" />
-                                      <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                                        {mention.author_name?.[0] || "U"}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  )}
-                                  <div className="flex-1 min-w-0 space-y-0.5">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="text-xs font-semibold text-foreground truncate">
-                                        {mention.author_name || (auditInfo.isAudit ? "Sistema" : "Colaborador")}
-                                      </span>
-                                      {isUnseen && (
-                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-primary/10 text-primary">
-                                          Nueva
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className={cn("text-[11px] line-clamp-2", auditInfo.isAudit ? (auditInfo.badgeClass || "text-foreground font-medium") : "text-zinc-600 dark:text-zinc-300")}>
-                                      {auditInfo.isAudit ? auditInfo.formattedText : mention.content}
-                                    </p>
-                                    <span className="text-[9px] text-muted-foreground block">
-                                      {new Date(mention.created_at).toLocaleDateString("es-ES", {
-                                        day: "numeric",
-                                        month: "short",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                  </div>
-                                </>
-                              )
-                            })()}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {myAssignedTasks.length === 0 && recentMentions.length === 0 ? (
-                    <div className="py-8 px-4 text-center space-y-1.5">
-                      <Bell className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                      <p className="text-xs font-semibold text-foreground">Sin notificaciones</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        No tienes notificaciones pendientes por el momento.
-                      </p>
-                    </div>
-                  ) : (
-                    myAssignedTasks.slice(0, 10).map((t) => {
-                      const isUnseen = !seenTaskIds.includes(t.id)
-                      const proj = projects.find((p) => p.id === t.project_id)
+                <div className="max-h-[420px] overflow-y-auto divide-y divide-zinc-100 dark:divide-white/5">
+                  {unifiedNotifications.length > 0 ? (
+                    unifiedNotifications.map((item) => {
                       return (
                         <div
-                          key={t.id}
-                          onClick={() => handleSelectNotificationTask(t)}
+                          key={item.id}
+                          onClick={item.onClick}
                           className={cn(
-                            "p-3 cursor-pointer transition-colors hover:bg-muted/50 flex items-start gap-2.5 text-left",
-                            isUnseen && "bg-primary/[0.04] dark:bg-primary/[0.08]"
+                            "group relative p-3 cursor-pointer transition-all flex items-start gap-2.5 text-left",
+                            item.isUnseen
+                              ? cn(
+                                  item.semantic.bgUnseen,
+                                  "hover:brightness-95 dark:hover:brightness-110"
+                                )
+                              : "bg-transparent opacity-50 hover:opacity-90 hover:bg-muted/30 text-muted-foreground"
                           )}
                         >
+                          {/* Dot / Indicator */}
                           <div className="pt-0.5 shrink-0">
-                            {isUnseen ? (
-                              <span className="w-2 h-2 rounded-full bg-rose-500 block animate-pulse mt-1" />
+                            {item.isUnseen ? (
+                              <span className={cn("w-2 h-2 rounded-full block animate-pulse mt-1", item.semantic.dotColor)} />
                             ) : (
-                              <span className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 block mt-1" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 block mt-1.5" />
                             )}
                           </div>
+
+                          {/* Content column */}
                           <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border border-primary/20">
-                                {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
-                              </span>
-                              {isUnseen && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                                  Nueva
+                            {/* Header row: Ticket Code + Tag Pill + Relative Time + Dismiss X */}
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className={cn(
+                                    "text-xs font-mono font-bold px-1.5 py-0.2 rounded shrink-0 border",
+                                    item.isUnseen
+                                      ? item.semantic.codeUnseen
+                                      : "text-muted-foreground bg-muted/40 border-border/40 font-normal"
+                                  )}
+                                >
+                                  {item.ticketCode}
                                 </span>
+
+                                {/* Diminutive subtle category pill */}
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded shrink-0 border transition-all",
+                                    item.isUnseen
+                                      ? item.semantic.tagUnseen
+                                      : "bg-muted/50 text-muted-foreground/75 border-transparent font-normal"
+                                  )}
+                                >
+                                  {item.tag}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                {item.createdAt && (
+                                  <span className={cn("text-[10px]", item.isUnseen ? "text-foreground/70 font-medium" : "text-muted-foreground/60")}>
+                                    {formatNotifTime(item.createdAt)}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  title="Quitar notificación"
+                                  onClick={(e) => handleDismissNotification(item.notifKey, e)}
+                                  className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-0.5 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded transition-all ml-0.5"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Title */}
+                            <p
+                              className={cn(
+                                "text-xs leading-snug line-clamp-2",
+                                item.isUnseen ? "font-semibold text-foreground" : "font-normal text-muted-foreground"
                               )}
-                            </div>
-                            <p className="text-xs font-semibold text-foreground truncate">
-                              {t.title}
+                            >
+                              {item.title}
                             </p>
-                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                              {proj && <span className="truncate max-w-[120px]">{proj.name}</span>}
-                              <span>•</span>
-                              <span>
-                                {t.priority === "urgent"
-                                  ? "Urgente"
-                                  : t.priority === "high"
-                                  ? "Alta"
-                                  : t.priority === "medium"
-                                  ? "Media"
-                                  : "Baja"}
-                              </span>
-                            </div>
+
+                            {/* Subtitle / content snippet */}
+                            {item.content && (
+                              <p
+                                className={cn(
+                                  "text-[11px] leading-relaxed line-clamp-2",
+                                  item.isUnseen ? "text-foreground/80 font-normal" : "text-muted-foreground/70 font-normal"
+                                )}
+                              >
+                                {item.content}
+                              </p>
+                            )}
                           </div>
                         </div>
                       )
                     })
+                  ) : (
+                    <div className="py-10 px-4 text-center space-y-1.5">
+                      <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                      <p className="text-xs font-semibold text-foreground">Sin notificaciones pendientes</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tu bandeja de notificaciones está completamente al día.
+                      </p>
+                    </div>
                   )}
                 </div>
               </PopoverContent>
@@ -1585,10 +2263,24 @@ export function TaskCollaboratorPortal({
         {/* Hero Section: Card compacta con Avatar 3D en posición absoluta y efecto pop-out flotante */}
         {(!isLeadOrPm || pmViewMode === "dashboard") && (
           <section className="w-full relative overflow-visible rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-sm bg-gradient-to-br from-card via-card to-primary/[0.03] dark:to-primary/[0.06] p-4 sm:p-5 md:py-5 md:px-7 transition-all flex items-center min-h-[140px] sm:min-h-[155px]">
-            {/* Ambient Glow Orbs (Contenidos dentro del radio de la tarjeta) */}
-            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+            {/* Ambient Glow Orbs & Watermark Active Progress */}
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none z-10">
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full bg-primary/10 blur-3xl" />
               <div className="absolute bottom-0 left-1/3 -mb-16 w-48 h-48 rounded-full bg-sky-500/5 blur-3xl" />
+
+              {/* Watermark Rolling Odometer Active Progress in Top-Right Corner */}
+              <div className="absolute top-0 right-[12px] flex items-start select-none pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="flex items-start text-foreground/[0.11] dark:text-white/[0.13]"
+                >
+                  <div className="text-[40px] sm:text-[53px] md:text-[66px] font-black font-sans leading-none">
+                    <RollingOdometer value={heroActiveProgress} />
+                  </div>
+                </motion.div>
+              </div>
             </div>
 
             {/* Contenido Principal a la izquierda */}
@@ -1680,25 +2372,15 @@ export function TaskCollaboratorPortal({
                       </TooltipContent>
                     </Tooltip>
 
-                    {focusTask && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => openTaskDetail(focusTask)}
-                            className="ml-auto text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-                            aria-label={`Ver tarea prioritaria: ${focusTask.title}`}
-                          >
-                            <span className="font-mono font-bold">{focusTask.ticket_code || `TK-${focusTask.id.slice(0, 4)}`}</span>
-                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:inline">• {focusTask.title}</span>
-                            <ChevronRight className="w-3 h-3 text-primary" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <span>{focusTask.title}</span>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="ml-auto h-6 px-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-bold shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Crear Requerimiento / Ticket</span>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1712,23 +2394,31 @@ export function TaskCollaboratorPortal({
                       ¡Sprint al día! Todas tus tareas están completadas ({myCompleted}/{myCompleted})
                     </span>
                   </div>
-                  <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
-                    100%
-                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="h-6 px-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-bold shadow-2xs cursor-pointer flex items-center gap-1 shrink-0 ml-2"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Crear Requerimiento / Ticket</span>
+                  </Button>
                 </div>
               )}
 
-              {/* Botones de acción para PM / Lead */}
-              {isLeadOrPm && (
+              {/* Botones de acción para PM / Lead o colaboradores sin tareas activas */}
+              {(isLeadOrPm || (!isLeadOrPm && myActiveTotal === 0 && myCompleted === 0) || (isQa && qaQueueTasks.length > 0)) && (
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                  <Button
-                    size="sm"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 h-8 px-3"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Nuevo Requerimiento / Ticket
-                  </Button>
+                  {(isLeadOrPm || (!isLeadOrPm && myActiveTotal === 0 && myCompleted === 0)) && (
+                    <Button
+                      size="sm"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 h-8 px-3 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Crear Requerimiento / Ticket
+                    </Button>
+                  )}
                   {isQa && (
                     <Button
                       size="sm"
@@ -1740,10 +2430,10 @@ export function TaskCollaboratorPortal({
                       Cola de QA ({qaQueueTasks.length})
                     </Button>
                   )}
-                  {teamMembers.length > 0 && (
+                  {isLeadOrPm && teamMembers.length > 0 && (
                     <span className="text-[11px] text-muted-foreground font-mono inline-flex items-center gap-1.5 px-2 py-0.5 bg-muted/40 rounded-lg">
                       <Users className="w-3 h-3 text-primary" />
-                      {teamMembers.length} en sprint
+                      {teamMembers.length} especialistas
                     </span>
                   )}
                 </div>
@@ -1751,7 +2441,12 @@ export function TaskCollaboratorPortal({
             </div>
 
             {/* 3D Floating Avatar: Posición absoluta, sobresaliendo libremente por encima del marco */}
-            <div className="absolute right-2 sm:right-6 md:right-8 lg:right-12 bottom-0 flex items-end justify-center pointer-events-none select-none z-20">
+            <div
+              className={cn(
+                "absolute right-2 sm:right-6 md:right-8 lg:right-12 flex items-end justify-center pointer-events-none select-none z-20",
+                !isLeadOrPm ? "bottom-2" : "bottom-0"
+              )}
+            >
               <motion.div
                 animate={{ y: [0, -7, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
@@ -1775,6 +2470,38 @@ export function TaskCollaboratorPortal({
             projects={projects}
             workspaces={workspaces}
             organization={organization}
+            sprints={sprints}
+            activeSprint={activeSprint}
+            token={token}
+            onSprintCreated={(newSprint) => {
+              setSprints((prev) => [newSprint, ...prev])
+              if (newSprint.status === "active") {
+                setActiveSprint(newSprint)
+              }
+            }}
+            onSprintUpdated={(updatedSprint) => {
+              setSprints((prev) => prev.map((s) => (s.id === updatedSprint.id ? updatedSprint : s)))
+              if (updatedSprint.status === "active") {
+                setActiveSprint(updatedSprint)
+              }
+            }}
+            onSprintCompleted={(completedId, nextSprint) => {
+              setSprints((prev) =>
+                prev.map((s) => (s.id === completedId ? { ...s, status: "completed" as const } : s))
+              )
+              if (nextSprint) {
+                setSprints((prev) => [nextSprint, ...prev.filter((s) => s.id !== nextSprint.id)])
+                setActiveSprint(nextSprint)
+              } else {
+                setActiveSprint(null)
+              }
+            }}
+            onSprintDeleted={(deletedId) => {
+              setSprints((prev) => prev.filter((s) => s.id !== deletedId))
+              if (activeSprint?.id === deletedId) {
+                setActiveSprint(null)
+              }
+            }}
             onSwitchToGestion={() => setPmViewMode("gestion")}
             onSelectTask={openTaskDetail}
           />
@@ -2100,6 +2827,12 @@ export function TaskCollaboratorPortal({
                             Bloqueado
                           </Badge>
                         )}
+                        {task.assigned_staff_id !== staff.id && safeChecklist.some((c) => c.assigned_staff_id === staff.id) && (
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/25 text-[10px] px-2 py-0.5 font-bold rounded-lg flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" />
+                            Tu subtarea
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
@@ -2229,6 +2962,7 @@ export function TaskCollaboratorPortal({
                         savedProg={getSavedProgress(task.id)}
                         isLeadOrPm={isLeadOrPm}
                         isMainAssignee={task.assigned_staff_id === staff.id}
+                        isBacklog={task.status === "backlog"}
                         blockedBy={task.blocked_by}
                         latestAudit={latestAudits[task.id]}
                         onCommit={handleSliderCommit}
@@ -2438,6 +3172,12 @@ export function TaskCollaboratorPortal({
                           ? "Backlog"
                           : "Por Hacer"}
                       </Badge>
+                      {task.assigned_staff_id !== staff.id && Array.isArray(task.checklist) && task.checklist.some((c: any) => c.assigned_staff_id === staff.id) && (
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/25 text-[10px] px-1.5 py-0 font-bold rounded-md flex items-center gap-1">
+                          <UserCheck className="w-2.5 h-2.5" />
+                          Tu subtarea
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between gap-1.5">
@@ -2493,6 +3233,7 @@ export function TaskCollaboratorPortal({
                       savedProg={getSavedProgress(task.id)}
                       isLeadOrPm={isLeadOrPm}
                       isMainAssignee={task.assigned_staff_id === staff.id}
+                      isBacklog={task.status === "backlog"}
                       blockedBy={task.blocked_by}
                       latestAudit={latestAudits[task.id]}
                       onCommit={handleSliderCommit}
@@ -2677,6 +3418,7 @@ export function TaskCollaboratorPortal({
                             savedProg={getSavedProgress(task.id)}
                             isLeadOrPm={isLeadOrPm}
                             isMainAssignee={task.assigned_staff_id === staff.id}
+                            isBacklog={task.status === "backlog"}
                             blockedBy={task.blocked_by}
                             latestAudit={latestAudits[task.id]}
                             onCommit={handleSliderCommit}
@@ -2779,10 +3521,10 @@ export function TaskCollaboratorPortal({
               onSelectTask={openTaskDetail}
               onQuickMoveTask={handleStatusChange}
               brandColor={brandColor}
-              onNewTaskInColumn={isLeadOrPm ? (status) => {
-                setNewTaskStatus(status)
+              onNewTaskInColumn={(status) => {
+                setNewTaskStatus(isLeadOrPm ? status : "backlog")
                 setIsCreateModalOpen(true)
-              } : undefined}
+              }}
             />
           </div>
         )}
@@ -2912,7 +3654,8 @@ export function TaskCollaboratorPortal({
         projects={projects}
         teamMembers={teamMembers}
         brandColor={brandColor}
-        availableTasks={allTeamTasks || tasks}
+        availableTasks={availableTasks}
+        sprints={sprints}
         onSelectTask={(task) => setSelectedTask(task)}
         onTaskUpdated={(updatedTask) => {
           const oldProg = committedProgressMap.current[updatedTask.id] ?? (selectedTask?.progress_percentage || 0)
@@ -2938,6 +3681,7 @@ export function TaskCollaboratorPortal({
           if (allTeamTasks) {
             setAllTeamTasks((prev) => (prev ? prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)) : prev))
           }
+          setAvailableTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
           setSelectedTask(updatedTask)
         }}
         onTaskDeleted={(taskId) => {
@@ -2945,6 +3689,7 @@ export function TaskCollaboratorPortal({
           if (allTeamTasks) {
             setAllTeamTasks((prev) => (prev ? prev.filter((t) => t.id !== taskId) : prev))
           }
+          setAvailableTasks((prev) => prev.filter((t) => t.id !== taskId))
           setIsCommentModalOpen(false)
           setSelectedTask(null)
         }}
@@ -2964,11 +3709,15 @@ export function TaskCollaboratorPortal({
           projects={projects}
           teamMembers={teamMembers}
           brandColor={brandColor}
+          availableTasks={availableTasks}
+          sprints={sprints}
           defaultStatus={newTaskStatus || "todo"}
           defaultProjectId={selectedProjectFilter !== "all" && !selectedProjectFilter.startsWith("workspace:") ? selectedProjectFilter : projects[0]?.id}
           onTaskCreated={(createdTask) => {
+            markTaskAsSeen(createdTask.id)
             setTasks((prev) => [createdTask, ...prev])
             setAllTeamTasks((prev) => [createdTask, ...prev])
+            setAvailableTasks((prev) => [createdTask, ...prev])
             setIsCreateModalOpen(false)
             toast.success("¡Ticket creado con éxito!")
           }}
@@ -3323,6 +4072,27 @@ export function TaskCollaboratorPortal({
           </AlertDialog>
         )
       })()}
+
+      {/* Agile Work Hours Imputation Modal (Log Work on QA or Completion) */}
+      {logWorkState && (
+        <TaskLogWorkModal
+          isOpen={!!logWorkState}
+          onClose={() => setLogWorkState(null)}
+          task={logWorkState.task}
+          targetStatus={logWorkState.targetStatus}
+          currentUserId={staff.id}
+          onConfirm={(hours, note) => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleStatusChange(task.id, targetStatus, hours, note)
+          }}
+          onSkip={() => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleStatusChange(task.id, targetStatus, 0)
+          }}
+        />
+      )}
     </div>
   )
 }

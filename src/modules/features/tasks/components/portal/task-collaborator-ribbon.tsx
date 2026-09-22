@@ -276,7 +276,7 @@ export function TaskCollaboratorRibbon({
             whileTap={{ scale: 0.98, transition: { duration: 0.08 } }}
             onClick={() => onSelectMember("all")}
             className={cn(
-              "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-20 sm:w-22 h-[114px] sm:h-[118px] text-center transition-colors duration-150 relative overflow-visible",
+              "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-20 sm:w-22 h-[92px] sm:h-[96px] text-center transition-colors duration-150 relative overflow-visible",
               isAllSelected
                 ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs"
                 : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10",
@@ -322,7 +322,7 @@ export function TaskCollaboratorRibbon({
           </motion.div>
 
           {/* Separator Line */}
-          <div className="h-14 w-[1px] bg-zinc-200/80 dark:bg-white/10 shrink-0 my-auto" />
+          <div className="h-11 w-[1px] bg-zinc-200/80 dark:bg-white/10 shrink-0 my-auto" />
 
           {/* 2. Individual Member Bubbles */}
           <AnimatePresence mode="popLayout">
@@ -342,7 +342,7 @@ export function TaskCollaboratorRibbon({
                   key={member.id}
                   onClick={() => onSelectMember(isSelected ? "all" : member.id)}
                   className={cn(
-                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[114px] sm:h-[118px] text-center group transition-all duration-200 relative overflow-visible",
+                    "flex flex-col items-center justify-between p-2 rounded-2xl cursor-pointer shrink-0 snap-start select-none w-22 sm:w-24 h-[92px] sm:h-[96px] text-center group transition-all duration-200 relative overflow-visible",
                     isSelected
                       ? "border-2 border-primary bg-primary/[0.04] dark:bg-primary/[0.08] shadow-xs z-10"
                       : "bg-white/70 dark:bg-white/5 border border-zinc-200/80 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-white/10 hover:shadow-xs",
@@ -435,7 +435,7 @@ export function TaskCollaboratorRibbon({
                         "h-12 w-12 sm:h-[50px] sm:w-[50px] object-contain select-none pointer-events-none origin-bottom will-change-transform",
                         "transition-all duration-300 ease-out",
                         isSelected
-                          ? "translate-y-1 sm:translate-y-1.5 scale-140 sm:scale-145 drop-shadow-[0_10px_20px_rgba(0,0,0,0.22)] z-10"
+                          ? "-translate-y-0.5 scale-140 sm:scale-145 drop-shadow-[0_10px_20px_rgba(0,0,0,0.22)] z-10"
                           : "translate-y-0 scale-100 drop-shadow-[0_2px_6px_rgba(0,0,0,0.06)] group-hover:scale-110 group-hover:-translate-y-0.5"
                       )}
                       onError={(e) => {
@@ -459,10 +459,10 @@ export function TaskCollaboratorRibbon({
 
                     <span
                       className={cn(
-                        "truncate max-w-full text-[10px] leading-tight mt-0.5",
+                        "truncate max-w-full text-[10px] font-medium leading-tight mt-0.5",
                         isSelected
-                          ? "text-primary font-bold"
-                          : "text-muted-foreground/75 font-medium"
+                          ? "text-primary"
+                          : "text-muted-foreground/75"
                       )}
                     >
                       {member.role || "Especialista"}

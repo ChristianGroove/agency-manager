@@ -612,16 +612,23 @@ Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmene
   - Cada fila expone código de ticket, título, proyecto, avatar del especialista, fecha límite (con alerta si está atrasada) y barra de progreso.
   - Al hacer clic en un ticket, se invoca `onSelectTask` abriendo instantáneamente el modal de detalle del ticket (`TaskPortalDetailModal`), facilitando la resolución de impedimentos sin abandonar el dashboard.
 
-### F. Microinteracciones de Alto Rendimiento en Cinta de Especialistas (`TaskCollaboratorRibbon`)
+### F. Microinteracciones de Alto Rendimiento en Cinta de Especialistas (`TaskCollaboratorRibbon`) & Hero de Portal
+- **Tarjetas Compactas de Monitor de Equipo (`96px`)**:
+  - Se redujo la altura del marco de las tarjetas de `118px` a `96px` (`h-[92px] sm:h-[96px]`), eliminando ~22px de espacio muerto superior sin alterar el tamaño de los avatares (`50px`) ni su posición anclada.
+  - La tipografía del cargo/rol (`member.role`) permanece estable en escala y peso (`text-[10px] font-medium`) sin ensancharse al activarse la tarjeta.
+  - En estado activo (`isSelected`), el avatar se eleva sutilmente `2px` (`-translate-y-0.5 scale-140 sm:scale-145`), separándose limpiamente del rótulo del nombre.
 - **Efecto 3D de Avatar Sobresaliente (Breakout) con Transición Fluida**:
   - El avatar 3D se mantiene en el flujo Flexbox estático con anclaje `origin-bottom` y `will-change-transform`, evitando saltos y reacomodos bruscos entre estados.
-  - En estado activo (`isSelected`), escala suavemente a `scale-140 sm:scale-145` y se reposiciona sutilmente hacia abajo (`translate-y-1 sm:translate-y-1.5`), logrando que la cabeza del avatar sobresalga del marco redondeado superior sin ser recortada (`overflow-visible`) mientras el torso descansa firmemente sobre el rótulo del nombre.
   - En estado hover, proporciona un suave realce visual (`group-hover:scale-110 group-hover:-translate-y-0.5`).
 - **Disparador de Información no Invasivo**:
   - El tooltip/popover con información de tickets, métricas y botón de WhatsApp se desacopló del cuerpo de la tarjeta y se reubicó en un ícono circular sutil de información (`Info`) en la esquina superior derecha (`absolute top-1.5 right-1.5`).
   - La interacción de hover sobre la tarjeta permanece limpia y dedicada a la selección del colaborador sin disparar popups emergentes involuntarios.
-- **Tipografía y Rol Focalizado**:
-  - Se removió el insight redundante de porcentaje de la base de la tarjeta, exhibiendo con claridad el nombre del especialista y su rol corporativo (`member.role`).
+- **Watermark Odómetro de Avance en Activas (`RollingOdometer`)**:
+  - En la esquina superior derecha del hero del portal de colaboradores (`task-collaborator-portal.tsx`), se integró un contador de odómetro mecánico con rodaje de dígitos independientes (`OdometerDigit`).
+  - Desaceleración exponencial auténtica con curva `easeOutExpo` (`[0.16, 1, 0.3, 1]`) y máscaras de gradiente vertical (`mask-image`) en la parte superior e inferior para desvanecer suavemente los números que entran y salen.
+  - El símbolo `%` se ubica de forma independiente directamente debajo del carácter numérico de la derecha, y el componente reposa anclado en `top-0 right-[12px]` con opacidad sutil tipo marca de agua (`11%` en claro, `13%` en oscuro).
+- **Catálogo de Avatares 3D Actualizado**:
+  - Actualización integral de los recursos gráficos en `public/avatar task pack/` (Frame 10 a 29) e incorporación de **`Frame 30.png`**, totalizando 19 avatares oficiales en `TASK_PACK_AVATARS`.
 
 ### G. Persistencia Atómica y Aislamiento de Estado Borrador en Modales de Edición (`TaskDetailModal` / `TaskPortalDetailModal`)
 - **Desacoplamiento de Mutaciones en Tiempo Real**:
@@ -768,4 +775,127 @@ Un ticket puede ingresar al estado `blocked` por dos razones operativas:
   - Resuelve el conflicto entre `RemoveScroll` del diálogo modal y el popover portaleado a `document.body` mediante escuchadores nativos con `e.stopPropagation()`, normalización de `deltaMode` (líneas/píxeles/páginas) y `scrollbar-thin`.
 - **Aislamiento de Acciones**:
   - Pulsar la `X` dentro del input en edición únicamente limpia el texto escrito; la tarea conserva su estado `Bloqueado` para prevenir cambios accidentales de flujo.
+
+---
+
+## 19. Arquitectura de Sprints & Ciclos Ágiles (Linear / Jira Enterprise)
+
+### A. Filosofía de Ciclos Continuos & Sprints
+El sistema implementa una arquitectura ágil de ciclos continuos inspirada en el estándar de oro de **Linear Cycles** y **Jira Software Enterprise**:
+- **Convivencia Armónica (Sprints vs Ritmo Semanal)**: El Ritmo Semanal (`Weekly Pacing`) opera como la micro-cadencia de 7 días por especialista para la distribución de capacidad y prevención de sobrecarga. Los **Sprints** operan como la macro-cadencia de entrega (1 a 4 semanas) vinculada a metas estratégicas de negocio. Ambos modelos coexisten sin fricción.
+- **Compatibilidad Hacia Atrás & Backlog**: Cualquier tarea que carezca de `sprint_id` pertenece de forma natural al **Backlog General** de la organización. No se fuerza a que toda tarea pertenezca a un sprint, otorgando flexibilidad total en proyectos Kanban continuos o tareas de soporte reactivo.
+
+### B. Modelo de Datos Relacional (`task_sprints`)
+Implementado mediante la migración `20260921000001_create_task_sprints.sql`:
+
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador único del ciclo (`gen_random_uuid()`). |
+| `organization_id` | UUID (FK) | Tenant propietario con borrado en cascada. |
+| `workspace_id` | UUID (FK, Nullable) | Espacio de trabajo opcional para scoping departamental. |
+| `project_id` | UUID (FK, Nullable) | Proyecto opcional para sprints dedicados. |
+| `name` | Text | Nombre del sprint (ej: "Sprint 1", "Sprint 2"). |
+| `goal` | Text (Nullable) | Meta u objetivo estratégico del sprint. |
+| `start_date` / `end_date` | Date | Período de vigencia del sprint. |
+| `duration_days` | Integer | Duración estándar en días (7, 14, 21, 30). |
+| `status` | Text | Estado: `'planning'`, `'active'`, `'completed'`, `'cancelled'`. |
+| `auto_rollover` | Boolean | Activa el ciclado continuo automático al llegar la fecha límite. |
+| `created_by_staff_id` | UUID (FK, Nullable) | Colaborador que planificó o creó el sprint. |
+| `completed_at` | Timestamp (Nullable) | Fecha de finalización formal del ciclo. |
+
+Adicionalmente, la tabla `task_items` incorpora:
+- `sprint_id`: UUID nullable con clave foránea a `task_sprints(id)` y cláusula `ON DELETE SET NULL`.
+- Índice btree `idx_task_items_sprint_id` para garantizar consultas de telemetría en O(1).
+
+### C. Ciclo de Vida del Sprint y Transiciones
+```mermaid
+stateDiagram-v2
+    [*] --> Planificación: Crear Sprint (Modo Planning)
+    [*] --> Activo: Crear Sprint (Inicio Inmediato)
+    Planificación --> Activo: Iniciar Sprint (startSprint)
+    Activo --> Completado: Finalizar Sprint (completeSprint)
+    Activo --> Completado: Auto-rollover al vencer
+    Planificación --> [*]: Eliminar Sprint (deleteSprint)
+    Activo --> [*]: Eliminar Sprint (deleteSprint)
+```
+
+1. **`planning` (En Planificación)**:
+   - Permite al PM pre-asignar y priorizar tickets del backlog general hacia sprints futuros sin afectar las métricas ni la concentración del equipo en el sprint actual.
+2. **`active` (Sprint Activo)**:
+   - Exactamente un sprint activo gobierna las métricas en vivo del panel de control de la organización. Si se inicia un sprint mientras otro está activo, el sistema solicita confirmación y completa limpiamente el ciclo previo.
+3. **`completed` (Cerrado)**:
+   - Ciclo formalmente concluido que retiene su historial de entregas para auditar la velocidad del equipo en retrospectivas.
+4. **Eliminación Segura (`deleteSprint`)**:
+   - Al eliminar un sprint, el sistema desasigna automáticamente todas las tareas vinculadas (`sprint_id = NULL`), retornándolas sanas y salvas al backlog sin pérdida de información.
+
+### D. Motor Quirúrgico de Rollover & Retención Histórica (`completeSprint`)
+Al finalizar un sprint (bien sea manual o automáticamente), el motor ejecuta un algoritmo estricto de dos fases:
+1. **Retención de Entregas (`status === 'done'`)**: Las tareas completadas permanecen permanentemente asociadas al sprint que finaliza (`sprint_id = sprint.id`). Esto protege la métrica histórica de velocidad (evita que un sprint completado muestre 0 tareas).
+2. **Transferencia de Tareas Incompletas**: Las tareas no terminadas (`todo`, `in_progress`, `in_review`, `blocked`) son gestionadas según la decisión del PM:
+   - **Opción A (Recomendada): Transferir al Siguiente Sprint**: Crea automáticamente el siguiente ciclo correlativo ("Sprint N+1") o asigna las tareas a un sprint planificado existente.
+   - **Opción B: Retornar al Backlog**: Desvincula las tareas pendientes (`sprint_id = NULL`) para que descansen en la reserva general.
+3. **Auditoría Transparente**: Cada tarea transferida registra un evento en `task_activity_feed` con el texto: `🔁 Rollover de Sprint: Movida de "Sprint X" hacia "Sprint Y"`.
+
+### E. Auto-ciclado Continuo (Linear Cycles)
+Cuando `auto_rollover = true`, la función `getActiveSprint` evalúa si `new Date() > new Date(sprint.end_date)`. Si el plazo concluyó, ejecuta automáticamente el cierre y traslado de tareas al siguiente sprint sin que el PM tenga que intervenir manualmente, asegurando que la operación de la agencia nunca se detenga un lunes por la mañana.
+
+### F. Estándares de Experiencia de Usuario en el PM Dashboard (`TaskPmOperationsDashboard`)
+1. **Barra de Control Unificada**:
+   - Selector plano y compacto sin encabezados invasivos: lista directa con etiquetas de estado (`{Nombre} (En curso)`, `{Nombre} (Planificación)`, etc.) y acción rápida `+ Crear nuevo sprint...`.
+   - Badges dinámicos de estado: Días restantes con alerta por color (esmeralda, ámbar si $\le 3$ días, rojo si venció), fecha de inicio programada, y badge de auto-ciclado continuo.
+2. **Acciones Contextuales Precisas**:
+   - En **Vista Global** o sin sprints: Botón de acción destacado **`Crear Sprint`**.
+   - En **Cualquier Sprint Seleccionado**: Botón **`Editar`** permanentemente disponible (con opción de eliminar sprint).
+   - En **Sprint Activo**: Botón **`Finalizar Sprint`** (esmeralda con modal de rollover).
+   - En **Sprint en Planificación**: Botón **`Iniciar Sprint`** (primario con icono `Play`).
+3. **Métricas Context-Aware (Adaptabilidad Dinámica)**:
+   - Cuando se selecciona un sprint específico: muestra títulos como `"Salud del Sprint"` y `"Estado del Sprint"`.
+   - Cuando se selecciona `"Todos los tickets (Global)"`: la terminología conmuta automáticamente a **`"Salud Global"`**, **`"Estado de los Tickets"`**, `"% del total"`, `"Total: Xh/Yh"` y mensajes operativos sin mencionar la palabra "sprint", garantizando coherencia semántica absoluta.
+
+### G. Sincronización Realtime con Supabase
+Tanto el portal del colaborador ([`task-collaborator-portal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx)) como el dashboard del PM suscriben un canal de Supabase Realtime a la tabla `task_sprints`:
+- Eventos `INSERT`: El nuevo sprint aparece instantáneamente en el selector de todos los usuarios conectados.
+- Eventos `UPDATE`: Cambios de estado (ej: activación de sprint o edición de fechas) se reflejan de inmediato.
+- Eventos `DELETE`: Se limpia el estado local y se redirige la vista a la vista global de forma transparente.
+
+### H. Integración de Sprints en la Plataforma Central (`/operations/tasks`)
+1. **Punto de Entrada Global (`+ Nuevo`)**:
+   - En [`task-manager-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx), el desplegable universal de creación `+ Nuevo` incluye la opción **`Nuevo Sprint`** (con icono `Rocket` y subtítulo *"Ciclo ágil de trabajo con fechas y meta"*). Permite a los administradores iniciar o planificar sprints desde cualquier parte del módulo sin depender del portal de PM.
+2. **Aislamiento Operativo Limpio (General & Kanban)**:
+   - Las pestañas de **General (Lista)** y **Tablero Kanban** se mantienen completamente despejadas y libres de la barra de control de sprints. Esto evita sobrecargar las vistas operativas transversales de proyectos/espacios y elimina duplicidad visual.
+3. **Módulo Especializado de Sprints en Pestaña Métricas**:
+   - La pestaña **Métricas** ([`task-metrics-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/metrics/task-metrics-view.tsx)) aloja de manera natural el [`TaskPmOperationsDashboard`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-pm-operations-dashboard.tsx), el cual recibe la colección de `sprints`, el `activeSprint` y los callbacks reactivos (`onSprintCreated`, `onSprintUpdated`, `onSprintCompleted`, `onSprintDeleted`), centralizando el control del ciclo ágil, el rollover y los indicadores de velocidad en un único panel analítico de alta fidelidad.
+4. **Sincronización Multipestaña en Vivo**:
+   - `TaskManagerView` suscribe un canal Supabase Realtime a `task_sprints` con filtro `organization_id=eq.${orgId}`, reaccionando de inmediato a cualquier inserción, edición o borrado de ciclo ágil realizado por otros usuarios.
+
+---
+
+## 20. Suite Universal de Importación Masiva (Pixy a Pixy, CSV Tabular & Adaptador de Jira)
+
+### A. Arquitectura Canónica con Adaptadores (*Canonical Schema & Adapter Pattern*)
+Para garantizar migraciones impecables sin importar la fuente original, el sistema implementa el **Esquema Canónico Universal de Pixy (`PixyUniversalBundle`)** ([`import-types.ts`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/import-types.ts)):
+1. **Pixy Bundle JSON (`.json`)**: Migración nativa de alta fidelidad entre organizaciones Pixy o respaldos completos que incluye colaboradores, espacios de trabajo, proyectos, sprints, tareas, subtareas con horas y dependencias.
+2. **CSV Tabular Estándar (`.csv`)**: Formato plano estructurado con mapeo flexible de encabezados en español/inglés, soporte de horas estimadas y decodificación de checklists complejas mediante sintaxis `[x] Subtarea (3h @email)`.
+3. **Adaptador Jira Cloud (`parseJiraCsv`)**: Detección automática de encabezados de Jira (`Issue key`, `Issue Type`, `Summary`, `Priority`, `Status`, `Original Estimate`, `Sprint`, `Labels`), con traducción de estados a flujo Pixy y conversión de segundos a horas.
+
+### B. Ingesta Secuencial en Orden Topológico (`executeUniversalImport`)
+Para preservar la integridad referencial sin colisiones de UUIDs entre bases de datos, el motor en [`task-import-actions.ts`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/actions/task-import-actions.ts) procesa la carga en 7 etapas estrictas:
+1. **Resolución de Colaboradores**: Búsqueda por `email` en `organization_staff`. Si no existen y la opción está habilitada, se crean automáticamente con permisos globales de tareas y se mapean en memoria.
+2. **Espacios de Trabajo (`task_workspaces`)**: Creación y resolución por `key_prefix`.
+3. **Proyectos (`task_projects`)**: Vinculación por `slug` o nombre dentro del espacio correspondiente.
+4. **Sprints (`task_sprints`)**: Creación de ciclos correlativos con fechas automáticas si están ausentes.
+5. **Tareas (`task_items`)**: Generación de códigos oficiales correlativos (`TK-XXX`, `TECH-XXX`), asignación de colaboradores/QA y transformación de subtareas con UUIDs únicos.
+6. **Segunda Pasada (Fase de Bloqueos)**: Resolución de dependencias circulares y predecesores (`blocked_by_ref_id` $\rightarrow$ `blocked_by_task_id`) una vez que todos los tickets cuentan con ID asignado.
+7. **Auditoría Transparente**: Registro en `task_activity_feed` notificando el lote de importación masiva y revalidación de caché.
+
+### C. Experiencia de Usuario & Previsualización Dry-Run ([`TaskImportModal`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-import-modal.tsx))
+- **Dropzone Inteligente**: Detección automática del tipo de archivo y descarga de plantillas oficiales con un clic.
+- **Auditoría Previa sin Efectos Secundarios (Dry Run)**: Análisis preventivo que totaliza tareas, subtareas, proyectos y clasifica a los colaboradores entre existentes y nuevos.
+- **Acceso Global**: Disponible desde el menú `+ Nuevo` -> `Importar Datos / Tareas` en [`task-manager-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx).
+
+### D. Conjunto de Datos Oficial de Prueba & Migración (Tenant Movilservicios)
+- **Artefactos Canónicos Generados**:
+  - [`public/movilservicios-import-bundle.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle.json): Contiene 10 colaboradores tipados con sus roles oficiales (`pm`, `qa_lead`, `developer`, `designer`), 2 espacios de trabajo (`Plataforma Web [WEB]` y `App Movil [APP]`), 1 proyecto (`General [WEB]`) y 227 tickets en estado limpio `backlog` con prioridad `medium`, sin etiquetas ni subtareas residuales, listos para pruebas de carga y simulación de ingesta real.
+  - [`public/movilservicios-import-bundle-con-responsable.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle-con-responsable.json): Variante que mapea la asignación original de cada ticket por correo electrónico de colaborador para auditar la vinculación automática de usuarios.
+
 

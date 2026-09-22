@@ -61,6 +61,7 @@ import {
   addTaskComment,
   uploadTaskAttachment,
   updateChecklistItemAssignee,
+  toggleChecklistItem,
 } from "../../actions/task-actions"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
@@ -190,7 +191,7 @@ interface TaskDetailModalProps {
   task: TaskItem | null
   isOpen: boolean
   onClose: () => void
-  onTaskUpdated?: (task: TaskItem) => void
+  onTaskUpdated?: (task: TaskItem, unblockedTasks?: TaskItem[]) => void
   onTaskDeleted?: (taskId: string) => void
   collaborators: TaskCollaborator[]
   availableTasks?: TaskItem[]
@@ -387,7 +388,7 @@ export function TaskDetailModal({
         setStatus(finalStatus)
         setProgress(finalProgress)
         initialStatusRef.current = finalStatus
-        onTaskUpdated?.(res.task)
+        onTaskUpdated?.(res.task, res.unblockedTasks)
         onClose()
       } else {
         toast.error(res.error || "Error al actualizar la tarea")
@@ -454,8 +455,19 @@ export function TaskDetailModal({
 
       const res = await uploadTaskAttachment(formData)
       if (res.success && res.attachment) {
-        setAttachments((prev) => [...prev, res.attachment!])
+        const nextAttachments = [...attachments, res.attachment]
+        setAttachments(nextAttachments)
         toast.success(`Archivo "${file.name}" añadido`)
+
+        // Auto-guardar archivo adjunto en la tarea para persistencia inmediata
+        try {
+          const updateRes = await updateTask(task.id, { attachments: nextAttachments })
+          if (updateRes.success && updateRes.task) {
+            onTaskUpdated?.(updateRes.task)
+          }
+        } catch (saveErr) {
+          console.error("Error al persistir adjunto:", saveErr)
+        }
       } else {
         toast.error(res.error || "Error al subir archivo")
       }
@@ -499,8 +511,9 @@ export function TaskDetailModal({
     setStatus(nextStatus)
   }
 
-  const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
+  const handleToggleChecklist = async (itemId: string, currentVal: boolean) => {
     const nextVal = !currentVal
+    // Actualización optimista instantánea
     setChecklist((prev) =>
       prev.map((item) =>
         item.id === itemId
@@ -512,6 +525,31 @@ export function TaskDetailModal({
           : item
       )
     )
+
+    if (task?.id) {
+      try {
+        const res = await toggleChecklistItem(task.id, itemId, nextVal)
+        if (res.success && res.task) {
+          onTaskUpdated?.(res.task)
+        } else if (!res.success) {
+          toast.error(res.error || "No se pudo actualizar el estado del entregable")
+          // Revertir cambio optimista
+          setChecklist((prev) =>
+            prev.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    completed: currentVal,
+                    completed_at: currentVal ? item.completed_at : undefined,
+                  }
+                : item
+            )
+          )
+        }
+      } catch (err: any) {
+        console.error("Error al toggle checklist:", err)
+      }
+    }
   }
 
   const handleAddChecklistItem = () => {

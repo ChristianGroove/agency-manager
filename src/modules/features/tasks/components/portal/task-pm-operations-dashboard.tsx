@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   Card,
   CardContent,
@@ -53,11 +53,21 @@ import {
   Kanban,
   AlertCircle,
   Inbox,
-  CheckSquare
+  CheckSquare,
+  Timer,
+  RotateCw,
+  PlusCircle,
+  Plus,
+  Settings,
+  Play
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import type { TaskItem, TaskPriority, TaskStatus, TaskWorkspace } from "../../types"
+import type { TaskItem, TaskPriority, TaskStatus, TaskWorkspace, TaskSprint } from "../../types"
+import { getTaskMemberHours, parseTaskChecklist } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { TaskSprintModal } from "../modals/task-sprint-modal"
+import { startSprint } from "../../actions/task-sprint-actions"
+import { toast } from "sonner"
 import {
   ResponsiveContainer,
   XAxis,
@@ -92,6 +102,13 @@ interface TaskPmOperationsDashboardProps {
   workspaces?: TaskWorkspace[]
   organization?: { name?: string; logo_url?: string | null; primary_color?: string | null }
   brandColor?: string
+  sprints?: TaskSprint[]
+  activeSprint?: TaskSprint | null
+  token?: string
+  onSprintCreated?: (sprint: TaskSprint) => void
+  onSprintUpdated?: (sprint: TaskSprint) => void
+  onSprintCompleted?: (completedSprintId: string, nextSprint?: TaskSprint) => void
+  onSprintDeleted?: (deletedSprintId: string) => void
   onSwitchToGestion?: () => void
   onSelectTask?: (task: TaskItem) => void
 }
@@ -121,19 +138,101 @@ export function TaskPmOperationsDashboard({
   workspaces = [],
   organization = { name: "Plataforma" },
   brandColor = organization?.primary_color || "#8ec045",
+  sprints = [],
+  activeSprint = null,
+  token,
+  onSprintCreated,
+  onSprintUpdated,
+  onSprintCompleted,
+  onSprintDeleted,
   onSwitchToGestion = () => {},
   onSelectTask,
 }: TaskPmOperationsDashboardProps) {
 
-  // Period filter (defaults to "all" which represents the full active sprint)
+  // Sprint modal state
+  const [sprintModalState, setSprintModalState] = useState<{
+    isOpen: boolean
+    mode: "create" | "edit" | "complete"
+    sprint?: TaskSprint | null
+  }>({
+    isOpen: false,
+    mode: "create",
+    sprint: null,
+  })
+
+  // Group sprints by lifecycle status
+  const activeSprintObj = useMemo(() => {
+    return sprints.find((s) => s.status === "active") || activeSprint || null
+  }, [sprints, activeSprint])
+
+  const planningSprints = useMemo(() => {
+    return sprints.filter((s) => s.status === "planning")
+  }, [sprints])
+
+  const completedSprints = useMemo(() => {
+    return sprints.filter((s) => s.status === "completed")
+  }, [sprints])
+
+  // Selected Sprint: Always default to "all" (Todos los tickets) upon load/reload
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("all")
+
+  // Keep selectedSprintId resilient when sprints list changes
+  useEffect(() => {
+    if (selectedSprintId !== "all" && !sprints.some((s) => s.id === selectedSprintId)) {
+      setSelectedSprintId("all")
+    }
+  }, [sprints, selectedSprintId])
+
+  // Current targeted sprint object
+  const currentSprint = useMemo(() => {
+    if (selectedSprintId === "all") return null
+    return sprints.find((s) => s.id === selectedSprintId) || null
+  }, [selectedSprintId, sprints])
+
+  const handleStartPlanningSprint = async (sprintToStart: TaskSprint) => {
+    if (activeSprintObj && activeSprintObj.id !== sprintToStart.id) {
+      const ok = confirm(
+        `Actualmente el "${activeSprintObj.name}" está activo.\n\nAl iniciar "${sprintToStart.name}", el "${activeSprintObj.name}" pasará a completado. ¿Deseas iniciar "${sprintToStart.name}" ahora?`
+      )
+      if (!ok) return
+    }
+
+    try {
+      const res = await startSprint({ sprintId: sprintToStart.id, token })
+      if (res.success) {
+        toast.success(`Sprint "${sprintToStart.name}" iniciado correctamente`)
+        const updated: TaskSprint = { ...sprintToStart, status: "active" as const }
+        onSprintUpdated?.(updated)
+        setSelectedSprintId(updated.id)
+      } else {
+        toast.error(res.error || "No se pudo iniciar el sprint")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al iniciar el sprint")
+    }
+  }
+
+  const sprintDaysRemaining = useMemo(() => {
+    if (!currentSprint) return null
+    const end = parseISO(currentSprint.end_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diffTime = end.getTime() - today.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }, [currentSprint])
+
+  // Period filter (defaults to "all" which represents the full active sprint or total history)
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodPreset>("all")
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
 
+  // Workload chart mode: tickets volume vs hours incurred
+  const [workloadChartMode, setWorkloadChartMode] = useState<"tickets" | "hours">("tickets")
+
   // Interactive triage deck state
-  const [activeTriageTab, setActiveTriageTab] = useState<"critical" | "qa" | "done" | "backlog">("critical")
+  const [activeTriageTab, setActiveTriageTab] = useState<"critical" | "overbudget" | "qa" | "done" | "backlog">("critical")
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -168,7 +267,6 @@ export function TaskPmOperationsDashboard({
       if (selectedMemberFilter !== "all") {
         const isAssigned =
           t.assigned_staff_id === selectedMemberFilter ||
-          t.qa_staff_id === selectedMemberFilter ||
           (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter))
         if (!isAssigned) return false
       }
@@ -187,9 +285,20 @@ export function TaskPmOperationsDashboard({
     })
   }, [tasks, selectedPeriod, selectedProjectFilter, selectedMemberFilter, projects])
 
-  // 2. Sprint Segregation: Sprint Tasks vs Backlog (strictly isolated!)
-  const backlogTasks = useMemo(() => filteredTasks.filter((t) => t.status === "backlog"), [filteredTasks])
-  const sprintTasks = useMemo(() => filteredTasks.filter((t) => t.status !== "backlog"), [filteredTasks])
+  // 2. Sprint Segregation: Sprint Tasks vs Backlog
+  const { sprintTasks, backlogTasks } = useMemo(() => {
+    if (currentSprint) {
+      // Formal Sprint Mode: Tasks assigned to currentSprint belong to the sprint
+      const inSprint = filteredTasks.filter((t) => t.sprint_id === currentSprint.id && t.status !== "backlog")
+      const inBacklog = filteredTasks.filter((t) => !t.sprint_id || t.sprint_id !== currentSprint.id || t.status === "backlog")
+      return { sprintTasks: inSprint, backlogTasks: inBacklog }
+    } else {
+      // Global / No sprint filter Mode: All tasks
+      const inSprint = filteredTasks.filter((t) => t.status !== "backlog")
+      const inBacklog = filteredTasks.filter((t) => t.status === "backlog")
+      return { sprintTasks: inSprint, backlogTasks: inBacklog }
+    }
+  }, [filteredTasks, currentSprint])
 
   // Status breakdown within the Sprint (never counting backlog as todo!)
   const completedTasks = useMemo(() => sprintTasks.filter((t) => t.status === "done"), [sprintTasks])
@@ -254,12 +363,23 @@ export function TaskPmOperationsDashboard({
   )
   const criticalRiskCount = overdueTasks.length + blockedTasks.length
 
+  // Overbudget Risk Tasks (actual_hours > estimated_hours while not done)
+  const overbudgetTasks = useMemo(
+    () =>
+      sprintTasks.filter((t) => {
+        if (t.status === "done") return false
+        const est = Number(t.estimated_hours) || 0
+        const act = Number(t.actual_hours) || 0
+        return est > 0 && act > est
+      }),
+    [sprintTasks]
+  )
+
   // Active contributors count
   const activeMembersSet = useMemo(() => {
     const set = new Set<string>()
     for (const t of sprintTasks) {
       if (t.assigned_staff_id) set.add(t.assigned_staff_id)
-      if (t.qa_staff_id) set.add(t.qa_staff_id)
       if (Array.isArray(t.checklist)) {
         for (const c of t.checklist) {
           if (c.assigned_staff_id) set.add(c.assigned_staff_id)
@@ -282,20 +402,28 @@ export function TaskPmOperationsDashboard({
     return data.filter((item) => item.value > 0)
   }, [completedTasks.length, inProgressTasks.length, qaQueueTasks.length, blockedTasks.length, todoTasks.length])
 
-  // 4. Workload & Member Performance (Active vs Done per collaborator)
+  // 4. Workload & Member Performance (Active vs Done per collaborator with clean subtask attribution)
   const memberPerformanceData = useMemo(() => {
     return teamMembers
       .map((member) => {
         const mTasks = sprintTasks.filter(
           (t) =>
             t.assigned_staff_id === member.id ||
-            t.qa_staff_id === member.id ||
             (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === member.id))
         )
         const mActive = mTasks.filter((t) => t.status !== "done").length
         const mCompleted = mTasks.filter((t) => t.status === "done").length
-        const mEstimated = mTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)
-        const mActual = mTasks.reduce((sum, t) => sum + (Number(t.actual_hours) || 0), 0)
+
+        let mEstimated = 0
+        let mActual = 0
+        for (const t of mTasks) {
+          const hours = getTaskMemberHours(t, member.id)
+          mEstimated += hours.estimated
+          mActual += hours.actual
+        }
+        mEstimated = Math.round(mEstimated * 10) / 10
+        mActual = Math.round(mActual * 10) / 10
+
         const mProgress =
           mTasks.length > 0
             ? Math.round(
@@ -304,22 +432,28 @@ export function TaskPmOperationsDashboard({
               )
             : 0
 
+        const delta = Math.round((mEstimated - mActual) * 10) / 10
+        const burnRate = mEstimated > 0 ? Math.round((mActual / mEstimated) * 100) : (mActual > 0 ? 100 : 0)
+
         return {
           id: member.id,
           name: `${member.first_name} ${member.last_name[0]}.`,
           fullName: `${member.first_name} ${member.last_name}`,
+          role: member.role || "Especialista",
           total: mTasks.length,
           activas: mActive,
           completadas: mCompleted,
           estimadas: mEstimated,
           reales: mActual,
+          delta,
+          burnRate,
           progreso: mProgress,
           photoUrl: member.photo_url,
         }
       })
-      .filter((m) => m.total > 0)
-      .sort((a, b) => b.activas - a.activas)
-  }, [teamMembers, sprintTasks])
+      .filter((m) => m.total > 0 || m.estimadas > 0 || m.reales > 0)
+      .sort((a, b) => (workloadChartMode === "hours" ? b.reales - a.reales : b.activas - a.activas))
+  }, [teamMembers, sprintTasks, workloadChartMode])
 
   // 5. Triage Tasks Selection for Actionable Deck
   const triageTasks = useMemo(() => {
@@ -334,6 +468,9 @@ export function TaskPmOperationsDashboard({
       }
       return list
     }
+    if (activeTriageTab === "overbudget") {
+      return overbudgetTasks
+    }
     if (activeTriageTab === "qa") {
       return qaQueueTasks
     }
@@ -341,7 +478,7 @@ export function TaskPmOperationsDashboard({
       return completedTasks
     }
     return backlogTasks
-  }, [activeTriageTab, blockedTasks, overdueTasks, qaQueueTasks, completedTasks, backlogTasks])
+  }, [activeTriageTab, blockedTasks, overdueTasks, overbudgetTasks, qaQueueTasks, completedTasks, backlogTasks])
 
   const projectMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string; color?: string }>()
@@ -388,7 +525,7 @@ export function TaskPmOperationsDashboard({
               { id: "30d", label: "30 Días" },
               { id: "90d", label: "Trimestre" },
               { id: "1y", label: "Año" },
-              { id: "all", label: "Sprint" },
+              { id: "all", label: "Histórico" },
             ].map((p) => (
               <button
                 key={p.id}
@@ -572,13 +709,198 @@ export function TaskPmOperationsDashboard({
         </div>
       </div>
 
+      {/* Dedicated Sprint / Cycle Control Bar (Linear / Jira Style) */}
+      <div className="p-2.5 sm:p-3 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-card shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">
+          {/* Left: Categorized Sprint Selector & Real-Time Contextual Badges */}
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0">
+            {/* Sprint Dropdown Selector */}
+            <Select
+              value={selectedSprintId}
+              onValueChange={(val) => {
+                if (val === "__create__") {
+                  setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  return
+                }
+                setSelectedSprintId(val)
+              }}
+            >
+              <SelectTrigger className="h-8 px-2.5 py-1 text-sm font-bold text-foreground bg-zinc-100/80 hover:bg-zinc-200/70 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl gap-2 cursor-pointer transition-colors shadow-none w-auto max-w-[280px]">
+                <span className="truncate">
+                  {selectedSprintId === "all"
+                    ? "Todos los tickets (Global)"
+                    : currentSprint
+                    ? currentSprint.name
+                    : "Seleccionar Sprint"}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-zinc-200 dark:border-zinc-800 min-w-[240px]">
+                {/* Global Option */}
+                <SelectItem value="all" className="text-xs font-medium cursor-pointer">
+                  Todos los tickets (Global)
+                </SelectItem>
+
+                {/* Sprints Flat List without Section Headings */}
+                {sprints.map((s) => (
+                  <SelectItem
+                    key={s.id}
+                    value={s.id}
+                    className={cn(
+                      "text-xs cursor-pointer",
+                      s.status === "active"
+                        ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                        : s.status === "planning"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {s.name} ({s.status === "active" ? "En curso" : s.status === "planning" ? "Planificación" : "Cerrado"})
+                  </SelectItem>
+                ))}
+
+                <SelectSeparator />
+                <SelectItem
+                  value="__create__"
+                  className="text-xs cursor-pointer font-bold text-primary"
+                >
+                  + Crear nuevo sprint...
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Contextual Badges based strictly on selectedSprintId / currentSprint */}
+            {currentSprint ? (
+              <>
+                {/* Status Badge */}
+                <Badge
+                  className={cn(
+                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-none",
+                    currentSprint.status === "active"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      : currentSprint.status === "planning"
+                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                      : "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20"
+                  )}
+                >
+                  {currentSprint.status === "active"
+                    ? "Sprint Activo"
+                    : currentSprint.status === "planning"
+                    ? "En Planificación"
+                    : "Cerrado"}
+                </Badge>
+
+                {/* Dates / Duration */}
+                {currentSprint.status === "active" && sprintDaysRemaining !== null && (
+                  <span
+                    className={cn(
+                      "text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border",
+                      sprintDaysRemaining < 0
+                        ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                        : sprintDaysRemaining <= 3
+                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-muted-foreground border-zinc-200 dark:border-zinc-700"
+                    )}
+                  >
+                    {sprintDaysRemaining < 0
+                      ? `Venció hace ${Math.abs(sprintDaysRemaining)}d`
+                      : sprintDaysRemaining === 0
+                      ? "Termina hoy"
+                      : `${sprintDaysRemaining} días restantes`}
+                  </span>
+                )}
+
+                {currentSprint.status === "planning" && (
+                  <span className="text-[10px] text-muted-foreground font-mono bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
+                    Inicia: {currentSprint.start_date} ({currentSprint.duration_days}d)
+                  </span>
+                )}
+
+                {currentSprint.status === "completed" && (
+                  <span className="text-[10px] text-muted-foreground font-mono bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
+                    Cerrado: {currentSprint.end_date}
+                  </span>
+                )}
+
+                {/* Auto Rollover Badge if applicable */}
+                {currentSprint.auto_rollover && (
+                  <span className="text-[10px] flex items-center gap-1 text-zinc-600 dark:text-zinc-400 font-medium bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
+                    <RotateCw className="w-2.5 h-2.5 text-zinc-500" />
+                    Auto-ciclado
+                  </span>
+                )}
+              </>
+            ) : (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">
+                Vista Global
+              </Badge>
+            )}
+          </div>
+
+          {/* Right: PM Controls - Precise Contextual Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {currentSprint ? (
+              <>
+                {/* Editar is ALWAYS present for the currently selected sprint */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setSprintModalState({ isOpen: true, mode: "edit", sprint: currentSprint })
+                  }
+                  className="h-8 text-xs rounded-xl border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5 mr-1.5" />
+                  Editar
+                </Button>
+
+                {/* If active: Finalizar Sprint */}
+                {currentSprint.status === "active" && (
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      setSprintModalState({ isOpen: true, mode: "complete", sprint: currentSprint })
+                    }
+                    className="h-8 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                    Finalizar Sprint
+                  </Button>
+                )}
+
+                {/* If planning: Iniciar Sprint */}
+                {currentSprint.status === "planning" && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleStartPlanningSprint(currentSprint)}
+                    className="h-8 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs cursor-pointer"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1.5 fill-current" />
+                    Iniciar Sprint
+                  </Button>
+                )}
+              </>
+            ) : (
+              /* When no sprint exists or global view: Crear Sprint */
+              <Button
+                size="sm"
+                onClick={() => setSprintModalState({ isOpen: true, mode: "create", sprint: null })}
+                className="h-8 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Crear Sprint
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 4 Balanced High-Value KPI Cards - Low Profile Compact */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* KPI 1: Salud del Sprint */}
+        {/* KPI 1: Salud del Sprint / Salud Global */}
         <Card className="p-4 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-card to-card dark:from-blue-500/20 relative overflow-hidden group shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              Salud del Sprint
+              {currentSprint ? "Salud del Sprint" : "Salud Global"}
             </span>
             <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
               <Rocket className="w-3.5 h-3.5" />
@@ -659,7 +981,7 @@ export function TaskPmOperationsDashboard({
               </span>
             )}
             <span className="text-muted-foreground font-mono">
-              {sprintTasks.length > 0 ? Math.round((qaQueueTasks.length / sprintTasks.length) * 100) : 0}% del sprint
+              {sprintTasks.length > 0 ? Math.round((qaQueueTasks.length / sprintTasks.length) * 100) : 0}% {currentSprint ? "del sprint" : "del total"}
             </span>
           </div>
         </Card>
@@ -731,7 +1053,7 @@ export function TaskPmOperationsDashboard({
               </div>
               <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
                 <span>{activeTasks.length} en ejecución</span>
-                <span>{sprintProgress}% sprint</span>
+                <span>{sprintProgress}% {currentSprint ? "sprint" : "global"}</span>
               </div>
             </>
           )}
@@ -788,96 +1110,249 @@ export function TaskPmOperationsDashboard({
         </Card>
       </div>
 
-      {/* 2 Clean High-Density Operational Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart 1: Carga y Rendimiento por Especialista (BarChart) */}
-        <Card className="lg:col-span-2 p-6 rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-card/60 backdrop-blur-xl shadow-xl shadow-black/5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
-            <div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-500" />
-                <h3 className="text-lg font-bold text-foreground">
-                  Carga Operativa por Especialista
-                </h3>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Distribución real de tickets activos en desarrollo vs tareas completadas
-              </p>
+      {/* 1. Gráfico de Carga Operativa & Rendimiento a lo ANCHO TOTAL */}
+      <Card className="w-full p-6 sm:p-7 rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-card/60 backdrop-blur-xl shadow-xl shadow-black/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-500" />
+              <h3 className="text-lg font-bold text-foreground">
+                Carga Operativa & Rendimiento
+              </h3>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5 font-medium">
-                <div className="w-3 h-3 rounded-full bg-blue-500" />
-                <span>Activas ({activeTasks.length})</span>
-              </div>
-              <div className="flex items-center gap-1.5 font-medium">
-                <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span>Finalizadas ({completedTasks.length})</span>
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {workloadChartMode === "hours"
+                ? "Comparativa de horas estimadas presupuestadas vs horas reales incurridas por especialista"
+                : "Distribución real de tickets activos en desarrollo vs tareas completadas"}
+            </p>
           </div>
 
-          {memberPerformanceData.length === 0 ? (
-            <div className="h-[260px] flex flex-col items-center justify-center text-sm text-muted-foreground gap-2">
-              <Users className="w-8 h-8 opacity-30" />
-              <span>No hay tareas asignadas en este período o filtro</span>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Mode Toggle: Tickets vs Horas */}
+            <div className="flex items-center p-0.5 bg-zinc-100 dark:bg-white/5 rounded-xl border border-zinc-200/80 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setWorkloadChartMode("tickets")}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  workloadChartMode === "tickets"
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Tickets
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkloadChartMode("hours")}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer",
+                  workloadChartMode === "hours"
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Clock className="w-3 h-3 text-violet-500" />
+                <span>Horas</span>
+              </button>
             </div>
-          ) : (
-            <div className="h-[270px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ReBarChart
-                  data={memberPerformanceData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-zinc-200 dark:text-white/5" />
-                  <XAxis
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "currentColor" }}
-                    className="text-zinc-500 dark:text-zinc-400 font-medium"
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "currentColor" }}
-                    className="text-zinc-500 dark:text-zinc-400 font-mono"
-                    allowDecimals={false}
-                  />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(18, 18, 23, 0.95)",
-                      backdropFilter: "blur(12px)",
-                      borderRadius: "16px",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      color: "#fff",
-                      padding: "12px",
-                      fontSize: "12px",
-                    }}
-                    cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
-                  />
-                  <Bar dataKey="activas" name="Tickets Activos" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={18} />
-                  <Bar dataKey="completadas" name="Completadas" fill="#10b981" radius={[6, 6, 0, 0]} barSize={18} />
-                </ReBarChart>
-              </ResponsiveContainer>
+
+            {/* Dynamic Legend based on Mode */}
+            {workloadChartMode === "tickets" ? (
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  <span>Activas ({activeTasks.length})</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span>Listas ({completedTasks.length})</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+                  <span>Estimadas ({totalEstimatedHours}h)</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <div className="w-2.5 h-2.5 rounded-full bg-pink-500" />
+                  <span>Reales ({totalActualHours}h)</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {memberPerformanceData.length === 0 ? (
+          <div className="h-[260px] flex flex-col items-center justify-center text-sm text-muted-foreground gap-2">
+            <Users className="w-8 h-8 opacity-30" />
+            <span>No hay tareas asignadas en este período o filtro</span>
+          </div>
+        ) : (
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ReBarChart
+                data={memberPerformanceData}
+                margin={{ top: 10, right: 15, left: -10, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-zinc-200 dark:text-white/5" />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "currentColor" }}
+                  className="text-zinc-500 dark:text-zinc-400 font-medium"
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "currentColor" }}
+                  className="text-zinc-500 dark:text-zinc-400 font-mono"
+                  allowDecimals={false}
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(18, 18, 23, 0.95)",
+                    backdropFilter: "blur(12px)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "#fff",
+                    padding: "12px",
+                    fontSize: "12px",
+                  }}
+                  cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                />
+                {workloadChartMode === "tickets" ? (
+                  <>
+                    <Bar dataKey="activas" name="Tickets Activos" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={22} />
+                    <Bar dataKey="completadas" name="Completadas" fill="#10b981" radius={[6, 6, 0, 0]} barSize={22} />
+                  </>
+                ) : (
+                  <>
+                    <Bar dataKey="estimadas" name="Horas Estimadas" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={22} />
+                    <Bar dataKey="reales" name="Horas Incurridas" fill="#ec4899" radius={[6, 6, 0, 0]} barSize={22} />
+                  </>
+                )}
+              </ReBarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      {/* 2. Balance de Horas & Rendimiento por Especialista AL LADO de Estado del Sprint */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left (8 cols): Tabla Balance de Horas & Rendimiento */}
+        <Card className="lg:col-span-8 p-6 sm:p-7 rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-card/60 backdrop-blur-xl shadow-xl shadow-black/5 flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-violet-500" />
+                <h4 className="text-base font-bold text-foreground">
+                  Balance de Horas & Rendimiento por Especialista
+                </h4>
+              </div>
+              <span className="text-xs text-muted-foreground font-medium font-mono">
+                {currentSprint ? "Ciclo: " : "Total: "}<strong className="text-foreground">{totalActualHours}h</strong> / {totalEstimatedHours}h ({hoursBurnRate}%)
+              </span>
             </div>
-          )}
+
+            {memberPerformanceData.length === 0 ? (
+              <div className="h-[220px] flex flex-col items-center justify-center text-sm text-muted-foreground gap-2">
+                <Users className="w-8 h-8 opacity-30" />
+                <span>No hay datos de especialistas en este período</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[580px]">
+                  <thead>
+                    <tr className="border-b border-border/60 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                      <th className="pb-2.5 pl-1">Especialista</th>
+                      <th className="pb-2.5 text-center">Tickets</th>
+                      <th className="pb-2.5 text-right">Horas Est.</th>
+                      <th className="pb-2.5 text-right">Horas Reales</th>
+                      <th className="pb-2.5 text-right">Variación (Δ)</th>
+                      <th className="pb-2.5 text-center">Burn Rate</th>
+                      <th className="pb-2.5 text-right pr-1">Avance Prom.</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {memberPerformanceData.map((m) => {
+                      const isFavorable = m.delta >= 0
+                      const isOver = m.burnRate > 100
+
+                      return (
+                        <tr key={m.id} className="hover:bg-zinc-500/5 transition-colors">
+                          <td className="py-2.5 pl-1 pr-2">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-6 h-6 rounded-full border shrink-0">
+                                <AvatarImage src={getCollaboratorAvatar(m.photoUrl, m.fullName)} />
+                                <AvatarFallback className="text-[8px]">{m.fullName[0]}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <span className="font-semibold text-foreground block truncate">{m.fullName}</span>
+                                <span className="text-[10px] text-muted-foreground block truncate">{m.role}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                            <span className="text-blue-500 font-bold">{m.activas}</span> / <span className="text-emerald-500 font-bold">{m.completadas}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                            {m.estimadas}h
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                            {m.reales}h
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-bold whitespace-nowrap">
+                            <span className={isFavorable ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}>
+                              {m.delta >= 0 ? `+${m.delta}h` : `${m.delta}h`}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                            <span
+                              className={cn(
+                                "px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold inline-block",
+                                isOver
+                                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                  : m.burnRate >= 85
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                              )}
+                            >
+                              {m.burnRate}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 pl-2 pr-1 text-right font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                            {m.progreso}%
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </Card>
 
-        {/* Chart 2: Estado Puro del Sprint (RePieChart Donut) */}
-        <Card className="p-6 rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-card/60 backdrop-blur-xl shadow-xl shadow-black/5 flex flex-col justify-between">
+        {/* Right (4 cols): Estado del Sprint (Donut Chart) */}
+        <Card className="lg:col-span-4 p-6 sm:p-7 rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-card/60 backdrop-blur-xl shadow-xl shadow-black/5 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <PieChartIcon className="w-4 h-4 text-violet-500" />
               <h3 className="text-lg font-bold text-foreground">
-                Estado del Sprint
+                {currentSprint ? "Estado del Sprint" : "Estado de los Tickets"}
               </h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Desglose porcentual del ciclo de entrega activo
+              {currentSprint
+                ? `Desglose de entregas de ${currentSprint.name}`
+                : "Desglose general de entregas"}
             </p>
           </div>
 
-          <div className="h-[210px] w-full relative flex items-center justify-center my-2">
+          <div className="h-[210px] w-full relative flex items-center justify-center my-4">
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
@@ -915,20 +1390,20 @@ export function TaskPmOperationsDashboard({
                 {sprintTasks.length}
               </span>
               <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                Sprint
+                {currentSprint ? "En Sprint" : "Tickets"}
               </span>
             </div>
           </div>
 
           {/* Clean Legend */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-200/70 dark:border-white/5">
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-zinc-200/70 dark:border-white/5">
             {statusPieData.map((s) => (
               <div key={s.name} className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/5">
                 <div className="flex items-center gap-1.5 truncate">
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  <span className="truncate text-muted-foreground">{s.name}</span>
+                  <span className="truncate text-muted-foreground text-[11px]">{s.name}</span>
                 </div>
-                <span className="font-mono font-bold text-foreground ml-1">{s.value}</span>
+                <span className="font-mono font-bold text-foreground ml-1 text-[11px]">{s.value}</span>
               </div>
             ))}
           </div>
@@ -988,6 +1463,29 @@ export function TaskPmOperationsDashboard({
               )}
             >
               {criticalRiskCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTriageTab("overbudget")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border",
+              activeTriageTab === "overbudget"
+                ? "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-xs"
+                : "bg-zinc-100/70 dark:bg-white/5 border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock className="w-3.5 h-3.5 text-purple-500" />
+            <span>Horas Excedidas</span>
+            <span
+              className={cn(
+                "px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                overbudgetTasks.length > 0
+                  ? "bg-purple-500 text-white font-bold"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-muted-foreground"
+              )}
+            >
+              {overbudgetTasks.length}
             </span>
           </button>
 
@@ -1057,6 +1555,8 @@ export function TaskPmOperationsDashboard({
               <p className="text-sm font-bold text-foreground">
                 {activeTriageTab === "critical"
                   ? "No hay tickets en riesgo ni bloqueos activos"
+                  : activeTriageTab === "overbudget"
+                  ? "No hay tickets con horas excedidas sobre su estimación"
                   : activeTriageTab === "qa"
                   ? "No hay tickets pendientes de revisión técnica en QA"
                   : activeTriageTab === "done"
@@ -1065,7 +1565,11 @@ export function TaskPmOperationsDashboard({
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {activeTriageTab === "critical"
-                  ? "Excelente: el sprint fluye sin retrasos críticos"
+                  ? currentSprint
+                    ? "Excelente: el sprint fluye sin retrasos críticos"
+                    : "Excelente: las operaciones fluyen sin retrasos críticos"
+                  : activeTriageTab === "overbudget"
+                  ? "Excelente: todo el consumo de tiempo está dentro del presupuesto planificado"
                   : "Todos los flujos de trabajo se encuentran sincronizados"}
               </p>
             </div>
@@ -1103,11 +1607,11 @@ export function TaskPmOperationsDashboard({
                         )}
                         {task.blocked_by && task.blocked_by.status !== "done" && (
                           <span
-                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0 whitespace-nowrap"
                             title={`Bloqueado por #${task.blocked_by.ticket_code} (${task.blocked_by.title})`}
                           >
                             <AlertCircle className="w-2.5 h-2.5 shrink-0" />
-                            <span>🚫 #{task.blocked_by.ticket_code}</span>
+                            <span>Bloqueado por #{task.blocked_by.ticket_code}</span>
                           </span>
                         )}
                         {task.status === "blocked" && task.blocked_reason && (
@@ -1178,6 +1682,24 @@ export function TaskPmOperationsDashboard({
                       </UiTooltip>
                     )}
 
+                    {/* Hours balance chip */}
+                    {(Number(task.estimated_hours) > 0 || Number(task.actual_hours) > 0) && (
+                      <div
+                        className={cn(
+                          "flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-lg border shrink-0",
+                          Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 font-bold"
+                            : "bg-zinc-100 dark:bg-white/5 text-muted-foreground border-zinc-200/80 dark:border-white/10 font-medium"
+                        )}
+                        title={`Horas reales: ${task.actual_hours || 0}h / Estimadas: ${task.estimated_hours || 0}h`}
+                      >
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>
+                          {task.actual_hours || 0}h{Number(task.estimated_hours) > 0 ? `/${task.estimated_hours}h` : ""}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Mini progress bar */}
                     <div className="flex items-center gap-2 w-20 sm:w-24">
                       <div className="flex-1 bg-zinc-200/80 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
@@ -1216,6 +1738,36 @@ export function TaskPmOperationsDashboard({
           </div>
         )}
       </Card>
+
+      {/* Task Sprint Management Modal */}
+      <TaskSprintModal
+        isOpen={sprintModalState.isOpen}
+        onClose={() => setSprintModalState((prev) => ({ ...prev, isOpen: false }))}
+        mode={sprintModalState.mode}
+        sprint={sprintModalState.sprint}
+        activeSprint={activeSprintObj}
+        allSprints={sprints}
+        token={token}
+        onSprintCreated={(newSprint) => {
+          onSprintCreated?.(newSprint)
+          setSelectedSprintId(newSprint.id)
+        }}
+        onSprintUpdated={(updated) => {
+          onSprintUpdated?.(updated)
+        }}
+        onSprintCompleted={(completedId, nextSprint) => {
+          onSprintCompleted?.(completedId, nextSprint)
+          if (nextSprint) {
+            setSelectedSprintId(nextSprint.id)
+          } else {
+            setSelectedSprintId("all")
+          }
+        }}
+        onSprintDeleted={(deletedId) => {
+          onSprintDeleted?.(deletedId)
+          setSelectedSprintId("all")
+        }}
+      />
     </div>
   )
 }

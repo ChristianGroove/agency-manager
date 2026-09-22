@@ -6,6 +6,7 @@ import {
   getTasks,
   getCollaborators
 } from "@/modules/features/tasks/actions/task-actions"
+import { getSprints } from "@/modules/features/tasks/actions/task-sprint-actions"
 import { getOrganizationBranding } from "@/modules/core/settings/actions/branding"
 import { TaskManagerView } from "@/modules/features/tasks/components/task-manager-view"
 import { redirect } from "next/navigation"
@@ -21,12 +22,13 @@ export default async function TasksPage() {
     redirect("/dashboard")
   }
 
-  const [workspaces, projects, tasks, collaborators, branding] = await Promise.all([
+  const [workspaces, projects, tasks, collaborators, branding, sprints] = await Promise.all([
     getWorkspaces(orgId),
     getProjects(orgId),
     getTasks({ orgId }),
     getCollaborators(orgId),
-    getOrganizationBranding()
+    getOrganizationBranding(),
+    getSprints({ orgId })
   ])
 
   return (
@@ -36,6 +38,7 @@ export default async function TasksPage() {
         initialProjects={projects}
         initialTasks={tasks}
         initialCollaborators={collaborators}
+        initialSprints={sprints}
         organizationId={orgId}
         tenantBranding={{
           name: branding?.portal_title || branding?.agency_name,
