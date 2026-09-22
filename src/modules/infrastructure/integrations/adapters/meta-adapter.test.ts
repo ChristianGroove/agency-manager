@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
     decryptObject: vi.fn((value: unknown) => value),
     execute: vi.fn(async (_key: string, fn: () => Promise<unknown>) => fn()),
+    uploadMedia: vi.fn(async () => 'uploaded-media-id'),
+}))
+
+vi.mock('@/modules/features/messaging/providers/meta-provider', () => ({
+    MetaProvider: class { uploadMedia = mocks.uploadMedia },
 }))
 
 vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
@@ -39,6 +44,8 @@ afterEach(() => {
     mocks.decryptObject.mockImplementation((value: unknown) => value)
     mocks.execute.mockReset()
     mocks.execute.mockImplementation(async (_key: string, fn: () => Promise<unknown>) => fn())
+    mocks.uploadMedia.mockReset()
+    mocks.uploadMedia.mockResolvedValue('uploaded-media-id')
 })
 
 describe('MetaAdapter', () => {
@@ -108,4 +115,39 @@ it('sends a WhatsApp template instead of silently converting it into free-form t
  const {MetaAdapter}=await import('./meta-adapter')
  await new MetaAdapter().sendMessage({phoneNumberId:'phone',accessToken:'token'},'573001234567',{type:'template',templateName:'hello',templateLanguage:'es',templateComponents:[{type:'body',parameters:[{type:'text',text:'Ana'}]}]},{channel:'whatsapp'})
  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({type:'template',template:{name:'hello',language:{code:'es'},components:[{type:'body',parameters:[{type:'text',text:'Ana'}]}]}})
+})
+
+it('does not send a second text message when a button response is ambiguous', async () => {
+ const fetcher=vi.fn(async (_url:any,_init:any)=>new Response(JSON.stringify({error:{message:'ambiguous'}}),{status:500}));vi.stubGlobal('fetch',fetcher)
+ const {MetaAdapter}=await import('./meta-adapter')
+ await expect(new MetaAdapter().sendMessage({phoneNumberId:'phone',accessToken:'token'},'573001234567',
+  {type:'interactive_buttons',body:'Elige',buttons:[{id:'one',title:'Uno'}]},{channel:'whatsapp'})).rejects.toThrow()
+ expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('routes WhatsApp by channel even when credentials also carry a Page ID', async () => {
+ const fetcher = vi.fn(async (_url: string, _init?: RequestInit) =>
+  new Response(JSON.stringify({messages:[{id:'wamid.correct'}]}),{status:200}))
+ vi.stubGlobal('fetch', fetcher)
+ const {MetaAdapter}=await import('./meta-adapter')
+ await new MetaAdapter().sendMessage({phoneNumberId:'wa-phone',pageId:'social-page',accessToken:'token'},
+  '573001234567',{type:'location',latitude:4.6,longitude:-74.1,address:'Bogotá'},
+  {channel:'whatsapp',phoneNumberId:'wa-phone'})
+ expect(fetcher).toHaveBeenCalledTimes(1)
+ expect(fetcher.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/wa-phone/messages')
+ expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({type:'location',location:{latitude:4.6,longitude:-74.1}})
+})
+
+it('uploads WhatsApp image before the Graph send and uses its media ID', async () => {
+ const fetcher = vi.fn(async (_url: string, _init?: RequestInit) =>
+  new Response(JSON.stringify({messages:[{id:'wamid.media'}]}),{status:200}))
+ vi.stubGlobal('fetch', fetcher)
+ const {MetaAdapter}=await import('./meta-adapter')
+ await new MetaAdapter().sendMessage({phoneNumberId:'wa-phone',accessToken:'token'},'573001234567',
+  {type:'image',mediaUrl:'https://example.test/product.webp',caption:'Producto'}, {channel:'whatsapp'})
+ expect(mocks.uploadMedia).toHaveBeenCalledWith('https://example.test/product.webp','token','image','wa-phone')
+ expect(fetcher).toHaveBeenCalledTimes(1)
+ expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({
+  type:'image',image:{id:'uploaded-media-id',caption:'Producto'},
+ })
 })

@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
     getAdapter: vi.fn(),
     saveOutboundMessage: vi.fn(),
     supabaseFrom: vi.fn(),
+    enqueueMetaOutbound: vi.fn(),
+    dispatchMetaOutbound: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -22,6 +24,11 @@ vi.mock('./services/persistence', () => ({
     MessagingPersistence: {
         saveOutboundMessage: mocks.saveOutboundMessage,
     },
+}))
+
+vi.mock('./meta-outbox', () => ({
+    enqueueMetaOutbound: mocks.enqueueMetaOutbound,
+    dispatchMetaOutbound: mocks.dispatchMetaOutbound,
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -69,6 +76,8 @@ afterEach(() => {
     mocks.getAdapter.mockReset()
     mocks.saveOutboundMessage.mockReset()
     mocks.supabaseFrom.mockReset()
+    mocks.enqueueMetaOutbound.mockReset()
+    mocks.dispatchMetaOutbound.mockReset()
 })
 
 describe('OutboundService', () => {
@@ -92,6 +101,8 @@ describe('OutboundService', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
         const adapterSendMessage = vi.fn(async () => ({ messageId: 'wamid.secret.outbound' }))
         mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        mocks.enqueueMetaOutbound.mockResolvedValue({ outboxId: 'outbox-1', messageId: 'message-1', status: 'queued', externalId: null })
+        mocks.dispatchMetaOutbound.mockResolvedValue({ outboxId: 'outbox-1', messageId: 'message-1', status: 'accepted', externalId: 'wamid.secret.outbound' })
         mocks.supabaseFrom.mockImplementation((table: string) => {
             if (table === 'messages') return {select: () => ({eq: () => ({eq: () => ({eq: () => ({order: () => ({limit: async () => ({data:[{created_at:new Date().toISOString(), metadata:{}}],error:null})})})})})})};
             if (table === 'conversations') return conversationMaybeSingleQuery({id:'conversation-secret-id', organization_id:'org-secret-id',connection_id:'channel-secret-id'})
@@ -116,13 +127,12 @@ describe('OutboundService', () => {
         )
 
         expect(result).toEqual({ messageId: 'wamid.secret.outbound' })
-        expect(adapterSendMessage).toHaveBeenCalledWith(
-            { accessToken: 'token-secret' },
-            '+571234567890',
-            'hola',
-            expect.objectContaining({ channel: 'whatsapp' })
-        )
-        expect(mocks.saveOutboundMessage).toHaveBeenCalled()
+        expect(mocks.enqueueMetaOutbound).toHaveBeenCalledWith(expect.objectContaining({
+            organizationId: 'org-secret-id', connectionId: 'channel-secret-id',
+            recipient: '+571234567890', content: 'hola', channel: 'whatsapp',
+        }))
+        expect(mocks.dispatchMetaOutbound).toHaveBeenCalledWith('outbox-1')
+        expect(adapterSendMessage).not.toHaveBeenCalled()
 
         const logText = collectConsoleCalls(logSpy, warnSpy)
         expect(logText).not.toContain('+571234567890')
@@ -167,6 +177,7 @@ describe('OutboundService', () => {
             throw new Error('adapter failed token-secret phone-secret-value connection-secret-id')
         })
         mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        mocks.enqueueMetaOutbound.mockRejectedValue(new Error('adapter failed token-secret phone-secret-value connection-secret-id'))
         mocks.supabaseFrom.mockImplementation((table: string) => {
             if (table === 'conversations') {
                 return conversationSingleQuery({

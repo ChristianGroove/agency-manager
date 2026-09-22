@@ -188,7 +188,8 @@ export class InboxService {
                 lead,
                 !isNewLead,
                 conversation.id,
-                msg.from
+                msg.from,
+                msg.externalId || msg.id
             )
 
             // Workflow Automation Triggers
@@ -376,7 +377,8 @@ export class InboxService {
         lead: any,
         existingLead: boolean,
         conversationId: string | null,
-        recipientPhone: string
+        recipientPhone: string,
+        sourceMessageId: string
     ) {
         const { connection, organizationId: orgId } = match
         const { outboundService } = await import("./outbound-service")
@@ -420,7 +422,7 @@ export class InboxService {
                         recipientPhone,
                         connection.auto_reply_when_offline,
                         orgId,
-                        { connection }
+                        { connection, operationKey: `auto-reply:${connection.id}:${sourceMessageId}` }
                     );
 
                     if (conversationId) {
@@ -457,7 +459,7 @@ export class InboxService {
                     recipientPhone,
                     connection.welcome_message,
                     orgId,
-                    { connection }
+                    { connection, operationKey: `welcome:${connection.id}:${lead.id}` }
                 )
             } catch (error: any) {
                 logInboxError('[InboxService] Failed to send welcome message:', error, {

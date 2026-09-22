@@ -105,7 +105,7 @@ export function useChatActions(params: {
             direction: 'outbound',
             channel: conversation?.channel || 'whatsapp',
             content: messageContent,
-            status: 'sent',
+            status: 'sending',
             external_id: null,
             sender: 'Agent',
             metadata: {},

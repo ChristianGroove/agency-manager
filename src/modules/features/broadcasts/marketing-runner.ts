@@ -169,6 +169,7 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
 
         // 2. Dispatch Message
         const content = step.content
+        const operationKey = `campaign:${enrollment.id}:${step.id}`
 
         let result: any
 
@@ -180,10 +181,10 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
             result = await outboundService.sendSystemMessage(conversationId, {
                 type: 'template', templateName: content.template_name,
                 templateLanguage: content.template_language || 'es', templateComponents: parameters.length ? [{type:'body',parameters:parameters.map(text=>({type:'text',text}))}] : [],
-            }, 'whatsapp')
+            }, 'whatsapp', undefined, 'System', operationKey)
         } else {
             // Plain text dispatch (non-template or non-WhatsApp)
-            result = await sendOutboundMessage(conversationId, content, step.type)
+            result = await sendOutboundMessage(conversationId, content, step.type, undefined, 'System', operationKey)
         }
 
         if (!result.success) {

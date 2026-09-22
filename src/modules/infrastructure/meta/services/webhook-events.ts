@@ -14,6 +14,18 @@ export async function processMetaControlEvents(payload: any) {
                     p_initiated_by: value.disconnection_info?.initiated_by || null,
                 })
                 if (updated.error) throw new Error('Could not apply Meta account update')
+                if (value.event === 'ACCOUNT_RECONNECTED' && Number(updated.data) > 0) {
+                    const { data: channels, error: channelsError } = await supabaseAdmin.from('integration_connections')
+                        .select('id').eq('provider_key', 'whatsapp_cloud').eq('metadata->>waba_id', entry.id)
+                        .eq('status', 'active')
+                    if (channelsError) throw new Error('Could not resolve reconnected channels')
+                    const ids = (channels || []).map(channel => channel.id)
+                    if (ids.length) {
+                        const resumed = await supabaseAdmin.from('meta_outbound_outbox')
+                            .update({ available_at: new Date().toISOString() }).in('connection_id', ids).eq('status', 'queued')
+                        if (resumed.error) throw new Error('Could not resume queued Meta sends')
+                    }
+                }
                 continue
             }
             const phoneId = value.metadata?.phone_number_id

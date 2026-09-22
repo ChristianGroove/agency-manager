@@ -268,7 +268,7 @@ export class WorkflowEngine {
                 // E.g. Send Message
                 if (actionType === 'send_message') {
                     const sendMessageNode = new SendMessageNode(this.contextManager);
-                    await sendMessageNode.execute(node.data as unknown as SendMessageNodeData);
+                    await sendMessageNode.execute(node.data as unknown as SendMessageNodeData, node.id);
                 } else {
                     console.warn(`[Engine] Unknown action type: ${actionType} for node ${node.id}`);
                     await this.logStep(node.id, 'warn', `Unknown action type: ${actionType}`);
@@ -367,7 +367,7 @@ export class WorkflowEngine {
                 } else {
                     // EXECUTE NODE (Send Message)
                     const buttonsNode = new ButtonsNode(this.contextManager)
-                    const result = await buttonsNode.execute(node.data as unknown as ButtonsNodeData)
+                    const result = await buttonsNode.execute(node.data as unknown as ButtonsNodeData, node.id)
                     if (!result.success) {
                         throw new Error(result.error || 'Failed to send buttons')
                     }

@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
     handleIncomingMessage: vi.fn(),
     revalidatePath: vi.fn(),
     saveOutboundMessage: vi.fn(),
+    enqueueMetaOutbound: vi.fn(),
+    dispatchMetaOutbound: vi.fn(),
     supabaseFrom: vi.fn(),
 }))
 
@@ -40,6 +42,11 @@ vi.mock('../services/persistence', () => ({
     MessagingPersistence: {
         saveOutboundMessage: mocks.saveOutboundMessage,
     },
+}))
+
+vi.mock('../meta-outbox', () => ({
+    enqueueMetaOutbound: mocks.enqueueMetaOutbound,
+    dispatchMetaOutbound: mocks.dispatchMetaOutbound,
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -100,6 +107,8 @@ afterEach(() => {
     })
     mocks.revalidatePath.mockReset()
     mocks.saveOutboundMessage.mockReset()
+    mocks.enqueueMetaOutbound.mockReset()
+    mocks.dispatchMetaOutbound.mockReset()
     mocks.supabaseFrom.mockReset()
 })
 
@@ -177,7 +186,7 @@ describe('message actions logging', () => {
     it('does not expose outbound send failure details in production responses or logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.saveOutboundMessage.mockRejectedValue(new Error('message-secret-id conversation-secret-id meta-token-secret phone-secret-value'))
+        mocks.enqueueMetaOutbound.mockRejectedValue(new Error('message-secret-id conversation-secret-id meta-token-secret phone-secret-value'))
         mocks.createClient.mockResolvedValue({
             from: vi.fn((table: string) => {
                 if (table === 'conversations') {
@@ -217,11 +226,9 @@ describe('message actions logging', () => {
         const result = await sendMessage('conversation-secret-id', { type: 'text', text: 'secret body' }, 'Agent Secret', 'message-secret-id')
 
         expect(result).toEqual({ success: false, error: 'Message could not be sent' })
-        expect(mocks.MetaProvider).toHaveBeenCalledWith('meta-token-secret', 'phone-number-secret-id', 'verify-token-secret')
-        expect(mocks.saveOutboundMessage).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mocks.enqueueMetaOutbound).toHaveBeenCalledWith(expect.objectContaining({
             conversationId: 'conversation-secret-id',
-            id: 'message-secret-id',
-            status: 'sending',
+            messageId: 'message-secret-id',
             sender: 'Agent Secret',
         }))
 

@@ -2,6 +2,7 @@ import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/se
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
+import { dispatchMetaOutbound, enqueueMetaOutbound } from './meta-outbox'
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
@@ -102,7 +103,7 @@ export class OutboundService {
         recipientPhone: string,
         content: string | any,
         organizationId: string,
-        context?: { connection?: any, conversation?: any }
+        context?: { connection?: any, conversation?: any, operationKey?: string, sender?: string }
     ) {
         const supabase = supabaseAdmin
         
@@ -177,29 +178,19 @@ export class OutboundService {
         }
 
         await assertMetaSendAllowed(channel, conv, content)
-        // 4. Send via Adapter
-        const result = await adapter.sendMessage(channel.credentials, recipientPhone, content, metadata)
-
-        // 5. Log to DB
-        if (conversationId) {
-            await MessagingPersistence.saveOutboundMessage({
-                conversationId,
-                content,
-                externalId: result.messageId,
-                sender: 'Agent',
-                channel: metadata.channel,
-                organizationId
-            })
-        } else {
-            logOutboundWarning('[OutboundService] No conversation found; message sent but not logged.', {
-                recipientPhone,
-                messageId: result.messageId,
-                organizationId,
-            })
+        const queued = await enqueueMetaOutbound({
+            organizationId, connectionId: channelId, conversationId,
+            operationKey: context?.operationKey || crypto.randomUUID(), recipient: recipientPhone,
+            content, sender: context?.sender || 'System', channel: metadata.channel,
+            notify: false,
+        })
+        const result = queued.status === 'queued' ? await dispatchMetaOutbound(queued.outboxId) : queued
+        if (result.status !== 'accepted' || !result.externalId) {
+            throw new Error(result.status === 'unknown' ? 'Message delivery requires reconciliation'
+                : result.status === 'queued' ? 'Channel is temporarily unavailable'
+                    : 'Message could not be sent')
         }
-
-        // 6. Return Result
-        return result;
+        return { messageId: result.externalId };
     }
 
     /**
@@ -211,7 +202,8 @@ export class OutboundService {
         content: any,
         channel: string = 'whatsapp',
         connectionId?: string,
-        sender: string = 'System'
+        sender: string = 'System',
+        operationKey?: string
     ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
         const supabase = supabaseAdmin;
         
@@ -257,7 +249,7 @@ export class OutboundService {
                 recipientPhone,
                 content,
                 conversation.organization_id,
-                { conversation } // Pass conversation context to avoid refetching
+                { conversation, sender, operationKey } // Bind to the audited conversation.
             ) as any;
 
             return {

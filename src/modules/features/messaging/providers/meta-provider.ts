@@ -622,7 +622,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Upload media to Meta servers
      */
-    private async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
+    async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
         try {
             if (!isDeployedRuntime()) {
                 console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
