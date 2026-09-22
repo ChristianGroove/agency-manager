@@ -113,9 +113,9 @@ function uiActivationInput(overrides: Partial<Parameters<typeof import('./meta-c
     return {
         parentConnectionId: 'parent_123',
         assetId: 'asset_123',
-        assetType: 'whatsapp' as const,
-        assetName: 'WhatsApp Main',
-        wabaId: 'waba_123',
+        assetType: 'page' as const,
+        assetName: 'Facebook Page',
+        pageId: 'asset_123',
         ...overrides,
     }
 }
@@ -206,6 +206,7 @@ describe('activateMetaChannel', () => {
         const { activateMetaChannel } = await import('./meta-channel-actions')
         const whatsappResult = await activateMetaChannel(uiActivationInput({
             assetId: 'asset_sensitive_whatsapp',
+            assetType: 'whatsapp',
             assetName: 'WhatsApp Main',
             wabaId: 'waba_sensitive_123',
         }))
@@ -219,11 +220,10 @@ describe('activateMetaChannel', () => {
             wabaId: undefined,
         }))
 
-        expect(whatsappResult).toEqual({ success: true, channelId: 'channel_123' })
+        expect(whatsappResult.success).toBe(false)
         expect(pageResult).toEqual({ success: true, channelId: 'channel_123' })
 
         const logText = collectConsoleCalls(logSpy)
-        expect(logText).toContain('wabaIdPresent')
         expect(logText).toContain('assetIdPresent')
         expect(logText).toContain('pageIdPresent')
         expect(logText).toContain('channelIdPresent')
@@ -232,6 +232,14 @@ describe('activateMetaChannel', () => {
         expect(logText).not.toContain('asset_sensitive_page')
         expect(logText).not.toContain('page_sensitive_123')
         expect(logText).not.toContain('channel_123')
+    })
+
+    it('requires Embedded Signup for WhatsApp in UI and callback routes', async () => {
+        const { activateMetaChannel } = await import('./meta-channel-actions')
+        expect((await activateMetaChannel(uiActivationInput({ assetType: 'whatsapp' }))).success).toBe(false)
+        expect((await activateMetaChannel({ orgId: 'org_123', providerKey: 'whatsapp_cloud',
+            assetId: 'phone_123', assetName: 'Phone', accessToken: 'unused' })).success).toBe(false)
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
     })
 
     it('refreshes authorization for an already active channel', async () => {

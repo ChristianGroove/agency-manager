@@ -169,7 +169,6 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId,
             <WhatsAppConnectModal
                 open={isWhatsAppModalOpen}
                 onOpenChange={setIsWhatsAppModalOpen}
-                onOAuthConnect={() => handleMetaConnect('whatsapp')}
                 organizationId={organizationId}
             />
         </div>

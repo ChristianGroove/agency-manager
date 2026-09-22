@@ -81,6 +81,7 @@ export function IntegrationSetupSheet({
     }
 
     const toggleSelect = (assetId: string) => {
+        if (metaAssets.find(a => a.id === assetId)?.type === 'whatsapp') return
         const newSelected = new Set(selected)
         if (newSelected.has(assetId)) {
             newSelected.delete(assetId)
@@ -91,7 +92,7 @@ export function IntegrationSetupSheet({
     }
 
     const selectAll = () => {
-        const available = metaAssets.filter(a => !connectedAssetIds.has(a.id))
+        const available = metaAssets.filter(a => a.type !== 'whatsapp' && !connectedAssetIds.has(a.id))
         if (selected.size === available.length) {
             setSelected(new Set())
         } else {
@@ -150,13 +151,13 @@ export function IntegrationSetupSheet({
     const handleDisconnect = async () => {
         if (!existingConnection) return
 
-        const confirm = window.confirm("¿Estás seguro de que quieres desconectar Meta? Se eliminarán todos los canales asociados.")
+        const confirm = window.confirm('Esto quitará la conexión principal de Pixy. No revoca el acceso en Meta ni desvincula los números de WhatsApp Business. ¿Quieres quitarla de Pixy?')
         if (!confirm) return
 
         setIsLoading(true)
         try {
             await uninstallIntegration(existingConnection.id)
-            toast.success("Meta desconectado")
+            toast.success('Conexión principal quitada de Pixy')
             onOpenChange(false)
             router.refresh()
         } catch (error: any) {
@@ -302,11 +303,12 @@ export function IntegrationSetupSheet({
                                         {metaAssets.map((asset) => {
                                             const isConnected = connectedAssetIds.has(asset.id)
                                             const isSelected = selected.has(asset.id)
+                                            const requiresSignup = asset.type === 'whatsapp'
 
                                             return (
                                                 <Card
                                                     key={asset.id}
-                                                    onClick={() => !isConnected && toggleSelect(asset.id)}
+                                                    onClick={() => !isConnected && !requiresSignup && toggleSelect(asset.id)}
                                                     className={`
                                                         p-4 transition-all cursor-pointer border-2
                                                         ${isConnected
@@ -322,13 +324,13 @@ export function IntegrationSetupSheet({
                                                         <div className="flex-shrink-0">
                                                             {isConnected ? (
                                                                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                                            ) : (
+                                                            ) : !requiresSignup ? (
                                                                 <Checkbox
                                                                     checked={isSelected}
                                                                     onCheckedChange={() => toggleSelect(asset.id)}
                                                                     className="h-5 w-5"
                                                                 />
-                                                            )}
+                                                            ) : null}
                                                         </div>
 
                                                         {/* Asset Icon */}
@@ -347,6 +349,9 @@ export function IntegrationSetupSheet({
                                                                     <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
                                                                         Ya conectado
                                                                     </Badge>
+                                                                )}
+                                                                {requiresSignup && !isConnected && (
+                                                                    <Badge variant="outline" className="text-xs">Conectar desde Canales con Embedded Signup</Badge>
                                                                 )}
                                                             </div>
 
@@ -389,7 +394,7 @@ export function IntegrationSetupSheet({
                                     onClick={handleDisconnect}
                                     disabled={isLoading}
                                 >
-                                    Desconectar
+                                    Quitar de Pixy
                                 </Button>
                             )}
                         </div>

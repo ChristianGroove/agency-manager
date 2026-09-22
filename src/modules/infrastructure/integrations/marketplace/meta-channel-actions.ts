@@ -114,6 +114,13 @@ function isCallbackInput(input: ActivateInput): input is CallbackActivateInput {
  */
 export async function activateMetaChannel(input: ActivateInput): Promise<{ success: boolean; channelId?: string; error?: string; reactivated?: boolean }> {
 
+    // WhatsApp numbers, including existing Business App numbers, must complete
+    // Embedded Signup so we receive the exact WABA/phone and coexistence event.
+    if ((isCallbackInput(input) && input.providerKey === 'whatsapp_cloud') ||
+        (!isCallbackInput(input) && input.assetType === 'whatsapp')) {
+        return { success: false, error: 'Conecta WhatsApp desde Canales con Embedded Signup.' }
+    }
+
     // Determine orgId based on input type
     let orgId: string;
     let providerKey: string;
