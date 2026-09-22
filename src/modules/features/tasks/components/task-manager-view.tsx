@@ -28,8 +28,10 @@ import {
   CheckSquare,
   CalendarDays,
   RefreshCw,
+  Rocket,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/modules/infrastructure/utils/utils"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import {
   DropdownMenu,
@@ -44,7 +46,8 @@ import type {
   TaskItem,
   TaskCollaborator,
   TaskMetrics,
-  TaskStatus
+  TaskStatus,
+  TaskSprint,
 } from "../types"
 import { TaskKanbanBoard } from "./kanban/task-kanban-board"
 import { TaskListView } from "./list/task-list-view"
@@ -57,6 +60,7 @@ import { TaskFormModal } from "./modals/task-form-modal"
 import { ProjectFormModal } from "./modals/project-form-modal"
 import { WorkspaceFormModal } from "./modals/workspace-form-modal"
 import { TaskLogWorkModal } from "./shared/task-log-work-modal"
+import { TaskSprintModal } from "./modals/task-sprint-modal"
 import { updateTaskStatus, getTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -68,6 +72,7 @@ interface TaskManagerViewProps {
   initialTasks: TaskItem[]
   initialCollaborators: TaskCollaborator[]
   initialMetrics?: TaskMetrics
+  initialSprints?: TaskSprint[]
   organizationId: string
   tenantBranding?: {
     name?: string
@@ -82,6 +87,7 @@ export function TaskManagerView({
   initialProjects,
   initialTasks,
   initialCollaborators,
+  initialSprints = [],
   organizationId,
   tenantBranding,
 }: TaskManagerViewProps) {
@@ -92,6 +98,7 @@ export function TaskManagerView({
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks)
   const [collaborators, setCollaborators] = useState<TaskCollaborator[]>(initialCollaborators)
+  const [sprints, setSprints] = useState<TaskSprint[]>(initialSprints)
 
   // Reactive Prop Synchronization with Server Component revalidations
   useEffect(() => {
@@ -109,6 +116,10 @@ export function TaskManagerView({
   useEffect(() => {
     setCollaborators(initialCollaborators)
   }, [initialCollaborators])
+
+  useEffect(() => {
+    setSprints(initialSprints)
+  }, [initialSprints])
 
   // Realtime WebSocket Subscription via singleton manager (Zero-Thundering-Herd)
   useEffect(() => {
@@ -156,6 +167,37 @@ export function TaskManagerView({
           }
         }
       )
+
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_sprints",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+
+          if (payload.eventType === "INSERT") {
+            const newSprint = payload.new as TaskSprint
+            setSprints((prev) => {
+              if (prev.some((s) => s.id === newSprint.id)) return prev
+              return [newSprint, ...prev]
+            })
+          } else if (payload.eventType === "UPDATE") {
+            const updatedSprint = payload.new as TaskSprint
+            setSprints((prev) =>
+              prev.map((s) => (s.id === updatedSprint.id ? { ...s, ...updatedSprint } : s))
+            )
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setSprints((prev) => prev.filter((s) => s.id !== deletedId))
+            }
+          }
+        }
+      )
     })
 
     return () => {
@@ -184,6 +226,42 @@ export function TaskManagerView({
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators">("list")
+
+  // Sprint state
+  const activeSprintObj = useMemo(() => {
+    return sprints.find((s) => s.status === "active") || null
+  }, [sprints])
+
+  // Sprint modal state
+  const [sprintModalState, setSprintModalState] = useState<{
+    isOpen: boolean
+    mode: "create" | "edit" | "complete"
+    sprint?: TaskSprint | null
+  }>({
+    isOpen: false,
+    mode: "create",
+    sprint: null,
+  })
+
+  const handleSprintCompleted = (completedSprintId: string, nextSprint?: TaskSprint) => {
+    setSprints((prev) => {
+      const updated = prev.map((s) => (s.id === completedSprintId ? { ...s, status: "completed" as const } : s))
+      if (nextSprint && !updated.some((s) => s.id === nextSprint.id)) {
+        return [nextSprint, ...updated]
+      }
+      return updated
+    })
+    getTasks({ orgId: organizationId }).then(setTasks)
+    router.refresh()
+  }
+
+  const handleSprintDeleted = (deletedSprintId: string) => {
+    setSprints((prev) => prev.filter((s) => s.id !== deletedSprintId))
+    setTasks((prev) =>
+      prev.map((t) => (t.sprint_id === deletedSprintId ? { ...t, sprint_id: null } : t))
+    )
+    router.refresh()
+  }
 
   // Search & Status filters
   const [searchTerm, setSearchTerm] = useState("")
@@ -875,6 +953,23 @@ export function TaskManagerView({
 
                 <DropdownMenuItem
                   onClick={() => {
+                    setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  }}
+                  className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-foreground block">Nuevo Sprint</span>
+                    <span className="text-[11px] text-muted-foreground block leading-tight">
+                      Ciclo ágil de trabajo con fechas y meta
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => {
                     setProjectToEdit(null)
                     setIsProjectModalOpen(true)
                   }}
@@ -953,6 +1048,18 @@ export function TaskManagerView({
             tasks={projectTasks}
             collaborators={collaborators}
             projects={availableProjects}
+            sprints={sprints}
+            activeSprint={activeSprintObj}
+            onSprintCreated={(newSprint) => {
+              setSprints((prev) => [newSprint, ...prev])
+              router.refresh()
+            }}
+            onSprintUpdated={(updated) => {
+              setSprints((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+              router.refresh()
+            }}
+            onSprintCompleted={handleSprintCompleted}
+            onSprintDeleted={handleSprintDeleted}
             onSelectTask={handleSelectTask}
             onSwitchToGeneral={() => setActiveTab("list")}
           />
@@ -1044,6 +1151,26 @@ export function TaskManagerView({
           }}
         />
       )}
+
+      {/* Task Sprint Management Modal */}
+      <TaskSprintModal
+        isOpen={sprintModalState.isOpen}
+        onClose={() => setSprintModalState((prev) => ({ ...prev, isOpen: false }))}
+        mode={sprintModalState.mode}
+        sprint={sprintModalState.sprint}
+        activeSprint={activeSprintObj}
+        allSprints={sprints}
+        onSprintCreated={(newSprint) => {
+          setSprints((prev) => [newSprint, ...prev])
+          router.refresh()
+        }}
+        onSprintUpdated={(updated) => {
+          setSprints((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+          router.refresh()
+        }}
+        onSprintCompleted={handleSprintCompleted}
+        onSprintDeleted={handleSprintDeleted}
+      />
     </div>
   )
 }

@@ -173,23 +173,15 @@ export function TaskPmOperationsDashboard({
     return sprints.filter((s) => s.status === "completed")
   }, [sprints])
 
-  // Selected Sprint: default to active sprint if available, or first planning sprint, or "all"
-  const [selectedSprintId, setSelectedSprintId] = useState<string>(() => {
-    if (activeSprint?.id) return activeSprint.id
-    const active = sprints.find((s) => s.status === "active")
-    if (active) return active.id
-    if (sprints.length > 0) return sprints[0].id
-    return "all"
-  })
+  // Selected Sprint: Always default to "all" (Todos los tickets) upon load/reload
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("all")
 
   // Keep selectedSprintId resilient when sprints list changes
   useEffect(() => {
     if (selectedSprintId !== "all" && !sprints.some((s) => s.id === selectedSprintId)) {
-      if (activeSprintObj) setSelectedSprintId(activeSprintObj.id)
-      else if (sprints.length > 0) setSelectedSprintId(sprints[0].id)
-      else setSelectedSprintId("all")
+      setSelectedSprintId("all")
     }
-  }, [sprints, activeSprintObj, selectedSprintId])
+  }, [sprints, selectedSprintId])
 
   // Current targeted sprint object
   const currentSprint = useMemo(() => {

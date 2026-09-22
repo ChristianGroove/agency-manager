@@ -851,3 +851,13 @@ Tanto el portal del colaborador ([`task-collaborator-portal.tsx`](file:///g:/Pix
 - Eventos `UPDATE`: Cambios de estado (ej: activación de sprint o edición de fechas) se reflejan de inmediato.
 - Eventos `DELETE`: Se limpia el estado local y se redirige la vista a la vista global de forma transparente.
 
+### H. Integración de Sprints en la Plataforma Central (`/operations/tasks`)
+1. **Punto de Entrada Global (`+ Nuevo`)**:
+   - En [`task-manager-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx), el desplegable universal de creación `+ Nuevo` incluye la opción **`Nuevo Sprint`** (con icono `Rocket` y subtítulo *"Ciclo ágil de trabajo con fechas y meta"*). Permite a los administradores iniciar o planificar sprints desde cualquier parte del módulo sin depender del portal de PM.
+2. **Aislamiento Operativo Limpio (General & Kanban)**:
+   - Las pestañas de **General (Lista)** y **Tablero Kanban** se mantienen completamente despejadas y libres de la barra de control de sprints. Esto evita sobrecargar las vistas operativas transversales de proyectos/espacios y elimina duplicidad visual.
+3. **Módulo Especializado de Sprints en Pestaña Métricas**:
+   - La pestaña **Métricas** ([`task-metrics-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/metrics/task-metrics-view.tsx)) aloja de manera natural el [`TaskPmOperationsDashboard`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-pm-operations-dashboard.tsx), el cual recibe la colección de `sprints`, el `activeSprint` y los callbacks reactivos (`onSprintCreated`, `onSprintUpdated`, `onSprintCompleted`, `onSprintDeleted`), centralizando el control del ciclo ágil, el rollover y los indicadores de velocidad en un único panel analítico de alta fidelidad.
+4. **Sincronización Multipestaña en Vivo**:
+   - `TaskManagerView` suscribe un canal Supabase Realtime a `task_sprints` con filtro `organization_id=eq.${orgId}`, reaccionando de inmediato a cualquier inserción, edición o borrado de ciclo ágil realizado por otros usuarios.
+
