@@ -1,5 +1,5 @@
 -- Enable Realtime for notifications and task_items tables
-DO $\$
+DO $$
 BEGIN
     -- Add notifications to supabase_realtime if not already present
     IF NOT EXISTS (
@@ -16,7 +16,7 @@ BEGIN
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.task_items;
     END IF;
-END $\$;
+END $$;
 
 -- Set replica identity to full so that update payloads contain old and new records
 ALTER TABLE public.notifications REPLICA IDENTITY FULL;
