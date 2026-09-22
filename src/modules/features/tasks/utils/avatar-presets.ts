@@ -17,6 +17,7 @@ export const TASK_PACK_AVATARS = [
   "/avatar%20task%20pack/Frame%2027.png",
   "/avatar%20task%20pack/Frame%2028.png",
   "/avatar%20task%20pack/Frame%2029.png",
+  "/avatar%20task%20pack/Frame%2030.png",
 ]
 
 /**

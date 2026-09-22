@@ -612,16 +612,23 @@ Para mantener un rendimiento óptimo y una experiencia fluida frente a volúmene
   - Cada fila expone código de ticket, título, proyecto, avatar del especialista, fecha límite (con alerta si está atrasada) y barra de progreso.
   - Al hacer clic en un ticket, se invoca `onSelectTask` abriendo instantáneamente el modal de detalle del ticket (`TaskPortalDetailModal`), facilitando la resolución de impedimentos sin abandonar el dashboard.
 
-### F. Microinteracciones de Alto Rendimiento en Cinta de Especialistas (`TaskCollaboratorRibbon`)
+### F. Microinteracciones de Alto Rendimiento en Cinta de Especialistas (`TaskCollaboratorRibbon`) & Hero de Portal
+- **Tarjetas Compactas de Monitor de Equipo (`96px`)**:
+  - Se redujo la altura del marco de las tarjetas de `118px` a `96px` (`h-[92px] sm:h-[96px]`), eliminando ~22px de espacio muerto superior sin alterar el tamaño de los avatares (`50px`) ni su posición anclada.
+  - La tipografía del cargo/rol (`member.role`) permanece estable en escala y peso (`text-[10px] font-medium`) sin ensancharse al activarse la tarjeta.
+  - En estado activo (`isSelected`), el avatar se eleva sutilmente `2px` (`-translate-y-0.5 scale-140 sm:scale-145`), separándose limpiamente del rótulo del nombre.
 - **Efecto 3D de Avatar Sobresaliente (Breakout) con Transición Fluida**:
   - El avatar 3D se mantiene en el flujo Flexbox estático con anclaje `origin-bottom` y `will-change-transform`, evitando saltos y reacomodos bruscos entre estados.
-  - En estado activo (`isSelected`), escala suavemente a `scale-140 sm:scale-145` y se reposiciona sutilmente hacia abajo (`translate-y-1 sm:translate-y-1.5`), logrando que la cabeza del avatar sobresalga del marco redondeado superior sin ser recortada (`overflow-visible`) mientras el torso descansa firmemente sobre el rótulo del nombre.
   - En estado hover, proporciona un suave realce visual (`group-hover:scale-110 group-hover:-translate-y-0.5`).
 - **Disparador de Información no Invasivo**:
   - El tooltip/popover con información de tickets, métricas y botón de WhatsApp se desacopló del cuerpo de la tarjeta y se reubicó en un ícono circular sutil de información (`Info`) en la esquina superior derecha (`absolute top-1.5 right-1.5`).
   - La interacción de hover sobre la tarjeta permanece limpia y dedicada a la selección del colaborador sin disparar popups emergentes involuntarios.
-- **Tipografía y Rol Focalizado**:
-  - Se removió el insight redundante de porcentaje de la base de la tarjeta, exhibiendo con claridad el nombre del especialista y su rol corporativo (`member.role`).
+- **Watermark Odómetro de Avance en Activas (`RollingOdometer`)**:
+  - En la esquina superior derecha del hero del portal de colaboradores (`task-collaborator-portal.tsx`), se integró un contador de odómetro mecánico con rodaje de dígitos independientes (`OdometerDigit`).
+  - Desaceleración exponencial auténtica con curva `easeOutExpo` (`[0.16, 1, 0.3, 1]`) y máscaras de gradiente vertical (`mask-image`) en la parte superior e inferior para desvanecer suavemente los números que entran y salen.
+  - El símbolo `%` se ubica de forma independiente directamente debajo del carácter numérico de la derecha, y el componente reposa anclado en `top-0 right-[12px]` con opacidad sutil tipo marca de agua (`11%` en claro, `13%` en oscuro).
+- **Catálogo de Avatares 3D Actualizado**:
+  - Actualización integral de los recursos gráficos en `public/avatar task pack/` (Frame 10 a 29) e incorporación de **`Frame 30.png`**, totalizando 19 avatares oficiales en `TASK_PACK_AVATARS`.
 
 ### G. Persistencia Atómica y Aislamiento de Estado Borrador en Modales de Edición (`TaskDetailModal` / `TaskPortalDetailModal`)
 - **Desacoplamiento de Mutaciones en Tiempo Real**:

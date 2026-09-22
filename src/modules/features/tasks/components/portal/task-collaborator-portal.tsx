@@ -169,6 +169,87 @@ function formatAuditShortDate(dateStr: string): string {
   }
 }
 
+const ODOMETER_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+/**
+ * Animated Rolling Odometer Digit using standard easeOutExpo easing [0.16, 1, 0.3, 1]
+ */
+const OdometerDigit = React.memo(function OdometerDigit({
+  digit,
+  index,
+}: {
+  digit: string
+  index: number
+}) {
+  const num = parseInt(digit, 10)
+  const isNumber = !isNaN(num)
+
+  if (!isNumber) {
+    return <span>{digit}</span>
+  }
+
+  // 20 items: target digit on the second cycle (10 + num) for a full mechanical roll
+  const targetPercent = (10 + num) * 5
+
+  return (
+    <span className="relative inline-block h-[1.3em] overflow-hidden leading-none select-none [mask-image:linear-gradient(to_bottom,transparent_0%,black_20%,black_80%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_20%,black_80%,transparent_100%)]">
+      <motion.span
+        className="flex flex-col"
+        initial={{ y: "0%" }}
+        animate={{ y: `-${targetPercent}%` }}
+        transition={{
+          duration: 1.3 + index * 0.15,
+          ease: [0.16, 1, 0.3, 1], // easeOutExpo
+        }}
+      >
+        {ODOMETER_DIGITS.map((d, i) => (
+          <span
+            key={i}
+            className="h-[1.3em] flex items-center justify-center leading-none"
+          >
+            {d}
+          </span>
+        ))}
+      </motion.span>
+    </span>
+  )
+})
+
+/**
+ * Rolling Number / Odometer Counter for active progress watermark
+ * Renders the % symbol directly underneath the rightmost digit column
+ */
+const RollingOdometer = React.memo(function RollingOdometer({
+  value,
+  showPercent = true,
+}: {
+  value: number
+  showPercent?: boolean
+}) {
+  const digits = value.toString().split("")
+
+  return (
+    <span className="inline-flex items-start -space-x-[0.06em]">
+      {digits.map((digit, idx) => {
+        const isRightmost = idx === digits.length - 1
+
+        if (isRightmost && showPercent) {
+          return (
+            <span key={idx} className="inline-flex flex-col items-center">
+              <OdometerDigit digit={digit} index={idx} />
+              <span className="text-[17px] sm:text-[20px] md:text-[22px] font-black font-sans leading-none opacity-80 select-none -mt-1.5 sm:-mt-2">
+                %
+              </span>
+            </span>
+          )
+        }
+
+        return <OdometerDigit key={idx} digit={digit} index={idx} />
+      })}
+    </span>
+  )
+})
+
 // Self-contained memoized slider: holds local progress state during dragging
 // and only commits on release, eliminating 60fps whole-page re-renders.
 // Includes 2-second hover tooltip with compact previous change audit for Project Managers.
@@ -861,6 +942,29 @@ export function TaskCollaboratorPortal({
   const teamCompleted = allTeamTasks.filter((t) => t.status === "done").length
   const teamInProgress = allTeamTasks.filter((t) => t.status === "in_progress").length
 
+  const teamActiveTasks = useMemo(
+    () =>
+      allTeamTasks.filter(
+        (t) =>
+          t.status === "todo" ||
+          t.status === "in_progress" ||
+          t.status === "in_review" ||
+          t.status === "blocked"
+      ),
+    [allTeamTasks]
+  )
+  const teamActiveProgress = useMemo(() => {
+    if (teamActiveTasks.length === 0) {
+      return teamCompleted > 0 ? 100 : 0
+    }
+    return Math.round(
+      teamActiveTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0) /
+        teamActiveTasks.length
+    )
+  }, [teamActiveTasks, teamCompleted])
+
+  const heroActiveProgress = isLeadOrPm ? teamActiveProgress : myActiveProgress
+
   // Focus Task: either currently in_progress or the next todo
   const focusTask =
     tasks.find((t) => t.status === "in_progress") ||
@@ -892,9 +996,9 @@ export function TaskCollaboratorPortal({
         title,
         desc: "Supervisa la cadencia del sprint, destraba revisiones en QA y coordina las asignaciones del equipo.",
         metricLabel: "Avance del Equipo",
-        percentage: 0,
-        completed: 0,
-        total: 0,
+        percentage: teamActiveProgress,
+        completed: teamCompleted,
+        total: teamActiveTasks.length,
       }
     }
 
@@ -957,6 +1061,9 @@ export function TaskCollaboratorPortal({
     myCompleted,
     myInProgress,
     myActiveEstimatedHours,
+    teamActiveProgress,
+    teamCompleted,
+    teamActiveTasks.length,
   ])
 
   // Lottie Animation for dynamic Hero Banner
@@ -2156,10 +2263,24 @@ export function TaskCollaboratorPortal({
         {/* Hero Section: Card compacta con Avatar 3D en posición absoluta y efecto pop-out flotante */}
         {(!isLeadOrPm || pmViewMode === "dashboard") && (
           <section className="w-full relative overflow-visible rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-sm bg-gradient-to-br from-card via-card to-primary/[0.03] dark:to-primary/[0.06] p-4 sm:p-5 md:py-5 md:px-7 transition-all flex items-center min-h-[140px] sm:min-h-[155px]">
-            {/* Ambient Glow Orbs (Contenidos dentro del radio de la tarjeta) */}
-            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+            {/* Ambient Glow Orbs & Watermark Active Progress */}
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none z-10">
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full bg-primary/10 blur-3xl" />
               <div className="absolute bottom-0 left-1/3 -mb-16 w-48 h-48 rounded-full bg-sky-500/5 blur-3xl" />
+
+              {/* Watermark Rolling Odometer Active Progress in Top-Right Corner */}
+              <div className="absolute top-0 right-[12px] flex items-start select-none pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="flex items-start text-foreground/[0.11] dark:text-white/[0.13]"
+                >
+                  <div className="text-[40px] sm:text-[53px] md:text-[66px] font-black font-sans leading-none">
+                    <RollingOdometer value={heroActiveProgress} />
+                  </div>
+                </motion.div>
+              </div>
             </div>
 
             {/* Contenido Principal a la izquierda */}
@@ -2320,7 +2441,12 @@ export function TaskCollaboratorPortal({
             </div>
 
             {/* 3D Floating Avatar: Posición absoluta, sobresaliendo libremente por encima del marco */}
-            <div className="absolute right-2 sm:right-6 md:right-8 lg:right-12 bottom-0 flex items-end justify-center pointer-events-none select-none z-20">
+            <div
+              className={cn(
+                "absolute right-2 sm:right-6 md:right-8 lg:right-12 flex items-end justify-center pointer-events-none select-none z-20",
+                !isLeadOrPm ? "bottom-2" : "bottom-0"
+              )}
+            >
               <motion.div
                 animate={{ y: [0, -7, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
