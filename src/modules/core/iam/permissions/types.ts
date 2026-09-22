@@ -51,6 +51,7 @@ export interface FeaturePermissions {
     // Projects
     can_create_projects?: boolean
     can_delete_projects?: boolean
+    can_bulk_delete_tasks?: boolean
 
     // Reports
     can_view_reports?: boolean

@@ -102,91 +102,100 @@ function AvatarUploader({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className="relative group cursor-pointer shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Clic para cambiar foto"
-            >
-              <Avatar
-                className="w-16 h-16 border-2 border-primary/20 shadow-sm shrink-0 overflow-hidden"
-                style={{ backgroundColor: "#8ec045" }}
-              >
-                <AvatarImage src={getCollaboratorAvatar(photoUrl, firstName)} className="object-cover" />
-                <AvatarFallback className="text-base font-bold bg-primary/10 text-primary">
-                  {firstName?.[0] || "C"}
-                  {lastName?.[0] || "L"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                {isUploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Camera className="w-5 h-5" />
-                )}
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="rounded-xl text-xs">
-            Clic para cambiar foto
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="p-3.5 sm:p-4 rounded-2xl bg-muted/30 border border-border/60">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/png,image/jpeg,image/webp,image/jpg"
+        className="hidden"
+      />
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
+        {/* Left Column: Round Preview Avatar or Empty Transparent Container */}
+        <div className="flex flex-col items-center shrink-0">
+          <div className="relative">
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "relative group cursor-pointer shrink-0 rounded-full transition-all duration-200",
+                      "w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center overflow-hidden",
+                      photoUrl && photoUrl.trim() !== ""
+                        ? "border-2 border-primary/30 shadow-md bg-transparent"
+                        : "border-2 border-dashed border-border/80 hover:border-primary/60 bg-transparent"
+                    )}
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label={photoUrl ? "Clic para cambiar foto" : "Clic para subir foto"}
+                  >
+                    {photoUrl && photoUrl.trim() !== "" ? (
+                      <>
+                        <img
+                          src={photoUrl}
+                          alt="Avatar seleccionado"
+                          className="w-full h-full object-cover pointer-events-none select-none rounded-full"
+                        />
+                        <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                          {isUploading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Camera className="w-5 h-5" />
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-muted-foreground/45 group-hover:text-primary transition-colors">
+                        {isUploading ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-medium mt-1">Subir</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="rounded-xl text-xs">
+                  {photoUrl ? "Clic para cambiar foto" : "Clic para subir foto"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-      <div className="flex-1 space-y-2 text-center sm:text-left w-full min-w-0">
-        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/png,image/jpeg,image/webp,image/jpg"
-            className="hidden"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="h-8 text-xs font-semibold gap-1.5 rounded-xl border-border/70"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Subiendo...
-              </>
-            ) : (
-              <>
-                <Upload className="w-3.5 h-3.5 text-primary" />
-                Subir Foto Personalizada
-              </>
+            {/* Canequita sutil en la esquina superior derecha solo cuando hay foto activa */}
+            {photoUrl && photoUrl.trim() !== "" && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRemove()
+                      }}
+                      disabled={isUploading}
+                      className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-background text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-border/80 hover:border-rose-200 dark:hover:border-rose-900/60 shadow-xs flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
+                      aria-label="Quitar foto"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="rounded-lg text-xs py-1 px-2">
+                    Quitar foto
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
-          </Button>
-
-          {photoUrl && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onRemove}
-              disabled={isUploading}
-              className="h-8 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 gap-1 rounded-xl"
-            >
-              <Trash2 className="w-3 h-3" />
-              Quitar
-            </Button>
-          )}
+          </div>
         </div>
 
-        {/* Presets */}
-        <div className="space-y-1.5">
-          <span className="text-[10px] text-muted-foreground font-medium block">
-            O selecciona un avatar 3D oficial:
+        {/* Right side: Selector de avatares en 2 filas */}
+        <div className="flex-1 space-y-2 w-full min-w-0">
+          <span className="text-xs font-semibold text-foreground block">
+            Selecciona un avatar:
           </span>
-          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+          <div className="grid grid-cols-7 sm:grid-cols-10 gap-1 sm:gap-1.5">
             {TASK_PACK_AVATARS.map((preset, idx) => {
               const isSelected = photoUrl === preset
               return (
@@ -195,17 +204,17 @@ function AvatarUploader({
                   type="button"
                   onClick={() => onSelectPreset(preset)}
                   className={cn(
-                    "relative transition-all duration-150 ease-out active:scale-95 p-1 rounded-2xl select-none",
+                    "relative transition-all duration-150 ease-out active:scale-95 p-1 rounded-xl select-none cursor-pointer flex items-center justify-center",
                     isSelected
-                      ? "scale-125 ring-2 ring-primary ring-offset-2 dark:ring-offset-zinc-950 shadow-md"
-                      : "opacity-75 hover:opacity-100 hover:scale-115 hover:-translate-y-0.5"
+                      ? "scale-110 ring-2 ring-primary ring-offset-2 dark:ring-offset-zinc-950 shadow-sm bg-primary/10"
+                      : "opacity-75 hover:opacity-100 hover:scale-110 hover:-translate-y-0.5"
                   )}
-                  title={`Avatar 3D ${idx + 1}`}
+                  title={`Avatar ${idx + 1}`}
                 >
                   <img
                     src={preset}
-                    alt={`Avatar 3D ${idx + 1}`}
-                    className="w-9 h-9 object-contain drop-shadow-sm pointer-events-none"
+                    alt={`Avatar ${idx + 1}`}
+                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-xs pointer-events-none"
                   />
                   {isSelected && (
                     <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5 shadow-sm">
@@ -246,6 +255,7 @@ export function TaskCollaboratorsManager({
   const [photoUrl, setPhotoUrl] = useState<string>("")
   const [hasGlobalAccess, setHasGlobalAccess] = useState(true)
   const [selectedWorkspaceIds, setSelectedWorkspaceIds] = useState<string[]>([])
+  const [canBulkDelete, setCanBulkDelete] = useState(false)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
 
@@ -261,6 +271,7 @@ export function TaskCollaboratorsManager({
   const [editPhotoUrl, setEditPhotoUrl] = useState<string>("")
   const [editHasGlobalAccess, setEditHasGlobalAccess] = useState(true)
   const [editSelectedWorkspaceIds, setEditSelectedWorkspaceIds] = useState<string[]>([])
+  const [editCanBulkDelete, setEditCanBulkDelete] = useState(false)
   const [editIsActive, setEditIsActive] = useState<boolean>(true)
   const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
@@ -372,6 +383,7 @@ export function TaskCollaboratorsManager({
         photoUrl: photoUrl || null,
         workspaceIds: hasGlobalAccess ? [] : selectedWorkspaceIds,
         hasGlobalWorkspaceAccess: hasGlobalAccess,
+        canBulkDeleteTasks: canBulkDelete,
       })
 
       if (res.success && res.collaborator) {
@@ -386,6 +398,7 @@ export function TaskCollaboratorsManager({
         setPhotoUrl("")
         setHasGlobalAccess(true)
         setSelectedWorkspaceIds([])
+        setCanBulkDelete(false)
       } else {
         toast.error(res.error || "Error al crear colaborador")
       }
@@ -408,6 +421,7 @@ export function TaskCollaboratorsManager({
     setEditIsActive(collab.is_active ?? true)
     setEditHasGlobalAccess(collab.has_global_workspace_access ?? true)
     setEditSelectedWorkspaceIds(collab.workspace_ids || [])
+    setEditCanBulkDelete(collab.can_bulk_delete_tasks ?? (collab.task_role === "pm"))
     setIsEditModalOpen(true)
   }
 
@@ -432,6 +446,7 @@ export function TaskCollaboratorsManager({
         isActive: editIsActive,
         workspaceIds: editHasGlobalAccess ? [] : editSelectedWorkspaceIds,
         hasGlobalWorkspaceAccess: editHasGlobalAccess,
+        canBulkDeleteTasks: editCanBulkDelete,
       })
 
       if (res.success && res.collaborator) {
@@ -725,15 +740,15 @@ export function TaskCollaboratorsManager({
 
       {/* Modal: New Collaborator */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-2xl sm:max-w-2xl w-full">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl sm:max-w-2xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
+          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/40 shrink-0">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Plus className="w-4 h-4 text-primary" />
               Alta de Nuevo Colaborador
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
             {/* Avatar Uploader */}
             <AvatarUploader
               photoUrl={photoUrl}
@@ -865,6 +880,25 @@ export function TaskCollaboratorsManager({
                 </div>
               </div>
             )}
+            {taskRole === "pm" && (
+              <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      Permiso de Eliminación en Masa de Tareas
+                    </span>
+                    <span className="text-[11px] text-muted-foreground block">
+                      Habilita la eliminación en lote de tareas desde la vista de lista de la plataforma.
+                    </span>
+                  </div>
+                  <Switch
+                    checked={canBulkDelete}
+                    onCheckedChange={setCanBulkDelete}
+                  />
+                </div>
+              </div>
+            )}
             {taskRole === "qa_lead" && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
@@ -959,41 +993,41 @@ export function TaskCollaboratorsManager({
               </span>
               Se creará un token de acceso seguro para que el colaborador consulte sus tareas, actualice avances con sliders y participe en discusiones.
             </div>
-
-            <DialogFooter className="gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCreateModalOpen(false)}
-                disabled={isSubmittingCreate}
-                className="text-xs"
-              >
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleCreate}
-                disabled={isSubmittingCreate}
-                className="text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {isSubmittingCreate ? "Creando..." : "Crear Colaborador"}
-              </Button>
-            </DialogFooter>
           </div>
+
+          <DialogFooter className="p-4 px-6 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(false)}
+              disabled={isSubmittingCreate}
+              className="text-xs cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={isSubmittingCreate}
+              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            >
+              {isSubmittingCreate ? "Creando..." : "Crear Colaborador"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Modal: Edit Collaborator */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl sm:max-w-2xl w-full">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl sm:max-w-2xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
+          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/40 shrink-0">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="w-4 h-4 text-primary" />
               Editar Colaborador
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
             {/* Avatar Uploader */}
             <AvatarUploader
               photoUrl={editPhotoUrl}
@@ -1125,6 +1159,25 @@ export function TaskCollaboratorsManager({
                 </div>
               </div>
             )}
+            {editTaskRole === "pm" && (
+              <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      Permiso de Eliminación en Masa de Tareas
+                    </span>
+                    <span className="text-[11px] text-muted-foreground block">
+                      Habilita la eliminación en lote de tareas desde la vista de lista de la plataforma.
+                    </span>
+                  </div>
+                  <Switch
+                    checked={editCanBulkDelete}
+                    onCheckedChange={setEditCanBulkDelete}
+                  />
+                </div>
+              </div>
+            )}
             {editTaskRole === "qa_lead" && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
@@ -1228,46 +1281,46 @@ export function TaskCollaboratorsManager({
                 onCheckedChange={setEditIsActive}
               />
             </div>
+          </div>
 
-            <DialogFooter className="gap-2 pt-2 items-center justify-between">
+          <DialogFooter className="p-4 px-6 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (editingCollab) {
+                  setIsEditModalOpen(false)
+                  handleOpenDelete(editingCollab)
+                }
+              }}
+              disabled={isSubmittingEdit}
+              className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 hover:border-destructive/60 gap-1.5 px-3 mr-auto cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+              Eliminar
+            </Button>
+
+            <div className="flex items-center gap-2">
               <Button
-                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  if (editingCollab) {
-                    setIsEditModalOpen(false)
-                    handleOpenDelete(editingCollab)
-                  }
-                }}
+                onClick={() => setIsEditModalOpen(false)}
                 disabled={isSubmittingEdit}
-                className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 hover:border-destructive/60 gap-1.5 px-3 mr-auto"
+                className="text-xs cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                Eliminar
+                Cancelar
               </Button>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditModalOpen(false)}
-                  disabled={isSubmittingEdit}
-                  className="text-xs"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleUpdate}
-                  disabled={isSubmittingEdit}
-                  className="text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
-                </Button>
-              </div>
-            </DialogFooter>
-          </div>
+              <Button
+                size="sm"
+                onClick={handleUpdate}
+                disabled={isSubmittingEdit}
+                className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

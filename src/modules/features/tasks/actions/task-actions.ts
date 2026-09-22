@@ -1451,6 +1451,44 @@ export async function deleteTask(taskId: string): Promise<{ success: boolean; er
 }
 
 /**
+ * Bulk delete tasks
+ */
+export async function deleteTasks(
+  taskIds: string[],
+  orgId?: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    if (!taskIds || taskIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const activeOrgId = await resolveOrgId(orgId);
+
+    // Delete in chunks of 100 to avoid query length limits
+    const CHUNK_SIZE = 100;
+    let totalDeleted = 0;
+
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const { error, count } = await supabaseAdmin
+        .from("task_items")
+        .delete({ count: "exact" })
+        .eq("organization_id", activeOrgId)
+        .in("id", chunk);
+
+      if (error) throw error;
+      totalDeleted += (count ?? chunk.length);
+    }
+
+    revalidatePath("/operations/tasks");
+    return { success: true, count: totalDeleted };
+  } catch (err: any) {
+    console.error("Error bulk deleting tasks:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Get comments for a task
  */
 export async function getTaskComments(taskId: string): Promise<TaskComment[]> {
@@ -1605,7 +1643,8 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       has_global_workspace_access: s.has_global_workspace_access ?? true,
       workspace_ids: staffWorkspaces.get(s.id) || [],
       assigned_tasks_count: counts.total,
-      completed_tasks_count: counts.done
+      completed_tasks_count: counts.done,
+      can_bulk_delete_tasks: s.can_bulk_delete_tasks ?? (inferTaskRole(s.role) === "pm"),
     };
   });
 }
@@ -1753,6 +1792,7 @@ export async function createCollaborator(data: {
   photoUrl?: string | null;
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
+  canBulkDeleteTasks?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -1770,7 +1810,8 @@ export async function createCollaborator(data: {
         role: data.role || data.taskRole || "developer",
         photo_url: data.photoUrl || null,
         has_global_workspace_access: hasGlobal,
-        is_active: true
+        is_active: true,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === "pm")
       })
       .select("*")
       .single();
@@ -1808,7 +1849,8 @@ export async function createCollaborator(data: {
         has_global_workspace_access: hasGlobal,
         workspace_ids: data.workspaceIds || [],
         assigned_tasks_count: 0,
-        completed_tasks_count: 0
+        completed_tasks_count: 0,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === 'pm' || inferTaskRole(newStaff.role) === 'pm')
       }
     };
   } catch (err: any) {
@@ -1832,6 +1874,7 @@ export async function updateCollaborator(data: {
   isActive?: boolean;
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
+  canBulkDeleteTasks?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -1853,6 +1896,9 @@ export async function updateCollaborator(data: {
     }
     if (data.hasGlobalWorkspaceAccess !== undefined) {
       updatePayload.has_global_workspace_access = data.hasGlobalWorkspaceAccess;
+    }
+    if (data.canBulkDeleteTasks !== undefined) {
+      updatePayload.can_bulk_delete_tasks = data.canBulkDeleteTasks;
     }
 
     const { data: updatedStaff, error } = await supabaseAdmin
@@ -1913,7 +1959,8 @@ export async function updateCollaborator(data: {
         has_global_workspace_access: updatedStaff.has_global_workspace_access ?? true,
         workspace_ids: currentWsIds,
         assigned_tasks_count: 0,
-        completed_tasks_count: 0
+        completed_tasks_count: 0,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks !== undefined ? data.canBulkDeleteTasks : (updatedStaff.can_bulk_delete_tasks ?? (inferTaskRole(updatedStaff.role) === 'pm'))
       }
     };
   } catch (err: any) {

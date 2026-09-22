@@ -898,4 +898,41 @@ Para preservar la integridad referencial sin colisiones de UUIDs entre bases de 
   - [`public/movilservicios-import-bundle.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle.json): Contiene 10 colaboradores tipados con sus roles oficiales (`pm`, `qa_lead`, `developer`, `designer`), 2 espacios de trabajo (`Plataforma Web [WEB]` y `App Movil [APP]`), 1 proyecto (`General [WEB]`) y 227 tickets en estado limpio `backlog` con prioridad `medium`, sin etiquetas ni subtareas residuales, listos para pruebas de carga y simulación de ingesta real.
   - [`public/movilservicios-import-bundle-con-responsable.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle-con-responsable.json): Variante que mapea la asignación original de cada ticket por correo electrónico de colaborador para auditar la vinculación automática de usuarios.
 
+---
+
+## 21. Sistema de Selección Múltiple, Eliminación en Masa y Gestión de Avatares
+
+### A. Permiso Granular de Eliminación en Masa (`can_bulk_delete_tasks`)
+1. **Esquema Relacional e IAM**:
+   - Se incorpora la columna `can_bulk_delete_tasks BOOLEAN DEFAULT FALSE` en la tabla `public.organization_staff`.
+   - Se integra en el sistema IAM (`src/modules/core/iam/permissions/types.ts` y `defaults.ts`) bajo la sección de operaciones: `can_bulk_delete_tasks` (*"Eliminación en masa de tareas: Permite seleccionar y eliminar tareas en lote desde la tabla general"*).
+   - Por defecto, se encuentra activo para roles con responsabilidad de gestión (`pm`, `owner`, `admin`) y deshabilitado para roles operativos individuales (`staff`, `specialist`), permitiendo su activación manual mediante un interruptor en el modal de creación y edición de colaboradores.
+
+2. **Propagación Segura al Portal de Colaboradores**:
+   - `getCollaboratorPortalData` evalúa la facultad del colaborador y la expone en `CollaboratorPortalData.canBulkDeleteTasks`.
+   - La acción de servidor `portalBulkDeleteTasks(token, taskIds)` valida criptográficamente el token del colaborador, verifica que posea el permiso explícito y realiza la eliminación atómica en bloques de 100 tickets dentro del alcance estricto de su organización.
+
+### B. Barra Flotante de Acciones en Lote (`BulkActionsFloatingBar`)
+1. **Plataforma Central (`/operations/tasks`)**:
+   - La vista de lista (`TaskListView`) integra checkboxes por fila y un selector maestro en el encabezado con soporte para estado indeterminado.
+   - Al seleccionar uno o más tickets, se despliega `BulkActionsFloatingBar` con contador reactivo, confirmación de seguridad y eliminación por lotes a través de `deleteTasks`.
+
+2. **Portal de Colaboradores (`/portal/tasks/[token]`)**:
+   - En la vista de lista (`viewMode === "list"`), si el colaborador dispone de `canBulkDeleteTasks`, se habilitan los checkboxes de selección múltiple y la barra de acciones flotante con confirmación explícita antes de ejecutar el borrado masivo.
+   - La selección se restablece automáticamente al cambiar de pestaña, filtro de estado, búsqueda o proyecto para evitar eliminaciones accidentales fuera de vista.
+
+### C. Experiencia y Rediseño de Avatares de Colaboradores
+1. **Contenedor Limpio y Estado Vacío en el Gestor de Colaboradores**:
+   - Al remover la foto mediante el botón de canequita (`Trash2`), el contenedor queda como un círculo transparente con borde punteado (`border-dashed`), eliminando cualquier asignación automática forzada de avatares 3D o iniciales coloreadas.
+   - La canequita es contextual y solo se visualiza cuando existe una foto o avatar asignado.
+   - Se elimina el botón redundante de carga; la carga de archivos se activa directamente al interactuar sobre el avatar previsualizador con indicador hover.
+
+2. **Cuadrícula Compacta de 2 Filas**:
+   - Los 19 avatares oficiales del paquete 3D se distribuyen en una cuadrícula optimizada (`sm:grid-cols-10`), ocupando exactamente 2 filas para equilibrar la altura vertical del bloque con el avatar previsualizador.
+
+3. **Renderizado Adaptativo en el Hero del Portal**:
+   - **Archivos Subidos**: Las fotos personalizadas cargadas por el usuario se muestran en formato circular (`rounded-full`, `aspect-square`, `object-cover`), con bordes suaves de alto contraste y sombra tridimensional.
+   - **Avatares 3D Oficiales**: Mantienen su renderizado como silueta recortada transparente (`object-contain`), flotando libremente sin recorte circular.
+
+
 

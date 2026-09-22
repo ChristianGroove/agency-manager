@@ -224,7 +224,9 @@ export interface CollaboratorPortalData {
     role: string;
     photo_url?: string | null;
     access_token: string;
+    can_bulk_delete_tasks?: boolean;
   };
+  canBulkDeleteTasks?: boolean;
   organization: {
     id: string;
     name: string;
@@ -634,6 +636,11 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const activeSprint = sprints.find((s) => s.status === "active") || null;
 
+  const canBulkDeleteTasks =
+    staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
+      ? Boolean(staff.can_bulk_delete_tasks)
+      : isLeadOrPm;
+
   return {
     latestAudits,
     staff: {
@@ -644,8 +651,10 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       email: staff.email,
       role: staff.role,
       photo_url: staff.photo_url,
-      access_token: staff.access_token
+      access_token: staff.access_token,
+      can_bulk_delete_tasks: canBulkDeleteTasks,
     },
+    canBulkDeleteTasks,
     organization: orgData,
     workspaces,
     projects,
@@ -2259,3 +2268,61 @@ export async function portalSaveTaskWeeklySnapshot(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Bulk delete tasks from collaborator portal if staff has can_bulk_delete_tasks permission
+ */
+export async function portalBulkDeleteTasks(
+  token: string,
+  taskIds: string[]
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    if (!token || !Array.isArray(taskIds) || taskIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // 1. Verify staff by token
+    const { data: staff, error: staffErr } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, organization_id, role, can_bulk_delete_tasks")
+      .eq("access_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (staffErr || !staff) {
+      return { success: false, error: "Colaborador no autorizado" };
+    }
+
+    const isLead = isStaffLeadOrPmRole(staff.role);
+    const hasPermission =
+      staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
+        ? Boolean(staff.can_bulk_delete_tasks)
+        : isLead;
+
+    if (!hasPermission) {
+      return { success: false, error: "No tienes permiso para eliminar tareas en masa" };
+    }
+
+    // 2. Delete tasks in chunks of 100
+    const CHUNK_SIZE = 100;
+    let totalDeleted = 0;
+
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const { error: delErr, count } = await supabaseAdmin
+        .from("task_items")
+        .delete({ count: "exact" })
+        .eq("organization_id", staff.organization_id)
+        .in("id", chunk);
+
+      if (delErr) throw delErr;
+      totalDeleted += count ?? chunk.length;
+    }
+
+    return { success: true, count: totalDeleted };
+  } catch (err: any) {
+    console.error("Portal bulk delete tasks error:", err);
+    return { success: false, error: err.message };
+  }
+}
+

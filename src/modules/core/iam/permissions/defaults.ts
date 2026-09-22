@@ -65,6 +65,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, MemberPermissions> = {
             can_record_payments: true,
             can_create_projects: true,
             can_delete_projects: true,
+            can_bulk_delete_tasks: true,
             can_view_reports: true,
             can_export_data: true,
             can_manage_appointments: true,
@@ -103,6 +104,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, MemberPermissions> = {
             can_record_payments: true,
             can_create_projects: true,
             can_delete_projects: true,
+            can_bulk_delete_tasks: true,
             can_view_reports: true,
             can_export_data: true,
             can_manage_appointments: true,
@@ -141,6 +143,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, MemberPermissions> = {
             can_record_payments: true,
             can_create_projects: true,
             can_delete_projects: false,
+            can_bulk_delete_tasks: false,
             can_view_reports: false,
             can_export_data: false,
             can_manage_appointments: true,
@@ -220,6 +223,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
         permissions: [
             { key: 'can_create_projects', label: 'Crear proyectos' },
             { key: 'can_delete_projects', label: 'Eliminar proyectos' },
+            { key: 'can_bulk_delete_tasks', label: 'Eliminación en masa de tareas', description: 'Permite seleccionar y eliminar tareas en lote desde la tabla general' },
         ]
     },
     {

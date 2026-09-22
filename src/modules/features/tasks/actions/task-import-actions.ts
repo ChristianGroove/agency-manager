@@ -376,7 +376,13 @@ export async function executeUniversalImport(
           prefix = t.workspace_key.toUpperCase().trim();
         }
 
-        const ticketCode = `${prefix}-${nextTicketNumber++}`;
+        // Resolve ticket code: preserve Jira or external ticket code if provided (e.g. WEB-2465)
+        let ticketCode = `${prefix}-${nextTicketNumber++}`;
+        if (t.ticket_code && /^[A-Z0-9]+-\d+$/i.test(t.ticket_code.trim())) {
+          ticketCode = t.ticket_code.trim().toUpperCase();
+        } else if (t.import_ref_id && /^[A-Z0-9]+-\d+$/i.test(t.import_ref_id.trim())) {
+          ticketCode = t.import_ref_id.trim().toUpperCase();
+        }
         createdTaskCodes.push(ticketCode);
 
         // Resolve staff
