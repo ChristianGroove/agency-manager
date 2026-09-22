@@ -52,9 +52,16 @@ export class EmbeddedSignupHandler {
             if (coexistence && capabilities.platform_type !== 'CLOUD_API') throw new Error('Coexistence Cloud API is not ready')
             if ((mode === 'coexistence') !== coexistence) throw new Error('Phone mode does not match the completed Meta flow')
             const { data: existing, error: lookupError } = await client.from('integration_connections')
-                .select('id,metadata').eq('organization_id', orgId).eq('provider_key', 'whatsapp_cloud')
+                .select('id,metadata,status').eq('organization_id', orgId).eq('provider_key', 'whatsapp_cloud')
                 .eq('metadata->>asset_id', phone.id).neq('status', 'deleted').maybeSingle()
             if (lookupError) throw new Error('Could not resolve existing channel')
+            if (coexistence && existing?.status === 'temporarily_offboarded') {
+                throw new Error('Este número está reconectándose. Espera la confirmación de Meta antes de iniciar otra alta.')
+            }
+            if (coexistence && existing?.metadata?.onboarding_status === 'offboard_required'
+                && existing?.metadata?.coexistence_state !== 'partner_removed') {
+                throw new Error('Desconecta primero la plataforma empresarial desde WhatsApp Business y completa una nueva alta.')
+            }
             const pin = randomInt(100000, 1000000).toString()
             const metadata = {
                 ...(existing?.metadata || {}), asset_id: phone.id, asset_type: 'whatsapp',
@@ -80,38 +87,68 @@ export class EmbeddedSignupHandler {
             if (!coexistence && capabilities.platform_type !== 'CLOUD_API') {
                 await this.graph(phone.id + '/register', accessToken, { messaging_product: 'whatsapp', pin })
             }
-            // Mark routing available before asking Meta to deliver the history webhooks.
+            // Routing must be available before asking Meta to deliver history webhooks.
+            // Coexistence remains in sync_pending until both one-time requests are accepted.
             const ready = await client.from('integration_connections').update({ status: 'active', metadata: {
-                ...metadata, webhook_status: 'active', onboarding_status: 'ready',
-            }}).eq('id', connectionId!).eq('organization_id', orgId)
-            if (ready.error) throw new Error('Could not activate channel')
+                ...metadata, webhook_status: 'active', onboarding_status: coexistence ? 'sync_pending' : 'ready',
+            }}).eq('id', connectionId!).eq('organization_id', orgId).eq('status', 'connecting').select('id').single()
+            if (ready.error || !ready.data) throw new Error('Could not activate channel')
             let syncStatus = 'not_applicable'
             if (coexistence) {
-                syncStatus = 'requested'
+                syncStatus = 'pending'
                 try {
-                    const claim = await client.rpc('claim_meta_history_request', { p_connection_id: connectionId!, p_organization_id: orgId })
-                    if (claim.error) throw new Error('Could not reserve synchronization request')
-                    if (claim.data === true) {
+                    const attempt = await client.rpc('begin_meta_coexistence_onboarding', {
+                        p_connection_id: connectionId!, p_organization_id: orgId,
+                    })
+                    if (attempt.error) throw new Error('Could not begin coexistence synchronization')
+                    const contactsClaim = await client.rpc('claim_meta_coexistence_sync', {
+                        p_connection_id: connectionId!, p_organization_id: orgId, p_kind: 'contacts',
+                    })
+                    if (contactsClaim.error) throw new Error('Could not reserve contacts synchronization')
+                    const previousRequestIdsValid = existing?.metadata?.coexistence_state !== 'partner_removed'
+                    let contactsRequested = previousRequestIdsValid && !!existing?.metadata?.contacts_sync_request_id
+                    if (contactsClaim.data === true) {
                         const contacts = await this.graph(phone.id + '/smb_app_data', accessToken, { messaging_product: 'whatsapp', sync_type: 'smb_app_state_sync' })
-                        const history = await this.graph(phone.id + '/smb_app_data', accessToken, { messaging_product: 'whatsapp', sync_type: 'history' })
+                        if (!contacts.request_id) throw new Error('Meta did not identify the contacts request')
                         const recorded = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
-                            p_patch: { contacts_sync_request_id: contacts.request_id || null, history_sync_request_id: history.request_id || null } })
-                        if (recorded.error) throw new Error('Could not record synchronization requests')
-                    } else {
-                        syncStatus = existing?.metadata?.history_sync_request_status || 'already_requested'
+                            p_patch: { contacts_sync_request_id: contacts.request_id } })
+                        if (recorded.error) throw new Error('Could not record contacts request')
+                        contactsRequested = true
                     }
+                    const historyClaim = await client.rpc('claim_meta_coexistence_sync', {
+                        p_connection_id: connectionId!, p_organization_id: orgId, p_kind: 'history',
+                    })
+                    if (historyClaim.error) throw new Error('Could not reserve history synchronization')
+                    let historyRequested = previousRequestIdsValid && !!existing?.metadata?.history_sync_request_id
+                    if (historyClaim.data === true) {
+                        const history = await this.graph(phone.id + '/smb_app_data', accessToken, { messaging_product: 'whatsapp', sync_type: 'history' })
+                        if (!history.request_id) throw new Error('Meta did not identify the history request')
+                        const recorded = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
+                            p_patch: { history_sync_request_id: history.request_id } })
+                        if (recorded.error) throw new Error('Could not record history request')
+                        historyRequested = true
+                    }
+                    syncStatus = contactsRequested && historyRequested ? 'requested' : 'pending'
                 } catch {
                     syncStatus = 'action_required'
                 }
                 // Do not overwrite progress already delivered by Meta with stale metadata.
                 const update = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
-                    p_patch: { history_sync_request_status: syncStatus } })
+                    p_patch: { history_sync_request_status: syncStatus,
+                        onboarding_status: syncStatus === 'requested' ? 'sync_requested'
+                            : syncStatus === 'action_required' ? 'offboard_required' : 'sync_pending' } })
                 if (update.error) throw new Error('Could not save synchronization status')
+                if (syncStatus === 'action_required') {
+                    const blocked = await client.from('integration_connections').update({ status: 'action_required' })
+                        .eq('id', connectionId!).eq('organization_id', orgId)
+                    if (blocked.error) throw new Error('Could not pause channel after sync failure')
+                }
             }
             return { success: true, connectionId, wabaId, syncStatus }
         } catch (error) {
             if (connectionId) {
-                await client.from('integration_connections').update({ status: 'error' }).eq('id', connectionId).eq('organization_id', orgId)
+                await client.from('integration_connections').update({ status: 'error' }).eq('id', connectionId)
+                    .eq('organization_id', orgId).in('status', ['connecting', 'active'])
             }
             console.error('[EmbeddedSignup] Failed', { error: error instanceof Error ? error.name : 'Unknown' })
             return { success: false, connectionId, error: error instanceof Error ? error.message : 'Embedded signup failed' }

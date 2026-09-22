@@ -61,6 +61,12 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
         return { status: 'error', message: 'Connection not found' }
     }
 
+    // Graph token validity does not imply that a coexistence companion can send.
+    // Keep lifecycle decisions made by Meta webhooks (and local deletion) intact.
+    if (['temporarily_offboarded', 'action_required', 'deleted', 'connecting'].includes(connection.status)) {
+        return { status: 'disconnected', message: connectionHealthMessage('disconnected') }
+    }
+
     const adapter = integrationRegistry.getAdapter(connection.provider_key)
     if (!adapter || !adapter.checkConnectionStatus) {
         return { status: 'unknown', message: 'No health check available for this provider' }
@@ -80,6 +86,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
                 last_synced_at: new Date().toISOString()
             })
             .eq('id', connectionId)
+            .in('status', ['active', 'connected', 'disconnected', 'error', 'expired'])
 
         return {
             status: newStatus as any,
@@ -93,6 +100,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
             .from('integration_connections')
             .update({ status: 'error' })
             .eq('id', connectionId)
+            .in('status', ['active', 'connected', 'disconnected', 'error', 'expired'])
 
         return { status: 'error', message: connectionHealthMessage('error', error.message) }
     }
@@ -158,7 +166,7 @@ export async function getUnhealthyConnections(organizationId: string): Promise<{
         .from('integration_connections')
         .select('id, connection_name, status, provider_key')
         .eq('organization_id', organizationId)
-        .in('status', ['disconnected', 'error', 'expired'])
+        .in('status', ['disconnected', 'error', 'expired', 'temporarily_offboarded', 'action_required'])
 
     return data || []
 }

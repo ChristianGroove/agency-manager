@@ -209,7 +209,13 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 throw new Error(data.error || t('meta.embedded_signup.error_generic'));
             }
 
-            if (data.syncStatus === 'action_required') toast.warning('Canal conectado. La sincronización requiere atención antes de 24 horas.');
+            if (data.syncStatus === 'action_required') {
+                setStatus('error');
+                setErrorMessage('Meta no completó la solicitud de sincronización. Desconecta la plataforma empresarial desde WhatsApp Business y realiza una nueva alta.');
+                router.refresh();
+                return;
+            }
+            if (data.syncStatus === 'pending') toast.warning('La sincronización inicial sigue pendiente. Pixy no repetirá las solicitudes enviadas a Meta.');
             setStatus('success');
             toast.success(t('meta.embedded_signup.success'), {
                 description: `WABA: ${data.wabaId}`,

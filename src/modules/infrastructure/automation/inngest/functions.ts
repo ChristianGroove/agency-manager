@@ -231,9 +231,11 @@ import { processStripeWebhook } from "@/inngest/stripe";
 import { trashCleanup } from "@/inngest/trash-cleanup";
 
 import { processMetaWebhook } from '@/inngest/meta-messaging';
+import { expireMetaCoexistenceOnboarding } from '@/inngest/meta-coexistence';
 
 export const functions = [
     processMetaWebhook,
+    expireMetaCoexistenceOnboarding,
     runWorkflow, 
     vaultSnapshotScheduler, 
     contractOrchestrator, 

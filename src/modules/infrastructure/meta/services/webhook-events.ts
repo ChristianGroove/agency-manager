@@ -4,10 +4,17 @@ export async function processMetaControlEvents(payload: any) {
     for (const entry of payload.entry || []) {
         for (const change of entry.changes || []) {
             const value = change.value || {}
-            if (change.field === 'account_update' && value.event === 'PARTNER_REMOVED') {
-                const revoked = await supabaseAdmin.from('integration_connections').update({status:'action_required'})
-                    .eq('provider_key','whatsapp_cloud').eq('metadata->>waba_id',entry.id).in('status',['active','connected'])
-                if (revoked.error) throw new Error('Could not suspend the revoked channel')
+            if (change.field === 'account_update' && ['ACCOUNT_OFFBOARDED', 'ACCOUNT_RECONNECTED', 'PARTNER_REMOVED'].includes(value.event)) {
+                const seconds = Number(entry.time)
+                const eventAt = Number.isFinite(seconds) && seconds > 0
+                    ? new Date(seconds * 1000).toISOString() : new Date().toISOString()
+                const updated = await supabaseAdmin.rpc('apply_meta_account_update', {
+                    p_waba_id: entry.id, p_event: value.event, p_event_at: eventAt,
+                    p_reason: value.disconnection_info?.reason || null,
+                    p_initiated_by: value.disconnection_info?.initiated_by || null,
+                })
+                if (updated.error) throw new Error('Could not apply Meta account update')
+                continue
             }
             const phoneId = value.metadata?.phone_number_id
             if (!phoneId) continue

@@ -102,6 +102,26 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
                         <p className="text-sm text-muted-foreground capitalize">
                             {channel.provider_key.replace('_', ' ')} • {channel.status}
                         </p>
+                        {channel.metadata?.connection_mode === 'coexistence' && channel.status === 'temporarily_offboarded' && (
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                                Meta pausó temporalmente la conexión de WhatsApp Business. Los envíos desde Pixy están detenidos; espera la reconexión automática desde la app.
+                            </p>
+                        )}
+                        {channel.metadata?.connection_mode === 'coexistence' && channel.metadata?.onboarding_status === 'offboard_required' && (
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                                La sincronización inicial requiere una nueva alta. En WhatsApp Business ve a Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta y vuelve a conectar el canal en Pixy.
+                            </p>
+                        )}
+                        {channel.metadata?.connection_mode === 'coexistence' && channel.metadata?.onboarding_status === 'sync_pending' && (
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                                La sincronización inicial con Meta sigue pendiente. Si no se completa el inicio antes de {channel.metadata.coexistence_sync_deadline_at || '24 horas'}, habrá que desconectar el canal desde WhatsApp Business y repetir el alta.
+                            </p>
+                        )}
+                        {channel.metadata?.connection_mode === 'coexistence' && channel.metadata?.coexistence_state === 'partner_removed' && (
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                                La cuenta se desconectó en Meta. Completa una nueva alta de Embedded Signup para volver a usar este canal.
+                            </p>
+                        )}
                     </div>
                 </div>
                 <Button onClick={handleSave} disabled={isLoading}>

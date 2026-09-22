@@ -70,6 +70,8 @@ export async function GET(request: Request) {
     console.log('[Cron:CheckConnections] Starting health check cycle...')
 
     try {
+        const expired = await supabaseAdmin.rpc('expire_meta_coexistence_onboarding')
+        if (expired.error) throw new Error('Could not expire overdue coexistence onboarding')
         // Get all active connections across all organizations
         const { data: connections, error } = await supabaseAdmin
             .from('integration_connections')
