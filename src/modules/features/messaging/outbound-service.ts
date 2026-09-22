@@ -142,6 +142,9 @@ export class OutboundService {
 
         // Use context conversation if available, otherwise fetch
         let conv = context?.conversation
+        if (conv && (conv.organization_id !== organizationId || conv.connection_id !== channelId)) {
+            throw new Error('Conversation channel organization mismatch')
+        }
         if (!conv) {
              const { data: fetchedConv } = await supabase
                 .from('conversations')

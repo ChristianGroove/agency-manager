@@ -42,6 +42,18 @@ afterEach(() => {
 })
 
 describe('MetaAdapter', () => {
+    it('checks token health without placing the credential in the URL', async () => {
+        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }))
+        vi.stubGlobal('fetch', fetchMock)
+        const { MetaAdapter } = await import('./meta-adapter')
+        const result = await new MetaAdapter().checkConnectionStatus({ accessToken: 'private-health-token' })
+        expect(result.status).toBe('active')
+        expect(fetchMock).toHaveBeenCalledWith('https://graph.facebook.com/v21.0/me?fields=id', {
+            headers: { Authorization: 'Bearer private-health-token' },
+        })
+        expect(String(fetchMock.mock.calls[0][0])).not.toContain('private-health-token')
+    })
+
     it('does not expose Meta send credentials or payload details in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)

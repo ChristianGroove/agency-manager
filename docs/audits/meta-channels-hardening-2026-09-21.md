@@ -83,6 +83,8 @@ La revisión posterior del autoservicio cerró la activación de WhatsApp por OA
 
 Esto aún no cierra toda la migración de activos: hay que inventariar y conciliar las conexiones históricas de cada entorno antes del despliegue, y medir el coste de la búsqueda de padres heredados en el camino de webhooks. El almacenamiento de adjuntos sigue siendo público y requiere la fase de media privada indicada abajo.
 
+El servicio de salida ahora rechaza una conversación proporcionada cuyo tenant o canal no coincida con el canal de envío; el chequeo de salud de Graph envía el token en la cabecera `Authorization`, sin incluirlo en la URL. La salida durable común sigue pendiente: el camino de agentes usa `after()`, el de automatizaciones envía antes de registrar y el runner de campañas avanza el paso al recibir la respuesta de envío. Migrarlos exige conservar la semántica de campaña (avanzar al confirmar entrega o fallo conocido) y un estado `unknown` para resultados HTTP ambiguos; no se debe reemplazar el envío síncrono por una cola sin cambiar ese contrato.
+
 | Prioridad | Deuda / límite real | Solución y criterio de cierre |
 | --- | --- | --- |
 | P1, antes de coexistencia Live | El ciclo de baja/reconexión ya está implementado en la rama, pero no tiene aceptación Live; la cola de salida durable aún falta. | Probar cambio/reinstalación de móvil, opt-out y ausencia de reconexión con Meta; completar outbox y recuperación de envíos pendientes. |

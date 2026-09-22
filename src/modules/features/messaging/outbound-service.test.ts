@@ -72,6 +72,20 @@ afterEach(() => {
 })
 
 describe('OutboundService', () => {
+    it('rejects a supplied conversation from another channel before calling Meta', async () => {
+        const adapterSendMessage = vi.fn()
+        mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage(
+            'channel-a', 'recipient', 'hola', 'tenant-a', {
+                connection: { id: 'channel-a', organization_id: 'tenant-a', status: 'active',
+                    provider_key: 'whatsapp_cloud', credentials: {}, metadata: {} },
+                conversation: { id: 'conversation-b', organization_id: 'tenant-b', connection_id: 'channel-b' },
+            }
+        )).rejects.toThrow('Conversation channel organization mismatch')
+        expect(adapterSendMessage).not.toHaveBeenCalled()
+    })
+
     it('does not expose outbound recipient, channel, org, or external ids in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)

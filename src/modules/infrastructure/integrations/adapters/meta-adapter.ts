@@ -147,7 +147,9 @@ export class MetaAdapter implements IntegrationAdapter {
 
         try {
             // Simple call to verify token
-            const resp = await fetch(`https://graph.facebook.com/v21.0/me?fields=id&access_token=${accessToken}`);
+            const resp = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
             if (resp.ok) {
                 return { status: 'active' };
             } else {
