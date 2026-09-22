@@ -762,7 +762,7 @@ export async function createTask(
  */
 export async function updateTask(
   taskId: string,
-  data: Partial<TaskItem>
+  data: Partial<TaskItem> & { loggedHours?: number; note?: string }
 ): Promise<{ success: boolean; task?: TaskItem; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
@@ -771,12 +771,16 @@ export async function updateTask(
     delete updateData.project;
     delete updateData.comments_count;
     delete updateData.blocked_by;
+    const loggedHours = updateData.loggedHours ? Number(updateData.loggedHours) : 0;
+    const note = updateData.note;
+    delete updateData.loggedHours;
+    delete updateData.note;
 
     // Fetch previous state for audit comparison
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist, actual_hours,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -907,6 +911,16 @@ export async function updateTask(
         const oldP = TASK_PRIORITY_LABELS[prevTask.priority as TaskPriority] || prevTask.priority;
         const newP = TASK_PRIORITY_LABELS[updateData.priority as TaskPriority] || updateData.priority;
         await logTaskAuditComment(orgId, taskId, `⚡ Prioridad cambiada a ${newP} (anterior: ${oldP})`);
+      }
+
+      // Work hours logged audit
+      if (loggedHours > 0) {
+        const noteStr = note && note.trim() ? ` — "${note.trim()}"` : "";
+        await logTaskAuditComment(
+          orgId,
+          taskId,
+          `⏱️ Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`
+        );
       }
 
       // Due date audit

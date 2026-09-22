@@ -1568,6 +1568,8 @@ export async function portalUpdateTask(
     qaStaffId?: string | null;
     estimatedHours?: number;
     actualHours?: number;
+    loggedHours?: number;
+    note?: string;
     dueDate?: string | null;
     progressPercentage?: number;
     checklist?: TaskChecklistItem[];
@@ -1596,7 +1598,7 @@ export async function portalUpdateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -1859,6 +1861,17 @@ export async function portalUpdateTask(
         if (updateData.status === "done") {
           await handlePortalTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
         }
+      }
+
+      // Work hours logged audit
+      if (data.loggedHours !== undefined && data.loggedHours > 0) {
+        const noteStr = data.note && data.note.trim() ? ` — "${data.note.trim()}"` : "";
+        await logPortalTaskAuditComment(
+          orgId,
+          taskId,
+          `⏱️ Registro de trabajo: +${data.loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`,
+          staff
+        );
       }
 
       // Priority change audit

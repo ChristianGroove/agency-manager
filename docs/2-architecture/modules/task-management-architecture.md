@@ -934,5 +934,28 @@ Para preservar la integridad referencial sin colisiones de UUIDs entre bases de 
    - **Archivos Subidos**: Las fotos personalizadas cargadas por el usuario se muestran en formato circular (`rounded-full`, `aspect-square`, `object-cover`), con bordes suaves de alto contraste y sombra tridimensional.
    - **Avatares 3D Oficiales**: Mantienen su renderizado como silueta recortada transparente (`object-contain`), flotando libremente sin recorte circular.
 
+---
+
+## 22. Cierre de Brecha de Telemetría e Imputación Ágil de Horas en Transición
+
+### A. Problemática Detectada y Brecha Operativa
+Previamente, el modal de imputación rápida de horas (`TaskLogWorkModal`) únicamente se disparaba ante interacciones superficiales en las tablas o el tablero Kanban (botón check de completado o selector rápido de fila). Sin embargo, el 80% del trabajo real de los colaboradores se realiza dentro del modal detallado de la tarea (`TaskPortalDetailModal` en el portal y `TaskDetailModal` en la plataforma central), donde leen especificaciones, marcan entregables del checklist y adjuntan archivos. Al cambiar el estado a "Para Revisión" (QA) o "Completada" desde el modal, el sistema guardaba directamente sin solicitar el registro de horas invertidas, originando una fuga masiva de datos en la telemetría de tiempos del equipo.
+
+### B. Arquitectura de Intercepción en Modales de Detalle
+Se implementó el patrón de diseño *Log Work on Transition*:
+1. **Detección de Transición en Guardado**:
+   - Al pulsar **"Guardar Cambios"** en [`TaskPortalDetailModal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx) y [`TaskDetailModal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-detail-modal.tsx), se evalúa si el estado final es `in_review` o `done` y difiere del estado previo de la tarea (`task.status !== finalStatus`).
+2. **Despliegue Superpuesto de `TaskLogWorkModal` (`z-[80]`)**:
+   - Se despliega el diálogo ágil con comparativa de horas estimadas vs. reales previas, sugerencia inteligente de horas restantes y chips de adición rápida (`+30m`, `+1h`, `+2h`, `+4h`), además de campo opcional para notas de entrega.
+3. **Flujos de Decisión**:
+   - **Guardar y avanzar**: Suma incrementalmente las horas ingresadas a `actual_hours`, registra el comentario de auditoría con la nota opcional en el feed de la tarea, ejecuta la persistencia y cierra ambos modales.
+   - **Omitir horas y avanzar**: Guarda los cambios de estado y contenido con 0 horas incrementales para no bloquear flujos donde no aplique registro.
+   - **Cancelar**: Cierra únicamente `TaskLogWorkModal` y mantiene abierto el modal de detalle sin perder las modificaciones previas.
+4. **Acceso Rápido Manual (`+ Imputar`)**:
+   - Se habilitó un botón directo `+ Imputar` junto al campo de "Horas Reales" en ambos modales de detalle, permitiendo imputar horas en cualquier momento sin necesidad de cambiar el estado a completado.
+5. **Celebración de Logro Sincronizada**:
+   - Al marcar una tarea como `done` desde el modal de detalle del portal, se detona reactivamente la animación de confeti/celebración, garantizando paridad visual con el botón de check de la tabla.
+
+
 
 

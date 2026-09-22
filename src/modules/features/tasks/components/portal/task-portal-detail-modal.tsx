@@ -55,8 +55,10 @@ import {
   Edit3,
   Check,
   Zap,
+  Timer,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
+import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type {
   TaskItem,
@@ -306,6 +308,12 @@ export function TaskPortalDetailModal({
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
   const [blockedReason, setBlockedReason] = useState<string>(task?.blocked_reason || "")
   const [selectedSprintId, setSelectedSprintId] = useState<string>(task?.sprint_id || "none")
+  const [pendingLogWork, setPendingLogWork] = useState<{
+    finalStatus: TaskStatus
+    finalProgress: number
+    targetLabel?: string
+    isManualLog?: boolean
+  } | null>(null)
 
   const currentBlocker = useMemo(() => {
     if (!blockedByTaskId || blockedByTaskId === "none") return null
@@ -537,39 +545,78 @@ export function TaskPortalDetailModal({
           }
         }
 
-        const res = await portalUpdateTask(token, task.id, {
-          title: isLeadOrPm ? title : undefined,
-          description,
-          status: finalStatus,
-          priority: isLeadOrPm ? priority : undefined,
-          type: isLeadOrPm ? type : undefined,
-          progressPercentage: canCloseParentTask ? finalProgress : undefined,
-          assignedStaffId: isLeadOrPm ? (assignedStaffId === "unassigned" ? null : assignedStaffId) : undefined,
-          qaStaffId: isLeadOrPm ? (qaStaffId === "unassigned" ? null : qaStaffId) : undefined,
-          estimatedHours: isLeadOrPm ? Number(estimatedHours) : undefined,
-          actualHours: Number(actualHours),
-          dueDate: isLeadOrPm ? (dueDate || null) : undefined,
-          checklist,
-          tags: isLeadOrPm || isQa ? tags : undefined,
-          attachments,
-          blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
-          sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
-          isRecurring: isLeadOrPm ? isRecurring : undefined,
-          recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
-          recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
-          blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
-        })
+        // Intercept transitions to QA or Done with the agile log work modal
+        const isTransitioningToReviewOrDone =
+          (finalStatus === "in_review" || finalStatus === "done") &&
+          task.status !== finalStatus
 
-        if (res.success && res.task) {
-          toast.success("Tarea actualizada con éxito")
-          setSavedProgress(finalProgress)
-          setProgress(finalProgress)
-          setStatus(finalStatus)
-          onTaskUpdated?.(res.task)
-          onClose()
-        } else {
-          toast.error(res.error || "Error al actualizar la tarea")
+        if (isTransitioningToReviewOrDone) {
+          setIsSaving(false)
+          setPendingLogWork({
+            finalStatus,
+            finalProgress,
+            targetLabel: finalStatus === "done" ? "Completar" : "Enviar a QA",
+          })
+          return
         }
+
+        await executeSaveDetails(finalStatus, finalProgress, 0)
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar cambios")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const executeSaveDetails = async (
+    finalStatus: TaskStatus,
+    finalProgress: number,
+    loggedHours = 0,
+    note?: string
+  ) => {
+    if (!task) return
+    setIsSaving(true)
+    try {
+      const incrementalHours = loggedHours ? Number(loggedHours) : 0
+      const totalActualHours = Math.round(((Number(actualHours) || 0) + incrementalHours) * 10) / 10
+
+      const res = await portalUpdateTask(token, task.id, {
+        title: isLeadOrPm ? title : undefined,
+        description,
+        status: finalStatus,
+        priority: isLeadOrPm ? priority : undefined,
+        type: isLeadOrPm ? type : undefined,
+        progressPercentage: canCloseParentTask ? finalProgress : undefined,
+        assignedStaffId: isLeadOrPm ? (assignedStaffId === "unassigned" ? null : assignedStaffId) : undefined,
+        qaStaffId: isLeadOrPm ? (qaStaffId === "unassigned" ? null : qaStaffId) : undefined,
+        estimatedHours: isLeadOrPm ? Number(estimatedHours) : undefined,
+        actualHours: totalActualHours,
+        dueDate: isLeadOrPm ? (dueDate || null) : undefined,
+        checklist,
+        tags: isLeadOrPm || isQa ? tags : undefined,
+        attachments,
+        blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
+        sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
+        isRecurring: isLeadOrPm ? isRecurring : undefined,
+        recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
+        recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
+        blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
+        loggedHours: incrementalHours > 0 ? incrementalHours : undefined,
+        note: note,
+      })
+
+      if (res.success && res.task) {
+        toast.success("Tarea actualizada con éxito")
+        setSavedProgress(finalProgress)
+        setProgress(finalProgress)
+        setStatus(finalStatus)
+        setActualHours(totalActualHours)
+        initialStatusRef.current = finalStatus
+        onTaskUpdated?.(res.task)
+        onClose()
+      } else {
+        toast.error(res.error || "Error al actualizar la tarea")
       }
     } catch (err: any) {
       toast.error(err.message || "Error al guardar cambios")
@@ -977,7 +1024,8 @@ export function TaskPortalDetailModal({
     task?.project
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>{title || (isCreating ? "Nuevo Requerimiento / Ticket" : "Detalle de Tarea")}</DialogTitle>
@@ -2350,9 +2398,28 @@ export function TaskPortalDetailModal({
                 )}
               </div>
               <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1 truncate">
-                  Horas Reales
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-medium text-muted-foreground block truncate">
+                    Horas Reales
+                  </label>
+                  {!isCreating && task && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingLogWork({
+                          finalStatus: status,
+                          finalProgress: progress,
+                          targetLabel: "Registrar tiempo",
+                          isManualLog: true,
+                        })
+                      }
+                      className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Timer className="w-3 h-3" />
+                      + Imputar
+                    </button>
+                  )}
+                </div>
                 <Input
                   type="number"
                   min="0"
@@ -2381,5 +2448,28 @@ export function TaskPortalDetailModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Agile Work Hours Imputation Modal on QA, Completion or Manual Impute */}
+    {pendingLogWork && task && (
+      <TaskLogWorkModal
+        isOpen={!!pendingLogWork}
+        onClose={() => setPendingLogWork(null)}
+        task={task}
+        targetStatus={pendingLogWork.finalStatus}
+        targetLabel={pendingLogWork.targetLabel}
+        currentUserId={currentStaffId}
+        onConfirm={async (loggedHours, note) => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, loggedHours, note)
+        }}
+        onSkip={async () => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, 0)
+        }}
+      />
+    )}
+  </>
   )
 }

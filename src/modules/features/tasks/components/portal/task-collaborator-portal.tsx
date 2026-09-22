@@ -3826,6 +3826,9 @@ export function TaskCollaboratorPortal({
             setAllTeamTasks((prev) => (prev ? prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)) : prev))
           }
           setAvailableTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
+          if (updatedTask.status === "done" && selectedTask?.status !== "done") {
+            triggerCelebration({ ...updatedTask, progress_percentage: 100, status: "done" })
+          }
           setSelectedTask(updatedTask)
         }}
         onTaskDeleted={(taskId) => {

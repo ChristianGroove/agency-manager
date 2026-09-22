@@ -50,10 +50,12 @@ import {
   AlertTriangle,
   Edit3,
   Check,
+  Timer,
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment, RecurrenceInterval } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
+import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import {
   updateTask,
   deleteTask,
@@ -229,6 +231,12 @@ export function TaskDetailModal({
   const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task.blocked_by_task_id || "none")
   const [blockedReason, setBlockedReason] = useState<string>(task.blocked_reason || "")
+  const [pendingLogWork, setPendingLogWork] = useState<{
+    finalStatus: TaskStatus
+    finalProgress: number
+    targetLabel?: string
+    isManualLog?: boolean
+  } | null>(null)
 
   const currentBlocker = useMemo(() => {
     if (!blockedByTaskId || blockedByTaskId === "none") return null
@@ -329,37 +337,64 @@ export function TaskDetailModal({
 
   const handleSaveDetails = async () => {
     if (!task) return
+
+    const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
+    let finalProgress = progress
+    let finalStatus = status
+
+    // Prevenir falso completado si aún existen entregables pendientes en el checklist
+    if (hasUnfinishedDeliverables) {
+      if (finalProgress > 95) finalProgress = 95
+      if (finalStatus === "done") {
+        finalStatus = "in_review"
+        finalProgress = 95
+        toast.warning("Entregables pendientes", {
+          description: "La tarea no puede marcarse completada mientras existan entregables pendientes. Avance fijado al 95%."
+        })
+      }
+    }
+
+    if (hasUnresolvedBlocker) {
+      if (finalProgress > 95) finalProgress = 95
+      if (finalStatus === "done") {
+        toast.warning("Ticket con dependencia pendiente", {
+          description: `No se puede marcar el ticket como completado: depende de #${currentBlocker?.ticket_code || "ticket predecesor"}, el cual aún está pendiente.`,
+          id: "blocker-close-lock-modal",
+        })
+        return
+      }
+    } else if (finalStatus === "done") {
+      finalProgress = 100
+    }
+
+    // Intercept transitions to QA or Done with the agile log work modal
+    const isTransitioningToReviewOrDone =
+      (finalStatus === "in_review" || finalStatus === "done") &&
+      task.status !== finalStatus
+
+    if (isTransitioningToReviewOrDone) {
+      setPendingLogWork({
+        finalStatus,
+        finalProgress,
+        targetLabel: finalStatus === "done" ? "Completar" : "Enviar a QA",
+      })
+      return
+    }
+
+    await executeSaveDetails(finalStatus, finalProgress, 0)
+  }
+
+  const executeSaveDetails = async (
+    finalStatus: TaskStatus,
+    finalProgress: number,
+    loggedHours = 0,
+    note?: string
+  ) => {
+    if (!task) return
     setIsSaving(true)
     try {
-      const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
-      let finalProgress = progress
-      let finalStatus = status
-
-      // Prevenir falso completado si aún existen entregables pendientes en el checklist
-      if (hasUnfinishedDeliverables) {
-        if (finalProgress > 95) finalProgress = 95
-        if (finalStatus === "done") {
-          finalStatus = "in_review"
-          finalProgress = 95
-          toast.warning("Entregables pendientes", {
-            description: "La tarea no puede marcarse completada mientras existan entregables pendientes. Avance fijado al 95%."
-          })
-        }
-      }
-
-      if (hasUnresolvedBlocker) {
-        if (finalProgress > 95) finalProgress = 95
-        if (finalStatus === "done") {
-          toast.warning("Ticket con dependencia pendiente", {
-            description: `No se puede marcar el ticket como completado: depende de #${currentBlocker?.ticket_code || "ticket predecesor"}, el cual aún está pendiente.`,
-            id: "blocker-close-lock-modal",
-          })
-          setIsSaving(false)
-          return
-        }
-      } else if (finalStatus === "done") {
-        finalProgress = 100
-      }
+      const incrementalHours = loggedHours ? Number(loggedHours) : 0
+      const totalActualHours = Math.round(((Number(actualHours) || 0) + incrementalHours) * 10) / 10
 
       const res = await updateTask(task.id, {
         title: title.trim(),
@@ -371,7 +406,7 @@ export function TaskDetailModal({
         assigned_staff_id: assignedStaffId === "unassigned" ? null : assignedStaffId,
         qa_staff_id: qaStaffId === "unassigned" ? null : qaStaffId,
         estimated_hours: Number(estimatedHours),
-        actual_hours: Number(actualHours),
+        actual_hours: totalActualHours,
         due_date: dueDate || null,
         checklist,
         tags,
@@ -381,12 +416,15 @@ export function TaskDetailModal({
         recurrence_day: isRecurring ? recurrenceDay : null,
         blocked_by_task_id: blockedByTaskId === "none" ? null : blockedByTaskId,
         blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
-      })
+        loggedHours: incrementalHours > 0 ? incrementalHours : undefined,
+        note: note,
+      } as any)
 
       if (res.success && res.task) {
         toast.success("Tarea actualizada con éxito")
         setStatus(finalStatus)
         setProgress(finalProgress)
+        setActualHours(totalActualHours)
         initialStatusRef.current = finalStatus
         onTaskUpdated?.(res.task, res.unblockedTasks)
         onClose()
@@ -729,7 +767,8 @@ export function TaskDetailModal({
     checklist.length > 0 ? Math.round((completedChecklistCount / checklist.length) * 100) : 0
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card">
         {/* Screen Reader Header */}
         <DialogHeader className="sr-only">
@@ -1733,9 +1772,28 @@ export function TaskDetailModal({
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                  Horas Reales
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-medium text-muted-foreground block truncate">
+                    Horas Reales
+                  </label>
+                  {task && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingLogWork({
+                          finalStatus: status,
+                          finalProgress: progress,
+                          targetLabel: "Registrar tiempo",
+                          isManualLog: true,
+                        })
+                      }
+                      className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Timer className="w-3 h-3" />
+                      + Imputar
+                    </button>
+                  )}
+                </div>
                 <Input
                   type="number"
                   min="0"
@@ -1750,5 +1808,27 @@ export function TaskDetailModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Agile Work Hours Imputation Modal on QA, Completion or Manual Impute */}
+    {pendingLogWork && task && (
+      <TaskLogWorkModal
+        isOpen={!!pendingLogWork}
+        onClose={() => setPendingLogWork(null)}
+        task={task}
+        targetStatus={pendingLogWork.finalStatus}
+        targetLabel={pendingLogWork.targetLabel}
+        onConfirm={async (loggedHours, note) => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, loggedHours, note)
+        }}
+        onSkip={async () => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, 0)
+        }}
+      />
+    )}
+  </>
   )
 }
