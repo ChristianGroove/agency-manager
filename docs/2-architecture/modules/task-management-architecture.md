@@ -886,3 +886,9 @@ Para preservar la integridad referencial sin colisiones de UUIDs entre bases de 
 - **Auditoría Previa sin Efectos Secundarios (Dry Run)**: Análisis preventivo que totaliza tareas, subtareas, proyectos y clasifica a los colaboradores entre existentes y nuevos.
 - **Acceso Global**: Disponible desde el menú `+ Nuevo` -> `Importar Datos / Tareas` en [`task-manager-view.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/task-manager-view.tsx).
 
+### D. Conjunto de Datos Oficial de Prueba & Migración (Tenant Movilservicios)
+- **Artefactos Canónicos Generados**:
+  - [`public/movilservicios-import-bundle.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle.json): Contiene 10 colaboradores tipados con sus roles oficiales (`pm`, `qa_lead`, `developer`, `designer`), 2 espacios de trabajo (`Plataforma Web [WEB]` y `App Movil [APP]`), 1 proyecto (`General [WEB]`) y 227 tickets en estado limpio `backlog` con prioridad `medium`, sin etiquetas ni subtareas residuales, listos para pruebas de carga y simulación de ingesta real.
+  - [`public/movilservicios-import-bundle-con-responsable.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle-con-responsable.json): Variante que mapea la asignación original de cada ticket por correo electrónico de colaborador para auditar la vinculación automática de usuarios.
+
+
