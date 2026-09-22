@@ -13,6 +13,7 @@ import {
     WebhookValidationResult
 } from "./types";
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { ChannelResolver } from '@/modules/features/messaging/channel-resolver';
 
 const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
 const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
@@ -119,19 +120,8 @@ export class MetaProvider implements MessagingProvider {
                 });
             }
 
-            // 1. Resolve Token for this AssetId if possible
-            let token = this.apiToken;
-            if (assetId) {
-                const dbToken = await this.getTokenByAssetId(assetId);
-                if (dbToken) {
-                    token = dbToken;
-                    if (!isDeployedRuntime()) {
-                        console.log(`[MetaProvider] Using DB token for ${assetId}`);
-                    } else {
-                        console.log('[MetaProvider] Using DB token', { assetId: 'present' });
-                    }
-                }
-            }
+            // Webhook media must use the uniquely owned channel, never a process-wide token.
+            const token = assetId ? await this.getTokenByAssetId(assetId, 'whatsapp') : null;
 
             if (!token) {
                 console.error(`[MetaProvider] No token available for media resolution!`);
@@ -149,17 +139,6 @@ export class MetaProvider implements MessagingProvider {
                 const err = await urlRes.json().catch(() => ({}));
                 logMetaProviderError(`[MetaProvider] Media ID resolution failed:`, err);
 
-                // Fallback to constructor token if DB token failed
-                if (token !== this.apiToken && this.apiToken) {
-                    console.log(`[MetaProvider] Retrying with constructor token...`);
-                    const retryRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
-                        headers: { 'Authorization': `Bearer ${this.apiToken}` }
-                    });
-                    if (retryRes.ok) {
-                        const { url } = await retryRes.json();
-                        return await this.downloadAndUpload(url, mediaId, mimeType, this.apiToken);
-                    }
-                }
                 return "";
             }
 
@@ -210,39 +189,16 @@ export class MetaProvider implements MessagingProvider {
         }
     }
 
-    /**
-     * Resolves the Meta API token for a specific Asset ID (Phone Number ID or Page ID).
-     *
-     * DEV NOTE:
-     * 1. CRITICAL FOR PRODUCTION: Integration credentials in the DB are encrypted (AES-256-GCM).
-     *    We MUST use await resolveConnectionCredentials() to read the accessToken/phoneId.
-     * 2. TYPE SAFETY: Always cast IDs to String() before comparison to avoid numeric/string mismatch.
-     * 3. MULTI-TENANT: Each WhatsApp account has its own token; this resolver ensures the
-     *    correct one is used based on the incoming webhook's metadata.
-     */
-    private async getTokenByAssetId(assetId: string): Promise<string | null> {
+    /** Resolve ownership before any Graph read made while parsing a webhook. */
+    private async getTokenByAssetId(assetId: string, channel: 'whatsapp' | 'messenger' | 'instagram'): Promise<string | null> {
         try {
-            const { data: connections, error } = await (supabaseAdmin)
-                .from('integration_connections')
-                .select('credentials, metadata, provider_key')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm', 'instagram_dme'])
-                .eq('status', 'active');
-
-            if (error || !connections) return null;
-
-            for (const conn of connections) {
-                // DECRYPT credentials (critical for production where they are encrypted in DB)
-                const creds = await resolveConnectionCredentials(conn.credentials);
-                const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || conn.metadata?.asset_id || "");
-                const pageId = String(creds?.pageId || creds?.page_id || conn.metadata?.page_id || "");
-                const connAssetId = String(conn.metadata?.asset_id || "");
-
-                if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId)) || (connAssetId && connAssetId === String(assetId))) {
-                    const token = creds.accessToken || creds.apiToken || creds.access_token || null;
-                    if (token) return token;
-                }
-            }
-            return null;
+            const metadata = channel === 'whatsapp' ? { phoneNumberId: assetId }
+                : channel === 'messenger' ? { pageId: assetId }
+                    : { instagramBusinessId: assetId };
+            const match = await ChannelResolver.resolveConnection({ channel, metadata }, supabaseAdmin);
+            if (!match) return null;
+            const creds = await resolveConnectionCredentials(match.connection.credentials);
+            return creds.accessToken || creds.apiToken || creds.access_token || null;
         } catch (error) {
             logMetaProviderError(`[MetaProvider] getTokenByAssetId Error:`, error);
             return null;
@@ -752,13 +708,13 @@ export class MetaProvider implements MessagingProvider {
      * @param channel The channel type ('messenger' or 'instagram')
      */
     private async fetchSocialProfile(psid: string, assetId: string, channel: string): Promise<{ name: string }> {
-        const cacheKey = `${channel}:${psid}`;
+        const cacheKey = `${channel}:${assetId}:${psid}`;
         if (this.profileCache[cacheKey] && this.profileCache[cacheKey].expires > Date.now()) {
             return { name: this.profileCache[cacheKey].name };
         }
 
         try {
-            const token = await this.getTokenByAssetId(assetId);
+            const token = await this.getTokenByAssetId(assetId, channel as 'messenger' | 'instagram');
             if (!token) return { name: 'Social User' };
 
             // Fields vary by channel

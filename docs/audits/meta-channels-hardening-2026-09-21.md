@@ -79,6 +79,10 @@ La revisión posterior del autoservicio cerró la activación de WhatsApp por OA
 
 ## Deuda pendiente y solución propuesta
 
+**Avance posterior de aislamiento (22 de septiembre).** La migración `20260922220000_meta_asset_ownership_guard.sql` comprueba y protege en la base los números, WABAs, páginas e IDs de Instagram presentes tanto en canales modernos como en `selected_assets` heredado. Rechaza reclamaciones de tenants distintos bajo un bloqueo transaccional por activo y permite que un padre OAuth y su canal operativo pertenezcan al mismo tenant. El resolvedor de webhooks revisa también las conexiones heredadas antes de elegir un canal moderno. El parser de Meta ya no descarga adjuntos ni consulta perfiles con un token global o con un activo ambiguo; resuelve primero la propiedad del activo. La migración se ensayó con `ROLLBACK`, pasó las aserciones de conflicto/liberación y se aplicó al Supabase Docker local `agency-manager`. TypeScript y 18 pruebas focalizadas pasaron. La base remota y las conexiones Meta Live siguen sin probarse.
+
+Esto aún no cierra toda la migración de activos: hay que inventariar y conciliar las conexiones históricas de cada entorno antes del despliegue, y medir el coste de la búsqueda de padres heredados en el camino de webhooks. El almacenamiento de adjuntos sigue siendo público y requiere la fase de media privada indicada abajo.
+
 | Prioridad | Deuda / límite real | Solución y criterio de cierre |
 | --- | --- | --- |
 | P1, antes de coexistencia Live | El ciclo de baja/reconexión ya está implementado en la rama, pero no tiene aceptación Live; la cola de salida durable aún falta. | Probar cambio/reinstalación de móvil, opt-out y ausencia de reconexión con Meta; completar outbox y recuperación de envíos pendientes. |
