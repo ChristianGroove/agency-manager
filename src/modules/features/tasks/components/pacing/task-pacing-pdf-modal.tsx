@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,10 @@ export interface TaskPacingPdfModalProps {
     onTrackCount: number
     atRiskCount: number
     delayedCount: number
+    totalEstimatedHours?: number
+    totalActualHours?: number
+    hoursBurnRate?: number
+    hoursDelta?: number
   }
   tenantBranding?: {
     name?: string
@@ -83,6 +87,18 @@ export function TaskPacingPdfModal({
 
   const monthName = format(currentDate, "MMMM yyyy", { locale: es })
   const effectiveBrandColor = tenantBranding?.primaryColor || brandColor || "#8ec045"
+
+  const totalEstimated = useMemo(() => {
+    if (metrics.totalEstimatedHours !== undefined) return metrics.totalEstimatedHours
+    return Math.round(tasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0) * 10) / 10
+  }, [metrics.totalEstimatedHours, tasks])
+
+  const totalActual = useMemo(() => {
+    if (metrics.totalActualHours !== undefined) return metrics.totalActualHours
+    return Math.round(tasks.reduce((sum, t) => sum + (Number(t.actual_hours) || 0), 0) * 10) / 10
+  }, [metrics.totalActualHours, tasks])
+
+  const burnRate = totalEstimated > 0 ? Math.round((totalActual / totalEstimated) * 100) : (totalActual > 0 ? 100 : 0)
 
   const filterLabel =
     filterPreset === "active"
@@ -334,13 +350,13 @@ export function TaskPacingPdfModal({
             </div>
 
             {/* 2. DASHBOARD INSIGHTS (Condensados y Productivos) */}
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-5 gap-2">
               {/* Avance Activo */}
-              <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-3 space-y-1">
+              <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2.5 space-y-1">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block truncate">
                   Avance Activo
                 </span>
-                <span className="text-xl font-black font-mono text-zinc-900 block leading-none">
+                <span className="text-lg font-black font-mono text-zinc-900 block leading-none">
                   {metrics.averageActiveProgress}%
                 </span>
                 <p className="text-[10px] text-zinc-500 truncate">
@@ -349,11 +365,11 @@ export function TaskPacingPdfModal({
               </div>
 
               {/* Total Periodo */}
-              <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-3 space-y-1">
+              <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2.5 space-y-1">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block truncate">
                   Total Periodo
                 </span>
-                <span className="text-xl font-black font-mono text-zinc-900 block leading-none">
+                <span className="text-lg font-black font-mono text-zinc-900 block leading-none">
                   {metrics.total}
                 </span>
                 <p className="text-[10px] text-zinc-500 truncate">
@@ -362,14 +378,14 @@ export function TaskPacingPdfModal({
               </div>
 
               {/* A Tiempo */}
-              <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-3 space-y-1">
+              <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-2.5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block" />
                   <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 block truncate">
                     A Tiempo
                   </span>
                 </div>
-                <span className="text-xl font-black font-mono text-emerald-700 block leading-none">
+                <span className="text-lg font-black font-mono text-emerald-700 block leading-none">
                   {metrics.onTrackCount}
                 </span>
                 <p className="text-[10px] text-emerald-600/90 truncate">
@@ -378,18 +394,31 @@ export function TaskPacingPdfModal({
               </div>
 
               {/* Atención / Riesgo */}
-              <div className="bg-rose-50/60 border border-rose-200/80 rounded-xl p-3 space-y-1">
+              <div className="bg-rose-50/60 border border-rose-200/80 rounded-xl p-2.5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 inline-block" />
                   <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 block truncate">
-                    Atención / Riesgo
+                    Riesgo / Atraso
                   </span>
                 </div>
-                <span className="text-xl font-black font-mono text-rose-700 block leading-none">
+                <span className="text-lg font-black font-mono text-rose-700 block leading-none">
                   {metrics.atRiskCount + metrics.delayedCount}
                 </span>
                 <p className="text-[10px] text-rose-600/90 truncate">
-                  {metrics.atRiskCount} riesgo · {metrics.delayedCount} atraso
+                  {metrics.atRiskCount} riesgo · {metrics.delayedCount} retraso
+                </p>
+              </div>
+
+              {/* Horas del Periodo */}
+              <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2.5 space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block truncate">
+                  Horas del Periodo
+                </span>
+                <span className="text-lg font-black font-mono text-zinc-900 block leading-none">
+                  {totalActual}h
+                </span>
+                <p className="text-[10px] text-zinc-500 truncate">
+                  / {totalEstimated}h ({burnRate}%)
                 </p>
               </div>
             </div>
@@ -399,21 +428,22 @@ export function TaskPacingPdfModal({
               <table className="w-full table-fixed text-left text-xs border-collapse">
                 <thead className="bg-zinc-100/90 text-zinc-600 text-[10px] font-bold uppercase tracking-wider border-b border-zinc-200">
                   <tr>
-                    <th className="px-2.5 py-2.5 w-[85px]">Ticket</th>
-                    <th className="px-2.5 py-2.5 w-[245px]">Requerimiento</th>
-                    <th className="px-2.5 py-2.5 w-[110px]">Asignado</th>
-                    <th className="px-1 py-2.5 text-center w-[54px]">Sem 1</th>
-                    <th className="px-1 py-2.5 text-center w-[54px]">Sem 2</th>
-                    <th className="px-1 py-2.5 text-center w-[54px]">Sem 3</th>
-                    <th className="px-1 py-2.5 text-center w-[54px]">Sem 4</th>
-                    <th className="px-2.5 py-2.5 text-right w-[80px]">Avance</th>
+                    <th className="px-2 py-2.5 w-[75px]">Ticket</th>
+                    <th className="px-2 py-2.5 w-[215px]">Requerimiento</th>
+                    <th className="px-2 py-2.5 w-[95px]">Asignado</th>
+                    <th className="px-1 py-2.5 text-center w-[48px]">Sem 1</th>
+                    <th className="px-1 py-2.5 text-center w-[48px]">Sem 2</th>
+                    <th className="px-1 py-2.5 text-center w-[48px]">Sem 3</th>
+                    <th className="px-1 py-2.5 text-center w-[48px]">Sem 4</th>
+                    <th className="px-2 py-2.5 text-right w-[65px]">Horas</th>
+                    <th className="px-2 py-2.5 text-right w-[75px]">Avance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 text-zinc-800">
                   {tasks.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={9}
                         className="py-10 text-center text-zinc-400 text-xs italic"
                       >
                         No hay tareas que coincidan con la filtración seleccionada.
@@ -492,6 +522,11 @@ export function TaskPacingPdfModal({
                             )
                           })}
 
+                          {/* Horas */}
+                          <td className="px-2 py-2 text-right font-mono font-medium text-zinc-700 whitespace-nowrap text-[10px]">
+                            {Number(task.actual_hours) || 0}h{Number(task.estimated_hours) > 0 ? `/${task.estimated_hours}h` : ""}
+                          </td>
+
                           {/* Progress % */}
                           <td className="px-2.5 py-2 text-right font-mono font-bold text-zinc-900 whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
@@ -518,6 +553,19 @@ export function TaskPacingPdfModal({
                     })
                   )}
                 </tbody>
+                <tfoot className="bg-zinc-50/90 border-t border-zinc-200 text-[10px] font-semibold text-zinc-700">
+                  <tr>
+                    <td colSpan={7} className="px-2.5 py-2 text-right uppercase tracking-wider text-zinc-500">
+                      Total Horas Consolidadas
+                    </td>
+                    <td className="px-2 py-2 text-right font-mono text-zinc-900 font-bold">
+                      {totalActual}h / {totalEstimated}h
+                    </td>
+                    <td className="px-2.5 py-2 text-right font-mono text-zinc-500">
+                      {burnRate}% burn
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 

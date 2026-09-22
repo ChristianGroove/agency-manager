@@ -54,6 +54,7 @@ import {
   Lock,
   Edit3,
   Check,
+  Zap,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
@@ -67,6 +68,7 @@ import type {
   TaskChecklistItem,
   TaskAttachment,
   RecurrenceInterval,
+  TaskSprint,
 } from "../../types"
 import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
 import {
@@ -242,6 +244,7 @@ interface TaskPortalDetailModalProps {
   currentStaffId?: string
   availableTasks?: TaskItem[]
   onSelectTask?: (task: TaskItem) => void
+  sprints?: TaskSprint[]
 }
 
 export function TaskPortalDetailModal({
@@ -263,12 +266,15 @@ export function TaskPortalDetailModal({
   onTaskDeleted,
   availableTasks = [],
   onSelectTask,
+  sprints = [],
 }: TaskPortalDetailModalProps) {
   const isCreating = isCreateMode || !task
   const isMainAssignee = Boolean(
     task?.assigned_staff_id && currentStaffId && task.assigned_staff_id === currentStaffId
   )
   const canCloseParentTask = isCreating || isLeadOrPm || isQa || isMainAssignee
+  const initialDefaultStatus: TaskStatus = task?.status || (isCreating && !isLeadOrPm ? "backlog" : defaultStatus || "todo")
+  const isBacklogLocked = Boolean(!isLeadOrPm && (task?.status === "backlog" || (isCreating && initialDefaultStatus === "backlog")))
 
   const canToggleItem = (item: TaskChecklistItem) => {
     if (isCreating || isLeadOrPm || isQa || isMainAssignee) return true
@@ -281,8 +287,8 @@ export function TaskPortalDetailModal({
   )
   const [title, setTitle] = useState(task?.title || "")
   const [description, setDescription] = useState(task?.description || "")
-  const [status, setStatus] = useState<TaskStatus>(task?.status || defaultStatus || "todo")
-  const initialStatusRef = useRef<TaskStatus>(task?.status || defaultStatus || "todo")
+  const [status, setStatus] = useState<TaskStatus>(initialDefaultStatus)
+  const initialStatusRef = useRef<TaskStatus>(initialDefaultStatus)
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || "medium")
   const [type, setType] = useState<TaskType>(task?.type || "task")
   const [tags, setTags] = useState<string[]>(task?.tags || [])
@@ -299,6 +305,7 @@ export function TaskPortalDetailModal({
   const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
   const [blockedReason, setBlockedReason] = useState<string>(task?.blocked_reason || "")
+  const [selectedSprintId, setSelectedSprintId] = useState<string>(task?.sprint_id || "none")
 
   const currentBlocker = useMemo(() => {
     if (!blockedByTaskId || blockedByTaskId === "none") return null
@@ -378,6 +385,7 @@ export function TaskPortalDetailModal({
       setRecurrenceDay(task.recurrence_day || 1)
       setBlockedByTaskId(task.blocked_by_task_id || "none")
       setBlockedReason(task.blocked_reason || "")
+      setSelectedSprintId(task.sprint_id || "none")
       setNewChecklistWeek(null)
       setNewChecklistAssignee("unassigned")
       loadComments(task.id)
@@ -395,6 +403,7 @@ export function TaskPortalDetailModal({
       setQaStaffId("unassigned")
       setBlockedByTaskId("none")
       setBlockedReason("")
+      setSelectedSprintId(sprints.find((s) => s.status === "active")?.id || "none")
       setEstimatedHours(0)
       setActualHours(0)
       setDueDate("")
@@ -479,6 +488,7 @@ export function TaskPortalDetailModal({
           recurrenceInterval: isRecurring ? recurrenceInterval : null,
           recurrenceDay: isRecurring ? recurrenceDay : null,
           blockedByTaskId: blockedByTaskId === "none" ? null : blockedByTaskId,
+          sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
         })
 
         if (res.success && res.task) {
@@ -543,6 +553,7 @@ export function TaskPortalDetailModal({
           tags: isLeadOrPm || isQa ? tags : undefined,
           attachments,
           blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
+          sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
           isRecurring: isLeadOrPm ? isRecurring : undefined,
           recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
           recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
@@ -569,6 +580,13 @@ export function TaskPortalDetailModal({
 
   // Visual drag update without saving to server (Draft state inside modal)
   const handleProgressSliderDrag = (values: number[]) => {
+    if (isBacklogLocked) {
+      toast.warning("Requerimiento en Backlog", {
+        description: "Debe ser evaluado y aprobado por el PM antes de poder registrar avances.",
+        id: "backlog-slider-lock",
+      })
+      return
+    }
     if (!canCloseParentTask) {
       toast.warning("Control de avance bloqueado", {
         description: "Al participar como colaborador de subtarea, el avance general del ticket solo puede ser modificado por el responsable directo del ticket o el PM.",
@@ -609,6 +627,13 @@ export function TaskPortalDetailModal({
   }
 
   const handleSelectStatus = (newStatus: TaskStatus) => {
+    if (isBacklogLocked && newStatus !== "backlog") {
+      toast.warning("Requerimiento en Backlog", {
+        description: "Este ticket está en espera de evaluación y aprobación por el Gestor de Proyecto / PM antes de iniciarse.",
+        id: "backlog-status-lock",
+      })
+      return
+    }
     if (newStatus === "done" && !canCloseParentTask) {
       toast.warning("Cierre reservado al responsable directo", {
         description: "Solo el responsable directo de la tarea o un Líder/PM puede marcarla como Completada.",
@@ -673,7 +698,9 @@ export function TaskPortalDetailModal({
       title: newChecklistTitle.trim(),
       completed: false,
       target_week: newChecklistWeek,
-      assigned_staff_id: newChecklistAssignee === "unassigned" ? null : newChecklistAssignee,
+      assigned_staff_id: !isLeadOrPm
+        ? (newChecklistAssignee === currentStaffId ? currentStaffId : null)
+        : (newChecklistAssignee === "unassigned" ? null : newChecklistAssignee),
     }
     setChecklist((prev) => [...prev, newItem])
     setNewChecklistTitle("")
@@ -972,8 +999,13 @@ export function TaskPortalDetailModal({
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-                  Nuevo Requerimiento / Ticket
+                  {isLeadOrPm ? "Nuevo Requerimiento / Ticket" : "Reportar Requerimiento / Incidencia"}
                 </h2>
+                {!isLeadOrPm && (
+                  <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 font-medium">
+                    Backlog
+                  </Badge>
+                )}
               </div>
             ) : (
               <>
@@ -1022,7 +1054,7 @@ export function TaskPortalDetailModal({
                   {isCreating ? "Creando..." : "Guardando..."}
                 </>
               ) : isCreating ? (
-                "Crear Ticket"
+                isLeadOrPm ? "Crear Ticket" : "Enviar al Backlog"
               ) : (
                 "Guardar Cambios"
               )}
@@ -1039,6 +1071,24 @@ export function TaskPortalDetailModal({
             </Button>
           </div>
         </div>
+
+        {/* Callout de Gobernanza para Colaboradores Estándar */}
+        {isCreating && !isLeadOrPm && (
+          <div className="px-5 py-2.5 bg-blue-500/10 border-b border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 shrink-0 text-blue-500" />
+            <span>
+              <strong>Gobernanza de Equipo:</strong> Esta tarea se registrará en el <strong>Backlog</strong> como propuesta para validación del PM. No consumirá horas del sprint hasta ser aprobada.
+            </span>
+          </div>
+        )}
+        {!isCreating && !isLeadOrPm && task?.status === "backlog" && (
+          <div className="px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+            <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              <strong>Requerimiento en Backlog:</strong> Este ticket está en espera de evaluación, estimación y aprobación por parte del Gestor de Proyecto (PM). No se pueden registrar horas ni avances hasta su aprobación formal.
+            </span>
+          </div>
+        )}
 
         {/* 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
@@ -1092,7 +1142,7 @@ export function TaskPortalDetailModal({
               <div className="space-y-1.5">
                 <div className={cn(
                   "flex items-center gap-3 px-3.5 py-2 rounded-xl border transition-opacity",
-                  canCloseParentTask
+                  canCloseParentTask && !isBacklogLocked
                     ? "bg-muted/30 border-border/60"
                     : "bg-muted/15 border-border/40 opacity-75"
                 )}>
@@ -1108,13 +1158,13 @@ export function TaskPortalDetailModal({
                       min={0}
                       max={100}
                       step={5}
-                      disabled={!canCloseParentTask}
+                      disabled={!canCloseParentTask || isBacklogLocked}
                       onValueChange={handleProgressSliderDrag}
-                      className={cn(canCloseParentTask ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
+                      className={cn(canCloseParentTask && !isBacklogLocked ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
-                    {!canCloseParentTask && (
+                    {(!canCloseParentTask || isBacklogLocked) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex shrink-0 cursor-help">
@@ -1122,7 +1172,9 @@ export function TaskPortalDetailModal({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
-                          Control bloqueado: solo el responsable directo o PM pueden ajustar el avance general
+                          {isBacklogLocked
+                            ? "Requerimiento en Backlog: debe ser evaluado y aprobado por el PM antes de poder registrar avances"
+                            : "Control bloqueado: solo el responsable directo o PM pueden ajustar el avance general"}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -1330,7 +1382,11 @@ export function TaskPortalDetailModal({
                           </Badge>
                         )
                       })()
-                    ) : null}
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 shrink-0 border-dashed border-border/50 text-muted-foreground">
+                        Sin asignar
+                      </Badge>
+                    )}
 
                     {/* Week tag / selector */}
                     {isLeadOrPm ? (
@@ -1400,11 +1456,17 @@ export function TaskPortalDetailModal({
                         <SelectItem value="unassigned" className="text-xs text-muted-foreground">
                           Sin asignar
                         </SelectItem>
-                        {teamMembers.map((m) => (
-                          <SelectItem key={m.id} value={m.id} className="text-xs">
-                            <span className="truncate">{m.first_name} {m.last_name}</span>
+                        {isLeadOrPm ? (
+                          teamMembers.map((m) => (
+                            <SelectItem key={m.id} value={m.id} className="text-xs">
+                              <span className="truncate">{m.first_name} {m.last_name}</span>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value={currentStaffId || "me"} className="text-xs">
+                            <span className="truncate">Para mí (Tú)</span>
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                     <Select
@@ -1868,27 +1930,59 @@ export function TaskPortalDetailModal({
 
           {/* Right Column (Sidebar Controls) */}
           <div className="p-5 sm:p-6 bg-muted/10 space-y-5">
+            {/* Sprint Association */}
+            {(isLeadOrPm || isCreating) && sprints && sprints.length > 0 && (
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                  <Zap className="w-3 h-3 text-indigo-500" />
+                  <span>Sprint Asignado</span>
+                </label>
+                <Select
+                  value={selectedSprintId}
+                  onValueChange={setSelectedSprintId}
+                >
+                  <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
+                    <SelectValue placeholder="Seleccionar Sprint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs text-muted-foreground">
+                      Sin Sprint (Backlog General)
+                    </SelectItem>
+                    {sprints.map((s) => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">
+                        {s.name} ({s.status === "active" ? "Activo" : s.status === "completed" ? "Cerrado" : "Planificación"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Status Selector & Conditional Blocker */}
             <div className="space-y-2">
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
                   Estado
                 </label>
-                <Select value={status} onValueChange={(val: TaskStatus) => handleSelectStatus(val)}>
+                <Select
+                  value={status}
+                  onValueChange={(val: TaskStatus) => handleSelectStatus(val)}
+                  disabled={isBacklogLocked}
+                >
                   <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
                     <SelectValue className="truncate text-left" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="backlog">Backlog</SelectItem>
-                    <SelectItem value="todo">Por Hacer</SelectItem>
-                    <SelectItem value="in_progress">En Progreso</SelectItem>
-                    <SelectItem value="in_review" disabled={hasUnresolvedBlocker}>
+                    <SelectItem value="backlog">Backlog {!isLeadOrPm ? "(Revisión del PM)" : ""}</SelectItem>
+                    <SelectItem value="todo" disabled={isBacklogLocked}>Por Hacer</SelectItem>
+                    <SelectItem value="in_progress" disabled={isBacklogLocked}>En Progreso</SelectItem>
+                    <SelectItem value="in_review" disabled={hasUnresolvedBlocker || isBacklogLocked}>
                       Revisión / QA {hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
                     </SelectItem>
-                    <SelectItem value="done" disabled={!canCloseParentTask || hasUnresolvedBlocker}>
+                    <SelectItem value="done" disabled={!canCloseParentTask || hasUnresolvedBlocker || isBacklogLocked}>
                       Completado {!canCloseParentTask ? "(Solo responsable / PM)" : hasUnresolvedBlocker ? "(Bloqueado por dependencia)" : ""}
                     </SelectItem>
-                    <SelectItem value="blocked">Bloqueado</SelectItem>
+                    <SelectItem value="blocked" disabled={isBacklogLocked}>Bloqueado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2007,12 +2101,12 @@ export function TaskPortalDetailModal({
                     <SelectValue placeholder="Sin asignar" className="truncate text-left" />
                   </SelectTrigger>
                   <SelectContent className="max-w-[320px]">
-                    <SelectItem value="unassigned">Sin asignar</SelectItem>
-                    {teamMembers.map((m) => (
+                    <SelectItem value="unassigned">Sin asignar {isCreating && !isLeadOrPm ? "(PM asignará)" : ""}</SelectItem>
+                    {(isLeadOrPm ? teamMembers : teamMembers.filter((m) => m.id === currentStaffId)).map((m) => (
                       <SelectItem key={m.id} value={m.id} className="text-xs">
                         <div className="flex items-center gap-2 truncate max-w-[280px]">
                           <span className="font-medium truncate">
-                            {m.first_name} {m.last_name}
+                            {m.first_name} {m.last_name} {m.id === currentStaffId ? "(Tú)" : ""}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-mono shrink-0">
                             ({m.role})
@@ -2235,7 +2329,12 @@ export function TaskPortalDetailModal({
                 <label className="text-[11px] font-medium text-muted-foreground block mb-1 truncate">
                   Horas Estimadas
                 </label>
-                {isCreating || isLeadOrPm ? (
+                {isCreating && !isLeadOrPm ? (
+                  <div className="p-2 rounded-xl bg-background border border-border/60 text-xs font-mono text-muted-foreground flex items-center justify-between">
+                    <span>0h</span>
+                    <span className="text-[10px] text-muted-foreground">(Asignado por PM)</span>
+                  </div>
+                ) : isCreating || isLeadOrPm ? (
                   <Input
                     type="number"
                     min="0"

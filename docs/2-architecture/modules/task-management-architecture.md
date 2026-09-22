@@ -769,3 +769,85 @@ Un ticket puede ingresar al estado `blocked` por dos razones operativas:
 - **Aislamiento de Acciones**:
   - Pulsar la `X` dentro del input en edición únicamente limpia el texto escrito; la tarea conserva su estado `Bloqueado` para prevenir cambios accidentales de flujo.
 
+---
+
+## 19. Arquitectura de Sprints & Ciclos Ágiles (Linear / Jira Enterprise)
+
+### A. Filosofía de Ciclos Continuos & Sprints
+El sistema implementa una arquitectura ágil de ciclos continuos inspirada en el estándar de oro de **Linear Cycles** y **Jira Software Enterprise**:
+- **Convivencia Armónica (Sprints vs Ritmo Semanal)**: El Ritmo Semanal (`Weekly Pacing`) opera como la micro-cadencia de 7 días por especialista para la distribución de capacidad y prevención de sobrecarga. Los **Sprints** operan como la macro-cadencia de entrega (1 a 4 semanas) vinculada a metas estratégicas de negocio. Ambos modelos coexisten sin fricción.
+- **Compatibilidad Hacia Atrás & Backlog**: Cualquier tarea que carezca de `sprint_id` pertenece de forma natural al **Backlog General** de la organización. No se fuerza a que toda tarea pertenezca a un sprint, otorgando flexibilidad total en proyectos Kanban continuos o tareas de soporte reactivo.
+
+### B. Modelo de Datos Relacional (`task_sprints`)
+Implementado mediante la migración `20260921000001_create_task_sprints.sql`:
+
+| Campo | Tipo | Propósito |
+|---|---|---|
+| `id` | UUID (PK) | Identificador único del ciclo (`gen_random_uuid()`). |
+| `organization_id` | UUID (FK) | Tenant propietario con borrado en cascada. |
+| `workspace_id` | UUID (FK, Nullable) | Espacio de trabajo opcional para scoping departamental. |
+| `project_id` | UUID (FK, Nullable) | Proyecto opcional para sprints dedicados. |
+| `name` | Text | Nombre del sprint (ej: "Sprint 1", "Sprint 2"). |
+| `goal` | Text (Nullable) | Meta u objetivo estratégico del sprint. |
+| `start_date` / `end_date` | Date | Período de vigencia del sprint. |
+| `duration_days` | Integer | Duración estándar en días (7, 14, 21, 30). |
+| `status` | Text | Estado: `'planning'`, `'active'`, `'completed'`, `'cancelled'`. |
+| `auto_rollover` | Boolean | Activa el ciclado continuo automático al llegar la fecha límite. |
+| `created_by_staff_id` | UUID (FK, Nullable) | Colaborador que planificó o creó el sprint. |
+| `completed_at` | Timestamp (Nullable) | Fecha de finalización formal del ciclo. |
+
+Adicionalmente, la tabla `task_items` incorpora:
+- `sprint_id`: UUID nullable con clave foránea a `task_sprints(id)` y cláusula `ON DELETE SET NULL`.
+- Índice btree `idx_task_items_sprint_id` para garantizar consultas de telemetría en O(1).
+
+### C. Ciclo de Vida del Sprint y Transiciones
+```mermaid
+stateDiagram-v2
+    [*] --> Planificación: Crear Sprint (Modo Planning)
+    [*] --> Activo: Crear Sprint (Inicio Inmediato)
+    Planificación --> Activo: Iniciar Sprint (startSprint)
+    Activo --> Completado: Finalizar Sprint (completeSprint)
+    Activo --> Completado: Auto-rollover al vencer
+    Planificación --> [*]: Eliminar Sprint (deleteSprint)
+    Activo --> [*]: Eliminar Sprint (deleteSprint)
+```
+
+1. **`planning` (En Planificación)**:
+   - Permite al PM pre-asignar y priorizar tickets del backlog general hacia sprints futuros sin afectar las métricas ni la concentración del equipo en el sprint actual.
+2. **`active` (Sprint Activo)**:
+   - Exactamente un sprint activo gobierna las métricas en vivo del panel de control de la organización. Si se inicia un sprint mientras otro está activo, el sistema solicita confirmación y completa limpiamente el ciclo previo.
+3. **`completed` (Cerrado)**:
+   - Ciclo formalmente concluido que retiene su historial de entregas para auditar la velocidad del equipo en retrospectivas.
+4. **Eliminación Segura (`deleteSprint`)**:
+   - Al eliminar un sprint, el sistema desasigna automáticamente todas las tareas vinculadas (`sprint_id = NULL`), retornándolas sanas y salvas al backlog sin pérdida de información.
+
+### D. Motor Quirúrgico de Rollover & Retención Histórica (`completeSprint`)
+Al finalizar un sprint (bien sea manual o automáticamente), el motor ejecuta un algoritmo estricto de dos fases:
+1. **Retención de Entregas (`status === 'done'`)**: Las tareas completadas permanecen permanentemente asociadas al sprint que finaliza (`sprint_id = sprint.id`). Esto protege la métrica histórica de velocidad (evita que un sprint completado muestre 0 tareas).
+2. **Transferencia de Tareas Incompletas**: Las tareas no terminadas (`todo`, `in_progress`, `in_review`, `blocked`) son gestionadas según la decisión del PM:
+   - **Opción A (Recomendada): Transferir al Siguiente Sprint**: Crea automáticamente el siguiente ciclo correlativo ("Sprint N+1") o asigna las tareas a un sprint planificado existente.
+   - **Opción B: Retornar al Backlog**: Desvincula las tareas pendientes (`sprint_id = NULL`) para que descansen en la reserva general.
+3. **Auditoría Transparente**: Cada tarea transferida registra un evento en `task_activity_feed` con el texto: `🔁 Rollover de Sprint: Movida de "Sprint X" hacia "Sprint Y"`.
+
+### E. Auto-ciclado Continuo (Linear Cycles)
+Cuando `auto_rollover = true`, la función `getActiveSprint` evalúa si `new Date() > new Date(sprint.end_date)`. Si el plazo concluyó, ejecuta automáticamente el cierre y traslado de tareas al siguiente sprint sin que el PM tenga que intervenir manualmente, asegurando que la operación de la agencia nunca se detenga un lunes por la mañana.
+
+### F. Estándares de Experiencia de Usuario en el PM Dashboard (`TaskPmOperationsDashboard`)
+1. **Barra de Control Unificada**:
+   - Selector plano y compacto sin encabezados invasivos: lista directa con etiquetas de estado (`{Nombre} (En curso)`, `{Nombre} (Planificación)`, etc.) y acción rápida `+ Crear nuevo sprint...`.
+   - Badges dinámicos de estado: Días restantes con alerta por color (esmeralda, ámbar si $\le 3$ días, rojo si venció), fecha de inicio programada, y badge de auto-ciclado continuo.
+2. **Acciones Contextuales Precisas**:
+   - En **Vista Global** o sin sprints: Botón de acción destacado **`Crear Sprint`**.
+   - En **Cualquier Sprint Seleccionado**: Botón **`Editar`** permanentemente disponible (con opción de eliminar sprint).
+   - En **Sprint Activo**: Botón **`Finalizar Sprint`** (esmeralda con modal de rollover).
+   - En **Sprint en Planificación**: Botón **`Iniciar Sprint`** (primario con icono `Play`).
+3. **Métricas Context-Aware (Adaptabilidad Dinámica)**:
+   - Cuando se selecciona un sprint específico: muestra títulos como `"Salud del Sprint"` y `"Estado del Sprint"`.
+   - Cuando se selecciona `"Todos los tickets (Global)"`: la terminología conmuta automáticamente a **`"Salud Global"`**, **`"Estado de los Tickets"`**, `"% del total"`, `"Total: Xh/Yh"` y mensajes operativos sin mencionar la palabra "sprint", garantizando coherencia semántica absoluta.
+
+### G. Sincronización Realtime con Supabase
+Tanto el portal del colaborador ([`task-collaborator-portal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-collaborator-portal.tsx)) como el dashboard del PM suscriben un canal de Supabase Realtime a la tabla `task_sprints`:
+- Eventos `INSERT`: El nuevo sprint aparece instantáneamente en el selector de todos los usuarios conectados.
+- Eventos `UPDATE`: Cambios de estado (ej: activación de sprint o edición de fechas) se reflejan de inmediato.
+- Eventos `DELETE`: Se limpia el estado local y se redirige la vista a la vista global de forma transparente.
+

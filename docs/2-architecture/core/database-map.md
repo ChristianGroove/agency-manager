@@ -39,6 +39,16 @@ Las tablas Hub son aquellas que sirven como punto de unión para múltiples domi
 - `subscriptions`: Estado de la relación SaaS entre la Organización y Pixy.
 - `plans` / `limits`: Definición técnica del nivel de servicio.
 
+### Dominio: Tareas, Sprints & Operaciones (Tasks)
+- `task_workspaces`: Espacios operativos de trabajo (ej: Desarrollo Web, Diseño).
+- `task_workspace_members`: Asignación y control de acceso granular por espacio.
+- `task_projects`: Proyectos macro asignados a espacios.
+- `task_sprints`: Ciclos ágiles de trabajo (Sprints) con estados `planning`, `active`, `completed` y auto-ciclado continuo.
+- `task_items`: Tickets de requerimientos, tareas e ítems de backlog con soporte para `sprint_id`, dependencias `blocked_by_task_id` y checklists colaborativos.
+- `task_activity_feed`: Trazabilidad y auditoría de eventos de tareas, comentarios y rollovers.
+- `task_mentions`: Notificaciones por mención `@` de colaboradores en tareas.
+- `task_time_entries`: Registro de horas trabajadas (Log Work) por colaborador.
+
 ### Dominio: Automatización
 - `workflows`: Definición de lógica condicional (disparadores → acciones).
 - `workflow_jobs`: Cola de ejecución de tareas asíncronas.

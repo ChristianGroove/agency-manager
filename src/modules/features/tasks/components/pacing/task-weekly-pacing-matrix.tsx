@@ -52,6 +52,7 @@ import {
   ShieldCheck,
   Briefcase,
   TrendingUp,
+  Ban,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -63,7 +64,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import type { TaskItem, TaskProject, TaskWorkspace } from "../../types"
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
-import { getTaskWeeklyPacing, parseTaskChecklist } from "../../types"
+import { getTaskWeeklyPacing, parseTaskChecklist, getTaskMemberHours } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { TaskPacingPdfModal } from "./task-pacing-pdf-modal"
 import { toast } from "sonner"
@@ -150,12 +151,11 @@ export function TaskWeeklyPacingMatrix({
       // Exclude backlog tickets from sprint pacing
       if (task.status === "backlog") return false
 
-      // Member filter (includes assigned lead, QA tester, or assigned deliverable / subtask)
+      // Member filter (includes assigned lead or assigned deliverable / subtask)
       if (selectedMember !== "all") {
         const isAssigned = task.assigned_staff_id === selectedMember
-        const isQa = task.qa_staff_id === selectedMember
         const hasSubtask = task.checklist && parseTaskChecklist(task.checklist).some((c) => c.assigned_staff_id === selectedMember)
-        if (!isAssigned && !isQa && !hasSubtask) return false
+        if (!isAssigned && !hasSubtask) return false
       }
 
       // Project / Workspace filter
@@ -243,6 +243,8 @@ export function TaskWeeklyPacingMatrix({
     let atRiskCount = 0
     let delayedCount = 0
     let completedCount = 0
+    let totalEstimatedHours = 0
+    let totalActualHours = 0
 
     const activeTasks = filteredTasks.filter((t) => t.status !== "done" && t.progress_percentage < 100)
     const totalActiveProgress = activeTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
@@ -251,6 +253,15 @@ export function TaskWeeklyPacingMatrix({
       : (filteredTasks.length > 0 ? 100 : 0)
 
     filteredTasks.forEach((task) => {
+      if (selectedMember !== "all") {
+        const mh = getTaskMemberHours(task, selectedMember)
+        totalEstimatedHours += mh.estimated
+        totalActualHours += mh.actual
+      } else {
+        totalEstimatedHours += Number(task.estimated_hours) || 0
+        totalActualHours += Number(task.actual_hours) || 0
+      }
+
       if (task.status === "done" || task.progress_percentage === 100) {
         completedCount++
         return
@@ -268,6 +279,11 @@ export function TaskWeeklyPacingMatrix({
       }
     })
 
+    totalEstimatedHours = Math.round(totalEstimatedHours * 10) / 10
+    totalActualHours = Math.round(totalActualHours * 10) / 10
+    const hoursBurnRate = totalEstimatedHours > 0 ? Math.round((totalActualHours / totalEstimatedHours) * 100) : (totalActualHours > 0 ? 100 : 0)
+    const hoursDelta = Math.round((totalEstimatedHours - totalActualHours) * 10) / 10
+
     const total = filteredTasks.length
     return {
       total,
@@ -277,8 +293,12 @@ export function TaskWeeklyPacingMatrix({
       onTrackCount,
       atRiskCount,
       delayedCount,
+      totalEstimatedHours,
+      totalActualHours,
+      hoursBurnRate,
+      hoursDelta,
     }
-  }, [filteredTasks, currentDate, activeMonthWeek])
+  }, [filteredTasks, currentDate, activeMonthWeek, selectedMember])
 
   // Scope label for currently selected space or project
   const scopeLabel = useMemo(() => {
@@ -311,7 +331,11 @@ export function TaskWeeklyPacingMatrix({
     report += `📈 *INSIGHTS CLAVE:*\n`
     report += `• Avance Activo: ${metrics.averageActiveProgress}%\n`
     report += `• Total Periodo: ${metrics.total} (${metrics.activeCount} en curso · ${metrics.completedCount} listas)\n`
-    report += `• A Tiempo: ${metrics.onTrackCount} · En Riesgo: ${metrics.atRiskCount} · Rezagadas: ${metrics.delayedCount}\n\n`
+    report += `• A Tiempo: ${metrics.onTrackCount} · En Riesgo: ${metrics.atRiskCount} · Rezagadas: ${metrics.delayedCount}\n`
+    if (metrics.totalEstimatedHours > 0 || metrics.totalActualHours > 0) {
+      report += `• Horas & Capacidad: ${metrics.totalActualHours}h ejecutadas / ${metrics.totalEstimatedHours}h estimadas (${metrics.hoursBurnRate}% consumido · Δ ${metrics.hoursDelta >= 0 ? "+" : ""}${metrics.hoursDelta}h)\n`
+    }
+    report += `\n`
 
     report += `📋 *TICKETS (${filteredTasks.length}):*\n`
     if (filteredTasks.length === 0) {
@@ -322,7 +346,10 @@ export function TaskWeeklyPacingMatrix({
 
       tasksToPrint.forEach((t) => {
         const staff = t.assigned_staff ? t.assigned_staff.first_name : "Sin asignar"
-        report += `• [${t.ticket_code}] ${t.title} [${staff}] (${t.progress_percentage}%)\n`
+        const hoursPart = (Number(t.estimated_hours) > 0 || Number(t.actual_hours) > 0)
+          ? ` · ${Number(t.actual_hours) || 0}h/${Number(t.estimated_hours) || 0}h`
+          : ""
+        report += `• [${t.ticket_code}] ${t.title} [${staff}] (${t.progress_percentage}%${hoursPart})\n`
       })
 
       if (filteredTasks.length > maxVisualizedInReport) {
@@ -617,8 +644,8 @@ export function TaskWeeklyPacingMatrix({
         </div>
       </div>
 
-      {/* 2. Executive Scoreboard (Compact 4-KPI Grid placed below the Toolbar) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* 2. Executive Scoreboard (Compact 5-KPI Grid placed below the Toolbar) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
         {/* Avance Global Activo (Executive Insight) */}
         <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs">
           <CardContent className="p-3 sm:p-3.5 space-y-1">
@@ -698,15 +725,51 @@ export function TaskWeeklyPacingMatrix({
             </p>
           </CardContent>
         </Card>
+
+        {/* Horas & Capacidad (Executive Time Tracking) */}
+        <Card className="rounded-2xl border-border/70 bg-card/60 backdrop-blur-md shadow-2xs col-span-2 md:col-span-1">
+          <CardContent className="p-3 sm:p-3.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Clock className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 truncate">
+                  Horas Periodo
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-black font-mono text-foreground shrink-0 leading-none">
+                {metrics.totalActualHours}h
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground truncate">
+              <span>/ {metrics.totalEstimatedHours}h ({metrics.hoursBurnRate}%)</span>
+              <span
+                className={cn(
+                  "font-mono font-bold",
+                  metrics.hoursDelta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
+                )}
+              >
+                {metrics.hoursDelta >= 0 ? `+${metrics.hoursDelta}h` : `${metrics.hoursDelta}h`}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 4. The Pacing Matrix Table */}
       <div className="glass-card rounded-3xl border border-border/80 overflow-hidden shadow-sm bg-card">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-xs border-collapse">
+          <table className="w-full min-w-[960px] text-left text-xs border-collapse table-fixed">
+            <colgroup>
+              <col className="w-[32%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[4%]" />
+            </colgroup>
             <thead className="bg-muted/40 border-b border-border/80 text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="px-5 py-4 w-80">Ticket & Requerimiento</th>
+                <th className="px-5 py-4 w-[32%]">Ticket & Requerimiento</th>
                 {[
                   { week: 1, label: "Semana 1", range: "Días 1 - 7" },
                   { week: 2, label: "Semana 2", range: "Días 8 - 14" },
@@ -718,7 +781,7 @@ export function TaskWeeklyPacingMatrix({
                     <th
                       key={w}
                       className={cn(
-                        "px-4 py-3.5 w-48 text-center transition-colors relative",
+                        "px-4 py-3.5 w-[16%] text-center transition-colors relative",
                         isCurrent && "bg-primary/10 text-primary border-b-2 border-primary dark:bg-primary/15"
                       )}
                     >
@@ -751,7 +814,7 @@ export function TaskWeeklyPacingMatrix({
                     </th>
                   )
                 })}
-                <th className="px-4 py-4 w-14 text-right"></th>
+                <th className="px-4 py-4 w-[4%] text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -777,26 +840,48 @@ export function TaskWeeklyPacingMatrix({
                     >
                       {/* Ticket Info */}
                       <td className="px-5 py-3.5">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
+                        <div className="space-y-1.5 min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <Badge
                               variant="outline"
                               className="font-mono text-xs font-bold text-primary bg-primary/10 border-primary/25 rounded-lg px-2 py-0.5 shrink-0"
                             >
                               {task.ticket_code}
                             </Badge>
-                            {task.blocked_by && task.blocked_by.status !== "done" && (
+                            {(task.status === "blocked" || (task.blocked_by && task.blocked_by.status !== "done")) && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 px-1.5 py-0 cursor-help flex items-center gap-0.5"
+                                  <span
+                                    className="w-5 h-5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 shrink-0 flex items-center justify-center cursor-help transition-colors hover:bg-rose-500/20"
+                                    aria-label="Bloqueado"
                                   >
-                                    <span>🚫 #{task.blocked_by.ticket_code}</span>
-                                  </Badge>
+                                    <Ban className="w-3 h-3" />
+                                  </span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top">
-                                  <span>{`Bloqueado por #${task.blocked_by.ticket_code} (${task.blocked_by.title})`}</span>
+                                <TooltipContent side="top" className="max-w-[280px] text-xs font-normal">
+                                  {task.blocked_by && task.blocked_by.status !== "done" ? (
+                                    <div>
+                                      <p className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                                        <Ban className="w-3.5 h-3.5 shrink-0" />
+                                        Bloqueado por #{task.blocked_by.ticket_code}
+                                      </p>
+                                      <p className="text-muted-foreground text-[11px] mt-0.5 line-clamp-2">
+                                        {task.blocked_by.title}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <p className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                                        <Ban className="w-3.5 h-3.5 shrink-0" />
+                                        Tarea Bloqueada
+                                      </p>
+                                      {task.blocked_reason && (
+                                        <p className="text-muted-foreground text-[11px] mt-0.5">
+                                          Motivo: {task.blocked_reason}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
                                 </TooltipContent>
                               </Tooltip>
                             )}
@@ -805,7 +890,7 @@ export function TaskWeeklyPacingMatrix({
                                 <TooltipTrigger asChild>
                                   <Badge
                                     variant="outline"
-                                    className="text-[9px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 px-1.5 py-0 cursor-help"
+                                    className="text-[9px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 px-1.5 py-0 cursor-help shrink-0 whitespace-nowrap"
                                     aria-label={`Recurrente: ${task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}`}
                                   >
                                     {task.recurrence_interval ? RECURRENCE_INTERVAL_LABELS[task.recurrence_interval]?.split(" (")[0] : "Periódica"}
@@ -816,7 +901,7 @@ export function TaskWeeklyPacingMatrix({
                                 </TooltipContent>
                               </Tooltip>
                             )}
-                            <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                            <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate min-w-0 flex-1">
                               {task.title}
                             </span>
                           </div>
@@ -839,6 +924,20 @@ export function TaskWeeklyPacingMatrix({
                                 <span className="truncate max-w-[120px] font-medium">{task.assigned_staff.first_name}</span>
                               </div>
                             )}
+                            {(Number(task.estimated_hours) > 0 || Number(task.actual_hours) > 0) && (
+                              <div
+                                className={cn(
+                                  "flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-md border shrink-0",
+                                  Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 font-bold"
+                                    : "bg-muted/60 text-muted-foreground border-border/50"
+                                )}
+                                title={`Horas reales: ${task.actual_hours || 0}h / Estimadas: ${task.estimated_hours || 0}h`}
+                              >
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{task.actual_hours || 0}h{Number(task.estimated_hours) > 0 ? `/${task.estimated_hours}h` : ""}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -855,7 +954,7 @@ export function TaskWeeklyPacingMatrix({
                               isCurrent && "bg-primary/[0.03] dark:bg-primary/[0.05] border-x border-primary/10"
                             )}
                           >
-                            <div className="flex flex-col items-center gap-1 max-w-[130px] mx-auto">
+                            <div className="flex flex-col items-center gap-1 w-full max-w-[180px] mx-auto">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-mono font-bold text-foreground text-[11px]">
                                   {weekData.hasSchedule || weekData.progress > 0 || weekData.status === "completed"

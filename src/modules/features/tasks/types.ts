@@ -39,6 +39,7 @@ export type TaskChecklistItem = {
     role?: string;
   } | null;
   estimated_hours?: number | null;
+  actual_hours?: number | null;
 }
 
 export interface TaskAttachment {
@@ -103,6 +104,34 @@ export interface TaskProject {
   task_count?: number;
   completed_count?: number;
   progress_percentage?: number;
+}
+
+export type TaskSprintStatus = 'planning' | 'active' | 'completed' | 'cancelled';
+
+export interface TaskSprint {
+  id: string;
+  organization_id: string;
+  workspace_id?: string | null;
+  project_id?: string | null;
+  name: string;
+  goal?: string | null;
+  start_date: string;
+  end_date: string;
+  status: TaskSprintStatus;
+  auto_rollover: boolean;
+  duration_days: number;
+  created_by_staff_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
+  // Computed / Joined
+  total_tasks?: number;
+  completed_tasks?: number;
+  total_hours?: number;
+  completed_hours?: number;
+  progress_percentage?: number;
+  workspace?: TaskWorkspace | null;
+  project?: TaskProject | null;
 }
 
 export type TaskReviewStage = 'none' | 'qa_failed' | 'uat' | 'vendor_blocked' | 'ready_for_release';
@@ -246,6 +275,9 @@ export interface TaskItem {
     color: string;
   } | null;
   comments_count?: number;
+  // Sprint Association
+  sprint_id?: string | null;
+  sprint?: TaskSprint | null;
   // Blocker Dependency
   blocked_by_task_id?: string | null;
   blocked_by?: {
@@ -357,17 +389,22 @@ export interface TaskMetrics {
  * Safely parse and normalize checklist field (handles stringified JSON, null, undefined)
  */
 export function parseTaskChecklist(rawChecklist: any): TaskChecklistItem[] {
-  if (!rawChecklist) return [];
-  if (Array.isArray(rawChecklist)) return rawChecklist;
-  if (typeof rawChecklist === 'string') {
+  let list: any[] = [];
+  if (Array.isArray(rawChecklist)) {
+    list = rawChecklist;
+  } else if (typeof rawChecklist === 'string') {
     try {
       const parsed = JSON.parse(rawChecklist);
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) list = parsed;
     } catch {
-      return [];
+      list = [];
     }
   }
-  return [];
+  return list.map((item) => ({
+    ...item,
+    estimated_hours: item.estimated_hours !== undefined && item.estimated_hours !== null ? Number(item.estimated_hours) : null,
+    actual_hours: item.actual_hours !== undefined && item.actual_hours !== null ? Number(item.actual_hours) : null,
+  }));
 }
 
 /**
@@ -385,6 +422,48 @@ export function normalizeTask(task: any): TaskItem {
     actual_hours: Number(task.actual_hours || 0),
     weekly_snapshots: task.weekly_snapshots && typeof task.weekly_snapshots === "object" ? task.weekly_snapshots : {},
   };
+}
+
+/**
+ * Safely compute hours attributed to a specific staff member in a task.
+ * Avoids multi-collaborator duplication:
+ * - If the task has subtasks with assigned members, computes only the subtasks assigned to memberId.
+ * - If the member is the primary assignee and has no subtasks assigned to others, or no subtasks exist, computes task-level hours.
+ */
+export function getTaskMemberHours(task: TaskItem, memberId: string): { estimated: number; actual: number } {
+  const safeChecklist = Array.isArray(task.checklist) ? task.checklist : parseTaskChecklist(task.checklist);
+  const memberSubtasks = safeChecklist.filter((c) => c.assigned_staff_id === memberId);
+  const otherSubtasks = safeChecklist.filter((c) => c.assigned_staff_id && c.assigned_staff_id !== memberId);
+
+  if (memberSubtasks.length > 0) {
+    const subEstimated = memberSubtasks.reduce((sum, c) => sum + (Number(c.estimated_hours) || 0), 0);
+    const subActual = memberSubtasks.reduce((sum, c) => sum + (Number(c.actual_hours) || 0), 0);
+
+    if (task.assigned_staff_id === memberId && otherSubtasks.length === 0 && subEstimated === 0 && subActual === 0) {
+      return {
+        estimated: Number(task.estimated_hours) || 0,
+        actual: Number(task.actual_hours) || 0,
+      };
+    }
+    return { estimated: subEstimated, actual: subActual };
+  }
+
+  if (task.assigned_staff_id === memberId) {
+    if (otherSubtasks.length === 0) {
+      return {
+        estimated: Number(task.estimated_hours) || 0,
+        actual: Number(task.actual_hours) || 0,
+      };
+    } else {
+      const otherEstimated = otherSubtasks.reduce((sum, c) => sum + (Number(c.estimated_hours) || 0), 0);
+      const otherActual = otherSubtasks.reduce((sum, c) => sum + (Number(c.actual_hours) || 0), 0);
+      const remainingEstimated = Math.max(0, (Number(task.estimated_hours) || 0) - otherEstimated);
+      const remainingActual = Math.max(0, (Number(task.actual_hours) || 0) - otherActual);
+      return { estimated: remainingEstimated, actual: remainingActual };
+    }
+  }
+
+  return { estimated: 0, actual: 0 };
 }
 
 /**
@@ -726,8 +805,19 @@ export interface ParsedAuditNote {
   formattedText: string;
 }
 
-export function parseSystemAuditNote(content: string): ParsedAuditNote {
-  if (!content) return { isAudit: false, type: 'other', icon: '💬', formattedText: content };
+/**
+ * Strips any legacy notification recipient mention suffix (e.g. "| Notificando a @Natalia")
+ * from audit and comment strings for cleaner UI display.
+ */
+export function cleanAuditNotificationSuffix(text: string): string {
+  if (!text) return "";
+  return text.replace(/\s*\|\s*[Nn]otificando a\s+.*$/i, "").trim();
+}
+
+export function parseSystemAuditNote(rawContent: string): ParsedAuditNote {
+  if (!rawContent) return { isAudit: false, type: 'other', icon: '💬', formattedText: rawContent };
+
+  const content = cleanAuditNotificationSuffix(rawContent);
 
   // 1. Progress / Regression
   if (
@@ -746,18 +836,25 @@ export function parseSystemAuditNote(content: string): ParsedAuditNote {
     };
   }
 
-  // 2. Status change
+  // 2. Status change (including QA Review and Task Completion)
   if (
     content.startsWith("🔄") ||
+    content.startsWith("🔍") ||
+    content.startsWith("✅") ||
     content.toLowerCase().includes("estado actualizado") ||
-    content.toLowerCase().includes("estado cambiado")
+    content.toLowerCase().includes("estado cambiado") ||
+    content.toLowerCase().includes("enviado a revisión") ||
+    content.toLowerCase().includes("revisión / qa") ||
+    content.toLowerCase().includes("tarea completada exitosamente")
   ) {
+    const isQa = content.startsWith("🔍") || content.toLowerCase().includes("revisión") || content.toLowerCase().includes("qa");
+    const isDone = content.startsWith("✅") || content.toLowerCase().includes("tarea completada");
     return {
       isAudit: true,
       type: 'status',
-      icon: "🔄",
-      badgeClass: "text-blue-600 dark:text-blue-400",
-      formattedText: content.replace(/^🔄\s*/, '').trim()
+      icon: isQa ? "🔍" : isDone ? "✅" : "🔄",
+      badgeClass: isQa ? "text-violet-600 dark:text-violet-400" : isDone ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400",
+      formattedText: content.replace(/^[🔄🔍✅]\s*/, '').trim()
     };
   }
 

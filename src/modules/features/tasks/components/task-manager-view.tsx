@@ -27,7 +27,10 @@ import {
   ChevronDown,
   CheckSquare,
   CalendarDays,
+  RefreshCw,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -53,6 +56,7 @@ import { TaskDetailModal } from "./modals/task-detail-modal"
 import { TaskFormModal } from "./modals/task-form-modal"
 import { ProjectFormModal } from "./modals/project-form-modal"
 import { WorkspaceFormModal } from "./modals/workspace-form-modal"
+import { TaskLogWorkModal } from "./shared/task-log-work-modal"
 import { updateTaskStatus, getTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -81,10 +85,100 @@ export function TaskManagerView({
   organizationId,
   tenantBranding,
 }: TaskManagerViewProps) {
+  const router = useRouter()
+  const [isSyncing, setIsSyncing] = useState(false)
+
   const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks)
   const [collaborators, setCollaborators] = useState<TaskCollaborator[]>(initialCollaborators)
+
+  // Reactive Prop Synchronization with Server Component revalidations
+  useEffect(() => {
+    setWorkspaces(initialWorkspaces)
+  }, [initialWorkspaces])
+
+  useEffect(() => {
+    setProjects(initialProjects)
+  }, [initialProjects])
+
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
+
+  useEffect(() => {
+    setCollaborators(initialCollaborators)
+  }, [initialCollaborators])
+
+  // Realtime WebSocket Subscription via singleton manager (Zero-Thundering-Herd)
+  useEffect(() => {
+    if (!organizationId) return
+
+    const channelName = `realtime_tasks_org_${organizationId}`
+    let isMounted = true
+
+    realtimeManager.getOrCreateChannel(channelName, (channel) => {
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_items",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (!isMounted) return
+
+          if (payload.eventType === "UPDATE") {
+            const updatedRow = payload.new as Partial<TaskItem>
+            setTasks((prev) =>
+              prev.map((t) => {
+                if (t.id === updatedRow.id) {
+                  return {
+                    ...t,
+                    ...updatedRow,
+                    assigned_staff: t.assigned_staff,
+                    qa_staff: t.qa_staff,
+                    project: t.project,
+                    blocked_by: t.blocked_by,
+                  }
+                }
+                return t
+              })
+            )
+          } else if (payload.eventType === "DELETE") {
+            const deletedId = (payload.old as any)?.id
+            if (deletedId) {
+              setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+            }
+          } else if (payload.eventType === "INSERT") {
+            router.refresh()
+          }
+        }
+      )
+    })
+
+    return () => {
+      isMounted = false
+      realtimeManager.releaseChannel(channelName)
+    }
+  }, [organizationId, router])
+
+  const handleManualSync = async () => {
+    setIsSyncing(true)
+    try {
+      const freshTasks = await getTasks({ orgId: organizationId })
+      if (freshTasks) {
+        setTasks(freshTasks)
+      }
+      router.refresh()
+      toast.success("Datos sincronizados con éxito")
+    } catch (err: any) {
+      toast.error("Error al sincronizar datos")
+    } finally {
+      setTimeout(() => setIsSyncing(false), 500)
+    }
+  }
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
@@ -104,6 +198,7 @@ export function TaskManagerView({
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
   const [workspaceToEdit, setWorkspaceToEdit] = useState<TaskWorkspace | null>(null)
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<TaskStatus>("todo")
+  const [logWorkState, setLogWorkState] = useState<{ task: TaskItem; targetStatus: TaskStatus } | null>(null)
 
   // Unified Scope filter (hierarchical tree: all | workspace:id | project_id)
   const currentScopeValue =
@@ -297,7 +392,12 @@ export function TaskManagerView({
     setIsDetailModalOpen(true)
   }
 
-  const handleQuickMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+  const handleQuickMoveTask = async (
+    taskId: string,
+    newStatus: TaskStatus,
+    loggedHours?: number,
+    note?: string
+  ) => {
     const targetTask = tasks.find((t) => t.id === taskId)
     if ((newStatus === "done" || newStatus === "in_review") && targetTask?.blocked_by && targetTask.blocked_by.status !== "done") {
       const actionLabel = newStatus === "in_review" ? "enviar a Revisión / QA" : "completar"
@@ -307,33 +407,110 @@ export function TaskManagerView({
       return
     }
 
+    // When moving to in_review or done without loggedHours explicitly defined, trigger the agile log work modal!
+    if (
+      (newStatus === "in_review" || newStatus === "done") &&
+      loggedHours === undefined &&
+      targetTask &&
+      targetTask.status !== newStatus
+    ) {
+      setLogWorkState({ task: targetTask, targetStatus: newStatus })
+      return
+    }
+
+    const incrementalHours = loggedHours ? Number(loggedHours) : 0
+
     // Optimistic UI update
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus,
+              actual_hours: (Number(t.actual_hours) || 0) + incrementalHours,
+              progress_percentage: newStatus === "done" ? 100 : t.progress_percentage,
+            }
+          : t
+      )
     )
 
     try {
-      const res = await updateTaskStatus(taskId, newStatus)
+      const res = await updateTaskStatus(
+        taskId,
+        newStatus,
+        newStatus === "done" ? 100 : undefined,
+        undefined,
+        incrementalHours,
+        note
+      )
       if (res.success) {
-        toast.success(`Tarea movida a: ${newStatus === 'done' ? 'Completado' : newStatus === 'in_review' ? 'Revisión / QA' : newStatus === 'in_progress' ? 'En Progreso' : newStatus}`)
+        const hoursMessage = incrementalHours > 0 ? ` (+${incrementalHours}h imputadas)` : ""
+        toast.success(
+          `Tarea movida a: ${
+            newStatus === "done"
+              ? "Completado"
+              : newStatus === "in_review"
+              ? "Revisión / QA"
+              : newStatus === "in_progress"
+              ? "En Progreso"
+              : newStatus
+          }${hoursMessage}`
+        )
+        if (res.unblockedTasks && res.unblockedTasks.length > 0) {
+          const unblockedMap = new Map<string, TaskItem>(res.unblockedTasks.map((u: TaskItem) => [u.id, u]))
+          setTasks((prev: TaskItem[]) => prev.map((t) => unblockedMap.get(t.id) || t))
+          toast.success(`${res.unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+            id: "unblocked-cascade-toast"
+          })
+        }
       } else {
         // Revert optimistic update
         setTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  status: targetTask?.status || t.status,
+                  actual_hours: Number(targetTask?.actual_hours) || 0,
+                  progress_percentage: targetTask?.progress_percentage ?? t.progress_percentage,
+                }
+              : t
+          )
         )
         toast.error(res.error || "Error al mover la tarea")
       }
     } catch (err: any) {
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: targetTask?.status || t.status } : t))
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: targetTask?.status || t.status,
+                actual_hours: Number(targetTask?.actual_hours) || 0,
+                progress_percentage: targetTask?.progress_percentage ?? t.progress_percentage,
+              }
+            : t
+        )
       )
       toast.error(err.message || "Error al actualizar estado")
     }
   }
 
-  const handleTaskUpdated = (updatedTask: TaskItem) => {
-    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
+  const handleTaskUpdated = (updatedTask: TaskItem, unblockedTasks?: TaskItem[]) => {
+    setTasks((prev: TaskItem[]) => {
+      const unblockedMap = unblockedTasks && unblockedTasks.length > 0 ? new Map<string, TaskItem>(unblockedTasks.map((u: TaskItem) => [u.id, u])) : null
+      return prev.map((t) => {
+        if (t.id === updatedTask.id) return updatedTask
+        if (unblockedMap?.has(t.id)) return unblockedMap.get(t.id)!
+        return t
+      })
+    })
     setSelectedTask(updatedTask)
+    if (unblockedTasks && unblockedTasks.length > 0) {
+      toast.success(`${unblockedTasks.length} ticket(s) dependientes han sido desbloqueados automáticamente`, {
+        id: "unblocked-cascade-toast"
+      })
+    }
   }
 
   const handleTaskDeleted = (taskId: string) => {
@@ -353,6 +530,21 @@ export function TaskManagerView({
 
   const handleProjectUpdated = (updatedProject: TaskProject) => {
     setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)))
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.project_id === updatedProject.id
+          ? {
+              ...t,
+              project: {
+                ...t.project,
+                id: updatedProject.id,
+                name: updatedProject.name,
+                color: updatedProject.color,
+              },
+            }
+          : t
+      )
+    )
   }
 
   const handleProjectDeleted = (projectId: string) => {
@@ -418,6 +610,7 @@ export function TaskManagerView({
       setSelectedMemberFilter("all")
     }
     getTasks({ orgId: organizationId }).then(setTasks)
+    router.refresh()
   }
 
   return (
@@ -633,6 +826,19 @@ export function TaskManagerView({
               )}
             </div>
 
+            {/* Manual Sync Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="h-9 px-2.5 text-xs font-medium rounded-lg border-zinc-200/80 dark:border-white/10 shadow-sm gap-1.5 cursor-pointer bg-card hover:bg-muted/50"
+              title="Sincronizar datos con el servidor"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+              <span className="hidden sm:inline font-semibold">Sincronizar</span>
+            </Button>
+
             {/* Unified + Nuevo Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -818,6 +1024,26 @@ export function TaskManagerView({
         onWorkspaceDeleted={handleWorkspaceDeleted}
         collaborators={collaborators}
       />
+
+      {/* Agile Work Hours Imputation Modal (Jira-style on transition to QA or Done) */}
+      {logWorkState && (
+        <TaskLogWorkModal
+          isOpen={!!logWorkState}
+          onClose={() => setLogWorkState(null)}
+          task={logWorkState.task}
+          targetStatus={logWorkState.targetStatus}
+          onConfirm={(hours, note) => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleQuickMoveTask(task.id, targetStatus, hours, note)
+          }}
+          onSkip={() => {
+            const { task, targetStatus } = logWorkState
+            setLogWorkState(null)
+            handleQuickMoveTask(task.id, targetStatus, 0)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/modules/core/database/supabase"
+import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { NotificationList } from "./notification-list"
 // import { checkUpcomingPayments } from "@/modules/infrastructure/notifications/services/notifications"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
@@ -30,6 +31,7 @@ type Notification = {
     action_url?: string
     client_id?: string
     subscription_id?: string
+    organization_id?: string
 }
 
 interface NotificationBellProps {
@@ -41,6 +43,8 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
     const [unreadCount, setUnreadCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [isMounted, setIsMounted] = useState(false)
+    const lastFetchRef = useRef<number>(Date.now())
+    const orgIdRef = useRef<string | null>(null)
 
     useEffect(() => {
         setIsMounted(true)
@@ -48,14 +52,12 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
 
     const fetchNotifications = async () => {
         try {
-            // Moved to server-side cron: /api/cron/billing
-            // await checkUpcomingPayments()
-
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
 
             // CRITICAL: Get current organization to filter notifications
             const orgId = await getCurrentOrganizationId()
+            orgIdRef.current = orgId
             if (!orgId) {
                 setNotifications([])
                 setUnreadCount(0)
@@ -75,6 +77,7 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
 
             setNotifications(data || [])
             setUnreadCount(data?.filter(n => !n.read).length || 0)
+            lastFetchRef.current = Date.now()
         } catch (error) {
             console.error('Error fetching notifications:', error)
         } finally {
@@ -130,9 +133,74 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
     useEffect(() => {
         fetchNotifications()
 
-        // Poll for new notifications every 60 seconds
-        // const interval = setInterval(fetchNotifications, 60000)
-        // return () => clearInterval(interval)
+        let channelName = ''
+
+        // Realtime Subscription via singleton manager
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return
+            channelName = `notifications_user_${user.id}`
+
+            realtimeManager.getOrCreateChannel(channelName, (channel) => {
+                channel.on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        const currentOrg = orgIdRef.current
+                        if (payload.eventType === 'INSERT') {
+                            const newNotif = payload.new as Notification
+                            if (!currentOrg || !newNotif.organization_id || newNotif.organization_id === currentOrg) {
+                                setNotifications((prev) => {
+                                    if (prev.some((n) => n.id === newNotif.id)) return prev
+                                    return [newNotif, ...prev].slice(0, 15)
+                                })
+                                if (!newNotif.read) {
+                                    setUnreadCount((prev) => prev + 1)
+                                }
+                            }
+                        } else if (payload.eventType === 'UPDATE') {
+                            const updated = payload.new as Notification
+                            setNotifications((prev) =>
+                                prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n))
+                            )
+                            if (updated.read) {
+                                setUnreadCount((prev) => Math.max(0, prev - 1))
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            const deletedId = (payload.old as any)?.id
+                            if (deletedId) {
+                                setNotifications((prev) => prev.filter((n) => n.id !== deletedId))
+                            }
+                        }
+                    }
+                )
+            })
+        })
+
+        // Liveness fallback: Re-sync if tab was hidden/inactive for > 2 minutes
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                const elapsed = Date.now() - lastFetchRef.current
+                if (elapsed > 2 * 60 * 1000) {
+                    fetchNotifications()
+                }
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleVisibilityChange)
+
+        return () => {
+            if (channelName) {
+                realtimeManager.releaseChannel(channelName)
+            }
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('focus', handleVisibilityChange)
+        }
     }, [])
 
     if (!isMounted) {
