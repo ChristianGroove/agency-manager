@@ -42,6 +42,29 @@ END $$;
 REVOKE ALL ON FUNCTION public.apply_meta_account_update(text,text,timestamptz,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_meta_account_update(text,text,timestamptz,text,text) TO service_role;
 
+-- Delivery receipts for sends accepted before suspension can arrive afterward.
+CREATE OR REPLACE FUNCTION public.record_meta_message_status(p_connection_id uuid,p_status jsonb)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE org uuid; resolved_status text; stamp timestamptz;
+BEGIN
+ SELECT organization_id INTO STRICT org FROM public.integration_connections
+ WHERE id=p_connection_id AND status IN ('active','connected','temporarily_offboarded','action_required');
+ IF p_status->>'status' NOT IN ('sent','delivered','read','failed') THEN RETURN; END IF;
+ stamp := to_timestamp((p_status->>'timestamp')::double precision);
+ INSERT INTO public.meta_message_statuses AS old (connection_id,organization_id,external_id,status,event_timestamp,pricing,error_codes)
+ VALUES(p_connection_id,org,p_status->>'id',p_status->>'status',stamp,p_status->'pricing',p_status->'errors')
+ ON CONFLICT(connection_id,external_id) DO UPDATE SET
+ status=CASE WHEN old.status='read' THEN old.status
+ WHEN old.status='delivered' AND EXCLUDED.status IN ('sent','failed') THEN old.status
+ WHEN old.status='failed' AND EXCLUDED.status='sent' THEN old.status ELSE EXCLUDED.status END,
+ event_timestamp=greatest(old.event_timestamp,EXCLUDED.event_timestamp),
+ pricing=coalesce(EXCLUDED.pricing,old.pricing),error_codes=coalesce(EXCLUDED.error_codes,old.error_codes),updated_at=now()
+ RETURNING status INTO resolved_status;
+ UPDATE public.messages m SET status=resolved_status
+ FROM public.conversations c WHERE m.conversation_id=c.id AND c.organization_id=org
+ AND c.connection_id=p_connection_id AND m.external_id=p_status->>'id';
+END $$;
+
 -- A new generation is allowed only after Meta confirms the prior partner was
 -- removed. Reopening Embedded Signup while still connected must not replay the
 -- once-per-onboarding SMB data requests.

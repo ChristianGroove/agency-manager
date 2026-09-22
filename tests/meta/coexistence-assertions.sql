@@ -24,6 +24,14 @@ DO $$ BEGIN
  IF (SELECT status FROM public.integration_connections WHERE id='20000000-0000-0000-0000-000000000001') <> 'temporarily_offboarded'
  THEN RAISE EXCEPTION 'Offboard did not block sends'; END IF;
 END $$;
+SELECT public.record_meta_message_status('20000000-0000-0000-0000-000000000001',
+ '{"id":"wamid.before_offboard","status":"delivered","timestamp":"1790000000"}');
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM public.meta_message_statuses
+  WHERE connection_id='20000000-0000-0000-0000-000000000001'
+   AND external_id='wamid.before_offboard' AND status='delivered')
+ THEN RAISE EXCEPTION 'Receipt lost during temporary offboarding'; END IF;
+END $$;
 SELECT public.apply_meta_account_update('123456789','ACCOUNT_RECONNECTED','2026-09-22T10:01:00Z');
 DO $$ BEGIN
  IF (SELECT status FROM public.integration_connections WHERE id='20000000-0000-0000-0000-000000000001') <> 'active'

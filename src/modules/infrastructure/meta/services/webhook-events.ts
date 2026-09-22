@@ -20,7 +20,8 @@ export async function processMetaControlEvents(payload: any) {
             if (!phoneId) continue
             const { data: connection, error } = await supabaseAdmin.from('integration_connections')
                 .select('id,organization_id,metadata').eq('provider_key','whatsapp_cloud')
-                .eq('metadata->>asset_id',phoneId).in('status',['active','connected']).maybeSingle()
+                .eq('metadata->>asset_id',phoneId)
+                .in('status',['active','connected','temporarily_offboarded','action_required']).maybeSingle()
             if (error) throw new Error('Ambiguous Meta channel')
             if (!connection) continue
             for (const status of value.statuses || []) {
