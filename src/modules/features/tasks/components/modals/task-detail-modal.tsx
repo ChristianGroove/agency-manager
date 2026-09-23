@@ -51,6 +51,7 @@ import {
   Edit3,
   Check,
   Timer,
+  Lock,
 } from "lucide-react"
 import type { TaskItem, TaskCollaborator, TaskComment, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskAttachment, RecurrenceInterval } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
@@ -198,6 +199,7 @@ interface TaskDetailModalProps {
   collaborators: TaskCollaborator[]
   availableTasks?: TaskItem[]
   onSelectTask?: (task: TaskItem) => void
+  isLeadOrPm?: boolean
 }
 
 export function TaskDetailModal({
@@ -209,9 +211,11 @@ export function TaskDetailModal({
   collaborators,
   availableTasks,
   onSelectTask,
+  isLeadOrPm = true,
 }: TaskDetailModalProps) {
   if (!task) return null
 
+  const isTerminalLocked = !isLeadOrPm && task.status === "done"
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || "")
   const [status, setStatus] = useState<TaskStatus>(task.status)
@@ -1528,6 +1532,7 @@ export function TaskDetailModal({
                       setBlockedReason("")
                     }
                   }}
+                  disabled={isTerminalLocked}
                 >
                   <SelectTrigger className="w-full bg-background h-9 text-xs font-medium">
                     <SelectValue />
@@ -1545,6 +1550,12 @@ export function TaskDetailModal({
                     <SelectItem value="blocked">Bloqueado</SelectItem>
                   </SelectContent>
                 </Select>
+                {isTerminalLocked && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5 font-medium">
+                    <Lock className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span>Ticket finalizado. Solo el PM puede reabrirlo o cambiar su estado.</span>
+                  </p>
+                )}
               </div>
 
               {/* Blocker input (only visible when status is Bloqueado) */}
@@ -1776,7 +1787,7 @@ export function TaskDetailModal({
                   <label className="text-[11px] font-medium text-muted-foreground block truncate">
                     Horas Reales
                   </label>
-                  {task && (
+                  {task && (isLeadOrPm || task.status !== "done") && (
                     <button
                       type="button"
                       onClick={() =>
@@ -1799,8 +1810,9 @@ export function TaskDetailModal({
                   min="0"
                   step="0.5"
                   value={actualHours}
+                  disabled={isTerminalLocked}
                   onChange={(e) => setActualHours(Number(e.target.value))}
-                  className="bg-background h-9 text-xs font-mono"
+                  className="bg-background h-9 text-xs font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
             </div>

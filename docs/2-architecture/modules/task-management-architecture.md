@@ -980,3 +980,33 @@ Se consolidaron todos los controles en un único contenedor horizontal de alto r
      - **Nuevo Sprint**: Invoca el modal de creación de sprints ágiles (`onCreateSprint` / local `TaskSprintModal`).
      - **Nuevo Proyecto**: Invoca el modal de creación de proyectos (`onCreateProject`).
    - Integrado coherentemente tanto en el Portal de Colaboradores como en la vista de Métricas de la Plataforma General.
+
+---
+
+## 24. Gobernanza Terminal de Tickets Completados (`done`) y Restricción de Imputación de Horas
+
+### A. Racional de Negocio y Prevención de Fugas de Rentabilidad
+Permitir que colaboradores regulares reabran o imputen horas a requerimientos que ya fueron marcados como completados (`done`) acarrea severas distorsiones operacionales en una agencia:
+1. **Scope Creep y Retrabajo Oculto**: Los colaboradores suelen aceptar cambios informales solicitados por clientes o terceros reabriendo tickets viejos y trabajando horas no presupuestadas sin conocimiento del PM.
+2. **Corrupción de Telemetría Histórica**: Alterar el estado o sumar horas a tareas de sprints cerrados distorsiona las métricas de velocidad y rentabilidad ya consolidadas.
+3. **Relleno Artificial de Jornadas**: Previene que colaboradores asignen horas retroactivas a tickets finalizados para justificar jornadas laborales semanales.
+
+### B. Reglas de Gobernanza Implementadas
+
+| Componente / Operación | Colaborador Regular (`!isLeadOrPm`) | Gestor de Proyecto / Admin (`isLeadOrPm`) |
+| :--- | :--- | :--- |
+| **Reapertura de Estado** | **Bloqueada**. El selector de estado queda inactivo con candado: *"Ticket finalizado. Solo el PM puede reabrirlo o cambiar su estado."* | **Permitida**. Puede reabrir el ticket a `in_progress`, `in_review` o reasignarlo si existe justificación. |
+| **Botón `+ Imputar`** | **Oculto**. No puede registrar horas adicionales en tickets completados. | **Activo**. Puede ajustar horas reales para balance contable o auditoría. |
+| **Campo de Horas Reales** | **Solo lectura** (`disabled`). Imposibilita la edición manual directa del valor numérico. | **Editable**. |
+| **Control de Avance (Slider)** | **Bloqueado**. Con tooltip informativo de restricción. | **Editable**. |
+| **Entregables (Checklist)** | **Bloqueados**. No permite desmarcar ni marcar subtareas en tickets completados. | **Interactivos**. |
+
+### C. Aplicación Multicapa (Frontend y Backend)
+- **Capa Servidor (`collaborator-portal-actions.ts`)**:
+  - `portalUpdateTaskStatus`: Valida que si `current.status === 'done'`, ningún colaborador no-PM pueda alterar el estado ni registrar `loggedHours`.
+  - `portalUpdateTaskProgress`: Rechaza intentos de modificar el porcentaje de avance de un ticket completado.
+  - `portalToggleChecklist`: Bloquea mutaciones de entregables en tickets completados.
+  - `portalUpdateTask`: Rechaza reaperturas, cambios de progreso e imputaciones de horas sobre tickets completados.
+- **Capa Interfaz de Usuario**:
+  - `TaskPortalDetailModal.tsx` y `TaskDetailModal.tsx`: Bloquean selectores de estado, ocultan `+ Imputar`, inhabilitan checkboxes de entregables y muestran alertas claras de gobernanza.
+  - `TaskCollaboratorPortal.tsx`: Bloquea acciones rápidas de cambio de estado en tablas y Kanban para tickets cerrados.

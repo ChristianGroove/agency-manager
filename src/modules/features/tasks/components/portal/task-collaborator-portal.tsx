@@ -1624,6 +1624,16 @@ export function TaskCollaboratorPortal({
     const savedProg = getSavedProgress(taskId)
     const savedStatus = getSavedStatus(taskId)
 
+    // Terminal Governance: Completed tasks progress cannot be altered by regular staff
+    if (!isLeadOrPm && task?.status === "done") {
+      toast.warning("Ticket finalizado", {
+        description: "Esta tarea ya está completada. Solo un Project Manager puede reabrirla o modificar su avance.",
+        id: "collaborator-progress-restricted"
+      })
+      handleSliderDrag(taskId, savedProg)
+      return
+    }
+
     // Rule: Collaborators cannot regress progress below saved progress
     if (!isLeadOrPm && clamped < savedProg) {
       toast.info("El avance registrado no puede ser reducido por colaboradores.")
@@ -1711,6 +1721,14 @@ export function TaskCollaboratorPortal({
 
   // Checklist item toggle
   const handleToggleChecklist = async (taskId: string, itemId: string, currentVal: boolean) => {
+    const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
+    if (!isLeadOrPm && task?.status === "done") {
+      toast.warning("Ticket finalizado", {
+        description: "Este ticket está completado. Solo el Project Manager puede modificar entregables o reabrir el ticket."
+      })
+      return
+    }
+
     const nextVal = !currentVal
     try {
       const res = await portalToggleChecklist(token, taskId, itemId, nextVal)
@@ -1762,6 +1780,15 @@ export function TaskCollaboratorPortal({
     const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
     const isMainAssignee = task?.assigned_staff_id === staff.id
     const canCloseParentTask = isLeadOrPm || isQa || isMainAssignee
+
+    // Reopen / Terminal Governance
+    if (!isLeadOrPm && task?.status === "done" && newStatus !== task.status) {
+      toast.warning("Ticket finalizado", {
+        description: "Esta tarea ya está completada. Solo un Project Manager puede reabrirla o cambiar su estado.",
+        id: "collaborator-reopen-restricted"
+      })
+      return
+    }
 
     if (newStatus === "done" && !canCloseParentTask) {
       toast.warning("Permiso de cierre restringido", {

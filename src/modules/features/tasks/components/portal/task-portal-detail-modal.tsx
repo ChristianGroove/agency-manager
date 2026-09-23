@@ -277,6 +277,7 @@ export function TaskPortalDetailModal({
   const canCloseParentTask = isCreating || isLeadOrPm || isQa || isMainAssignee
   const initialDefaultStatus: TaskStatus = task?.status || (isCreating && !isLeadOrPm ? "backlog" : defaultStatus || "todo")
   const isBacklogLocked = Boolean(!isLeadOrPm && (task?.status === "backlog" || (isCreating && initialDefaultStatus === "backlog")))
+  const isTerminalLocked = Boolean(!isCreating && !isLeadOrPm && task?.status === "done")
 
   const canToggleItem = (item: TaskChecklistItem) => {
     if (isCreating || isLeadOrPm || isQa || isMainAssignee) return true
@@ -507,6 +508,14 @@ export function TaskPortalDetailModal({
           toast.error(res.error || "No se pudo crear el ticket")
         }
       } else if (task) {
+        if (isTerminalLocked && status !== task.status) {
+          toast.warning("Ticket finalizado", {
+            description: "No se puede reabrir ni cambiar el estado de un ticket completado. Solo el Project Manager tiene esta facultad."
+          })
+          setIsSaving(false)
+          return
+        }
+
         const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
         let finalProgress = progress
         let finalStatus = status
@@ -717,6 +726,12 @@ export function TaskPortalDetailModal({
   const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
     const targetItem = checklist.find((c) => c.id === itemId)
     if (!targetItem) return
+    if (isTerminalLocked) {
+      toast.warning("Ticket finalizado", {
+        description: "Este ticket está completado. Solo el Project Manager puede modificar entregables o reabrir el ticket."
+      })
+      return
+    }
     if (!canToggleItem(targetItem)) {
       toast.error("No tienes autorización para modificar subtareas asignadas a otros colaboradores.")
       return
@@ -1206,13 +1221,13 @@ export function TaskPortalDetailModal({
                       min={0}
                       max={100}
                       step={5}
-                      disabled={!canCloseParentTask || isBacklogLocked}
+                      disabled={!canCloseParentTask || isBacklogLocked || isTerminalLocked}
                       onValueChange={handleProgressSliderDrag}
-                      className={cn(canCloseParentTask && !isBacklogLocked ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
+                      className={cn(canCloseParentTask && !isBacklogLocked && !isTerminalLocked ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
-                    {(!canCloseParentTask || isBacklogLocked) && (
+                    {(!canCloseParentTask || isBacklogLocked || isTerminalLocked) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex shrink-0 cursor-help">
@@ -1220,7 +1235,9 @@ export function TaskPortalDetailModal({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
-                          {isBacklogLocked
+                          {isTerminalLocked
+                            ? "Ticket completado: solo el PM puede reabrir el ticket o ajustar el avance"
+                            : isBacklogLocked
                             ? "Requerimiento en Backlog: debe ser evaluado y aprobado por el PM antes de poder registrar avances"
                             : "Control bloqueado: solo el responsable directo o PM pueden ajustar el avance general"}
                         </TooltipContent>
@@ -1347,7 +1364,7 @@ export function TaskPortalDetailModal({
               {/* Checklist items */}
               <div className="space-y-2">
                 {checklist.map((item) => {
-                  const isToggleAllowed = canToggleItem(item)
+                  const isToggleAllowed = canToggleItem(item) && !isTerminalLocked
                   const isMySubtask = !isCreating && Boolean(item.assigned_staff_id && currentStaffId && item.assigned_staff_id === currentStaffId)
                   return (
                     <motion.div
@@ -1371,7 +1388,7 @@ export function TaskPortalDetailModal({
                           "w-4 h-4 rounded text-primary focus:ring-primary accent-primary shrink-0 transition-opacity",
                           isToggleAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-40"
                         )}
-                        title={!isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
+                        title={isTerminalLocked ? "Ticket finalizado: solo el PM puede modificar entregables" : !isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
                       />
                       <span
                         className={`text-xs sm:text-sm flex-1 ${
@@ -2015,7 +2032,7 @@ export function TaskPortalDetailModal({
                 <Select
                   value={status}
                   onValueChange={(val: TaskStatus) => handleSelectStatus(val)}
-                  disabled={isBacklogLocked}
+                  disabled={isBacklogLocked || isTerminalLocked}
                 >
                   <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
                     <SelectValue className="truncate text-left" />
@@ -2033,6 +2050,12 @@ export function TaskPortalDetailModal({
                     <SelectItem value="blocked" disabled={isBacklogLocked}>Bloqueado</SelectItem>
                   </SelectContent>
                 </Select>
+                {isTerminalLocked && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5 font-medium">
+                    <Lock className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span>Ticket finalizado. Solo el PM puede reabrirlo o cambiar su estado.</span>
+                  </p>
+                )}
               </div>
 
               {/* Blocker input (only visible when status is Bloqueado) */}
@@ -2402,7 +2425,7 @@ export function TaskPortalDetailModal({
                   <label className="text-[11px] font-medium text-muted-foreground block truncate">
                     Horas Reales
                   </label>
-                  {!isCreating && task && (
+                  {!isCreating && task && (isLeadOrPm || task.status !== "done") && (
                     <button
                       type="button"
                       onClick={() =>
@@ -2425,8 +2448,9 @@ export function TaskPortalDetailModal({
                   min="0"
                   step="0.5"
                   value={actualHours}
+                  disabled={isTerminalLocked}
                   onChange={(e) => setActualHours(Number(e.target.value))}
-                  className="bg-background h-9 text-xs font-mono rounded-xl"
+                  className="bg-background h-9 text-xs font-mono rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
             </div>

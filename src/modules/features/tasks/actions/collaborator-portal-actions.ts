@@ -775,6 +775,14 @@ export async function portalUpdateTaskProgress(
       throw new Error("Solo el responsable directo de la tarea o un PM pueden ajustar el avance general del ticket.");
     }
 
+    // Terminal Governance: Completed tasks cannot be modified by regular staff
+    if (current?.status === "done" && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager puede reabrirlo o modificar su avance."
+      };
+    }
+
     // Backlog Governance: Collaborators cannot advance tickets that are pending PM approval in Backlog
     if (current?.status === "backlog" && !isLeadOrPm) {
       return {
@@ -903,6 +911,22 @@ export async function portalUpdateTaskStatus(
       .single();
 
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+
+    // Terminal Governance: Completed tasks cannot be reopened or transitioned by regular staff
+    if (current?.status === "done" && status !== current.status && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager / Líder puede reabrirlo o cambiar su estado."
+      };
+    }
+
+    // Worklog Governance: Regular staff cannot log hours on completed tasks
+    if (current?.status === "done" && loggedHours !== undefined && loggedHours > 0 && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "No se pueden imputar horas en requerimientos finalizados. Solicita autorización a tu Project Manager."
+      };
+    }
 
     // Backlog Governance: Only PM/Lead can promote a task from Backlog
     if (current?.status === "backlog" && status !== "backlog" && !isLeadOrPm) {
@@ -1056,6 +1080,11 @@ export async function portalToggleChecklist(
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
     const isMainAssignee = task.assigned_staff_id === staff.id;
     const canToggleAny = isLeadOrPm || isMainAssignee;
+
+    // Terminal Governance: Completed tasks deliverables cannot be modified by regular staff
+    if (task.status === "done" && !isLeadOrPm) {
+      throw new Error("No se pueden modificar entregables en un requerimiento finalizado. Solo el PM puede reabrirlo.");
+    }
 
     if (!canToggleAny && targetItem.assigned_staff_id && targetItem.assigned_staff_id !== staff.id) {
       throw new Error("No tienes autorización para marcar subtareas asignadas a otros colaboradores.");
@@ -1598,7 +1627,7 @@ export async function portalUpdateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours, progress_percentage,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -1608,6 +1637,19 @@ export async function portalUpdateTask(
 
     const isMainAssignee = prevTask?.assigned_staff_id === staff.id;
     const canCloseParentTask = isLeadOrPm || isMainAssignee;
+
+    // Terminal Governance: Completed tasks cannot be reopened or altered by regular staff
+    if (prevTask?.status === "done" && !isLeadOrPm) {
+      if (data.status && data.status !== prevTask.status) {
+        throw new Error("Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager / Líder puede reabrirlo o cambiar su estado.");
+      }
+      if (data.loggedHours !== undefined && data.loggedHours > 0) {
+        throw new Error("No se pueden imputar horas en requerimientos finalizados. Solicita autorización a tu Project Manager.");
+      }
+      if (data.progressPercentage !== undefined && data.progressPercentage !== prevTask.progress_percentage) {
+        throw new Error("No se puede alterar el avance de un requerimiento finalizado.");
+      }
+    }
 
     // Backlog Governance: Only PM/Lead can promote or move a task out of Backlog, or adjust progress on it
     if (prevTask?.status === "backlog" && !isLeadOrPm) {
