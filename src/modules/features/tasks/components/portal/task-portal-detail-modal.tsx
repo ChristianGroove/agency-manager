@@ -2396,6 +2396,9 @@ export function TaskPortalDetailModal({
 
             {/* Compact Time Tracking */}
             <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Tiempo
+              </label>
               <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/20 border border-border/60 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium text-muted-foreground">Estimado:</span>
@@ -2424,7 +2427,7 @@ export function TaskPortalDetailModal({
                 <div className="h-3 w-px bg-border/80" />
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Invertido:</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Registrado:</span>
                   <span className="font-mono text-xs font-bold text-foreground">
                     {actualHours || 0}h
                   </span>

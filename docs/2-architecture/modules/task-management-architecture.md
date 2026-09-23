@@ -1023,10 +1023,11 @@ Anteriormente, el bloque de horas en la barra lateral de los modales de detalle 
 
 ### B. Arquitectura del Componente Ultra-Compacto de Tiempo & Horas
 Se erradicó por completo el `<input type="number">` directo para horas reales y los contenedores pesados ("cajones" o tarjetas voluminosas) que saturaban la barra lateral del modal:
-1. **Fila Única Ultra-Compacta (Single-Line Telemetry)**:
+1. **Etiqueta y Fila Única Ultra-Compacta (Single-Line Telemetry)**:
+   - Título de sección homogéneo con el resto del sidebar: `Tiempo` (`text-[11px] font-semibold text-muted-foreground uppercase tracking-wider`).
    - Contenedor esbelto de ~28px de altura con fondo sutil (`bg-muted/20 border border-border/60`).
    - **Estimado**: Campo de texto/input numérico en línea sin bordes (`0h` / `[input]h`) accesible para PMs y de solo lectura para colaboradores.
-   - **Invertido**: Métrica tipográfica en tiempo real (`0h`), con indicador de delta compacto (`+Xh`) únicamente si se supera la estimación.
+   - **Registrado**: Métrica tipográfica en tiempo real (`0h`), con indicador de delta compacto (`+Xh`) en ámbar únicamente si se supera la estimación.
 2. **Botón Principal de Acción Unificado Inmediato**:
    - Ubicado inmediatamente debajo de la fila de tiempo: botón estilizado a ancho completo `Registrar Horas de Trabajo` con icono `Timer`, detonando `TaskLogWorkModal` para registro incremental con notas de trabajo y trazabilidad de autor.
    - En tickets completados (`done`), se sustituye por una píldora sellada: *"Registro cerrado (Ticket completado)"* para preservar gobernanza.
