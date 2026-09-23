@@ -21,11 +21,14 @@ export default function LoginPage() {
     const orgSlug = searchParams.get('org')
 
     const [isLoading, setIsLoading] = useState(false)
+    const [isHydrated, setIsHydrated] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [branding, setBranding] = useState<any>(null)
     const [email, setEmail] = useState("")
     const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password')
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+    useEffect(() => setIsHydrated(true), [])
 
     // Fetch branding on mount
     // Fetch branding on mount
@@ -107,7 +110,7 @@ export default function LoginPage() {
                     <CardContent className="space-y-4">
 
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form method="post" onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-gray-200">Email</Label>
                                 <Input
@@ -167,7 +170,7 @@ export default function LoginPage() {
                             <Button
                                 type="submit"
                                 className="w-full bg-white text-black hover:bg-gray-200 h-11 font-medium transition-all mt-2"
-                                disabled={isLoading}
+                                disabled={isLoading || !isHydrated}
                             >
                                 {isLoading ? (
                                     <>
