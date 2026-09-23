@@ -549,7 +549,7 @@ export function TaskCollaboratorsManager({
                 <th className="p-3.5 text-center w-28">Asignadas</th>
                 <th className="p-3.5 text-center w-28">Completadas</th>
                 <th className="p-3.5 text-center w-24">Estado</th>
-                <th className="p-3.5 pr-4 text-right w-64">Acceso & Gestión</th>
+                <th className="p-3.5 pr-4 text-right w-44">Acceso & Gestión</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -681,43 +681,68 @@ export function TaskCollaboratorsManager({
                     {/* Acceso al Portal / Acciones */}
                     <td className="p-3.5 pr-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenEdit(collab)}
-                          className="h-8 text-xs font-medium gap-1 text-muted-foreground hover:text-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                          aria-label="Editar colaborador"
-                        >
-                          <Pencil className="w-3 h-3 text-primary" />
-                          <span className="hidden lg:inline">Editar</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copyPortalLink(collab)}
-                          className="h-8 text-xs font-medium gap-1 text-muted-foreground hover:text-foreground border-border/60"
-                          aria-label="Copiar enlace directo"
-                        >
-                          <Copy className="w-3 h-3" />
-                          <span className="hidden xl:inline">Copiar</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => openPortal(collab)}
-                          className="h-8 text-xs font-medium gap-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
-                          aria-label="Abrir portal del colaborador"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Abrir</span>
-                        </Button>
                         <TooltipProvider delayDuration={150}>
+                          {/* Editar */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenEdit(collab)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                                aria-label="Editar colaborador"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-primary" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              Editar colaborador
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* Copiar enlace */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyPortalLink(collab)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                                aria-label="Copiar enlace directo"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              Copiar enlace al portal
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* Abrir portal */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                onClick={() => openPortal(collab)}
+                                className="h-8 w-8 p-0 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors cursor-pointer"
+                                aria-label="Abrir portal del colaborador"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              Abrir portal del colaborador
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* Eliminar */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleOpenDelete(collab)}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors cursor-pointer"
                                 aria-label="Eliminar colaborador"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
