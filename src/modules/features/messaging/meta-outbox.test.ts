@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(), rpc: vi.fn(), sendEvent: vi.fn(), getAdapter: vi.fn(), assertSend: vi.fn(),
+    signedUrl: vi.fn(),
 }))
 vi.mock('@/modules/core/database/supabase-admin', () => ({
-    supabaseAdmin: { from: mocks.from, rpc: mocks.rpc },
+    supabaseAdmin: { from: mocks.from, rpc: mocks.rpc,
+        storage: { from: () => ({ createSignedUrl: mocks.signedUrl }) } },
 }))
 vi.mock('@/modules/infrastructure/automation/inngest/client', () => ({
     inngest: { send: mocks.sendEvent },
@@ -40,6 +42,7 @@ beforeEach(() => {
     mocks.assertSend.mockResolvedValue(undefined)
     mocks.sendEvent.mockResolvedValue(undefined)
     mocks.rpc.mockResolvedValue({ data: true, error: null })
+    mocks.signedUrl.mockResolvedValue({ data: { signedUrl: 'https://storage.test/signed/image' }, error: null })
 })
 
 describe('Meta outbound outbox', () => {
@@ -113,5 +116,24 @@ describe('Meta outbound outbox', () => {
         const { dispatchMetaOutbound } = await import('./meta-outbox')
         expect((await dispatchMetaOutbound('outbox-1')).status).toBe('queued')
         expect(mocks.getAdapter).not.toHaveBeenCalled()
+    })
+
+    it('gives Meta a short-lived download URL for a private social attachment', async () => {
+        const sendMessage = vi.fn(async () => ({ messageId: 'mid-social' }))
+        mocks.getAdapter.mockReturnValue({ sendMessage })
+        const social = { ...queued, channel: 'messenger', content: {
+            type: 'image', mediaUrl: '/api/media/chat/tenant-a/conversation-a/image.png',
+        } }
+        mocks.from.mockReturnValueOnce(query({ data: social, error: null }))
+            .mockReturnValueOnce(query({ data: { ...connection, provider_key: 'facebook_page' }, error: null }))
+            .mockReturnValueOnce(query({ data: { ...social, status: 'sending' }, error: null }))
+            .mockReturnValueOnce(query({ data: { status: 'active' }, error: null }))
+            .mockReturnValueOnce(query({ data: { id: 'conversation-a', organization_id: 'tenant-a', connection_id: 'channel-a' }, error: null }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe('accepted')
+        expect(mocks.signedUrl).toHaveBeenCalledWith('tenant-a/conversation-a/image.png', 3600)
+        expect(sendMessage).toHaveBeenCalledWith(connection.credentials, 'recipient-a', expect.objectContaining({
+            mediaUrl: 'https://storage.test/signed/image',
+        }), expect.objectContaining({ channel: 'messenger' }))
     })
 })

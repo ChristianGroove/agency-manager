@@ -145,7 +145,7 @@ it('uploads WhatsApp image before the Graph send and uses its media ID', async (
  const {MetaAdapter}=await import('./meta-adapter')
  await new MetaAdapter().sendMessage({phoneNumberId:'wa-phone',accessToken:'token'},'573001234567',
   {type:'image',mediaUrl:'https://example.test/product.webp',caption:'Producto'}, {channel:'whatsapp'})
- expect(mocks.uploadMedia).toHaveBeenCalledWith('https://example.test/product.webp','token','image','wa-phone')
+ expect(mocks.uploadMedia).toHaveBeenCalledWith('https://example.test/product.webp','token','image','wa-phone',undefined)
  expect(fetcher).toHaveBeenCalledTimes(1)
  expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({
   type:'image',image:{id:'uploaded-media-id',caption:'Producto'},

@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { integrationRegistry } from '@/modules/infrastructure/integrations/registry'
 import { inngest } from '@/modules/infrastructure/automation/inngest/client'
+import { PRIVATE_CHAT_MEDIA_BUCKET } from './constants'
 
 export type OutboxStatus = 'queued' | 'sending' | 'accepted' | 'unknown' | 'failed'
 export interface OutboxResult {
@@ -137,7 +138,19 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
             : { channel: 'instagram', pageId: connMeta.asset_id || convMeta.instagramBusinessId || connMeta.instagram_business_id }
 
     try {
-        const sent = await adapter.sendMessage(connection.credentials, claimed.recipient, claimed.content, metadata)
+        let sendContent = claimed.content
+        if (claimed.channel !== 'whatsapp' && typeof sendContent?.mediaUrl === 'string'
+            && sendContent.mediaUrl.startsWith('/api/media/chat/')) {
+            const mediaPath = decodeURIComponent(sendContent.mediaUrl.slice('/api/media/chat/'.length))
+            if (!mediaPath.startsWith(`${claimed.organization_id}/`)) throw new Error('Media ownership mismatch')
+            // Meta fetches social attachments server-to-server; the authenticated
+            // Pixy preview URL cannot be used as the Graph attachment URL.
+            const { data, error } = await supabaseAdmin.storage.from(PRIVATE_CHAT_MEDIA_BUCKET)
+                .createSignedUrl(mediaPath, 60 * 60)
+            if (error || !data?.signedUrl) throw new Error('Could not authorize social attachment')
+            sendContent = { ...sendContent, mediaUrl: data.signedUrl, url: data.signedUrl }
+        }
+        const sent = await adapter.sendMessage(connection.credentials, claimed.recipient, sendContent, metadata)
         if (!sent?.messageId) throw new Error('Graph response has no message identifier')
         await finish(outboxId, 'accepted', sent.messageId)
         return { outboxId, messageId: claimed.message_id, status: 'accepted', externalId: sent.messageId }

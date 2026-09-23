@@ -21,6 +21,18 @@ function chooseMetaConnection(direct: any | null, legacyMatches: any[]): Connect
     return { connectionId: connection.id, organizationId: connection.organization_id, connection }
 }
 
+async function wasLocallyDisconnected(supabase: SupabaseClient, organizationId: string,
+    providerKeys: string[], assetId: string): Promise<boolean> {
+    const { data, error } = await supabase.from('integration_connections').select('id')
+        .eq('organization_id', organizationId)
+        .in('provider_key', providerKeys)
+        .eq('status', 'deleted')
+        .eq('metadata->>asset_id', assetId)
+        .limit(1)
+    if (error) throw new Error('Could not verify disconnected Meta asset')
+    return Boolean(data?.length)
+}
+
 export class ChannelResolver {
     /**
      * Resolves an integration connection (tenant) based on incoming message metadata.
@@ -83,7 +95,10 @@ export class ChannelResolver {
                     return assetId === phoneNumberId || selectedAssets.some((a: any) =>
                         a.id === phoneNumberId && (!a.type || a.type === 'whatsapp'))
                 })
-            return chooseMetaConnection(direct, matches)
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['whatsapp_cloud'], phoneNumberId)) return null
+            return match
         }
 
         // 3. Messenger Matching
@@ -114,7 +129,10 @@ export class ChannelResolver {
                     return assetId === pageId || 
                            selectedAssets.some((a: any) => a.id === pageId && (!a.type || a.type === 'page'))
                 })
-            return chooseMetaConnection(direct, matches)
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['facebook_page'], pageId)) return null
+            return match
         }
 
         // 4. Instagram Matching
@@ -159,7 +177,10 @@ export class ChannelResolver {
                            selectedAssets.some((a: any) => a.id === igId && (!a.type || a.type === 'instagram')) ||
                            c.provider_key === 'instagram_dme' // Support for DME provider variants
                 })
-            return chooseMetaConnection(direct, matches)
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['instagram_dm', 'instagram_dme'], igId)) return null
+            return match
         }
 
         return null

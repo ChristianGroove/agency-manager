@@ -119,13 +119,13 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
     const handleDelete = async () => {
         const coexistence = channel.provider_key === 'whatsapp_cloud' && channel.metadata?.connection_mode === 'coexistence'
         const message = coexistence
-            ? 'Esto quitará el canal de Pixy y detendrá sus automatizaciones, pero NO lo desconectará de Meta. Para desvincularlo, abre WhatsApp Business → Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta. ¿Quieres quitarlo solo de Pixy?'
-            : 'Esto quitará el canal de Pixy y detendrá sus automatizaciones. La autorización en Meta se gestiona por separado. ¿Continuar?'
+            ? 'Esto desconectará el canal de Pixy y detendrá sus envíos y recepción aquí, pero NO lo desvinculará de Meta. Para desvincularlo, abre WhatsApp Business → Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta. ¿Continuar?'
+            : 'Esto desconectará el canal de Pixy y detendrá sus envíos y recepción aquí. La autorización en Meta se gestiona por separado. ¿Continuar?'
         if (!confirm(message)) return
         setIsLoading(true)
         try {
             await deleteChannel(channel.id)
-            toast.success('Canal quitado de Pixy')
+            toast.success('Canal desconectado de Pixy')
             router.refresh()
         } catch (error: any) {
             toast.error("Error", { description: error.message })
@@ -247,7 +247,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="text-red-600" disabled={isLoading}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Quitar de Pixy
+                                        <Trash2 className="mr-2 h-4 w-4" /> Desconectar de Pixy
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>

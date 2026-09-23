@@ -5,6 +5,7 @@ function queryResult(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
         in: vi.fn(() => query),
+        limit: vi.fn(() => query),
         maybeSingle: vi.fn(async () => result),
         or: vi.fn(() => {
             throw new Error('raw or filters should not be used for webhook asset ids')
@@ -50,6 +51,18 @@ describe('ChannelResolver', () => {
         const supabase = { from: vi.fn(() => queries.shift()) } as any
         const match = await ChannelResolver.resolveConnection({ channel: 'whatsapp', metadata: { phoneNumberId: 'phone-1' } } as any, supabase)
         expect(match?.connectionId).toBe('modern')
+    })
+
+    it('does not reactivate a locally disconnected WhatsApp asset through a legacy parent', async () => {
+        const legacy = { id: 'legacy', organization_id: 'tenant-a', provider_key: 'meta_business',
+            metadata: { selected_assets: [{ id: 'phone-1', type: 'whatsapp' }] } }
+        const queries = [queryResult({ data: null, error: null }),
+            queryResult({ data: [legacy], error: null }), queryResult({ data: [{ id: 'disconnected' }], error: null })]
+        const supabase = { from: vi.fn(() => queries.shift()) } as any
+        const match = await ChannelResolver.resolveConnection({ channel: 'whatsapp',
+            metadata: { phoneNumberId: 'phone-1' } } as any, supabase)
+        expect(match).toBeNull()
+        expect(supabase.from).toHaveBeenCalledTimes(3)
     })
 
     it('fails closed if the legacy ownership lookup fails after finding a modern channel', async () => {
