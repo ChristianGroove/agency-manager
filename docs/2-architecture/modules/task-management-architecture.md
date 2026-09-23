@@ -1021,17 +1021,13 @@ Anteriormente, el bloque de horas en la barra lateral de los modales de detalle 
 2. **Fricción de Espacio y Ruptura de UI**: En un contenedor lateral estrecho (~240px), la etiqueta "Horas Reales" compartía renglón con `+ Imputar`, truncándose como `Horas Rea...` con el botón montado encima en dos líneas.
 3. **Pérdida de Trazabilidad**: El input directo permitía sobrescribir el total acumulado sin registrar notas de bitácora, fecha de imputación ni autoría.
 
-### B. Arquitectura del Componente Unificado "Tiempo & Horas"
-Se erradicó por completo el `<input type="number">` para horas reales y se diseñó una tarjeta integrada de telemetría de alto estándar:
-1. **Cabecera con Métricas de Margen**:
-   - Título formal con icono `Timer` (*Tiempo & Horas*).
-   - Badge dinámico de telemetría: calcula el porcentaje de presupuesto consumido (`% invertido`) o alerta en tono ámbar cuando las horas reales superan el presupuesto (`+Xh sobrepaso`).
-2. **Grilla de Valores de 2 Columnas Despejada**:
-   - **Estimadas**: Para el PM, expone un input limpio sin bordes con sufijo `h`. Para colaboradores, muestra una lectura clara (`20h` o `Sin estimar`).
-   - **Reales Invertidas**: Renderizado exclusivo como métrica tipográfica consolidada (`18h` o `18h / 20h`), eliminando cualquier input numérico confuso.
-3. **Barra de Progreso Presupuestario**:
-   - Indicador visual de consumo de horas (verde si está dentro del estimado, ámbar si excede el presupuesto).
-4. **Botón Principal de Acción Unificado**:
-   - Botón ancho destacado: `Registrar Horas de Trabajo` con icono `Timer`, que detona de forma transparente el diálogo de imputación ágil (`TaskLogWorkModal`), garantizando notas, auditoría y horas incrementales.
-   - En tickets cerrados (`done`), se sustituye elegantemente por una píldora informativa sellada: *"Registro cerrado (Ticket completado)"*.
+### B. Arquitectura del Componente Ultra-Compacto de Tiempo & Horas
+Se erradicó por completo el `<input type="number">` directo para horas reales y los contenedores pesados ("cajones" o tarjetas voluminosas) que saturaban la barra lateral del modal:
+1. **Fila Única Ultra-Compacta (Single-Line Telemetry)**:
+   - Contenedor esbelto de ~28px de altura con fondo sutil (`bg-muted/20 border border-border/60`).
+   - **Estimado**: Campo de texto/input numérico en línea sin bordes (`0h` / `[input]h`) accesible para PMs y de solo lectura para colaboradores.
+   - **Invertido**: Métrica tipográfica en tiempo real (`0h`), con indicador de delta compacto (`+Xh`) únicamente si se supera la estimación.
+2. **Botón Principal de Acción Unificado Inmediato**:
+   - Ubicado inmediatamente debajo de la fila de tiempo: botón estilizado a ancho completo `Registrar Horas de Trabajo` con icono `Timer`, detonando `TaskLogWorkModal` para registro incremental con notas de trabajo y trazabilidad de autor.
+   - En tickets completados (`done`), se sustituye por una píldora sellada: *"Registro cerrado (Ticket completado)"* para preservar gobernanza.
 

@@ -1767,86 +1767,39 @@ export function TaskDetailModal({
               )}
             </div>
 
-            {/* Hours & Time Tracking Card */}
-            <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <Timer className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>Tiempo & Horas</span>
-                </div>
-                {Number(actualHours) > 0 && Number(estimatedHours) > 0 && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-[10px] font-mono px-2 py-0.5 rounded-full border shadow-none",
-                      Number(actualHours) > Number(estimatedHours)
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    )}
-                  >
-                    {Number(actualHours) > Number(estimatedHours)
-                      ? `+${Math.round((Number(actualHours) - Number(estimatedHours)) * 10) / 10}h sobrepaso`
-                      : `${Math.round((Number(actualHours) / Number(estimatedHours)) * 100)}% invertido`}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Values Grid */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Horas Estimadas */}
-                <div className="p-2.5 rounded-xl bg-background border border-border/60">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-                    Estimadas
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Input
+            {/* Compact Time Tracking */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/20 border border-border/60 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Estimado:</span>
+                  <div className="inline-flex items-center gap-0.5">
+                    <input
                       type="number"
                       min="0"
                       step="0.5"
-                      value={estimatedHours}
+                      value={estimatedHours || ""}
                       onChange={(e) => setEstimatedHours(Number(e.target.value))}
-                      className="bg-transparent h-7 text-xs font-mono font-bold p-0 border-none shadow-none focus-visible:ring-0 w-full"
+                      className="w-10 bg-transparent text-xs font-mono font-bold text-foreground focus:outline-none border-b border-border/80 focus:border-primary text-center p-0 h-4"
                       placeholder="0"
                     />
-                    <span className="text-xs font-mono font-bold text-muted-foreground">h</span>
+                    <span className="font-mono text-xs font-medium text-muted-foreground">h</span>
                   </div>
                 </div>
 
-                {/* Horas Reales (Métrica Invertida) */}
-                <div className="p-2.5 rounded-xl bg-background border border-border/60">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-                    Reales Invertidas
+                <div className="h-3 w-px bg-border/80" />
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Invertido:</span>
+                  <span className="font-mono text-xs font-bold text-foreground">
+                    {actualHours || 0}h
                   </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-mono font-black text-primary">
-                      {actualHours || 0}
+                  {Number(actualHours) > 0 && Number(estimatedHours) > 0 && Number(actualHours) > Number(estimatedHours) && (
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      (+{Math.round((Number(actualHours) - Number(estimatedHours)) * 10) / 10}h)
                     </span>
-                    <span className="text-xs font-mono font-bold text-muted-foreground">h</span>
-                    {Number(actualHours) > 0 && Number(estimatedHours) > 0 && (
-                      <span className="text-[10px] font-mono text-muted-foreground ml-auto">
-                        / {estimatedHours}h
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
-
-              {/* Visual Budget Progress Bar (when estimatedHours > 0) */}
-              {Number(estimatedHours) > 0 && (
-                <div className="space-y-1">
-                  <div className="w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full transition-all duration-300 rounded-full",
-                        Number(actualHours) > Number(estimatedHours) ? "bg-amber-500" : "bg-primary"
-                      )}
-                      style={{
-                        width: `${Math.min(100, Math.round((Number(actualHours) / Number(estimatedHours)) * 100))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Dedicated CTA Button: Registrar Horas */}
               {task && (
