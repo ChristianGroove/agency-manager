@@ -329,6 +329,7 @@ export interface TaskCollaborator {
   workspace_ids?: string[];
   assigned_tasks_count?: number;
   completed_tasks_count?: number;
+  can_bulk_delete_tasks?: boolean;
 }
 
 export interface TaskWorkspaceMember {

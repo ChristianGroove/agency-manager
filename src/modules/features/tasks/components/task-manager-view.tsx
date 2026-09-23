@@ -63,10 +63,11 @@ import { WorkspaceFormModal } from "./modals/workspace-form-modal"
 import { TaskLogWorkModal } from "./shared/task-log-work-modal"
 import { TaskSprintModal } from "./modals/task-sprint-modal"
 import { TaskImportModal } from "./modals/task-import-modal"
-import { updateTaskStatus, getTasks } from "../actions/task-actions"
+import { updateTaskStatus, getTasks, deleteTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { SectionHeader } from "@/components/layout/section-header"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 
 interface TaskManagerViewProps {
   initialWorkspaces?: TaskWorkspace[]
@@ -228,6 +229,10 @@ export function TaskManagerView({
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators">("list")
+
+  // Bulk Selection & Deletion State (Exclusively in List table view)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
 
   // Sprint state
   const activeSprintObj = useMemo(() => {
@@ -694,6 +699,75 @@ export function TaskManagerView({
     router.refresh()
   }
 
+  // Reset bulk selection whenever tab, search, status filter or scope changes
+  useEffect(() => {
+    setSelectedTaskIds(new Set())
+  }, [activeTab, searchTerm, statusFilter, currentScopeValue, selectedMemberFilter])
+
+  const handleToggleSelectTask = (taskId: string) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const handleToggleSelectAll = () => {
+    setSelectedTaskIds((prev) => {
+      const allSelected = visibleTasks.length > 0 && visibleTasks.every((t) => prev.has(t.id))
+      if (allSelected) {
+        return new Set()
+      } else {
+        return new Set(visibleTasks.map((t) => t.id))
+      }
+    })
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedTaskIds.size === 0) return
+
+    const count = selectedTaskIds.size
+    const msg =
+      count === 1
+        ? "¿Estás seguro de que deseas eliminar la tarea seleccionada? Esta acción no se puede deshacer."
+        : `¿Estás seguro de que deseas eliminar permanentemente las ${count} tareas seleccionadas? Esta acción no se puede deshacer.`
+
+    if (!confirm(msg)) return
+
+    setIsBulkDeleting(true)
+    try {
+      const idsToDelete = Array.from(selectedTaskIds)
+      const res = await deleteTasks(idsToDelete, organizationId)
+      if (!res.success) {
+        throw new Error(res.error || "Error al eliminar tareas")
+      }
+
+      toast.success(
+        count === 1
+          ? "Tarea eliminada correctamente"
+          : `${count} tareas eliminadas correctamente`
+      )
+
+      const deletedSet = new Set(idsToDelete)
+      setTasks((prev) => prev.filter((t) => !deletedSet.has(t.id)))
+      setSelectedTaskIds(new Set())
+
+      getTasks({ orgId: organizationId }).then((freshTasks) => {
+        if (freshTasks) setTasks(freshTasks)
+      })
+      router.refresh()
+    } catch (err: any) {
+      console.error("Error bulk deleting tasks:", err)
+      toast.error(err.message || "Error al eliminar tareas en lote")
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-6 pb-12">
       {/* Standard Platform SectionHeader */}
@@ -1043,12 +1117,23 @@ export function TaskManagerView({
         )}
 
         {activeTab === "list" && (
-          <TaskListView
-            tasks={visibleTasks}
-            teamMembers={collaborators}
-            onSelectTask={handleSelectTask}
-            onQuickMoveTask={handleQuickMoveTask}
-          />
+          <div className="relative">
+            <BulkActionsFloatingBar
+              selectedCount={selectedTaskIds.size}
+              onDelete={handleBulkDelete}
+              onClearSelection={() => setSelectedTaskIds(new Set())}
+              isDeleting={isBulkDeleting}
+            />
+            <TaskListView
+              tasks={visibleTasks}
+              teamMembers={collaborators}
+              onSelectTask={handleSelectTask}
+              onQuickMoveTask={handleQuickMoveTask}
+              selectedTaskIds={selectedTaskIds}
+              onToggleSelectTask={handleToggleSelectTask}
+              onToggleSelectAll={handleToggleSelectAll}
+            />
+          </div>
         )}
 
         {activeTab === "pacing" && (
@@ -1082,6 +1167,17 @@ export function TaskManagerView({
             onSprintDeleted={handleSprintDeleted}
             onSelectTask={handleSelectTask}
             onSwitchToGeneral={() => setActiveTab("list")}
+            onCreateTask={() => {
+              setNewTaskColumnStatus("todo")
+              setIsTaskModalOpen(true)
+            }}
+            onCreateProject={() => {
+              setProjectToEdit(null)
+              setIsProjectModalOpen(true)
+            }}
+            onCreateSprint={() => {
+              setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+            }}
           />
         )}
 

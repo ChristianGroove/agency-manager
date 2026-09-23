@@ -55,8 +55,10 @@ import {
   Edit3,
   Check,
   Zap,
+  Timer,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
+import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type {
   TaskItem,
@@ -275,6 +277,7 @@ export function TaskPortalDetailModal({
   const canCloseParentTask = isCreating || isLeadOrPm || isQa || isMainAssignee
   const initialDefaultStatus: TaskStatus = task?.status || (isCreating && !isLeadOrPm ? "backlog" : defaultStatus || "todo")
   const isBacklogLocked = Boolean(!isLeadOrPm && (task?.status === "backlog" || (isCreating && initialDefaultStatus === "backlog")))
+  const isTerminalLocked = Boolean(!isCreating && !isLeadOrPm && task?.status === "done")
 
   const canToggleItem = (item: TaskChecklistItem) => {
     if (isCreating || isLeadOrPm || isQa || isMainAssignee) return true
@@ -306,6 +309,12 @@ export function TaskPortalDetailModal({
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
   const [blockedReason, setBlockedReason] = useState<string>(task?.blocked_reason || "")
   const [selectedSprintId, setSelectedSprintId] = useState<string>(task?.sprint_id || "none")
+  const [pendingLogWork, setPendingLogWork] = useState<{
+    finalStatus: TaskStatus
+    finalProgress: number
+    targetLabel?: string
+    isManualLog?: boolean
+  } | null>(null)
 
   const currentBlocker = useMemo(() => {
     if (!blockedByTaskId || blockedByTaskId === "none") return null
@@ -499,6 +508,14 @@ export function TaskPortalDetailModal({
           toast.error(res.error || "No se pudo crear el ticket")
         }
       } else if (task) {
+        if (isTerminalLocked && status !== task.status) {
+          toast.warning("Ticket finalizado", {
+            description: "No se puede reabrir ni cambiar el estado de un ticket completado. Solo el Project Manager tiene esta facultad."
+          })
+          setIsSaving(false)
+          return
+        }
+
         const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c) => !c.completed)
         let finalProgress = progress
         let finalStatus = status
@@ -537,39 +554,78 @@ export function TaskPortalDetailModal({
           }
         }
 
-        const res = await portalUpdateTask(token, task.id, {
-          title: isLeadOrPm ? title : undefined,
-          description,
-          status: finalStatus,
-          priority: isLeadOrPm ? priority : undefined,
-          type: isLeadOrPm ? type : undefined,
-          progressPercentage: canCloseParentTask ? finalProgress : undefined,
-          assignedStaffId: isLeadOrPm ? (assignedStaffId === "unassigned" ? null : assignedStaffId) : undefined,
-          qaStaffId: isLeadOrPm ? (qaStaffId === "unassigned" ? null : qaStaffId) : undefined,
-          estimatedHours: isLeadOrPm ? Number(estimatedHours) : undefined,
-          actualHours: Number(actualHours),
-          dueDate: isLeadOrPm ? (dueDate || null) : undefined,
-          checklist,
-          tags: isLeadOrPm || isQa ? tags : undefined,
-          attachments,
-          blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
-          sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
-          isRecurring: isLeadOrPm ? isRecurring : undefined,
-          recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
-          recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
-          blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
-        })
+        // Intercept transitions to QA or Done with the agile log work modal
+        const isTransitioningToReviewOrDone =
+          (finalStatus === "in_review" || finalStatus === "done") &&
+          task.status !== finalStatus
 
-        if (res.success && res.task) {
-          toast.success("Tarea actualizada con éxito")
-          setSavedProgress(finalProgress)
-          setProgress(finalProgress)
-          setStatus(finalStatus)
-          onTaskUpdated?.(res.task)
-          onClose()
-        } else {
-          toast.error(res.error || "Error al actualizar la tarea")
+        if (isTransitioningToReviewOrDone) {
+          setIsSaving(false)
+          setPendingLogWork({
+            finalStatus,
+            finalProgress,
+            targetLabel: finalStatus === "done" ? "Completar" : "Enviar a QA",
+          })
+          return
         }
+
+        await executeSaveDetails(finalStatus, finalProgress, 0)
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar cambios")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const executeSaveDetails = async (
+    finalStatus: TaskStatus,
+    finalProgress: number,
+    loggedHours = 0,
+    note?: string
+  ) => {
+    if (!task) return
+    setIsSaving(true)
+    try {
+      const incrementalHours = loggedHours ? Number(loggedHours) : 0
+      const totalActualHours = Math.round(((Number(actualHours) || 0) + incrementalHours) * 10) / 10
+
+      const res = await portalUpdateTask(token, task.id, {
+        title: isLeadOrPm ? title : undefined,
+        description,
+        status: finalStatus,
+        priority: isLeadOrPm ? priority : undefined,
+        type: isLeadOrPm ? type : undefined,
+        progressPercentage: canCloseParentTask ? finalProgress : undefined,
+        assignedStaffId: isLeadOrPm ? (assignedStaffId === "unassigned" ? null : assignedStaffId) : undefined,
+        qaStaffId: isLeadOrPm ? (qaStaffId === "unassigned" ? null : qaStaffId) : undefined,
+        estimatedHours: isLeadOrPm ? Number(estimatedHours) : undefined,
+        actualHours: totalActualHours,
+        dueDate: isLeadOrPm ? (dueDate || null) : undefined,
+        checklist,
+        tags: isLeadOrPm || isQa ? tags : undefined,
+        attachments,
+        blockedByTaskId: isLeadOrPm ? (blockedByTaskId === "none" ? null : blockedByTaskId) : undefined,
+        sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
+        isRecurring: isLeadOrPm ? isRecurring : undefined,
+        recurrenceInterval: isLeadOrPm ? (isRecurring ? recurrenceInterval : null) : undefined,
+        recurrenceDay: isLeadOrPm ? (isRecurring ? recurrenceDay : null) : undefined,
+        blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
+        loggedHours: incrementalHours > 0 ? incrementalHours : undefined,
+        note: note,
+      })
+
+      if (res.success && res.task) {
+        toast.success("Tarea actualizada con éxito")
+        setSavedProgress(finalProgress)
+        setProgress(finalProgress)
+        setStatus(finalStatus)
+        setActualHours(totalActualHours)
+        initialStatusRef.current = finalStatus
+        onTaskUpdated?.(res.task)
+        onClose()
+      } else {
+        toast.error(res.error || "Error al actualizar la tarea")
       }
     } catch (err: any) {
       toast.error(err.message || "Error al guardar cambios")
@@ -670,6 +726,12 @@ export function TaskPortalDetailModal({
   const handleToggleChecklist = (itemId: string, currentVal: boolean) => {
     const targetItem = checklist.find((c) => c.id === itemId)
     if (!targetItem) return
+    if (isTerminalLocked) {
+      toast.warning("Ticket finalizado", {
+        description: "Este ticket está completado. Solo el Project Manager puede modificar entregables o reabrir el ticket."
+      })
+      return
+    }
     if (!canToggleItem(targetItem)) {
       toast.error("No tienes autorización para modificar subtareas asignadas a otros colaboradores.")
       return
@@ -977,7 +1039,8 @@ export function TaskPortalDetailModal({
     task?.project
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto scrollbar-thin p-0 gap-0 border-border bg-card shadow-2xl rounded-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>{title || (isCreating ? "Nuevo Requerimiento / Ticket" : "Detalle de Tarea")}</DialogTitle>
@@ -1158,13 +1221,13 @@ export function TaskPortalDetailModal({
                       min={0}
                       max={100}
                       step={5}
-                      disabled={!canCloseParentTask || isBacklogLocked}
+                      disabled={!canCloseParentTask || isBacklogLocked || isTerminalLocked}
                       onValueChange={handleProgressSliderDrag}
-                      className={cn(canCloseParentTask && !isBacklogLocked ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
+                      className={cn(canCloseParentTask && !isBacklogLocked && !isTerminalLocked ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 min-w-[52px] justify-end">
-                    {(!canCloseParentTask || isBacklogLocked) && (
+                    {(!canCloseParentTask || isBacklogLocked || isTerminalLocked) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex shrink-0 cursor-help">
@@ -1172,7 +1235,9 @@ export function TaskPortalDetailModal({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-center max-w-[260px] text-xs font-normal">
-                          {isBacklogLocked
+                          {isTerminalLocked
+                            ? "Ticket completado: solo el PM puede reabrir el ticket o ajustar el avance"
+                            : isBacklogLocked
                             ? "Requerimiento en Backlog: debe ser evaluado y aprobado por el PM antes de poder registrar avances"
                             : "Control bloqueado: solo el responsable directo o PM pueden ajustar el avance general"}
                         </TooltipContent>
@@ -1299,7 +1364,7 @@ export function TaskPortalDetailModal({
               {/* Checklist items */}
               <div className="space-y-2">
                 {checklist.map((item) => {
-                  const isToggleAllowed = canToggleItem(item)
+                  const isToggleAllowed = canToggleItem(item) && !isTerminalLocked
                   const isMySubtask = !isCreating && Boolean(item.assigned_staff_id && currentStaffId && item.assigned_staff_id === currentStaffId)
                   return (
                     <motion.div
@@ -1323,7 +1388,7 @@ export function TaskPortalDetailModal({
                           "w-4 h-4 rounded text-primary focus:ring-primary accent-primary shrink-0 transition-opacity",
                           isToggleAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-40"
                         )}
-                        title={!isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
+                        title={isTerminalLocked ? "Ticket finalizado: solo el PM puede modificar entregables" : !isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
                       />
                       <span
                         className={`text-xs sm:text-sm flex-1 ${
@@ -1967,7 +2032,7 @@ export function TaskPortalDetailModal({
                 <Select
                   value={status}
                   onValueChange={(val: TaskStatus) => handleSelectStatus(val)}
-                  disabled={isBacklogLocked}
+                  disabled={isBacklogLocked || isTerminalLocked}
                 >
                   <SelectTrigger className="w-full bg-background h-9 text-xs font-medium rounded-xl truncate overflow-hidden">
                     <SelectValue className="truncate text-left" />
@@ -1985,6 +2050,12 @@ export function TaskPortalDetailModal({
                     <SelectItem value="blocked" disabled={isBacklogLocked}>Bloqueado</SelectItem>
                   </SelectContent>
                 </Select>
+                {isTerminalLocked && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5 font-medium">
+                    <Lock className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span>Ticket finalizado. Solo el PM puede reabrirlo o cambiar su estado.</span>
+                  </p>
+                )}
               </div>
 
               {/* Blocker input (only visible when status is Bloqueado) */}
@@ -2323,45 +2394,80 @@ export function TaskPortalDetailModal({
               </div>
             )}
 
-            {/* Hours Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1 truncate">
-                  Horas Estimadas
-                </label>
-                {isCreating && !isLeadOrPm ? (
-                  <div className="p-2 rounded-xl bg-background border border-border/60 text-xs font-mono text-muted-foreground flex items-center justify-between">
-                    <span>0h</span>
-                    <span className="text-[10px] text-muted-foreground">(Asignado por PM)</span>
-                  </div>
-                ) : isCreating || isLeadOrPm ? (
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={estimatedHours}
-                    onChange={(e) => setEstimatedHours(Number(e.target.value))}
-                    className="bg-background h-9 text-xs font-mono rounded-xl"
-                  />
-                ) : (
-                  <div className="p-2 rounded-xl bg-background border border-border/60 text-xs font-mono font-semibold">
-                    {estimatedHours}h
-                  </div>
-                )}
+            {/* Compact Time Tracking */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Tiempo
+              </label>
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/20 border border-border/60 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Estimado:</span>
+                  {isCreating && !isLeadOrPm ? (
+                    <span className="font-mono text-xs font-semibold text-foreground">0h</span>
+                  ) : isCreating || isLeadOrPm ? (
+                    <div className="inline-flex items-center gap-0.5">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={estimatedHours || ""}
+                        onChange={(e) => setEstimatedHours(Number(e.target.value))}
+                        className="w-10 bg-transparent text-xs font-mono font-bold text-foreground focus:outline-none border-b border-border/80 focus:border-primary text-center p-0 h-4"
+                        placeholder="0"
+                      />
+                      <span className="font-mono text-xs font-medium text-muted-foreground">h</span>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {Number(estimatedHours) > 0 ? `${estimatedHours}h` : "—"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="h-3 w-px bg-border/80" />
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Registrado:</span>
+                  <span className="font-mono text-xs font-bold text-foreground">
+                    {actualHours || 0}h
+                  </span>
+                  {!isCreating && Number(actualHours) > 0 && Number(estimatedHours) > 0 && Number(actualHours) > Number(estimatedHours) && (
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      (+{Math.round((Number(actualHours) - Number(estimatedHours)) * 10) / 10}h)
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1 truncate">
-                  Horas Reales
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={actualHours}
-                  onChange={(e) => setActualHours(Number(e.target.value))}
-                  className="bg-background h-9 text-xs font-mono rounded-xl"
-                />
-              </div>
+
+              {/* Dedicated CTA Button: Registrar Horas */}
+              {!isCreating && task && (
+                <div>
+                  {isLeadOrPm || task.status !== "done" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPendingLogWork({
+                          finalStatus: status,
+                          finalProgress: progress,
+                          targetLabel: "Registrar tiempo",
+                          isManualLog: true,
+                        })
+                      }
+                      className="w-full h-8 text-xs font-semibold rounded-xl bg-background hover:bg-primary/5 hover:text-primary hover:border-primary/40 border-border/80 text-foreground transition-all cursor-pointer gap-1.5 shadow-2xs"
+                    >
+                      <Timer className="w-3.5 h-3.5 text-primary" />
+                      <span>Registrar Horas de Trabajo</span>
+                    </Button>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground flex items-center justify-center gap-1.5 py-1 font-medium bg-muted/40 rounded-xl">
+                      <Lock className="w-3 h-3 text-muted-foreground/70" />
+                      <span>Registro cerrado (Ticket completado)</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Metadata Card (Edit Mode) */}
@@ -2381,5 +2487,28 @@ export function TaskPortalDetailModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Agile Work Hours Imputation Modal on QA, Completion or Manual Impute */}
+    {pendingLogWork && task && (
+      <TaskLogWorkModal
+        isOpen={!!pendingLogWork}
+        onClose={() => setPendingLogWork(null)}
+        task={task}
+        targetStatus={pendingLogWork.finalStatus}
+        targetLabel={pendingLogWork.targetLabel}
+        currentUserId={currentStaffId}
+        onConfirm={async (loggedHours, note) => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, loggedHours, note)
+        }}
+        onSkip={async () => {
+          const { finalStatus, finalProgress } = pendingLogWork
+          setPendingLogWork(null)
+          await executeSaveDetails(finalStatus, finalProgress, 0)
+        }}
+      />
+    )}
+  </>
   )
 }

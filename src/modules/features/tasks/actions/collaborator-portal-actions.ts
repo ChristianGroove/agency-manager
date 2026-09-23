@@ -224,7 +224,9 @@ export interface CollaboratorPortalData {
     role: string;
     photo_url?: string | null;
     access_token: string;
+    can_bulk_delete_tasks?: boolean;
   };
+  canBulkDeleteTasks?: boolean;
   organization: {
     id: string;
     name: string;
@@ -634,6 +636,11 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const activeSprint = sprints.find((s) => s.status === "active") || null;
 
+  const canBulkDeleteTasks =
+    staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
+      ? Boolean(staff.can_bulk_delete_tasks)
+      : isLeadOrPm;
+
   return {
     latestAudits,
     staff: {
@@ -644,8 +651,10 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       email: staff.email,
       role: staff.role,
       photo_url: staff.photo_url,
-      access_token: staff.access_token
+      access_token: staff.access_token,
+      can_bulk_delete_tasks: canBulkDeleteTasks,
     },
+    canBulkDeleteTasks,
     organization: orgData,
     workspaces,
     projects,
@@ -764,6 +773,14 @@ export async function portalUpdateTaskProgress(
 
     if (!canManageParent) {
       throw new Error("Solo el responsable directo de la tarea o un PM pueden ajustar el avance general del ticket.");
+    }
+
+    // Terminal Governance: Completed tasks cannot be modified by regular staff
+    if (current?.status === "done" && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager puede reabrirlo o modificar su avance."
+      };
     }
 
     // Backlog Governance: Collaborators cannot advance tickets that are pending PM approval in Backlog
@@ -894,6 +911,22 @@ export async function portalUpdateTaskStatus(
       .single();
 
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+
+    // Terminal Governance: Completed tasks cannot be reopened or transitioned by regular staff
+    if (current?.status === "done" && status !== current.status && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager / Líder puede reabrirlo o cambiar su estado."
+      };
+    }
+
+    // Worklog Governance: Regular staff cannot log hours on completed tasks
+    if (current?.status === "done" && loggedHours !== undefined && loggedHours > 0 && !isLeadOrPm) {
+      return {
+        success: false,
+        error: "No se pueden imputar horas en requerimientos finalizados. Solicita autorización a tu Project Manager."
+      };
+    }
 
     // Backlog Governance: Only PM/Lead can promote a task from Backlog
     if (current?.status === "backlog" && status !== "backlog" && !isLeadOrPm) {
@@ -1047,6 +1080,11 @@ export async function portalToggleChecklist(
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
     const isMainAssignee = task.assigned_staff_id === staff.id;
     const canToggleAny = isLeadOrPm || isMainAssignee;
+
+    // Terminal Governance: Completed tasks deliverables cannot be modified by regular staff
+    if (task.status === "done" && !isLeadOrPm) {
+      throw new Error("No se pueden modificar entregables en un requerimiento finalizado. Solo el PM puede reabrirlo.");
+    }
 
     if (!canToggleAny && targetItem.assigned_staff_id && targetItem.assigned_staff_id !== staff.id) {
       throw new Error("No tienes autorización para marcar subtareas asignadas a otros colaboradores.");
@@ -1559,6 +1597,8 @@ export async function portalUpdateTask(
     qaStaffId?: string | null;
     estimatedHours?: number;
     actualHours?: number;
+    loggedHours?: number;
+    note?: string;
     dueDate?: string | null;
     progressPercentage?: number;
     checklist?: TaskChecklistItem[];
@@ -1587,7 +1627,7 @@ export async function portalUpdateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours, progress_percentage,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -1597,6 +1637,19 @@ export async function portalUpdateTask(
 
     const isMainAssignee = prevTask?.assigned_staff_id === staff.id;
     const canCloseParentTask = isLeadOrPm || isMainAssignee;
+
+    // Terminal Governance: Completed tasks cannot be reopened or altered by regular staff
+    if (prevTask?.status === "done" && !isLeadOrPm) {
+      if (data.status && data.status !== prevTask.status) {
+        throw new Error("Este requerimiento ya fue finalizado y está sellado. Solo un Project Manager / Líder puede reabrirlo o cambiar su estado.");
+      }
+      if (data.loggedHours !== undefined && data.loggedHours > 0) {
+        throw new Error("No se pueden imputar horas en requerimientos finalizados. Solicita autorización a tu Project Manager.");
+      }
+      if (data.progressPercentage !== undefined && data.progressPercentage !== prevTask.progress_percentage) {
+        throw new Error("No se puede alterar el avance de un requerimiento finalizado.");
+      }
+    }
 
     // Backlog Governance: Only PM/Lead can promote or move a task out of Backlog, or adjust progress on it
     if (prevTask?.status === "backlog" && !isLeadOrPm) {
@@ -1850,6 +1903,17 @@ export async function portalUpdateTask(
         if (updateData.status === "done") {
           await handlePortalTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
         }
+      }
+
+      // Work hours logged audit
+      if (data.loggedHours !== undefined && data.loggedHours > 0) {
+        const noteStr = data.note && data.note.trim() ? ` — "${data.note.trim()}"` : "";
+        await logPortalTaskAuditComment(
+          orgId,
+          taskId,
+          `⏱️ Registro de trabajo: +${data.loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`,
+          staff
+        );
       }
 
       // Priority change audit
@@ -2259,3 +2323,61 @@ export async function portalSaveTaskWeeklySnapshot(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Bulk delete tasks from collaborator portal if staff has can_bulk_delete_tasks permission
+ */
+export async function portalBulkDeleteTasks(
+  token: string,
+  taskIds: string[]
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    if (!token || !Array.isArray(taskIds) || taskIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // 1. Verify staff by token
+    const { data: staff, error: staffErr } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, organization_id, role, can_bulk_delete_tasks")
+      .eq("access_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (staffErr || !staff) {
+      return { success: false, error: "Colaborador no autorizado" };
+    }
+
+    const isLead = isStaffLeadOrPmRole(staff.role);
+    const hasPermission =
+      staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
+        ? Boolean(staff.can_bulk_delete_tasks)
+        : isLead;
+
+    if (!hasPermission) {
+      return { success: false, error: "No tienes permiso para eliminar tareas en masa" };
+    }
+
+    // 2. Delete tasks in chunks of 100
+    const CHUNK_SIZE = 100;
+    let totalDeleted = 0;
+
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const { error: delErr, count } = await supabaseAdmin
+        .from("task_items")
+        .delete({ count: "exact" })
+        .eq("organization_id", staff.organization_id)
+        .in("id", chunk);
+
+      if (delErr) throw delErr;
+      totalDeleted += count ?? chunk.length;
+    }
+
+    return { success: true, count: totalDeleted };
+  } catch (err: any) {
+    console.error("Portal bulk delete tasks error:", err);
+    return { success: false, error: err.message };
+  }
+}
+

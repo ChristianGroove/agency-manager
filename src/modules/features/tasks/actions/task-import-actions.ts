@@ -376,7 +376,13 @@ export async function executeUniversalImport(
           prefix = t.workspace_key.toUpperCase().trim();
         }
 
-        const ticketCode = `${prefix}-${nextTicketNumber++}`;
+        // Resolve ticket code: preserve Jira or external ticket code if provided (e.g. WEB-2465)
+        let ticketCode = `${prefix}-${nextTicketNumber++}`;
+        if (t.ticket_code && /^[A-Z0-9]+-\d+$/i.test(t.ticket_code.trim())) {
+          ticketCode = t.ticket_code.trim().toUpperCase();
+        } else if (t.import_ref_id && /^[A-Z0-9]+-\d+$/i.test(t.import_ref_id.trim())) {
+          ticketCode = t.import_ref_id.trim().toUpperCase();
+        }
         createdTaskCodes.push(ticketCode);
 
         // Resolve staff
@@ -402,30 +408,38 @@ export async function executeUniversalImport(
           };
         });
 
+        const taskRow: Record<string, any> = {
+          organization_id: orgId,
+          project_id: targetProjectId,
+          ticket_code: ticketCode,
+          title: t.title,
+          description: t.description || null,
+          type: t.type || "task",
+          status: t.status || "todo",
+          priority: t.priority || "medium",
+          progress_percentage: t.progress_percentage ?? 0,
+          estimated_hours: t.estimated_hours ?? 0,
+          actual_hours: t.actual_hours ?? 0,
+          due_date: t.due_date || null,
+          assigned_staff_id: assignedStaffId,
+          qa_staff_id: qaStaffId,
+          tags: t.tags || [],
+          checklist,
+          order_index: i + chunkIdx,
+        };
+
+        if (sprintId) {
+          taskRow.sprint_id = sprintId;
+        }
+
+        if (t.blocked_reason) {
+          taskRow.blocked_reason = t.blocked_reason;
+        }
+
         return {
           _rawRefId: t.import_ref_id || `${i + chunkIdx + 1}`,
           _blockedByRefId: t.blocked_by_ref_id,
-          taskRow: {
-            organization_id: orgId,
-            project_id: targetProjectId,
-            ticket_code: ticketCode,
-            title: t.title,
-            description: t.description || null,
-            type: t.type || "task",
-            status: t.status || "todo",
-            priority: t.priority || "medium",
-            progress_percentage: t.progress_percentage ?? 0,
-            estimated_hours: t.estimated_hours ?? 0,
-            actual_hours: t.actual_hours ?? 0,
-            due_date: t.due_date || null,
-            assigned_staff_id: assignedStaffId,
-            qa_staff_id: qaStaffId,
-            sprint_id: sprintId,
-            tags: t.tags || [],
-            checklist,
-            blocked_reason: t.blocked_reason || null,
-            order_index: i + chunkIdx,
-          },
+          taskRow,
         };
       });
 
@@ -461,11 +475,15 @@ export async function executeUniversalImport(
     for (const blocker of pendingBlockers) {
       const targetBlockerTaskId = refIdToTaskIdMap.get(blocker.blockerRefId);
       if (targetBlockerTaskId) {
-        await supabaseAdmin
+        const { error: blockerErr } = await supabaseAdmin
           .from("task_items")
           .update({ blocked_by_task_id: targetBlockerTaskId })
           .eq("id", blocker.taskId);
-        stats.blockersResolved += 1;
+        if (!blockerErr) {
+          stats.blockersResolved += 1;
+        } else {
+          console.warn("[UniversalImport] Advertencia al vincular bloqueador:", blockerErr.message);
+        }
       }
     }
 

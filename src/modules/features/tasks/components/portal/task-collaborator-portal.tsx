@@ -95,6 +95,7 @@ import {
   CalendarDays,
   Lock,
   Ban,
+  Timer,
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint } from "../../types"
@@ -108,7 +109,8 @@ import {
   portalGetTaskComments,
   portalCreateTask,
   portalUpdateTaskPriority,
-  portalAssignTask
+  portalAssignTask,
+  portalBulkDeleteTasks
 } from "../../actions/collaborator-portal-actions"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { toast } from "sonner"
@@ -119,6 +121,8 @@ import { es } from "date-fns/locale"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { ViewToggle, ViewMode } from "@/modules/core/ui/components/view-toggle"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { Checkbox } from "@/components/ui/checkbox"
+import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { TaskKanbanBoard } from "../kanban/task-kanban-board"
 import { TaskPortalDetailModal } from "./task-portal-detail-modal"
 import { ProjectFormModal } from "../modals/project-form-modal"
@@ -471,6 +475,16 @@ export function TaskCollaboratorPortal({
 }: TaskCollaboratorPortalProps) {
   const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa } = portalData
   const brandColor = organization?.primary_color || "#8ec045"
+
+  // Bulk delete permissions & selection state
+  const canBulkDelete = Boolean(
+    portalData.canBulkDeleteTasks !== undefined
+      ? portalData.canBulkDeleteTasks
+      : (staff.can_bulk_delete_tasks ?? isLeadOrPm)
+  )
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+
   const [workspaces, setWorkspaces] = useState<TaskWorkspace[]>(initialWorkspaces)
   const [projects, setProjects] = useState<TaskProject[]>(initialProjects)
   const [tasks, setTasks] = useState<TaskItem[]>(portalData.tasks)
@@ -771,6 +785,11 @@ export function TaskCollaboratorPortal({
     setCurrentPage(1)
   }, [searchQuery, statusFilter, selectedProjectFilter, selectedMemberFilter, viewMode])
 
+  // Reset bulk selection when filters, tab or view mode change
+  useEffect(() => {
+    setSelectedTaskIds(new Set())
+  }, [activeTab, searchQuery, statusFilter, selectedProjectFilter, selectedMemberFilter, viewMode])
+
   // Selected task for comments & details
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false)
@@ -784,34 +803,18 @@ export function TaskCollaboratorPortal({
     setIsCommentModalOpen(true)
   }
 
-  // Portal Theme Mode: 'light' | 'dark' (isolated to portal)
+  // Portal Theme Mode: 'light' | 'dark' (isolated to portal - always light on initial entry)
   const [portalTheme, setPortalTheme] = useState<"light" | "dark">("light")
 
   useEffect(() => {
-    const saved = localStorage.getItem("portal_task_theme") as "light" | "dark" | null
-    if (saved) {
-      setPortalTheme(saved)
-      if (saved === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      const initial = prefersDark ? "dark" : "light"
-      setPortalTheme(initial)
-      if (initial === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-    }
+    // Por directriz institucional, cada vez que los colaboradores entran a su portal deben ser recibidos si o si en modo claro por defecto
+    setPortalTheme("light")
+    document.documentElement.classList.remove("dark")
   }, [])
 
   const togglePortalTheme = () => {
     const next = portalTheme === "dark" ? "light" : "dark"
     setPortalTheme(next)
-    localStorage.setItem("portal_task_theme", next)
     if (next === "dark") {
       document.documentElement.classList.add("dark")
     } else {
@@ -1606,6 +1609,16 @@ export function TaskCollaboratorPortal({
     const savedProg = getSavedProgress(taskId)
     const savedStatus = getSavedStatus(taskId)
 
+    // Terminal Governance: Completed tasks progress cannot be altered by regular staff
+    if (!isLeadOrPm && task?.status === "done") {
+      toast.warning("Ticket finalizado", {
+        description: "Esta tarea ya está completada. Solo un Project Manager puede reabrirla o modificar su avance.",
+        id: "collaborator-progress-restricted"
+      })
+      handleSliderDrag(taskId, savedProg)
+      return
+    }
+
     // Rule: Collaborators cannot regress progress below saved progress
     if (!isLeadOrPm && clamped < savedProg) {
       toast.info("El avance registrado no puede ser reducido por colaboradores.")
@@ -1693,6 +1706,14 @@ export function TaskCollaboratorPortal({
 
   // Checklist item toggle
   const handleToggleChecklist = async (taskId: string, itemId: string, currentVal: boolean) => {
+    const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
+    if (!isLeadOrPm && task?.status === "done") {
+      toast.warning("Ticket finalizado", {
+        description: "Este ticket está completado. Solo el Project Manager puede modificar entregables o reabrir el ticket."
+      })
+      return
+    }
+
     const nextVal = !currentVal
     try {
       const res = await portalToggleChecklist(token, taskId, itemId, nextVal)
@@ -1744,6 +1765,15 @@ export function TaskCollaboratorPortal({
     const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
     const isMainAssignee = task?.assigned_staff_id === staff.id
     const canCloseParentTask = isLeadOrPm || isQa || isMainAssignee
+
+    // Reopen / Terminal Governance
+    if (!isLeadOrPm && task?.status === "done" && newStatus !== task.status) {
+      toast.warning("Ticket finalizado", {
+        description: "Esta tarea ya está completada. Solo un Project Manager puede reabrirla o cambiar su estado.",
+        id: "collaborator-reopen-restricted"
+      })
+      return
+    }
 
     if (newStatus === "done" && !canCloseParentTask) {
       toast.warning("Permiso de cierre restringido", {
@@ -1950,6 +1980,68 @@ export function TaskCollaboratorPortal({
 
   const startRecord = displayedTasks.length > 0 ? (safePage - 1) * pageSize + 1 : 0
   const endRecord = Math.min(safePage * pageSize, displayedTasks.length)
+
+  // Bulk selection & mass deletion handlers for PMs / authorized collaborators
+  const handleToggleSelectTask = (taskId: string) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const handleToggleSelectAll = () => {
+    setSelectedTaskIds((prev) => {
+      const allSelected = displayedTasks.length > 0 && displayedTasks.every((t) => prev.has(t.id))
+      if (allSelected) {
+        return new Set()
+      } else {
+        return new Set(displayedTasks.map((t) => t.id))
+      }
+    })
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedTaskIds.size === 0) return
+
+    const count = selectedTaskIds.size
+    const msg =
+      count === 1
+        ? "¿Estás seguro de que deseas eliminar la tarea seleccionada? Esta acción no se puede deshacer."
+        : `¿Estás seguro de que deseas eliminar permanentemente las ${count} tareas seleccionadas? Esta acción no se puede deshacer.`
+
+    if (!confirm(msg)) return
+
+    setIsBulkDeleting(true)
+    try {
+      const idsToDelete = Array.from(selectedTaskIds)
+      const res = await portalBulkDeleteTasks(token, idsToDelete)
+      if (!res.success) {
+        throw new Error(res.error || "Error al eliminar tareas")
+      }
+
+      toast.success(
+        count === 1
+          ? "Tarea eliminada correctamente"
+          : `${count} tareas eliminadas correctamente`
+      )
+
+      const deletedSet = new Set(idsToDelete)
+      setTasks((prev) => prev.filter((t) => !deletedSet.has(t.id)))
+      setAllTeamTasks((prev) => prev.filter((t) => !deletedSet.has(t.id)))
+      setAvailableTasks((prev) => prev.filter((t) => !deletedSet.has(t.id)))
+      setSelectedTaskIds(new Set())
+    } catch (err: any) {
+      console.error("Error bulk deleting tasks from portal:", err)
+      toast.error(err.message || "Error al eliminar tareas en lote")
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
 
   // Dynamic Logo Selection based on Portal Color Mode (Dark vs Light from ADN de Marca)
   const activeLogo =
@@ -2301,7 +2393,9 @@ export function TaskCollaboratorPortal({
                   {heroConfig.title}
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">
-                  {heroConfig.desc}
+                  <ShimmerText active>
+                    {heroConfig.desc}
+                  </ShimmerText>
                 </p>
               </div>
 
@@ -2440,7 +2534,7 @@ export function TaskCollaboratorPortal({
               )}
             </div>
 
-            {/* 3D Floating Avatar: Posición absoluta, sobresaliendo libremente por encima del marco */}
+            {/* 3D Floating Avatar / Custom Round Avatar: Posición absoluta, sobresaliendo libremente por encima del marco */}
             <div
               className={cn(
                 "absolute right-2 sm:right-6 md:right-8 lg:right-12 flex items-end justify-center pointer-events-none select-none z-20",
@@ -2452,11 +2546,23 @@ export function TaskCollaboratorPortal({
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
                 className="relative flex items-end justify-center"
               >
-                <img
-                  src={getCollaboratorAvatar(staff.photo_url, staff.first_name || staff.id)}
-                  alt={`${staff.first_name} ${staff.last_name}`}
-                  className="h-[142px] sm:h-[176px] md:h-[194px] lg:h-[212px] w-auto object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.18)]"
-                />
+                {staff.photo_url &&
+                !staff.photo_url.includes("avatar%20task%20pack") &&
+                !staff.photo_url.includes("avatar task pack") ? (
+                  <div className="rounded-full border-4 border-white/80 dark:border-white/20 shadow-[0_16px_32px_rgba(0,0,0,0.22)] overflow-hidden aspect-square h-[126px] sm:h-[155px] md:h-[172px] lg:h-[190px] w-[126px] sm:w-[155px] md:w-[172px] lg:w-[190px] bg-background/60 backdrop-blur-xs flex items-center justify-center">
+                    <img
+                      src={staff.photo_url}
+                      alt={`${staff.first_name} ${staff.last_name}`}
+                      className="w-full h-full object-cover pointer-events-none select-none rounded-full"
+                    />
+                  </div>
+                ) : (
+                  <img
+                    src={getCollaboratorAvatar(staff.photo_url, staff.first_name || staff.id)}
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                    className="h-[142px] sm:h-[176px] md:h-[194px] lg:h-[212px] w-auto object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.18)]"
+                  />
+                )}
               </motion.div>
             </div>
           </section>
@@ -2504,6 +2610,11 @@ export function TaskCollaboratorPortal({
             }}
             onSwitchToGestion={() => setPmViewMode("gestion")}
             onSelectTask={openTaskDetail}
+            onCreateTask={() => setIsCreateModalOpen(true)}
+            onCreateProject={() => {
+              setProjectToEdit(null)
+              setIsProjectModalOpen(true)
+            }}
           />
         )}
 
@@ -3272,243 +3383,331 @@ export function TaskCollaboratorPortal({
 
         {/* 3. LIST VIEW (Table / Rows) */}
         {viewMode === "list" && (
-          <div className="glass-card rounded-3xl border border-zinc-200/80 dark:border-white/10 overflow-hidden shadow-sm bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-xs">
-                <thead className="bg-zinc-50/80 dark:bg-white/5 border-b border-zinc-200/80 dark:border-white/10 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="px-5 py-3.5 w-24">Ticket</th>
-                    <th className="px-4 py-3.5">Título</th>
-                    {isLeadOrPm && <th className="px-4 py-3.5">Responsable</th>}
-                    <th className="px-4 py-3.5">Prioridad</th>
-                    <th className="px-5 py-3.5 min-w-[160px]">Progreso</th>
-                    <th className="px-4 py-3.5">Estado</th>
-                    <th className="px-5 py-3.5 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-white/5">
-                  {paginatedTasks.map((task) => {
-                    const resolvedProject = task.project || projects.find((p) => p.id === task.project_id)
-                    return (
-                      <tr
-                        key={task.id}
-                        className="hover:bg-zinc-50/70 dark:hover:bg-white/5 transition-colors cursor-pointer group"
-                        onClick={() => openTaskDetail(task)}
-                      >
-                        <td className="px-5 py-3.5 whitespace-nowrap">
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
-                          >
-                            {task.ticket_code}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3.5 font-medium">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[340px]">
-                                {task.title}
-                              </span>
-                              <TaskSubtasksTooltipBadge
-                                checklist={task.checklist}
-                                teamMembers={teamMembers}
-                                onClick={() => openTaskDetail(task)}
-                              />
-                              {task.tags && task.tags.length > 0 && (
-                                <div className="flex items-center gap-1 shrink-0 flex-wrap">
-                                  {task.tags.map((tag) => {
-                                    const sysTag = SYSTEM_STAGE_TAGS[tag]
-                                    if (sysTag) {
-                                      return (
-                                        <span
-                                          key={tag}
-                                          className={cn(
-                                            "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
-                                            sysTag.badgeClass
-                                          )}
-                                        >
-                                          {sysTag.shortLabel || sysTag.label}
-                                        </span>
-                                      )
-                                    }
-                                    return (
-                                      <span
-                                        key={tag}
-                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
-                                      >
-                                        #{tag}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                            {resolvedProject && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <Layers className="w-3 h-3 text-muted-foreground" />
-                                {resolvedProject.name}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        {isLeadOrPm && (
-                          <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                            {task.assigned_staff ? (
-                              <div className="flex items-center gap-1.5">
-                                <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
-                                  <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} className="object-cover" />
-                                  <AvatarFallback className="text-[8px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                                    {task.assigned_staff.first_name[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium text-foreground truncate max-w-[110px]">
-                                  {task.assigned_staff.first_name} {task.assigned_staff.last_name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground italic">Sin asignar</span>
-                            )}
-                          </td>
-                        )}
-                        <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          {isLeadOrPm ? (
-                            <Select
-                              value={task.priority}
-                              onValueChange={(val) => handleUpdatePriority(task.id, val as TaskPriority)}
-                            >
-                              <SelectTrigger className="h-7 w-[82px] text-[11px] justify-between rounded-lg border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 font-medium shadow-none">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl">
-                                <SelectItem value="low" className="text-xs">Baja</SelectItem>
-                                <SelectItem value="medium" className="text-xs">Media</SelectItem>
-                                <SelectItem value="high" className="text-xs">Alta</SelectItem>
-                                <SelectItem value="urgent" className="text-xs">Urgente</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] w-[82px] justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
-                                task.priority === "urgent"
-                                  ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
-                                  : task.priority === "high"
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                  : task.priority === "medium"
-                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
-                              )}
-                            >
-                              {task.priority === "urgent"
-                                ? "Urgente"
-                                : task.priority === "high"
-                                ? "Alta"
-                                : task.priority === "medium"
-                                ? "Media"
-                                : "Baja"}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          <PortalTaskSlider
-                            taskId={task.id}
-                            progress={task.progress_percentage}
-                            hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
-                            savedProg={getSavedProgress(task.id)}
-                            isLeadOrPm={isLeadOrPm}
-                            isMainAssignee={task.assigned_staff_id === staff.id}
-                            isBacklog={task.status === "backlog"}
-                            blockedBy={task.blocked_by}
-                            latestAudit={latestAudits[task.id]}
-                            onCommit={handleSliderCommit}
-                            showLabel={true}
-                            labelClassName="text-xs sm:text-[13px] font-black w-11 text-right tracking-tight"
+          <div className="relative">
+            {canBulkDelete && (
+              <BulkActionsFloatingBar
+                selectedCount={selectedTaskIds.size}
+                onDelete={handleBulkDelete}
+                onClearSelection={() => setSelectedTaskIds(new Set())}
+                isDeleting={isBulkDeleting}
+              />
+            )}
+            <div className="glass-card rounded-3xl border border-zinc-200/80 dark:border-white/10 overflow-hidden shadow-sm bg-card">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px] text-left text-xs">
+                  <thead className="bg-zinc-50/80 dark:bg-white/5 border-b border-zinc-200/80 dark:border-white/10 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      {canBulkDelete && (
+                        <th className="px-4 py-3.5 w-10 text-center">
+                          <Checkbox
+                            checked={
+                              displayedTasks.length > 0 && displayedTasks.every((t) => selectedTaskIds.has(t.id))
+                                ? true
+                                : displayedTasks.some((t) => selectedTaskIds.has(t.id))
+                                ? "indeterminate"
+                                : false
+                            }
+                            onCheckedChange={handleToggleSelectAll}
+                            aria-label="Seleccionar todas las tareas"
                           />
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {task.status === "blocked" ? (
-                            <TooltipProvider delayDuration={1000}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 cursor-help inline-flex items-center gap-1 hover:bg-rose-500/20 transition-colors"
-                                  >
-                                    <Ban className="w-2.5 h-2.5 shrink-0" />
-                                    <span>Bloqueado</span>
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="top"
-                                  className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5"
-                                >
-                                  <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
-                                    <Ban className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Motivo del Bloqueo</span>
-                                  </div>
-                                  <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
-                                    {task.blocked_reason || (task.blocked_by ? `Bloqueado por dependencia #${task.blocked_by.ticket_code}: ${task.blocked_by.title}` : "Esta tarea se encuentra bloqueada.")}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
-                                task.status === "done"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                  : task.status === "in_review"
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                  : task.status === "in_progress"
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                                  : task.status === "backlog"
-                                  ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
-                                  : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                              )}
-                            >
-                              {task.status === "done"
-                                ? "Completado"
-                                : task.status === "in_review"
-                                ? "En QA"
-                                : task.status === "in_progress"
-                                ? "En Curso"
-                                : task.status === "backlog"
-                                ? "Backlog"
-                                : "Por Hacer"}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1.5">
-                            {task.status !== "done" && (isLeadOrPm || isQa || task.assigned_staff_id === staff.id) && (
-                              <Button
-                                size="sm"
-                                onClick={() => setTaskToComplete(task)}
-                                className="w-7 h-7 p-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
-                                aria-label="Marcar como listo"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openTaskDetail(task)}
-                              className="w-7 h-7 p-0 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg flex items-center justify-center shrink-0"
-                              aria-label="Gestionar tarea"
-                            >
-                              <Settings className="w-3.5 h-3.5" />
-                            </Button>
+                        </th>
+                      )}
+                      <th className={cn("px-5 py-3.5 w-24", canBulkDelete && "pl-2")}>Ticket</th>
+                      <th className="px-4 py-3.5">Título</th>
+                      {isLeadOrPm && <th className="px-4 py-3.5">Responsable</th>}
+                      <th className="px-4 py-3.5">Prioridad</th>
+                      <th className="px-5 py-3.5 min-w-[160px]">Progreso</th>
+                      {isLeadOrPm && (
+                        <th className="px-4 py-3.5 w-28 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Timer className="w-3 h-3 text-muted-foreground" />
+                            <span>Horas</span>
                           </div>
+                        </th>
+                      )}
+                      <th className="px-4 py-3.5">Estado</th>
+                      <th className="px-5 py-3.5 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-white/5">
+                    {paginatedTasks.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={canBulkDelete ? (isLeadOrPm ? 9 : 7) : (isLeadOrPm ? 8 : 6)}
+                          className="px-5 py-8 text-center text-muted-foreground"
+                        >
+                          No se encontraron tareas con los filtros seleccionados.
                         </td>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                    ) : (
+                      paginatedTasks.map((task) => {
+                        const resolvedProject = task.project || projects.find((p) => p.id === task.project_id)
+                        const isSelected = selectedTaskIds.has(task.id)
+                        return (
+                          <tr
+                            key={task.id}
+                            className={cn(
+                              "hover:bg-zinc-50/70 dark:hover:bg-white/5 transition-colors cursor-pointer group",
+                              isSelected && "bg-primary/5 dark:bg-primary/10"
+                            )}
+                            onClick={() => openTaskDetail(task)}
+                          >
+                            {canBulkDelete && (
+                              <td
+                                className="px-4 py-3.5 w-10 text-center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => handleToggleSelectTask(task.id)}
+                                  aria-label={`Seleccionar tarea ${task.ticket_code}`}
+                                />
+                              </td>
+                            )}
+                            <td className={cn("px-5 py-3.5 whitespace-nowrap", canBulkDelete && "pl-2")}>
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
+                              >
+                                {task.ticket_code}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3.5 font-medium">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 max-w-[340px]">
+                                    {task.title}
+                                  </span>
+                                  <TaskSubtasksTooltipBadge
+                                    checklist={task.checklist}
+                                    teamMembers={teamMembers}
+                                    onClick={() => openTaskDetail(task)}
+                                  />
+                                  {task.tags && task.tags.length > 0 && (
+                                    <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                                      {task.tags.map((tag) => {
+                                        const sysTag = SYSTEM_STAGE_TAGS[tag]
+                                        if (sysTag) {
+                                          return (
+                                            <span
+                                              key={tag}
+                                              className={cn(
+                                                "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
+                                                sysTag.badgeClass
+                                              )}
+                                            >
+                                              {sysTag.shortLabel || sysTag.label}
+                                            </span>
+                                          )
+                                        }
+                                        return (
+                                          <span
+                                            key={tag}
+                                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                                          >
+                                            #{tag}
+                                          </span>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                                {resolvedProject && (
+                                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <Layers className="w-3 h-3 text-muted-foreground" />
+                                    {resolvedProject.name}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {isLeadOrPm && (
+                              <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                                {task.assigned_staff ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
+                                      <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} className="object-cover" />
+                                      <AvatarFallback className="text-[8px] font-bold text-white" style={{ backgroundColor: brandColor }}>
+                                        {task.assigned_staff.first_name[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium text-foreground truncate max-w-[110px]">
+                                      {task.assigned_staff.first_name} {task.assigned_staff.last_name}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground italic">Sin asignar</span>
+                                )}
+                              </td>
+                            )}
+                            <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                              {isLeadOrPm ? (
+                                <Select
+                                  value={task.priority}
+                                  onValueChange={(val) => handleUpdatePriority(task.id, val as TaskPriority)}
+                                >
+                                  <SelectTrigger className="h-7 w-[82px] text-[11px] justify-between rounded-lg border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 font-medium shadow-none">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl">
+                                    <SelectItem value="low" className="text-xs">Baja</SelectItem>
+                                    <SelectItem value="medium" className="text-xs">Media</SelectItem>
+                                    <SelectItem value="high" className="text-xs">Alta</SelectItem>
+                                    <SelectItem value="urgent" className="text-xs">Urgente</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px] w-[82px] justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
+                                    task.priority === "urgent"
+                                      ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                                      : task.priority === "high"
+                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                      : task.priority === "medium"
+                                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                                  )}
+                                >
+                                  {task.priority === "urgent"
+                                    ? "Urgente"
+                                    : task.priority === "high"
+                                    ? "Alta"
+                                    : task.priority === "medium"
+                                    ? "Media"
+                                    : "Baja"}
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                              <PortalTaskSlider
+                                taskId={task.id}
+                                progress={task.progress_percentage}
+                                hasUnfinishedDeliverables={Array.isArray(task.checklist) && task.checklist.some((c: any) => !c.completed)}
+                                savedProg={getSavedProgress(task.id)}
+                                isLeadOrPm={isLeadOrPm}
+                                isMainAssignee={task.assigned_staff_id === staff.id}
+                                isBacklog={task.status === "backlog"}
+                                blockedBy={task.blocked_by}
+                                latestAudit={latestAudits[task.id]}
+                                onCommit={handleSliderCommit}
+                                showLabel={true}
+                                labelClassName="text-xs sm:text-[13px] font-black w-11 text-right tracking-tight"
+                              />
+                            </td>
+                            {/* Horas (solo visible para PM/Lead) */}
+                            {isLeadOrPm && (
+                              <td className="px-4 py-3.5 text-center font-mono whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <span className={cn(
+                                    "text-xs font-semibold",
+                                    Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                                      ? "text-rose-600 dark:text-rose-400 font-bold"
+                                      : "text-foreground"
+                                  )}>
+                                    {Number(task.actual_hours) || 0}h
+                                    <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
+                                  </span>
+                                  {Number(task.estimated_hours) > 0 && (
+                                    <span className={cn(
+                                      "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                                      Number(task.actual_hours) > Number(task.estimated_hours)
+                                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
+                                        : Number(task.actual_hours) === Number(task.estimated_hours)
+                                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                        : "text-muted-foreground"
+                                    )}>
+                                      {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            )}
+                            <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                              {task.status === "blocked" ? (
+                                <TooltipProvider delayDuration={1000}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 cursor-help inline-flex items-center gap-1 hover:bg-rose-500/20 transition-colors"
+                                      >
+                                        <Ban className="w-2.5 h-2.5 shrink-0" />
+                                        <span>Bloqueado</span>
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="top"
+                                      className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5"
+                                    >
+                                      <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
+                                        <Ban className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Motivo del Bloqueo</span>
+                                      </div>
+                                      <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
+                                        {task.blocked_reason || (task.blocked_by ? `Bloqueado por dependencia #${task.blocked_by.ticket_code}: ${task.blocked_by.title}` : "Esta tarea se encuentra bloqueada.")}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold shadow-none",
+                                    task.status === "done"
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                      : task.status === "in_review"
+                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                      : task.status === "in_progress"
+                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                      : task.status === "backlog"
+                                      ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
+                                      : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                                  )}
+                                >
+                                  {task.status === "done"
+                                    ? "Completado"
+                                    : task.status === "in_review"
+                                    ? "En QA"
+                                    : task.status === "in_progress"
+                                    ? "En Curso"
+                                    : task.status === "backlog"
+                                    ? "Backlog"
+                                    : "Por Hacer"}
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                {task.status !== "done" && (isLeadOrPm || isQa || task.assigned_staff_id === staff.id) && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => setTaskToComplete(task)}
+                                    className="w-7 h-7 p-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
+                                    aria-label="Marcar como listo"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openTaskDetail(task)}
+                                  className="w-7 h-7 p-0 text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/10 rounded-lg flex items-center justify-center shrink-0"
+                                  aria-label="Gestionar tarea"
+                                >
+                                  <Settings className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -3682,6 +3881,9 @@ export function TaskCollaboratorPortal({
             setAllTeamTasks((prev) => (prev ? prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)) : prev))
           }
           setAvailableTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
+          if (updatedTask.status === "done" && selectedTask?.status !== "done") {
+            triggerCelebration({ ...updatedTask, progress_percentage: 100, status: "done" })
+          }
           setSelectedTask(updatedTask)
         }}
         onTaskDeleted={(taskId) => {

@@ -30,6 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface TaskListViewProps {
   tasks: TaskItem[]
@@ -40,9 +41,20 @@ interface TaskListViewProps {
     first_name: string
     last_name?: string
   }>
+  selectedTaskIds?: Set<string>
+  onToggleSelectTask?: (taskId: string) => void
+  onToggleSelectAll?: () => void
 }
 
-export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers = [] }: TaskListViewProps) {
+export function TaskListView({
+  tasks,
+  onSelectTask,
+  onQuickMoveTask,
+  teamMembers = [],
+  selectedTaskIds = new Set(),
+  onToggleSelectTask,
+  onToggleSelectAll,
+}: TaskListViewProps) {
   const [pageSize, setPageSize] = useState<number>(25)
   const [currentPage, setCurrentPage] = useState<number>(1)
 
@@ -111,6 +123,9 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
     }
   }
 
+  const allSelected = tasks.length > 0 && tasks.every((t) => selectedTaskIds.has(t.id))
+  const isIndeterminate = !allSelected && tasks.some((t) => selectedTaskIds.has(t.id))
+
   return (
     <div className="space-y-4">
       {/* Tasks Table */}
@@ -119,7 +134,16 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
           <table className="w-full min-w-[800px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-muted-foreground font-semibold">
-                <th className="p-3.5 pl-4 w-24">Ticket</th>
+                {onToggleSelectAll && (
+                  <th className="p-3.5 pl-4 w-10 text-center">
+                    <Checkbox
+                      checked={isIndeterminate ? "indeterminate" : allSelected}
+                      onCheckedChange={() => onToggleSelectAll()}
+                      aria-label="Seleccionar todas las tareas"
+                    />
+                  </th>
+                )}
+                <th className={cn("p-3.5 w-24", !onToggleSelectAll && "pl-4")}>Ticket</th>
                 <th className="p-3.5">Título</th>
                 <th className="p-3.5 w-32">Estado</th>
                 <th className="p-3.5 w-24">Prioridad</th>
@@ -138,25 +162,42 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
             <tbody className="divide-y divide-border/40">
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={onToggleSelectTask ? 10 : 9} className="p-8 text-center text-muted-foreground">
                     No se encontraron tareas con los filtros seleccionados.
                   </td>
                 </tr>
               ) : (
-                paginatedTasks.map((task) => (
-                  <tr
-                    key={task.id}
-                    onClick={() => onSelectTask(task)}
-                    className="hover:bg-muted/30 transition-colors cursor-pointer group"
-                  >
-                    <td className="p-3.5 pl-4 whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
-                      >
-                        {task.ticket_code}
-                      </Badge>
-                    </td>
+                paginatedTasks.map((task) => {
+                  const isSelected = selectedTaskIds.has(task.id)
+                  return (
+                    <tr
+                      key={task.id}
+                      onClick={() => onSelectTask(task)}
+                      className={cn(
+                        "hover:bg-muted/30 transition-colors cursor-pointer group",
+                        isSelected && "bg-primary/5 dark:bg-primary/10"
+                      )}
+                    >
+                      {onToggleSelectTask && (
+                        <td
+                          className="p-3.5 pl-4 w-10 text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => onToggleSelectTask(task.id)}
+                            aria-label={`Seleccionar tarea ${task.ticket_code}`}
+                          />
+                        </td>
+                      )}
+                      <td className={cn("p-3.5 whitespace-nowrap", !onToggleSelectTask && "pl-4")}>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
+                        >
+                          {task.ticket_code}
+                        </Badge>
+                      </td>
                     <td className="p-3.5">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -363,7 +404,8 @@ export function TaskListView({ tasks, onSelectTask, onQuickMoveTask, teamMembers
                       </Button>
                     </td>
                   </tr>
-                ))
+                  )
+                })
               )}
             </tbody>
           </table>

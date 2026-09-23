@@ -67,6 +67,7 @@ export const PixyImportChecklistItemSchema = z.object({
 
 export const PixyImportTaskSchema = z.object({
   import_ref_id: z.string().optional().nullable(),
+  ticket_code: z.string().optional().nullable(),
   title: z.string().min(1, "El título del ticket es obligatorio"),
   description: z.string().optional().nullable(),
   project_slug: z.string().optional().nullable(),

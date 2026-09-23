@@ -59,8 +59,16 @@ import {
   PlusCircle,
   Plus,
   Settings,
-  Play
+  Play,
+  ChevronDown,
+  FolderPlus,
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import type { TaskItem, TaskPriority, TaskStatus, TaskWorkspace, TaskSprint } from "../../types"
 import { getTaskMemberHours, parseTaskChecklist } from "../../types"
@@ -111,6 +119,9 @@ interface TaskPmOperationsDashboardProps {
   onSprintDeleted?: (deletedSprintId: string) => void
   onSwitchToGestion?: () => void
   onSelectTask?: (task: TaskItem) => void
+  onCreateTask?: () => void
+  onCreateProject?: () => void
+  onCreateSprint?: () => void
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -131,6 +142,56 @@ const STATUS_LABELS: Record<string, string> = {
   backlog: "Backlog",
 }
 
+function CustomDonutTooltip({ active, payload, totalTasks }: { active?: boolean; payload?: any[]; totalTasks?: number }) {
+  if (!active || !payload || !payload.length) return null
+  const data = payload[0]
+  const total = totalTasks || 1
+  const val = Number(data.value) || 0
+  const pct = Math.round((val / total) * 100)
+
+  return (
+    <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-xl shadow-black/10 text-xs space-y-1.5 pointer-events-none">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: data.payload?.color || data.color }}
+        />
+        <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.name}</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 text-xs font-mono">
+        <span className="text-zinc-600 dark:text-zinc-300 font-semibold">
+          {val} {val === 1 ? "ticket" : "tickets"}
+        </span>
+        <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400">
+          {pct}%
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function CustomWorkloadTooltip({ active, payload, label, mode }: { active?: boolean; payload?: any[]; label?: string; mode?: "tickets" | "hours" }) {
+  if (!active || !payload || !payload.length) return null
+  return (
+    <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-xl shadow-black/10 text-xs space-y-2 pointer-events-none">
+      <p className="font-bold text-zinc-900 dark:text-zinc-100 text-xs">{label}</p>
+      <div className="space-y-1">
+        {payload.map((item: any, i: number) => (
+          <div key={i} className="flex items-center justify-between gap-4 text-xs font-mono">
+            <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-sans">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color || item.fill }} />
+              <span>{item.name}:</span>
+            </span>
+            <span className="font-bold text-zinc-900 dark:text-zinc-100">
+              {item.value}{mode === "hours" ? "h" : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function TaskPmOperationsDashboard({
   tasks,
   teamMembers,
@@ -147,6 +208,9 @@ export function TaskPmOperationsDashboard({
   onSprintDeleted,
   onSwitchToGestion = () => {},
   onSelectTask,
+  onCreateTask,
+  onCreateProject,
+  onCreateSprint,
 }: TaskPmOperationsDashboardProps) {
 
   // Sprint modal state
@@ -498,234 +562,27 @@ export function TaskPmOperationsDashboard({
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Sleek Low-Profile Telemetry & Period Filter Bar - Al Aire (sin contenedor) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 py-1">
-        {/* Left: Compact Section Title & Status Dot */}
-        <div className="flex items-center gap-2.5 py-0.5">
-          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <TrendingUp className="w-3.5 h-3.5" />
-          </div>
-          <div>
-            <h3 className="text-xs sm:text-sm font-bold text-foreground leading-none">
-              Rendimiento & Telemetría por Período
-            </h3>
-            <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
-              <CircleDot className="w-2 h-2 text-emerald-500 animate-pulse" />
-              Sincronizado en vivo
-            </span>
-          </div>
-        </div>
-
-        {/* Right: Period Selector & Quick Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Period Selector */}
-          <div className="flex items-center bg-zinc-100/90 dark:bg-white/5 p-0.5 rounded-xl border border-zinc-200/80 dark:border-white/10 backdrop-blur-md">
-            {[
-              { id: "7d", label: "7 Días" },
-              { id: "30d", label: "30 Días" },
-              { id: "90d", label: "Trimestre" },
-              { id: "1y", label: "Año" },
-              { id: "all", label: "Histórico" },
-            ].map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPeriod(p.id as PeriodPreset)}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  selectedPeriod === p.id
-                    ? "bg-white dark:bg-zinc-900 text-primary shadow-xs border border-zinc-200/60 dark:border-white/10"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Project / Workspace Filter */}
-          {projects.length > 0 && (
-            <Select
-              value={selectedProjectFilter}
-              onValueChange={setSelectedProjectFilter}
-            >
-              <SelectTrigger className="w-[175px] sm:w-[210px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
-                <div className="flex items-center truncate text-left flex-1 min-w-0">
-                  <SelectValue placeholder="Todos los espacios" />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl max-h-[320px]">
-                <SelectItem value="all" className="text-xs font-medium">
-                  <span className="flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span>Todos los espacios</span>
-                  </span>
-                </SelectItem>
-                {workspaces.length > 0 ? (
-                  <>
-                    {workspaces.map((ws) => {
-                      const wsProjects = projects.filter((p) => p.workspace_id === ws.id)
-                      return (
-                        <SelectGroup key={ws.id}>
-                          <SelectSeparator className="my-1" />
-                          <SelectItem
-                            value={`workspace:${ws.id}`}
-                            textValue={`${ws.name}${ws.key_prefix ? ` [${ws.key_prefix}]` : ""}`}
-                            className="text-xs font-semibold text-foreground py-1.5 cursor-pointer pl-8"
-                          >
-                            <span className="flex items-center gap-2 w-full">
-                              <span className="truncate">{ws.name}</span>
-                              {ws.key_prefix && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-zinc-500 dark:text-zinc-400 font-normal">
-                                  [{ws.key_prefix}]
-                                </span>
-                              )}
-                              <span className="text-[10px] text-muted-foreground font-normal ml-auto">
-                                ({wsProjects.length})
-                              </span>
-                            </span>
-                          </SelectItem>
-                          {wsProjects.map((p) => (
-                            <SelectItem
-                              key={p.id}
-                              value={p.id}
-                              textValue={p.name}
-                              className="text-xs pl-12 py-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                                  style={{ backgroundColor: p.color }}
-                                />
-                                <span className="truncate">{p.name}</span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      )
-                    })}
-                    {projects.filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id)).length > 0 && (
-                      <SelectGroup>
-                        <SelectSeparator className="my-1" />
-                        <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-8 py-1">
-                          Otros Proyectos
-                        </SelectLabel>
-                        {projects
-                          .filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id))
-                          .map((p) => (
-                            <SelectItem
-                              key={p.id}
-                              value={p.id}
-                              textValue={p.name}
-                              className="text-xs pl-12 py-1.5"
-                            >
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                                  style={{ backgroundColor: p.color }}
-                                />
-                                <span className="truncate">{p.name}</span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                    )}
-                  </>
-                ) : (
-                  projects.map((proj) => (
-                    <SelectItem
-                      key={proj.id}
-                      value={proj.id}
-                      textValue={proj.name}
-                      className="text-xs"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: proj.color }}
-                        />
-                        <span className="truncate">{proj.name}</span>
-                      </span>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Member Filter */}
-          <Select
-            value={selectedMemberFilter}
-            onValueChange={setSelectedMemberFilter}
-          >
-            <SelectTrigger className="w-[155px] sm:w-[185px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
-              <div className="flex items-center truncate text-left flex-1 min-w-0">
-                <SelectValue placeholder="Todo el equipo" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="rounded-xl max-h-[300px]">
-              <SelectItem value="all" className="text-xs">
-                <span className="flex items-center gap-2">
-                  <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>Todo el equipo</span>
-                </span>
-              </SelectItem>
-              {teamMembers.map((m) => (
-                <SelectItem
-                  key={m.id}
-                  value={m.id}
-                  textValue={`${m.first_name} ${m.last_name}`}
-                  className="text-xs"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="truncate">{m.first_name} {m.last_name}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Refresh Button */}
-          <UiTooltipProvider delayDuration={150}>
-            <UiTooltip>
-              <UiTooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleRefresh}
-                  className="h-8 w-8 rounded-xl border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer"
-                  aria-label="Actualizar telemetría"
-                >
-                  <RefreshCw
-                    className={cn("w-3.5 h-3.5 text-muted-foreground", isRefreshing && "animate-spin text-primary")}
-                  />
-                </Button>
-              </UiTooltipTrigger>
-              <UiTooltipContent className="rounded-xl text-xs">
-                Actualizar telemetría
-              </UiTooltipContent>
-            </UiTooltip>
-          </UiTooltipProvider>
-        </div>
-      </div>
-
-      {/* Dedicated Sprint / Cycle Control Bar (Linear / Jira Style) */}
-      <div className="p-2.5 sm:p-3 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-card shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">
-          {/* Left: Categorized Sprint Selector & Real-Time Contextual Badges */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0">
-            {/* Sprint Dropdown Selector */}
+      {/* Unified Telemetry Scope & Quick Filters Bar */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        {/* Unified Controls Card (Sprint / Scope + Period + Spaces + Members) */}
+        <div className="flex-1 flex flex-wrap items-center justify-between gap-2.5 p-2 sm:p-2.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-card shadow-2xs">
+          {/* Left: Sprint / Scope Selector */}
+          <div className="flex items-center gap-2">
             <Select
               value={selectedSprintId}
               onValueChange={(val) => {
                 if (val === "__create__") {
-                  setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  if (onCreateSprint) {
+                    onCreateSprint()
+                  } else {
+                    setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  }
                   return
                 }
                 setSelectedSprintId(val)
               }}
             >
-              <SelectTrigger className="h-8 px-2.5 py-1 text-sm font-bold text-foreground bg-zinc-100/80 hover:bg-zinc-200/70 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl gap-2 cursor-pointer transition-colors shadow-none w-auto max-w-[280px]">
+              <SelectTrigger className="h-8 px-3 text-xs font-medium text-foreground bg-card hover:bg-zinc-100/70 dark:hover:bg-white/5 border border-zinc-200/80 dark:border-white/10 rounded-xl gap-2 cursor-pointer transition-colors shadow-none w-auto max-w-[280px]">
                 <span className="truncate">
                   {selectedSprintId === "all"
                     ? "Todos los tickets (Global)"
@@ -740,7 +597,7 @@ export function TaskPmOperationsDashboard({
                   Todos los tickets (Global)
                 </SelectItem>
 
-                {/* Sprints Flat List without Section Headings */}
+                {/* Sprints Flat List */}
                 {sprints.map((s) => (
                   <SelectItem
                     key={s.id}
@@ -768,10 +625,9 @@ export function TaskPmOperationsDashboard({
               </SelectContent>
             </Select>
 
-            {/* Contextual Badges based strictly on selectedSprintId / currentSprint */}
-            {currentSprint ? (
-              <>
-                {/* Status Badge */}
+            {/* Contextual Sprint Badges (Only when a specific sprint is selected) */}
+            {currentSprint && (
+              <div className="hidden sm:flex items-center gap-1.5">
                 <Badge
                   className={cn(
                     "text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-none",
@@ -789,7 +645,6 @@ export function TaskPmOperationsDashboard({
                     : "Cerrado"}
                 </Badge>
 
-                {/* Dates / Duration */}
                 {currentSprint.status === "active" && sprintDaysRemaining !== null && (
                   <span
                     className={cn(
@@ -805,92 +660,297 @@ export function TaskPmOperationsDashboard({
                       ? `Venció hace ${Math.abs(sprintDaysRemaining)}d`
                       : sprintDaysRemaining === 0
                       ? "Termina hoy"
-                      : `${sprintDaysRemaining} días restantes`}
+                      : `${sprintDaysRemaining}d restantes`}
                   </span>
                 )}
-
-                {currentSprint.status === "planning" && (
-                  <span className="text-[10px] text-muted-foreground font-mono bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
-                    Inicia: {currentSprint.start_date} ({currentSprint.duration_days}d)
-                  </span>
-                )}
-
-                {currentSprint.status === "completed" && (
-                  <span className="text-[10px] text-muted-foreground font-mono bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
-                    Cerrado: {currentSprint.end_date}
-                  </span>
-                )}
-
-                {/* Auto Rollover Badge if applicable */}
-                {currentSprint.auto_rollover && (
-                  <span className="text-[10px] flex items-center gap-1 text-zinc-600 dark:text-zinc-400 font-medium bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200/80 dark:border-zinc-700/80">
-                    <RotateCw className="w-2.5 h-2.5 text-zinc-500" />
-                    Auto-ciclado
-                  </span>
-                )}
-              </>
-            ) : (
-              <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">
-                Vista Global
-              </Badge>
+              </div>
             )}
           </div>
 
-          {/* Right: PM Controls - Precise Contextual Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {currentSprint ? (
-              <>
-                {/* Editar is ALWAYS present for the currently selected sprint */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setSprintModalState({ isOpen: true, mode: "edit", sprint: currentSprint })
-                  }
-                  className="h-8 text-xs rounded-xl border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+          {/* Right: Period Selector & Quick Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Period Selector */}
+            <div className="flex items-center bg-zinc-100/90 dark:bg-white/5 p-0.5 rounded-xl border border-zinc-200/80 dark:border-white/10 backdrop-blur-md">
+              {[
+                { id: "7d", label: "7 Días" },
+                { id: "30d", label: "30 Días" },
+                { id: "90d", label: "Trimestre" },
+                { id: "1y", label: "Año" },
+                { id: "all", label: "Histórico" },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPeriod(p.id as PeriodPreset)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    selectedPeriod === p.id
+                      ? "bg-white dark:bg-zinc-900 text-primary shadow-xs border border-zinc-200/60 dark:border-white/10"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Settings className="w-3.5 h-3.5 mr-1.5" />
-                  Editar
-                </Button>
+                  {p.label}
+                </button>
+              ))}
+            </div>
 
-                {/* If active: Finalizar Sprint */}
-                {currentSprint.status === "active" && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      setSprintModalState({ isOpen: true, mode: "complete", sprint: currentSprint })
-                    }
-                    className="h-8 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                    Finalizar Sprint
-                  </Button>
-                )}
+            {/* Project / Workspace Filter */}
+            {projects.length > 0 && (
+              <Select
+                value={selectedProjectFilter}
+                onValueChange={setSelectedProjectFilter}
+              >
+                <SelectTrigger className="w-[165px] sm:w-[190px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
+                  <div className="flex items-center truncate text-left flex-1 min-w-0">
+                    <SelectValue placeholder="Todos los espacios" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl max-h-[320px]">
+                  <SelectItem value="all" className="text-xs font-medium">
+                    <span className="flex items-center gap-2">
+                      <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>Todos los espacios</span>
+                    </span>
+                  </SelectItem>
+                  {workspaces.length > 0 ? (
+                    <>
+                      {workspaces.map((ws) => {
+                        const wsProjects = projects.filter((p) => p.workspace_id === ws.id)
+                        return (
+                          <SelectGroup key={ws.id}>
+                            <SelectSeparator className="my-1" />
+                            <SelectItem
+                              value={`workspace:${ws.id}`}
+                              textValue={`${ws.name}${ws.key_prefix ? ` [${ws.key_prefix}]` : ""}`}
+                              className="text-xs font-semibold text-foreground py-1.5 cursor-pointer pl-8"
+                            >
+                              <span className="flex items-center gap-2 w-full">
+                                <span className="truncate">{ws.name}</span>
+                                {ws.key_prefix && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-zinc-500 dark:text-zinc-400 font-normal">
+                                    [{ws.key_prefix}]
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-muted-foreground font-normal ml-auto">
+                                  ({wsProjects.length})
+                                </span>
+                              </span>
+                            </SelectItem>
+                            {wsProjects.map((p) => (
+                              <SelectItem
+                                key={p.id}
+                                value={p.id}
+                                textValue={p.name}
+                                className="text-xs pl-12 py-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: p.color }}
+                                  />
+                                  <span className="truncate">{p.name}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )
+                      })}
+                      {projects.filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id)).length > 0 && (
+                        <SelectGroup>
+                          <SelectSeparator className="my-1" />
+                          <SelectLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-8 py-1">
+                            Otros Proyectos
+                          </SelectLabel>
+                          {projects
+                            .filter((p) => !p.workspace_id || !workspaces.some((w) => w.id === p.workspace_id))
+                            .map((p) => (
+                              <SelectItem
+                                key={p.id}
+                                value={p.id}
+                                textValue={p.name}
+                                className="text-xs pl-12 py-1.5"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: p.color }}
+                                  />
+                                  <span className="truncate">{p.name}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      )}
+                    </>
+                  ) : (
+                    projects.map((proj) => (
+                      <SelectItem
+                        key={proj.id}
+                        value={proj.id}
+                        textValue={proj.name}
+                        className="text-xs"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: proj.color }}
+                          />
+                          <span className="truncate">{proj.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
 
-                {/* If planning: Iniciar Sprint */}
-                {currentSprint.status === "planning" && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleStartPlanningSprint(currentSprint)}
-                    className="h-8 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs cursor-pointer"
+            {/* Member Filter */}
+            <Select
+              value={selectedMemberFilter}
+              onValueChange={setSelectedMemberFilter}
+            >
+              <SelectTrigger className="w-[145px] sm:w-[170px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
+                <div className="flex items-center truncate text-left flex-1 min-w-0">
+                  <SelectValue placeholder="Todo el equipo" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl max-h-[300px]">
+                <SelectItem value="all" className="text-xs">
+                  <span className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Todo el equipo</span>
+                  </span>
+                </SelectItem>
+                {teamMembers.map((m) => (
+                  <SelectItem
+                    key={m.id}
+                    value={m.id}
+                    textValue={`${m.first_name} ${m.last_name}`}
+                    className="text-xs"
                   >
-                    <Play className="w-3.5 h-3.5 mr-1.5 fill-current" />
-                    Iniciar Sprint
-                  </Button>
-                )}
-              </>
-            ) : (
-              /* When no sprint exists or global view: Crear Sprint */
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="truncate">{m.first_name} {m.last_name}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Right Controls: Sprint Actions (if specific sprint) + Multicreator '+ Nuevo' Dropdown */}
+        <div className="flex items-center gap-2 shrink-0">
+          {currentSprint && (
+            <>
+              {/* Editar is ALWAYS present for the currently selected sprint */}
               <Button
                 size="sm"
-                onClick={() => setSprintModalState({ isOpen: true, mode: "create", sprint: null })}
-                className="h-8 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs cursor-pointer"
+                variant="outline"
+                onClick={() =>
+                  setSprintModalState({ isOpen: true, mode: "edit", sprint: currentSprint })
+                }
+                className="h-10 text-xs rounded-2xl border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Crear Sprint
+                <Settings className="w-3.5 h-3.5 mr-1.5" />
+                Editar
               </Button>
-            )}
-          </div>
+
+              {/* If active: Finalizar Sprint */}
+              {currentSprint.status === "active" && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    setSprintModalState({ isOpen: true, mode: "complete", sprint: currentSprint })
+                  }
+                  className="h-10 text-xs rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Finalizar Sprint
+                </Button>
+              )}
+
+              {/* If planning: Iniciar Sprint */}
+              {currentSprint.status === "planning" && (
+                <Button
+                  size="sm"
+                  onClick={() => handleStartPlanningSprint(currentSprint)}
+                  className="h-10 text-xs rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 mr-1.5 fill-current" />
+                  Iniciar Sprint
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Unified + Nuevo Dropdown Menu (Multicreador) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                className="h-10 px-4 rounded-2xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 shrink-0 gap-1.5 cursor-pointer transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuevo</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-64 p-1.5 rounded-2xl shadow-xl border border-zinc-200/80 dark:border-white/10 bg-card z-50"
+            >
+              <DropdownMenuItem
+                onClick={() => onCreateTask?.()}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckSquare className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Nuevo Ticket</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Crear ticket o requerimiento en el proyecto
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => {
+                  if (onCreateSprint) {
+                    onCreateSprint()
+                  } else {
+                    setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+                  }
+                }}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <Rocket className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Nuevo Sprint</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Ciclo ágil de trabajo con fechas y meta
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => onCreateProject?.()}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 mt-0.5">
+                  <FolderPlus className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Nuevo Proyecto</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Crear nuevo proyecto o módulo
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1212,16 +1272,9 @@ export function TaskPmOperationsDashboard({
                   allowDecimals={false}
                 />
                 <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(18, 18, 23, 0.95)",
-                    backdropFilter: "blur(12px)",
-                    borderRadius: "16px",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#fff",
-                    padding: "12px",
-                    fontSize: "12px",
-                  }}
-                  cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                  content={<CustomWorkloadTooltip mode={workloadChartMode} />}
+                  cursor={{ fill: "currentColor", opacity: 0.04 }}
+                  wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}
                 />
                 {workloadChartMode === "tickets" ? (
                   <>
@@ -1353,7 +1406,17 @@ export function TaskPmOperationsDashboard({
           </div>
 
           <div className="h-[210px] w-full relative flex items-center justify-center my-4">
-            <ResponsiveContainer width="100%" height="100%">
+            {/* Center Readout (positioned with z-0 behind chart and tooltip) */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+              <span className="text-3xl font-black font-mono text-foreground tracking-tight">
+                {sprintTasks.length}
+              </span>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                {currentSprint ? "En Sprint" : "Tickets"}
+              </span>
+            </div>
+
+            <ResponsiveContainer width="100%" height="100%" className="relative z-10">
               <RePieChart>
                 <Pie
                   data={statusPieData}
@@ -1373,26 +1436,11 @@ export function TaskPmOperationsDashboard({
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(18, 18, 23, 0.95)",
-                    backdropFilter: "blur(12px)",
-                    borderRadius: "14px",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#fff",
-                    fontSize: "12px",
-                  }}
+                  content={<CustomDonutTooltip totalTasks={sprintTasks.length} />}
+                  wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}
                 />
               </RePieChart>
             </ResponsiveContainer>
-            {/* Center Readout */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-3xl font-black font-mono text-foreground tracking-tight">
-                {sprintTasks.length}
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                {currentSprint ? "En Sprint" : "Tickets"}
-              </span>
-            </div>
           </div>
 
           {/* Clean Legend */}

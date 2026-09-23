@@ -762,7 +762,7 @@ export async function createTask(
  */
 export async function updateTask(
   taskId: string,
-  data: Partial<TaskItem>
+  data: Partial<TaskItem> & { loggedHours?: number; note?: string }
 ): Promise<{ success: boolean; task?: TaskItem; unblockedTasks?: TaskItem[]; error?: string }> {
   try {
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
@@ -771,12 +771,16 @@ export async function updateTask(
     delete updateData.project;
     delete updateData.comments_count;
     delete updateData.blocked_by;
+    const loggedHours = updateData.loggedHours ? Number(updateData.loggedHours) : 0;
+    const note = updateData.note;
+    delete updateData.loggedHours;
+    delete updateData.note;
 
     // Fetch previous state for audit comparison
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist,
+        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist, actual_hours,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -907,6 +911,16 @@ export async function updateTask(
         const oldP = TASK_PRIORITY_LABELS[prevTask.priority as TaskPriority] || prevTask.priority;
         const newP = TASK_PRIORITY_LABELS[updateData.priority as TaskPriority] || updateData.priority;
         await logTaskAuditComment(orgId, taskId, `⚡ Prioridad cambiada a ${newP} (anterior: ${oldP})`);
+      }
+
+      // Work hours logged audit
+      if (loggedHours > 0) {
+        const noteStr = note && note.trim() ? ` — "${note.trim()}"` : "";
+        await logTaskAuditComment(
+          orgId,
+          taskId,
+          `⏱️ Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`
+        );
       }
 
       // Due date audit
@@ -1451,6 +1465,44 @@ export async function deleteTask(taskId: string): Promise<{ success: boolean; er
 }
 
 /**
+ * Bulk delete tasks
+ */
+export async function deleteTasks(
+  taskIds: string[],
+  orgId?: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    if (!taskIds || taskIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const activeOrgId = await resolveOrgId(orgId);
+
+    // Delete in chunks of 100 to avoid query length limits
+    const CHUNK_SIZE = 100;
+    let totalDeleted = 0;
+
+    for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
+      const chunk = taskIds.slice(i, i + CHUNK_SIZE);
+      const { error, count } = await supabaseAdmin
+        .from("task_items")
+        .delete({ count: "exact" })
+        .eq("organization_id", activeOrgId)
+        .in("id", chunk);
+
+      if (error) throw error;
+      totalDeleted += (count ?? chunk.length);
+    }
+
+    revalidatePath("/operations/tasks");
+    return { success: true, count: totalDeleted };
+  } catch (err: any) {
+    console.error("Error bulk deleting tasks:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Get comments for a task
  */
 export async function getTaskComments(taskId: string): Promise<TaskComment[]> {
@@ -1605,7 +1657,8 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       has_global_workspace_access: s.has_global_workspace_access ?? true,
       workspace_ids: staffWorkspaces.get(s.id) || [],
       assigned_tasks_count: counts.total,
-      completed_tasks_count: counts.done
+      completed_tasks_count: counts.done,
+      can_bulk_delete_tasks: s.can_bulk_delete_tasks ?? (inferTaskRole(s.role) === "pm"),
     };
   });
 }
@@ -1753,6 +1806,7 @@ export async function createCollaborator(data: {
   photoUrl?: string | null;
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
+  canBulkDeleteTasks?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -1770,7 +1824,8 @@ export async function createCollaborator(data: {
         role: data.role || data.taskRole || "developer",
         photo_url: data.photoUrl || null,
         has_global_workspace_access: hasGlobal,
-        is_active: true
+        is_active: true,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === "pm")
       })
       .select("*")
       .single();
@@ -1808,7 +1863,8 @@ export async function createCollaborator(data: {
         has_global_workspace_access: hasGlobal,
         workspace_ids: data.workspaceIds || [],
         assigned_tasks_count: 0,
-        completed_tasks_count: 0
+        completed_tasks_count: 0,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === 'pm' || inferTaskRole(newStaff.role) === 'pm')
       }
     };
   } catch (err: any) {
@@ -1832,6 +1888,7 @@ export async function updateCollaborator(data: {
   isActive?: boolean;
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
+  canBulkDeleteTasks?: boolean;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -1853,6 +1910,9 @@ export async function updateCollaborator(data: {
     }
     if (data.hasGlobalWorkspaceAccess !== undefined) {
       updatePayload.has_global_workspace_access = data.hasGlobalWorkspaceAccess;
+    }
+    if (data.canBulkDeleteTasks !== undefined) {
+      updatePayload.can_bulk_delete_tasks = data.canBulkDeleteTasks;
     }
 
     const { data: updatedStaff, error } = await supabaseAdmin
@@ -1913,7 +1973,8 @@ export async function updateCollaborator(data: {
         has_global_workspace_access: updatedStaff.has_global_workspace_access ?? true,
         workspace_ids: currentWsIds,
         assigned_tasks_count: 0,
-        completed_tasks_count: 0
+        completed_tasks_count: 0,
+        can_bulk_delete_tasks: data.canBulkDeleteTasks !== undefined ? data.canBulkDeleteTasks : (updatedStaff.can_bulk_delete_tasks ?? (inferTaskRole(updatedStaff.role) === 'pm'))
       }
     };
   } catch (err: any) {

@@ -898,4 +898,217 @@ Para preservar la integridad referencial sin colisiones de UUIDs entre bases de 
   - [`public/movilservicios-import-bundle.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle.json): Contiene 10 colaboradores tipados con sus roles oficiales (`pm`, `qa_lead`, `developer`, `designer`), 2 espacios de trabajo (`Plataforma Web [WEB]` y `App Movil [APP]`), 1 proyecto (`General [WEB]`) y 227 tickets en estado limpio `backlog` con prioridad `medium`, sin etiquetas ni subtareas residuales, listos para pruebas de carga y simulación de ingesta real.
   - [`public/movilservicios-import-bundle-con-responsable.json`](file:///g:/Pixy/agency-manager/public/movilservicios-import-bundle-con-responsable.json): Variante que mapea la asignación original de cada ticket por correo electrónico de colaborador para auditar la vinculación automática de usuarios.
 
+---
+
+## 21. Sistema de Selección Múltiple, Eliminación en Masa y Gestión de Avatares
+
+### A. Permiso Granular de Eliminación en Masa (`can_bulk_delete_tasks`)
+1. **Esquema Relacional e IAM**:
+   - Se incorpora la columna `can_bulk_delete_tasks BOOLEAN DEFAULT FALSE` en la tabla `public.organization_staff`.
+   - Se integra en el sistema IAM (`src/modules/core/iam/permissions/types.ts` y `defaults.ts`) bajo la sección de operaciones: `can_bulk_delete_tasks` (*"Eliminación en masa de tareas: Permite seleccionar y eliminar tareas en lote desde la tabla general"*).
+   - Por defecto, se encuentra activo para roles con responsabilidad de gestión (`pm`, `owner`, `admin`) y deshabilitado para roles operativos individuales (`staff`, `specialist`), permitiendo su activación manual mediante un interruptor en el modal de creación y edición de colaboradores.
+
+2. **Propagación Segura al Portal de Colaboradores**:
+   - `getCollaboratorPortalData` evalúa la facultad del colaborador y la expone en `CollaboratorPortalData.canBulkDeleteTasks`.
+   - La acción de servidor `portalBulkDeleteTasks(token, taskIds)` valida criptográficamente el token del colaborador, verifica que posea el permiso explícito y realiza la eliminación atómica en bloques de 100 tickets dentro del alcance estricto de su organización.
+
+### B. Barra Flotante de Acciones en Lote (`BulkActionsFloatingBar`)
+1. **Plataforma Central (`/operations/tasks`)**:
+   - La vista de lista (`TaskListView`) integra checkboxes por fila y un selector maestro en el encabezado con soporte para estado indeterminado.
+   - Al seleccionar uno o más tickets, se despliega `BulkActionsFloatingBar` con contador reactivo, confirmación de seguridad y eliminación por lotes a través de `deleteTasks`.
+
+2. **Portal de Colaboradores (`/portal/tasks/[token]`)**:
+   - En la vista de lista (`viewMode === "list"`), si el colaborador dispone de `canBulkDeleteTasks`, se habilitan los checkboxes de selección múltiple y la barra de acciones flotante con confirmación explícita antes de ejecutar el borrado masivo.
+   - La selección se restablece automáticamente al cambiar de pestaña, filtro de estado, búsqueda o proyecto para evitar eliminaciones accidentales fuera de vista.
+
+### C. Experiencia y Rediseño de Avatares de Colaboradores
+1. **Contenedor Limpio y Estado Vacío en el Gestor de Colaboradores**:
+   - Al remover la foto mediante el botón de canequita (`Trash2`), el contenedor queda como un círculo transparente con borde punteado (`border-dashed`), eliminando cualquier asignación automática forzada de avatares 3D o iniciales coloreadas.
+   - La canequita es contextual y solo se visualiza cuando existe una foto o avatar asignado.
+   - Se elimina el botón redundante de carga; la carga de archivos se activa directamente al interactuar sobre el avatar previsualizador con indicador hover.
+
+2. **Cuadrícula Compacta de 2 Filas**:
+   - Los 19 avatares oficiales del paquete 3D se distribuyen en una cuadrícula optimizada (`sm:grid-cols-10`), ocupando exactamente 2 filas para equilibrar la altura vertical del bloque con el avatar previsualizador.
+
+3. **Renderizado Adaptativo en el Hero del Portal**:
+   - **Archivos Subidos**: Las fotos personalizadas cargadas por el usuario se muestran en formato circular (`rounded-full`, `aspect-square`, `object-cover`), con bordes suaves de alto contraste y sombra tridimensional.
+   - **Avatares 3D Oficiales**: Mantienen su renderizado como silueta recortada transparente (`object-contain`), flotando libremente sin recorte circular.
+
+---
+
+## 22. Cierre de Brecha de Telemetría e Imputación Ágil de Horas en Transición
+
+### A. Problemática Detectada y Brecha Operativa
+Previamente, el modal de imputación rápida de horas (`TaskLogWorkModal`) únicamente se disparaba ante interacciones superficiales en las tablas o el tablero Kanban (botón check de completado o selector rápido de fila). Sin embargo, el 80% del trabajo real de los colaboradores se realiza dentro del modal detallado de la tarea (`TaskPortalDetailModal` en el portal y `TaskDetailModal` en la plataforma central), donde leen especificaciones, marcan entregables del checklist y adjuntan archivos. Al cambiar el estado a "Para Revisión" (QA) o "Completada" desde el modal, el sistema guardaba directamente sin solicitar el registro de horas invertidas, originando una fuga masiva de datos en la telemetría de tiempos del equipo.
+
+### B. Arquitectura de Intercepción en Modales de Detalle
+Se implementó el patrón de diseño *Log Work on Transition*:
+1. **Detección de Transición en Guardado**:
+   - Al pulsar **"Guardar Cambios"** en [`TaskPortalDetailModal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx) y [`TaskDetailModal.tsx`](file:///g:/Pixy/agency-manager/src/modules/features/tasks/components/modals/task-detail-modal.tsx), se evalúa si el estado final es `in_review` o `done` y difiere del estado previo de la tarea (`task.status !== finalStatus`).
+2. **Despliegue Superpuesto de `TaskLogWorkModal` (`z-[80]`)**:
+   - Se despliega el diálogo ágil con comparativa de horas estimadas vs. reales previas, sugerencia inteligente de horas restantes y chips de adición rápida (`+30m`, `+1h`, `+2h`, `+4h`), además de campo opcional para notas de entrega.
+3. **Flujos de Decisión**:
+   - **Guardar y avanzar**: Suma incrementalmente las horas ingresadas a `actual_hours`, registra el comentario de auditoría con la nota opcional en el feed de la tarea, ejecuta la persistencia y cierra ambos modales.
+   - **Omitir horas y avanzar**: Guarda los cambios de estado y contenido con 0 horas incrementales para no bloquear flujos donde no aplique registro.
+   - **Cancelar**: Cierra únicamente `TaskLogWorkModal` y mantiene abierto el modal de detalle sin perder las modificaciones previas.
+4. **Acceso Rápido Manual (`+ Imputar`)**:
+   - Se habilitó un botón directo `+ Imputar` junto al campo de "Horas Reales" en ambos modales de detalle, permitiendo imputar horas en cualquier momento sin necesidad de cambiar el estado a completado.
+5. **Celebración de Logro Sincronizada**:
+   - Al marcar una tarea como `done` desde el modal de detalle del portal, se detona reactivamente la animación de confeti/celebración, garantizando paridad visual con el botón de check de la tabla.
+
+---
+
+## 23. Barra de Control Unificada y Multicreador en Dashboard de Operaciones PM
+
+### A. Racional de Diseño y Simplificación de Espacio
+Anteriormente, el panel de operaciones del PM (`TaskPmOperationsDashboard`) albergaba dos barras de herramientas apiladas: una superior de telemetría y filtros de rango temporal, y una barra secundaria inmediatamente debajo para seleccionar y gestionar el Sprint. Esto generaba sobrecarga vertical, duplicación de elementos decorativos (como el badge redundante "Vista Global" y el botón de recarga manual) y una limitación en la creación de elementos (únicamente un botón aislado para crear Sprint).
+
+### B. Arquitectura de la Barra Unificada
+Se consolidaron todos los controles en un único contenedor horizontal de alto rendimiento ergonómico (`rounded-2xl border border-zinc-200/80 bg-card`):
+1. **Lado Izquierdo (Alcance Operativo)**:
+   - Selector principal de Sprint con opción de alcance amplio (`Todos los tickets (Global)`) y listado reactivo de sprints activos, en planificación o completados.
+   - Badges dinámicos de estado del sprint (`Sprint Activo`, `En Planificación`, `Cerrado`) e indicador numérico de días restantes / vencimiento si se selecciona un sprint específico.
+2. **Lado Derecho Interior (Filtros de Telemetría)**:
+   - Segmented control de períodos temporales: `7 Días`, `30 Días`, `Trimestre`, `Año`, `Histórico`.
+   - Filtro de Proyectos y Espacios de Trabajo con icono `Layers` visible en el disparador (`SelectTrigger`).
+   - Filtro de Especialistas del Equipo con icono `Users` visible en el disparador (`SelectTrigger`).
+3. **Lado Derecho Exterior (Acciones Contextuales y Multicreador)**:
+   - Botones de ciclo de vida del Sprint (`Editar`, `Finalizar Sprint`, `Iniciar Sprint`) que aparecen de forma contextual únicamente al seleccionar un sprint específico.
+   - **Botón Multicreador Unificado (`+ Nuevo`)**:
+     - Botón principal verde (`bg-primary`) con menú desplegable (`DropdownMenu`).
+     - **Nuevo Ticket**: Invoca el modal de creación de tareas/requerimientos (`onCreateTask`).
+     - **Nuevo Sprint**: Invoca el modal de creación de sprints ágiles (`onCreateSprint` / local `TaskSprintModal`).
+     - **Nuevo Proyecto**: Invoca el modal de creación de proyectos (`onCreateProject`).
+   - Integrado coherentemente tanto en el Portal de Colaboradores como en la vista de Métricas de la Plataforma General.
+
+---
+
+## 24. Gobernanza Terminal de Tickets Completados (`done`) y Restricción de Imputación de Horas
+
+### A. Racional de Negocio y Prevención de Fugas de Rentabilidad
+Permitir que colaboradores regulares reabran o imputen horas a requerimientos que ya fueron marcados como completados (`done`) acarrea severas distorsiones operacionales en una agencia:
+1. **Scope Creep y Retrabajo Oculto**: Los colaboradores suelen aceptar cambios informales solicitados por clientes o terceros reabriendo tickets viejos y trabajando horas no presupuestadas sin conocimiento del PM.
+2. **Corrupción de Telemetría Histórica**: Alterar el estado o sumar horas a tareas de sprints cerrados distorsiona las métricas de velocidad y rentabilidad ya consolidadas.
+3. **Relleno Artificial de Jornadas**: Previene que colaboradores asignen horas retroactivas a tickets finalizados para justificar jornadas laborales semanales.
+
+### B. Reglas de Gobernanza Implementadas
+
+| Componente / Operación | Colaborador Regular (`!isLeadOrPm`) | Gestor de Proyecto / Admin (`isLeadOrPm`) |
+| :--- | :--- | :--- |
+| **Reapertura de Estado** | **Bloqueada**. El selector de estado queda inactivo con candado: *"Ticket finalizado. Solo el PM puede reabrirlo o cambiar su estado."* | **Permitida**. Puede reabrir el ticket a `in_progress`, `in_review` o reasignarlo si existe justificación. |
+| **Botón `+ Imputar`** | **Oculto**. No puede registrar horas adicionales en tickets completados. | **Activo**. Puede ajustar horas reales para balance contable o auditoría. |
+| **Campo de Horas Reales** | **Solo lectura** (`disabled`). Imposibilita la edición manual directa del valor numérico. | **Editable**. |
+| **Control de Avance (Slider)** | **Bloqueado**. Con tooltip informativo de restricción. | **Editable**. |
+| **Entregables (Checklist)** | **Bloqueados**. No permite desmarcar ni marcar subtareas en tickets completados. | **Interactivos**. |
+
+### C. Aplicación Multicapa (Frontend y Backend)
+- **Capa Servidor (`collaborator-portal-actions.ts`)**:
+  - `portalUpdateTaskStatus`: Valida que si `current.status === 'done'`, ningún colaborador no-PM pueda alterar el estado ni registrar `loggedHours`.
+  - `portalUpdateTaskProgress`: Rechaza intentos de modificar el porcentaje de avance de un ticket completado.
+  - `portalToggleChecklist`: Bloquea mutaciones de entregables en tickets completados.
+  - `portalUpdateTask`: Rechaza reaperturas, cambios de progreso e imputaciones de horas sobre tickets completados.
+- **Capa Interfaz de Usuario**:
+  - `TaskPortalDetailModal.tsx` y `TaskDetailModal.tsx`: Bloquean selectores de estado, ocultan `+ Imputar`, inhabilitan checkboxes de entregables y muestran alertas claras de gobernanza.
+  - `TaskCollaboratorPortal.tsx`: Bloquea acciones rápidas de cambio de estado en tablas y Kanban para tickets cerrados.
+
+---
+
+## 25. Rediseño UX del Módulo de Tiempo & Horas en Modales de Tarea
+
+### A. Diagnóstico de Fricción y Errores de Usabilidad Previos
+Anteriormente, el bloque de horas en la barra lateral de los modales de detalle (`TaskPortalDetailModal` y `TaskDetailModal`) sufría de inconsistencias funcionales y visuales:
+1. **Controles Competitivos y Ambigüedad de Propósito**: Existía un campo de entrada numérico (`<input type="number">`) con flechas nativas (*spinners*) para "Horas Reales" ubicado justo debajo de un enlace de texto `+ Imputar`. El usuario no comprendía si cambiar el número registraba horas o si debía pulsar el botón, provocando incertidumbre sobre cómo se asentaba el trabajo.
+2. **Fricción de Espacio y Ruptura de UI**: En un contenedor lateral estrecho (~240px), la etiqueta "Horas Reales" compartía renglón con `+ Imputar`, truncándose como `Horas Rea...` con el botón montado encima en dos líneas.
+3. **Pérdida de Trazabilidad**: El input directo permitía sobrescribir el total acumulado sin registrar notas de bitácora, fecha de imputación ni autoría.
+
+### B. Arquitectura del Componente Ultra-Compacto de Tiempo & Horas
+Se erradicó por completo el `<input type="number">` directo para horas reales y los contenedores pesados ("cajones" o tarjetas voluminosas) que saturaban la barra lateral del modal:
+1. **Etiqueta y Fila Única Ultra-Compacta (Single-Line Telemetry)**:
+   - Título de sección homogéneo con el resto del sidebar: `Tiempo` (`text-[11px] font-semibold text-muted-foreground uppercase tracking-wider`).
+   - Contenedor esbelto de ~28px de altura con fondo sutil (`bg-muted/20 border border-border/60`).
+   - **Estimado**: Campo de texto/input numérico en línea sin bordes (`0h` / `[input]h`) accesible para PMs y de solo lectura para colaboradores.
+   - **Registrado**: Métrica tipográfica en tiempo real (`0h`), con indicador de delta compacto (`+Xh`) en ámbar únicamente si se supera la estimación.
+2. **Botón Principal de Acción Unificado Inmediato**:
+   - Ubicado inmediatamente debajo de la fila de tiempo: botón estilizado a ancho completo `Registrar Horas de Trabajo` con icono `Timer`, detonando `TaskLogWorkModal` para registro incremental con notas de trabajo y trazabilidad de autor.
+   - En tickets completados (`done`), se sustituye por una píldora sellada: *"Registro cerrado (Ticket completado)"* para preservar gobernanza.
+
+---
+
+## 26. Arquitectura de Telemetría Visual y Gráficos del Dashboard Operativo PM
+
+### A. Diagnóstico de Contraste y Fallos de Renderizado en Tooltips
+En la vista de operaciones del PM (`TaskPmOperationsDashboard`), los gráficos de Recharts (`Estado de los Tickets` y `Carga Operativa & Rendimiento`) presentaban problemas críticos de legibilidad y usabilidad:
+1. **Contraste Roto en Modo Claro**: Los tooltips utilizaban un fondo oscuro inline forzado (`rgba(18, 18, 23, 0.95)`), mientras que las etiquetas internas heredaban el color de texto del tema claro (`#333333`), generando texto negro sobre fondo negro ilegible.
+2. **Colisión de Contexto de Apilamiento (Z-Index Stacking)**: En el gráfico de dona (`Estado de los Tickets`), la lectura central numérica (*Center Readout*, compuesta por el total de tickets y la etiqueta *"Tickets"*) estaba ubicada después del contenedor SVG en el DOM. Al pasar el cursor por sectores cercanos al centro, el texto central se sobreponía encima del cuadro del tooltip.
+
+### B. Solución Arquitectónica
+1. **Tooltips Nativos con Soporte Dual Claro / Oscuro**:
+   - Se implementaron componentes dedicados (`CustomDonutTooltip` y `CustomWorkloadTooltip`) estilizados con clases Tailwind semánticas (`bg-white/95 dark:bg-zinc-900/95`, `border-zinc-200/80 dark:border-white/10`, `text-zinc-900 dark:text-zinc-100`).
+   - Los tooltips presentan etiquetas legibles, indicadores de color por estado, cantidades exactas y porcentajes dinámicos de participación.
+2. **Jerarquía DOM y Desacoplamiento de Capas en Gráficos Donut**:
+   - El *Center Readout* se reubicó en el DOM antes de `ResponsiveContainer` con `z-0 pointer-events-none`.
+   - `ResponsiveContainer` se elevó a `relative z-10`.
+   - El contenedor del tooltip de Recharts se configuró con `wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}`.
+   - Esta disposición garantiza que el tooltip siempre flote en la capa superior (`z-50`) con su propia sombra y fondo esmerilado, eliminando cualquier superposición no deseada del texto central.
+
+---
+
+## 27. Homologación de Telemetría de Horas en la Tabla del Portal de Colaboradores
+
+### A. Diagnóstico de Disparidad entre Plataforma y Portales
+En la vista global de plataforma (`TaskListView`), la tabla de tareas incluía una columna dedicada de **Horas** (`actual_hours / estimated_hours` con porcentaje de consumo presupuestario), mientras que la tabla del portal de colaboradores (`TaskCollaboratorPortal`) carecía de esta métrica. Esta omisión impedía a los colaboradores conocer su ritmo de gasto de tiempo por requerimiento directamente desde la cuadrícula de trabajo.
+
+### B. Arquitectura de Visualización y Privacidad por Rol
+1. **Visibilidad Condicionada al Rol de Gestión (`isLeadOrPm`)**:
+   - Para prevenir la ansiedad por microgestión y evitar incentivos perversos (como omisión o falseo de registros de horas) en el equipo de especialistas, la columna de **Horas** en la cuadrícula principal se reserva exclusivamente para usuarios con rol de gestión (`isLeadOrPm`).
+   - Los colaboradores especialistas continúan gestionando y auditando sus horas de forma contextual e íntima en el modal de detalle del ticket (`TaskPortalDetailModal`).
+2. **Diseño y Simetría Centrada**:
+   - Encabezado con icono `Timer` centrado vertical y horizontalmente (`text-center`, `justify-center`).
+   - Métrica tipográfica en fuente monoespaciada (`23h / 10h`) centrada en su celda.
+   - Píldora de porcentaje de avance presupuestario (`%`) centrada directamente debajo del valor de horas.
+   - Alerta visual en tono carmesí/rosa (`text-rose-600 dark:text-rose-400 font-bold` y `bg-rose-500/15`) cuando las horas reales sobrepasan la estimación presupuestada.
+3. **Resiliencia Responsiva y ColSpan Dinámico**:
+   - Ancho mínimo de tabla calibrado a `min-w-[850px]` para asegurar scroll horizontal fluido sin compresión de columnas en pantallas compactas o dispositivos móviles.
+   - Cálculo dinámico de `colSpan` en estados vacíos (`canBulkDelete ? (isLeadOrPm ? 9 : 7) : (isLeadOrPm ? 8 : 6)`), garantizando alineación exacta de la cuadrícula.
+
+---
+
+## 28. Efecto Shimmer Concentrado y Adaptativo para Subtítulos de Hero en Portales
+
+### A. Diagnóstico de Óptica y Percepción Bimodal (Modo Claro vs Modo Oscuro)
+Al aplicar máscaras alfa (`-webkit-mask-image`) sobre texto tipográfico:
+1. **Modo Oscuro (Texto Claro sobre Fondo Negro)**:
+   - Base `0.38` $\rightarrow$ el texto blanco/gris se atenúa hacia el fondo oscuro.
+   - Pico `1.0` $\rightarrow$ el texto blanco brilla con luz al 100%, percibido correctamente como un haz de luz.
+2. **Modo Claro (Texto Oscuro sobre Fondo Blanco)**:
+   - Una base baja de `0.38` diluye la tinta oscura contra el fondo blanco, provocando que el texto se perciba lavado, pálido y con pérdida de legibilidad el 90% del tiempo.
+   - Al pasar el pico `1.0`, el texto se oscurece al negro total, creando la ilusión óptica de una "sombra oscura" que pasa por encima en lugar de un destello de luz.
+
+### B. Solución Arquitectónica: Máscara Invertida y Haz Concentrado
+1. **Modo Claro Adaptativo**:
+   - **Base al 100% (`1.0`)**: Contraste y nitidez total permanente sin degradar la legibilidad tipográfica.
+   - **Haz de Luz (`0.22`)**: Al transitar el foco de la máscara, la opacidad se sumerge a `0.22`, reflejando la claridad del fondo blanco como un destello luminoso orgánico sobre la tinta antes de volver a su opacidad sólida.
+2. **Modo Oscuro**:
+   - Mantiene la transición lumínica tradicional (`0.38` base a `1.0` en el foco).
+3. **Cinemática Continua Estilo IA (ChatGPT Thinking Shimmer)**:
+   - **Foco Concentrado**: Ancho del haz calibrado a una franja focal estrecha (`~14%` del ancho), sustituyendo lavados difusos anchos.
+   - **Velocidad Pausada**: Movimiento horizontal de izquierda a derecha a **4.8s** constante.
+   - **Bucle Infinito**: Ejecución continua (`active` sin parámetro de corte `duration`) en los Hero banners de los portales de colaboradores (`TaskCollaboratorPortal`) y clientes (`PortalDashboard`).
+
+---
+
+## 29. Política de Recepción Determinista en Modo Claro para el Portal de Colaboradores
+
+### A. Necesidad de Recepción Homogénea
+Para garantizar una experiencia visual institucional estandarizada, limpia y coherente, los colaboradores deben ser recibidos siempre y por defecto en **Modo Claro** al ingresar a su portal (`/portal/tasks/[token]`), sin importar si su sistema operativo o navegador tiene activado el modo oscuro (`prefers-color-scheme: dark`).
+
+### B. Aislamiento Total sin Afectar el Tema Global de la Plataforma
+1. **Desacoplamiento Estricto de `next-themes`**:
+   - El portal no interactúa con el proveedor global `next-themes` ni escribe en la clave `'theme'` de `localStorage`. Esto previene interferencias cruzadas y garantiza que el switch de tema del Dashboard general de Pixy funcione con total autonomía.
+2. **Capa Inmediata Pre-Hydration (`TaskCollaboratorPortalPage`)**:
+   - Inyección de un script puramente local al DOM que remueve la clase `dark` del elemento raíz `<html>` antes de que el navegador pinte el primer frame, eliminando cualquier destello oscuro inicial sin tocar el almacenamiento del navegador.
+3. **Capa Reactiva de Estado (`TaskCollaboratorPortal`)**:
+   - El estado local `portalTheme` inicializa determinísticamente en `"light"`.
+   - Se eliminaron las lecturas de `prefers-color-scheme: dark` y las restauraciones persistentes de modo oscuro.
+   - Si el colaborador decide activar el modo oscuro durante su sesión, puede hacerlo mediante el botón de sol/luna en el header; no obstante, en cualquier nuevo acceso o recarga, la directriz institucional lo recibirá nuevamente en Modo Claro.
 
