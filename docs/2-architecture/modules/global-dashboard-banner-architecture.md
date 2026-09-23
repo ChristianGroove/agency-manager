@@ -131,10 +131,13 @@ Para evitar que elementos multimedia alteren la altura del banner o desplace la 
 * Lottie ocupa el alto completo (`h-full max-h-[250px] aspect-square flex items-center justify-end drop-shadow-2xl`).
 * **Caché en Memoria:** Se utiliza `lottieCache = new Map<string, any>()` para almacenar las animaciones descargadas y garantizar transiciones instantáneas a 60 FPS sin peticiones de red repetitivas.
 
-### B. Columna de Textos con Autolayout Vertical & Aprovechamiento de Espacio
+### B. Columna de Textos con Autolayout Vertical & Frame Abierto para Párrafos
 * Montada dentro de `CardContent` con padding optimizado `p-5 sm:px-7 sm:pt-5.5 sm:pb-4 z-20` (reduciendo la holgura inferior excesiva para aproximar el CTA a los dots de paginación y maximizar el área vertical útil para títulos y frases).
-* Ancho restringido a `mr-auto max-w-[55%] sm:max-w-[58%] lg:max-w-[62%]` para garantizar zona de exclusión respecto a la animación.
-* Autolayout con `justify-between` entre el bloque de encabezados (Kicker, Título, Subtítulo), la rotación de frases con `SplitText` y el botón CTA.
+* **Ancho Adaptativo:** Si el banner cuenta con animación multimedia, el ancho se restringe a `mr-auto max-w-[55%] sm:max-w-[58%] lg:max-w-[62%]` para evitar colisiones. Si no tiene multimedia (`!media_url`), se expande de forma óptima a `w-full max-w-3xl` para brindar mayor holgura horizontal.
+* **Frame Central Abierto y Multilínea (Sin Cortes Artificiales):**
+  * Se elimina la restricción fija anterior de `max-h-[44px]` y `line-clamp-2` que recortaba el texto a 2 líneas.
+  * El bloque central utiliza `flex-1 min-h-0 my-auto py-1 relative w-full flex items-center overflow-hidden` y el contenedor de texto opera con `overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`.
+  * **Soporte de Párrafos y Saltos de Línea Naturales:** Soporte nativo para saltos de línea (`\n`), doble salto para párrafos (`\n\n`) y saltos explícitos renderizados con etiquetas `<br />`. Los espacios se procesan como caracteres de ruptura de línea estándar, eliminando la conversión a `\u00A0` que causaba que las frases continuaran en una sola línea continua ("sigan de largo").
 
 ### C. Contraste Quirúrgico del Badge Kicker
 Para evitar que el badge parezca "flotando o desalineado" debido a su padding interno en fondos claros:
@@ -163,16 +166,17 @@ Ubicado en `src/app/(dashboard)/platform/admin/_components/global-banners-manage
 ### Características Principales:
 1. **Layout Horizontal Full-Width:** Aprovecha el ancho de pantalla completo sin cajas comprimidas ni scrolls internos innecesarios.
 2. **Selector de Diapositivas Multi-Tab:** Navegación entre slides con badges de estado, soporte para reordenar (izquierda/derecha), duplicar y eliminar.
-3. **Controles de Efecto Shimmer (IA):** Switches dedicados en la cabecera del Kicker Badge y en las opciones del Botón CTA para activar o desactivar el barrido luminoso en cada slide.
-3. **Plantillas Rápidas (Presets):**
+3. **Edición Multilínea de Párrafos (`<Textarea>`):** En la Franja 2 (Frases Rotativas / Párrafos), los campos de texto se gestionan mediante `<Textarea>` en lugar de inputs de línea única, permitiendo estructurar párrafos con saltos de línea con la tecla `Enter`.
+4. **Controles de Efecto Shimmer (IA):** Switches dedicados en la cabecera del Kicker Badge y en las opciones del Botón CTA para activar o desactivar el barrido luminoso en cada slide.
+5. **Plantillas Rápidas (Presets):**
    * *🚀 Lanzamiento:* Configura anuncio de nuevas funciones con tema primario y Lottie corporativo.
    * *💡 Pro Tip:* Configura consejos prácticos de operaciones con tema secundario (Cyan) y tiempos de rotación ágiles.
    * *🏷️ Oferta Exclusiva:* Configura promociones de temporada con acento esmeralda.
    * *🔔 Aviso Operativo:* Configura alertas de mantenimiento o anuncios administrativos.
-4. **Control de Vigencia y Expiración:**
+6. **Control de Vigencia y Expiración:**
    * Alternancia entre campaña *Permanente* o *Programada*.
    * Selector moderno de fechas con validaciones de fechas pasadas y cálculo de estado en tiempo real (*Activo*, *Programado*, *Expirado*, *Inactivo*).
-5. **Simulador en Vivo & Vista Previa:** Previsualizador interactivo a pantalla completa al final del formulario que refleja en tiempo real el aspecto exacto que tendrá el banner en producción, con soporte interactivo para abrir y probar modales cover al hacer clic en el CTA.
+7. **Simulador en Vivo & Vista Previa:** Previsualizador interactivo a pantalla completa al final del formulario que refleja en tiempo real el aspecto exacto que tendrá el banner en producción, con soporte interactivo para abrir y probar modales cover al hacer clic en el CTA.
 
 ---
 

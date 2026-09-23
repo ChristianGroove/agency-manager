@@ -661,6 +661,8 @@ export function GlobalDashboardBanner({
                         "flex flex-col justify-between h-full min-h-0 z-20 overflow-visible relative w-full",
                         isCenter
                             ? "max-w-2xl mx-auto text-center items-center"
+                            : !currentSlide.media_url
+                            ? "w-full max-w-3xl text-left items-start"
                             : isLeft
                             ? "ml-auto max-w-[55%] sm:max-w-[58%] lg:max-w-[62%] text-left items-start"
                             : "mr-auto max-w-[55%] sm:max-w-[58%] lg:max-w-[62%] text-left items-start"
@@ -700,26 +702,26 @@ export function GlobalDashboardBanner({
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.35, delay: 0.05 }}
-                                className={`text-sm md:text-base font-bold tracking-tight line-clamp-1 mt-0.5 ${subtitleClasses}`}
+                                className={`text-sm md:text-base font-bold tracking-tight line-clamp-2 mt-0.5 ${subtitleClasses}`}
                             >
                                 {resolvedSubtitle}
                             </motion.p>
                         )}
                     </div>
 
-                    {/* Bloque Central: Frases Rotativas con SplitText */}
-                    <div className="my-auto min-h-[32px] max-h-[44px] relative w-full flex items-center overflow-hidden">
+                    {/* Bloque Central: Frases Rotativas / Párrafos Abiertos (Aprovecha espacio completo sin recortes forzados) */}
+                    <div className="flex-1 min-h-0 my-auto py-1 relative w-full flex items-center overflow-hidden">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={`phrase-${slideIndex}-${phraseIndex}`}
-                                initial={{ y: 12, opacity: 0 }}
+                                initial={{ y: 8, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -12, opacity: 0 }}
-                                transition={{ duration: 0.35, ease: "easeOut" }}
-                                className={`text-xs md:text-sm absolute w-full max-h-full font-medium whitespace-pre-line leading-snug overflow-hidden line-clamp-2 ${descClasses}`}
+                                exit={{ y: -8, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                className={`text-xs md:text-sm w-full max-h-full font-medium whitespace-pre-line leading-relaxed overflow-y-auto ${descClasses}`}
                                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                             >
-                                <SplitText delay={0.03} duration={0.02}>
+                                <SplitText delay={0.02} duration={0.015}>
                                     {resolvedPhrase}
                                 </SplitText>
                             </motion.div>

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -1546,31 +1547,32 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                             </div>
                         </div>
 
-                        {/* Filas directas de frases */}
-                        <div className="space-y-2">
+                        {/* Filas directas de párrafos / frases */}
+                        <div className="space-y-2.5">
                             {(currentSlide.phrases || []).map((phrase, pIdx) => (
                                 <div
                                     key={pIdx}
-                                    className="flex items-center gap-2.5 bg-slate-50/70 dark:bg-zinc-900/40 p-2 px-3 rounded-xl border border-slate-200 dark:border-zinc-800"
+                                    className="flex items-start gap-2.5 bg-slate-50/70 dark:bg-zinc-900/40 p-2.5 px-3 rounded-xl border border-slate-200 dark:border-zinc-800"
                                 >
-                                    <span className="w-5 text-center font-mono font-bold text-xs text-muted-foreground shrink-0">
+                                    <span className="w-5 text-center font-mono font-bold text-xs text-muted-foreground shrink-0 mt-2">
                                         {pIdx + 1}.
                                     </span>
 
                                     <div className="flex-1 min-w-0">
-                                        <Input
+                                        <Textarea
                                             value={phrase.text}
                                             onFocus={() => setFocusedField(`phrase-${pIdx}`)}
                                             onChange={e => handleUpdatePhrase(pIdx, e.target.value)}
-                                            placeholder={`Frase rotativa ${pIdx + 1}...`}
-                                            className="h-8 text-xs bg-white dark:bg-zinc-900"
+                                            placeholder={`Párrafo o frase rotativa ${pIdx + 1} (soporta saltos de línea con Enter)...`}
+                                            className="min-h-[58px] text-xs bg-white dark:bg-zinc-900 leading-relaxed resize-y py-2 font-medium"
+                                            rows={2}
                                         />
                                     </div>
 
                                     {/* Selector de Segundos por frase */}
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <div className="flex items-center gap-1 bg-white dark:bg-zinc-800 px-2 py-1 rounded-lg border shadow-2xs shrink-0">
+                                            <div className="flex items-center gap-1 bg-white dark:bg-zinc-800 px-2 py-1 rounded-lg border shadow-2xs shrink-0 mt-1">
                                                 <Clock className="w-3 h-3 text-muted-foreground" />
                                                 <input
                                                     type="number"
@@ -1593,7 +1595,7 @@ export function GlobalBannersManager({ apps = [] }: { apps?: any[] }) {
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-7 w-7 text-muted-foreground hover:text-red-500 shrink-0"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-red-500 shrink-0 mt-1"
                                                     onClick={() => handleRemovePhrase(pIdx)}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />

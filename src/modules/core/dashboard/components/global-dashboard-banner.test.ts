@@ -223,4 +223,44 @@ describe("GlobalDashboardBanner Multi-Slide Engine", () => {
             expect(getTextColorClass("default", "custom-fallback")).toBe("custom-fallback")
         })
     })
+
+    describe("Multiline Paragraphs & Line Breaks Support", () => {
+        it("should preserve multiline paragraphs and newline characters in legacy descriptions", () => {
+            const legacyWithNewlines: GlobalBannerConfig = {
+                id: "legacy-multiline",
+                title: "Banner con Párrafos",
+                description: "Primer párrafo explicativo.\n\nSegundo párrafo con más detalles.\nY una tercera línea continua.",
+                is_active: true
+            }
+
+            const slides = normalizeBannerSlides(legacyWithNewlines)
+            expect(slides).toHaveLength(1)
+            expect(slides[0].phrases[0].text).toContain("\n\n")
+            expect(slides[0].phrases[0].text).toBe(legacyWithNewlines.description)
+        })
+
+        it("should preserve newlines in modern slide phrases with token interpolation", () => {
+            const multiSlideWithNewlines: GlobalBannerConfig = {
+                id: "multi-newlines",
+                slides: [
+                    {
+                        id: "s1",
+                        title: "Novedad en {space_name}",
+                        phrases: [
+                            { text: "Hola {user_name},\nBienvenido a tu plataforma.\nComienza ahora.", durationSeconds: 6 }
+                        ]
+                    }
+                ]
+            }
+
+            const slides = normalizeBannerSlides(multiSlideWithNewlines)
+            expect(slides[0].phrases[0].text).toContain("\n")
+
+            const resolved = interpolateTokens(slides[0].phrases[0].text, {
+                userName: "Christian",
+                spaceName: "Pixy Suite"
+            })
+            expect(resolved).toBe("Hola Christian,\nBienvenido a tu plataforma.\nComienza ahora.")
+        })
+    })
 })

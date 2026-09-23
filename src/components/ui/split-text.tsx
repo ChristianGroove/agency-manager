@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { ReactNode } from "react"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface SplitTextProps {
     children: string
@@ -16,7 +17,11 @@ export function SplitText({
     delay = 0,
     duration = 0.05
 }: SplitTextProps) {
-    const letters = children.split("")
+    if (!children) return null
+
+    // Normalizar saltos de línea (\r\n -> \n)
+    const sanitized = typeof children === "string" ? children.replace(/\r\n/g, "\n") : String(children)
+    const letters = sanitized.split("")
 
     const container = {
         hidden: { opacity: 0 },
@@ -44,19 +49,30 @@ export function SplitText({
 
     return (
         <motion.span
-            key={children}
-            className={className}
+            key={sanitized}
+            className={cn("inline", className)}
             variants={container}
             initial="hidden"
-            whileInView="visible" // Change to whileInView for scroll trigger, or keep animate="visible"
             animate="visible"
-            viewport={{ once: true }}
         >
-            {letters.map((letter, index) => (
-                <motion.span key={index} variants={child}>
-                    {letter === " " ? "\u00A0" : letter}
-                </motion.span>
-            ))}
+            {letters.map((letter, index) => {
+                if (letter === "\n") {
+                    return <br key={index} className="select-none" />
+                }
+                if (letter === " ") {
+                    return (
+                        <span key={index} className="inline">
+                            {" "}
+                        </span>
+                    )
+                }
+                return (
+                    <motion.span key={index} variants={child} className="inline-block">
+                        {letter}
+                    </motion.span>
+                )
+            })}
         </motion.span>
     )
 }
+
