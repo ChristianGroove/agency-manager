@@ -49,11 +49,13 @@ export async function POST(req: NextRequest) {
         if (!channel || !Array.isArray(body.entry)) return NextResponse.json({ error: 'Unsupported webhook object' }, { status: 400 });
         const { createHash } = await import('crypto');
         const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
-        const { inngest } = await import('@/modules/infrastructure/automation/inngest/client');
+        const { processPersistedMetaWebhook } = await import('@/modules/infrastructure/meta/services/process-persisted-webhook');
         const id = createHash('sha256').update(rawBody).digest('hex');
         const saved = await supabaseAdmin.from('meta_webhook_events').upsert({ id, payload: body, channel }, { onConflict: 'id', ignoreDuplicates: true });
         if (saved.error) throw new Error('Webhook persistence unavailable');
-        await inngest.send({ id: 'meta-' + id, name: 'meta/webhook.received', data: { eventId: id } });
+        // Keep Meta's retry contract when a worker service is not configured.
+        // The persisted row survives a request failure and the retry is idempotent.
+        await processPersistedMetaWebhook(id);
         console.log('[Webhook POST] ✅ Success')
         return NextResponse.json({ status: 'ok' })
     } catch (error: any) {
