@@ -582,7 +582,7 @@ export function TaskPmOperationsDashboard({
                 setSelectedSprintId(val)
               }}
             >
-              <SelectTrigger className="h-8 px-2.5 py-1 text-xs sm:text-sm font-bold text-foreground bg-zinc-100/80 hover:bg-zinc-200/70 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl gap-2 cursor-pointer transition-colors shadow-none w-auto max-w-[280px]">
+              <SelectTrigger className="h-8 px-3 text-xs font-medium text-foreground bg-card hover:bg-zinc-100/70 dark:hover:bg-white/5 border border-zinc-200/80 dark:border-white/10 rounded-xl gap-2 cursor-pointer transition-colors shadow-none w-auto max-w-[280px]">
                 <span className="truncate">
                   {selectedSprintId === "all"
                     ? "Todos los tickets (Global)"
@@ -699,8 +699,7 @@ export function TaskPmOperationsDashboard({
                 value={selectedProjectFilter}
                 onValueChange={setSelectedProjectFilter}
               >
-                <SelectTrigger className="w-[165px] sm:w-[190px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                <SelectTrigger className="w-[165px] sm:w-[190px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
                   <div className="flex items-center truncate text-left flex-1 min-w-0">
                     <SelectValue placeholder="Todos los espacios" />
                   </div>
@@ -809,8 +808,7 @@ export function TaskPmOperationsDashboard({
               value={selectedMemberFilter}
               onValueChange={setSelectedMemberFilter}
             >
-              <SelectTrigger className="w-[145px] sm:w-[170px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left gap-1.5">
-                <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+              <SelectTrigger className="w-[145px] sm:w-[170px] h-8 text-xs rounded-xl bg-card border-zinc-200/80 dark:border-white/10 font-medium text-left">
                 <div className="flex items-center truncate text-left flex-1 min-w-0">
                   <SelectValue placeholder="Todo el equipo" />
                 </div>
