@@ -19,6 +19,7 @@ import { PortalServiceCard } from "./portal-service-card"
 import { PortalServiceDetail } from "./portal-service-detail"
 import { Service } from "@/types"
 import { isPortalInvoicePayable } from "../utils/invoice-payability"
+import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 
 
 function EmptyStateAnimation() {
@@ -167,7 +168,11 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                 <div className="flex flex-col items-center text-center gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">{t('portal.dashboard.welcome').replace('{name}', client.name.split(' ')[0])}</h1>
-                        <p className="text-gray-500 mt-1 max-w-lg mx-auto">{t('portal.dashboard.welcome_sub')}</p>
+                        <p className="text-gray-500 mt-1 max-w-lg mx-auto">
+                            <ShimmerText active>
+                                {t('portal.dashboard.welcome_sub')}
+                            </ShimmerText>
+                        </p>
                     </div>
                 </div>
 

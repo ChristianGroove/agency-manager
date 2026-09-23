@@ -117,37 +117,66 @@
 
 @keyframes text-shimmer-wave {
   0% {
-    -webkit-mask-position: 130% 0;
-    mask-position: 130% 0;
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
   }
   100% {
-    -webkit-mask-position: -30% 0;
-    mask-position: -30% 0;
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
   }
 }
 
 @layer utilities {
+  /* Light mode: Base opacity is 1 (high contrast & full visibility), beam dips to lighter opacity (gleam of light) */
   .animate-text-shimmer {
     display: inline-block;
     -webkit-mask-image: linear-gradient(
       90deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.42) 28%,
-      rgba(0, 0, 0, 1) 50%,
-      rgba(0, 0, 0, 0.42) 72%,
-      rgba(0, 0, 0, 0.42) 100%
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 1) 43%,
+      rgba(0, 0, 0, 0.58) 48%,
+      rgba(0, 0, 0, 0.22) 50%,
+      rgba(0, 0, 0, 0.58) 52%,
+      rgba(0, 0, 0, 1) 57%,
+      rgba(0, 0, 0, 1) 100%
     );
     mask-image: linear-gradient(
       90deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.42) 28%,
-      rgba(0, 0, 0, 1) 50%,
-      rgba(0, 0, 0, 0.42) 72%,
-      rgba(0, 0, 0, 0.42) 100%
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 1) 43%,
+      rgba(0, 0, 0, 0.58) 48%,
+      rgba(0, 0, 0, 0.22) 50%,
+      rgba(0, 0, 0, 0.58) 52%,
+      rgba(0, 0, 0, 1) 57%,
+      rgba(0, 0, 0, 1) 100%
     );
-    -webkit-mask-size: 250% 100%;
-    mask-size: 250% 100%;
-    animation: text-shimmer-wave 2.2s linear infinite;
+    -webkit-mask-size: 300% 100%;
+    mask-size: 300% 100%;
+    animation: text-shimmer-wave 4.8s linear infinite;
+  }
+
+  /* Dark mode: Base opacity is 0.38 (subdued), beam rises to 1 (bright glow) */
+  .dark .animate-text-shimmer {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.38) 0%,
+      rgba(0, 0, 0, 0.38) 43%,
+      rgba(0, 0, 0, 0.72) 48%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.72) 52%,
+      rgba(0, 0, 0, 0.38) 57%,
+      rgba(0, 0, 0, 0.38) 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.38) 0%,
+      rgba(0, 0, 0, 0.38) 43%,
+      rgba(0, 0, 0, 0.72) 48%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.72) 52%,
+      rgba(0, 0, 0, 0.38) 57%,
+      rgba(0, 0, 0, 0.38) 100%
+    );
   }
 
   .animate-border-beam {

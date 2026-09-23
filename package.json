@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
@@ -19,7 +19,7 @@
     "clean": "tsx scripts/cleanup-workspace.ts",
     "test:release": "vitest run --reporter=dot --no-file-parallelism",
     "check:types": "tsc --noEmit",
-    "check:build": "next build"
+    "check:build": "next build --webpack"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",

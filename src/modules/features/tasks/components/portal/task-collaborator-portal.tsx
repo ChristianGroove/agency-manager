@@ -2409,7 +2409,9 @@ export function TaskCollaboratorPortal({
                   {heroConfig.title}
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">
-                  {heroConfig.desc}
+                  <ShimmerText active>
+                    {heroConfig.desc}
+                  </ShimmerText>
                 </p>
               </div>
 
@@ -3431,12 +3433,14 @@ export function TaskCollaboratorPortal({
                       {isLeadOrPm && <th className="px-4 py-3.5">Responsable</th>}
                       <th className="px-4 py-3.5">Prioridad</th>
                       <th className="px-5 py-3.5 min-w-[160px]">Progreso</th>
-                      <th className="px-4 py-3.5 w-28 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Timer className="w-3 h-3 text-muted-foreground" />
-                          <span>Horas</span>
-                        </div>
-                      </th>
+                      {isLeadOrPm && (
+                        <th className="px-4 py-3.5 w-28 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Timer className="w-3 h-3 text-muted-foreground" />
+                            <span>Horas</span>
+                          </div>
+                        </th>
+                      )}
                       <th className="px-4 py-3.5">Estado</th>
                       <th className="px-5 py-3.5 text-right">Acciones</th>
                     </tr>
@@ -3445,7 +3449,7 @@ export function TaskCollaboratorPortal({
                     {paginatedTasks.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={canBulkDelete ? (isLeadOrPm ? 9 : 8) : (isLeadOrPm ? 8 : 7)}
+                          colSpan={canBulkDelete ? (isLeadOrPm ? 9 : 7) : (isLeadOrPm ? 8 : 6)}
                           className="px-5 py-8 text-center text-muted-foreground"
                         >
                           No se encontraron tareas con los filtros seleccionados.
@@ -3607,32 +3611,34 @@ export function TaskCollaboratorPortal({
                                 labelClassName="text-xs sm:text-[13px] font-black w-11 text-right tracking-tight"
                               />
                             </td>
-                            {/* Horas */}
-                            <td className="px-4 py-3.5 text-right font-mono whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex flex-col items-end gap-0.5">
-                                <span className={cn(
-                                  "text-xs font-semibold",
-                                  Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
-                                    ? "text-rose-600 dark:text-rose-400 font-bold"
-                                    : "text-foreground"
-                                )}>
-                                  {Number(task.actual_hours) || 0}h
-                                  <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
-                                </span>
-                                {Number(task.estimated_hours) > 0 && (
+                            {/* Horas (solo visible para PM/Lead) */}
+                            {isLeadOrPm && (
+                              <td className="px-4 py-3.5 text-center font-mono whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-col items-center justify-center gap-0.5">
                                   <span className={cn(
-                                    "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
-                                    Number(task.actual_hours) > Number(task.estimated_hours)
-                                      ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
-                                      : Number(task.actual_hours) === Number(task.estimated_hours)
-                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                      : "text-muted-foreground"
+                                    "text-xs font-semibold",
+                                    Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                                      ? "text-rose-600 dark:text-rose-400 font-bold"
+                                      : "text-foreground"
                                   )}>
-                                    {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                                    {Number(task.actual_hours) || 0}h
+                                    <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
                                   </span>
-                                )}
-                              </div>
-                            </td>
+                                  {Number(task.estimated_hours) > 0 && (
+                                    <span className={cn(
+                                      "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                                      Number(task.actual_hours) > Number(task.estimated_hours)
+                                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
+                                        : Number(task.actual_hours) === Number(task.estimated_hours)
+                                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                        : "text-muted-foreground"
+                                    )}>
+                                      {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            )}
                             <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                               {task.status === "blocked" ? (
                                 <TooltipProvider delayDuration={1000}>

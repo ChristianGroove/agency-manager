@@ -1058,14 +1058,39 @@ En la vista de operaciones del PM (`TaskPmOperationsDashboard`), los gráficos d
 ### A. Diagnóstico de Disparidad entre Plataforma y Portales
 En la vista global de plataforma (`TaskListView`), la tabla de tareas incluía una columna dedicada de **Horas** (`actual_hours / estimated_hours` con porcentaje de consumo presupuestario), mientras que la tabla del portal de colaboradores (`TaskCollaboratorPortal`) carecía de esta métrica. Esta omisión impedía a los colaboradores conocer su ritmo de gasto de tiempo por requerimiento directamente desde la cuadrícula de trabajo.
 
-### B. Arquitectura de Visualización
-1. **Columna "Horas" Homogénea**:
-   - Encabezado con icono `Timer` alineado a la derecha junto a la columna de `Progreso`.
-   - Métrica tipográfica en fuente monoespaciada (`18h / 20h`).
-   - Alerta visual en tono carmesí/rosa (`text-rose-600 dark:text-rose-400 font-bold`) cuando las horas reales sobrepasan la estimación presupuestada.
-   - Píldora de porcentaje de avance presupuestario (`%`), facilitando auditoría en tiempo real para el colaborador y su líder de proyecto.
-2. **Resiliencia Responsiva**:
+### B. Arquitectura de Visualización y Privacidad por Rol
+1. **Visibilidad Condicionada al Rol de Gestión (`isLeadOrPm`)**:
+   - Para prevenir la ansiedad por microgestión y evitar incentivos perversos (como omisión o falseo de registros de horas) en el equipo de especialistas, la columna de **Horas** en la cuadrícula principal se reserva exclusivamente para usuarios con rol de gestión (`isLeadOrPm`).
+   - Los colaboradores especialistas continúan gestionando y auditando sus horas de forma contextual e íntima en el modal de detalle del ticket (`TaskPortalDetailModal`).
+2. **Diseño y Simetría Centrada**:
+   - Encabezado con icono `Timer` centrado vertical y horizontalmente (`text-center`, `justify-center`).
+   - Métrica tipográfica en fuente monoespaciada (`23h / 10h`) centrada en su celda.
+   - Píldora de porcentaje de avance presupuestario (`%`) centrada directamente debajo del valor de horas.
+   - Alerta visual en tono carmesí/rosa (`text-rose-600 dark:text-rose-400 font-bold` y `bg-rose-500/15`) cuando las horas reales sobrepasan la estimación presupuestada.
+3. **Resiliencia Responsiva y ColSpan Dinámico**:
    - Ancho mínimo de tabla calibrado a `min-w-[850px]` para asegurar scroll horizontal fluido sin compresión de columnas en pantallas compactas o dispositivos móviles.
+   - Cálculo dinámico de `colSpan` en estados vacíos (`canBulkDelete ? (isLeadOrPm ? 9 : 7) : (isLeadOrPm ? 8 : 6)`), garantizando alineación exacta de la cuadrícula.
 
+---
 
+## 28. Efecto Shimmer Concentrado y Adaptativo para Subtítulos de Hero en Portales
 
+### A. Diagnóstico de Óptica y Percepción Bimodal (Modo Claro vs Modo Oscuro)
+Al aplicar máscaras alfa (`-webkit-mask-image`) sobre texto tipográfico:
+1. **Modo Oscuro (Texto Claro sobre Fondo Negro)**:
+   - Base `0.38` $\rightarrow$ el texto blanco/gris se atenúa hacia el fondo oscuro.
+   - Pico `1.0` $\rightarrow$ el texto blanco brilla con luz al 100%, percibido correctamente como un haz de luz.
+2. **Modo Claro (Texto Oscuro sobre Fondo Blanco)**:
+   - Una base baja de `0.38` diluye la tinta oscura contra el fondo blanco, provocando que el texto se perciba lavado, pálido y con pérdida de legibilidad el 90% del tiempo.
+   - Al pasar el pico `1.0`, el texto se oscurece al negro total, creando la ilusión óptica de una "sombra oscura" que pasa por encima en lugar de un destello de luz.
+
+### B. Solución Arquitectónica: Máscara Invertida y Haz Concentrado
+1. **Modo Claro Adaptativo**:
+   - **Base al 100% (`1.0`)**: Contraste y nitidez total permanente sin degradar la legibilidad tipográfica.
+   - **Haz de Luz (`0.22`)**: Al transitar el foco de la máscara, la opacidad se sumerge a `0.22`, reflejando la claridad del fondo blanco como un destello luminoso orgánico sobre la tinta antes de volver a su opacidad sólida.
+2. **Modo Oscuro**:
+   - Mantiene la transición lumínica tradicional (`0.38` base a `1.0` en el foco).
+3. **Cinemática Continua Estilo IA (ChatGPT Thinking Shimmer)**:
+   - **Foco Concentrado**: Ancho del haz calibrado a una franja focal estrecha (`~14%` del ancho), sustituyendo lavados difusos anchos.
+   - **Velocidad Pausada**: Movimiento horizontal de izquierda a derecha a **4.8s** constante.
+   - **Bucle Infinito**: Ejecución continua (`active` sin parámetro de corte `duration`) en los Hero banners de los portales de colaboradores (`TaskCollaboratorPortal`) y clientes (`PortalDashboard`).
