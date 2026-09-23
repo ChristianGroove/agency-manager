@@ -176,29 +176,32 @@ export const es = {
             review: "Revisión",
         },
         connect_modal: {
-            title: "Conectar con Meta",
-            description: "Selecciona el tipo de integración que deseas configurar para tu organización.",
-            embedded: {
-                recommended: "Recomendado",
-                title: "Crear / Migrar",
-                description: "Registra un número nuevo o migra uno existente.",
-                mobile_compatible: "Compatible con App Móvil",
+            title: "Conectar WhatsApp a Pixy",
+            description: "Elige cómo usas hoy el número. Meta te guiará para autorizar la cuenta y el número de tu organización.",
+            question: "¿Dónde usas actualmente este número?",
+            select_prompt: "Selecciona una opción para continuar con Meta.",
+            choices: {
+                new: { title: "Aún no uso este número en WhatsApp", description: "Quiero registrar un número en WhatsApp Business Platform." },
+                app: { title: "WhatsApp Business en mi teléfono", description: "Quiero seguir usando la app y conectar el mismo número a Pixy." },
+                cloud: { title: "Ya uso WhatsApp Cloud API", description: "Tengo una cuenta y un número API existentes que quiero autorizar para Pixy." },
             },
-            oauth: {
-                title: "Ya tengo WABA",
-                description: "Si ya tienes una cuenta de WhatsApp Business API configurada y verificada, selecciónala directamente de tu portafolio de Meta.",
-                button: "Listar mis cuentas"
-            }
+            guidance: {
+                app: "Meta abrirá el alta para coexistencia. Conservas la app en el teléfono; Pixy se conectará como plataforma adicional si Meta confirma que el número es apto.",
+                cloud: "Meta te permitirá crear o elegir una cuenta de WhatsApp Business y autorizar el número. Pixy no conectará una WABA solo por aparecer en una lista de activos.",
+            },
         },
         embedded_signup: {
             button: "Continuar con Meta",
             processing: "Procesando...",
             setup: "Configurando cuenta...",
-            connected: "¡Conectado! Redirigiendo...",
+            connected: "Canal conectado. Actualizando la lista...",
+            connected_coexistence: "Canal autorizado. La sincronización inicial continúa en segundo plano.",
+            sync_pending: "Meta recibió el alta. Historial y contactos pueden tardar en aparecer; revisa el estado del canal.",
             error_sdk: "No se pudo cargar el SDK de Facebook.",
             error_auth: "No se recibió el código de autorización.",
+            error_mode_mismatch: "Meta terminó un flujo distinto al elegido. Comprueba dónde usas el número y vuelve a intentarlo.",
             error_generic: "Error al conectar WhatsApp",
-            success: "¡WhatsApp conectado exitosamente!"
+            success: "Canal WhatsApp autorizado en Pixy"
         }
     },
     dashboard: {
@@ -913,28 +916,18 @@ export const es = {
             connect_ads: "Conectar Meta Ads",
             ads_connected: "Cuenta publicitaria conectada",
             ads_no_accounts: "No se encontraron cuentas publicitarias",
+            connection_errors: {
+                start: "No se pudo iniciar la conexión con Meta. Revisa tu sesión e inténtalo de nuevo.",
+                no_eligible_assets: "Meta no encontró activos elegibles para este canal. Comprueba los permisos y la cuenta seleccionada.",
+                no_channels_created: "No se pudo activar el canal. Revisa los permisos concedidos en Meta e inténtalo de nuevo.",
+                use_embedded_signup: "WhatsApp se conecta desde este botón mediante Embedded Signup.",
+                invalid_state: "La autorización de Meta expiró. Inicia la conexión de nuevo.",
+                generic: "No se pudo completar la conexión con Meta.",
+            },
             empty_state: {
                 title: "No hay canales conectados",
                 description: "Conecta WhatsApp, Messenger o Instagram para centralizar tus conversaciones."
             },
-            modal: {
-                title: "Conectar WhatsApp",
-                subtitle: "Elige cómo deseas vincular tu número de WhatsApp Business a Pixy.",
-                back: "Volver a métodos de conexión",
-                sync_note: "Al conectar con este método, podrás seguir usando la **app móvil de WhatsApp Business** (v2.24.17+) junto con el inbox de Pixy. Los mensajes se sincronizan automáticamente.",
-                embedded: {
-                    title: "Registro Rápido con Meta",
-                    recommended: "Recomendado",
-                    desc: "Conecta tu número directamente desde aquí sin salir de Pixy. Ideal si quieres **seguir usando la app móvil de WhatsApp Business** al mismo tiempo.",
-                    mobile_compat: "Compatible con app móvil",
-                    auto_config: "Configuración automática"
-                },
-                oauth: {
-                    title: "Conexión Administrada (OAuth)",
-                    desc: "Vinculación completa vía inicio de sesión en Facebook. Ideal para cuentas **gestionadas exclusivamente desde Pixy**.",
-                    control: "Control total desde el dashboard"
-                }
-            }
         },
         settings: {
             title: "Configuración CRM",

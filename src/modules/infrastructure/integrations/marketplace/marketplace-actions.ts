@@ -4,6 +4,7 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
+import { headers } from 'next/headers'
 import { IntegrationProvider, InstalledIntegration } from "./types"
 import { integrationRegistry } from "../registry"
 import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
@@ -342,19 +343,28 @@ export async function getMarketplaceStats(): Promise<{
 
 /**
  * Generate Meta OAuth URL securely
- * @param channelType - Optional: 'whatsapp' | 'messenger' | 'instagram' for granular connection
+ * @param channelType - Optional social or Ads channel for granular connection.
  *                      If provided, limits the OAuth to only that channel type
  */
-export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'instagram' | 'ads'): Promise<string> {
+export async function getMetaAuthUrl(channelType?: 'messenger' | 'instagram' | 'ads'): Promise<string> {
+    if (channelType && !['messenger', 'instagram', 'ads'].includes(channelType)) {
+        throw new Error('Use Embedded Signup for WhatsApp')
+    }
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("No organization context")
 
     // State includes orgId and optional channelType for filtering in callback
-    // Format: Base64 JSON
+    // The opaque, one-time state is bound to the authenticated tenant session.
     const state = await issueMetaOAuthSession(orgId, { channelType, flow: "org" });
 
     const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    if (isDeployedRuntime() && !process.env.NEXT_PUBLIC_APP_URL) {
+        throw new Error('Meta callback URL is not configured')
+    }
+    const requestOrigin = (await headers()).get('origin')
+    const localOrigin = !isDeployedRuntime() && requestOrigin
+        && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(requestOrigin) ? requestOrigin : null
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || localOrigin || 'http://localhost:3000';
     console.log(`[Meta OAuth] BASE_URL resolved to: ${appUrl}`);
     const REDIRECT_URI = `${appUrl}/api/integrations/meta/callback`;
 
@@ -370,13 +380,6 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
                 'public_profile',
                 'ads_read',
                 'pages_show_list'
-            ];
-            break;
-        case 'whatsapp':
-            scopes = [
-                'public_profile',
-                'whatsapp_business_messaging',
-                'whatsapp_business_management'
             ];
             break;
         case 'messenger':
@@ -399,26 +402,19 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
             ];
             break;
         default:
-            // Full OAuth for Integraciones page - all scopes
+            // The Integraciones page authorizes social channels only.
             scopes = [
                 'public_profile',
-                'ads_read',
                 'instagram_basic',
                 'instagram_manage_messages',
                 'pages_show_list',
                 'pages_read_engagement',
                 'pages_manage_metadata',
-                'pages_messaging',
-                'whatsapp_business_messaging',
-                'whatsapp_business_management'
+                'pages_messaging'
             ];
     }
 
     const finalUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
 
-    console.log('[Meta OAuth] Final URL:', finalUrl);
-
     return finalUrl;
 }
-
-

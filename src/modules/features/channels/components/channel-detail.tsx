@@ -100,7 +100,9 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
                     <div>
                         <h2 className="text-lg font-medium">{channel.connection_name}</h2>
                         <p className="text-sm text-muted-foreground capitalize">
-                            {channel.provider_key.replace('_', ' ')} • {channel.status}
+                            {channel.provider_key === 'whatsapp_cloud'
+                                ? `WhatsApp ${channel.metadata?.connection_mode === 'coexistence' ? 'Business App + Cloud API' : 'Cloud API'}`
+                                : channel.provider_key.replace('_', ' ')} • {channel.status}
                         </p>
                         {channel.metadata?.connection_mode === 'coexistence' && channel.status === 'temporarily_offboarded' && (
                             <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -112,9 +114,11 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
                                 La sincronización inicial requiere una nueva alta. En WhatsApp Business ve a Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta y vuelve a conectar el canal en Pixy.
                             </p>
                         )}
-                        {channel.metadata?.connection_mode === 'coexistence' && channel.metadata?.onboarding_status === 'sync_pending' && (
+                        {channel.metadata?.connection_mode === 'coexistence' && ['sync_pending','sync_requested'].includes(channel.metadata?.onboarding_status || '') && (
                             <p className="text-sm text-amber-700 dark:text-amber-400">
-                                La sincronización inicial con Meta sigue pendiente. Si no se completa el inicio antes de {channel.metadata.coexistence_sync_deadline_at || '24 horas'}, habrá que desconectar el canal desde WhatsApp Business y repetir el alta.
+                                {channel.metadata?.onboarding_status === 'sync_requested'
+                                    ? 'Meta recibió las solicitudes iniciales. Historial y contactos todavía pueden estar sincronizándose; Pixy no repetirá esas solicitudes.'
+                                    : `La sincronización inicial con Meta sigue pendiente. Si Pixy no puede solicitarla antes de ${channel.metadata.coexistence_sync_deadline_at || '24 horas'}, habrá que desconectar el canal desde WhatsApp Business y repetir el alta.`}
                             </p>
                         )}
                         {channel.metadata?.connection_mode === 'coexistence' && channel.metadata?.coexistence_state === 'partner_removed' && (

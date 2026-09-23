@@ -189,6 +189,18 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                     }
                                 </span>
 
+                                {channel.provider_key === 'whatsapp_cloud' && channel.metadata?.connection_mode && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 px-1.5 py-0.5 rounded-sm">
+                                        {channel.metadata.connection_mode === 'coexistence' ? 'App + API' : 'Cloud API'}
+                                    </span>
+                                )}
+                                {channel.status === 'temporarily_offboarded' && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-sm">Pausado por Meta</span>
+                                )}
+                                {channel.status === 'action_required' && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-sm">Requiere acción</span>
+                                )}
+
                                 {liveStatus && liveStatus !== 'unknown' && (
                                     <TooltipProvider delayDuration={0}>
                                         <Tooltip>

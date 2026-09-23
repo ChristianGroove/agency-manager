@@ -1,15 +1,13 @@
 "use client"
 
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog"
-import { MetaEmbeddedSignup } from "./meta-embedded-signup"
-import { MessageCircle, BadgeCheck, Smartphone } from "lucide-react"
-import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Building2, Check, MessageCircle, Smartphone } from 'lucide-react'
+import { MetaEmbeddedSignup } from './meta-embedded-signup'
+import { useTranslation } from '@/modules/core/i18n/use-translation'
+import type { WhatsAppSignupMode } from './embedded-signup-flow'
+
+type CurrentNumberUse = 'new' | 'cloud' | 'app'
 
 interface WhatsAppConnectModalProps {
     open: boolean
@@ -19,61 +17,52 @@ interface WhatsAppConnectModalProps {
 
 export function WhatsAppConnectModal({ open, onOpenChange, organizationId }: WhatsAppConnectModalProps) {
     const { t } = useTranslation()
+    const [currentUse, setCurrentUse] = useState<CurrentNumberUse | null>(null)
+    const [isConnecting, setIsConnecting] = useState(false)
+    const mode: WhatsAppSignupMode | null = currentUse === null ? null : currentUse === 'app' ? 'coexistence' : 'cloud'
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen && isConnecting) return
+        if (!nextOpen) setCurrentUse(null)
+        onOpenChange(nextOpen)
+    }
+    const choices = [
+        { id: 'new', icon: MessageCircle, title: t('meta.connect_modal.choices.new.title'), description: t('meta.connect_modal.choices.new.description') },
+        { id: 'app', icon: Smartphone, title: t('meta.connect_modal.choices.app.title'), description: t('meta.connect_modal.choices.app.description') },
+        { id: 'cloud', icon: Building2, title: t('meta.connect_modal.choices.cloud.title'), description: t('meta.connect_modal.choices.cloud.description') },
+    ] as const
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[420px] p-0 gap-0 border-none shadow-2xl bg-white dark:bg-zinc-950 overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
-
-                {/* Clean, Minimal Header */}
-                <div className="px-8 pt-8 pb-2">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                            {t('meta.connect_modal.title')}
-                        </DialogTitle>
-                        <DialogDescription className="text-base text-zinc-500 dark:text-zinc-400 mt-2">
-                            {t('meta.connect_modal.description')}
-                        </DialogDescription>
-                    </DialogHeader>
+    return <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle className="text-xl">{t('meta.connect_modal.title')}</DialogTitle>
+                <DialogDescription>{t('meta.connect_modal.description')}</DialogDescription>
+            </DialogHeader>
+            <fieldset className="space-y-3" disabled={isConnecting}>
+                <legend className="mb-3 text-sm font-medium">{t('meta.connect_modal.question')}</legend>
+                {choices.map(choice => {
+                    const selected = currentUse === choice.id
+                    const Icon = choice.icon
+                    return <label key={choice.id} className={`flex cursor-pointer gap-4 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-primary ${selected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
+                        <input type="radio" name="whatsapp-current-use" value={choice.id} checked={selected}
+                            onChange={() => setCurrentUse(choice.id)} className="sr-only"
+                            aria-label={choice.title} aria-describedby={`whatsapp-choice-${choice.id}`} />
+                        <span className="rounded-lg bg-background p-2 self-start border"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                        <span className="min-w-0 flex-1">
+                            <span className="block font-medium">{choice.title}</span>
+                            <span id={`whatsapp-choice-${choice.id}`} className="block text-sm text-muted-foreground mt-1">{choice.description}</span>
+                        </span>
+                        {selected && <Check className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />}
+                    </label>
+                })}
+            </fieldset>
+            {mode ? <>
+                <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                    {currentUse === 'app' ? t('meta.connect_modal.guidance.app') : t('meta.connect_modal.guidance.cloud')}
                 </div>
-
-                <div className="p-8 pt-6">
-                    <div className="relative group rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 p-6 flex flex-col h-full hover:border-[#25D366]/30 hover:shadow-lg hover:shadow-[#25D366]/5 transition-all">
-                        <div className="absolute top-4 right-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">
-                                <BadgeCheck className="w-3 h-3" />
-                                {t('meta.connect_modal.embedded.recommended')}
-                            </span>
-                        </div>
-
-                        <div className="mb-5 flex-shrink-0 w-14 h-14 rounded-2xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-zinc-100 dark:border-zinc-700">
-                            <MessageCircle className="w-7 h-7 text-[#25D366]" />
-                        </div>
-
-                        <div className="flex-1 mb-6">
-                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg mb-2">
-                                {t('meta.connect_modal.embedded.title')}
-                            </h3>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                {t('meta.connect_modal.embedded.description')}
-                                <span className="block mt-2 text-zinc-700 dark:text-zinc-300 font-medium flex items-center gap-1.5 bg-white dark:bg-zinc-800/50 w-fit px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-800">
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                    {t('meta.connect_modal.embedded.mobile_compatible')}
-                                </span>
-                            </p>
-                        </div>
-
-                        {/* The Embedded Signup Button is rendered here directly */}
-                        <div className="w-full mt-auto">
-                            <MetaEmbeddedSignup
-                                onSuccess={() => onOpenChange(false)}
-                                onError={(error) => console.error('[WhatsAppModal]', error)}
-                                organizationId={organizationId}
-                            />
-                        </div>
-                    </div>
-
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
+                <MetaEmbeddedSignup key={mode} mode={mode} organizationId={organizationId}
+                    onBusyChange={setIsConnecting}
+                    onSuccess={() => { setCurrentUse(null); onOpenChange(false) }} />
+            </> : <p className="text-sm text-muted-foreground">{t('meta.connect_modal.select_prompt')}</p>}
+        </DialogContent>
+    </Dialog>
 }

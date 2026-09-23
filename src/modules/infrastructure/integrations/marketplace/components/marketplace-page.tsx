@@ -10,7 +10,8 @@ import { useState, useMemo } from "react"
 import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle, ShieldAlert, Zap } from "lucide-react"
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from 'sonner'
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
 import { TenantAIGovernanceContext } from "@/modules/infrastructure/ai-engine/actions"
 
@@ -41,6 +42,8 @@ import { useEffect } from "react"
 
 export function MarketplacePage({ providers, installedIntegrations, aiCredentials = [], aiProviders = [], aiGovernance }: MarketplacePageProps) {
     const searchParams = useSearchParams()
+    const router = useRouter()
+    const callbackError = searchParams.get('error')
     const [search, setSearch] = useState("")
     const [category, setCategory] = useState("all")
     const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
@@ -58,6 +61,14 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             }
         }
     }, [searchParams, providers])
+
+    useEffect(() => {
+        if (!callbackError) return
+        toast.error(callbackError === 'no_eligible_assets'
+            ? 'Meta no encontró páginas o cuentas de Instagram elegibles. Revisa la cuenta y los permisos concedidos.'
+            : 'No se pudo completar la autorización con Meta. Inténtalo de nuevo.')
+        router.replace('/platform/integrations')
+    }, [callbackError, router])
 
     // Derived state for quick lookup
     const installedKeys = useMemo(() => new Set(installedIntegrations.map(i => i.provider_key)), [installedIntegrations])

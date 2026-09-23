@@ -218,7 +218,7 @@ export function IntegrationSetupSheet({
                                     {provider?.name}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
-                                    {isMetaConnected ? 'Selecciona los canales a crear' : 'Conexión Omnicanal'}
+                                    {isMetaConnected ? 'Selecciona los canales a crear' : 'Autorizar páginas e Instagram'}
                                 </p>
                             </div>
                         </div>
@@ -242,7 +242,7 @@ export function IntegrationSetupSheet({
                                         <div>
                                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Conectar con Meta</h3>
                                             <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-                                                Unifica WhatsApp, Facebook e Instagram en una sola integración.
+                                                Autoriza páginas de Facebook e Instagram. WhatsApp y Meta Ads se conectan desde Canales con sus flujos específicos.
                                             </p>
                                         </div>
 
@@ -275,7 +275,7 @@ export function IntegrationSetupSheet({
                                     <div className="text-center space-y-2">
                                         <div className="flex justify-center mb-4">
                                             <Badge className="bg-green-600 text-white rounded-full px-3">
-                                                ✓ Meta Conectado
+                                                ✓ Cuenta Meta autorizada
                                             </Badge>
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-900 dark:text-white">Tus Activos de Meta</h3>

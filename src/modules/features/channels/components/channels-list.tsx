@@ -4,9 +4,10 @@ import { Channel } from "../types"
 import { ChannelCard } from "./channel-card"
 import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle, Store, Instagram, BarChart3 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { toast } from 'sonner'
 import { WhatsAppConnectModal } from "./whatsapp-connect-modal"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
     Tooltip,
     TooltipContent,
@@ -31,25 +32,45 @@ interface ChannelsListProps {
     agents: any[]
     organizationId?: string | null
     isMetaAdsEnabled?: boolean
+    canManageChannels?: boolean
 }
 
-export function ChannelsList({ channels, pipelineStages, agents, organizationId, isMetaAdsEnabled = false }: ChannelsListProps) {
+export function ChannelsList({ channels, pipelineStages, agents, organizationId, isMetaAdsEnabled = false, canManageChannels = false }: ChannelsListProps) {
     const { t } = useTranslation()
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const connectionError = searchParams.get('error')
+    const connectionErrorMessage = connectionError ? ({
+        no_eligible_assets: t('crm.channels.connection_errors.no_eligible_assets'),
+        no_channels_created: t('crm.channels.connection_errors.no_channels_created'),
+        use_embedded_signup: t('crm.channels.connection_errors.use_embedded_signup'),
+        invalid_state: t('crm.channels.connection_errors.invalid_state'),
+    } as Record<string, string>)[connectionError] || t('crm.channels.connection_errors.generic') : null
+
+    useEffect(() => {
+        if (!connectionErrorMessage) return
+        toast.error(connectionErrorMessage)
+        router.replace('/crm/settings/channels')
+    }, [connectionErrorMessage, router])
 
     const handleSuccess = () => {
         router.refresh()
     }
 
     // OAuth handler with specific channel type
-    const handleMetaConnect = async (channelType?: 'whatsapp' | 'messenger' | 'instagram' | 'ads') => {
+    const [connectingMeta, setConnectingMeta] = useState<'messenger' | 'instagram' | 'ads' | null>(null)
+    const handleMetaConnect = async (channelType: 'messenger' | 'instagram' | 'ads') => {
+        if (connectingMeta) return
+        setConnectingMeta(channelType)
         try {
             const { getMetaAuthUrl } = await import('@/modules/infrastructure/integrations/marketplace/marketplace-actions')
             const url = await getMetaAuthUrl(channelType)
             window.location.assign(url)
         } catch (error) {
             console.error("Meta Connect Error:", error)
+            toast.error(t('crm.channels.connection_errors.start'))
+            setConnectingMeta(null)
         }
     }
 
@@ -96,6 +117,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId,
                             <Store className="mr-2 h-4 w-4" /> {t('crm.channels.marketplace')}
                         </Button>
 
+                        {canManageChannels && <>
                         {/* WhatsApp Button - Opens choice modal */}
                         <Button
                             onClick={() => setIsWhatsAppModalOpen(true)}
@@ -108,6 +130,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId,
                         {/* Messenger Button */}
                         <Button
                             onClick={() => handleMetaConnect('messenger')}
+                            disabled={connectingMeta !== null}
                             className="bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-sm"
                         >
                             <FacebookIcon className="mr-2 h-4 w-4" />
@@ -117,6 +140,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId,
                         {/* Instagram Button */}
                         <Button
                             onClick={() => handleMetaConnect('instagram')}
+                            disabled={connectingMeta !== null}
                             className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm hover:from-pink-600 hover:to-purple-700"
                         >
                             <Instagram className="mr-2 h-4 w-4" />
@@ -127,12 +151,14 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId,
                         {isMetaAdsEnabled && (
                             <Button
                                 onClick={() => handleMetaConnect('ads')}
+                                disabled={connectingMeta !== null}
                                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm hover:from-blue-700 hover:to-indigo-700"
                             >
                                 <BarChart3 className="mr-2 h-4 w-4" />
                                 Meta Ads
                             </Button>
                         )}
+                        </>}
 
 
                     </div>

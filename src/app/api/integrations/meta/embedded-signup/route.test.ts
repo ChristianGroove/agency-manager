@@ -108,6 +108,22 @@ describe('/api/integrations/meta/embedded-signup', () => {
         expect(infoLogText).toContain('orgIdPresent')
     })
 
+    it('returns an actionable message when Meta did not identify one phone number', async () => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        mockAuthorizedUser()
+        vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        vi.doMock('@/modules/infrastructure/meta/services/onboarding/embedded-signup-handler', () => ({
+            embeddedSignupHandler: { completeOnboarding: vi.fn(async () => ({
+                success: false, error: 'Select exactly one authorized phone number',
+            })) },
+        }))
+        const { POST } = await import('./route')
+        const response = await POST(onboardingRequest())
+        expect(response.status).toBe(422)
+        expect((await response.json()).error).toContain('Selecciona un solo número')
+    })
+
     it('keeps completing valid onboarding requests', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockAuthorizedUser()

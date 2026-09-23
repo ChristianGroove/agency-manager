@@ -47,6 +47,16 @@ function logEmbeddedSignupError(label: string, error: unknown, details?: Record<
     });
 }
 
+const PUBLIC_ONBOARDING_ERRORS = new Map([
+    ['Missing selected WhatsApp Business Account', 'Meta no identificó la cuenta de WhatsApp. Selecciona una cuenta y vuelve a intentarlo.'],
+    ['Select exactly one authorized phone number', 'Meta no identificó un número concreto. Selecciona un solo número en la ventana de Meta y vuelve a intentarlo.'],
+    ['Coexistence Cloud API is not ready', 'El número de WhatsApp Business aún no está listo para conectarse con Pixy.'],
+    ['Phone mode does not match the completed Meta flow', 'El tipo de número no coincide con la opción elegida. Vuelve a empezar con la opción correcta.'],
+    ['Este número está reconectándose. Espera la confirmación de Meta antes de iniciar otra alta.', 'Este número está reconectándose. Espera la confirmación de Meta antes de iniciar otra alta.'],
+    ['Desconecta primero la plataforma empresarial desde WhatsApp Business y completa una nueva alta.', 'Desconecta primero la plataforma empresarial desde WhatsApp Business y completa una nueva alta.'],
+    ['Could not save channel; this asset may already belong to another organization', 'No se pudo guardar el canal. Este número podría pertenecer ya a otra organización de Pixy.'],
+]);
+
 async function requireMetaOnboardingAccess(orgId: string) {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -97,7 +107,8 @@ export async function POST(request: NextRequest) {
         if (!result.success) {
             logEmbeddedSignupError("[EmbeddedSignup API] Onboarding failed:", result.error);
             return NextResponse.json(
-                { success: false, error: isProductionRuntime() ? "Embedded signup failed" : (result.error || "Embedded signup failed") },
+                { success: false, error: PUBLIC_ONBOARDING_ERRORS.get(result.error || '')
+                    || (!isProductionRuntime() ? result.error : null) || 'Embedded signup failed' },
                 { status: 422 }
             );
         }
