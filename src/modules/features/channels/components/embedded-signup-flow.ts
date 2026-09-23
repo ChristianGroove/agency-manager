@@ -8,6 +8,7 @@ export function buildEmbeddedSignupOptions(configId: string, mode: WhatsAppSignu
         scope: 'whatsapp_business_management,whatsapp_business_messaging,business_management',
         extras: {
             setup: {},
+            version: 'v4',
             sessionInfoVersion: '3',
             ...(mode === 'coexistence' ? { featureType: 'whatsapp_business_app_onboarding' } : {}),
         },
