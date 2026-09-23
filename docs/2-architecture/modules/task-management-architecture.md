@@ -956,6 +956,27 @@ Se implementó el patrón de diseño *Log Work on Transition*:
 5. **Celebración de Logro Sincronizada**:
    - Al marcar una tarea como `done` desde el modal de detalle del portal, se detona reactivamente la animación de confeti/celebración, garantizando paridad visual con el botón de check de la tabla.
 
+---
 
+## 23. Barra de Control Unificada y Multicreador en Dashboard de Operaciones PM
 
+### A. Racional de Diseño y Simplificación de Espacio
+Anteriormente, el panel de operaciones del PM (`TaskPmOperationsDashboard`) albergaba dos barras de herramientas apiladas: una superior de telemetría y filtros de rango temporal, y una barra secundaria inmediatamente debajo para seleccionar y gestionar el Sprint. Esto generaba sobrecarga vertical, duplicación de elementos decorativos (como el badge redundante "Vista Global" y el botón de recarga manual) y una limitación en la creación de elementos (únicamente un botón aislado para crear Sprint).
 
+### B. Arquitectura de la Barra Unificada
+Se consolidaron todos los controles en un único contenedor horizontal de alto rendimiento ergonómico (`rounded-2xl border border-zinc-200/80 bg-card`):
+1. **Lado Izquierdo (Alcance Operativo)**:
+   - Selector principal de Sprint con opción de alcance amplio (`Todos los tickets (Global)`) y listado reactivo de sprints activos, en planificación o completados.
+   - Badges dinámicos de estado del sprint (`Sprint Activo`, `En Planificación`, `Cerrado`) e indicador numérico de días restantes / vencimiento si se selecciona un sprint específico.
+2. **Lado Derecho Interior (Filtros de Telemetría)**:
+   - Segmented control de períodos temporales: `7 Días`, `30 Días`, `Trimestre`, `Año`, `Histórico`.
+   - Filtro de Proyectos y Espacios de Trabajo con icono `Layers` visible en el disparador (`SelectTrigger`).
+   - Filtro de Especialistas del Equipo con icono `Users` visible en el disparador (`SelectTrigger`).
+3. **Lado Derecho Exterior (Acciones Contextuales y Multicreador)**:
+   - Botones de ciclo de vida del Sprint (`Editar`, `Finalizar Sprint`, `Iniciar Sprint`) que aparecen de forma contextual únicamente al seleccionar un sprint específico.
+   - **Botón Multicreador Unificado (`+ Nuevo`)**:
+     - Botón principal verde (`bg-primary`) con menú desplegable (`DropdownMenu`).
+     - **Nuevo Ticket**: Invoca el modal de creación de tareas/requerimientos (`onCreateTask`).
+     - **Nuevo Sprint**: Invoca el modal de creación de sprints ágiles (`onCreateSprint` / local `TaskSprintModal`).
+     - **Nuevo Proyecto**: Invoca el modal de creación de proyectos (`onCreateProject`).
+   - Integrado coherentemente tanto en el Portal de Colaboradores como en la vista de Métricas de la Plataforma General.

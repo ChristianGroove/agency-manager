@@ -1167,6 +1167,17 @@ export function TaskManagerView({
             onSprintDeleted={handleSprintDeleted}
             onSelectTask={handleSelectTask}
             onSwitchToGeneral={() => setActiveTab("list")}
+            onCreateTask={() => {
+              setNewTaskColumnStatus("todo")
+              setIsTaskModalOpen(true)
+            }}
+            onCreateProject={() => {
+              setProjectToEdit(null)
+              setIsProjectModalOpen(true)
+            }}
+            onCreateSprint={() => {
+              setSprintModalState({ isOpen: true, mode: "create", sprint: null })
+            }}
           />
         )}
 

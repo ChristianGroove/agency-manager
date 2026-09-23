@@ -29,6 +29,9 @@ interface TaskMetricsViewProps {
   onSprintDeleted?: (deletedSprintId: string) => void
   onSelectTask?: (task: TaskItem) => void
   onSwitchToGeneral?: () => void
+  onCreateTask?: () => void
+  onCreateProject?: () => void
+  onCreateSprint?: () => void
 }
 
 export function TaskMetricsView({
@@ -45,6 +48,9 @@ export function TaskMetricsView({
   onSprintDeleted,
   onSelectTask,
   onSwitchToGeneral,
+  onCreateTask,
+  onCreateProject,
+  onCreateSprint,
 }: TaskMetricsViewProps) {
   if (tasks.length > 0 || collaborators.length > 0) {
     return (
@@ -63,6 +69,9 @@ export function TaskMetricsView({
           onSprintDeleted={onSprintDeleted}
           onSwitchToGestion={onSwitchToGeneral || (() => {})}
           onSelectTask={onSelectTask}
+          onCreateTask={onCreateTask}
+          onCreateProject={onCreateProject}
+          onCreateSprint={onCreateSprint}
         />
       </div>
     )

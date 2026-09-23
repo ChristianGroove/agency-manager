@@ -2596,6 +2596,11 @@ export function TaskCollaboratorPortal({
             }}
             onSwitchToGestion={() => setPmViewMode("gestion")}
             onSelectTask={openTaskDetail}
+            onCreateTask={() => setIsCreateModalOpen(true)}
+            onCreateProject={() => {
+              setProjectToEdit(null)
+              setIsProjectModalOpen(true)
+            }}
           />
         )}
 
