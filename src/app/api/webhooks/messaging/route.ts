@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidationResult } from '@/modules/features/messaging/providers/types'
-import { ChannelType } from '@/types/messaging'
-import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
-import { isProductionRuntime } from '@/app/api/_guards/request-guards'
+import { isProductionRuntime, requireMetaWebhookSignature } from '@/app/api/_guards/request-guards'
 
 const PUBLIC_MESSAGING_WEBHOOK_FAILURE = 'Webhook processing failed'
 
@@ -17,92 +14,13 @@ function logMessagingWebhookError(label: string, error: unknown) {
         : { type: typeof error })
 }
 
-function logMessagingWebhookFailure(label: string, message: unknown) {
-    if (!isProductionRuntime()) {
-        console.error(label, message)
-        return
-    }
-
-    console.error(label, { hasMessage: typeof message === 'string' && message.length > 0 })
-}
-
-function logMessagingWebhookResult(result: { success?: boolean; message?: unknown }) {
-    if (!isProductionRuntime()) {
-        console.log('[Webhook POST] Result:', result)
-        return
-    }
-
-    console.log('[Webhook POST] Result:', {
-        success: result.success === true,
-        hasMessage: typeof result.message === 'string' && result.message.length > 0,
-    })
-}
-
-function messagingWebhookFailureMessage(message: unknown) {
-    if (isProductionRuntime()) {
-        return PUBLIC_MESSAGING_WEBHOOK_FAILURE
-    }
-
-    return typeof message === 'string' && message.length > 0
-        ? message
-        : PUBLIC_MESSAGING_WEBHOOK_FAILURE
-}
-
-// --- Loopback Strategy (Keep for loopback tests) ---
-class LoopbackStrategy implements MessagingProvider {
-    name = 'loopback'
-    async sendMessage(options: SendMessageOptions) { console.log('[Loopback]', options); return { success: true, messageId: 'mock-id' } }
-    async validateWebhook(request: Request) { return { isValid: true } }
-    async parseWebhook(payload: unknown) { return [payload as IncomingMessage] }
-}
-
-// Helper to load and configure manager on demand
-// This prevents top-level import crashes from blocking the Verification phase
-async function getConfiguredManager() {
-    console.log('[getConfiguredManager] Starting dynamic import...')
-    let webhookManagerModule;
-    try {
-        webhookManagerModule = await import('@/modules/features/messaging/webhook-handler')
-        console.log('[getConfiguredManager] Import successful')
-    } catch (err: any) {
-        logMessagingWebhookError('[getConfiguredManager] Import FAILED:', err)
-        throw new Error(`Failed to import webhook-handler: ${err.message}`)
-    }
-
-    const { webhookManager } = webhookManagerModule
-
-    // Config logic: Register providers if not already done
-    try {
-        // Register Email Loopback
-        // FIX: Method name is registerProvider, not register
-        webhookManager.registerProvider('email', new LoopbackStrategy())
-
-        // Register Meta
-        const metaProvider = new MetaProvider(
-            process.env.META_API_TOKEN || '',
-            process.env.META_PHONE_NUMBER_ID || '',
-            process.env.META_WEBHOOK_VERIFY_TOKEN || 'pixy_webhook_2026'
-        )
-        webhookManager.registerProvider('whatsapp', metaProvider)
-        webhookManager.registerProvider('messenger', metaProvider)
-        webhookManager.registerProvider('instagram', metaProvider)
-
-    } catch (err: any) {
-        logMessagingWebhookError('[getConfiguredManager] Registration FAILED:', err)
-        throw new Error(`Failed to register providers: ${err.message}`)
-    }
-
-    return webhookManager
-}
-
 export async function GET(req: NextRequest) {
     try {
-        console.log('[Webhook GET] Incoming Request URL:', req.url)
-        const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
 
         // --- 1. FAST VERIFICATION PATH (Recommended) ---
         // Bypasses heavy module loading for maximum reliability during Meta Handshake
-        const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'pixy_webhook_2026'
+        const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN
+        if (!VERIFY_TOKEN) return new NextResponse('Webhook configuration unavailable', { status: 503 })
         if (req.nextUrl.searchParams.get('hub.mode') === 'subscribe' &&
             req.nextUrl.searchParams.get('hub.verify_token') === VERIFY_TOKEN) {
             const challenge = req.nextUrl.searchParams.get('hub.challenge')
@@ -124,34 +42,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const rawBody = await req.text();
+        const rejected = requireMetaWebhookSignature(req, rawBody);
+        if (rejected) return rejected;
         const body = JSON.parse(rawBody);
-        let channel = req.nextUrl.searchParams.get('channel') as ChannelType;
-
-        // Auto-detect Meta channels from payload if not in URL
-        if (!channel && body.object) {
-            if (body.object === 'instagram') channel = 'instagram';
-            else if (body.object === 'page') channel = 'messenger';
-            else if (body.object === 'whatsapp_business_account') channel = 'whatsapp';
-        }
-        
-        // Final fallback
-        if (!channel) channel = 'whatsapp';
-
-        // Dynamically load manager to handle the heavy lifting
-        console.log(`[Webhook POST] Loading webhook manager for detected channel: ${channel}...`)
-        const manager = await getConfiguredManager()
-        console.log('[Webhook POST] Manager loaded, processing...')
-
-        const result = await manager.handleParsed(channel, body)
-        logMessagingWebhookResult(result)
-
-        if (!result.success) {
-            logMessagingWebhookFailure('[Webhook POST] Failed:', result.message)
-            return NextResponse.json({ error: messagingWebhookFailureMessage(result.message) }, { status: 401 })
-        }
-
+        const channel = body.object === 'whatsapp_business_account' ? 'whatsapp' : body.object === 'page' ? 'messenger' : body.object === 'instagram' ? 'instagram' : null;
+        if (!channel || !Array.isArray(body.entry)) return NextResponse.json({ error: 'Unsupported webhook object' }, { status: 400 });
+        const { createHash } = await import('crypto');
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin');
+        const { inngest } = await import('@/modules/infrastructure/automation/inngest/client');
+        const id = createHash('sha256').update(rawBody).digest('hex');
+        const saved = await supabaseAdmin.from('meta_webhook_events').upsert({ id, payload: body, channel }, { onConflict: 'id', ignoreDuplicates: true });
+        if (saved.error) throw new Error('Webhook persistence unavailable');
+        await inngest.send({ id: 'meta-' + id, name: 'meta/webhook.received', data: { eventId: id } });
         console.log('[Webhook POST] ✅ Success')
-        console.log('==========================================\n')
         return NextResponse.json({ status: 'ok' })
     } catch (error: any) {
         logMessagingWebhookError('[Webhook POST] Error:', error)

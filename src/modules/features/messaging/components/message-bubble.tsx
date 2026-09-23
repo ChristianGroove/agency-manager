@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { Check, CheckCheck, FileIcon, Volume2, Play, MapPin } from "lucide-react"
+import { Info, Check, CheckCheck, Clock3, FileIcon, Volume2, Play, MapPin } from "lucide-react"
 import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
 import { useInboxContext } from "../context/inbox-context"
@@ -19,7 +19,7 @@ interface MessageBubbleProps {
     content: MessageContent;
     direction: 'inbound' | 'outbound';
     timestamp: string;
-    status?: 'sent' | 'delivered' | 'read' | 'failed';
+    status?: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed' | 'unknown';
     messageId?: string;
     metadata?: any;
 }
@@ -71,9 +71,17 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
                         <span className={cn(
                             "text-muted-foreground",
                             status === 'read' && "text-blue-500",
-                            status === 'delivered' && "text-muted-foreground"
-                        )}>
-                            {status === 'read' ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                            (status === 'failed' || metadata?.delivery_state === 'unknown') && "text-amber-600"
+                        )} title={status === 'failed' ? 'No enviado' : metadata?.delivery_state === 'unknown' ? 'Entrega sin confirmar' : status === 'queued' || status === 'sending' ? 'Enviando' : status === 'read' ? 'Leído' : status === 'delivered' ? 'Entregado' : 'Enviado'}
+                        aria-label={status === 'failed' ? 'No enviado' : metadata?.delivery_state === 'unknown' ? 'Entrega sin confirmar' : undefined}
+                        tabIndex={status === 'failed' || metadata?.delivery_state === 'unknown' ? 0 : undefined}>
+                            {status === 'failed' || metadata?.delivery_state === 'unknown'
+                                ? <Info className="h-3.5 w-3.5" aria-label={status === 'failed' ? 'No enviado' : 'Entrega sin confirmar'} />
+                                : status === 'queued' || status === 'sending'
+                                    ? <Clock3 className="h-3 w-3" />
+                                    : status === 'read' || status === 'delivered'
+                                        ? <CheckCheck className="h-3 w-3" />
+                                        : <Check className="h-3 w-3" />}
                         </span>
                     )}
                 </div>
@@ -94,6 +102,10 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status, sp
     // Normalizar propiedades del contenido
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
+
+    if (['image', 'sticker', 'video', 'audio', 'document'].includes(content.type) && !url) {
+        return <p className="text-xs text-muted-foreground">Archivo no disponible</p>
+    }
 
     // Inyección del Widget B2C - Solo si es espacio resto
     if (metadata?.type === 'resto_order' && spaceCategory === 'resto') {

@@ -1,6 +1,7 @@
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption';
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { parseMetaOAuthState } from "@/modules/infrastructure/meta/services/oauth-state";
+import { consumeMetaOAuthSession } from "@/modules/infrastructure/meta/services/oauth-session";
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
@@ -151,22 +152,20 @@ export async function GET(request: Request) {
     }
 
     // 2. Verify State before exchanging code or mutating credentials.
-    const parsedState = parseMetaOAuthState(state);
-    if (!parsedState.ok) {
-        logMetaCallbackError("Meta OAuth Invalid State:", parsedState.error);
-        return createClientRedirect(
-            appUrl,
-            '/platform/integrations',
-            errorRedirectParams('invalid_state', 'Invalid Meta OAuth state', parsedState.error)
-        );
+    let verifiedState: Record<string, any>;
+    try { verifiedState = await consumeMetaOAuthSession(state); } catch {
+        return createClientRedirect(appUrl, '/platform/integrations', { error: 'invalid_state' });
     }
-
+    const parsedState = { state: verifiedState };
     // NEW: Contact Connectivity Flow
     if (parsedState.state.flow === 'contact_connect') {
         const clientId = parsedState.state.clientId;
         if (!clientId) return createClientRedirect(appUrl, '/platform/integrations', { error: 'missing_client_id' });
 
         try {
+            const { createClient: sessionClient } = await import('@/modules/core/database/supabase-server');
+            const { data: authorizedClient } = await (await sessionClient()).from('clients').select('id').eq('id', clientId).eq('organization_id', verifiedState.orgId).single();
+            if (!authorizedClient) return createClientRedirect(appUrl, '/platform/integrations', { error: 'forbidden' });
             const { MetaGraphAPI } = await import('@/modules/infrastructure/meta/services/graph-api');
             const metaApi = new MetaGraphAPI(appUrl);
 
@@ -222,6 +221,9 @@ export async function GET(request: Request) {
     const orgId = parsedState.state.orgId;
     const channelType = parsedState.state.channelType;
     const isGranularConnection = !!channelType;
+    if (channelType === 'whatsapp') {
+        return createClientRedirect(appUrl, '/crm/settings/channels', { error: 'use_embedded_signup' });
+    }
 
     // 3. Exchange Code for Token & Get Assets
     try {
@@ -232,9 +234,6 @@ export async function GET(request: Request) {
         const userProfile = await metaApi.getUserProfile(longLivedToken);
 
         let pages: any[] = [];
-        let wabas: any[] = [];
-        let wabaError: any = null;
-
         if (!channelType || channelType === 'messenger' || channelType === 'instagram') {
             pages = await metaApi.getConnectedAssets(longLivedToken);
         }
@@ -245,79 +244,16 @@ export async function GET(request: Request) {
             adAccounts = await metaApi.getAdAccounts(longLivedToken);
         }
 
-        if (!channelType || channelType === 'whatsapp') {
-            const wabaResult = await metaApi.getWhatsAppAccounts(longLivedToken);
-            wabas = wabaResult.data || [];
-            wabaError = wabaResult.error;
-
-            // 3.1 Bulk Portfolio Sync (Meta 2026 Compliance)
-            // Automatically subscribe ALL WABAs to webhooks to prevent "Shadow Delivery"
-            if (wabas.length > 0) {
-                logMetaCallbackInfo('[MetaCallback] Starting Bulk Sync', { wabasCount: wabas.length });
-
-                try {
-                    const { wabaSubscriptionManager } = await import('@/modules/infrastructure/meta/services/waba-subscription-manager');
-
-                    const subscriptionPayload = wabas.map((w: any) => ({
-                        wabaId: w.id,
-                        accessToken: longLivedToken
-                    }));
-
-                    const results = await wabaSubscriptionManager.batchSubscribe(subscriptionPayload);
-
-                    const successCount = results.filter(r => r.success).length;
-                    logMetaCallbackInfo('[MetaCallback] Bulk Sync Complete', {
-                        successCount,
-                        wabasCount: wabas.length,
-                    });
-
-                    // Log failures if any
-                    results.filter(r => !r.success).forEach(r => {
-                        logMetaCallbackError('[MetaCallback] Failed to subscribe WABA:', r.error, { wabaId: r.wabaId });
-                    });
-
-                } catch (syncError) {
-                    logMetaCallbackError('[MetaCallback] Bulk Sync Failed:', syncError);
-                    // We don't block the flow, but we log the critical error
-                }
-            }
-        }
-
-        logMetaCallbackInfo('[MetaCallback] Meta Connected', {
+        logMetaCallbackInfo('[MetaCallback] Meta authorization exchanged', {
             userName: userProfile.name,
             channelType: channelType || 'all',
-            pagesFound: pages.length,
-            wabasFound: wabas.length
+            pagesFound: pages.length
         });
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
-
-        // Build WhatsApp assets
-        const whatsappAssets = wabas.flatMap((w: any) => {
-            const numbers = w.phone_numbers?.data || [];
-            if (numbers.length === 0) {
-                return {
-                    id: w.id,
-                    name: `${w.name} (No Phone Numbers)`,
-                    type: 'whatsapp_waba',
-                    has_ig: false,
-                    display_phone_number: 'N/A',
-                    waba_id: w.id
-                };
-            }
-            return numbers.map((n: any) => ({
-                id: n.id,
-                name: n.verified_name || n.display_phone_number || w.name,
-                type: 'whatsapp',
-                has_ig: false,
-                display_phone_number: n.display_phone_number,
-                waba_id: w.id,
-                quality_rating: n.quality_rating
-            }));
-        });
 
         // 4. Map assets based on requested channelType
         let filteredAssets: any[] = [];
@@ -334,9 +270,6 @@ export async function GET(request: Request) {
                         currency: firstAdAccount.currency
                     }];
                 }
-                break;
-            case 'whatsapp':
-                filteredAssets = whatsappAssets.filter(a => a.type === 'whatsapp');
                 break;
             case 'messenger':
                 filteredAssets = pages.map(p => ({ id: p.id, name: p.name, type: 'page', access_token: p.access_token }));
@@ -378,14 +311,16 @@ export async function GET(request: Request) {
                         access_token: p.access_token
                     });
                 }
-                filteredAssets = [
-                    ...allAssets,
-                    ...whatsappAssets
-                ];
+                filteredAssets = allAssets;
         }
 
         // 5. Handle based on source (Granular vs Full)
-        if (isGranularConnection && filteredAssets.length > 0) {
+        if (filteredAssets.length === 0) {
+            return createClientRedirect(appUrl,
+                isGranularConnection ? '/crm/settings/channels' : '/platform/integrations',
+                { error: 'no_eligible_assets' });
+        }
+        if (isGranularConnection && filteredAssets.length === 1) {
             const { activateMetaChannel } = await import('@/modules/infrastructure/integrations/marketplace/meta-channel-actions');
 
             let successCount = 0;
@@ -393,9 +328,8 @@ export async function GET(request: Request) {
 
             for (const asset of filteredAssets) {
                 try {
-                    let providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud' | 'meta_ads_monitor';
+                    let providerKey: 'facebook_page' | 'instagram_dme' | 'meta_ads_monitor';
                     switch (asset.type) {
-                        case 'whatsapp': providerKey = 'whatsapp_cloud'; break;
                         case 'instagram': providerKey = 'instagram_dme'; break;
                         case 'ads': providerKey = 'meta_ads_monitor'; break;
                         default: providerKey = 'facebook_page';
@@ -422,8 +356,7 @@ export async function GET(request: Request) {
                 }
             }
 
-            const channelWord = channelType === 'whatsapp' ? 'WhatsApp' :
-                channelType === 'messenger' ? 'Messenger' :
+            const channelWord = channelType === 'messenger' ? 'Messenger' :
                 channelType === 'ads' ? 'Meta Ads' : 'Instagram';
 
             if (successCount > 0) {
@@ -457,15 +390,15 @@ export async function GET(request: Request) {
             provider_key: 'meta_business',
             connection_name: `Meta: ${userProfile.name}`,
             status: 'action_required',
-            credentials: {
+            credentials: encryptObject({
                 access_token: longLivedToken,
                 user_id: userProfile.id,
                 user_name: userProfile.name
-            },
+            }),
             metadata: {
                 total_assets_available: filteredAssets.length,
                 assets_preview: sanitizeAssetsPreviewForMetadata(filteredAssets),
-                waba_debug_error: wabaError
+                whatsapp_signup_required: true
             },
             is_primary: true,
             updated_at: new Date().toISOString()

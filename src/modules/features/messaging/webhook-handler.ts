@@ -280,8 +280,9 @@ export class WebhookManager {
 
         if (!result || !result.success || !result.conversationId) {
             console.error('[WebhookManager] Failed to save message to inbox')
-            return
+            throw new Error('Could not persist incoming message')
         }
+        if (msg.metadata?.historical || msg.origin === 'outbound') return
 
         const conversationId = result.conversationId
 

@@ -7,6 +7,32 @@ export interface ConnectionMatch {
     connection: any
 }
 
+function chooseMetaConnection(direct: any | null, legacyMatches: any[]): ConnectionMatch | null {
+    const candidates = [...(direct ? [direct] : []), ...legacyMatches]
+    const unique = [...new Map(candidates.map(connection => [connection.id, connection])).values()]
+    if (!unique.length) return null
+    if (new Set(unique.map(connection => connection.organization_id)).size > 1) {
+        throw new Error('Ambiguous Meta asset ownership across organizations')
+    }
+    // A modern channel supersedes its legacy parent within the same tenant.
+    // Multiple legacy matches still require an explicit migration decision.
+    if (!direct && unique.length > 1) throw new Error('Ambiguous legacy Meta asset ownership')
+    const connection = direct || unique[0]
+    return { connectionId: connection.id, organizationId: connection.organization_id, connection }
+}
+
+async function wasLocallyDisconnected(supabase: SupabaseClient, organizationId: string,
+    providerKeys: string[], assetId: string): Promise<boolean> {
+    const { data, error } = await supabase.from('integration_connections').select('id')
+        .eq('organization_id', organizationId)
+        .in('provider_key', providerKeys)
+        .eq('status', 'deleted')
+        .eq('metadata->>asset_id', assetId)
+        .limit(1)
+    if (error) throw new Error('Could not verify disconnected Meta asset')
+    return Boolean(data?.length)
+}
+
 export class ChannelResolver {
     /**
      * Resolves an integration connection (tenant) based on incoming message metadata.
@@ -24,7 +50,7 @@ export class ChannelResolver {
      * @param supabase The Supabase client instance.
      * @returns A Promise that resolves to a ConnectionMatch object if a connection is found, otherwise null.
      */
-    static async resolveConnection(msg: IncomingMessage, supabase: SupabaseClient): Promise<ConnectionMatch | null> {
+    static async resolveConnection(msg: Pick<IncomingMessage, 'channel' | 'metadata'>, supabase: SupabaseClient): Promise<ConnectionMatch | null> {
         const metadata = msg.metadata as any
         const channel = msg.channel
 
@@ -46,7 +72,7 @@ export class ChannelResolver {
             if (!phoneNumberId) return null
 
             // Primary: Modern whatsapp_cloud
-            const { data: direct } = await supabase
+            const { data: direct, error: directError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'whatsapp_cloud')
@@ -54,23 +80,25 @@ export class ChannelResolver {
                 .eq('metadata->>asset_id', phoneNumberId)
                 .maybeSingle()
 
-            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
-
+            if (directError) throw new Error("Could not uniquely resolve Meta channel")
             // Fallback: Legacy meta_business/meta_whatsapp
-            const { data: legacy } = await supabase
+            const { data: legacy, error: legacyError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .in('provider_key', ['meta_business', 'meta_whatsapp'])
                 .in('status', ['active', 'connected'])
 
-            if (legacy) {
-                const matched = legacy.find((c: any) => {
+            if (legacyError) throw new Error('Could not resolve legacy Meta channel')
+            const matches = (legacy || []).filter((c: any) => {
                     const assetId = c.metadata?.asset_id
                     const selectedAssets = c.metadata?.selected_assets || []
-                    return assetId === phoneNumberId || selectedAssets.some((a: any) => a.id === phoneNumberId)
+                    return assetId === phoneNumberId || selectedAssets.some((a: any) =>
+                        a.id === phoneNumberId && (!a.type || a.type === 'whatsapp'))
                 })
-                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
-            }
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['whatsapp_cloud'], phoneNumberId)) return null
+            return match
         }
 
         // 3. Messenger Matching
@@ -78,7 +106,7 @@ export class ChannelResolver {
             const pageId = metadata?.pageId || metadata?.page_id
             if (!pageId) return null
 
-            const { data: direct } = await supabase
+            const { data: direct, error: directError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'facebook_page')
@@ -86,26 +114,25 @@ export class ChannelResolver {
                 .eq('metadata->>asset_id', pageId)
                 .maybeSingle()
 
-            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
-
+            if (directError) throw new Error("Could not uniquely resolve Meta channel")
             // Legacy
-            const { data: legacy } = await supabase
+            const { data: legacy, error: legacyError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'meta_business')
                 .in('status', ['active', 'connected'])
 
-            if (legacy) {
-                const matched = legacy.find((c: any) => {
+            if (legacyError) throw new Error('Could not resolve legacy Meta channel')
+            const matches = (legacy || []).filter((c: any) => {
                     const assetId = c.metadata?.asset_id
                     const selectedAssets = c.metadata?.selected_assets || []
-                    const assetsPreview = c.metadata?.assets_preview || []
                     return assetId === pageId || 
-                           selectedAssets.some((a: any) => a.id === pageId) ||
-                           assetsPreview.some((a: any) => a.id === pageId && a.type === 'page')
+                           selectedAssets.some((a: any) => a.id === pageId && (!a.type || a.type === 'page'))
                 })
-                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
-            }
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['facebook_page'], pageId)) return null
+            return match
         }
 
         // 4. Instagram Matching
@@ -119,8 +146,8 @@ export class ChannelResolver {
                 .in('provider_key', ['instagram_dm', 'instagram_dme'])
                 .in('status', ['active', 'connected'])
 
-            const direct = Array.isArray(directConnections)
-                ? directConnections.find((c: any) => {
+            const candidates = Array.isArray(directConnections)
+                ? directConnections.filter((c: any) => {
                     const metadata = c.metadata || {}
                     return metadata.asset_id === igId ||
                         metadata.page_id === igId ||
@@ -128,32 +155,32 @@ export class ChannelResolver {
                         metadata.instagram_business_id === igId ||
                         metadata.id === igId
                 })
-                : null
-
-            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
+                : []
+            if (candidates.length > 1) throw new Error("Ambiguous Meta asset ownership")
+            const direct = candidates[0]
 
             // Legacy / Multi-asset (meta_business)
-            const { data: legacy } = await supabase
+            const { data: legacy, error: legacyError } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'meta_business')
                 .in('status', ['active', 'connected'])
 
-            if (legacy) {
-                const matched = legacy.find((c: any) => {
+            if (legacyError) throw new Error('Could not resolve legacy Meta channel')
+            const matches = (legacy || []).filter((c: any) => {
                     const selectedAssets = c.metadata?.selected_assets || []
-                    const assetsPreview = c.metadata?.assets_preview || []
                     const assetId = c.metadata?.asset_id || c.metadata?.page_id || c.metadata?.pageId
                     const connectionPageId = c.metadata?.page_id || c.metadata?.pageId
                     
                     return assetId === igId ||
                            connectionPageId === igId || // Match by Linked Page ID
-                           selectedAssets.some((a: any) => a.id === igId) ||
-                           assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram') ||
+                           selectedAssets.some((a: any) => a.id === igId && (!a.type || a.type === 'instagram')) ||
                            c.provider_key === 'instagram_dme' // Support for DME provider variants
                 })
-                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
-            }
+            const match = chooseMetaConnection(direct, matches)
+            if (!direct && match && await wasLocallyDisconnected(supabase, match.organizationId,
+                ['instagram_dm', 'instagram_dme'], igId)) return null
+            return match
         }
 
         return null

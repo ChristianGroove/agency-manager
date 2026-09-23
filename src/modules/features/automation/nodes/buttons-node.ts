@@ -49,7 +49,7 @@ export interface ButtonsNodeData {
 export class ButtonsNode {
     constructor(private contextManager: ContextManager) { }
 
-    async execute(data: ButtonsNodeData): Promise<{
+    async execute(data: ButtonsNodeData, nodeId?: string): Promise<{
         success: boolean
         messageId?: string
         error?: string
@@ -166,12 +166,14 @@ export class ButtonsNode {
 
             // Send the message
             const { outboundService } = await import('@/modules/features/messaging/outbound-service')
+            const executionId = this.contextManager.get('executionId') as string | undefined
             const result = await outboundService.sendSystemMessage(
                 conversationId,
                 messageContent,
                 channel,
                 connectionId,
-                'System'
+                'System',
+                executionId && nodeId ? `automation:${executionId}:${nodeId}` : undefined
             )
 
             if (!result.success) {

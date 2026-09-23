@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
+    rpc: vi.fn(),
     checkConnectionHealth: vi.fn(),
 }))
 
@@ -62,7 +63,8 @@ function mockConnections(result: QueryResult) {
 
 describe('/api/cron/check-connections', () => {
     beforeEach(() => {
-        Object.assign(supabaseAdmin, { from: mocks.from })
+        Object.assign(supabaseAdmin, { from: mocks.from, rpc: mocks.rpc })
+        mocks.rpc.mockResolvedValue({data:0,error:null})
     })
 
     afterEach(() => {
@@ -70,6 +72,7 @@ describe('/api/cron/check-connections', () => {
         vi.restoreAllMocks()
         vi.resetModules()
         mocks.from.mockReset()
+        mocks.rpc.mockReset()
         mocks.checkConnectionHealth.mockReset()
     })
 

@@ -5,6 +5,7 @@ function queryResult(result: unknown) {
     const query: any = {
         eq: vi.fn(() => query),
         in: vi.fn(() => query),
+        limit: vi.fn(() => query),
         maybeSingle: vi.fn(async () => result),
         or: vi.fn(() => {
             throw new Error('raw or filters should not be used for webhook asset ids')
@@ -19,6 +20,59 @@ function queryResult(result: unknown) {
 }
 
 describe('ChannelResolver', () => {
+    it.each([
+        { channel: 'whatsapp', metadata: { phoneNumberId: 'asset-1' }, provider: 'whatsapp_cloud', legacyAsset: { id: 'asset-1', type: 'whatsapp' } },
+        { channel: 'messenger', metadata: { pageId: 'asset-1' }, provider: 'facebook_page', legacyAsset: { id: 'asset-1', type: 'page' } },
+        { channel: 'instagram', metadata: { instagramBusinessId: 'asset-1' }, provider: 'instagram_dme', legacyAsset: { id: 'asset-1', type: 'instagram' } },
+    ])('rejects a $channel asset claimed by a legacy connection in another tenant', async ({ channel, metadata, provider, legacyAsset }) => {
+        const direct = {
+            id: 'modern', organization_id: 'tenant-a', provider_key: provider,
+            metadata: { asset_id: 'asset-1' },
+        }
+        const legacy = {
+            id: 'legacy', organization_id: 'tenant-b', provider_key: 'meta_business',
+            metadata: { selected_assets: [legacyAsset] },
+        }
+        const queries = [
+            queryResult({ data: channel === 'instagram' ? [direct] : direct, error: null }),
+            queryResult({ data: [legacy], error: null }),
+        ]
+        const supabase = { from: vi.fn(() => queries.shift()) } as any
+        await expect(ChannelResolver.resolveConnection({ channel, metadata } as any, supabase))
+            .rejects.toThrow('Ambiguous Meta asset ownership across organizations')
+        expect(supabase.from).toHaveBeenCalledTimes(2)
+    })
+
+    it('prefers a modern WhatsApp channel over its legacy parent in the same tenant', async () => {
+        const direct = { id: 'modern', organization_id: 'tenant-a', provider_key: 'whatsapp_cloud', metadata: { asset_id: 'phone-1' } }
+        const legacy = { id: 'legacy', organization_id: 'tenant-a', provider_key: 'meta_business',
+            metadata: { selected_assets: [{ id: 'phone-1', type: 'whatsapp' }] } }
+        const queries = [queryResult({ data: direct, error: null }), queryResult({ data: [legacy], error: null })]
+        const supabase = { from: vi.fn(() => queries.shift()) } as any
+        const match = await ChannelResolver.resolveConnection({ channel: 'whatsapp', metadata: { phoneNumberId: 'phone-1' } } as any, supabase)
+        expect(match?.connectionId).toBe('modern')
+    })
+
+    it('does not reactivate a locally disconnected WhatsApp asset through a legacy parent', async () => {
+        const legacy = { id: 'legacy', organization_id: 'tenant-a', provider_key: 'meta_business',
+            metadata: { selected_assets: [{ id: 'phone-1', type: 'whatsapp' }] } }
+        const queries = [queryResult({ data: null, error: null }),
+            queryResult({ data: [legacy], error: null }), queryResult({ data: [{ id: 'disconnected' }], error: null })]
+        const supabase = { from: vi.fn(() => queries.shift()) } as any
+        const match = await ChannelResolver.resolveConnection({ channel: 'whatsapp',
+            metadata: { phoneNumberId: 'phone-1' } } as any, supabase)
+        expect(match).toBeNull()
+        expect(supabase.from).toHaveBeenCalledTimes(3)
+    })
+
+    it('fails closed if the legacy ownership lookup fails after finding a modern channel', async () => {
+        const direct = { id: 'modern', organization_id: 'tenant-a', provider_key: 'whatsapp_cloud', metadata: { asset_id: 'phone-1' } }
+        const queries = [queryResult({ data: direct, error: null }), queryResult({ data: null, error: { code: 'database_unavailable' } })]
+        const supabase = { from: vi.fn(() => queries.shift()) } as any
+        await expect(ChannelResolver.resolveConnection({ channel: 'whatsapp', metadata: { phoneNumberId: 'phone-1' } } as any, supabase))
+            .rejects.toThrow('Could not resolve legacy Meta channel')
+    })
+
     it('requires active or connected status for pre-resolved connection ids', async () => {
         const connectionQuery = queryResult({
             data: {

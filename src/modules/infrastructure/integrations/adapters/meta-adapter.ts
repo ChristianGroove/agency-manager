@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
 const PUBLIC_META_SEND_ERROR = 'Meta send failed'
@@ -138,14 +140,16 @@ export class MetaAdapter implements IntegrationAdapter {
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
         return await globalCircuitBreaker.execute('meta_status', async () => {
             const { decryptObject } = await import('@/modules/infrastructure/integrations/encryption');
-            const creds = decryptObject(credentials);
+            const creds = await resolveConnectionCredentials(credentials);
         const accessToken = creds.accessToken || creds.access_token;
 
         if (!accessToken) return { status: 'inactive', message: 'No access token' };
 
         try {
             // Simple call to verify token
-            const resp = await fetch(`https://graph.facebook.com/v21.0/me?fields=id&access_token=${accessToken}`);
+            const resp = await fetch('https://graph.facebook.com/v21.0/me?fields=id', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
             if (resp.ok) {
                 return { status: 'active' };
             } else {
@@ -166,16 +170,19 @@ export class MetaAdapter implements IntegrationAdapter {
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds); } catch (e) { throw new Error("Invalid credentials format"); }
         }
-        creds = decryptObject(creds);
+        creds = await resolveConnectionCredentials(creds);
 
         // Merge passed metadata (context) with credentials defaults
         const phoneNumberId = metadata?.phoneNumberId || creds.phoneNumberId || creds.phone_number_id;
-        const pageId = metadata?.pageId || creds.pageId || creds.page_id || creds.assetId || creds.instagramBusinessId;
+        const pageId = metadata?.pageId || creds.pageId || creds.page_id || creds.instagramBusinessId ||
+            (metadata?.channel === 'whatsapp' ? undefined : creds.assetId);
         const accessToken = creds.accessToken || creds.access_token;
 
         logResolvedMetaIds(phoneNumberId, pageId, accessToken);
 
-        if ((!phoneNumberId && !pageId) || !accessToken) {
+        const isMessenger = metadata?.channel === 'messenger' || metadata?.channel === 'instagram' ||
+            (!metadata?.channel && !!pageId);
+        if ((isMessenger ? !pageId : !phoneNumberId) || !accessToken) {
             logMetaAdapterError('[MetaAdapter] CRITICAL: Missing IDs or Token', {
                 phoneNumberId: summarizeMetaId(phoneNumberId),
                 pageId: summarizeMetaId(pageId),
@@ -184,7 +191,6 @@ export class MetaAdapter implements IntegrationAdapter {
             throw new Error("Missing Meta credentials (ID or Token)");
         }
 
-        const isMessenger = !!pageId;
         const pageOrIgId = pageId; 
 
         let effectiveToken = accessToken;
@@ -192,7 +198,7 @@ export class MetaAdapter implements IntegrationAdapter {
         let url = '';
         let payload: any = {};
 
-        const contentObj = typeof content === 'string' ? { type: 'text', text: content } : content;
+        const contentObj = typeof content === 'string' ? { type: 'text', text: content } : { ...content };
         const textBody = contentObj.text || contentObj.body || '';
         const buttons = contentObj.buttons || [];
 
@@ -280,6 +286,28 @@ export class MetaAdapter implements IntegrationAdapter {
         } else {
             // WhatsApp logic reinforced: Handle Media IDs vs Links and Interactive Types
             url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+
+            const uploadIfNeeded = async (media: any, type: string) => {
+                if (!media?.mediaUrl || media.mediaId) return;
+                // Preserve the established WhatsApp media path, including WebP conversion.
+                // A pre-send upload may safely fail without sending the actual message.
+                if (type === 'audio' && !String(media.mediaUrl).includes('localhost') &&
+                    !String(media.mediaUrl).includes('127.0.0.1') &&
+                    !String(media.mediaUrl).startsWith('/api/media/chat/')) return;
+                const { MetaProvider } = await import('@/modules/features/messaging/providers/meta-provider');
+                const id = await new MetaProvider(effectiveToken, phoneNumberId, '')
+                    .uploadMedia(media.mediaUrl, effectiveToken, type, phoneNumberId, metadata?.organizationId);
+                if (!id) throw new Error('Meta media upload failed');
+                media.mediaId = id;
+            };
+            if (['image', 'video', 'audio', 'document', 'sticker'].includes(contentObj.type)) {
+                await uploadIfNeeded(contentObj, contentObj.type);
+            }
+            if (['interactive_buttons', 'interactive_cta'].includes(contentObj.type) &&
+                contentObj.header?.mediaUrl) {
+                contentObj.header = { ...contentObj.header };
+                await uploadIfNeeded(contentObj.header, contentObj.header.type || 'image');
+            }
             
             payload = {
                 messaging_product: "whatsapp",
@@ -288,14 +316,19 @@ export class MetaAdapter implements IntegrationAdapter {
             };
 
             const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker'];
-            if (mediaTypes.includes(contentObj.type)) {
+            if (contentObj.type === 'template') {
+                if (!contentObj.templateName) throw new Error('Template name is required');
+                payload.type = 'template';
+                payload.template = {name:contentObj.templateName,language:{code:contentObj.templateLanguage || 'es'},
+                    ...(contentObj.templateComponents?.length ? {components:contentObj.templateComponents} : {})};
+            } else if (mediaTypes.includes(contentObj.type)) {
                 const type = contentObj.type;
-                const isUrl = String(contentObj.mediaUrl || '').startsWith('http');
+                const isUrl = !contentObj.mediaId && String(contentObj.mediaUrl || '').startsWith('http');
                 
                 payload.type = type;
                 payload[type] = isUrl 
                     ? { link: contentObj.mediaUrl } 
-                    : { id: contentObj.mediaUrl || contentObj.mediaId };
+                    : { id: contentObj.mediaId || contentObj.mediaUrl };
                 
                 // Meta Policy: Stickers do NOT support captions.
                 if (contentObj.caption && type !== 'sticker') {
@@ -322,7 +355,10 @@ export class MetaAdapter implements IntegrationAdapter {
                 if (contentObj.header) {
                     payload.interactive.header = typeof contentObj.header === 'string' 
                         ? { type: 'text', text: contentObj.header }
-                        : contentObj.header;
+                        : contentObj.header?.mediaId
+                            ? { type: contentObj.header.type || 'image',
+                                [contentObj.header.type || 'image']: { id: contentObj.header.mediaId } }
+                            : contentObj.header;
                 }
                 if (contentObj.footer) {
                     payload.interactive.footer = { text: contentObj.footer };
@@ -345,7 +381,10 @@ export class MetaAdapter implements IntegrationAdapter {
                 if (contentObj.header) {
                     payload.interactive.header = typeof contentObj.header === 'string' 
                         ? { type: 'text', text: contentObj.header }
-                        : contentObj.header;
+                        : contentObj.header?.mediaId
+                            ? { type: contentObj.header.type || 'image',
+                                [contentObj.header.type || 'image']: { id: contentObj.header.mediaId } }
+                            : contentObj.header;
                 }
                 if (contentObj.footer) {
                     payload.interactive.footer = { text: contentObj.footer };
@@ -367,6 +406,20 @@ export class MetaAdapter implements IntegrationAdapter {
                         }))
                     }
                 };
+                if (contentObj.header) {
+                    payload.interactive.header = typeof contentObj.header === 'string'
+                        ? { type: 'text', text: contentObj.header }
+                        : contentObj.header;
+                }
+                if (contentObj.footer) payload.interactive.footer = { text: contentObj.footer };
+            } else if (contentObj.type === 'location') {
+                payload.type = 'location';
+                payload.location = {
+                    latitude: contentObj.latitude,
+                    longitude: contentObj.longitude,
+                    name: contentObj.name || contentObj.address || undefined,
+                    address: contentObj.address || undefined,
+                };
             } else {
                 payload.type = "text";
                 payload.text = { body: textBody || ' ' };
@@ -383,36 +436,13 @@ export class MetaAdapter implements IntegrationAdapter {
                         'Authorization': `Bearer ${effectiveToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(p)
+                    body: JSON.stringify(p),
+                    signal: AbortSignal.timeout(30000),
                 })
                 return resp
             }
 
-            let response = await makeRequest(payload)
-
-            // Fallback for Buttons: If failed, try basic text
-            if (!response.ok && buttons.length > 0) {
-                const err = await response.clone().json().catch(() => ({}))
-                logMetaAdapterWarning(`[MetaAdapter] Button send failed (${response.status}). Retrying with text only. Error:`, err);
-
-                // Construct text-only payload
-                if (isMessenger) {
-                    payload = {
-                        recipient: { id: recipient },
-                        message: { text: textBody },
-                        messaging_type: "RESPONSE"
-                    };
-                } else {
-                    payload = {
-                        messaging_product: "whatsapp",
-                        recipient_type: "individual",
-                        to: recipient,
-                        type: "text",
-                        text: { body: textBody || 'Hola (Pixy Bot)' }
-                    };
-                }
-                response = await makeRequest(payload)
-            }
+            const response = await makeRequest(payload)
 
             if (!response.ok) {
                 const err = await response.json().catch(() => ({ error: { message: response.statusText } }));
@@ -427,7 +457,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
             const data = await response.json()
             return {
-                messageId: data.messages?.[0]?.id || data.message_id || Date.now().toString(),
+                messageId: data.messages?.[0]?.id || data.message_id || '',
                 metadata: data
             }
         });

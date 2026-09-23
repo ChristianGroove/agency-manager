@@ -1,387 +1,158 @@
-import { wabaSubscriptionManager } from "@/modules/infrastructure/meta/services/waba-subscription-manager"
-import { createClient } from "@/modules/core/database/supabase-server";
+import { randomInt } from 'crypto'
+import { createClient } from '@/modules/core/database/supabase-server'
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
 
-const GRAPH_URL = 'https://graph.facebook.com/v24.0';
-
-function isDeployedRuntime() {
-    return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
-}
-
-function sanitizeEmbeddedSignupHandlerLogDetails(details: Record<string, unknown> = {}) {
-    const sensitiveKeys = new Set([
-        'channelId',
-        'connectionId',
-        'orgId',
-        'phoneNumber',
-        'phoneNumberId',
-        'wabaId',
-    ]);
-
-    return Object.fromEntries(
-        Object.entries(details).map(([key, value]) => {
-            if (sensitiveKeys.has(key)) {
-                return [`${key}Present`, Boolean(value)];
-            }
-
-            return [key, value];
-        })
-    );
-}
-
-function summarizeEmbeddedSignupHandlerError(error: unknown) {
-    return error instanceof Error
-        ? { name: error.name }
-        : { type: typeof error };
-}
-
-function logEmbeddedSignupHandlerInfo(label: string, details: Record<string, unknown> = {}) {
-    if (!isDeployedRuntime()) {
-        console.log(label, details);
-        return;
-    }
-
-    console.log(label, sanitizeEmbeddedSignupHandlerLogDetails(details));
-}
-
-function logEmbeddedSignupHandlerWarning(label: string, error: unknown, details?: Record<string, unknown>) {
-    if (!isDeployedRuntime()) {
-        if (details) console.warn(label, error, details);
-        else console.warn(label, error);
-        return;
-    }
-
-    console.warn(label, {
-        ...(details ? sanitizeEmbeddedSignupHandlerLogDetails(details) : {}),
-        detail: summarizeEmbeddedSignupHandlerError(error),
-    });
-}
-
-function logEmbeddedSignupHandlerError(label: string, error: unknown, details?: Record<string, unknown>) {
-    if (!isDeployedRuntime()) {
-        if (details) console.error(label, error, details);
-        else console.error(label, error);
-        return;
-    }
-
-    console.error(label, {
-        ...(details ? sanitizeEmbeddedSignupHandlerLogDetails(details) : {}),
-        detail: summarizeEmbeddedSignupHandlerError(error),
-    });
-}
-
-function publicOnboardingError(error: unknown) {
-    if (isDeployedRuntime()) {
-        return 'Embedded signup failed';
-    }
-
-    return error instanceof Error
-        ? error.message
-        : 'Unknown error during onboarding';
-}
-
-export interface OnboardingResult {
-    success: boolean;
-    connectionId?: string;
-    wabaId?: string;
-    error?: string;
-}
+const GRAPH = 'https://graph.facebook.com/v24.0'
+export type SignupMode = 'cloud' | 'coexistence'
+export interface OnboardingResult { success: boolean; connectionId?: string; wabaId?: string; error?: string; syncStatus?: string }
 
 export class EmbeddedSignupHandler {
+    private async graph(endpoint: string, token: string, body?: Record<string, unknown>) {
+        const response = await fetch(GRAPH + '/' + endpoint, {
+            method: body ? 'POST' : 'GET',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+            signal: AbortSignal.timeout(20000),
+        })
+        const data = await response.json()
+        if (!response.ok || data.error) throw new Error('Meta request failed (' + (data.error?.code || response.status) + ')')
+        return data
+    }
 
-    /**
-     * Complete the onboarding process given an OAuth code from the Embedded Signup flow.
-     * 
-     * Steps:
-     * 1. Exchange code for access token
-     * 2. Resolve WABA ID
-     * 3. Get phone numbers
-     * 4. Register in DB (with deduplication)
-     * 5. Subscribe webhooks + smb_message_echoes for Coexistence
-     */
-    async completeOnboarding(orgId: string, code: string, hintWabaId?: string): Promise<OnboardingResult> {
+    async completeOnboarding(orgId: string, code: string, wabaId?: string, phoneNumberId?: string, mode: SignupMode = 'cloud'): Promise<OnboardingResult> {
+        let connectionId: string | undefined
+        const client = await createClient()
         try {
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Starting onboarding', { orgId });
-
-            // 1. Exchange Code for Access Token
-            const tokenData = await this.exchangeCodeForToken(code);
-            if (!tokenData.access_token) {
-                throw new Error('Failed to obtain access token');
+            if (!wabaId || !/^\d+$/.test(wabaId)) throw new Error('Missing selected WhatsApp Business Account')
+            const appId = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID
+            const appSecret = process.env.META_APP_SECRET
+            if (!appId || !appSecret) throw new Error('Meta configuration unavailable')
+            const exchange = new URL(GRAPH + '/oauth/access_token')
+            exchange.searchParams.set('client_id', appId)
+            exchange.searchParams.set('client_secret', appSecret)
+            exchange.searchParams.set('code', code)
+            const response = await fetch(exchange, { signal: AbortSignal.timeout(20000) })
+            const token = await response.json()
+            if (!response.ok || !token.access_token) throw new Error('Meta authorization could not be exchanged')
+            const accessToken = token.access_token as string
+            // The asset must actually be readable with the customer's newly granted token.
+            const numbers: any[] = []
+            let endpoint = wabaId + '/phone_numbers?fields=id,display_phone_number,verified_name&limit=100'
+            for (let page = 0; page < 20; page++) {
+                const result = await this.graph(endpoint, accessToken)
+                numbers.push(...(result.data || []))
+                if (!result.paging?.next) break
+                if (page === 19) throw new Error('Too many phone numbers; select a dedicated account')
+                endpoint = wabaId + '/phone_numbers?fields=id,display_phone_number,verified_name&limit=100&after=' + encodeURIComponent(result.paging.cursors.after)
             }
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Access token obtained');
-
-            // 2. Resolve WABA ID
-            const wabaId = await this.resolveWabaId(tokenData.access_token, hintWabaId || tokenData.waba_id);
-
-            // 3. Get Phone Numbers
-            const phoneNumbers = await this.getPhoneNumbers(wabaId, tokenData.access_token);
-            if (phoneNumbers.length === 0) {
-                throw new Error('No phone numbers found for this WABA');
+            const phone = phoneNumberId ? numbers.find(n => n.id === phoneNumberId) : numbers.length === 1 ? numbers[0] : null
+            if (!phone) throw new Error('Select exactly one authorized phone number')
+            const capabilities = await this.graph(phone.id + '?fields=is_on_biz_app,platform_type', accessToken)
+            const coexistence = capabilities.is_on_biz_app === true
+            if (coexistence && capabilities.platform_type !== 'CLOUD_API') throw new Error('Coexistence Cloud API is not ready')
+            if ((mode === 'coexistence') !== coexistence) throw new Error('Phone mode does not match the completed Meta flow')
+            const { data: existing, error: lookupError } = await client.from('integration_connections')
+                .select('id,metadata,status').eq('organization_id', orgId).eq('provider_key', 'whatsapp_cloud')
+                .eq('metadata->>asset_id', phone.id).neq('status', 'deleted').maybeSingle()
+            if (lookupError) throw new Error('Could not resolve existing channel')
+            if (coexistence && existing?.status === 'temporarily_offboarded') {
+                throw new Error('Este número está reconectándose. Espera la confirmación de Meta antes de iniciar otra alta.')
             }
-            const primaryPhone = phoneNumbers[0];
-
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Found WABA phone number', {
-                wabaId,
-                phoneNumber: primaryPhone.display_phone_number,
-                phoneNumberId: primaryPhone.id,
-            });
-
-            // 4. Register in Database with deduplication
-            const connectionId = await this.registerConnection(orgId, {
-                wabaId,
-                accessToken: tokenData.access_token,
-                phoneNumberId: primaryPhone.id,
-                displayPhoneNumber: primaryPhone.display_phone_number,
-                businessName: primaryPhone.verified_name || 'WhatsApp Business'
-            });
-
-            // 5. Subscribe to Webhooks (Critical for Shadow Delivery prevention)
-            const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, tokenData.access_token);
-            if (!subResult.success) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Webhook subscription warning:', subResult.error, { wabaId });
+            if (coexistence && existing?.metadata?.onboarding_status === 'offboard_required'
+                && existing?.metadata?.coexistence_state !== 'partner_removed') {
+                throw new Error('Desconecta primero la plataforma empresarial desde WhatsApp Business y completa una nueva alta.')
             }
-
-            // 6. Subscribe smb_message_echoes for Coexistence mode
-            await this.subscribeSmbMessageEchoes(wabaId, tokenData.access_token);
-
-            return {
-                success: true,
-                connectionId,
-                wabaId
-            };
-
-        } catch (error: any) {
-            logEmbeddedSignupHandlerError('[EmbeddedSignup] Onboarding Failed:', error);
-            return {
-                success: false,
-                error: publicOnboardingError(error)
-            };
-        }
-    }
-
-    /**
-     * Exchange System User Code for Access Token
-     */
-    private async exchangeCodeForToken(code: string): Promise<any> {
-        const appId = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID;
-        const appSecret = process.env.META_APP_SECRET;
-
-        if (!appId || !appSecret) {
-            throw new Error('Missing Meta App Config (ID/Secret)');
-        }
-
-        const url = `${GRAPH_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.error) {
-            throw new Error(`Token Exchange Error: ${data.error.message}`);
-        }
-        return data;
-    }
-
-    /**
-     * Resolve WABA ID from token inspection or direct query
-     */
-    private async resolveWabaId(accessToken: string, hintWabaId?: string): Promise<string> {
-        if (hintWabaId) return hintWabaId;
-
-        // 1. Try fetching shared WABAs (if token belongs to a System User of a BSP)
-        const url = `${GRAPH_URL}/me/client_whatsapp_business_accounts?access_token=${accessToken}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.data && data.data.length > 0) {
-            return data.data[0].id;
-        }
-
-        // 2. Fallback: try owned and client WABAs of all businesses the user is part of
-        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts,client_whatsapp_business_accounts&access_token=${accessToken}`;
-        const ownedRes = await fetch(ownedUrl);
-        const ownedData = await ownedRes.json();
-
-        if (ownedData.data && Array.isArray(ownedData.data)) {
-            // Iterate over all businesses the user belongs to
-            for (const business of ownedData.data) {
-                // Check owned WABAs
-                if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
-                    return business.owned_whatsapp_business_accounts.data[0].id;
-                }
-                // Check client WABAs
-                if (business.client_whatsapp_business_accounts?.data?.length > 0) {
-                    return business.client_whatsapp_business_accounts.data[0].id;
-                }
+            const pin = randomInt(100000, 1000000).toString()
+            const metadata = {
+                ...(existing?.metadata || {}), asset_id: phone.id, asset_type: 'whatsapp',
+                asset_name: phone.verified_name, waba_id: wabaId, display_phone_number: phone.display_phone_number,
+                source: 'embedded_signup', connection_mode: mode, webhook_status: 'pending',
+                onboarding_status: 'subscribing', is_on_biz_app: coexistence,
+                platform_type: capabilities.platform_type,
+                history_sync_status: coexistence ? existing?.metadata?.history_sync_status || 'pending' : 'not_applicable',
+                onboarded_at: existing?.metadata?.onboarded_at || new Date().toISOString(),
             }
-        }
-
-        // 3. Fallback: query /me/whatsapp_business_accounts directly
-        // This endpoint requires whatsapp_business_management but NOT business_management!
-        const directUrl = `${GRAPH_URL}/me/whatsapp_business_accounts?access_token=${accessToken}`;
-        const directRes = await fetch(directUrl);
-        const directData = await directRes.json();
-        
-        if (directData.data && directData.data.length > 0) {
-            return directData.data[0].id;
-        }
-
-        throw new Error(`WABA ID not found. FB Shared: ${JSON.stringify(data)}. FB Owned: ${JSON.stringify(ownedData)}`);
-    }
-
-    /**
-     * Get Phone Numbers for WABA
-     */
-    private async getPhoneNumbers(wabaId: string, accessToken: string) {
-        const url = `${GRAPH_URL}/${wabaId}/phone_numbers?access_token=${accessToken}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        return data.data || [];
-    }
-
-    /**
-     * Subscribe coexistence webhook fields: smb_message_echoes + history.
-     * - smb_message_echoes: mirrors messages sent from the mobile WA Business app
-     * - history: syncs conversation history for seamless mobile↔desktop experience
-     * 
-     * Also configures the rate limiter to 20 mps (Meta's coexistence limit).
-     */
-    private async subscribeSmbMessageEchoes(wabaId: string, accessToken: string): Promise<void> {
-        try {
-            const url = `${GRAPH_URL}/${wabaId}/subscribed_apps`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    subscribed_fields: ['messages', 'smb_message_echoes', 'history']
-                })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Coexistence fields subscription warning:', data, { wabaId });
-            } else {
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Coexistence fields subscribed');
+            const payload = { organization_id: orgId, provider_key: 'whatsapp_cloud',
+                connection_name: phone.verified_name || phone.display_phone_number,
+                credentials: encryptObject({ access_token: accessToken, registration_pin: pin,
+                    ...(token.expires_in ? { expires_at: new Date(Date.now() + token.expires_in * 1000).toISOString() } : {}) }),
+                metadata, config: { asset_type: 'whatsapp' }, status: 'connecting' }
+            const query = existing ? client.from('integration_connections').update(payload).eq('id', existing.id).eq('organization_id', orgId)
+                : client.from('integration_connections').insert(payload)
+            const saved = await query.select('id').single()
+            if (saved.error || !saved.data) throw new Error('Could not save channel; this asset may already belong to another organization')
+            connectionId = saved.data.id
+            await this.graph(wabaId + '/subscribed_apps', accessToken, {})
+            // Coexistence numbers must NEVER be registered again through /register.
+            if (!coexistence && capabilities.platform_type !== 'CLOUD_API') {
+                await this.graph(phone.id + '/register', accessToken, { messaging_product: 'whatsapp', pin })
             }
-
-            // Configure rate limiter for coexistence mode (20 mps limit)
-            try {
-                const { metaRateLimiter } = await import('@/modules/infrastructure/meta/services/rate-limiter');
-                metaRateLimiter.configureWaba(wabaId, {
-                    maxTokens: 20,
-                    refillRate: 20,
-                });
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Rate limiter configured for coexistence', {
-                    wabaId,
-                    maxTokens: 20,
-                });
-            } catch (rlError) {
-                logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Rate limiter config warning:', rlError, { wabaId });
-            }
-        } catch (error) {
-            // Non-fatal: log but don't break onboarding
-            logEmbeddedSignupHandlerWarning('[EmbeddedSignup] Coexistence subscription error:', error, { wabaId });
-        }
-    }
-
-    /**
-     * Register connection in Supabase with deduplication.
-     * 
-     * Uses the same schema as activateMetaChannel to ensure compatibility
-     * with the inbox and channel management system.
-     */
-    private async registerConnection(orgId: string, data: {
-        wabaId: string,
-        accessToken: string,
-        phoneNumberId: string,
-        displayPhoneNumber: string,
-        businessName: string
-    }): Promise<string> {
-
-        // Check for existing connection (including deleted/disconnected)
-        const { data: existing } = await (await createClient())
-            .from('integration_connections')
-            .select('id, status')
-            .eq('organization_id', orgId)
-            .eq('provider_key', 'whatsapp_cloud')
-            .eq('metadata->>asset_id', data.phoneNumberId)
-            .limit(1);
-
-        if (existing && existing.length > 0) {
-            const existingChannel = existing[0];
-
-            if (existingChannel.status === 'active') {
-                logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Channel already active', { channelId: existingChannel.id });
-                // Update credentials with fresh token
-                await (await createClient())
-                    .from('integration_connections')
-                    .update({
-                        credentials: { access_token: data.accessToken },
-                        updated_at: new Date().toISOString()
+            // Routing must be available before asking Meta to deliver history webhooks.
+            // Coexistence remains in sync_pending until both one-time requests are accepted.
+            const ready = await client.from('integration_connections').update({ status: 'active', metadata: {
+                ...metadata, webhook_status: 'active', onboarding_status: coexistence ? 'sync_pending' : 'ready',
+            }}).eq('id', connectionId!).eq('organization_id', orgId).eq('status', 'connecting').select('id').single()
+            if (ready.error || !ready.data) throw new Error('Could not activate channel')
+            let syncStatus = 'not_applicable'
+            if (coexistence) {
+                syncStatus = 'pending'
+                try {
+                    const attempt = await client.rpc('begin_meta_coexistence_onboarding', {
+                        p_connection_id: connectionId!, p_organization_id: orgId,
                     })
-                    .eq('id', existingChannel.id);
-                return existingChannel.id;
+                    if (attempt.error) throw new Error('Could not begin coexistence synchronization')
+                    const contactsClaim = await client.rpc('claim_meta_coexistence_sync', {
+                        p_connection_id: connectionId!, p_organization_id: orgId, p_kind: 'contacts',
+                    })
+                    if (contactsClaim.error) throw new Error('Could not reserve contacts synchronization')
+                    const previousRequestIdsValid = existing?.metadata?.coexistence_state !== 'partner_removed'
+                    let contactsRequested = previousRequestIdsValid && !!existing?.metadata?.contacts_sync_request_id
+                    if (contactsClaim.data === true) {
+                        const contacts = await this.graph(phone.id + '/smb_app_data', accessToken, { messaging_product: 'whatsapp', sync_type: 'smb_app_state_sync' })
+                        if (!contacts.request_id) throw new Error('Meta did not identify the contacts request')
+                        const recorded = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
+                            p_patch: { contacts_sync_request_id: contacts.request_id } })
+                        if (recorded.error) throw new Error('Could not record contacts request')
+                        contactsRequested = true
+                    }
+                    const historyClaim = await client.rpc('claim_meta_coexistence_sync', {
+                        p_connection_id: connectionId!, p_organization_id: orgId, p_kind: 'history',
+                    })
+                    if (historyClaim.error) throw new Error('Could not reserve history synchronization')
+                    let historyRequested = previousRequestIdsValid && !!existing?.metadata?.history_sync_request_id
+                    if (historyClaim.data === true) {
+                        const history = await this.graph(phone.id + '/smb_app_data', accessToken, { messaging_product: 'whatsapp', sync_type: 'history' })
+                        if (!history.request_id) throw new Error('Meta did not identify the history request')
+                        const recorded = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
+                            p_patch: { history_sync_request_id: history.request_id } })
+                        if (recorded.error) throw new Error('Could not record history request')
+                        historyRequested = true
+                    }
+                    syncStatus = contactsRequested && historyRequested ? 'requested' : 'pending'
+                } catch {
+                    syncStatus = 'action_required'
+                }
+                // Do not overwrite progress already delivered by Meta with stale metadata.
+                const update = await client.rpc('set_meta_connection_metadata', { p_connection_id: connectionId!, p_organization_id: orgId,
+                    p_patch: { history_sync_request_status: syncStatus,
+                        onboarding_status: syncStatus === 'requested' ? 'sync_requested'
+                            : syncStatus === 'action_required' ? 'offboard_required' : 'sync_pending' } })
+                if (update.error) throw new Error('Could not save synchronization status')
+                if (syncStatus === 'action_required') {
+                    const blocked = await client.from('integration_connections').update({ status: 'action_required' })
+                        .eq('id', connectionId!).eq('organization_id', orgId)
+                    if (blocked.error) throw new Error('Could not pause channel after sync failure')
+                }
             }
-
-            // Reactivate deleted/disconnected channel
-            logEmbeddedSignupHandlerInfo('[EmbeddedSignup] Reactivating channel', { channelId: existingChannel.id });
-            await (await createClient())
-                .from('integration_connections')
-                .update({
-                    status: 'active',
-                    credentials: { access_token: data.accessToken },
-                    metadata: {
-                        asset_id: data.phoneNumberId,
-                        asset_type: 'whatsapp',
-                        asset_name: data.businessName,
-                        waba_id: data.wabaId,
-                        display_phone_number: data.displayPhoneNumber,
-                        webhook_status: 'app_level',
-                        source: 'embedded_signup',
-                    },
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', existingChannel.id);
-
-            return existingChannel.id;
+            return { success: true, connectionId, wabaId, syncStatus }
+        } catch (error) {
+            if (connectionId) {
+                await client.from('integration_connections').update({ status: 'error' }).eq('id', connectionId)
+                    .eq('organization_id', orgId).in('status', ['connecting', 'active'])
+            }
+            console.error('[EmbeddedSignup] Failed', { error: error instanceof Error ? error.name : 'Unknown' })
+            return { success: false, connectionId, error: error instanceof Error ? error.message : 'Embedded signup failed' }
         }
-
-        // Create new connection — compatible with activateMetaChannel schema
-        const channelData = {
-            organization_id: orgId,
-            provider_key: 'whatsapp_cloud',
-            connection_name: `${data.businessName} (${data.displayPhoneNumber})`,
-            credentials: {
-                access_token: data.accessToken,
-            },
-            metadata: {
-                asset_id: data.phoneNumberId,
-                asset_type: 'whatsapp',
-                asset_name: data.businessName,
-                waba_id: data.wabaId,
-                display_phone_number: data.displayPhoneNumber,
-                webhook_status: 'app_level',
-                source: 'embedded_signup',
-            },
-            config: {
-                asset_type: 'whatsapp',
-            },
-            status: 'active',
-            is_primary: false,
-        };
-
-        const { data: conn, error } = await (await createClient())
-            .from('integration_connections')
-            .insert(channelData)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        logEmbeddedSignupHandlerInfo('[EmbeddedSignup] New channel created', { channelId: conn.id });
-        return conn.id;
     }
 }
-
-export const embeddedSignupHandler = new EmbeddedSignupHandler();
+export const embeddedSignupHandler = new EmbeddedSignupHandler()

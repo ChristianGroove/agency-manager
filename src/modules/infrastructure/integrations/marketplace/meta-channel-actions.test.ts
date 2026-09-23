@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
     getCurrentOrganizationId: vi.fn(),
     requireOrgRole: vi.fn(),
     revalidatePath: vi.fn(),
-    exchangeForLongLivedPageToken: vi.fn(),
+    getPageAccessToken: vi.fn(),
     subscribePageWebhooks: vi.fn(),
     subscribeWABA: vi.fn(),
 }))
@@ -30,7 +30,7 @@ vi.mock('next/cache', () => ({
 
 vi.mock('@/modules/infrastructure/meta/services/graph-api', () => ({
     MetaGraphAPI: class {
-        exchangeForLongLivedPageToken = mocks.exchangeForLongLivedPageToken
+        getPageAccessToken = mocks.getPageAccessToken
         subscribePageWebhooks = mocks.subscribePageWebhooks
     },
 }))
@@ -113,9 +113,9 @@ function uiActivationInput(overrides: Partial<Parameters<typeof import('./meta-c
     return {
         parentConnectionId: 'parent_123',
         assetId: 'asset_123',
-        assetType: 'whatsapp' as const,
-        assetName: 'WhatsApp Main',
-        wabaId: 'waba_123',
+        assetType: 'page' as const,
+        assetName: 'Facebook Page',
+        pageId: 'asset_123',
         ...overrides,
     }
 }
@@ -127,12 +127,12 @@ describe('activateMetaChannel', () => {
         mocks.supabaseFrom.mockReset()
         mocks.getCurrentOrganizationId.mockReset()
         mocks.requireOrgRole.mockReset()
-        mocks.exchangeForLongLivedPageToken.mockReset()
+        mocks.getPageAccessToken.mockReset()
         mocks.subscribePageWebhooks.mockReset()
         mocks.subscribeWABA.mockReset()
         mocks.getCurrentOrganizationId.mockResolvedValue('org_123')
         mocks.requireOrgRole.mockResolvedValue(undefined)
-        mocks.exchangeForLongLivedPageToken.mockResolvedValue('long-lived-page-token')
+        mocks.getPageAccessToken.mockResolvedValue('long-lived-page-token')
         mocks.subscribePageWebhooks.mockResolvedValue({ success: true })
         mocks.subscribeWABA.mockResolvedValue({ success: true })
     })
@@ -157,12 +157,12 @@ describe('activateMetaChannel', () => {
         expect(errorLogText).not.toContain('integration token')
     })
 
-    it('does not expose Meta setup warning details in production logs', async () => {
+    it('fails activation when the page token cannot be resolved', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
         vi.spyOn(console, 'log').mockImplementation(() => undefined)
         mockActivationDb()
-        mocks.exchangeForLongLivedPageToken.mockRejectedValue(
+        mocks.getPageAccessToken.mockRejectedValue(
             new Error('page token secret-value rejected by Meta')
         )
 
@@ -173,7 +173,7 @@ describe('activateMetaChannel', () => {
             wabaId: undefined,
         }))
 
-        expect(result).toEqual({ success: true, channelId: 'channel_123' })
+        expect(result.success).toBe(false)
 
         const warnLogText = collectConsoleCalls(warnSpy)
         expect(warnLogText).not.toContain('secret-value')
@@ -194,7 +194,7 @@ describe('activateMetaChannel', () => {
         }))
 
         expect(result).toEqual({ success: true, channelId: 'channel_123' })
-        expect(mocks.exchangeForLongLivedPageToken).toHaveBeenCalledWith('server-only-parent-token')
+        expect(mocks.getPageAccessToken).toHaveBeenCalledWith('page_123', 'server-only-parent-token', undefined)
     })
 
     it('does not expose Meta asset identifiers in production success logs', async () => {
@@ -206,6 +206,7 @@ describe('activateMetaChannel', () => {
         const { activateMetaChannel } = await import('./meta-channel-actions')
         const whatsappResult = await activateMetaChannel(uiActivationInput({
             assetId: 'asset_sensitive_whatsapp',
+            assetType: 'whatsapp',
             assetName: 'WhatsApp Main',
             wabaId: 'waba_sensitive_123',
         }))
@@ -219,11 +220,10 @@ describe('activateMetaChannel', () => {
             wabaId: undefined,
         }))
 
-        expect(whatsappResult).toEqual({ success: true, channelId: 'channel_123' })
+        expect(whatsappResult.success).toBe(false)
         expect(pageResult).toEqual({ success: true, channelId: 'channel_123' })
 
         const logText = collectConsoleCalls(logSpy)
-        expect(logText).toContain('wabaIdPresent')
         expect(logText).toContain('assetIdPresent')
         expect(logText).toContain('pageIdPresent')
         expect(logText).toContain('channelIdPresent')
@@ -234,7 +234,15 @@ describe('activateMetaChannel', () => {
         expect(logText).not.toContain('channel_123')
     })
 
-    it('keeps returning the product-level already-active message', async () => {
+    it('requires Embedded Signup for WhatsApp in UI and callback routes', async () => {
+        const { activateMetaChannel } = await import('./meta-channel-actions')
+        expect((await activateMetaChannel(uiActivationInput({ assetType: 'whatsapp' }))).success).toBe(false)
+        expect((await activateMetaChannel({ orgId: 'org_123', providerKey: 'whatsapp_cloud',
+            assetId: 'phone_123', assetName: 'Phone', accessToken: 'unused' })).success).toBe(false)
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('refreshes authorization for an already active channel', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         mockActivationDb({
             existing: [{ id: 'channel_123', status: 'active' }],
@@ -243,8 +251,8 @@ describe('activateMetaChannel', () => {
         const { activateMetaChannel } = await import('./meta-channel-actions')
         const result = await activateMetaChannel(uiActivationInput())
 
-        expect(result.success).toBe(false)
-        expect(result.error).toContain('activado')
+        expect(result.success).toBe(true)
+        expect(result.reactivated).toBe(true)
     })
 })
 

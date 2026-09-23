@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { supabase } from "@/modules/core/database/supabase"
+import { buildMetaCallbackTarget } from './target'
 
 /**
  * This page handles the final redirect after OAuth callback.
@@ -32,6 +33,7 @@ export default function MetaCallbackPage() {
             const error = searchParams.get('error')
             const target = searchParams.get('target') || '/platform/integrations'
             const count = searchParams.get('count')
+            const action = searchParams.get('action')
 
             // Check if we have a valid session
             const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -43,7 +45,7 @@ export default function MetaCallbackPage() {
 
                 // Wait a moment then redirect to login
                 setTimeout(() => {
-                    router.push('/login?returnTo=' + encodeURIComponent(target))
+                    router.push('/login?returnTo=' + encodeURIComponent(buildMetaCallbackTarget(target, {})))
                 }, 2000)
                 return
             }
@@ -52,20 +54,19 @@ export default function MetaCallbackPage() {
             if (error) {
                 setStatus('error')
                 setMessage(`Error: ${searchParams.get('desc') || error}`)
-                setTimeout(() => router.push(target + '?error=' + error), 2000)
+                setTimeout(() => router.push(buildMetaCallbackTarget(target, { error })), 2000)
             } else if (success) {
                 setStatus('success')
-                setMessage(count
-                    ? `¡${count} canal(es) conectado(s) exitosamente!`
-                    : '¡Conexión exitosa!'
-                )
+                setMessage(success === 'meta_connected'
+                    ? 'Meta autorizó la cuenta. Selecciona ahora los activos que deseas conectar.'
+                    : count ? `¡${count} canal(es) conectado(s) exitosamente!` : '¡Conexión exitosa!')
                 // Small delay for UX, then redirect
                 setTimeout(() => {
-                    router.push(target + (success ? `?success=${success}` : ''))
+                    router.push(buildMetaCallbackTarget(target, { success, action }))
                 }, 1500)
             } else {
                 // No specific status, just redirect
-                router.push(target)
+                router.push(buildMetaCallbackTarget(target, {}))
             }
         }
 

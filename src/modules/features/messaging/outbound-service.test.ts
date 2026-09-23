@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
     getAdapter: vi.fn(),
     saveOutboundMessage: vi.fn(),
     supabaseFrom: vi.fn(),
+    enqueueMetaOutbound: vi.fn(),
+    dispatchMetaOutbound: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -22,6 +24,11 @@ vi.mock('./services/persistence', () => ({
     MessagingPersistence: {
         saveOutboundMessage: mocks.saveOutboundMessage,
     },
+}))
+
+vi.mock('./meta-outbox', () => ({
+    enqueueMetaOutbound: mocks.enqueueMetaOutbound,
+    dispatchMetaOutbound: mocks.dispatchMetaOutbound,
 }))
 
 function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
@@ -69,17 +76,64 @@ afterEach(() => {
     mocks.getAdapter.mockReset()
     mocks.saveOutboundMessage.mockReset()
     mocks.supabaseFrom.mockReset()
+    mocks.enqueueMetaOutbound.mockReset()
+    mocks.dispatchMetaOutbound.mockReset()
 })
 
 describe('OutboundService', () => {
+    it('rejects a supplied conversation from another channel before calling Meta', async () => {
+        const adapterSendMessage = vi.fn()
+        mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage(
+            'channel-a', 'recipient', 'hola', 'tenant-a', {
+                connection: { id: 'channel-a', organization_id: 'tenant-a', status: 'active',
+                    provider_key: 'whatsapp_cloud', credentials: {}, metadata: {} },
+                conversation: { id: 'conversation-b', organization_id: 'tenant-b', connection_id: 'channel-b' },
+            }
+        )).rejects.toThrow('Conversation channel organization mismatch')
+        expect(adapterSendMessage).not.toHaveBeenCalled()
+    })
+
+    it('rejects a CRM WhatsApp quote bound to an incompatible provider', async () => {
+        mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn() })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage('evolution-channel', 'recipient',
+            { type: 'interactive_buttons', body: 'Quote', buttons: [] }, 'tenant-a', {
+                connection: { id: 'evolution-channel', organization_id: 'tenant-a',
+                    status: 'active', provider_key: 'evolution_api', metadata: {} },
+                conversation: { id: 'conversation-a', organization_id: 'tenant-a',
+                    connection_id: 'evolution-channel', channel: 'whatsapp' },
+                requiredChannel: 'whatsapp',
+            })).rejects.toThrow('Conversation channel does not support this message')
+        expect(mocks.enqueueMetaOutbound).not.toHaveBeenCalled()
+    })
+
+    it('rejects a CRM recipient different from the conversation customer', async () => {
+        mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn() })
+        const { OutboundService } = await import('./outbound-service')
+        await expect(new OutboundService().sendMessage('wa-channel', '573009999999',
+            { type: 'interactive_buttons', body: 'Quote', buttons: [] }, 'tenant-a', {
+                connection: { id: 'wa-channel', organization_id: 'tenant-a',
+                    status: 'active', provider_key: 'whatsapp_cloud', metadata: {} },
+                conversation: { id: 'conversation-a', organization_id: 'tenant-a',
+                    connection_id: 'wa-channel', channel: 'whatsapp', phone: '573001111111' },
+                requiredChannel: 'whatsapp',
+            })).rejects.toThrow('Recipient does not match conversation')
+        expect(mocks.enqueueMetaOutbound).not.toHaveBeenCalled()
+    })
+
     it('does not expose outbound recipient, channel, org, or external ids in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
         const adapterSendMessage = vi.fn(async () => ({ messageId: 'wamid.secret.outbound' }))
         mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        mocks.enqueueMetaOutbound.mockResolvedValue({ outboxId: 'outbox-1', messageId: 'message-1', status: 'queued', externalId: null })
+        mocks.dispatchMetaOutbound.mockResolvedValue({ outboxId: 'outbox-1', messageId: 'message-1', status: 'accepted', externalId: 'wamid.secret.outbound' })
         mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'conversations') return conversationMaybeSingleQuery(null)
+            if (table === 'messages') return {select: () => ({eq: () => ({eq: () => ({eq: () => ({order: () => ({limit: async () => ({data:[{created_at:new Date().toISOString(), metadata:{}}],error:null})})})})})})};
+            if (table === 'conversations') return conversationMaybeSingleQuery({id:'conversation-secret-id', organization_id:'org-secret-id',connection_id:'channel-secret-id'})
             throw new Error(`Unexpected table ${table}`)
         })
 
@@ -92,6 +146,7 @@ describe('OutboundService', () => {
             {
                 connection: {
                     id: 'channel-secret-id',
+                    organization_id: 'org-secret-id', status: 'active',
                     provider_key: 'whatsapp_cloud',
                     credentials: { accessToken: 'token-secret' },
                     metadata: {},
@@ -100,13 +155,12 @@ describe('OutboundService', () => {
         )
 
         expect(result).toEqual({ messageId: 'wamid.secret.outbound' })
-        expect(adapterSendMessage).toHaveBeenCalledWith(
-            { accessToken: 'token-secret' },
-            '+571234567890',
-            'hola',
-            expect.objectContaining({ channel: 'whatsapp' })
-        )
-        expect(mocks.saveOutboundMessage).not.toHaveBeenCalled()
+        expect(mocks.enqueueMetaOutbound).toHaveBeenCalledWith(expect.objectContaining({
+            organizationId: 'org-secret-id', connectionId: 'channel-secret-id',
+            recipient: '+571234567890', content: 'hola', channel: 'whatsapp',
+        }))
+        expect(mocks.dispatchMetaOutbound).toHaveBeenCalledWith('outbox-1')
+        expect(adapterSendMessage).not.toHaveBeenCalled()
 
         const logText = collectConsoleCalls(logSpy, warnSpy)
         expect(logText).not.toContain('+571234567890')
@@ -115,7 +169,6 @@ describe('OutboundService', () => {
         expect(logText).not.toContain('wamid.secret.outbound')
         expect(logText).toContain('recipientPhonePresent')
         expect(logText).toContain('channelIdPresent')
-        expect(logText).toContain('messageIdPresent')
     })
 
     it('does not expose system conversation ids or raw database errors in production logs', async () => {
@@ -152,6 +205,7 @@ describe('OutboundService', () => {
             throw new Error('adapter failed token-secret phone-secret-value connection-secret-id')
         })
         mocks.getAdapter.mockReturnValue({ sendMessage: adapterSendMessage })
+        mocks.enqueueMetaOutbound.mockRejectedValue(new Error('adapter failed token-secret phone-secret-value connection-secret-id'))
         mocks.supabaseFrom.mockImplementation((table: string) => {
             if (table === 'conversations') {
                 return conversationSingleQuery({

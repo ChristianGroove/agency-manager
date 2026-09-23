@@ -1,150 +1,19 @@
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'crypto'
 import { NextRequest } from 'next/server'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-
-function signedRequest(rawBody: string, url = 'https://pixy.test/api/webhooks/messaging') {
-    const signature = 'sha256=' + createHmac('sha256', 'meta-secret').update(rawBody).digest('hex')
-    return new NextRequest(url, {
-        method: 'POST',
-        headers: { 'x-hub-signature-256': signature },
-        body: rawBody,
-    })
-}
-
-describe('/api/webhooks/messaging', () => {
-    afterEach(() => {
-        vi.unstubAllEnvs()
-        vi.restoreAllMocks()
-        vi.resetModules()
-        vi.doUnmock('@/modules/features/messaging/webhook-handler')
-    })
-
-    it('does not expose internal manager errors to webhook callers', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        vi.stubEnv('META_APP_SECRET', 'meta-secret')
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        vi.doMock('@/modules/features/messaging/webhook-handler', () => ({
-            webhookManager: {
-                registerProvider: vi.fn(),
-                handleParsed: vi.fn(async () => {
-                    throw new Error('db password secret-value failed to initialize')
-                }),
-            },
-        }))
-
-        const rawBody = JSON.stringify({ object: 'whatsapp_business_account', entry: [] })
-
-        const { POST } = await import('./route')
-        const response = await POST(signedRequest(rawBody))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(500)
-        expect(responseText).toContain('Internal Server Error')
-        expect(responseText).not.toContain('secret-value')
-        expect(responseText).not.toContain('db password')
-
-        const errorLogText = errorSpy.mock.calls
-            .map(call => call.map(value => {
-                if (typeof value === 'string') return value
-                try {
-                    return JSON.stringify(value)
-                } catch {
-                    return String(value)
-                }
-            }).join(' '))
-            .join('\n')
-        expect(errorLogText).not.toContain('secret-value')
-        expect(errorLogText).not.toContain('db password')
-
-        const infoLogText = logSpy.mock.calls
-            .map(call => call.map(value => {
-                if (typeof value === 'string') return value
-                try {
-                    return JSON.stringify(value)
-                } catch {
-                    return String(value)
-                }
-            }).join(' '))
-            .join('\n')
-        expect(infoLogText).not.toContain('secret-value')
-        expect(infoLogText).not.toContain('db password')
-    })
-
-    it('does not expose failed manager result messages to webhook callers', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        vi.stubEnv('META_APP_SECRET', 'meta-secret')
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        vi.doMock('@/modules/features/messaging/webhook-handler', () => ({
-            webhookManager: {
-                registerProvider: vi.fn(),
-                handleParsed: vi.fn(async () => ({
-                    success: false,
-                    message: 'db password secret-value leaked through manager result',
-                })),
-            },
-        }))
-
-        const rawBody = JSON.stringify({ object: 'whatsapp_business_account', entry: [] })
-
-        const { POST } = await import('./route')
-        const response = await POST(signedRequest(rawBody))
-        const responseText = await response.text()
-
-        expect(response.status).toBe(401)
-        expect(responseText).toContain('Webhook processing failed')
-        expect(responseText).not.toContain('secret-value')
-        expect(responseText).not.toContain('db password')
-
-        const errorLogText = errorSpy.mock.calls
-            .map(call => call.map(value => {
-                if (typeof value === 'string') return value
-                try {
-                    return JSON.stringify(value)
-                } catch {
-                    return String(value)
-                }
-            }).join(' '))
-            .join('\n')
-        expect(errorLogText).not.toContain('secret-value')
-        expect(errorLogText).not.toContain('db password')
-
-        const infoLogText = logSpy.mock.calls
-            .map(call => call.map(value => {
-                if (typeof value === 'string') return value
-                try {
-                    return JSON.stringify(value)
-                } catch {
-                    return String(value)
-                }
-            }).join(' '))
-            .join('\n')
-        expect(infoLogText).not.toContain('secret-value')
-        expect(infoLogText).not.toContain('db password')
-    })
-
-    it('keeps accepting valid signed Meta webhook payloads', async () => {
-        vi.stubEnv('VERCEL_ENV', 'production')
-        vi.stubEnv('META_APP_SECRET', 'meta-secret')
-        const registerProvider = vi.fn()
-        const handleParsed = vi.fn(async () => ({ success: true }))
-        vi.spyOn(console, 'log').mockImplementation(() => undefined)
-        vi.doMock('@/modules/features/messaging/webhook-handler', () => ({
-            webhookManager: {
-                registerProvider,
-                handleParsed,
-            },
-        }))
-
-        const rawBody = JSON.stringify({ object: 'whatsapp_business_account', entry: [] })
-
-        const { POST } = await import('./route')
-        const response = await POST(signedRequest(rawBody))
-        const body = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(body).toEqual({ status: 'ok' })
-        expect(handleParsed).toHaveBeenCalledWith('whatsapp', { object: 'whatsapp_business_account', entry: [] })
-    })
+const mocks=vi.hoisted(() => ({ upsert: vi.fn(), send: vi.fn() }))
+vi.mock('@/modules/core/database/supabase-admin',() => ({ supabaseAdmin:{ from:() => ({upsert:mocks.upsert}) } }))
+vi.mock('@/modules/infrastructure/automation/inngest/client',() => ({ inngest:{send:mocks.send} }))
+import { POST } from './route'
+const body=JSON.stringify({object:'whatsapp_business_account',entry:[]})
+function request(raw=body, signed=true) { return new NextRequest('https://pixy.test/api/webhooks/messaging',{ method:'POST',body:raw,headers:signed?{'x-hub-signature-256':'sha256='+createHmac('sha256','secret').update(raw).digest('hex')}:{} }) }
+beforeEach(() => { vi.stubEnv('META_APP_SECRET','secret'); mocks.upsert.mockResolvedValue({error:null}); mocks.send.mockResolvedValue({ids:['event']}); vi.spyOn(console,'log').mockImplementation(()=>{}); vi.spyOn(console,'error').mockImplementation(()=>{}) })
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.clearAllMocks() })
+describe('signed durable Meta webhook',() => {
+    it('rejects unsigned events before any effects even in development',async()=>{vi.stubEnv('NODE_ENV','development');expect((await POST(request(body,false))).status).toBe(401);expect(mocks.upsert).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled()})
+    it('rejects tampered signatures',async()=>{const req=request();req.headers.set('x-hub-signature-256','sha256='+'0'.repeat(64));expect((await POST(req)).status).toBe(401)})
+    it('fails closed without the app secret',async()=>{vi.stubEnv('META_APP_SECRET','');expect((await POST(request())).status).toBe(503)})
+    it('persists before dispatch and returns success',async()=>{expect((await POST(request())).status).toBe(200);expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({channel:'whatsapp'}),expect.objectContaining({ignoreDuplicates:true}));expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({name:'meta/webhook.received'}));expect(mocks.upsert.mock.invocationCallOrder[0]).toBeLessThan(mocks.send.mock.invocationCallOrder[0])})
+    it('does not acknowledge a failed durable dispatch',async()=>{mocks.send.mockRejectedValue(new Error('offline'));expect((await POST(request())).status).toBe(500)})
+    it('rejects the loopback channel on the public endpoint',async()=>{expect((await POST(request(JSON.stringify({object:'email',entry:[]})))).status).toBe(400);expect(mocks.send).not.toHaveBeenCalled()})
 })

@@ -117,11 +117,15 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
     }
 
     const handleDelete = async () => {
-        if (!confirm("Are you sure? This will stop all automation.")) return
+        const coexistence = channel.provider_key === 'whatsapp_cloud' && channel.metadata?.connection_mode === 'coexistence'
+        const message = coexistence
+            ? 'Esto desconectará el canal de Pixy y detendrá sus envíos y recepción aquí, pero NO lo desvinculará de Meta. Para desvincularlo, abre WhatsApp Business → Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta. ¿Continuar?'
+            : 'Esto desconectará el canal de Pixy y detendrá sus envíos y recepción aquí. La autorización en Meta se gestiona por separado. ¿Continuar?'
+        if (!confirm(message)) return
         setIsLoading(true)
         try {
             await deleteChannel(channel.id)
-            toast.success("Disconnected", { description: "Channel removed successfully." })
+            toast.success('Canal desconectado de Pixy')
             router.refresh()
         } catch (error: any) {
             toast.error("Error", { description: error.message })
@@ -185,6 +189,18 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                     }
                                 </span>
 
+                                {channel.provider_key === 'whatsapp_cloud' && channel.metadata?.connection_mode && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 px-1.5 py-0.5 rounded-sm">
+                                        {channel.metadata.connection_mode === 'coexistence' ? 'App + API' : 'Cloud API'}
+                                    </span>
+                                )}
+                                {channel.status === 'temporarily_offboarded' && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-sm">Pausado por Meta</span>
+                                )}
+                                {channel.status === 'action_required' && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-sm">Requiere acción</span>
+                                )}
+
                                 {liveStatus && liveStatus !== 'unknown' && (
                                     <TooltipProvider delayDuration={0}>
                                         <Tooltip>
@@ -231,7 +247,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="text-red-600" disabled={isLoading}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Desconectar
+                                        <Trash2 className="mr-2 h-4 w-4" /> Desconectar de Pixy
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>

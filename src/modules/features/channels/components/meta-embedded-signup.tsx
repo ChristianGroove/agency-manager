@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { Loader2, CheckCircle2, XCircle } from "lucide-react"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { buildEmbeddedSignupOptions, getCompletedSignupMode, type WhatsAppSignupMode } from './embedded-signup-flow'
 
 /**
  * Global FB SDK type declarations
@@ -18,17 +19,22 @@ declare global {
 }
 
 const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305';
-const EMBEDDED_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID || '2080917496052099';
+const STANDARD_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_CLOUD_SIGNUP_CONFIG_ID
+    || process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID || '2080917496052099';
+const COEXISTENCE_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_COEXISTENCE_SIGNUP_CONFIG_ID
+    || process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID || '2080917496052099';
 
 interface MetaEmbeddedSignupProps {
     onSuccess?: () => void;
     onError?: (error: string) => void;
     organizationId?: string | null;
+    mode: WhatsAppSignupMode;
+    onBusyChange?: (busy: boolean) => void;
 }
 
 type SignupStatus = 'idle' | 'loading-sdk' | 'ready' | 'authenticating' | 'processing' | 'success' | 'error';
 
-export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdProp }: MetaEmbeddedSignupProps) {
+export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdProp, mode, onBusyChange }: MetaEmbeddedSignupProps) {
     const { t } = useTranslation()
     const [status, setStatus] = useState<SignupStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
@@ -36,18 +42,57 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
     const organizationId = orgIdProp || orgIdHook;
     const router = useRouter();
     const wabaIdRef = useRef<string>('');
+    const sessionInfoRef = useRef<{ phoneNumberId?: string; mode: 'cloud' | 'coexistence' }>({ mode: 'cloud' });
+    const codeRef = useRef<string>('');
+    const runningRef = useRef(false);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const authorizationRef = useRef<Promise<string> | null>(null);
+    const modeRef = useRef(mode);
+    const modeMismatchTextRef = useRef(t('meta.embedded_signup.error_mode_mismatch'));
+    const sdkErrorTextRef = useRef(t('meta.embedded_signup.error_sdk'));
+    modeRef.current = mode;
+    modeMismatchTextRef.current = t('meta.embedded_signup.error_mode_mismatch');
+    sdkErrorTextRef.current = t('meta.embedded_signup.error_sdk');
+    useEffect(() => {
+        onBusyChange?.(status === 'authenticating' || status === 'processing');
+    }, [status, onBusyChange]);
+    useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
+    const completeRef = useRef<() => void>(() => {});
+    completeRef.current = () => {
+        if (!runningRef.current || !codeRef.current || !wabaIdRef.current) return;
+        runningRef.current = false;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        void processSignupCode(codeRef.current, wabaIdRef.current);
+    };
 
     // Listen to the postMessage from the Facebook popup to capture waba_id
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            console.log('[EmbeddedSignup] Raw message received from:', event.origin);
+            if (!runningRef.current || !['https://www.facebook.com', 'https://web.facebook.com', 'https://facebook.com'].includes(event.origin)) return;
             try {
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 if (data && data.type === 'WA_EMBEDDED_SIGNUP') {
-                    console.log('[EmbeddedSignup] WA_EMBEDDED_SIGNUP event:', data);
-                    if (data.event === 'FINISH' && data.data && data.data.waba_id) {
-                        console.log('[EmbeddedSignup] Captured WABA ID:', data.data.waba_id);
+                    if (data.event === 'CANCEL' || data.event === 'ERROR') {
+                        runningRef.current = false;
+                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                        setStatus(data.event === 'CANCEL' ? 'ready' : 'error');
+                        if (data.event === 'ERROR') setErrorMessage('Meta no pudo completar la conexión. Vuelve a intentarlo.');
+                        return;
+                    }
+
+                    const completedMode = getCompletedSignupMode(data.event);
+                    if (completedMode && data.data && data.data.waba_id) {
+                        if (completedMode !== modeRef.current) {
+                            runningRef.current = false;
+                            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                            setStatus('error');
+                            setErrorMessage(modeMismatchTextRef.current);
+                            return;
+                        }
+
                         wabaIdRef.current = data.data.waba_id;
+                        sessionInfoRef.current = { phoneNumberId: data.data.phone_number_id, mode: completedMode };
+                        completeRef.current();
                     }
                 }
             } catch (e) {
@@ -55,7 +100,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             }
         };
         window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+        return () => { window.removeEventListener('message', handleMessage); runningRef.current = false; if (timeoutRef.current) clearTimeout(timeoutRef.current); };
     }, []);
 
     // Load Facebook SDK
@@ -91,13 +136,14 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             script.async = true;
             script.defer = true;
             script.onerror = () => {
+                script.remove();
                 console.error('[EmbeddedSignup] SDK script load error');
                 setStatus('error');
-                setErrorMessage(t('meta.embedded_signup.error_sdk'));
+                setErrorMessage(sdkErrorTextRef.current);
             };
             document.head.appendChild(script);
         }
-    }, [t]);
+    }, []);
 
     const handleEmbeddedSignup = useCallback(() => {
         console.log('[EmbeddedSignup] Clicked! Status:', status);
@@ -113,51 +159,57 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             return;
         }
 
+        if (runningRef.current || status === 'processing') return;
         setStatus('authenticating');
-        console.log('[EmbeddedSignup] Opening Login Popup with Config:', EMBEDDED_SIGNUP_CONFIG_ID);
+        console.log('[EmbeddedSignup] Opening Login Popup');
 
         // Reset the ref before starting
         wabaIdRef.current = '';
+        codeRef.current = '';
+        runningRef.current = true;
+        authorizationRef.current = fetch('/api/integrations/meta/embedded-signup/session', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: organizationId })
+        }).then(async response => { const data = await response.json(); if (!response.ok) throw new Error('No se pudo iniciar la conexión'); return data.state as string; });
+        // Attach a rejection handler immediately, even if the user cancels the popup.
+        void authorizationRef.current.catch(() => {});
+        timeoutRef.current = setTimeout(() => { runningRef.current = false; setStatus('error'); setErrorMessage('No recibimos la confirmación de Meta. Vuelve a intentarlo.'); }, 180000);
 
-        window.FB.login(
+        try { window.FB.login(
             function (response: any) {
-                console.log('[EmbeddedSignup] Login response received:', response);
+                if (!runningRef.current) return;
                 if (response.authResponse) {
                     const code = response.authResponse.code;
                     if (!code) {
+                        runningRef.current = false;
+                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
                         setStatus('error');
                         setErrorMessage(t('meta.embedded_signup.error_auth'));
                         onError?.('No authorization code received');
                         return;
                     }
-                    // Wait 500ms to ensure the 'message' event from the popup has time to be processed
-                    setTimeout(() => {
-                        console.log('[EmbeddedSignup] Sending code to backend. Captured WABA:', wabaIdRef.current);
-                        processSignupCode(code, wabaIdRef.current);
-                    }, 500);
+                    codeRef.current = code;
+                    completeRef.current();
                 } else {
                     console.log('[EmbeddedSignup] User cancelled or login failed');
-                    setStatus('idle');
+                    runningRef.current = false;
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    setStatus('ready');
                 }
             },
-            {
-                config_id: EMBEDDED_SIGNUP_CONFIG_ID,
-                response_type: 'code',
-                override_default_response_type: true,
-                scope: 'whatsapp_business_management,whatsapp_business_messaging,business_management',
-                extras: {
-                    setup: {},
-                    featureType: 'whatsapp_business_app_onboarding',
-                    sessionInfoVersion: '3',
-                }
-            }
-        );
-    }, [organizationId, t, onError, status]);
+            buildEmbeddedSignupOptions(mode === 'coexistence' ? COEXISTENCE_SIGNUP_CONFIG_ID : STANDARD_SIGNUP_CONFIG_ID, mode)
+        ); } catch {
+            runningRef.current = false;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            setStatus('error');
+            setErrorMessage(t('meta.embedded_signup.error_auth'));
+        }
+    }, [organizationId, t, onError, status, mode]);
 
     const processSignupCode = async (code: string, capturedWabaId: string) => {
         setStatus('processing');
 
         try {
+            const state = await authorizationRef.current;
             const response = await fetch('/api/integrations/meta/embedded-signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -165,6 +217,9 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                     orgId: organizationId,
                     code,
                     wabaId: capturedWabaId,
+                    phoneNumberId: sessionInfoRef.current.phoneNumberId,
+                    mode: sessionInfoRef.current.mode,
+                    state,
                 }),
             });
 
@@ -174,10 +229,17 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 throw new Error(data.error || t('meta.embedded_signup.error_generic'));
             }
 
+            if (data.syncStatus === 'action_required') {
+                setStatus('error');
+                setErrorMessage('Meta no completó la solicitud de sincronización. Desconecta la plataforma empresarial desde WhatsApp Business y realiza una nueva alta.');
+                router.refresh();
+                return;
+            }
+            if (mode === 'coexistence') {
+                toast.info(t('meta.embedded_signup.sync_pending'));
+            }
             setStatus('success');
-            toast.success(t('meta.embedded_signup.success'), {
-                description: `WABA: ${data.wabaId}`,
-            });
+            toast.success(t('meta.embedded_signup.success'));
 
             // Refresh the page to show new channel
             setTimeout(() => {
@@ -212,7 +274,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             {status === 'success' && (
                 <div className="flex items-center gap-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 px-3 py-2 rounded-lg border border-green-100 dark:border-green-900/20">
                     <CheckCircle2 className="h-4 w-4" />
-                    <span>{t('meta.embedded_signup.connected')}</span>
+                    <span>{mode === 'coexistence' ? t('meta.embedded_signup.connected_coexistence') : t('meta.embedded_signup.connected')}</span>
                 </div>
             )}
 

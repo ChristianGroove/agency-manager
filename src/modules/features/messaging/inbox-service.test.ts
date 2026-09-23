@@ -98,6 +98,7 @@ describe('InboxService', () => {
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
+        mocks.resolveConnection.mockResolvedValue({connectionId:'connection',organizationId:'org',connection:{}})
         const { InboxService } = await import('./inbox-service')
         const result = await new InboxService().handleIncomingMessage(
             incomingMessage({ externalId: 'external-secret-id' }),
@@ -108,7 +109,7 @@ describe('InboxService', () => {
             success: true,
             conversationId: 'conversation-secret-id',
         })
-        expect(mocks.resolveConnection).not.toHaveBeenCalled()
+        expect(mocks.resolveConnection).toHaveBeenCalled()
 
         const logText = collectConsoleCalls(logSpy)
         expect(logText).not.toContain('external-secret-id')

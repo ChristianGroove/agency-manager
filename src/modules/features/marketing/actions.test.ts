@@ -1,3 +1,4 @@
+import { decryptObject } from '@/modules/infrastructure/integrations/encryption'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -25,6 +26,8 @@ function createQueryBuilder(options: {
     const builder: any = {
         select: vi.fn(() => builder),
         eq: vi.fn(() => mutationResult || builder),
+        neq: vi.fn(() => builder),
+        maybeSingle: vi.fn(async () => options.singleResult ?? { data: null, error: null }),
         order: vi.fn(() => builder),
         limit: vi.fn(() => builder),
         single: vi.fn(async () => options.singleResult ?? { data: null, error: null }),
@@ -72,7 +75,7 @@ describe('marketing actions', () => {
                             organization_id: 'org_123',
                             provider_key: 'meta_ads_monitor',
                             credentials: {
-                                access_token: 'meta-secret-token',
+                                access_token: 'meta-secret-token', accessToken: 'camel-secret-token',
                                 ad_account_id: 'act_123',
                                 page_id: 'page_123',
                             },
@@ -100,6 +103,7 @@ describe('marketing actions', () => {
         })
         expect(result.config.credentials).not.toHaveProperty('access_token')
         expect(resultText).not.toContain('meta-secret-token')
+        expect(resultText).not.toContain('camel-secret-token')
     })
 
     it('preserves the stored Meta token when the settings form leaves it blank', async () => {
@@ -134,7 +138,7 @@ describe('marketing actions', () => {
         const result = await saveOrgMetaConfig(formData)
 
         expect(result).toEqual({ success: true })
-        expect(capture.update).toMatchObject({
+        expect({ ...capture.update, credentials: decryptObject(capture.update.credentials) }).toMatchObject({
             organization_id: 'org_123',
             provider_key: 'meta_ads_monitor',
             credentials: {

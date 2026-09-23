@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
+import { decryptObject } from '@/modules/infrastructure/integrations/encryption'
+import { createMetaOAuthState, parseMetaOAuthState } from '@/modules/infrastructure/meta/services/oauth-state'
 
 function setupMetaCallbackEnv() {
+    vi.doMock('@/modules/infrastructure/meta/services/oauth-session', () => ({consumeMetaOAuthSession: vi.fn(async (state: string) => {const parsed = parseMetaOAuthState(state); if (!parsed.ok) throw new Error('Invalid state'); return parsed.state})}))
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://127.0.0.1:54321')
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key')
@@ -38,6 +40,7 @@ describe('/api/integrations/meta/callback', () => {
         vi.unstubAllEnvs()
         vi.restoreAllMocks()
         vi.resetModules()
+        vi.doUnmock('@/modules/infrastructure/meta/services/oauth-session')
         vi.doUnmock('@supabase/supabase-js')
         vi.doUnmock('@/modules/infrastructure/meta/services/graph-api')
         vi.doUnmock('@/modules/infrastructure/meta/services/waba-subscription-manager')
@@ -117,7 +120,7 @@ describe('/api/integrations/meta/callback', () => {
             MetaGraphAPI: class {
                 exchangeCodeForToken = vi.fn(async () => 'long-lived-token')
                 getUserProfile = vi.fn(async () => ({ id: 'meta_user_123', name: 'Meta User' }))
-                getConnectedAssets = vi.fn(async () => [])
+                getConnectedAssets = vi.fn(async () => [{ id: 'page_123', name: 'Pixy Page', access_token: 'page-token' }])
                 getWhatsAppAccounts = vi.fn(async () => ({ data: [] }))
             },
         }))
@@ -137,11 +140,7 @@ describe('/api/integrations/meta/callback', () => {
             expect.objectContaining({
                 organization_id: 'org_123',
                 provider_key: 'meta_business',
-                credentials: expect.objectContaining({
-                    access_token: 'long-lived-token',
-                    user_id: 'meta_user_123',
-                    user_name: 'Meta User',
-                }),
+                credentials: expect.objectContaining({ _encrypted: expect.any(String) }),
             }),
         ])
     })
@@ -196,7 +195,7 @@ describe('/api/integrations/meta/callback', () => {
         expect(insertedConnections).toHaveLength(1)
         const payloadText = JSON.stringify(insertedConnections[0])
         expect(payloadText).not.toContain('page-token-secret-value')
-        expect(insertedConnections[0].credentials).toEqual(expect.objectContaining({
+        expect(decryptObject(insertedConnections[0].credentials)).toEqual(expect.objectContaining({
             access_token: 'long-lived-token',
         }))
         expect(insertedConnections[0].metadata.assets_preview).toEqual([
@@ -209,10 +208,12 @@ describe('/api/integrations/meta/callback', () => {
         ]))
     })
 
-    it('does not expose Meta profile or WABA identifiers in production logs', async () => {
+    it('does not fetch or subscribe WABAs during generic Meta OAuth', async () => {
         setupMetaCallbackEnv()
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const fetchWabas = vi.fn(async () => ({ data: [{ id: 'waba_sensitive_123' }] }))
+        const subscribeWabas = vi.fn()
 
         vi.doMock('@supabase/supabase-js', () => ({
             createClient: vi.fn(() => ({
@@ -232,24 +233,12 @@ describe('/api/integrations/meta/callback', () => {
             MetaGraphAPI: class {
                 exchangeCodeForToken = vi.fn(async () => 'long-lived-token-secret-value')
                 getUserProfile = vi.fn(async () => ({ id: 'meta_user_secret', name: 'Meta User Secret' }))
-                getConnectedAssets = vi.fn(async () => [])
-                getWhatsAppAccounts = vi.fn(async () => ({
-                    data: [{
-                        id: 'waba_sensitive_123',
-                        name: 'Sensitive WABA',
-                        phone_numbers: { data: [] },
-                    }],
-                }))
+                getConnectedAssets = vi.fn(async () => [{ id: 'page_123', name: 'Pixy Page', access_token: 'page-token' }])
+                getWhatsAppAccounts = fetchWabas
             },
         }))
         vi.doMock('@/modules/infrastructure/meta/services/waba-subscription-manager', () => ({
-            wabaSubscriptionManager: {
-                batchSubscribe: vi.fn(async () => [{
-                    success: false,
-                    wabaId: 'waba_sensitive_123',
-                    error: 'batch secret-value',
-                }]),
-            },
+            wabaSubscriptionManager: { batchSubscribe: subscribeWabas },
         }))
 
         const { GET } = await import('./route')
@@ -261,6 +250,8 @@ describe('/api/integrations/meta/callback', () => {
 
         expect(response.status).toBe(200)
         expect(responseText).toContain('success=meta_connected')
+        expect(fetchWabas).not.toHaveBeenCalled()
+        expect(subscribeWabas).not.toHaveBeenCalled()
 
         const logText = [
             collectConsoleCalls(logSpy),
@@ -268,10 +259,31 @@ describe('/api/integrations/meta/callback', () => {
         ].join('\n')
 
         expect(logText).toContain('userNamePresent')
-        expect(logText).toContain('wabaIdPresent')
         expect(logText).not.toContain('Meta User Secret')
         expect(logText).not.toContain('waba_sensitive_123')
         expect(logText).not.toContain('long-lived-token-secret-value')
         expect(logText).not.toContain('batch secret-value')
+    })
+
+    it('rejects old WhatsApp OAuth states before exchanging a code', async () => {
+        setupMetaCallbackEnv()
+        const state = createMetaOAuthState({ flow: 'org', orgId: 'org_123', channelType: 'whatsapp', now: Date.now(), nonce: 'nonce-value-123456' })
+        const { GET } = await import('./route')
+        const response = await GET(new Request(callbackUrl({ code: 'unused', state })))
+        expect(await response.text()).toContain('use_embedded_signup')
+    })
+
+    it('does not create an empty Meta connection when no pages are authorized', async () => {
+        setupMetaCallbackEnv()
+        vi.doMock('@/modules/infrastructure/meta/services/graph-api', () => ({
+            MetaGraphAPI: class {
+                exchangeCodeForToken = vi.fn(async () => 'token')
+                getUserProfile = vi.fn(async () => ({ id: 'user', name: 'User' }))
+                getConnectedAssets = vi.fn(async () => [])
+            },
+        }))
+        const { GET } = await import('./route')
+        const response = await GET(new Request(callbackUrl({ code: 'code_123', state: createOrgState() })))
+        expect(await response.text()).toContain('no_eligible_assets')
     })
 })

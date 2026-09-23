@@ -147,6 +147,21 @@ export class MetaGraphAPI {
             throw metaGraphFailure('Meta Token Exchange Failed', data.error);
         }
 
+        const exchange = new URL(META_GRAPH_URL + '/' + META_API_VERSION + '/oauth/access_token');
+        exchange.searchParams.set('grant_type', 'fb_exchange_token');
+        exchange.searchParams.set('client_id', this.appId);
+        exchange.searchParams.set('client_secret', this.appSecret);
+        exchange.searchParams.set('fb_exchange_token', data.access_token);
+        const longResponse = await fetch(exchange);
+        const longToken = await longResponse.json();
+        if (!longResponse.ok || !longToken.access_token) throw new Error('Could not extend Meta authorization');
+        return longToken.access_token;
+    }
+
+    async getPageAccessToken(pageId: string, token: string, instagramId?: string): Promise<string> {
+        const response = await fetch(META_GRAPH_URL + '/' + META_API_VERSION + '/' + encodeURIComponent(pageId) + '?fields=id,access_token,instagram_business_account', { headers: { Authorization: 'Bearer ' + token } });
+        const data = await response.json();
+        if (!response.ok || !data.access_token || (instagramId && data.instagram_business_account?.id !== instagramId)) throw new Error('Page authorization unavailable');
         return data.access_token;
     }
 
@@ -216,7 +231,15 @@ export class MetaGraphAPI {
             throw metaGraphFailure('Meta Assets Fetch Failed', data.error);
         }
 
-        let pages = data.data as MetaPage[];
+        let pages = (data.data || []) as MetaPage[];
+        for (let page = 0; data.paging?.next; page++) {
+            if (page >= 19 || !data.paging?.cursors?.after) throw new Error('Meta asset pagination could not be completed');
+            url.searchParams.set('after', data.paging.cursors.after);
+            res = await fetch(url.toString(), {signal:AbortSignal.timeout(20000)});
+            data = await res.json();
+            if (!res.ok || data.error) throw metaGraphFailure('Meta Assets Fetch Failed', data.error);
+            pages.push(...(data.data || []));
+        }
 
         // Strategy 2: Granular Scopes Fallback (Modern Meta APIs)
         if (pages.length === 0) {

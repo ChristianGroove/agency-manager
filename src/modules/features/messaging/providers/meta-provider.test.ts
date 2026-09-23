@@ -33,23 +33,13 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
         .join('\n')
 }
 
-function integrationConnectionsQuery() {
+function integrationConnectionsQuery(result: { data: any; error: any }) {
     const query: any = {
         select: vi.fn(() => query),
         in: vi.fn(() => query),
-        eq: vi.fn(async () => ({
-            data: [{
-                credentials: {
-                    accessToken: 'db-token-secret',
-                    phoneNumberId: 'phone_secret_id',
-                },
-                metadata: {
-                    asset_id: 'phone_secret_id',
-                },
-                provider_key: 'meta_whatsapp',
-            }],
-            error: null,
-        })),
+        eq: vi.fn(() => query),
+        maybeSingle: vi.fn(async () => result),
+        then: (resolve: any, reject: any) => Promise.resolve(result).then(resolve, reject),
     }
 
     return query
@@ -66,15 +56,42 @@ afterEach(() => {
 })
 
 describe('MetaProvider', () => {
+    it('does not download webhook media when two tenants claim the same phone', async () => {
+        const direct = { id: 'modern', organization_id: 'tenant-a', provider_key: 'whatsapp_cloud',
+            metadata: { asset_id: 'phone-1' }, credentials: { access_token: 'tenant-a-token' } }
+        const legacy = { id: 'legacy', organization_id: 'tenant-b', provider_key: 'meta_business',
+            metadata: { selected_assets: [{ id: 'phone-1', type: 'whatsapp' }] }, credentials: { access_token: 'tenant-b-token' } }
+        mocks.supabaseFrom
+            .mockReturnValueOnce(integrationConnectionsQuery({ data: direct, error: null }))
+            .mockReturnValueOnce(integrationConnectionsQuery({ data: [legacy], error: null }))
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+        const { MetaProvider } = await import('./meta-provider')
+        const provider = new MetaProvider('constructor-global-token', '', '')
+        const messages = await provider.parseWebhook({ entry: [{ changes: [{ value: {
+            metadata: { phone_number_id: 'phone-1' },
+            messages: [{ id: 'wamid-1', from: 'customer-1', timestamp: '1710000000', type: 'image',
+                image: { id: 'media-1', mime_type: 'image/jpeg' } }],
+        } }] }] })
+
+        expect(messages).toHaveLength(1)
+        expect('content' in messages[0] ? messages[0].content.mediaUrl : null).toBe('')
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
     it('does not expose media ids, asset ids, or token failures in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-        mocks.supabaseFrom.mockImplementation((table: string) => {
-            if (table === 'integration_connections') return integrationConnectionsQuery()
-            throw new Error(`Unexpected table ${table}`)
-        })
+        const direct = { id: 'modern', organization_id: 'tenant-a', provider_key: 'whatsapp_cloud',
+            metadata: { asset_id: 'phone_secret_id' }, credentials: { accessToken: 'db-token-secret' } }
+        mocks.supabaseFrom
+            .mockReturnValueOnce(integrationConnectionsQuery({ data: direct, error: null }))
+            .mockReturnValueOnce(integrationConnectionsQuery({ data: [], error: null }))
 
         const fetchMock = vi.fn(async () => new Response(JSON.stringify({
             error: {
@@ -142,9 +159,9 @@ describe('MetaProvider', () => {
                 changes: [{
                     value: {
                         metadata: { phone_number_id: 'phone_secret_id' },
-                        messages: [{
+                        message_echoes: [{
                             id: 'wamid.secret.echo',
-                            from: 'phone_secret_id',
+                            from: '15551230000', to: '15551239999',
                             timestamp: '1710000000',
                             type: 'text',
                             text: { body: 'sent by business' },

@@ -1,5 +1,7 @@
 "use server"
 
+import { resolveConnectionCredentials, assertRawCredentialInput } from '@/modules/infrastructure/integrations/connection-secrets'
+import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
@@ -136,7 +138,7 @@ export async function checkChannelStatus(id: string) {
     }
 
     try {
-        return await adapter.checkConnectionStatus(channel.credentials)
+        return await adapter.checkConnectionStatus(await resolveConnectionCredentials(channel.credentials))
     } catch (error: any) {
         console.error(`[checkChannelStatus] Error checking status:`, error)
         return { status: 'error', message: error.message }
@@ -152,6 +154,7 @@ export async function getChannelQrCode(providerKey: string, credentials: Record<
 
     await requireOrgRole('admin')
 
+    assertRawCredentialInput(credentials)
     const adapter = integrationRegistry.getAdapter(providerKey)
     if (!adapter) {
         throw new Error(`Provider ${providerKey} not found`)
@@ -178,6 +181,7 @@ export async function createChannel(input: {
 
     await requireOrgRole('admin') // Only admins can connect lines
 
+    assertRawCredentialInput(input.credentials)
     // 1. Verify Credentials
     if (input.force_validation !== false) {
         const adapter = integrationRegistry.getAdapter(input.provider_key)
@@ -211,7 +215,7 @@ export async function createChannel(input: {
             organization_id: orgId,
             provider_key: input.provider_key,
             connection_name: input.connection_name,
-            credentials: input.credentials,
+            credentials: encryptObject(input.credentials),
             config: input.config,
             metadata: input.metadata || {},
             is_primary: input.is_primary || false,
@@ -276,20 +280,17 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
     return sanitizeChannelForClient(data as Channel)
 }
 
-/**
- * Delete a channel
- * For Evolution channels: also deletes the instance if disconnected
- */
+/** Disconnect a channel locally while preserving conversations and history. */
 export async function deleteChannel(channelId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
     await requireOrgRole('admin')
 
-    // Get channel details first to check if Evolution
-    const { data: channel } = await (await createClient())
+    const supabase = await createClient()
+    const { data: channel } = await supabase
         .from('integration_connections')
-        .select('*')
+        .select('id, status')
         .eq('id', channelId)
         .eq('organization_id', orgId)
         .single()
@@ -298,30 +299,18 @@ export async function deleteChannel(channelId: string) {
         throw new Error("Channel not found")
     }
 
-    // First try hard delete
-    const { error } = await (await createClient())
+    // A hard delete can orphan history or cascade into dependent records.
+    // Keep an inert tombstone so inbound webhooks and queued sends cannot
+    // resolve the channel, and a later OAuth connection can reuse its ID.
+    const { data, error } = await supabase
         .from('integration_connections')
-        .delete()
+        .update({ status: 'deleted', credentials: encryptObject({}), is_primary: false })
         .eq('id', channelId)
         .eq('organization_id', orgId)
+        .select('id')
+        .single()
 
-    if (error) {
-        console.log('[deleteChannel] Hard delete failed, trying soft delete:', error.message)
-
-        // If FK constraint, do soft delete (set status to 'deleted')
-        const { error: softError } = await (await createClient())
-            .from('integration_connections')
-            .update({ status: 'deleted' })
-            .eq('id', channelId)
-            .eq('organization_id', orgId)
-
-        if (softError) {
-            console.error('[deleteChannel] Soft delete also failed:', softError)
-            throw new Error("Failed to delete: " + softError.message)
-        }
-
-        console.log('[deleteChannel] Soft deleted successfully')
-    }
+    if (error || !data) throw new Error('No se pudo desconectar el canal')
 
     revalidatePath('/crm/settings/channels')
     return true

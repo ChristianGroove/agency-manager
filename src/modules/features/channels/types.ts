@@ -1,4 +1,4 @@
-export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'connecting' | 'deleted'
+export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'connecting' | 'deleted' | 'action_required' | 'temporarily_offboarded'
 
 export interface Channel {
     id: string
@@ -35,6 +35,11 @@ export interface ChannelMetadata {
     assets_preview?: any[] // Meta Business Preview
     waba_debug_error?: any // Debugging
     _virtual_asset_type?: string // For UI visuals (WABA vs Page)
+    connection_mode?: 'cloud' | 'coexistence'
+    onboarding_status?: string
+    history_sync_request_status?: string
+    coexistence_state?: string
+    coexistence_sync_deadline_at?: string
 }
 
 export interface WorkingHoursConfig {

@@ -1,6 +1,8 @@
+import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { integrationRegistry } from "@/modules/infrastructure/integrations/registry"
 import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { MessagingPersistence } from "./services/persistence"
+import { dispatchMetaOutbound, enqueueMetaOutbound } from './meta-outbox'
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 
 const PUBLIC_SYSTEM_MESSAGE_ERROR = "System message could not be sent"
@@ -101,7 +103,8 @@ export class OutboundService {
         recipientPhone: string,
         content: string | any,
         organizationId: string,
-        context?: { connection?: any, conversation?: any }
+        context?: { connection?: any, conversation?: any, operationKey?: string, sender?: string,
+            requiredChannel?: 'whatsapp' | 'messenger' | 'instagram' }
     ) {
         const supabase = supabaseAdmin
         
@@ -112,10 +115,13 @@ export class OutboundService {
                 .from('integration_connections')
                 .select('*')
                 .eq('id', channelId)
+                .eq('organization_id', organizationId)
+                .eq('status', 'active')
                 .single()
             channel = fetchedChannel
         }
 
+        if (channel && (channel.id !== channelId || channel.organization_id !== organizationId || channel.status !== 'active')) throw new Error('Channel organization mismatch')
         if (!channel) throw new Error(`Channel ${channelId} not found`)
 
         // 2. Get Adapter
@@ -133,17 +139,25 @@ export class OutboundService {
 
         // 3. Resolve Metadata for Send
         const normalizedRecipient = normalizePhone(recipientPhone)
-        let metadata: any = { channel: channel.provider_key === 'whatsapp_cloud' ? 'whatsapp' : (channel.provider_key === 'facebook_page' ? 'messenger' : 'instagram') }
+        let metadata: any = { channel: ['whatsapp_cloud', 'meta_whatsapp', 'meta_business'].includes(channel.provider_key)
+            ? 'whatsapp' : (channel.provider_key === 'facebook_page' ? 'messenger' : 'instagram') }
+        if (context?.requiredChannel && context.requiredChannel !== metadata.channel) {
+            throw new Error('Conversation channel does not support this message')
+        }
         let conversationId: string | null = context?.conversation?.id || null
 
         // Use context conversation if available, otherwise fetch
         let conv = context?.conversation
+        if (conv && (conv.organization_id !== organizationId || conv.connection_id !== channelId)) {
+            throw new Error('Conversation channel organization mismatch')
+        }
         if (!conv) {
              const { data: fetchedConv } = await supabase
                 .from('conversations')
-                .select('id, channel, metadata')
+                .select('id, channel, metadata, organization_id, connection_id, lead_id')
                 .eq('organization_id', organizationId)
                 .eq('phone', normalizedRecipient)
+                .eq('connection_id', channelId)
                 .neq('state', 'archived')
                 .order('updated_at', { ascending: false })
                 .limit(1)
@@ -156,6 +170,15 @@ export class OutboundService {
         const convMeta = conv?.metadata || {}
         const connMeta = channel.metadata || {}
         const currentChannel = conv?.channel || metadata.channel
+        if (context?.requiredChannel && currentChannel !== context.requiredChannel) {
+            throw new Error('Conversation channel does not support this message')
+        }
+        if (context?.requiredChannel === 'whatsapp') {
+            const storedRecipient = conv?.phone || conv?.metadata?.phone || conv?.metadata?.external_id
+            if (!storedRecipient || normalizePhone(storedRecipient) !== normalizedRecipient) {
+                throw new Error('Recipient does not match conversation')
+            }
+        }
 
         if (currentChannel === 'whatsapp') {
             metadata.phoneNumberId = convMeta.phoneNumberId || connMeta.asset_id || connMeta.phone_number_id
@@ -168,49 +191,20 @@ export class OutboundService {
             metadata.channel = 'instagram'
         }
 
-        // Fallback for archived if still no conversationId
-        if (!conversationId) {
-            const { data: archived } = await supabase
-                .from('conversations')
-                .select('id, channel, metadata')
-                .eq('organization_id', organizationId)
-                .eq('phone', normalizedRecipient)
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
-
-            if (archived) {
-                conversationId = archived.id
-                const meta = archived.metadata || {}
-                if (archived.channel === 'whatsapp' && meta.phoneNumberId) {
-                    metadata.phoneNumberId = meta.phoneNumberId
-                } else if (archived.channel === 'messenger' && meta.pageId) {
-                    metadata.pageId = meta.pageId
-                }
-            }
+        await assertMetaSendAllowed(channel, conv, content)
+        const queued = await enqueueMetaOutbound({
+            organizationId, connectionId: channelId, conversationId,
+            operationKey: context?.operationKey || crypto.randomUUID(), recipient: recipientPhone,
+            content, sender: context?.sender || 'System', channel: metadata.channel,
+            notify: false,
+        })
+        const result = queued.status === 'queued' ? await dispatchMetaOutbound(queued.outboxId) : queued
+        if (result.status !== 'accepted' || !result.externalId) {
+            throw new Error(result.status === 'unknown' ? 'Message delivery requires reconciliation'
+                : result.status === 'queued' ? 'Channel is temporarily unavailable'
+                    : 'Message could not be sent')
         }
-
-        // 4. Send via Adapter
-        const result = await adapter.sendMessage(channel.credentials, recipientPhone, content, metadata)
-
-        // 5. Log to DB
-        if (conversationId) {
-            await MessagingPersistence.saveOutboundMessage({
-                conversationId,
-                content,
-                externalId: result.messageId,
-                sender: 'Agent'
-            })
-        } else {
-            logOutboundWarning('[OutboundService] No conversation found; message sent but not logged.', {
-                recipientPhone,
-                messageId: result.messageId,
-                organizationId,
-            })
-        }
-
-        // 6. Return Result
-        return result;
+        return { messageId: result.externalId };
     }
 
     /**
@@ -222,7 +216,8 @@ export class OutboundService {
         content: any,
         channel: string = 'whatsapp',
         connectionId?: string,
-        sender: string = 'System'
+        sender: string = 'System',
+        operationKey?: string
     ): Promise<{ success: true; externalId: string | undefined; error: null } | { success: false; error: string }> {
         const supabase = supabaseAdmin;
         
@@ -268,7 +263,7 @@ export class OutboundService {
                 recipientPhone,
                 content,
                 conversation.organization_id,
-                { conversation } // Pass conversation context to avoid refetching
+                { conversation, sender, operationKey } // Bind to the audited conversation.
             ) as any;
 
             return {

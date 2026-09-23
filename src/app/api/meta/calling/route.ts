@@ -1,3 +1,5 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
@@ -165,19 +167,18 @@ async function resolveCallingCredentials() {
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch { /* noop */ }
     }
-    creds = decryptObject(creds)
+    creds = await resolveConnectionCredentials(creds)
 
     const metadata = (connection.metadata as any) || {}
 
     const accessToken = creds?.accessToken
         || creds?.access_token
-        || process.env.META_API_TOKEN
-        || process.env.META_ACCESS_TOKEN
+
 
     const phoneNumberId = creds?.phoneNumberId
         || creds?.phone_number_id
         || metadata?.asset_id
-        || process.env.META_PHONE_NUMBER_ID
+
 
     if (!accessToken) {
         console.error('[resolveCallingCredentials] âŒ Missing Meta access token');

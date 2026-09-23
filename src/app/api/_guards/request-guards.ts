@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createHmac } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 import { createClient } from "@/modules/core/database/supabase-server"
 
 export function isProductionRuntime() {
@@ -33,16 +33,14 @@ export function requireStripeWebhookSignature(req: Request, rawBody?: string | B
 }
 
 export function requireMetaWebhookSignature(req: Request, rawBody?: string | Buffer): NextResponse | null {
-    if (!isProductionRuntime()) return null;
-    if (!rawBody) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const sigHeader = req.headers.get('x-hub-signature-256') || '';
-    if (!sigHeader.startsWith('sha256=')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const signature = sigHeader.substring(7);
-    const expected = createHmac('sha256', process.env.META_APP_SECRET || '').update(rawBody).digest('hex');
-    
-    if (signature !== expected) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const secret = process.env.META_APP_SECRET;
+    if (!secret) return NextResponse.json({ error: 'Webhook unavailable' }, { status: 503 });
+    if (rawBody === undefined) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const header = req.headers.get('x-hub-signature-256') || '';
+    if (!/^sha256=[a-fA-F0-9]{64}$/.test(header)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const expected = createHmac('sha256', secret).update(rawBody).digest();
+    const actual = Buffer.from(header.slice(7), 'hex');
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return null;
 }
 

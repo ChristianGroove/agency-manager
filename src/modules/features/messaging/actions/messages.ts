@@ -1,9 +1,9 @@
 "use server"
 
+import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
+import { enqueueMetaOutbound, dispatchMetaOutbound } from '../meta-outbox'
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
-import { MetaProvider } from "../providers/meta-provider"
-import { MessagingPersistence } from "../services/persistence"
 import { createClient } from "@/modules/core/database/supabase-server"
 import crypto from "crypto"
 
@@ -129,7 +129,6 @@ async function internalSend({
     sender,
     supabase,
     messageId: msgId,
-    isRetry = false,
     connectionIdOverride
 }: {
     conversationId: string,
@@ -137,7 +136,6 @@ async function internalSend({
     sender: string,
     supabase: any,
     messageId?: string,
-    isRetry?: boolean,
     connectionIdOverride?: string
 }) {
     try {
@@ -154,87 +152,50 @@ async function internalSend({
             .from("integration_connections")
             .select("*")
             .eq("id", connId)
+            .eq("organization_id", conversation.organization_id)
+            .eq("status", "active")
             .single()
 
         if (!connection) throw new Error("Connection not found")
 
-        const credentials = typeof connection.credentials === 'string' 
-            ? JSON.parse(connection.credentials) 
-            : connection.credentials
-
         const providerKey = connection.provider_key
-        const assetId = connection.metadata?.asset_id || connection.external_id
-
-        let provider: any
-        if (['whatsapp_cloud', 'meta_whatsapp', 'facebook_page', 'instagram_dm', 'instagram_dme', 'meta_business'].includes(providerKey)) {
-            provider = new MetaProvider(
-                credentials.accessToken || credentials.apiToken,
-                assetId,
-                credentials.verifyToken || 'pixy_webhook_2026'
-            )
+        if (!['whatsapp_cloud', 'meta_whatsapp', 'facebook_page', 'instagram_dm', 'instagram_dme', 'meta_business'].includes(providerKey)) {
+            throw new Error(`Unsupported provider type: ${providerKey}`)
         }
-
-        if (!provider) throw new Error(`Unsupported provider type: ${providerKey}`)
 
         const channelMap: Record<string, string> = {
             'whatsapp_cloud': 'whatsapp',
             'meta_whatsapp': 'whatsapp',
             'meta_business': 'whatsapp',
             'facebook_page': 'messenger',
-            'instagram_dme': 'instagram'
+            'instagram_dme': 'instagram',
+            'instagram_dm': 'instagram'
         }
         const dbChannel = channelMap[providerKey] || 'whatsapp'
         const messageId = msgId || crypto.randomUUID()
-        
-        if (!isRetry) {
-            await MessagingPersistence.saveOutboundMessage({
-                conversationId,
-                content,
-                sender,
-                messageId,
-                channel: dbChannel
-            })
-
-            // If a human agent replies, automatically disable the bot mode
-            if (sender !== 'System' && conversation.is_bot_active) {
-                const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
-                await supabaseAdmin.from('conversations').update({ 
-                    is_bot_active: false,
-                    organization_id: conversation.organization_id // Crucial for Realtime RLS filter!
-                }).eq('id', conversationId)
-            }
-        }
-
+        await assertMetaSendAllowed(connection, conversation, content)
         const recipientPhone = conversation.metadata?.phone || conversation.metadata?.external_id || (conversation as any).phone
-        const providerOptions = {
-            to: recipientPhone,
-            content: content,
-            credentials: connection.credentials,
-            metadata: {
-                channel: providerKey,
-                conversationId: conversationId,
-                organizationId: conversation.organization_id
-            }
+        if (!recipientPhone) throw new Error('Conversation recipient unavailable')
+        const queued = await enqueueMetaOutbound({
+            organizationId: conversation.organization_id, connectionId: connId,
+            conversationId, messageId, operationKey: `agent:${messageId}`,
+            recipient: recipientPhone, content, sender,
+            channel: dbChannel as 'whatsapp' | 'messenger' | 'instagram',
+        })
+        if (queued.status === 'unknown' || queued.status === 'failed') {
+            throw new Error('Previous send requires reconciliation')
         }
 
-        after(async () => {
-            try {
-                const result = await provider.sendMessage(providerOptions)
-                if (result.success && result.messageId) {
-                    await (await createClient()).from('messages').update({ external_id: result.messageId, status: 'sent' }).eq('id', messageId)
-                } else {
-                    await (await createClient()).from('messages').update({
-                        status: 'failed',
-                        metadata: { error: publicMessageActionError(result.error) }
-                    } as any).eq('id', messageId)
-                }
-            } catch (bgError: any) {
-                await (await createClient()).from('messages').update({
-                    status: 'failed',
-                    metadata: { error: publicMessageActionError(bgError) }
-                } as any).eq('id', messageId)
-            }
-        })
+        // If a human agent replies, automatically disable the bot mode.
+        if (sender !== 'System' && conversation.is_bot_active) {
+            const { supabaseAdmin } = await import("@/modules/core/database/supabase-admin")
+            await supabaseAdmin.from('conversations').update({
+                is_bot_active: false, organization_id: conversation.organization_id
+            }).eq('id', conversationId)
+        }
+
+        // The durable row is the source of truth if this request ends before after() runs.
+        if (queued.status === 'queued') after(() => dispatchMetaOutbound(queued.outboxId).then(() => undefined))
 
         return { success: true, messageId }
     } catch (error: any) {
@@ -255,10 +216,9 @@ export async function sendMessage(conversationId: string, content: any, sender: 
     return result
 }
 
-export async function sendOutboundMessage(conversationId: string, content: any, channel: string = 'whatsapp', connectionId?: string, sender: string = 'System') {
-    const supabase = await createClient()
-    const result = await internalSend({ conversationId, content, sender, supabase, connectionIdOverride: connectionId })
-    return { success: result.success, externalId: result.messageId, error: result.error }
+export async function sendOutboundMessage(conversationId: string, content: any, channel: string = 'whatsapp', connectionId?: string, sender: string = 'System', operationKey?: string) {
+    const { outboundService } = await import('../outbound-service')
+    return outboundService.sendSystemMessage(conversationId, content, channel, connectionId, sender, operationKey)
 }
 
 export async function sendAudioMessage(conversationId: string, audioUrl: string, duration: number, sender: string, messageId?: string) {
@@ -286,8 +246,15 @@ export async function retryMessage(messageId: string) {
     const supabase = await createClient()
     const { data: message } = await supabase.from("messages").select("*").eq("id", messageId).single()
     if (!message) return { success: false, error: "Message not found" }
-    await supabase.from('messages').update({ status: 'sending', metadata: { ...message.metadata, error: null } }).eq('id', messageId)
-    const result = await internalSend({ conversationId: message.conversation_id, content: message.content, sender: message.sender_id, supabase, messageId, isRetry: true })
+    const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+    const { data: operation } = await supabaseAdmin.from('meta_outbound_outbox')
+        .select('status').eq('message_id', messageId).maybeSingle()
+    if (operation && operation.status !== 'failed') {
+        return { success: false, error: 'Este envío requiere conciliación antes de reintentar.' }
+    }
+    // An explicit user retry is a new operation. Keep the old failed row as evidence.
+    const result = await internalSend({ conversationId: message.conversation_id,
+        content: message.content, sender: message.sender || 'Agent', supabase })
     revalidatePath(`/inbox/${message.conversation_id}`)
     return result
 }

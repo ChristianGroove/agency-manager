@@ -230,7 +230,15 @@ import { processIncomingMessage } from "@/inngest/messaging";
 import { processStripeWebhook } from "@/inngest/stripe";
 import { trashCleanup } from "@/inngest/trash-cleanup";
 
+import { processMetaWebhook } from '@/inngest/meta-messaging';
+import { processMetaOutbound, sweepMetaOutbound } from '@/inngest/meta-outbox';
+import { expireMetaCoexistenceOnboarding } from '@/inngest/meta-coexistence';
+
 export const functions = [
+    processMetaWebhook,
+    processMetaOutbound,
+    sweepMetaOutbound,
+    expireMetaCoexistenceOnboarding,
     runWorkflow, 
     vaultSnapshotScheduler, 
     contractOrchestrator, 

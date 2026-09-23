@@ -40,6 +40,8 @@ type WhatsAppReceivedEvent = {
 };
 
 type Events = {
+    "meta/webhook.received": { name: "meta/webhook.received"; data: { eventId: string } };
+    "meta/outbound.queued": { name: "meta/outbound.queued"; data: { outboxId: string } };
     "automation.execute": AutomationExecuteEvent;
     "contract.generated": ContractGeneratedEvent;
     "whatsapp/message.received": WhatsAppReceivedEvent;

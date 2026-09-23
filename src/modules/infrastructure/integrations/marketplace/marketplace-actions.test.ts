@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     requireOrgRole: vi.fn(),
     revalidatePath: vi.fn(),
     getAdapter: vi.fn(),
+    issueMetaOAuthSession: vi.fn(),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -32,6 +33,9 @@ vi.mock('../registry', () => ({
     integrationRegistry: {
         getAdapter: mocks.getAdapter,
     },
+}))
+vi.mock('@/modules/infrastructure/meta/services/oauth-session', () => ({
+    issueMetaOAuthSession: mocks.issueMetaOAuthSession,
 }))
 
 function createQueryBuilder(options: {
@@ -104,6 +108,20 @@ describe('marketplace actions', () => {
         mocks.getCurrentOrganizationId.mockResolvedValue('org_123')
         mocks.requireOrgRole.mockResolvedValue(undefined)
         mocks.getAdapter.mockReturnValue(undefined)
+        mocks.issueMetaOAuthSession.mockResolvedValue('one-time-state')
+    })
+
+    it('requests social permissions without WhatsApp permissions in generic Meta OAuth', async () => {
+        vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://pixy.test')
+        const { getMetaAuthUrl } = await import('./marketplace-actions')
+        const url = new URL(await getMetaAuthUrl())
+        const scopes = new Set((url.searchParams.get('scope') || '').split(','))
+        expect(scopes).toContain('pages_messaging')
+        expect(scopes).toContain('instagram_manage_messages')
+        expect(scopes).not.toContain('whatsapp_business_messaging')
+        expect(scopes).not.toContain('whatsapp_business_management')
+        expect(scopes).not.toContain('ads_read')
+        await expect(getMetaAuthUrl('whatsapp' as any)).rejects.toThrow('Use Embedded Signup for WhatsApp')
     })
 
     it('does not expose insert failure details when installing integrations in production', async () => {

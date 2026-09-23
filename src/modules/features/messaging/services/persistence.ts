@@ -76,6 +76,7 @@ export class MessagingPersistence {
         sender: string,
         id?: string,
         channel?: string,
+        status?: 'sending' | 'sent',
         organizationId?: string | null
     }) {
         const { 
@@ -101,7 +102,7 @@ export class MessagingPersistence {
             direction: 'outbound',
             channel: channel,
             content: typeof content === 'string' ? { type: 'text', text: content } : content,
-            status: 'sent',
+            status: params.status || 'sent',
             external_id: finalExternalId,
             sender: sender,
             metadata: {
@@ -134,6 +135,8 @@ export class MessagingPersistence {
             .select('created_at')
             .eq('conversation_id', conversationId)
             .eq('direction', 'inbound')
+            .or('metadata->>historical.is.null,metadata->>historical.eq.false')
+            .or('metadata->metadata->>historical.is.null,metadata->metadata->>historical.eq.false')
             .order('created_at', { ascending: false })
             .limit(1)
             .single();

@@ -1,8 +1,10 @@
+
+import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { decryptObject } from "@/modules/infrastructure/integrations/encryption";
-import { 
-    MessagingProvider, 
-    SendMessageOptions, 
-    IncomingMessage, 
+import {
+    MessagingProvider,
+    SendMessageOptions,
+    IncomingMessage,
     IncomingCall,
     InteractiveButtonsContent,
     InteractiveListContent,
@@ -11,6 +13,9 @@ import {
     WebhookValidationResult
 } from "./types";
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
+import { ChannelResolver } from '@/modules/features/messaging/channel-resolver';
+import { randomUUID } from 'crypto';
+import { PRIVATE_CHAT_MEDIA_BUCKET } from '@/modules/features/messaging/constants';
 
 const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
 const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
@@ -116,28 +121,22 @@ export class MetaProvider implements MessagingProvider {
                     assetId: assetId ? 'present' : 'missing',
                 });
             }
-            
-            // 1. Resolve Token for this AssetId if possible
-            let token = this.apiToken;
-            if (assetId) {
-                const dbToken = await this.getTokenByAssetId(assetId);
-                if (dbToken) {
-                    token = dbToken;
-                    if (!isDeployedRuntime()) {
-                        console.log(`[MetaProvider] Using DB token for ${assetId}`);
-                    } else {
-                        console.log('[MetaProvider] Using DB token', { assetId: 'present' });
-                    }
-                }
-            }
 
-            if (!token) {
-                console.error(`[MetaProvider] No token available for media resolution!`);
+            // Webhook media must use the uniquely owned channel and its organization.
+            const match = assetId ? await ChannelResolver.resolveConnection({
+                channel: 'whatsapp', metadata: { phoneNumberId: assetId },
+            }, supabaseAdmin) : null;
+            const credentials = match ? await resolveConnectionCredentials(match.connection.credentials) : null;
+            const token = credentials?.accessToken || credentials?.apiToken || credentials?.access_token;
+            const organizationId = match?.connection.organization_id;
+
+            if (!token || !organizationId) {
+                console.error(`[MetaProvider] No authorized channel available for media resolution!`);
                 return "";
             }
 
             // 2. Get Download URL from Meta
-            // NOTE: We explicitly use Graph API v24.0 for media resolution (IDs to URLs) 
+            // NOTE: We explicitly use Graph API v24.0 for media resolution (IDs to URLs)
             // as it has better support for newer media types and cross-account resolution.
             const urlRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -146,25 +145,14 @@ export class MetaProvider implements MessagingProvider {
             if (!urlRes.ok) {
                 const err = await urlRes.json().catch(() => ({}));
                 logMetaProviderError(`[MetaProvider] Media ID resolution failed:`, err);
-                
-                // Fallback to constructor token if DB token failed
-                if (token !== this.apiToken && this.apiToken) {
-                    console.log(`[MetaProvider] Retrying with constructor token...`);
-                    const retryRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
-                        headers: { 'Authorization': `Bearer ${this.apiToken}` }
-                    });
-                    if (retryRes.ok) {
-                        const { url } = await retryRes.json();
-                        return await this.downloadAndUpload(url, mediaId, mimeType, this.apiToken);
-                    }
-                }
+
                 return "";
             }
 
             const { url: downloadUrl } = await urlRes.json();
             if (!downloadUrl) return "";
 
-            return await this.downloadAndUpload(downloadUrl, mediaId, mimeType, token);
+            return await this.downloadAndUpload(downloadUrl, mimeType, token, organizationId);
         } catch (error) {
             logMetaProviderError(`[MetaProvider] Media Processing Exception:`, error);
             return "";
@@ -174,7 +162,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Helper to download from Meta and upload to Supabase
      */
-    private async downloadAndUpload(url: string, mediaId: string, mimeType: string, token: string): Promise<string> {
+    private async downloadAndUpload(url: string, mimeType: string, token: string, organizationId: string): Promise<string> {
         try {
             // 1. Download Binary
             const mediaRes = await fetch(url, {
@@ -186,61 +174,33 @@ export class MetaProvider implements MessagingProvider {
 
             // 2. Upload to Supabase Storage
             const extension = mimeType.split('/')[1]?.split(';')[0] || 'bin';
-            const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${extension}`;
+            const fileName = `${organizationId}/whatsapp/${new Date().getFullYear()}/${randomUUID()}.${extension}`;
             const { error: uploadError } = await (supabaseAdmin).storage
-                .from('chat-attachments')
-                .upload(fileName, buffer, { contentType: mimeType, upsert: true });
+                .from(PRIVATE_CHAT_MEDIA_BUCKET)
+                .upload(fileName, buffer, { contentType: mimeType });
 
             if (uploadError) {
                 logMetaProviderError(`[MetaProvider] Supabase Media Upload Error:`, uploadError);
                 return "";
             }
 
-            // 3. Get Public URL
-            const { data: { publicUrl } } = (supabaseAdmin).storage
-                .from('chat-attachments')
-                .getPublicUrl(fileName);
-
-            return publicUrl;
+            return `/api/media/chat/${fileName}`;
         } catch (error) {
             logMetaProviderError(`[MetaProvider] downloadAndUpload Exception:`, error);
             return "";
         }
     }
 
-    /**
-     * Resolves the Meta API token for a specific Asset ID (Phone Number ID or Page ID).
-     * 
-     * DEV NOTE: 
-     * 1. CRITICAL FOR PRODUCTION: Integration credentials in the DB are encrypted (AES-256-GCM).
-     *    We MUST use decryptObject() to read the accessToken/phoneId. 
-     * 2. TYPE SAFETY: Always cast IDs to String() before comparison to avoid numeric/string mismatch.
-     * 3. MULTI-TENANT: Each WhatsApp account has its own token; this resolver ensures the 
-     *    correct one is used based on the incoming webhook's metadata.
-     */
-    private async getTokenByAssetId(assetId: string): Promise<string | null> {
+    /** Resolve ownership before any Graph read made while parsing a webhook. */
+    private async getTokenByAssetId(assetId: string, channel: 'whatsapp' | 'messenger' | 'instagram'): Promise<string | null> {
         try {
-            const { data: connections, error } = await (supabaseAdmin)
-                .from('integration_connections')
-                .select('credentials, metadata, provider_key')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm', 'instagram_dme'])
-                .eq('status', 'active');
-
-            if (error || !connections) return null;
-
-            for (const conn of connections) {
-                // DECRYPT credentials (critical for production where they are encrypted in DB)
-                const creds = decryptObject(conn.credentials);
-                const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || conn.metadata?.asset_id || "");
-                const pageId = String(creds?.pageId || creds?.page_id || conn.metadata?.page_id || "");
-                const connAssetId = String(conn.metadata?.asset_id || "");
-
-                if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId)) || (connAssetId && connAssetId === String(assetId))) {
-                    const token = creds.accessToken || creds.apiToken || creds.access_token || null;
-                    if (token) return token;
-                }
-            }
-            return null;
+            const metadata = channel === 'whatsapp' ? { phoneNumberId: assetId }
+                : channel === 'messenger' ? { pageId: assetId }
+                    : { instagramBusinessId: assetId };
+            const match = await ChannelResolver.resolveConnection({ channel, metadata }, supabaseAdmin);
+            if (!match) return null;
+            const creds = await resolveConnectionCredentials(match.connection.credentials);
+            return creds.accessToken || creds.apiToken || creds.access_token || null;
         } catch (error) {
             logMetaProviderError(`[MetaProvider] getTokenByAssetId Error:`, error);
             return null;
@@ -261,7 +221,7 @@ export class MetaProvider implements MessagingProvider {
         }
         const channel = options.metadata?.channel as string;
         const isMessengerOrIg = ['messenger', 'instagram', 'facebook_page', 'instagram_dm', 'instagram_dme'].includes(channel);
-        
+
         if (isMessengerOrIg) {
             return this.sendFacebookMessage(options);
         } else {
@@ -278,7 +238,7 @@ export class MetaProvider implements MessagingProvider {
             let activeToken = this.apiToken;
 
             if (options.credentials) {
-                const creds = typeof options.credentials === 'string' ? JSON.parse(options.credentials) : options.credentials;
+                const creds = await resolveConnectionCredentials(options.credentials);
                 activeToken = creds.accessToken || creds.apiToken || creds.access_token || activeToken;
                 if (creds.phoneNumberId) effectiveAssetId = creds.phoneNumberId;
             }
@@ -286,13 +246,15 @@ export class MetaProvider implements MessagingProvider {
             const url = `https://graph.facebook.com/v21.0/${effectiveAssetId}/messages`;
             const content = options.content as any;
             const mediaTypes = ['audio', 'image', 'video', 'document', 'sticker'];
-            
+
             if (mediaTypes.includes(content.type) && content.mediaUrl && !content.mediaId) {
-                const isLocalUrl = content.mediaUrl.includes('127.0.0.1') || content.mediaUrl.includes('localhost');
+                const isLocalUrl = content.mediaUrl.includes('127.0.0.1') || content.mediaUrl.includes('localhost') ||
+                    content.mediaUrl.startsWith('/api/media/chat/');
                 const shouldBypassUpload = !isLocalUrl && content.type === 'audio';
 
                 if (!shouldBypassUpload) {
-                    const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId);
+                    const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId,
+                        typeof options.metadata?.organizationId === 'string' ? options.metadata.organizationId : undefined);
                     if (mediaId) {
                         content.mediaId = mediaId;
                     } else {
@@ -301,10 +263,11 @@ export class MetaProvider implements MessagingProvider {
                     }
                 }
             }
-            
+
             // Auto-upload image headers for interactive messages (legacy, but if used)
             if ((content.type === 'interactive_buttons' || content.type === 'interactive_cta') && content.header?.mediaUrl && !content.header?.mediaId) {
-                const mediaId = await this.uploadMedia(content.header.mediaUrl, activeToken, content.header.type || 'image', effectiveAssetId);
+                const mediaId = await this.uploadMedia(content.header.mediaUrl, activeToken, content.header.type || 'image', effectiveAssetId,
+                    typeof options.metadata?.organizationId === 'string' ? options.metadata.organizationId : undefined);
                 if (mediaId) {
                     content.header.mediaId = mediaId;
                 } else {
@@ -360,7 +323,7 @@ export class MetaProvider implements MessagingProvider {
             let pageId = this.assetId;
 
             if (options.credentials) {
-                const creds = typeof options.credentials === 'string' ? JSON.parse(options.credentials) : options.credentials;
+                const creds = await resolveConnectionCredentials(options.credentials);
                 activeToken = creds.accessToken || creds.apiToken || creds.access_token || activeToken;
                 if (creds.pageId) pageId = creds.pageId;
             }
@@ -373,7 +336,7 @@ export class MetaProvider implements MessagingProvider {
             // String content handling
             if (typeof content === 'string') {
                 payload.message.text = content;
-            } 
+            }
             // Interactive Buttons (Messenger Quick Replies)
             else if (content.type === 'interactive_buttons') {
                 const buttonContent = content as InteractiveButtonsContent;
@@ -412,9 +375,9 @@ export class MetaProvider implements MessagingProvider {
 
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Authorization': `Bearer ${activeToken}`,
-                    'Content-Type': 'application/json' 
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });
@@ -446,7 +409,7 @@ export class MetaProvider implements MessagingProvider {
      */
     private buildPayload(options: SendMessageOptions): any {
         const { content, to } = options;
-        
+
         const payload: any = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
@@ -664,7 +627,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Upload media to Meta servers
      */
-    private async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
+    async uploadMedia(url: string, token: string, type: string, assetId: string, organizationId?: string): Promise<string | null> {
         try {
             if (!isDeployedRuntime()) {
                 console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
@@ -676,21 +639,34 @@ export class MetaProvider implements MessagingProvider {
                 });
             }
             const uploadUrl = `https://graph.facebook.com/v21.0/${assetId}/media`;
-            
-            // 1. Fetch file
-            const fileResp = await fetch(url);
-            if (!fileResp.ok) throw new Error(`Failed to fetch media from URL: ${url}`);
-            let buffer = await fileResp.arrayBuffer();
-            
+
+            // Private chat media is read directly from Storage, never through a public URL.
+            let buffer: ArrayBuffer;
+            let mimeType: string;
+            if (url.startsWith('/api/media/chat/')) {
+                const path = url.slice('/api/media/chat/'.length);
+                if (!organizationId || !path.startsWith(`${organizationId}/`) || path.includes('..')) {
+                    throw new Error('Private media does not belong to this organization');
+                }
+                const { data, error } = await supabaseAdmin.storage.from(PRIVATE_CHAT_MEDIA_BUCKET).download(path);
+                if (error || !data) throw new Error('Private media unavailable');
+                buffer = await data.arrayBuffer();
+                mimeType = data.type || 'application/octet-stream';
+            } else {
+                const fileResp = await fetch(url);
+                if (!fileResp.ok) throw new Error('Failed to fetch media');
+                buffer = await fileResp.arrayBuffer();
+                mimeType = fileResp.headers.get('content-type') || 'application/octet-stream';
+            }
+
             // Determine MIME type
-            let mimeType = fileResp.headers.get('content-type') || 'application/octet-stream';
             if (mimeType === 'application/octet-stream') {
                 if (type === 'image') mimeType = url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
                 if (type === 'video') mimeType = 'video/mp4';
                 if (type === 'audio') mimeType = 'audio/ogg';
                 if (type === 'document') mimeType = 'application/pdf';
             }
-            
+
             // Meta is strict: webp is REJECTED silently for standard images. We MUST transcode it.
             if ((mimeType.includes('webp') || url.toLowerCase().includes('.webp')) && type === 'image') {
                 try {
@@ -706,7 +682,7 @@ export class MetaProvider implements MessagingProvider {
             }
             // Sanitize MIME type (Meta strict validation rejects "audio/ogg; codecs=opus" or "audio/webm")
             mimeType = mimeType.split(';')[0].trim();
-            if (mimeType === 'audio/webm') mimeType = 'audio/mp4'; // Fallback if somehow webm bypassed 
+            if (mimeType === 'audio/webm') mimeType = 'audio/mp4'; // Fallback if somehow webm bypassed
 
             const ext = mimeType.split('/')[1] || (type === 'image' ? 'jpg' : 'bin');
             // Use native File instead of Blob so FormData preserves the filename and type perfectly in Node.js >= 20
@@ -740,29 +716,29 @@ export class MetaProvider implements MessagingProvider {
 
     /**
      * Fetches the user profile (name/username) from Meta Graph API.
-     * 
+     *
      * NOTE: Messenger and Instagram webhooks do NOT include sender names.
      * This method resolves them using the Page/Instagram Access Token.
      * Results are cached for 1 hour to prevent API rate limiting.
-     * 
+     *
      * @param psid Page-Scoped ID of the sender
      * @param assetId The Page ID or Instagram Business ID
      * @param channel The channel type ('messenger' or 'instagram')
      */
     private async fetchSocialProfile(psid: string, assetId: string, channel: string): Promise<{ name: string }> {
-        const cacheKey = `${channel}:${psid}`;
+        const cacheKey = `${channel}:${assetId}:${psid}`;
         if (this.profileCache[cacheKey] && this.profileCache[cacheKey].expires > Date.now()) {
             return { name: this.profileCache[cacheKey].name };
         }
 
         try {
-            const token = await this.getTokenByAssetId(assetId);
+            const token = await this.getTokenByAssetId(assetId, channel as 'messenger' | 'instagram');
             if (!token) return { name: 'Social User' };
 
             // Fields vary by channel
             const fields = channel === 'instagram' ? 'username,name' : 'first_name,last_name,name';
             const url = `https://graph.facebook.com/v21.0/${psid}?fields=${fields}`;
-            
+
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -805,7 +781,7 @@ export class MetaProvider implements MessagingProvider {
 
     async parseWebhook(payload: any): Promise<(IncomingMessage | IncomingCall)[]> {
         const messages: (IncomingMessage | IncomingCall)[] = [];
-        
+
         // 1. WhatsApp / Messenger / Instagram all come through 'entry'
         for (const entry of payload.entry || []) {
             // Instagram / Messenger DMs use entry.messaging array
@@ -815,7 +791,7 @@ export class MetaProvider implements MessagingProvider {
                     const from = item.sender?.id;
                     const recipientId = item.recipient?.id;
                     const isEcho = item.message?.is_echo;
-                    if (isEcho) continue;
+                    if (isEcho || (!item.message && !item.postback)) continue;
 
                     const msgData = item.message || {};
                     const postback = item.postback || {};
@@ -860,14 +836,18 @@ export class MetaProvider implements MessagingProvider {
                 const value = change.value || {};
 
                 // --- WhatsApp Parse ---
-                if (value.messages) {
+                const historyMessages = (value.history || []).flatMap((chunk: any) =>
+                    (chunk.threads || []).flatMap((thread: any) => (thread.messages || []).map((message: any) => ({ ...message, _historical: true, _threadId: thread.id }))))
+                const eventMessages = [...(value.messages || []).map((m: any) => ({ ...m, _historical: change.field === 'history' })), ...(value.message_echoes || []).map((m: any) => ({ ...m, is_echo: true })), ...historyMessages]
+                if (eventMessages.length) {
                     const phoneNumberId = value.metadata?.phone_number_id;
 
-                    for (const msg of value.messages) {
+                    for (const msg of eventMessages) {
                         const from = msg.from;
+                        if (!msg.id || !from) continue;
                         const contact = value.contacts?.find((c: any) => c.wa_id === from);
                         const senderName = contact?.profile?.name || 'WhatsApp User';
-                        
+
                         let type = msg.type;
                         let text = '';
                         let mediaUrl = '';
@@ -893,32 +873,35 @@ export class MetaProvider implements MessagingProvider {
                             text = media.caption || `[${type}]`;
                             const mediaId = media.id;
                             const mimeType = media.mime_type || (type === 'sticker' ? 'image/webp' : `${type}/jpeg`);
-                            mediaUrl = await this.processMedia(mediaId, mimeType, phoneNumberId); 
+                            mediaUrl = await this.processMedia(mediaId, mimeType, phoneNumberId);
                         }
 
-                        const isEcho = phoneNumberId === from || msg.is_echo === true;
+                        const businessPhone = String(value.metadata?.display_phone_number || '').replace(/\D/g, '');
+                        const isEcho = msg.is_echo === true || (Boolean(businessPhone) && from === businessPhone);
+                        if (isEcho && !msg.to && !msg._threadId) continue;
                         if (isEcho) logMetaProviderInfo('[MetaProvider] Echo detected for WA message', { messageId: msg.id });
 
                         messages.push({
                             id: msg.id,
                             externalId: msg.id,
                             channel: 'whatsapp',
-                            from: isEcho ? (msg.to || phoneNumberId) : from,
+                            from: isEcho ? (msg.to || msg._threadId) : from,
                             senderName,
                             buttonId,
                             content: { type: type === 'interactive' ? 'interactive' : (['image','video','audio','document','sticker'].includes(type) ? type : 'text'), text, mediaUrl },
                             timestamp: new Date(parseInt(msg.timestamp) * 1000),
                             origin: isEcho ? 'outbound' : 'inbound',
-                            metadata: { 
+                            metadata: {
                                 raw: msg,
-                                phoneNumberId: phoneNumberId // CRITICAL for resolver
+                                phoneNumberId, historical: msg._historical === true, media_placeholder: type === 'media_placeholder',
+                                source: change.field === 'smb_message_echoes' ? 'business_app' : change.field === 'history' ? 'history' : 'cloud_api'
                             },
                             referral: msg.referral || undefined
                         });
                     }
                 }
                 // --- Legacy / Removed Block ---
-                // The Messenger/Instagram logic has been moved outside the changes loop 
+                // The Messenger/Instagram logic has been moved outside the changes loop
                 // to entry.messaging for structural correctness.
             }
         }

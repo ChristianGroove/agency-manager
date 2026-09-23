@@ -14,7 +14,7 @@ export interface SendMessageNodeData {
 export class SendMessageNode {
     constructor(private contextManager: ContextManager) { }
 
-    async execute(data: SendMessageNodeData): Promise<NodeExecutionResult> {
+    async execute(data: SendMessageNodeData, nodeId?: string): Promise<NodeExecutionResult> {
         const { fileLogger } = await import('@/modules/infrastructure/logging/services/file-logger');
         const { outboundService } = await import('@/modules/features/messaging/outbound-service');
 
@@ -96,12 +96,14 @@ export class SendMessageNode {
             fileLogger.log(`[SendMessageNode] Sending Payload: Type=${payload.type}, Media=${!!mediaUrl}`);
 
             // 5. Send Message (using Admin privileged service)
+            const executionId = this.contextManager.get('executionId') as string | undefined;
             const result = await outboundService.sendSystemMessage(
                 conversationId,
                 payload,
                 channel,
                 connectionId,
-                'System'
+                'System',
+                executionId && nodeId ? `automation:${executionId}:${nodeId}` : undefined
             );
 
             if (!result.success) {

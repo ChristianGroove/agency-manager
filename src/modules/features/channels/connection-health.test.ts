@@ -62,11 +62,13 @@ function mockConnectionLookup(result: ConnectionLookup) {
             eq: vi.fn((column: string, value: string) => {
                 if (isUpdate) {
                     updates.push({ payload: updatePayload, column, value })
-                    return Promise.resolve({ data: null, error: null })
+                    return builder
                 }
 
                 return builder
             }),
+            in: vi.fn(async () => ({ data: null, error: null })),
+            then: (resolve: any) => Promise.resolve({ data: null, error: null }).then(resolve),
             single: vi.fn(async () => result),
             update: vi.fn((payload: any) => {
                 isUpdate = true
@@ -163,5 +165,17 @@ describe('checkConnectionHealth', () => {
             column: 'id',
             value: 'connection-1',
         }])
+    })
+
+    it('does not turn a temporarily offboarded companion active based on its token', async () => {
+        const updates = mockConnectionLookup({
+            data: { id: 'connection-1', provider_key: 'whatsapp_cloud', status: 'temporarily_offboarded' },
+            error: null,
+        })
+        mocks.getAdapter.mockReturnValue({ checkConnectionStatus: mocks.checkConnectionStatus })
+        const { checkConnectionHealth } = await import('./connection-health')
+        expect(await checkConnectionHealth('connection-1')).toMatchObject({ status: 'disconnected' })
+        expect(mocks.checkConnectionStatus).not.toHaveBeenCalled()
+        expect(updates).toHaveLength(0)
     })
 })
