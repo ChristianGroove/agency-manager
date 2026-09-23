@@ -142,6 +142,56 @@ const STATUS_LABELS: Record<string, string> = {
   backlog: "Backlog",
 }
 
+function CustomDonutTooltip({ active, payload, totalTasks }: { active?: boolean; payload?: any[]; totalTasks?: number }) {
+  if (!active || !payload || !payload.length) return null
+  const data = payload[0]
+  const total = totalTasks || 1
+  const val = Number(data.value) || 0
+  const pct = Math.round((val / total) * 100)
+
+  return (
+    <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-xl shadow-black/10 text-xs space-y-1.5 pointer-events-none">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: data.payload?.color || data.color }}
+        />
+        <span className="font-bold text-zinc-900 dark:text-zinc-100">{data.name}</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 text-xs font-mono">
+        <span className="text-zinc-600 dark:text-zinc-300 font-semibold">
+          {val} {val === 1 ? "ticket" : "tickets"}
+        </span>
+        <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400">
+          {pct}%
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function CustomWorkloadTooltip({ active, payload, label, mode }: { active?: boolean; payload?: any[]; label?: string; mode?: "tickets" | "hours" }) {
+  if (!active || !payload || !payload.length) return null
+  return (
+    <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-xl shadow-black/10 text-xs space-y-2 pointer-events-none">
+      <p className="font-bold text-zinc-900 dark:text-zinc-100 text-xs">{label}</p>
+      <div className="space-y-1">
+        {payload.map((item: any, i: number) => (
+          <div key={i} className="flex items-center justify-between gap-4 text-xs font-mono">
+            <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-sans">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color || item.fill }} />
+              <span>{item.name}:</span>
+            </span>
+            <span className="font-bold text-zinc-900 dark:text-zinc-100">
+              {item.value}{mode === "hours" ? "h" : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function TaskPmOperationsDashboard({
   tasks,
   teamMembers,
@@ -1224,16 +1274,9 @@ export function TaskPmOperationsDashboard({
                   allowDecimals={false}
                 />
                 <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(18, 18, 23, 0.95)",
-                    backdropFilter: "blur(12px)",
-                    borderRadius: "16px",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#fff",
-                    padding: "12px",
-                    fontSize: "12px",
-                  }}
-                  cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                  content={<CustomWorkloadTooltip mode={workloadChartMode} />}
+                  cursor={{ fill: "currentColor", opacity: 0.04 }}
+                  wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}
                 />
                 {workloadChartMode === "tickets" ? (
                   <>
@@ -1365,7 +1408,17 @@ export function TaskPmOperationsDashboard({
           </div>
 
           <div className="h-[210px] w-full relative flex items-center justify-center my-4">
-            <ResponsiveContainer width="100%" height="100%">
+            {/* Center Readout (positioned with z-0 behind chart and tooltip) */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+              <span className="text-3xl font-black font-mono text-foreground tracking-tight">
+                {sprintTasks.length}
+              </span>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                {currentSprint ? "En Sprint" : "Tickets"}
+              </span>
+            </div>
+
+            <ResponsiveContainer width="100%" height="100%" className="relative z-10">
               <RePieChart>
                 <Pie
                   data={statusPieData}
@@ -1385,26 +1438,11 @@ export function TaskPmOperationsDashboard({
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(18, 18, 23, 0.95)",
-                    backdropFilter: "blur(12px)",
-                    borderRadius: "14px",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#fff",
-                    fontSize: "12px",
-                  }}
+                  content={<CustomDonutTooltip totalTasks={sprintTasks.length} />}
+                  wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}
                 />
               </RePieChart>
             </ResponsiveContainer>
-            {/* Center Readout */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-3xl font-black font-mono text-foreground tracking-tight">
-                {sprintTasks.length}
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                {currentSprint ? "En Sprint" : "Tickets"}
-              </span>
-            </div>
           </div>
 
           {/* Clean Legend */}
