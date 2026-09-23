@@ -1032,3 +1032,23 @@ Se erradicó por completo el `<input type="number">` directo para horas reales y
    - Ubicado inmediatamente debajo de la fila de tiempo: botón estilizado a ancho completo `Registrar Horas de Trabajo` con icono `Timer`, detonando `TaskLogWorkModal` para registro incremental con notas de trabajo y trazabilidad de autor.
    - En tickets completados (`done`), se sustituye por una píldora sellada: *"Registro cerrado (Ticket completado)"* para preservar gobernanza.
 
+---
+
+## 26. Arquitectura de Telemetría Visual y Gráficos del Dashboard Operativo PM
+
+### A. Diagnóstico de Contraste y Fallos de Renderizado en Tooltips
+En la vista de operaciones del PM (`TaskPmOperationsDashboard`), los gráficos de Recharts (`Estado de los Tickets` y `Carga Operativa & Rendimiento`) presentaban problemas críticos de legibilidad y usabilidad:
+1. **Contraste Roto en Modo Claro**: Los tooltips utilizaban un fondo oscuro inline forzado (`rgba(18, 18, 23, 0.95)`), mientras que las etiquetas internas heredaban el color de texto del tema claro (`#333333`), generando texto negro sobre fondo negro ilegible.
+2. **Colisión de Contexto de Apilamiento (Z-Index Stacking)**: En el gráfico de dona (`Estado de los Tickets`), la lectura central numérica (*Center Readout*, compuesta por el total de tickets y la etiqueta *"Tickets"*) estaba ubicada después del contenedor SVG en el DOM. Al pasar el cursor por sectores cercanos al centro, el texto central se sobreponía encima del cuadro del tooltip.
+
+### B. Solución Arquitectónica
+1. **Tooltips Nativos con Soporte Dual Claro / Oscuro**:
+   - Se implementaron componentes dedicados (`CustomDonutTooltip` y `CustomWorkloadTooltip`) estilizados con clases Tailwind semánticas (`bg-white/95 dark:bg-zinc-900/95`, `border-zinc-200/80 dark:border-white/10`, `text-zinc-900 dark:text-zinc-100`).
+   - Los tooltips presentan etiquetas legibles, indicadores de color por estado, cantidades exactas y porcentajes dinámicos de participación.
+2. **Jerarquía DOM y Desacoplamiento de Capas en Gráficos Donut**:
+   - El *Center Readout* se reubicó en el DOM antes de `ResponsiveContainer` con `z-0 pointer-events-none`.
+   - `ResponsiveContainer` se elevó a `relative z-10`.
+   - El contenedor del tooltip de Recharts se configuró con `wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}`.
+   - Esta disposición garantiza que el tooltip siempre flote en la capa superior (`z-50`) con su propia sombra y fondo esmerilado, eliminando cualquier superposición no deseada del texto central.
+
+
