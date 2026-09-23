@@ -803,34 +803,18 @@ export function TaskCollaboratorPortal({
     setIsCommentModalOpen(true)
   }
 
-  // Portal Theme Mode: 'light' | 'dark' (isolated to portal)
+  // Portal Theme Mode: 'light' | 'dark' (isolated to portal - always light on initial entry)
   const [portalTheme, setPortalTheme] = useState<"light" | "dark">("light")
 
   useEffect(() => {
-    const saved = localStorage.getItem("portal_task_theme") as "light" | "dark" | null
-    if (saved) {
-      setPortalTheme(saved)
-      if (saved === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      const initial = prefersDark ? "dark" : "light"
-      setPortalTheme(initial)
-      if (initial === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-    }
+    // Por directriz institucional, cada vez que los colaboradores entran a su portal deben ser recibidos si o si en modo claro por defecto
+    setPortalTheme("light")
+    document.documentElement.classList.remove("dark")
   }, [])
 
   const togglePortalTheme = () => {
     const next = portalTheme === "dark" ? "light" : "dark"
     setPortalTheme(next)
-    localStorage.setItem("portal_task_theme", next)
     if (next === "dark") {
       document.documentElement.classList.add("dark")
     } else {

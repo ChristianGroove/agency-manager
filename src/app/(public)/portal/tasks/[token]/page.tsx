@@ -80,6 +80,12 @@ export default async function TaskCollaboratorPortalPage({ params }: PageProps) 
 
   return (
     <BrandingProvider initialBranding={brandingConfig}>
+      {/* Script DOM local: garantiza que la carga inicial del portal sea en tema claro sin destellos y sin tocar localStorage */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{document.documentElement.classList.remove('dark');}catch(e){}`,
+        }}
+      />
       <TaskCollaboratorPortal portalData={portalData} token={token} />
     </BrandingProvider>
   )

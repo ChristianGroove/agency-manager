@@ -1094,3 +1094,21 @@ Al aplicar máscaras alfa (`-webkit-mask-image`) sobre texto tipográfico:
    - **Foco Concentrado**: Ancho del haz calibrado a una franja focal estrecha (`~14%` del ancho), sustituyendo lavados difusos anchos.
    - **Velocidad Pausada**: Movimiento horizontal de izquierda a derecha a **4.8s** constante.
    - **Bucle Infinito**: Ejecución continua (`active` sin parámetro de corte `duration`) en los Hero banners de los portales de colaboradores (`TaskCollaboratorPortal`) y clientes (`PortalDashboard`).
+
+---
+
+## 29. Política de Recepción Determinista en Modo Claro para el Portal de Colaboradores
+
+### A. Necesidad de Recepción Homogénea
+Para garantizar una experiencia visual institucional estandarizada, limpia y coherente, los colaboradores deben ser recibidos siempre y por defecto en **Modo Claro** al ingresar a su portal (`/portal/tasks/[token]`), sin importar si su sistema operativo o navegador tiene activado el modo oscuro (`prefers-color-scheme: dark`).
+
+### B. Aislamiento Total sin Afectar el Tema Global de la Plataforma
+1. **Desacoplamiento Estricto de `next-themes`**:
+   - El portal no interactúa con el proveedor global `next-themes` ni escribe en la clave `'theme'` de `localStorage`. Esto previene interferencias cruzadas y garantiza que el switch de tema del Dashboard general de Pixy funcione con total autonomía.
+2. **Capa Inmediata Pre-Hydration (`TaskCollaboratorPortalPage`)**:
+   - Inyección de un script puramente local al DOM que remueve la clase `dark` del elemento raíz `<html>` antes de que el navegador pinte el primer frame, eliminando cualquier destello oscuro inicial sin tocar el almacenamiento del navegador.
+3. **Capa Reactiva de Estado (`TaskCollaboratorPortal`)**:
+   - El estado local `portalTheme` inicializa determinísticamente en `"light"`.
+   - Se eliminaron las lecturas de `prefers-color-scheme: dark` y las restauraciones persistentes de modo oscuro.
+   - Si el colaborador decide activar el modo oscuro durante su sesión, puede hacerlo mediante el botón de sol/luna en el header; no obstante, en cualquier nuevo acceso o recarga, la directriz institucional lo recibirá nuevamente en Modo Claro.
+
