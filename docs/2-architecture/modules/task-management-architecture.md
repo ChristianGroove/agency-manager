@@ -1010,3 +1010,28 @@ Permitir que colaboradores regulares reabran o imputen horas a requerimientos qu
 - **Capa Interfaz de Usuario**:
   - `TaskPortalDetailModal.tsx` y `TaskDetailModal.tsx`: Bloquean selectores de estado, ocultan `+ Imputar`, inhabilitan checkboxes de entregables y muestran alertas claras de gobernanza.
   - `TaskCollaboratorPortal.tsx`: Bloquea acciones rápidas de cambio de estado en tablas y Kanban para tickets cerrados.
+
+---
+
+## 25. Rediseño UX del Módulo de Tiempo & Horas en Modales de Tarea
+
+### A. Diagnóstico de Fricción y Errores de Usabilidad Previos
+Anteriormente, el bloque de horas en la barra lateral de los modales de detalle (`TaskPortalDetailModal` y `TaskDetailModal`) sufría de inconsistencias funcionales y visuales:
+1. **Controles Competitivos y Ambigüedad de Propósito**: Existía un campo de entrada numérico (`<input type="number">`) con flechas nativas (*spinners*) para "Horas Reales" ubicado justo debajo de un enlace de texto `+ Imputar`. El usuario no comprendía si cambiar el número registraba horas o si debía pulsar el botón, provocando incertidumbre sobre cómo se asentaba el trabajo.
+2. **Fricción de Espacio y Ruptura de UI**: En un contenedor lateral estrecho (~240px), la etiqueta "Horas Reales" compartía renglón con `+ Imputar`, truncándose como `Horas Rea...` con el botón montado encima en dos líneas.
+3. **Pérdida de Trazabilidad**: El input directo permitía sobrescribir el total acumulado sin registrar notas de bitácora, fecha de imputación ni autoría.
+
+### B. Arquitectura del Componente Unificado "Tiempo & Horas"
+Se erradicó por completo el `<input type="number">` para horas reales y se diseñó una tarjeta integrada de telemetría de alto estándar:
+1. **Cabecera con Métricas de Margen**:
+   - Título formal con icono `Timer` (*Tiempo & Horas*).
+   - Badge dinámico de telemetría: calcula el porcentaje de presupuesto consumido (`% invertido`) o alerta en tono ámbar cuando las horas reales superan el presupuesto (`+Xh sobrepaso`).
+2. **Grilla de Valores de 2 Columnas Despejada**:
+   - **Estimadas**: Para el PM, expone un input limpio sin bordes con sufijo `h`. Para colaboradores, muestra una lectura clara (`20h` o `Sin estimar`).
+   - **Reales Invertidas**: Renderizado exclusivo como métrica tipográfica consolidada (`18h` o `18h / 20h`), eliminando cualquier input numérico confuso.
+3. **Barra de Progreso Presupuestario**:
+   - Indicador visual de consumo de horas (verde si está dentro del estimado, ámbar si excede el presupuesto).
+4. **Botón Principal de Acción Unificado**:
+   - Botón ancho destacado: `Registrar Horas de Trabajo` con icono `Timer`, que detona de forma transparente el diálogo de imputación ágil (`TaskLogWorkModal`), garantizando notas, auditoría y horas incrementales.
+   - En tickets cerrados (`done`), se sustituye elegantemente por una píldora informativa sellada: *"Registro cerrado (Ticket completado)"*.
+
