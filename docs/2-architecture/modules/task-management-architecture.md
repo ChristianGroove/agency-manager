@@ -1051,4 +1051,21 @@ En la vista de operaciones del PM (`TaskPmOperationsDashboard`), los gráficos d
    - El contenedor del tooltip de Recharts se configuró con `wrapperStyle={{ zIndex: 50, pointerEvents: "none" }}`.
    - Esta disposición garantiza que el tooltip siempre flote en la capa superior (`z-50`) con su propia sombra y fondo esmerilado, eliminando cualquier superposición no deseada del texto central.
 
+---
+
+## 27. Homologación de Telemetría de Horas en la Tabla del Portal de Colaboradores
+
+### A. Diagnóstico de Disparidad entre Plataforma y Portales
+En la vista global de plataforma (`TaskListView`), la tabla de tareas incluía una columna dedicada de **Horas** (`actual_hours / estimated_hours` con porcentaje de consumo presupuestario), mientras que la tabla del portal de colaboradores (`TaskCollaboratorPortal`) carecía de esta métrica. Esta omisión impedía a los colaboradores conocer su ritmo de gasto de tiempo por requerimiento directamente desde la cuadrícula de trabajo.
+
+### B. Arquitectura de Visualización
+1. **Columna "Horas" Homogénea**:
+   - Encabezado con icono `Timer` alineado a la derecha junto a la columna de `Progreso`.
+   - Métrica tipográfica en fuente monoespaciada (`18h / 20h`).
+   - Alerta visual en tono carmesí/rosa (`text-rose-600 dark:text-rose-400 font-bold`) cuando las horas reales sobrepasan la estimación presupuestada.
+   - Píldora de porcentaje de avance presupuestario (`%`), facilitando auditoría en tiempo real para el colaborador y su líder de proyecto.
+2. **Resiliencia Responsiva**:
+   - Ancho mínimo de tabla calibrado a `min-w-[850px]` para asegurar scroll horizontal fluido sin compresión de columnas en pantallas compactas o dispositivos móviles.
+
+
 
