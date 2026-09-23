@@ -292,10 +292,11 @@ export class MetaAdapter implements IntegrationAdapter {
                 // Preserve the established WhatsApp media path, including WebP conversion.
                 // A pre-send upload may safely fail without sending the actual message.
                 if (type === 'audio' && !String(media.mediaUrl).includes('localhost') &&
-                    !String(media.mediaUrl).includes('127.0.0.1')) return;
+                    !String(media.mediaUrl).includes('127.0.0.1') &&
+                    !String(media.mediaUrl).startsWith('/api/media/chat/')) return;
                 const { MetaProvider } = await import('@/modules/features/messaging/providers/meta-provider');
                 const id = await new MetaProvider(effectiveToken, phoneNumberId, '')
-                    .uploadMedia(media.mediaUrl, effectiveToken, type, phoneNumberId);
+                    .uploadMedia(media.mediaUrl, effectiveToken, type, phoneNumberId, metadata?.organizationId);
                 if (!id) throw new Error('Meta media upload failed');
                 media.mediaId = id;
             };

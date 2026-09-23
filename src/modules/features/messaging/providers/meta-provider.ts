@@ -14,6 +14,8 @@ import {
 } from "./types";
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { ChannelResolver } from '@/modules/features/messaging/channel-resolver';
+import { randomUUID } from 'crypto';
+import { PRIVATE_CHAT_MEDIA_BUCKET } from '@/modules/features/messaging/constants';
 
 const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
 const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
@@ -120,11 +122,16 @@ export class MetaProvider implements MessagingProvider {
                 });
             }
 
-            // Webhook media must use the uniquely owned channel, never a process-wide token.
-            const token = assetId ? await this.getTokenByAssetId(assetId, 'whatsapp') : null;
+            // Webhook media must use the uniquely owned channel and its organization.
+            const match = assetId ? await ChannelResolver.resolveConnection({
+                channel: 'whatsapp', metadata: { phoneNumberId: assetId },
+            }, supabaseAdmin) : null;
+            const credentials = match ? await resolveConnectionCredentials(match.connection.credentials) : null;
+            const token = credentials?.accessToken || credentials?.apiToken || credentials?.access_token;
+            const organizationId = match?.connection.organization_id;
 
-            if (!token) {
-                console.error(`[MetaProvider] No token available for media resolution!`);
+            if (!token || !organizationId) {
+                console.error(`[MetaProvider] No authorized channel available for media resolution!`);
                 return "";
             }
 
@@ -145,7 +152,7 @@ export class MetaProvider implements MessagingProvider {
             const { url: downloadUrl } = await urlRes.json();
             if (!downloadUrl) return "";
 
-            return await this.downloadAndUpload(downloadUrl, mediaId, mimeType, token);
+            return await this.downloadAndUpload(downloadUrl, mimeType, token, organizationId);
         } catch (error) {
             logMetaProviderError(`[MetaProvider] Media Processing Exception:`, error);
             return "";
@@ -155,7 +162,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Helper to download from Meta and upload to Supabase
      */
-    private async downloadAndUpload(url: string, mediaId: string, mimeType: string, token: string): Promise<string> {
+    private async downloadAndUpload(url: string, mimeType: string, token: string, organizationId: string): Promise<string> {
         try {
             // 1. Download Binary
             const mediaRes = await fetch(url, {
@@ -167,22 +174,17 @@ export class MetaProvider implements MessagingProvider {
 
             // 2. Upload to Supabase Storage
             const extension = mimeType.split('/')[1]?.split(';')[0] || 'bin';
-            const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${extension}`;
+            const fileName = `${organizationId}/whatsapp/${new Date().getFullYear()}/${randomUUID()}.${extension}`;
             const { error: uploadError } = await (supabaseAdmin).storage
-                .from('chat-attachments')
-                .upload(fileName, buffer, { contentType: mimeType, upsert: true });
+                .from(PRIVATE_CHAT_MEDIA_BUCKET)
+                .upload(fileName, buffer, { contentType: mimeType });
 
             if (uploadError) {
                 logMetaProviderError(`[MetaProvider] Supabase Media Upload Error:`, uploadError);
                 return "";
             }
 
-            // 3. Get Public URL
-            const { data: { publicUrl } } = (supabaseAdmin).storage
-                .from('chat-attachments')
-                .getPublicUrl(fileName);
-
-            return publicUrl;
+            return `/api/media/chat/${fileName}`;
         } catch (error) {
             logMetaProviderError(`[MetaProvider] downloadAndUpload Exception:`, error);
             return "";
@@ -246,11 +248,13 @@ export class MetaProvider implements MessagingProvider {
             const mediaTypes = ['audio', 'image', 'video', 'document', 'sticker'];
 
             if (mediaTypes.includes(content.type) && content.mediaUrl && !content.mediaId) {
-                const isLocalUrl = content.mediaUrl.includes('127.0.0.1') || content.mediaUrl.includes('localhost');
+                const isLocalUrl = content.mediaUrl.includes('127.0.0.1') || content.mediaUrl.includes('localhost') ||
+                    content.mediaUrl.startsWith('/api/media/chat/');
                 const shouldBypassUpload = !isLocalUrl && content.type === 'audio';
 
                 if (!shouldBypassUpload) {
-                    const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId);
+                    const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId,
+                        typeof options.metadata?.organizationId === 'string' ? options.metadata.organizationId : undefined);
                     if (mediaId) {
                         content.mediaId = mediaId;
                     } else {
@@ -262,7 +266,8 @@ export class MetaProvider implements MessagingProvider {
 
             // Auto-upload image headers for interactive messages (legacy, but if used)
             if ((content.type === 'interactive_buttons' || content.type === 'interactive_cta') && content.header?.mediaUrl && !content.header?.mediaId) {
-                const mediaId = await this.uploadMedia(content.header.mediaUrl, activeToken, content.header.type || 'image', effectiveAssetId);
+                const mediaId = await this.uploadMedia(content.header.mediaUrl, activeToken, content.header.type || 'image', effectiveAssetId,
+                    typeof options.metadata?.organizationId === 'string' ? options.metadata.organizationId : undefined);
                 if (mediaId) {
                     content.header.mediaId = mediaId;
                 } else {
@@ -622,7 +627,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Upload media to Meta servers
      */
-    async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
+    async uploadMedia(url: string, token: string, type: string, assetId: string, organizationId?: string): Promise<string | null> {
         try {
             if (!isDeployedRuntime()) {
                 console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
@@ -635,13 +640,26 @@ export class MetaProvider implements MessagingProvider {
             }
             const uploadUrl = `https://graph.facebook.com/v21.0/${assetId}/media`;
 
-            // 1. Fetch file
-            const fileResp = await fetch(url);
-            if (!fileResp.ok) throw new Error(`Failed to fetch media from URL: ${url}`);
-            let buffer = await fileResp.arrayBuffer();
+            // Private chat media is read directly from Storage, never through a public URL.
+            let buffer: ArrayBuffer;
+            let mimeType: string;
+            if (url.startsWith('/api/media/chat/')) {
+                const path = url.slice('/api/media/chat/'.length);
+                if (!organizationId || !path.startsWith(`${organizationId}/`) || path.includes('..')) {
+                    throw new Error('Private media does not belong to this organization');
+                }
+                const { data, error } = await supabaseAdmin.storage.from(PRIVATE_CHAT_MEDIA_BUCKET).download(path);
+                if (error || !data) throw new Error('Private media unavailable');
+                buffer = await data.arrayBuffer();
+                mimeType = data.type || 'application/octet-stream';
+            } else {
+                const fileResp = await fetch(url);
+                if (!fileResp.ok) throw new Error('Failed to fetch media');
+                buffer = await fileResp.arrayBuffer();
+                mimeType = fileResp.headers.get('content-type') || 'application/octet-stream';
+            }
 
             // Determine MIME type
-            let mimeType = fileResp.headers.get('content-type') || 'application/octet-stream';
             if (mimeType === 'application/octet-stream') {
                 if (type === 'image') mimeType = url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
                 if (type === 'video') mimeType = 'video/mp4';

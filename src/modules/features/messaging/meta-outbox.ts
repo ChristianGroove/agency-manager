@@ -130,7 +130,8 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
     const connMeta = connection.metadata || {}
     const convMeta = conversation?.metadata || {}
     const metadata = claimed.channel === 'whatsapp'
-        ? { channel: 'whatsapp', phoneNumberId: connMeta.asset_id || connMeta.phone_number_id }
+        ? { channel: 'whatsapp', phoneNumberId: connMeta.asset_id || connMeta.phone_number_id,
+            organizationId: claimed.organization_id }
         : claimed.channel === 'messenger'
             ? { channel: 'messenger', pageId: connMeta.asset_id || connMeta.page_id }
             : { channel: 'instagram', pageId: connMeta.asset_id || convMeta.instagramBusinessId || connMeta.instagram_business_id }

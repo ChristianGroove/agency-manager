@@ -2,7 +2,7 @@ import { useState } from "react"
 import { supabase } from "@/modules/core/database/supabase"
 import { MessageContentType } from "@/types/messaging"
 import { sendMessage, sendProductCardMessage } from "../actions/messages"
-import { MESSAGING_STORAGE_BUCKET } from "../constants"
+import { PRIVATE_CHAT_MEDIA_BUCKET } from "../constants"
 import { refineDraftContent } from "../ai/smart-replies"
 import { Message, Conversation } from "./use-chat-logic"
 import { toast } from "sonner"
@@ -167,12 +167,12 @@ export function useChatActions(params: {
             }
             
             const orgId = conversation?.organization_id
-            const fileName = `${conversationId}/audio/${Date.now()}.${ext}`
-            const { error: uploadError } = await supabase.storage.from(MESSAGING_STORAGE_BUCKET).upload(fileName, finalBlob, { contentType: mime })
+            if (!orgId) throw new Error('No se pudo identificar la organización de la conversación')
+            const fileName = `${orgId}/${conversationId}/audio/${crypto.randomUUID()}.${ext}`
+            const { error: uploadError } = await supabase.storage.from(PRIVATE_CHAT_MEDIA_BUCKET).upload(fileName, finalBlob, { contentType: mime })
             if (uploadError) throw uploadError
 
-            const { data: { publicUrl } } = supabase.storage.from(MESSAGING_STORAGE_BUCKET).getPublicUrl(fileName)
-            await handleSend({ inputValue: "", setInputValue: () => {}, type: 'audio', mediaUrl: publicUrl })
+            await handleSend({ inputValue: "", setInputValue: () => {}, type: 'audio', mediaUrl: `/api/media/chat/${fileName}` })
         } catch (error: any) {
             toast.error("Error al enviar audio: " + error.message)
         } finally {
@@ -187,18 +187,20 @@ export function useChatActions(params: {
         }
         setUploading(true)
         try {
-            const fileExt = file.name.split('.').pop() || 'png'
-            const fileName = `${conversationId}/${Math.random().toString(36).substring(2)}.${fileExt}`
-            const { error: uploadError } = await supabase.storage.from(MESSAGING_STORAGE_BUCKET).upload(fileName, file)
+            const orgId = conversation?.organization_id
+            if (!orgId) throw new Error('No se pudo identificar la organización de la conversación')
+            const fileExt = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
+            const fileName = `${orgId}/${conversationId}/${crypto.randomUUID()}.${fileExt}`
+            const { error: uploadError } = await supabase.storage.from(PRIVATE_CHAT_MEDIA_BUCKET).upload(fileName, file)
             if (uploadError) throw uploadError
 
-            const { data: { publicUrl } } = supabase.storage.from(MESSAGING_STORAGE_BUCKET).getPublicUrl(fileName)
+            const mediaUrl = `/api/media/chat/${fileName}`
             let type: MessageContentType = 'document'
             if (file.type.startsWith('image/')) type = 'image'
             else if (file.type.startsWith('video/')) type = 'video'
             else if (file.type.startsWith('audio/')) type = 'audio'
 
-            setPendingAttachment({ url: publicUrl, type, name: file.name })
+            setPendingAttachment({ url: mediaUrl, type, name: file.name })
         } catch (error) {
             toast.error(t('crm.inbox.chat.actions.upload_failed'))
         } finally {
