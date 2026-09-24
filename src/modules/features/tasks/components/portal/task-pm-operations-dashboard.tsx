@@ -317,6 +317,9 @@ export function TaskPmOperationsDashboard({
     else if (selectedPeriod === "1y") cutoffDate = subDays(now, 365)
 
     return tasks.filter((t) => {
+      // Isolate support tickets from sprint calculations and dev metrics
+      if (t.origin_type === "support") return false
+
       // Project / Workspace filter
       if (selectedProjectFilter !== "all") {
         if (selectedProjectFilter.startsWith("workspace:")) {

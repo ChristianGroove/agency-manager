@@ -96,9 +96,10 @@ import {
   Lock,
   Ban,
   Timer,
+  Headset,
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
-import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint, TaskCollaborator } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
@@ -127,9 +128,12 @@ import { TaskKanbanBoard } from "../kanban/task-kanban-board"
 import { TaskPortalDetailModal } from "./task-portal-detail-modal"
 import { ProjectFormModal } from "../modals/project-form-modal"
 import { WorkspaceFormModal } from "../modals/workspace-form-modal"
+import { TaskFormModal } from "../modals/task-form-modal"
 import { TaskPmOperationsDashboard } from "./task-pm-operations-dashboard"
 import { TaskCollaboratorRibbon } from "./task-collaborator-ribbon"
 import { TaskWeeklyPacingMatrix } from "../pacing/task-weekly-pacing-matrix"
+import { TaskSupportChannelView } from "./task-support-channel-view"
+import { TaskParallelSupportPortal } from "./task-parallel-support-portal"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
@@ -493,6 +497,8 @@ export function TaskCollaboratorPortal({
   const [latestAudits, setLatestAudits] = useState<Record<string, TaskProgressAuditSummary>>(portalData.latestAudits || {})
   const [sprints, setSprints] = useState<TaskSprint[]>(portalData.sprints || [])
   const [activeSprint, setActiveSprint] = useState<TaskSprint | null>(portalData.activeSprint || null)
+  const [supportTickets, setSupportTickets] = useState<TaskItem[]>(portalData.supportTickets || [])
+  const [taskToPromote, setTaskToPromote] = useState<TaskItem | null>(null)
   const [recentMentions, setRecentMentions] = useState(portalData.recentMentions || [])
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([])
   const teamMembers = portalData.teamMembers || []
@@ -505,6 +511,10 @@ export function TaskCollaboratorPortal({
   useEffect(() => {
     setActiveSprint(portalData.activeSprint || null)
   }, [portalData.activeSprint])
+
+  useEffect(() => {
+    setSupportTickets(portalData.supportTickets || [])
+  }, [portalData.supportTickets])
 
   useEffect(() => {
     setTasks(portalData.tasks)
@@ -550,8 +560,31 @@ export function TaskCollaboratorPortal({
         (payload) => {
           if (!isMounted) return
 
-          if (payload.eventType === "UPDATE") {
+          if (payload.eventType === "INSERT") {
+            const insertedRow = payload.new as TaskItem
+            if (insertedRow.origin_type === "support") {
+              setSupportTickets((prev) => {
+                if (prev.some((t) => t.id === insertedRow.id)) return prev
+                return [insertedRow, ...prev]
+              })
+              if (isLeadOrPm) {
+                toast.info(`Nuevo ticket de soporte: #${insertedRow.ticket_code || ""}`, {
+                  description: insertedRow.title,
+                  action: {
+                    label: "Ver",
+                    onClick: () => openTaskDetail(insertedRow),
+                  },
+                })
+              }
+            }
+          } else if (payload.eventType === "UPDATE") {
             const updatedRow = payload.new as Partial<TaskItem>
+
+            if (updatedRow.origin_type === "support") {
+              setSupportTickets((prev) =>
+                prev.map((t) => (t.id === updatedRow.id ? { ...t, ...updatedRow } : t))
+              )
+            }
 
             // Check for status change alerts to PM and stakeholders
             const existingTask = tasks.find((t) => t.id === updatedRow.id) || allTeamTasks.find((t) => t.id === updatedRow.id)
@@ -610,6 +643,7 @@ export function TaskCollaboratorPortal({
               setTasks((prev) => prev.filter((t) => t.id !== deletedId))
               setAllTeamTasks((prev) => prev.filter((t) => t.id !== deletedId))
               setAvailableTasks((prev) => prev.filter((t) => t.id !== deletedId))
+              setSupportTickets((prev) => prev.filter((t) => t.id !== deletedId))
             }
           }
         }
@@ -764,8 +798,51 @@ export function TaskCollaboratorPortal({
   // View Mode: 'list' (default) | 'kanban' | 'compact' | 'grid'
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
-  // PM Portal View Mode: 'dashboard' (Hero + futuristic telemetry) | 'gestion' (clean tasks & team review) | 'pacing' (Weekly Pacing Matrix)
-  const [pmViewMode, setPmViewMode] = useState<"dashboard" | "gestion" | "pacing">("dashboard")
+  // PM Portal View Mode: 'dashboard' (Hero + futuristic telemetry) | 'gestion' (clean tasks & team review) | 'pacing' (Weekly Pacing Matrix) | 'support' (Canal de Soporte Paralelo)
+  const [pmViewMode, setPmViewMode] = useState<"dashboard" | "gestion" | "pacing" | "support">("dashboard")
+
+  const hasSupportChannelActive = useMemo(() => {
+    return workspaces.some((w) => Boolean(w.parallel_team_enabled))
+  }, [workspaces])
+
+  const unresolvedSupportCount = useMemo(() => {
+    return supportTickets.filter((t) => t.status !== "done").length
+  }, [supportTickets])
+
+  const modalCollaborators: TaskCollaborator[] = useMemo(() => {
+    return teamMembers.map((m) => ({
+      id: m.id,
+      organization_id: organization?.id || "",
+      first_name: m.first_name,
+      last_name: m.last_name,
+      role: m.role,
+      photo_url: m.photo_url,
+      access_token: m.access_token || "",
+      is_active: true,
+    }))
+  }, [teamMembers, organization?.id])
+
+  useEffect(() => {
+    if (!hasSupportChannelActive && pmViewMode === "support") {
+      setPmViewMode("dashboard")
+    }
+  }, [hasSupportChannelActive, pmViewMode])
+
+  const handleResolveSupportTicket = async (ticketId: string) => {
+    try {
+      const res = await portalUpdateTaskStatus(token, ticketId, "done")
+      if (res.success) {
+        setSupportTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? { ...t, status: "done", progress_percentage: 100 } : t))
+        )
+        toast.success("Ticket de soporte resuelto correctamente")
+      } else {
+        toast.error("Error al resolver el ticket")
+      }
+    } catch {
+      toast.error("Error al resolver el ticket")
+    }
+  }
 
   // Active tab filter & collaborator filter
   const [activeTab, setActiveTab] = useState<"my_tasks" | "in_progress" | "qa_queue" | "team_tasks">(
@@ -2049,6 +2126,22 @@ export function TaskCollaboratorPortal({
       ? organization.logo_dark_url || organization.logo_url
       : organization.logo_light_url || organization.logo_url
 
+  if (portalData.portalMode === "support") {
+    return (
+      <TaskParallelSupportPortal
+        portalData={portalData}
+        token={token}
+        supportTickets={supportTickets}
+        onTicketsChange={setSupportTickets}
+        workspaces={workspaces}
+        projects={projects}
+        brandColor={brandColor}
+        portalTheme={portalTheme}
+        togglePortalTheme={togglePortalTheme}
+      />
+    )
+  }
+
   return (
     <div className={cn("min-h-screen relative bg-gray-100 dark:bg-[#0a0a0a] text-foreground font-sans selection:bg-primary/20 transition-colors duration-200", portalTheme === "dark" ? "dark" : "")}>
       {/* Partículas animadas globales de la plataforma */}
@@ -2075,7 +2168,7 @@ export function TaskCollaboratorPortal({
             )}
           </div>
 
-          {/* Switch Moderno Centrado para Gestores de Proyecto (Dashboard vs Gestión vs Ritmo Semanal) */}
+          {/* Switch Moderno Centrado para Gestores de Proyecto (Dashboard vs Gestión vs Ritmo Semanal vs Soporte) */}
           {isLeadOrPm && (
             <div className="flex items-center bg-zinc-100/90 dark:bg-white/5 p-1 rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-inner backdrop-blur-md">
               <button
@@ -2119,6 +2212,27 @@ export function TaskCollaboratorPortal({
                 <CalendarDays className="w-3.5 h-3.5" />
                 <span>Ritmo Semanal</span>
               </button>
+
+              {hasSupportChannelActive && (
+                <button
+                  type="button"
+                  onClick={() => setPmViewMode("support")}
+                  className={cn(
+                    "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    pmViewMode === "support"
+                      ? "bg-white dark:bg-zinc-900 text-primary shadow-sm shadow-black/5 dark:shadow-white/5 border border-zinc-200/50 dark:border-white/10"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Headset className="w-3.5 h-3.5" />
+                  <span>Soporte</span>
+                  {unresolvedSupportCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                      {unresolvedSupportCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
@@ -2634,6 +2748,23 @@ export function TaskCollaboratorPortal({
                 isotypeUrl: organization?.isotipo_url,
                 primaryColor: organization?.primary_color || brandColor,
               }}
+            />
+          </div>
+        )}
+
+        {/* PM Canal de Soporte (Parallel Teams & Support Channel) */}
+        {isLeadOrPm && pmViewMode === "support" && hasSupportChannelActive && (
+          <div className="pt-2 pb-8">
+            <TaskSupportChannelView
+              supportTickets={supportTickets}
+              workspaces={workspaces}
+              projects={projects}
+              onPromoteTicket={(ticket) => {
+                setTaskToPromote(ticket)
+              }}
+              onViewTicket={openTaskDetail}
+              onResolveTicket={handleResolveSupportTicket}
+              brandColor={brandColor}
             />
           </div>
         )}
@@ -3921,7 +4052,30 @@ export function TaskCollaboratorPortal({
             setAllTeamTasks((prev) => [createdTask, ...prev])
             setAvailableTasks((prev) => [createdTask, ...prev])
             setIsCreateModalOpen(false)
-            toast.success("¡Ticket creado con éxito!")
+            toast.success("Ticket creado con éxito")
+          }}
+        />
+      )}
+
+      {/* Modal de Promoción de Ticket de Soporte a Tarea Operativa */}
+      {taskToPromote && (
+        <TaskFormModal
+          isOpen={Boolean(taskToPromote)}
+          onClose={() => setTaskToPromote(null)}
+          promotedFromTask={taskToPromote}
+          projects={projects}
+          collaborators={modalCollaborators}
+          defaultProjectId={taskToPromote.project_id || projects[0]?.id}
+          onTaskCreated={(createdTask) => {
+            markTaskAsSeen(createdTask.id)
+            setTasks((prev) => [createdTask, ...prev])
+            setAllTeamTasks((prev) => [createdTask, ...prev])
+            setAvailableTasks((prev) => [createdTask, ...prev])
+            setSupportTickets((prev) =>
+              prev.map((t) => (t.id === taskToPromote.id ? { ...t, status: "in_progress" } : t))
+            )
+            setTaskToPromote(null)
+            toast.success(`Ticket #${createdTask.ticket_code || createdTask.title} creado a partir del reporte de soporte`)
           }}
         />
       )}

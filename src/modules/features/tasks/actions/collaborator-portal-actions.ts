@@ -270,6 +270,15 @@ export interface CollaboratorPortalData {
   }[];
   isLeadOrPm: boolean;
   isQa: boolean;
+  portalMode?: 'operations' | 'support';
+  supportTickets?: TaskItem[];
+  supportMetrics?: {
+    totalReported: number;
+    received: number;
+    inProgress: number;
+    resolved: number;
+    resolutionPercentage: number;
+  };
   sprints?: TaskSprint[];
   activeSprint?: TaskSprint | null;
   metrics: {
@@ -402,7 +411,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   let workspacesQuery = supabaseAdmin
     .from("task_workspaces")
-    .select("id, organization_id, name, slug, key_prefix, color, icon, lead_staff_id, created_at, updated_at")
+    .select("id, organization_id, name, slug, key_prefix, color, icon, lead_staff_id, parallel_team_enabled, support_config, created_at, updated_at")
     .eq("organization_id", staff.organization_id)
     .order("name", { ascending: true });
 
@@ -417,13 +426,17 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const workspaces: TaskWorkspace[] = (workspacesData || []) as any;
   const allowedWorkspaceIds = new Set(workspaces.map((w) => w.id));
 
+  // Determine if this collaborator belongs to the parallel support team
+  const isParallelSupport = staff.task_role === "support" && !isLeadOrPm;
+  const portalMode: 'operations' | 'support' = isParallelSupport ? "support" : "operations";
+
   // 5. Fetch Projects (scoped to allowed workspaces if not global)
   const { data: projectsData } = await supabaseAdmin
     .from("task_projects")
     .select(`
       *,
       workspace:task_workspaces!task_projects_workspace_id_fkey(
-        id, name, slug, key_prefix, color, icon
+        id, name, slug, key_prefix, color, icon, parallel_team_enabled
       )
     `)
     .eq("organization_id", staff.organization_id)
@@ -448,7 +461,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
         id, first_name, last_name, photo_url, role
       ),
       project:task_projects!task_items_project_id_fkey(
-        id, name, color
+        id, name, color, workspace_id
       ),
       blocked_by:blocked_by_task_id(
         id, ticket_code, title, status
@@ -459,7 +472,11 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     .order("created_at", { ascending: false });
 
   const { data: allTasksData } = await tasksQuery;
-  let allTasks = (allTasksData || []).map(normalizeTask);
+  const rawTasks = (allTasksData || []).map(normalizeTask);
+
+  // Segregate support tickets from operational development tasks
+  const allSupportTickets = rawTasks.filter((t) => t.origin_type === "support");
+  let allTasks = rawTasks.filter((t) => t.origin_type !== "support");
 
   if (!hasGlobalAccess) {
     allTasks = allTasks.filter(
@@ -483,15 +500,38 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const inReview = myTasks.filter((t) => t.status === "in_review").length;
   const completionPercentage = myTasks.length > 0 ? Math.round((completed / myTasks.length) * 100) : 0;
 
-  // Fetch team members with live sprint workload for all staff (allows @mentions and team overview)
+  // Support channel telemetry for parallel support collaborators
+  const myReportedTickets = allSupportTickets.filter(
+    (t) => t.created_by_staff_id === staff.id
+  );
+  const supportReceived = myReportedTickets.filter(
+    (t) => t.status === "backlog" || t.status === "todo"
+  ).length;
+  const supportInProgress = myReportedTickets.filter(
+    (t) => t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+  ).length;
+  const supportResolved = myReportedTickets.filter((t) => t.status === "done").length;
+  const totalReported = myReportedTickets.length;
+  const resolutionPercentage =
+    totalReported > 0 ? Math.round((supportResolved / totalReported) * 100) : 0;
+
+  const supportMetrics = {
+    totalReported,
+    received: supportReceived,
+    inProgress: supportInProgress,
+    resolved: supportResolved,
+    resolutionPercentage,
+  };
+
+  // Fetch team members with live sprint workload for all staff (exclude parallel support staff from developer ribbon)
   const { data: staffList } = await supabaseAdmin
     .from("organization_staff")
-    .select("id, first_name, last_name, photo_url, role, phone, access_token")
+    .select("id, first_name, last_name, photo_url, role, task_role, phone, access_token")
     .eq("organization_id", staff.organization_id)
     .eq("is_active", true)
     .order("first_name", { ascending: true });
 
-  let filteredStaffList = staffList || [];
+  let filteredStaffList = (staffList || []).filter((m) => m.task_role !== "support");
   if (!hasGlobalAccess) {
     // Only include staff who share at least one authorized workspace or are assigned in allowed tasks
     const { data: sharedStaffMemberships } = await supabaseAdmin
@@ -665,6 +705,9 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     recentMentions,
     isLeadOrPm,
     isQa,
+    portalMode,
+    supportTickets: isLeadOrPm ? allSupportTickets : isParallelSupport ? myReportedTickets : undefined,
+    supportMetrics: isParallelSupport ? supportMetrics : undefined,
     sprints,
     activeSprint,
     metrics: {
@@ -1312,7 +1355,7 @@ export async function portalCreateTask(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1320,6 +1363,7 @@ export async function portalCreateTask(
     if (!staff) throw new Error("Acceso no autorizado");
 
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isSupportStaff = staff.task_role === "support" && !isLeadOrPm;
 
     // Standard Collaborator Governance:
     // 1. Forced into "backlog" (no uncontrolled scope creep in active sprints).
@@ -1332,7 +1376,9 @@ export async function portalCreateTask(
     const finalEstimatedHours = isLeadOrPm ? Number(taskData.estimatedHours || 0) : 0;
     const finalDueDate = isLeadOrPm ? (taskData.dueDate || null) : null;
     const finalPriority: TaskPriority = taskData.priority || "medium";
-    const finalAssignedStaffId = isLeadOrPm
+    const finalAssignedStaffId = isSupportStaff
+      ? null
+      : isLeadOrPm
       ? (taskData.assignedStaffId === "unassigned" ? null : taskData.assignedStaffId || null)
       : (taskData.assignedStaffId === "unassigned" ? null : taskData.assignedStaffId || staff.id);
     const finalQaStaffId = isLeadOrPm
@@ -1347,10 +1393,12 @@ export async function portalCreateTask(
       estimated_hours: isLeadOrPm ? item.estimated_hours : null,
     }));
 
+    const codePrefix = isSupportStaff ? "SUP" : "TK";
     const { data: latest } = await supabaseAdmin
       .from("task_items")
       .select("ticket_code")
       .eq("organization_id", staff.organization_id)
+      .ilike("ticket_code", `${codePrefix}-%`)
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -1362,7 +1410,7 @@ export async function portalCreateTask(
       }
     }
 
-    const ticketCode = `TK-${nextNum}`;
+    const ticketCode = `${codePrefix}-${nextNum}`;
 
     const { data: newTask, error } = await supabaseAdmin
       .from("task_items")
@@ -1390,7 +1438,8 @@ export async function portalCreateTask(
         is_recurring: isLeadOrPm ? (taskData.isRecurring ?? false) : false,
         recurrence_interval: isLeadOrPm ? (taskData.recurrenceInterval || null) : null,
         recurrence_day: isLeadOrPm ? (taskData.recurrenceDay || 1) : 1,
-        next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null
+        next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null,
+        origin_type: isSupportStaff ? "support" : "internal",
       })
       .select(`
         *,
@@ -1426,7 +1475,9 @@ export async function portalCreateTask(
       await logPortalTaskAuditComment(
         staff.organization_id,
         newTask.id,
-        `📋 Nueva solicitud de requerimiento registrada por ${staff.first_name} ${staff.last_name} en el Backlog. Requiere revisión y aprobación de ${pmMentions || "@Gestor de Proyecto"}.`,
+        isSupportStaff
+          ? `[Canal de Soporte] Ticket reportado por ${staff.first_name} ${staff.last_name} (${staff.role}). Requiere atencion de ${pmMentions || "@Gestor de Proyecto"}.`
+          : `Nueva solicitud de requerimiento registrada por ${staff.first_name} ${staff.last_name} en el Backlog. Requiere revision y aprobacion de ${pmMentions || "@Gestor de Proyecto"}.`,
         staff,
         pmNames.length > 0 ? pmNames : undefined
       );

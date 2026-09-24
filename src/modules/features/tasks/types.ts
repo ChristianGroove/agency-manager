@@ -61,6 +61,8 @@ export interface TaskWorkspace {
   color: string;
   icon: string;
   lead_staff_id?: string | null;
+  parallel_team_enabled?: boolean;
+  support_config?: Record<string, any>;
   settings?: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -287,6 +289,14 @@ export interface TaskItem {
     status: TaskStatus;
   } | null;
   blocked_reason?: string | null;
+  // Parallel Teams & Support Channel
+  origin_type?: 'internal' | 'support';
+  promoted_from_id?: string | null;
+  promoted_from?: {
+    id: string;
+    ticket_code: string;
+    title: string;
+  } | null;
 }
 
 export interface TaskComment {
@@ -415,6 +425,8 @@ export function normalizeTask(task: any): TaskItem {
   const isDone = task.status === "done";
   return {
     ...task,
+    origin_type: task.origin_type || "internal",
+    promoted_from_id: task.promoted_from_id || null,
     checklist: parseTaskChecklist(task.checklist),
     tags: Array.isArray(task.tags) ? task.tags : [],
     attachments: Array.isArray(task.attachments) ? task.attachments : [],

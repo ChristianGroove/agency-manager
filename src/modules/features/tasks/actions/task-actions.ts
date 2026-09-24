@@ -13,6 +13,7 @@ import type {
   TaskMetrics,
   TaskStatus,
   TaskPriority,
+  TaskType,
   CollaboratorRole,
   TaskChecklistItem,
   TaskAttachment
@@ -294,6 +295,8 @@ export async function createWorkspace(data: {
   icon?: string;
   lead_staff_id?: string | null;
   organization_id?: string;
+  parallel_team_enabled?: boolean;
+  support_config?: Record<string, any>;
 }): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
   try {
     const orgId = await resolveOrgId(data.organization_id);
@@ -317,6 +320,8 @@ export async function createWorkspace(data: {
         color: data.color || "#0284c7",
         icon: data.icon || "Globe",
         lead_staff_id: data.lead_staff_id || null,
+        parallel_team_enabled: data.parallel_team_enabled ?? false,
+        support_config: data.support_config ?? {},
       })
       .select(`
         *,
@@ -563,6 +568,7 @@ export async function getTasks(params?: {
   projectId?: string;
   status?: TaskStatus;
   assignedStaffId?: string;
+  originType?: 'internal' | 'support' | 'all';
 }): Promise<TaskItem[]> {
   const activeOrgId = await resolveOrgId(params?.orgId);
 
@@ -586,6 +592,13 @@ export async function getTasks(params?: {
     .eq("organization_id", activeOrgId)
     .order("order_index", { ascending: true })
     .order("created_at", { ascending: false });
+
+  // Filter by origin_type: default to internal tasks to isolate support from standard operations
+  if (!params?.originType || params.originType === 'internal') {
+    query = query.neq("origin_type", "support");
+  } else if (params.originType === 'support') {
+    query = query.eq("origin_type", "support");
+  }
 
   if (params?.projectId && params.projectId !== "all") {
     query = query.eq("project_id", params.projectId);
@@ -692,7 +705,9 @@ export async function createTask(
         recurrence_interval: data.recurrence_interval || null,
         recurrence_day: data.recurrence_day || 1,
         parent_recurring_id: data.parent_recurring_id || null,
-        next_recurrence_at: data.next_recurrence_at || (data.is_recurring && data.recurrence_interval ? calculateNextRecurrence(data.recurrence_interval, new Date(), data.recurrence_day || 1).toISOString() : null)
+        next_recurrence_at: data.next_recurrence_at || (data.is_recurring && data.recurrence_interval ? calculateNextRecurrence(data.recurrence_interval, new Date(), data.recurrence_day || 1).toISOString() : null),
+        origin_type: data.origin_type || "internal",
+        promoted_from_id: data.promoted_from_id || null,
       })
       .select(`
         *,
@@ -724,7 +739,7 @@ export async function createTask(
         await logTaskAuditComment(
           orgId,
           newTask.id,
-          `👤 Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`
+          `Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`
         );
       }
     }
@@ -742,7 +757,7 @@ export async function createTask(
             await logTaskAuditComment(
               orgId,
               newTask.id,
-              `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
+              `Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
             );
           }
         }
@@ -753,6 +768,91 @@ export async function createTask(
     return { success: true, task: normalizeTask(newTask) };
   } catch (err: any) {
     console.error("Error creating task:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Promote a support ticket to an operational work ticket
+ */
+export async function promoteSupportTicketToTask(params: {
+  supportTicketId: string;
+  projectId: string;
+  title?: string;
+  description?: string;
+  priority?: TaskPriority;
+  type?: TaskType;
+  assignedStaffId?: string | null;
+  sprintId?: string | null;
+  dueDate?: string | null;
+  estimatedHours?: number;
+  promotedByStaffId?: string | null;
+}): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+  try {
+    // 1. Fetch support ticket
+    const { data: supportTicket, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("*, project:task_projects!task_items_project_id_fkey(name, workspace_id)")
+      .eq("id", params.supportTicketId)
+      .single();
+
+    if (fetchErr || !supportTicket) {
+      throw new Error("No se encontro el ticket de soporte a promover");
+    }
+
+    // 2. Create internal work task
+    const createRes = await createTask({
+      organization_id: supportTicket.organization_id,
+      project_id: params.projectId,
+      title: params.title?.trim() || supportTicket.title,
+      description: params.description !== undefined ? params.description : supportTicket.description,
+      priority: params.priority || supportTicket.priority || "medium",
+      type: params.type || "task",
+      status: "todo",
+      assigned_staff_id: params.assignedStaffId || null,
+      sprint_id: params.sprintId || null,
+      due_date: params.dueDate || null,
+      estimated_hours: params.estimatedHours || 0,
+      tags: supportTicket.tags || [],
+      attachments: supportTicket.attachments || [],
+      origin_type: "internal",
+      promoted_from_id: supportTicket.id,
+      created_by_staff_id: params.promotedByStaffId || null,
+    });
+
+    if (!createRes.success || !createRes.task) {
+      throw new Error(createRes.error || "Error al crear ticket de trabajo");
+    }
+
+    const newTask = createRes.task;
+
+    // 3. Mark support ticket as done
+    await supabaseAdmin
+      .from("task_items")
+      .update({
+        status: "done",
+        progress_percentage: 100,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", supportTicket.id);
+
+    // 4. Log audit comments on both tickets
+    await logTaskAuditComment(
+      supportTicket.organization_id,
+      supportTicket.id,
+      `Ticket de soporte promovido a ticket de trabajo #${newTask.ticket_code} (${newTask.title})`
+    );
+
+    await logTaskAuditComment(
+      supportTicket.organization_id,
+      newTask.id,
+      `Tarea originada desde el ticket de soporte #${supportTicket.ticket_code}`
+    );
+
+    revalidatePath("/operations/tasks");
+    return { success: true, task: newTask };
+  } catch (err: any) {
+    console.error("Error promoting support ticket:", err);
     return { success: false, error: err.message };
   }
 }

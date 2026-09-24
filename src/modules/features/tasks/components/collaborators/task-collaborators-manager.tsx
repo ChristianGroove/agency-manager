@@ -22,7 +22,10 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -48,6 +51,8 @@ import {
   Target,
   Settings2,
   Headphones,
+  Headset,
+  Info,
   GraduationCap,
   Wrench,
   Eye,
@@ -865,16 +870,41 @@ export function TaskCollaboratorsManager({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pm">Gestor de Proyecto</SelectItem>
-                    <SelectItem value="specialist">Especialista</SelectItem>
-                    <SelectItem value="developer">Desarrollador</SelectItem>
-                    <SelectItem value="designer">Diseñador</SelectItem>
-                    <SelectItem value="qa_lead">QA / Tester</SelectItem>
-                    <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
-                    <SelectItem value="operations">Operaciones</SelectItem>
-                    <SelectItem value="support">Soporte / Atención</SelectItem>
-                    <SelectItem value="consultant">Consultor Externo</SelectItem>
-                    <SelectItem value="observer">Observador</SelectItem>
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1">
+                        Equipo Operativo (Medido)
+                      </SelectLabel>
+                      <SelectItem value="pm">Gestor de Proyecto</SelectItem>
+                      <SelectItem value="specialist">Especialista</SelectItem>
+                      <SelectItem value="developer">Desarrollador</SelectItem>
+                      <SelectItem value="designer">Diseñador</SelectItem>
+                      <SelectItem value="qa_lead">QA / Tester</SelectItem>
+                      <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
+                      <SelectItem value="operations">Operaciones</SelectItem>
+                      <SelectItem value="consultant">Consultor Externo</SelectItem>
+                      <SelectItem value="observer">Observador</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <div className="flex items-center justify-between px-2 py-1">
+                        <SelectLabel className="text-[10px] font-bold tracking-wider text-primary uppercase p-0">
+                          Canal Paralelo (Soporte)
+                        </SelectLabel>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[220px] text-[11px] p-2 leading-relaxed">
+                              Los colaboradores de soporte reportan incidencias directamente al PM. No forman parte de la nómina de métricas de sprints ni ritmo semanal.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <SelectItem value="support" className="font-medium text-foreground">
+                        Soporte / Atención al Cliente
+                      </SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -937,6 +967,19 @@ export function TaskCollaboratorsManager({
                 </div>
               </div>
             )}
+            {taskRole === "support" && (
+              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-start gap-2.5">
+                <Headset className="w-4 h-4 shrink-0 mt-0.5 text-sky-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Portal de Canal de Soporte (Equipo Paralelo)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador ingresará a un portal especializado para reportar tickets de soporte e incidencias al PM de los espacios autorizados. No aparecerá en la cinta de especialistas ni afectará las métricas de sprints o ritmo semanal del equipo de desarrollo.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Espacios de Trabajo Asignados */}
             <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
@@ -944,10 +987,12 @@ export function TaskCollaboratorsManager({
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-primary" />
-                    Acceso Global a Todos los Espacios
+                    {taskRole === "support" ? "Reportar a Todos los Espacios con Canal Activo" : "Acceso Global a Todos los Espacios"}
                   </span>
                   <span className="text-[11px] text-muted-foreground block">
-                    Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área.
+                    {taskRole === "support"
+                      ? "Permite al colaborador de soporte crear tickets en cualquier espacio de trabajo que tenga el canal de soporte habilitado."
+                      : "Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área."}
                   </span>
                 </div>
                 <Switch
@@ -967,6 +1012,7 @@ export function TaskCollaboratorsManager({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
                     {workspaces.map((ws) => {
                       const isSelected = selectedWorkspaceIds.includes(ws.id)
+                      const isSupportActive = ws.parallel_team_enabled
                       return (
                         <div
                           key={ws.id}
@@ -999,6 +1045,18 @@ export function TaskCollaboratorsManager({
                             style={{ backgroundColor: ws.color || "#0284c7" }}
                           />
                           <span className="truncate font-medium flex-1">{ws.name}</span>
+                          {taskRole === "support" && (
+                            <span
+                              className={cn(
+                                "text-[9px] px-1.5 py-0.2 rounded font-medium shrink-0",
+                                isSupportActive
+                                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                                  : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {isSupportActive ? "Canal Activo" : "Sin Canal"}
+                            </span>
+                          )}
                           {ws.key_prefix && (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-muted font-mono text-muted-foreground shrink-0">
                               [{ws.key_prefix}]
@@ -1144,16 +1202,41 @@ export function TaskCollaboratorsManager({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pm">Gestor de Proyecto</SelectItem>
-                    <SelectItem value="specialist">Especialista</SelectItem>
-                    <SelectItem value="developer">Desarrollador</SelectItem>
-                    <SelectItem value="designer">Diseñador</SelectItem>
-                    <SelectItem value="qa_lead">QA / Tester</SelectItem>
-                    <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
-                    <SelectItem value="operations">Operaciones</SelectItem>
-                    <SelectItem value="support">Soporte / Atención</SelectItem>
-                    <SelectItem value="consultant">Consultor Externo</SelectItem>
-                    <SelectItem value="observer">Observador</SelectItem>
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1">
+                        Equipo Operativo (Medido)
+                      </SelectLabel>
+                      <SelectItem value="pm">Gestor de Proyecto</SelectItem>
+                      <SelectItem value="specialist">Especialista</SelectItem>
+                      <SelectItem value="developer">Desarrollador</SelectItem>
+                      <SelectItem value="designer">Diseñador</SelectItem>
+                      <SelectItem value="qa_lead">QA / Tester</SelectItem>
+                      <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
+                      <SelectItem value="operations">Operaciones</SelectItem>
+                      <SelectItem value="consultant">Consultor Externo</SelectItem>
+                      <SelectItem value="observer">Observador</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <div className="flex items-center justify-between px-2 py-1">
+                        <SelectLabel className="text-[10px] font-bold tracking-wider text-primary uppercase p-0">
+                          Canal Paralelo (Soporte)
+                        </SelectLabel>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[220px] text-[11px] p-2 leading-relaxed">
+                              Los colaboradores de soporte reportan incidencias directamente al PM. No forman parte de la nómina de métricas de sprints ni ritmo semanal.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <SelectItem value="support" className="font-medium text-foreground">
+                        Soporte / Atención al Cliente
+                      </SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -1216,6 +1299,19 @@ export function TaskCollaboratorsManager({
                 </div>
               </div>
             )}
+            {editTaskRole === "support" && (
+              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-start gap-2.5">
+                <Headset className="w-4 h-4 shrink-0 mt-0.5 text-sky-500" />
+                <div className="space-y-0.5">
+                  <span className="font-bold text-foreground block">
+                    Portal de Canal de Soporte (Equipo Paralelo)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Este colaborador ingresará a un portal especializado para reportar tickets de soporte e incidencias al PM de los espacios autorizados. No aparecerá en la cinta de especialistas ni afectará las métricas de sprints o ritmo semanal del equipo de desarrollo.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Espacios de Trabajo Asignados */}
             <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
@@ -1223,10 +1319,12 @@ export function TaskCollaboratorsManager({
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-primary" />
-                    Acceso Global a Todos los Espacios
+                    {editTaskRole === "support" ? "Reportar a Todos los Espacios con Canal Activo" : "Acceso Global a Todos los Espacios"}
                   </span>
                   <span className="text-[11px] text-muted-foreground block">
-                    Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área.
+                    {editTaskRole === "support"
+                      ? "Permite al colaborador de soporte crear tickets en cualquier espacio de trabajo que tenga el canal de soporte habilitado."
+                      : "Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área."}
                   </span>
                 </div>
                 <Switch
@@ -1246,6 +1344,7 @@ export function TaskCollaboratorsManager({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
                     {workspaces.map((ws) => {
                       const isSelected = editSelectedWorkspaceIds.includes(ws.id)
+                      const isSupportActive = ws.parallel_team_enabled
                       return (
                         <div
                           key={ws.id}
@@ -1278,6 +1377,18 @@ export function TaskCollaboratorsManager({
                             style={{ backgroundColor: ws.color || "#0284c7" }}
                           />
                           <span className="truncate font-medium flex-1">{ws.name}</span>
+                          {editTaskRole === "support" && (
+                            <span
+                              className={cn(
+                                "text-[9px] px-1.5 py-0.2 rounded font-medium shrink-0",
+                                isSupportActive
+                                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                                  : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {isSupportActive ? "Canal Activo" : "Sin Canal"}
+                            </span>
+                          )}
                           {ws.key_prefix && (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-muted font-mono text-muted-foreground shrink-0">
                               [{ws.key_prefix}]

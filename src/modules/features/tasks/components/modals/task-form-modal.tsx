@@ -46,6 +46,7 @@ import {
   FolderArchive,
   RefreshCw,
   Ban,
+  Headset,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -59,7 +60,7 @@ import type {
   RecurrenceInterval,
 } from "../../types"
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
-import { createTask, uploadTaskAttachment } from "../../actions/task-actions"
+import { createTask, uploadTaskAttachment, promoteSupportTicketToTask } from "../../actions/task-actions"
 import { TaskTagSelector } from "../tags/task-tag-selector"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
@@ -74,6 +75,7 @@ interface TaskFormModalProps {
   collaborators: TaskCollaborator[]
   defaultProjectId?: string
   defaultStatus?: TaskStatus
+  promotedFromTask?: TaskItem | null
 }
 
 export function TaskFormModal({
@@ -84,6 +86,7 @@ export function TaskFormModal({
   collaborators,
   defaultProjectId,
   defaultStatus = "todo",
+  promotedFromTask,
 }: TaskFormModalProps) {
   const [projectId, setProjectId] = useState(
     defaultProjectId && defaultProjectId !== "all"
@@ -130,33 +133,59 @@ export function TaskFormModal({
       setProjectId(
         defaultProjectId && defaultProjectId !== "all"
           ? defaultProjectId
-          : projects[0]?.id || ""
+          : (promotedFromTask?.project_id || projects[0]?.id || "")
       )
-      setTitle("")
-      setDescription("")
-      setStatus(defaultStatus || "todo")
-      setBlockedReason("")
-      setPriority("medium")
-      setType("task")
-      setTags([])
-      setProgress(0)
-      setAssignedStaffId("unassigned")
-      setQaStaffId("unassigned")
-      setDueDate("")
-      setEstimatedHours(0)
-      setActualHours(0)
-      setChecklist([])
-      setNewChecklistTitle("")
-      setNewChecklistWeek(null)
-      setIsRecurring(false)
-      setRecurrenceInterval("monthly")
-      setRecurrenceDay(1)
-      setAttachments([])
-      setNewRefUrl("")
-      setNewRefName("")
-      setShowAddRef(false)
+      if (promotedFromTask) {
+        setTitle(promotedFromTask.title || "")
+        setDescription(promotedFromTask.description || "")
+        setStatus("todo")
+        setBlockedReason("")
+        setPriority(promotedFromTask.priority || "medium")
+        setType(promotedFromTask.type || "task")
+        setTags(promotedFromTask.tags || [])
+        setProgress(0)
+        setAssignedStaffId("unassigned")
+        setQaStaffId("unassigned")
+        setDueDate("")
+        setEstimatedHours(0)
+        setActualHours(0)
+        setChecklist([])
+        setNewChecklistTitle("")
+        setNewChecklistWeek(null)
+        setIsRecurring(false)
+        setRecurrenceInterval("monthly")
+        setRecurrenceDay(1)
+        setAttachments(promotedFromTask.attachments || [])
+        setNewRefUrl("")
+        setNewRefName("")
+        setShowAddRef(false)
+      } else {
+        setTitle("")
+        setDescription("")
+        setStatus(defaultStatus || "todo")
+        setBlockedReason("")
+        setPriority("medium")
+        setType("task")
+        setTags([])
+        setProgress(0)
+        setAssignedStaffId("unassigned")
+        setQaStaffId("unassigned")
+        setDueDate("")
+        setEstimatedHours(0)
+        setActualHours(0)
+        setChecklist([])
+        setNewChecklistTitle("")
+        setNewChecklistWeek(null)
+        setIsRecurring(false)
+        setRecurrenceInterval("monthly")
+        setRecurrenceDay(1)
+        setAttachments([])
+        setNewRefUrl("")
+        setNewRefName("")
+        setShowAddRef(false)
+      }
     }
-  }, [isOpen, defaultProjectId, defaultStatus, projects])
+  }, [isOpen, defaultProjectId, defaultStatus, projects, promotedFromTask])
 
   const selectedProject = projects.find((p) => p.id === projectId)
 
@@ -331,34 +360,49 @@ export function TaskFormModal({
 
     setIsSubmitting(true)
     try {
-      const res = await createTask({
-        project_id: projectId,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        status: finalStatus,
-        priority,
-        type,
-        progress_percentage: finalProgress,
-        assigned_staff_id: assignedStaffId === "unassigned" ? null : assignedStaffId,
-        qa_staff_id: qaStaffId === "unassigned" ? null : qaStaffId,
-        due_date: dueDate || null,
-        estimated_hours: Number(estimatedHours) || 0,
-        actual_hours: Number(actualHours) || 0,
-        checklist,
-        tags,
-        attachments,
-        is_recurring: isRecurring,
-        recurrence_interval: isRecurring ? recurrenceInterval : null,
-        recurrence_day: isRecurring ? recurrenceDay : null,
-        blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
-      })
+      let res;
+      if (promotedFromTask) {
+        res = await promoteSupportTicketToTask({
+          supportTicketId: promotedFromTask.id,
+          projectId,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          priority,
+          type,
+          assignedStaffId: assignedStaffId === "unassigned" ? null : assignedStaffId,
+          dueDate: dueDate || null,
+          estimatedHours: Number(estimatedHours) || 0,
+        })
+      } else {
+        res = await createTask({
+          project_id: projectId,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          status: finalStatus,
+          priority,
+          type,
+          progress_percentage: finalProgress,
+          assigned_staff_id: assignedStaffId === "unassigned" ? null : assignedStaffId,
+          qa_staff_id: qaStaffId === "unassigned" ? null : qaStaffId,
+          due_date: dueDate || null,
+          estimated_hours: Number(estimatedHours) || 0,
+          actual_hours: Number(actualHours) || 0,
+          checklist,
+          tags,
+          attachments,
+          is_recurring: isRecurring,
+          recurrence_interval: isRecurring ? recurrenceInterval : null,
+          recurrence_day: isRecurring ? recurrenceDay : null,
+          blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
+        })
+      }
 
       if (res.success && res.task) {
-        toast.success("¡Ticket creado con éxito!")
+        toast.success(promotedFromTask ? "Ticket de soporte promovido exitosamente" : "Ticket creado con éxito")
         onTaskCreated?.(res.task)
         onClose()
       } else {
-        toast.error(res.error || "No se pudo crear la tarea")
+        toast.error(res.error || "No se pudo procesar la solicitud")
       }
     } catch (err: any) {
       toast.error(err.message || "Error al crear la tarea")
@@ -386,9 +430,13 @@ export function TaskFormModal({
         {/* Top Header - Modern Linear / Jira Style */}
         <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+            {promotedFromTask ? (
+              <Headset className="w-4 h-4 text-sky-500 shrink-0" />
+            ) : (
+              <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+            )}
             <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-              Nuevo Requerimiento / Ticket
+              {promotedFromTask ? `Promover Ticket de Soporte #${promotedFromTask.ticket_code}` : "Nuevo Requerimiento / Ticket"}
             </h2>
           </div>
 
@@ -397,13 +445,20 @@ export function TaskFormModal({
               size="sm"
               onClick={handleSubmit}
               disabled={isSubmitting || isUploadingFile}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-8 px-4 font-semibold shadow-sm rounded-lg"
+              className={cn(
+                "text-xs h-8 px-4 font-semibold shadow-sm rounded-lg",
+                promotedFromTask
+                  ? "bg-sky-600 hover:bg-sky-700 text-white"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                  Creando...
+                  {promotedFromTask ? "Promoviendo..." : "Creando..."}
                 </>
+              ) : promotedFromTask ? (
+                "Promover a Ticket"
               ) : (
                 "Crear Ticket"
               )}
@@ -420,6 +475,20 @@ export function TaskFormModal({
             </Button>
           </div>
         </div>
+
+        {promotedFromTask && (
+          <div className="px-5 py-2.5 bg-sky-500/10 border-b border-sky-500/20 text-xs flex items-center justify-between text-sky-800 dark:text-sky-300">
+            <div className="flex items-center gap-2">
+              <Headset className="w-4 h-4 text-sky-500 shrink-0" />
+              <span>
+                Ticket origen: <strong>#{promotedFromTask.ticket_code}</strong>. Al guardar, se creará este ticket de trabajo y se vinculará con trazabilidad completa.
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+              [Trazabilidad Bidireccional]
+            </span>
+          </div>
+        )}
 
         {/* 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">

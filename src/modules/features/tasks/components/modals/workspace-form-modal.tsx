@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Globe, Trash2, Loader2, Users, ShieldAlert, Sparkles } from "lucide-react"
+import { Globe, Trash2, Loader2, Users, ShieldAlert, Sparkles, Headset } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import type { TaskWorkspace, TaskCollaborator } from "../../types"
 import { createWorkspace, updateWorkspace, deleteWorkspace } from "../../actions/task-actions"
 import { toast } from "sonner"
@@ -62,6 +63,9 @@ export function WorkspaceFormModal({
   const [description, setDescription] = useState("")
   const [color, setColor] = useState("#0284c7")
   const [leadStaffId, setLeadStaffId] = useState("unassigned")
+  const [parallelTeamEnabled, setParallelTeamEnabled] = useState(false)
+  const [slaFirstResponse, setSlaFirstResponse] = useState<number>(24)
+  const [slaResolution, setSlaResolution] = useState<number>(72)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -75,11 +79,17 @@ export function WorkspaceFormModal({
         setDescription(workspaceToEdit.description || "")
         setColor(workspaceToEdit.color || "#0284c7")
         setLeadStaffId(workspaceToEdit.lead_staff_id || "unassigned")
+        setParallelTeamEnabled(workspaceToEdit.parallel_team_enabled ?? false)
+        setSlaFirstResponse(workspaceToEdit.support_config?.sla_first_response_hours ?? 24)
+        setSlaResolution(workspaceToEdit.support_config?.sla_resolution_hours ?? 72)
       } else {
         setName("")
         setKeyPrefix("WEB")
         setDescription("")
         setColor("#0284c7")
+        setParallelTeamEnabled(false)
+        setSlaFirstResponse(24)
+        setSlaResolution(72)
         const defaultLead = collaborators.find(
           (c) => c.task_role === "pm" || c.role?.toLowerCase().includes("gestor")
         )
@@ -102,6 +112,11 @@ export function WorkspaceFormModal({
 
     setIsSubmitting(true)
     try {
+      const supportConfig = {
+        sla_first_response_hours: Number(slaFirstResponse) || 24,
+        sla_resolution_hours: Number(slaResolution) || 72,
+      }
+
       if (isEditing && workspaceToEdit) {
         const res = await updateWorkspace(workspaceToEdit.id, {
           name: name.trim(),
@@ -109,6 +124,8 @@ export function WorkspaceFormModal({
           description: description.trim() || null,
           color,
           lead_staff_id: leadStaffId === "unassigned" ? null : leadStaffId,
+          parallel_team_enabled: parallelTeamEnabled,
+          support_config: supportConfig,
         })
 
         if (res.success && res.workspace) {
@@ -125,6 +142,8 @@ export function WorkspaceFormModal({
           description: description.trim() || undefined,
           color,
           lead_staff_id: leadStaffId === "unassigned" ? null : leadStaffId,
+          parallel_team_enabled: parallelTeamEnabled,
+          support_config: supportConfig,
         })
 
         if (res.success && res.workspace) {
@@ -314,6 +333,56 @@ export function WorkspaceFormModal({
                 rows={2}
                 className="text-xs resize-none"
               />
+            </div>
+
+            {/* Canal de Soporte (Equipo Paralelo) */}
+            <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Headset className="w-3.5 h-3.5 text-primary" />
+                    <span>Canal de Soporte (Equipo Paralelo)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Habilita la recepción de tickets de soporte emitidos por colaboradores de atención al cliente. Estos tickets permanecen aislados de las métricas de rendimiento y sprints del equipo de desarrollo.
+                  </p>
+                </div>
+                <Switch
+                  checked={parallelTeamEnabled}
+                  onCheckedChange={setParallelTeamEnabled}
+                />
+              </div>
+
+              {parallelTeamEnabled && (
+                <div className="pt-2.5 border-t border-border/40 grid grid-cols-2 gap-3 text-xs animate-in fade-in-50 duration-200">
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                      SLA Primera Respuesta (horas)
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={168}
+                      value={slaFirstResponse}
+                      onChange={(e) => setSlaFirstResponse(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                      SLA Resolución Estimada (horas)
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={720}
+                      value={slaResolution}
+                      onChange={(e) => setSlaResolution(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Color Picker */}
