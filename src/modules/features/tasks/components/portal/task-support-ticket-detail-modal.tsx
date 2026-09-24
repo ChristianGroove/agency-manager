@@ -23,12 +23,14 @@ import {
   FileText,
   Image as ImageIcon,
   AtSign,
+  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { formatDistanceToNow, parseISO, format, differenceInHours } from "date-fns"
 import { es } from "date-fns/locale"
 import { TASK_PRIORITY_LABELS, type TaskItem, type TaskWorkspace, type TaskProject, type TaskStatus, type TaskComment, type TaskAttachment } from "../../types"
-import { portalGetTaskComments, portalAddTaskComment } from "../../actions/collaborator-portal-actions"
+import { portalGetTaskComments, portalAddTaskComment, portalUploadTaskAttachment, portalUpdateTask } from "../../actions/collaborator-portal-actions"
+import { uploadTaskAttachment, updateTask } from "../../actions/task-actions"
 import { markTicketThreadAsRead } from "../../utils/support-thread-read-state"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { toast } from "sonner"
@@ -54,6 +56,73 @@ interface TaskSupportTicketDetailModalProps {
   brandColor?: string
 }
 
+function renderSupportCommentContent(content: string, isAuthorMe: boolean) {
+  const regex = /(https?:\/\/[^\s]+|@[A-Za-z0-9_\u00C0-\u017F]+)/g
+  const parts = content.split(regex)
+
+  return parts.map((part, index) => {
+    if (!part) return null
+
+    if (part.startsWith("@")) {
+      return (
+        <span
+          key={index}
+          className={cn(
+            "inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-semibold text-[11px] mx-0.5 align-baseline",
+            isAuthorMe
+              ? "bg-white/20 text-white"
+              : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+          )}
+        >
+          <AtSign className="w-2.5 h-2.5 inline shrink-0" />
+          <span>{part.slice(1)}</span>
+        </span>
+      )
+    }
+
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      const isImageUrl = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(part) || (part.includes("/tasks/") && !part.endsWith(".pdf") && !part.endsWith(".xlsx"))
+      if (isImageUrl) {
+        return (
+          <div key={index} className="my-1.5 block">
+            <a
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block rounded-xl overflow-hidden border border-border/60 hover:opacity-90 transition-opacity max-w-sm bg-black/5"
+            >
+              <img
+                src={part}
+                alt="Captura adjunta"
+                className="max-h-60 max-w-full w-auto object-contain rounded-xl"
+                loading="lazy"
+              />
+            </a>
+          </div>
+        )
+      }
+
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "underline font-mono text-[11px] mx-0.5 inline-flex items-center gap-0.5 break-all",
+            isAuthorMe ? "text-white hover:text-white/80" : "text-primary hover:text-primary/80"
+          )}
+        >
+          <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
+          <span>{part.replace(/^https?:\/\/(www\.)?/, "").slice(0, 30)}</span>
+        </a>
+      )
+    }
+
+    return <span key={index}>{part}</span>
+  })
+}
+
 export function TaskSupportTicketDetailModal({
   ticket,
   isOpen,
@@ -71,12 +140,72 @@ export function TaskSupportTicketDetailModal({
   const [comments, setComments] = useState<TaskComment[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(false)
   const [commentText, setCommentText] = useState("")
+  const [stagedAttachments, setStagedAttachments] = useState<TaskAttachment[]>([])
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [isSendingComment, setIsSendingComment] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const commentsEndRef = useRef<HTMLDivElement>(null)
+
+  // File upload and clipboard paste handling
+  const handleFileProcess = async (file: File) => {
+    setIsUploadingAttachment(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = token
+        ? await portalUploadTaskAttachment(token, formData)
+        : await uploadTaskAttachment(formData)
+
+      if (res.success && res.attachment) {
+        const newAtt = res.attachment
+        setStagedAttachments((prev) => [...prev, newAtt])
+        toast.success(`Captura "${newAtt.name}" adjunta al mensaje`)
+
+        if (ticket) {
+          const existingAtts = Array.isArray(ticket.attachments) ? ticket.attachments : []
+          const nextAtts = [...existingAtts, newAtt]
+          if (token) {
+            portalUpdateTask(token, ticket.id, { attachments: nextAtts }).then((uRes) => {
+              if (uRes.success && uRes.task) onTicketUpdated?.(uRes.task)
+            })
+          } else {
+            updateTask(ticket.id, { attachments: nextAtts }).then((uRes) => {
+              if (uRes.success && uRes.task) onTicketUpdated?.(uRes.task)
+            })
+          }
+        }
+      } else {
+        toast.error(res.error || "Error al subir la imagen")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar la imagen")
+    } finally {
+      setIsUploadingAttachment(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith("image/")) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          handleFileProcess(file)
+        }
+        break
+      }
+    }
+  }
 
   // Fetch comments when ticket changes
   useEffect(() => {
@@ -125,15 +254,21 @@ export function TaskSupportTicketDetailModal({
 
   // Handle comment submit
   const handleSendComment = async () => {
-    if (!commentText.trim()) return
+    const textToSend = [
+      commentText.trim(),
+      ...stagedAttachments.map((a) => a.url)
+    ].filter(Boolean).join("\n")
+
+    if (!textToSend) return
 
     setIsSendingComment(true)
     try {
-      const res = await portalAddTaskComment(token, ticket.id, commentText.trim())
+      const res = await portalAddTaskComment(token, ticket.id, textToSend)
       if (res.success && res.comment) {
         const nextComments = [res.comment!, ...comments]
         setComments(nextComments)
         setCommentText("")
+        setStagedAttachments([])
         if (currentStaffId) {
           markTicketThreadAsRead(currentStaffId, ticket.id, nextComments.length)
         }
@@ -564,7 +699,7 @@ export function TaskSupportTicketDetailModal({
                               : "bg-card border border-border/70 text-foreground rounded-tl-xs shadow-2xs"
                           )}
                         >
-                          {comment.content}
+                          {renderSupportCommentContent(comment.content, isAuthorMe)}
                         </div>
                       </div>
                     )
@@ -573,7 +708,7 @@ export function TaskSupportTicketDetailModal({
               <div ref={commentsEndRef} />
             </div>
 
-            {/* Comment Input Box */}
+            {/* Comment Input Box with Clipboard Paste & Attachments */}
             <div className="p-3 border-t border-border/50 bg-background/80 space-y-2 shrink-0 relative">
               {/* Mention Suggestions Popover */}
               {mentionQuery !== null && filteredMembers.length > 0 && (
@@ -611,10 +746,40 @@ export function TaskSupportTicketDetailModal({
                 </div>
               )}
 
+              {/* Staged Attachments Preview Chips */}
+              {stagedAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-muted/40 rounded-xl border border-border/60">
+                  {stagedAttachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="relative group flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-lg bg-card border border-border/80 text-xs shadow-2xs"
+                    >
+                      <img
+                        src={att.url}
+                        alt={att.name}
+                        className="w-6 h-6 rounded object-cover border border-border/60 shrink-0"
+                      />
+                      <span className="truncate max-w-[120px] text-[11px] font-medium text-foreground">
+                        {att.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setStagedAttachments((prev) => prev.filter((a) => a.id !== att.id))}
+                        className="w-4 h-4 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Quitar captura"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Textarea
                 ref={textareaRef}
                 value={commentText}
                 onChange={handleTextChange}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && mentionQuery === null) {
                     e.preventDefault()
@@ -623,19 +788,47 @@ export function TaskSupportTicketDetailModal({
                     setMentionQuery(null)
                   }
                 }}
-                placeholder="Escribe una respuesta o usa @ para consultar a un colaborador..."
+                placeholder="Escribe una respuesta, pega capturas (Ctrl+V) o usa @ para consultar..."
                 rows={2}
                 className="text-xs resize-none bg-card"
               />
 
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                  Usa @ para consultar a otros colaboradores
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.xlsx,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleFileProcess(file)
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isUploadingAttachment}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5 rounded-lg cursor-pointer hover:bg-muted/60"
+                    title="Pegar imagen con Ctrl+V o seleccionar archivo"
+                  >
+                    {isUploadingAttachment ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                    ) : (
+                      <Paperclip className="w-3.5 h-3.5 text-primary" />
+                    )}
+                    <span className="text-[11px] font-medium">
+                      {isUploadingAttachment ? "Subiendo captura..." : "Adjuntar / Pegar captura"}
+                    </span>
+                  </Button>
+                </div>
+
                 <Button
                   size="sm"
                   onClick={handleSendComment}
-                  disabled={isSendingComment || !commentText.trim()}
+                  disabled={isSendingComment || isUploadingAttachment || (!commentText.trim() && stagedAttachments.length === 0)}
                   className="h-8 text-xs font-semibold gap-1.5 ml-auto bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                 >
                   {isSendingComment ? (

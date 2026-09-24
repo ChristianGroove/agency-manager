@@ -372,6 +372,9 @@ export function TaskFormModal({
           assignedStaffId: assignedStaffId === "unassigned" ? null : assignedStaffId,
           dueDate: dueDate || null,
           estimatedHours: Number(estimatedHours) || 0,
+          checklist,
+          tags,
+          attachments,
         })
       } else {
         res = await createTask({

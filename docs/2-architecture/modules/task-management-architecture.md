@@ -1248,3 +1248,63 @@ En `TaskSupportTicketDetailModal`, el bloque de estado de triaje fue rediseñado
 - Garantiza cumplimiento estricto de contraste WCAG tanto en modo claro como en modo oscuro.
 - Clarifica de forma inmediata que se trata de un selector de estado y permite al PM alternar entre etapas con un solo clic.
 
+---
+
+## 34. Blindaje y Resolución de Hallazgos de Auditoría Técnica
+
+### A. Propagación Íntegra en Promoción de Tickets de Soporte
+En la acción `promoteSupportTicketToTask` y el componente `TaskFormModal`:
+- Se extendió la interfaz de parámetros para recibir `checklist`, `tags` y `attachments`.
+- Si el Project Manager redefine entregables en el checklist, agrega etiquetas o modifica adjuntos durante la promoción, estas modificaciones se transfieren íntegramente a `createTask`, evitando la pérdida de información y garantizando que el equipo de desarrollo reciba el contexto de trabajo refinado.
+
+### B. Integridad Relacional y Supresión de Fallback Cross-Workspace
+En `TaskParallelSupportPortal`:
+- Se eliminó el operador de contingencia `|| projects[0]` en la creación de incidencias.
+- Si un espacio de trabajo no dispone de proyectos activos vinculados, la operación se interrumpe de forma limpia mediante una notificación descriptiva, impidiendo la creación accidental de tickets en proyectos ajenos al workspace seleccionado.
+
+### C. Resiliencia de Filtrado SQL ante Registros Heredados
+En `getTasks` (`task-actions.ts`):
+- Se sustituyó la cláusula simple `.neq("origin_type", "support")` por `.or("origin_type.neq.support,origin_type.is.null")`.
+- En PostgreSQL, los valores `NULL` evaluados contra comparaciones de desigualdad resultan en `UNKNOWN` (excluyéndose del filtro). La formulación disyuntiva garantiza que las tareas creadas con anterioridad a la migración sigan mostrándose con normalidad en el backlog operativo.
+
+### D. Soporte Unicode de Menciones en Comentarios y Consultas Técnicas
+En `collaborator-portal-actions.ts` y `task-actions.ts`:
+- Se unificó la extracción de menciones mediante la expresión regular `/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g`.
+- Esto soluciona la omisión o truncamiento de menciones dirigidas a colaboradores con caracteres diacríticos o tildes en sus nombres (ej. Álvaro, Sebastián, Andrés), asegurando la correcta indexación en el campo `mentions` y la recepción de las consultas técnicas.
+
+### E. Aislamiento Multitenant Estricto en Mutaciones
+En `deleteTask` y `updateTask` (`task-actions.ts`):
+- `deleteTask` ahora resuelve la organización activa mediante `resolveOrgId()` y restringe la cláusula de borrado con `.eq("organization_id", activeOrgId)`.
+- `updateTask` valida el `organization_id` del registro previo y lo incorpora como restricción en la consulta de actualización, blindando el sistema contra vectores de manipulación directa por identificador (IDOR).
+
+---
+
+## 35. Sistema de Pegado Directo de Capturas desde el Portapapeles (Clipboard Paste & Inline Rich Media)
+
+### A. Diagnóstico y Ergonomía de Usuario
+Anteriormente, la incorporación de evidencias visuales (capturas de pantalla con recortes de sistema, Figma o navegador) requería guardar manualmente el archivo en disco y subirlo a través del selector de archivos en la sección superior de "Enlaces & Referencias", lo que interrumpía el flujo conversacional. En el canal de soporte, los colaboradores y el PM carecían de mecanismos rápidos para compartir capturas dentro del hilo.
+
+### B. Intercepción del Portapapeles (`onPaste`) y Procesamiento
+En `TaskSupportTicketDetailModal`, `TaskPortalDetailModal` y `TaskDetailModal`:
+1. Se configuró un manejador de evento `onPaste` sobre las áreas de entrada de texto (`Textarea` e `Input`).
+2. Se analiza `event.clipboardData.items`. Si existe un elemento con tipo MIME `image/*`, se previene el comportamiento predeterminado del navegador (`e.preventDefault()`) y se extrae el objeto `File` correspondiente.
+3. Se genera un nombre normalizado con marca de tiempo (`captura_YYYYMMDD_HHmmss.png` o equivalente).
+4. Se procesa la carga hacia el almacenamiento de Supabase mediante `portalUploadTaskAttachment` (si opera bajo contexto de token) o `uploadTaskAttachment` (en entorno de plataforma autenticada).
+
+### C. Previsualización Temporal (Staged Attachment Chips)
+Una vez subida la imagen:
+- Aparece de inmediato una cinta de previsualización ("chips") sobre la barra de entrada de comentarios, exhibiendo una miniatura de la imagen, el nombre del archivo y un botón de descarte (`X`).
+- Se habilita el envío del comentario incluso si el usuario no ha redactado texto explicativo, enviando automáticamente una nota descriptiva de captura adjunta.
+
+### D. Persistencia Dual
+Para garantizar la integridad y trazabilidad:
+1. **Hilo de Discusión**: La URL pública de la captura se concatena en el cuerpo del comentario o mensaje enviado.
+2. **Registro de la Tarea**: La imagen se persiste de inmediato en el array relacional `task_items.attachments`, figurando en el catálogo permanente de recursos y referencias de la incidencia.
+
+### E. Renderizado Inline de Imágenes en Hilo y Discusión
+En `renderSupportCommentContent` y `renderFormattedComment`:
+- Se identifican dinámicamente las URLs que apuntan a recursos de imagen (`.png`, `.jpg`, `.jpeg`, `.webp`, `.svg` o rutas de almacenamiento `/tasks/`).
+- En lugar de renderizarse como un enlace de texto sin formato, se despliega una tarjeta de imagen responsiva con bordes redondeados y carga diferida (`loading="lazy"`).
+- Al hacer clic sobre la tarjeta de imagen, el recurso se abre a pantalla completa en una nueva pestaña del navegador.
+- En la barra de redacción se integró adicionalmente un botón discreto de adjuntos (icono de clip) que permite tanto subir archivos desde disco como pegar capturas del portapapeles.
+

@@ -1389,8 +1389,8 @@ export async function portalAddTaskComment(
     if (!staff) throw new Error("Acceso no autorizado");
 
     const authorName = `${staff.first_name} ${staff.last_name}`.trim();
-    const matched = content.match(/@(\w+)/g);
-    const mentions = matched ? matched.map((m) => m.substring(1)) : [];
+    const matched = content.matchAll(/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g);
+    const mentions = Array.from(matched).map((m) => m[1]);
 
     const { data: comment, error } = await supabaseAdmin
       .from("task_comments")

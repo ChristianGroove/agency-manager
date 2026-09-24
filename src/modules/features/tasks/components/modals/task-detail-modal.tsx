@@ -129,6 +129,27 @@ function renderFormattedComment(
     }
 
     if (part.startsWith("http://") || part.startsWith("https://")) {
+      const isImage = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(part) || (part.includes("/tasks/") && !part.endsWith(".pdf") && !part.endsWith(".xlsx"))
+      if (isImage) {
+        return (
+          <div key={index} className="my-1.5 block">
+            <a
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block rounded-xl overflow-hidden border border-border/70 hover:ring-2 hover:ring-primary/40 transition-all max-w-sm shadow-2xs group bg-black/5"
+            >
+              <img
+                src={part}
+                alt="Captura adjunta"
+                className="max-h-56 max-w-full w-auto object-contain rounded-xl group-hover:scale-[1.01] transition-transform"
+                loading="lazy"
+              />
+            </a>
+          </div>
+        )
+      }
+
       return (
         <a
           key={index}
@@ -278,6 +299,9 @@ export function TaskDetailModal({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
+  const [stagedCommentAttachments, setStagedCommentAttachments] = useState<TaskAttachment[]>([])
+  const [isUploadingCommentAttachment, setIsUploadingCommentAttachment] = useState(false)
+  const commentFileInputRef = useRef<HTMLInputElement>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   const sortedComments = useMemo(() => {
@@ -728,19 +752,71 @@ export function TaskDetailModal({
           .slice(0, 8)
       : []
 
+  const handleCommentFileProcess = async (file: File) => {
+    if (!task) return
+    setIsUploadingCommentAttachment(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await uploadTaskAttachment(formData)
+      if (res.success && res.attachment) {
+        const newAtt = res.attachment
+        setStagedCommentAttachments((prev) => [...prev, newAtt])
+        toast.success(`Captura "${newAtt.name}" adjunta`)
+
+        const nextAttachments = [...attachments, newAtt]
+        setAttachments(nextAttachments)
+        updateTask(task.id, { attachments: nextAttachments }).then((uRes) => {
+          if (uRes.success && uRes.task) onTaskUpdated?.(uRes.task)
+        })
+      } else {
+        toast.error(res.error || "Error al subir la imagen")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar la imagen")
+    } finally {
+      setIsUploadingCommentAttachment(false)
+      if (commentFileInputRef.current) commentFileInputRef.current.value = ""
+    }
+  }
+
+  const handleCommentPaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith("image/")) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          handleCommentFileProcess(file)
+        }
+        break
+      }
+    }
+  }
+
   const handleAddComment = async () => {
-    if (!newCommentText.trim() || !task) return
+    const textToSend = [
+      newCommentText.trim(),
+      ...stagedCommentAttachments.map((a) => a.url)
+    ].filter(Boolean).join("\n")
+
+    if (!textToSend || !task) return
     setIsSendingComment(true)
     try {
       const res = await addTaskComment({
         taskId: task.id,
-        content: newCommentText.trim(),
+        content: textToSend,
         authorType: "owner",
         authorName: "Auditor / Tenant Owner",
       })
       if (res.success && res.comment) {
         setComments((prev) => [res.comment!, ...prev])
         setNewCommentText("")
+        setStagedCommentAttachments([])
         setMentionType(null)
         setMentionQuery(null)
         toast.success("Comentario publicado")
@@ -1481,28 +1557,83 @@ export function TaskDetailModal({
                   )}
                 </AnimatePresence>
 
+                {/* Staged Comment Attachments Preview Chips */}
+                {stagedCommentAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-muted/40 rounded-xl border border-border/60">
+                    {stagedCommentAttachments.map((att) => (
+                      <div
+                        key={att.id}
+                        className="relative group flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-lg bg-card border border-border/80 text-xs shadow-2xs"
+                      >
+                        <img
+                          src={att.url}
+                          alt={att.name}
+                          className="w-6 h-6 rounded object-cover border border-border/60 shrink-0"
+                        />
+                        <span className="truncate max-w-[120px] text-[11px] font-medium text-foreground">
+                          {att.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setStagedCommentAttachments((prev) => prev.filter((a) => a.id !== att.id))}
+                          className="w-4 h-4 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Quitar captura"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
-                  <Input
-                    ref={commentInputRef}
-                    value={newCommentText}
-                    onChange={handleCommentChange}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && mentionType === null) {
-                        e.preventDefault()
-                        handleAddComment()
-                      } else if (e.key === "Escape") {
-                        setMentionType(null)
-                        setMentionQuery(null)
-                      }
+                  <input
+                    ref={commentFileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.xlsx,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleCommentFileProcess(file)
                     }}
-                    placeholder="Escribe un comentario, usa @ para colaboradores o # para tickets..."
-                    className="text-xs h-9 bg-background rounded-xl"
                   />
+                  <div className="relative flex-1">
+                    <Input
+                      ref={commentInputRef}
+                      value={newCommentText}
+                      onChange={handleCommentChange}
+                      onPaste={handleCommentPaste}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && mentionType === null) {
+                          e.preventDefault()
+                          handleAddComment()
+                        } else if (e.key === "Escape") {
+                          setMentionType(null)
+                          setMentionQuery(null)
+                        }
+                      }}
+                      placeholder="Escribe un comentario, pega capturas (Ctrl+V) o usa @ / #..."
+                      className="text-xs h-9 bg-background rounded-xl pr-8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => commentFileInputRef.current?.click()}
+                      disabled={isUploadingCommentAttachment}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
+                      title="Adjuntar o pegar captura (Ctrl+V)"
+                    >
+                      {isUploadingCommentAttachment ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Paperclip className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                   <Button
                     size="sm"
                     onClick={handleAddComment}
-                    disabled={isSendingComment || !newCommentText.trim()}
-                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={isSendingComment || isUploadingCommentAttachment || (!newCommentText.trim() && stagedCommentAttachments.length === 0)}
+                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   >
                     {isSendingComment ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -281,8 +281,8 @@ export function TaskParallelSupportPortal({
       return
     }
 
-    // Find first project in that workspace or any project
-    const targetProject = projects.find((p) => p.workspace_id === targetWorkspaceId) || projects[0]
+    // Find project belonging to the selected workspace
+    const targetProject = projects.find((p) => p.workspace_id === targetWorkspaceId)
     if (!targetProject) {
       toast.error("El espacio seleccionado no tiene proyectos asociados")
       return

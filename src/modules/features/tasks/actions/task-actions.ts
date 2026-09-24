@@ -595,7 +595,7 @@ export async function getTasks(params?: {
 
   // Filter by origin_type: default to internal tasks to isolate support from standard operations
   if (!params?.originType || params.originType === 'internal') {
-    query = query.neq("origin_type", "support");
+    query = query.or("origin_type.neq.support,origin_type.is.null");
   } else if (params.originType === 'support') {
     query = query.eq("origin_type", "support");
   }
@@ -787,6 +787,9 @@ export async function promoteSupportTicketToTask(params: {
   dueDate?: string | null;
   estimatedHours?: number;
   promotedByStaffId?: string | null;
+  checklist?: TaskChecklistItem[];
+  tags?: string[];
+  attachments?: TaskAttachment[];
 }): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
     // 1. Fetch support ticket
@@ -813,8 +816,9 @@ export async function promoteSupportTicketToTask(params: {
       sprint_id: params.sprintId || null,
       due_date: params.dueDate || null,
       estimated_hours: params.estimatedHours || 0,
-      tags: supportTicket.tags || [],
-      attachments: supportTicket.attachments || [],
+      tags: params.tags !== undefined ? params.tags : (supportTicket.tags || []),
+      attachments: params.attachments !== undefined ? params.attachments : (supportTicket.attachments || []),
+      checklist: params.checklist !== undefined ? params.checklist : (supportTicket.checklist || []),
       origin_type: "internal",
       promoted_from_id: supportTicket.id,
       created_by_staff_id: params.promotedByStaffId || null,
@@ -960,10 +964,16 @@ export async function updateTask(
       }
     }
 
-    const { data: updatedTask, error } = await supabaseAdmin
+    let updateQuery = supabaseAdmin
       .from("task_items")
       .update(updateData)
-      .eq("id", taskId)
+      .eq("id", taskId);
+
+    if (prevTask?.organization_id) {
+      updateQuery = updateQuery.eq("organization_id", prevTask.organization_id);
+    }
+
+    const { data: updatedTask, error } = await updateQuery
       .select(`
         *,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
@@ -1548,11 +1558,17 @@ export async function updateChecklistItemHours(
 /**
  * Delete a task
  */
-export async function deleteTask(taskId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteTask(
+  taskId: string,
+  orgId?: string
+): Promise<{ success: boolean; error?: string }> {
   try {
+    const activeOrgId = await resolveOrgId(orgId);
+
     const { error } = await supabaseAdmin
       .from("task_items")
       .delete()
+      .eq("organization_id", activeOrgId)
       .eq("id", taskId);
 
     if (error) throw error;
@@ -1649,10 +1665,8 @@ export async function addTaskComment(data: {
     // Extract @mentions from text if not provided
     let mentions = data.mentions || [];
     if (mentions.length === 0) {
-      const matched = data.content.match(/@(\w+)/g);
-      if (matched) {
-        mentions = matched.map((m) => m.substring(1));
-      }
+      const matched = data.content.matchAll(/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g);
+      mentions = Array.from(matched).map((m) => m[1]);
     }
 
     let authorName = data.authorName;
