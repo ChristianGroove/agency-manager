@@ -134,6 +134,7 @@ import { TaskCollaboratorRibbon } from "./task-collaborator-ribbon"
 import { TaskWeeklyPacingMatrix } from "../pacing/task-weekly-pacing-matrix"
 import { TaskSupportChannelView } from "./task-support-channel-view"
 import { TaskParallelSupportPortal } from "./task-parallel-support-portal"
+import { TaskSupportTicketDetailModal } from "./task-support-ticket-detail-modal"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
@@ -499,6 +500,7 @@ export function TaskCollaboratorPortal({
   const [activeSprint, setActiveSprint] = useState<TaskSprint | null>(portalData.activeSprint || null)
   const [supportTickets, setSupportTickets] = useState<TaskItem[]>(portalData.supportTickets || [])
   const [taskToPromote, setTaskToPromote] = useState<TaskItem | null>(null)
+  const [selectedSupportTicketForConsultation, setSelectedSupportTicketForConsultation] = useState<TaskItem | null>(null)
   const [recentMentions, setRecentMentions] = useState(portalData.recentMentions || [])
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([])
   const teamMembers = portalData.teamMembers || []
@@ -661,7 +663,20 @@ export function TaskCollaboratorPortal({
         (payload) => {
           if (!isMounted) return
           const newComment = payload.new as any
-          if (!newComment) return
+          // Update comments telemetry on supportTickets in real-time
+          setSupportTickets((prev) =>
+            prev.map((t) => {
+              if (t.id === newComment.task_id) {
+                return {
+                  ...t,
+                  comments_count: (t.comments_count || 0) + 1,
+                  last_comment_at: newComment.created_at,
+                  last_comment_author_id: newComment.author_id,
+                }
+              }
+              return t
+            })
+          )
 
           const isMentioned =
             (newComment.content && newComment.content.toLowerCase().includes(`@${staff.first_name.toLowerCase()}`)) ||
@@ -876,6 +891,10 @@ export function TaskCollaboratorPortal({
   const [isSendingComment, setIsSendingComment] = useState(false)
 
   const openTaskDetail = (task: TaskItem) => {
+    if (task.origin_type === "support" || task.ticket_code?.startsWith("SUP-")) {
+      setSelectedSupportTicketForConsultation(task)
+      return
+    }
     setSelectedTask(task)
     setIsCommentModalOpen(true)
   }
@@ -1321,7 +1340,13 @@ export function TaskCollaboratorPortal({
       const targetTask =
         tasks.find((t) => t.id === m.task_id) ||
         allTeamTasks.find((t) => t.id === m.task_id) ||
-        availableTasks.find((t) => t.id === m.task_id)
+        availableTasks.find((t) => t.id === m.task_id) ||
+        supportTickets.find((t) => t.id === m.task_id)
+
+      const isSupportConsultation =
+        (m as any).origin_type === "support" ||
+        targetTask?.origin_type === "support" ||
+        m.ticket_code?.startsWith("SUP-")
 
       let tag = "Mención"
       let dotColor = "bg-primary"
@@ -1329,7 +1354,13 @@ export function TaskCollaboratorPortal({
       let tagUnseen = "bg-primary/15 text-primary border-primary/25"
       let codeUnseen = "text-primary bg-primary/10 border-primary/20"
 
-      if (auditInfo.isAudit) {
+      if (isSupportConsultation) {
+        tag = "Consulta Técnica"
+        dotColor = "bg-sky-500"
+        bgUnseen = "bg-sky-500/[0.05] dark:bg-sky-500/[0.08]"
+        tagUnseen = "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/25"
+        codeUnseen = "text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/20"
+      } else if (auditInfo.isAudit) {
         if (auditInfo.type === "progress") {
           const isRegression = m.content.toLowerCase().includes("regres") || m.content.includes("📉")
           tag = isRegression ? "Regresión" : "Avance"
@@ -1381,7 +1412,14 @@ export function TaskCollaboratorPortal({
         },
         onClick: () => {
           markTaskAsSeen(notifKey)
-          if (targetTask) openTaskDetail(targetTask)
+          if (isSupportConsultation) {
+            const supp = targetTask || supportTickets.find((t) => t.id === m.task_id)
+            if (supp) {
+              setSelectedSupportTicketForConsultation(supp)
+            }
+          } else if (targetTask) {
+            openTaskDetail(targetTask)
+          }
           setIsNotificationsOpen(false)
         },
       }
@@ -2757,14 +2795,20 @@ export function TaskCollaboratorPortal({
           <div className="pt-2 pb-8">
             <TaskSupportChannelView
               supportTickets={supportTickets}
+              supportMembers={portalData.supportMembers || []}
               workspaces={workspaces}
               projects={projects}
+              token={token}
+              currentStaffId={staff.id}
               onPromoteTicket={(ticket) => {
                 setTaskToPromote(ticket)
               }}
-              onViewTicket={openTaskDetail}
               onResolveTicket={handleResolveSupportTicket}
+              onTicketStatusChange={async (ticketId, newStatus) => {
+                await handleStatusChange(ticketId, newStatus)
+              }}
               brandColor={brandColor}
+              teamMembers={teamMembers}
             />
           </div>
         )}
@@ -4027,6 +4071,30 @@ export function TaskCollaboratorPortal({
           setSelectedTask(null)
         }}
       />
+
+      {/* Dedicated Support Incident Modal for Technical Consultations */}
+      {selectedSupportTicketForConsultation && (
+        <TaskSupportTicketDetailModal
+          ticket={selectedSupportTicketForConsultation}
+          isOpen={!!selectedSupportTicketForConsultation}
+          onClose={() => setSelectedSupportTicketForConsultation(null)}
+          token={token}
+          isLeadOrPm={isLeadOrPm}
+          currentStaffId={staff.id}
+          workspace={(() => {
+            const proj = projects.find((p) => p.id === selectedSupportTicketForConsultation.project_id)
+            return proj?.workspace_id ? workspaces.find((w) => w.id === proj.workspace_id) || null : null
+          })()}
+          brandColor={brandColor}
+          teamMembers={teamMembers}
+          onTicketUpdated={(updated) => {
+            setSupportTickets((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t))
+            )
+            setSelectedSupportTicketForConsultation(updated)
+          }}
+        />
+      )}
 
       {/* PM Create Task Modal with Modern Full 2-Column Detail Modal */}
       {isCreateModalOpen && (

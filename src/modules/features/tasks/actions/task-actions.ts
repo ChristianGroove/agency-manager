@@ -826,12 +826,12 @@ export async function promoteSupportTicketToTask(params: {
 
     const newTask = createRes.task;
 
-    // 3. Mark support ticket as done
+    // 3. Mark support ticket as in_progress (En Atencion tecnica)
     await supabaseAdmin
       .from("task_items")
       .update({
-        status: "done",
-        progress_percentage: 100,
+        status: "in_progress",
+        progress_percentage: 20,
         updated_at: new Date().toISOString(),
       })
       .eq("id", supportTicket.id);
@@ -840,7 +840,7 @@ export async function promoteSupportTicketToTask(params: {
     await logTaskAuditComment(
       supportTicket.organization_id,
       supportTicket.id,
-      `Ticket de soporte promovido a ticket de trabajo #${newTask.ticket_code} (${newTask.title})`
+      `Ticket promovido a tarea de desarrollo #${newTask.ticket_code} (${newTask.title}). En atencion tecnica.`
     );
 
     await logTaskAuditComment(
@@ -1922,6 +1922,7 @@ export async function createCollaborator(data: {
         email: data.email || null,
         phone: data.phone || null,
         role: data.role || data.taskRole || "developer",
+        task_role: data.taskRole || inferTaskRole(data.role),
         photo_url: data.photoUrl || null,
         has_global_workspace_access: hasGlobal,
         is_active: true,
@@ -2001,6 +2002,10 @@ export async function updateCollaborator(data: {
       phone: data.phone || null,
       role: data.role || data.taskRole || "developer",
     };
+
+    if (data.taskRole !== undefined) {
+      updatePayload.task_role = data.taskRole;
+    }
 
     if (data.photoUrl !== undefined) {
       updatePayload.photo_url = data.photoUrl;

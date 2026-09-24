@@ -1112,3 +1112,139 @@ Para garantizar una experiencia visual institucional estandarizada, limpia y coh
    - Se eliminaron las lecturas de `prefers-color-scheme: dark` y las restauraciones persistentes de modo oscuro.
    - Si el colaborador decide activar el modo oscuro durante su sesión, puede hacerlo mediante el botón de sol/luna en el header; no obstante, en cualquier nuevo acceso o recarga, la directriz institucional lo recibirá nuevamente en Modo Claro.
 
+---
+
+## 30. Arquitectura de Equipos de Soporte Parallel y Canal de Gestión PM
+
+### A. Modelo de Datos y Roles Especializados (`task_role = 'parallel'`)
+Para dar soporte a canales de atención al cliente y soporte externo sin comprometer el flujo de desarrollo interno de los proyectos, se introdujo una taxonomía de roles de tareas sobre `organization_staff`:
+
+1. **Extensión de Esquema (`supabase/migrations/20260924000002_add_task_role_to_staff.sql`)**:
+   - Columna `task_role` de tipo texto en la tabla `organization_staff`, restringida mediante check constraint a los valores: `'member'`, `'lead'`, `'pm'` y `'parallel'`.
+   - Índice específico `idx_organization_staff_task_role` para optimizar consultas de telemetría y filtrado en portales.
+
+2. **Diferenciación Operativa**:
+   - **`member`**: Especialista de ejecución técnica asignado a entregables y sprints internos.
+   - **`lead` / `pm`**: Gestor de proyecto con facultades de triaje, asignación de tareas, creación de proyectos y control de sprints.
+   - **`parallel`**: Agente de canal paralelo o soporte técnico externo. Opera en un entorno enfocado exclusivamente en la recepción, seguimiento y atención de incidencias sin acceso a tableros internos de desarrollo.
+
+### B. Portal Dedicado de Soporte Parallel (`TaskParallelSupportPortal`)
+Los agentes con `task_role === 'parallel'` son dirigidos automáticamente por la página de enrutamiento del portal (`TaskCollaboratorPortalPage`) a su vista especializada:
+1. **Creación Asistida de Incidencias**:
+   - Modal de reporte con selección de espacios de trabajo habilitados para soporte (`support_enabled`).
+   - Cálculo dinámico de acuerdos de nivel de servicio (SLA):
+     - Prioridad Urgente: SLA de 4 horas.
+     - Prioridad Alta: SLA de 12 horas.
+     - Prioridad Media / Baja: SLA de 24 horas.
+   - Carga de capturas y documentos adjuntos multimedia con validación de tipo y tamaño.
+2. **Métricas en Tiempo Real**:
+   - Indicadores instantáneos de casos totales, recibidos, en atención, resueltos y porcentaje de resolución.
+3. **Buscador y Filtros Integrados**:
+   - Filtrado reactivo por código secuencial de ticket, texto en asunto/descripción y estado operativo.
+
+### C. Vista de Canal de Soporte del PM (`TaskSupportChannelView`)
+En el panel táctico del PM (`TaskPmOperationsDashboard`), se incorporó la pestaña **Canal de Soporte**:
+1. **Cinta de Especialistas Parallel (`TaskCollaboratorRibbon`)**:
+   - Renderizado horizontal de avatares con contadores de tickets pendientes por agente y opción de filtrado individual o global.
+2. **Tarjetas de Insight Homologadas**:
+   - Contadores compactos organizados en rejilla de dos filas con altura equilibrada con respecto a la cinta.
+3. **Barra de Herramientas Operativa**:
+   - Barra de búsqueda combinada (`SearchFilterBar`) con combobox y select de espacios de trabajo.
+4. **Acciones Rápidas en Tarjetas de Incidencia**:
+   - Resolución inmediata con un clic (`handleQuickResolve`), apertura del modal de triaje y botón de promoción a requerimiento de desarrollo.
+
+---
+
+## 31. Telemetría de Hilos y Detección de Mensajes No Leídos
+
+### A. Rastreador Descentralizado de Estado de Lectura (`support-thread-read-state.ts`)
+Para garantizar que los agentes de soporte y los PMs identifiquen de inmediato cuándo una incidencia tiene nueva actividad sin requerir consultas continuas a la base de datos:
+1. **Persistencia Local Segura**:
+   - Registro en `localStorage` bajo el esquema de claves `pixy_support_read_state_${staffId}`.
+   - Estructura `SupportReadState`: mapa indexado por `ticketId` que almacena `readCount` (cantidad de mensajes vistos) y `lastReadAt` (marca de tiempo ISO).
+2. **Descuento de Autoría Propia**:
+   - La función `getUnreadCommentCount` evalúa `last_comment_author_id`. Si el último mensaje fue redactado por el usuario en sesión, el contador no se incrementa artificialmente.
+3. **Bus de Eventos del Navegador**:
+   - Al abrir un modal de ticket o enviar un comentario, se emite el evento global `support-thread-read-update`. Las tarjetas en pantalla actualizan su estado visual de inmediato sin recargas.
+
+### B. Enriquecimiento en Lote en Servidor (`collaborator-portal-actions.ts`)
+En la función `portalGetCollaboratorData`, se incorporó una consulta agregada sobre `task_comments`:
+- Recupera en una sola pasada `comments_count`, `last_comment_at` y el `author_staff_id` del último comentario para todas las tareas accesibles.
+- Evita el problema de rendimiento N+1 y alimenta con exactitud matemática el cálculo de mensajes no leídos.
+
+### C. Estándar Visual de Llamado a la Acción (CTA) No Saturado
+En las tarjetas de tickets de soporte (`TaskSupportChannelView` y `TaskParallelSupportPortal`):
+- **Sector Izquierdo**: Muestra el total histórico de mensajes en el hilo (`N mensajes` junto al icono de conversación).
+- **Sector Derecho (Botón de Acción)**:
+  - **Con mensajes nuevos**: Botón con fondo sutil destacado, icono de mensaje y texto literal `"Mensaje nuevo"`. Sin badges numéricos duplicados ni elementos parpadeantes invasivos.
+  - **Sin mensajes nuevos**: Botón limpio con icono de mensaje y texto `"Ver Hilo"` (o `"Responder"` si la incidencia aún no tiene interacción).
+
+---
+
+## 32. Arquitectura de Consulta Técnica para Desarrolladores (@mentions)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Agente as Agente de Soporte (Parallel)
+    participant Modal as Modal de Soporte
+    participant Servidor as Backend Actions
+    actor Dev as Desarrollador / Especialista
+    actor PM as Project Manager
+
+    Agente->>Modal: Redacta comentario y tipea @Dev
+    Modal->>Servidor: Guarda comentario con mención registrada
+    Servidor-->>Dev: Notificación "[Consulta Técnica]" (Acceso acotado al ticket)
+    Dev->>Modal: Abre ticket en Modo Consulta (Sin sliders ni controles de sprint)
+    Dev->>Modal: Responde criterio técnico en el hilo
+    PM->>Modal: Revisa respuesta técnica del desarrollador
+    alt Requiere desarrollo formal
+        PM->>Modal: Clic en "Promover a Ticket"
+        Modal->>Servidor: Crea requerimiento formal en sprint interno
+    else Resolución directa
+        PM->>Modal: Marca como "Resuelto"
+    end
+```
+
+### A. Menú Flotante de Menciones en Soporte
+En `TaskSupportTicketDetailModal`, el área de texto de comentarios intercepta el carácter `@`:
+- Despliega un menú flotante con avatar, nombre completo y rol de los miembros del equipo.
+- Al seleccionar un colaborador, inserta la etiqueta `@Nombre ` y focaliza el cursor de texto de forma precisa.
+
+### B. Seguridad y Aislamiento de Datos (`consultedSupportTickets`)
+Para prevenir fugas de información y sobrecarga de datos:
+1. Los desarrolladores no reciben la lista completa de tickets de soporte de la organización.
+2. En `portalGetCollaboratorData`, el backend efectúa una consulta específica a `task_comments` filtrando por menciones dirigidas al `staff_id` del colaborador.
+3. Los tickets resultantes se inyectan como `consultedSupportTickets` y se anexan a `accessibleTaskIds`, otorgando permisos de lectura y respuesta estrictamente limitados a esos casos.
+
+### C. Enrutamiento Protegido de Modales (Modal Routing Guard)
+En `TaskCollaboratorPortal`, la función `openTaskDetail` verifica:
+- Si `task.origin_type === 'support'`, se redirige la apertura exclusivamente a `TaskSupportTicketDetailModal`.
+- Se bloquea la apertura del modal estándar de desarrollo (`TaskPortalDetailModal`).
+- Se muestra un banner distintivo de **Consulta Técnica de Soporte**, informando al desarrollador que su rol en la incidencia es de asesoría técnica puntual.
+
+### D. Preservación del Backlog y Sprints de Desarrollo
+- Los tickets de soporte consultados **no entran** al Kanban ni a la lista de tareas en curso del desarrollador.
+- No se muestran controles de porcentaje de avance (0-100%), listas de entregables ni imputación directa de horas de sprint.
+- La conversión a tarea interna requiere la intervención y aprobación explícita del PM mediante la acción "Promover a Ticket".
+
+---
+
+## 33. Rediseño UX del Selector de Estado de Triaje PM
+
+### A. Diagnóstico de Fricción Previa
+1. **Incompatibilidad Cromática**: El botón de estado activo utilizaba la variante por defecto ligada al color de marca institucional verde lima (`bg-primary`), mientras que la clase de texto forzaba un color ámbar claro (`text-amber-600`), produciendo un contraste nulo e ilegible.
+2. **Ambigüedad Conceptual de "Recibido"**: Al mostrarse como botones de acción individuales, los usuarios interpretaban que "Recibido" requería una ejecución manual, cuando en realidad todo ticket creado por soporte nace automáticamente en ese estado.
+
+### B. Implementación del Segmented Control Unificado
+En `TaskSupportTicketDetailModal`, el bloque de estado de triaje fue rediseñado como un **Control Segmentado (Segmented Control)** de tres posiciones (`grid grid-cols-3 gap-1`) dentro de un contenedor esbelto (`bg-muted/40 border border-border/60`):
+
+| Estado | Indicador Visual | Estilo Activo | Estilo Inactivo |
+|---|---|---|---|
+| **Recibido** | Punto circular azul | `bg-sky-500/15 text-sky-800 dark:text-sky-200 border-sky-500/30` | `text-muted-foreground hover:bg-background/60` |
+| **En Atención** | Punto circular ámbar | `bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/30` | `text-muted-foreground hover:bg-background/60` |
+| **Resuelto** | Checkmark esmeralda | `bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30` | `text-muted-foreground hover:bg-background/60` |
+
+- Garantiza cumplimiento estricto de contraste WCAG tanto en modo claro como en modo oscuro.
+- Clarifica de forma inmediata que se trata de un selector de estado y permite al PM alternar entre etapas con un solo clic.
+

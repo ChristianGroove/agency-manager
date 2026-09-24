@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint } from "../types";
-import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
+import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 /**
@@ -213,6 +213,20 @@ async function notifyStakeholdersOnStatusChange(
   }
 }
 
+export interface SupportTeamMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  photo_url?: string | null;
+  role: string;
+  phone?: string | null;
+  access_token?: string | null;
+  totalTickets: number;
+  pendingTickets: number;
+  resolvedTickets: number;
+  resolutionPercentage: number;
+}
+
 export interface CollaboratorPortalData {
   latestAudits?: Record<string, TaskProgressAuditSummary>;
   staff: {
@@ -267,11 +281,13 @@ export interface CollaboratorPortalData {
     author_avatar?: string | null;
     content: string;
     created_at: string;
+    origin_type?: 'internal' | 'support';
   }[];
   isLeadOrPm: boolean;
   isQa: boolean;
   portalMode?: 'operations' | 'support';
   supportTickets?: TaskItem[];
+  supportMembers?: SupportTeamMember[];
   supportMetrics?: {
     totalReported: number;
     received: number;
@@ -427,7 +443,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const allowedWorkspaceIds = new Set(workspaces.map((w) => w.id));
 
   // Determine if this collaborator belongs to the parallel support team
-  const isParallelSupport = staff.task_role === "support" && !isLeadOrPm;
+  const staffTaskRole = staff.task_role || inferTaskRole(staff.role);
+  const isParallelSupport = staffTaskRole === "support" && !isLeadOrPm;
   const portalMode: 'operations' | 'support' = isParallelSupport ? "support" : "operations";
 
   // 5. Fetch Projects (scoped to allowed workspaces if not global)
@@ -473,6 +490,41 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const { data: allTasksData } = await tasksQuery;
   const rawTasks = (allTasksData || []).map(normalizeTask);
+
+  // Fetch comments count & latest comment telemetry for tickets/tasks in this organization
+  const { data: commentsSummary } = await supabaseAdmin
+    .from("task_comments")
+    .select("task_id, id, created_at, author_id")
+    .eq("organization_id", staff.organization_id)
+    .order("created_at", { ascending: false });
+
+  const commentStatsMap = new Map<string, { count: number; lastCommentAt?: string; lastAuthorId?: string }>();
+  if (commentsSummary) {
+    for (const c of commentsSummary) {
+      const existing = commentStatsMap.get(c.task_id);
+      if (!existing) {
+        commentStatsMap.set(c.task_id, {
+          count: 1,
+          lastCommentAt: c.created_at,
+          lastAuthorId: c.author_id,
+        });
+      } else {
+        existing.count += 1;
+      }
+    }
+  }
+
+  // Enrich rawTasks with comment stats
+  rawTasks.forEach((t) => {
+    const stats = commentStatsMap.get(t.id);
+    if (stats) {
+      t.comments_count = stats.count;
+      t.last_comment_at = stats.lastCommentAt;
+      t.last_comment_author_id = stats.lastAuthorId;
+    } else {
+      t.comments_count = 0;
+    }
+  });
 
   // Segregate support tickets from operational development tasks
   const allSupportTickets = rawTasks.filter((t) => t.origin_type === "support");
@@ -531,7 +583,10 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     .eq("is_active", true)
     .order("first_name", { ascending: true });
 
-  let filteredStaffList = (staffList || []).filter((m) => m.task_role !== "support");
+  let filteredStaffList = (staffList || []).filter((m) => {
+    const mRole = m.task_role || inferTaskRole(m.role);
+    return mRole !== "support";
+  });
   if (!hasGlobalAccess) {
     // Only include staff who share at least one authorized workspace or are assigned in allowed tasks
     const { data: sharedStaffMemberships } = await supabaseAdmin
@@ -583,29 +638,94 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     })
   );
 
+  // Fetch parallel support staff members with their ticket telemetry for the PM support ribbon
+  const supportStaffList = (staffList || []).filter((m) => {
+    const mRole = m.task_role || inferTaskRole(m.role);
+    return mRole === "support";
+  });
+
+  const supportMembers: SupportTeamMember[] = await Promise.all(
+    supportStaffList.map(async (m) => {
+      let token = m.access_token;
+      if (!token) {
+        token = crypto.randomUUID();
+        await supabaseAdmin
+          .from("organization_staff")
+          .update({ access_token: token })
+          .eq("id", m.id);
+      }
+      const memberTickets = allSupportTickets.filter((t) => t.created_by_staff_id === m.id);
+      const mResolved = memberTickets.filter((t) => t.status === "done").length;
+      const mPending = memberTickets.filter((t) => t.status !== "done").length;
+      const mPercent = memberTickets.length > 0 ? Math.round((mResolved / memberTickets.length) * 100) : 0;
+      return {
+        id: m.id,
+        first_name: m.first_name,
+        last_name: m.last_name,
+        photo_url: m.photo_url,
+        role: m.role || "Equipo de Soporte",
+        phone: m.phone,
+        access_token: token,
+        totalTickets: memberTickets.length,
+        pendingTickets: mPending,
+        resolvedTickets: mResolved,
+        resolutionPercentage: mPercent,
+      };
+    })
+  );
+
   // Fetch comments where this collaborator is mentioned (@Name or @staffId)
   const { data: mentionsData } = await supabaseAdmin
     .from("task_comments")
     .select(`
       id, task_id, author_name, author_avatar, content, created_at,
-      task:task_items!task_comments_task_id_fkey(id, ticket_code, title)
+      task:task_items!task_comments_task_id_fkey(id, ticket_code, title, created_by_staff_id, assigned_staff_id, origin_type)
     `)
     .eq("organization_id", staff.organization_id)
-    .or(`content.ilike.%@${staff.first_name}%,mentions.cs.{"${staff.first_name}"}`)
+    .or(`content.ilike.%@${staff.first_name} ${staff.last_name}%,content.ilike.%@${staff.first_name}%,mentions.cs.{"${staff.first_name}"}`)
     .neq("author_id", staff.id)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(50);
 
-  const recentMentions = (mentionsData || []).map((m: any) => ({
-    id: m.id,
-    task_id: m.task_id,
-    ticket_code: m.task?.ticket_code || `TK-${m.task_id.slice(0, 4)}`,
-    task_title: m.task?.title || "Tarea",
-    author_name: m.author_name,
-    author_avatar: m.author_avatar,
-    content: m.content,
-    created_at: m.created_at,
-  }));
+  // Support tickets where this collaborator was mentioned (Consulta Técnica)
+  const mentionedSupportTicketIds = new Set(
+    (mentionsData || [])
+      .filter((m: any) => m.task?.origin_type === "support")
+      .map((m: any) => m.task_id)
+  );
+
+  const consultedSupportTickets = allSupportTickets.filter((t) =>
+    mentionedSupportTicketIds.has(t.id)
+  );
+
+  const accessibleTaskIds = new Set([
+    ...myTasks.map((t) => t.id),
+    ...allTasks.map((t) => t.id),
+    ...myReportedTickets.map((t) => t.id),
+    ...consultedSupportTickets.map((t) => t.id),
+  ]);
+
+  const recentMentions = (mentionsData || [])
+    .filter((m: any) => {
+      if (!m.task_id || !accessibleTaskIds.has(m.task_id)) return false;
+      // Parallel support collaborators only receive notifications on their own reported tickets
+      if (isParallelSupport) {
+        return m.task?.created_by_staff_id === staff.id;
+      }
+      return true;
+    })
+    .slice(0, 30)
+    .map((m: any) => ({
+      id: m.id,
+      task_id: m.task_id,
+      ticket_code: m.task?.ticket_code || `TK-${m.task_id.slice(0, 4)}`,
+      task_title: m.task?.title || "Tarea",
+      author_name: m.author_name,
+      author_avatar: m.author_avatar,
+      content: m.content,
+      created_at: m.created_at,
+      origin_type: m.task?.origin_type || "internal",
+    }));
 
   // Fetch latest progress audit comments for tasks in this organization
   const { data: auditsData } = await supabaseAdmin
@@ -706,7 +826,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     isLeadOrPm,
     isQa,
     portalMode,
-    supportTickets: isLeadOrPm ? allSupportTickets : isParallelSupport ? myReportedTickets : undefined,
+    supportTickets: isLeadOrPm ? allSupportTickets : isParallelSupport ? myReportedTickets : consultedSupportTickets,
+    supportMembers: isLeadOrPm ? supportMembers : undefined,
     supportMetrics: isParallelSupport ? supportMetrics : undefined,
     sprints,
     activeSprint,

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Headset,
@@ -21,7 +21,9 @@ import {
   Sun,
   Moon,
   TrendingUp,
+  User,
 } from "lucide-react"
+import { GlobalParticles } from "@/components/layout/global-particles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -44,11 +46,13 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { formatDistanceToNow, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import type { TaskItem, TaskWorkspace, TaskProject, TaskPriority, TaskAttachment } from "../../types"
+import { TASK_PRIORITY_LABELS, type TaskItem, type TaskWorkspace, type TaskProject, type TaskPriority, type TaskAttachment } from "../../types"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import { portalCreateTask, portalUploadTaskAttachment } from "../../actions/collaborator-portal-actions"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
-import { TaskPortalDetailModal } from "./task-portal-detail-modal"
+import { TaskSupportTicketDetailModal } from "./task-support-ticket-detail-modal"
+import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { getTicketReadState, getUnreadCommentCount, type SupportReadState } from "../../utils/support-thread-read-state"
 import { toast } from "sonner"
 
 interface TaskParallelSupportPortalProps {
@@ -123,18 +127,6 @@ const RollingOdometer = React.memo(function RollingOdometer({ value }: { value: 
   )
 })
 
-function ShimmerText({ children, active = true }: { children: React.ReactNode; active?: boolean }) {
-  if (!active) return <>{children}</>
-  return (
-    <span
-      className="inline-block bg-[linear-gradient(110deg,#52525b,35%,#a1a1aa,50%,#52525b,65%)] dark:bg-[linear-gradient(110deg,#a1a1aa,35%,#ffffff,50%,#a1a1aa,65%)] bg-[length:250%_100%] bg-clip-text text-transparent animate-shimmer"
-      style={{ animationDuration: "3.5s" }}
-    >
-      {children}
-    </span>
-  )
-}
-
 export function TaskParallelSupportPortal({
   portalData,
   token,
@@ -148,12 +140,50 @@ export function TaskParallelSupportPortal({
 }: TaskParallelSupportPortalProps) {
   const { staff, organization } = portalData
 
+  // Dynamic greeting based on hour of day
+  const timeGreeting = useMemo(() => {
+    const currentHour = new Date().getHours()
+    if (currentHour >= 5 && currentHour < 12) {
+      return "Buenos días"
+    } else if (currentHour >= 12 && currentHour < 19) {
+      return "Buenas tardes"
+    } else {
+      return "Buenas noches"
+    }
+  }, [])
+
+  // Dynamic Logo Selection based on Portal Color Mode (Dark vs Light from ADN de Marca)
+  const activeLogo =
+    portalTheme === "dark"
+      ? organization?.logo_dark_url || organization?.logo_url
+      : organization?.logo_light_url || organization?.logo_url
+
   // State
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedWorkspaceFilter, setSelectedWorkspaceFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState<"all" | "received" | "in_progress" | "resolved">("all")
   const [selectedTicket, setSelectedTicket] = useState<TaskItem | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [readState, setReadState] = useState<SupportReadState>(() => getTicketReadState(staff.id))
+
+  useEffect(() => {
+    setReadState(getTicketReadState(staff.id))
+  }, [staff.id])
+
+  useEffect(() => {
+    const handleReadUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (!customEvent.detail || customEvent.detail.staffId === staff.id) {
+        setReadState(getTicketReadState(staff.id))
+      }
+    }
+    window.addEventListener("support-thread-read-update", handleReadUpdate)
+    window.addEventListener("storage", handleReadUpdate)
+    return () => {
+      window.removeEventListener("support-thread-read-update", handleReadUpdate)
+      window.removeEventListener("storage", handleReadUpdate)
+    }
+  }, [staff.id])
 
   // Create Support Ticket Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -308,251 +338,310 @@ export function TaskParallelSupportPortal({
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/60 px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {organization?.logo_url ? (
-            <img
-              src={organization.logo_url}
-              alt={organization.name}
-              className="h-7 w-auto object-contain"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
-              {organization?.name?.charAt(0) || "P"}
-            </div>
-          )}
-          <div className="hidden sm:block">
-            <h1 className="text-xs font-bold text-foreground leading-none">{organization?.name}</h1>
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-              <Headset className="w-3 h-3 text-sky-500" />
-              Canal de Soporte Autónomo
-            </span>
-          </div>
-        </div>
+    <div
+      className={cn(
+        "min-h-screen relative bg-gray-100 dark:bg-[#0a0a0a] text-foreground font-sans selection:bg-primary/20 transition-colors duration-200 flex flex-col",
+        portalTheme === "dark" ? "dark" : ""
+      )}
+    >
+      {/* Partículas animadas globales de la plataforma */}
+      <div className="fixed inset-0 z-0 opacity-100 pointer-events-none overflow-hidden">
+        <GlobalParticles orgId={organization?.id} primaryColor={brandColor} />
+      </div>
 
-        <div className="flex items-center gap-3">
-          {/* Theme Toggle */}
-          <button
-            type="button"
-            onClick={togglePortalTheme}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer"
-            aria-label="Cambiar tema"
-          >
-            {portalTheme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-
-          {/* User Profile Chip */}
-          <div className="flex items-center gap-2 pl-3 border-l border-border/60">
-            <div className="w-7 h-7 rounded-full overflow-hidden bg-muted flex items-center justify-center border border-border/60 shrink-0">
+      {/* Header: Logo del Tenant a la izquierda y Perfil a la derecha */}
+      <header className="border-b border-zinc-200/80 dark:border-white/10 bg-card/70 backdrop-blur-md sticky top-0 z-30">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
+          {/* Logo del tenant a la izquierda (cambia reactivamente en modo oscuro/claro) */}
+          <div className="flex items-center gap-3">
+            {activeLogo ? (
               <img
-                src={getCollaboratorAvatar(staff.photo_url, staff.first_name)}
-                alt={staff.first_name}
-                className="w-full h-full object-cover"
+                key={portalTheme}
+                src={activeLogo}
+                alt={organization?.name || "Logo"}
+                className="h-8 md:h-9 w-auto max-w-[200px] object-contain transition-opacity duration-200"
               />
+            ) : (
+              <span className="font-extrabold text-base tracking-tight text-foreground">
+                {organization?.name || "Portal"}
+              </span>
+            )}
+            <div className="hidden sm:block">
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
+                <Headset className="w-3 h-3 text-sky-500" />
+                Canal de Soporte Autónomo
+              </span>
             </div>
-            <div className="text-left hidden sm:block">
-              <span className="text-xs font-semibold text-foreground block leading-none">
+          </div>
+
+          {/* Tema y Colaborador a la derecha */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Botón Modo Claro / Oscuro */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={togglePortalTheme}
+                  className="p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                  aria-label={portalTheme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                >
+                  {portalTheme === "dark" ? (
+                    <Sun className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Moon className="w-4 h-4 text-zinc-600" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <span>{portalTheme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}</span>
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
+
+            {/* Colaborador a la derecha */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <span className="text-sm font-semibold text-foreground hidden sm:inline">
                 {staff.first_name} {staff.last_name}
               </span>
-              <span className="text-[10px] text-muted-foreground block font-mono mt-0.5">
-                {staff.role}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center transition-colors bg-zinc-100 dark:bg-white/10 text-muted-foreground cursor-pointer"
+                    aria-label={`Perfil de ${staff.first_name} ${staff.last_name}`}
+                  >
+                    <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-foreground">{staff.first_name} {staff.last_name}</span>
+                    <span className="text-[10px] text-muted-foreground">{staff.role || "Equipo de Soporte"}</span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden rounded-3xl border border-zinc-200/90 dark:border-white/10 bg-gradient-to-br from-white via-zinc-50/80 to-zinc-100/90 dark:from-zinc-900 dark:via-zinc-900/90 dark:to-zinc-950 p-6 sm:p-8 shadow-sm">
-          {/* Subtle Glows */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 -mb-16 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6 relative z-10 flex-1">
+        {/* Hero Section: Card compacta con Avatar 3D en posición absoluta y efecto pop-out flotante */}
+        <section className="w-full relative overflow-visible rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-sm bg-gradient-to-br from-card via-card to-primary/[0.03] dark:to-primary/[0.06] p-4 sm:p-5 md:py-5 md:px-7 transition-all flex items-center min-h-[140px] sm:min-h-[155px]">
+          {/* Ambient Glow Orbs & Watermark Active Progress */}
+          <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none z-10">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-56 h-56 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 -mb-16 w-48 h-48 rounded-full bg-sky-500/5 blur-3xl" />
 
-          {/* Watermark Odometer in Top Right */}
-          <div className="absolute top-4 right-6 flex items-start select-none pointer-events-none">
-            <div className="flex items-start text-foreground/[0.08] dark:text-white/[0.12]">
-              <div className="text-[44px] sm:text-[60px] md:text-[72px] font-black font-sans leading-none">
-                <RollingOdometer value={resolutionPercentage} />
-              </div>
+            {/* Watermark Rolling Odometer Active Progress in Top-Right Corner */}
+            <div className="absolute top-0 right-[12px] flex items-start select-none pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="flex items-start text-foreground/[0.11] dark:text-white/[0.13]"
+              >
+                <div className="text-[40px] sm:text-[53px] md:text-[66px] font-black font-sans leading-none">
+                  <RollingOdometer value={resolutionPercentage} />
+                </div>
+              </motion.div>
             </div>
           </div>
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-xl">
-              <div className="text-[11px] sm:text-xs text-muted-foreground font-medium capitalize flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-muted-foreground/70" />
-                {new Date().toLocaleDateString("es-ES", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </div>
-
-              <div className="space-y-1">
-                <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                  Hola, {staff.first_name}
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  <ShimmerText active>
-                    Canal de soporte y atención. Reporta incidencias y da seguimiento a tus tickets directamente con el equipo de gestión.
-                  </ShimmerText>
-                </p>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-2 flex items-center gap-3">
-                <Button
-                  size="default"
-                  onClick={handleOpenCreateModal}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold gap-2 px-4 shadow-sm rounded-xl cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Reportar Ticket de Soporte</span>
-                </Button>
-              </div>
+          {/* Contenido Principal a la izquierda */}
+          <div className="relative z-10 w-full max-w-2xl pr-28 sm:pr-40 md:pr-48 lg:pr-56 space-y-2.5 sm:space-y-3">
+            {/* Fecha sutil sin badges innecesarios */}
+            <div className="text-[11px] sm:text-xs text-muted-foreground font-medium capitalize flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground/70" />
+              {new Date().toLocaleDateString("es-ES", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
             </div>
 
-            {/* Avatar 3D Display */}
-            <div className="hidden md:flex items-center justify-center shrink-0 pr-4">
-              <img
-                src={getCollaboratorAvatar(staff.photo_url, staff.first_name)}
-                alt={`${staff.first_name} ${staff.last_name}`}
-                className="h-[140px] lg:h-[165px] w-auto object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.15)]"
-              />
+            {/* Saludo dinámico tipo Dashboard y descripción clara */}
+            <div className="space-y-0.5 sm:space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-snug">
+                {timeGreeting}, {staff.first_name}
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">
+                Canal de soporte y atención. Reporta incidencias y da seguimiento a tus tickets directamente con el equipo de gestión.
+              </p>
             </div>
+
+            {/* Botón de acción */}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <Button
+                size="sm"
+                onClick={handleOpenCreateModal}
+                className="rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 h-8 px-3 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Reportar Ticket de Soporte
+              </Button>
+            </div>
+          </div>
+
+          {/* 3D Floating Avatar / Custom Round Avatar: Posición absoluta, sobresaliendo libremente por encima del marco */}
+          <div
+            className="absolute right-2 sm:right-6 md:right-8 lg:right-12 bottom-0 flex items-end justify-center pointer-events-none select-none z-20"
+          >
+            <motion.div
+              animate={{ y: [0, -7, 0] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              className="relative flex items-end justify-center"
+            >
+              {staff.photo_url &&
+              !staff.photo_url.includes("avatar%20task%20pack") &&
+              !staff.photo_url.includes("avatar task pack") ? (
+                <div className="rounded-full border-4 border-white/80 dark:border-white/20 shadow-[0_16px_32px_rgba(0,0,0,0.22)] overflow-hidden aspect-square h-[126px] sm:h-[155px] md:h-[172px] lg:h-[190px] w-[126px] sm:w-[155px] md:w-[172px] lg:w-[190px] bg-background/60 backdrop-blur-xs flex items-center justify-center">
+                  <img
+                    src={staff.photo_url}
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                    className="w-full h-full object-cover pointer-events-none select-none rounded-full"
+                  />
+                </div>
+              ) : (
+                <img
+                  src={getCollaboratorAvatar(staff.photo_url, staff.first_name || staff.id)}
+                  alt={`${staff.first_name} ${staff.last_name}`}
+                  className="h-[142px] sm:h-[176px] md:h-[194px] lg:h-[212px] w-auto object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.18)]"
+                />
+              )}
+            </motion.div>
           </div>
         </section>
 
-        {/* 4 Insights Cards */}
+        {/* 4 Insights Cards - Upgraded Dashboard Style */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-4 rounded-2xl border border-border/70 bg-card shadow-2xs space-y-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Total Reportados
-            </span>
-            <span className="text-2xl font-black text-foreground font-mono">{totalCount}</span>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/5 shadow-2xs space-y-1">
-            <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
-              Recibidos
-            </span>
-            <span className="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono">
-              {receivedCount}
-            </span>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 shadow-2xs space-y-1">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
-              En Atención
-            </span>
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
-              {inProgressCount}
-            </span>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 shadow-2xs space-y-1">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-              Resueltos
-            </span>
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-              {resolvedCount}
-            </span>
-          </div>
-        </section>
-
-        {/* Filters Bar */}
-        <section className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/60 shadow-2xs">
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por código, título..."
-                className="pl-8 h-8 text-xs bg-background"
-              />
+          {/* Card 1: Total */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-card to-card dark:from-indigo-500/20 relative overflow-hidden group shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Total
+              </span>
+              <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                <Headset className="w-3.5 h-3.5" />
+              </div>
             </div>
-
-            {/* Workspace Filter if multi-workspace */}
-            {enabledWorkspaces.length > 1 && (
-              <Select value={selectedWorkspaceFilter} onValueChange={setSelectedWorkspaceFilter}>
-                <SelectTrigger className="h-8 text-xs bg-background w-[180px]">
-                  <SelectValue placeholder="Espacio..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    Todos los Espacios
-                  </SelectItem>
-                  {enabledWorkspaces.map((ws) => (
-                    <SelectItem key={ws.id} value={ws.id} className="text-xs">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: ws.color || "#0284c7" }}
-                        />
-                        <span className="truncate">{ws.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="mt-1">
+              <h3 className="text-2xl font-black text-foreground font-mono tracking-tight">
+                {totalCount}
+              </h3>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-medium">
+              Tus solicitudes enviadas
+            </div>
           </div>
 
-          {/* Status Filter Pills */}
-          <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-xl border border-border/50 shrink-0">
-            <button
-              type="button"
-              onClick={() => setStatusFilter("all")}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                statusFilter === "all" ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Todos ({totalCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("received")}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                statusFilter === "received"
-                  ? "bg-background text-sky-600 dark:text-sky-400 shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Recibidos ({receivedCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("in_progress")}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                statusFilter === "in_progress"
-                  ? "bg-background text-amber-600 dark:text-amber-400 shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              En Atención ({inProgressCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("resolved")}
-              className={cn(
-                "px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                statusFilter === "resolved"
-                  ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Resueltos ({resolvedCount})
-            </button>
+          {/* Card 2: Recibidos */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-card to-card dark:from-sky-500/20 relative overflow-hidden group shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                Recibidos
+              </span>
+              <div className="p-1.5 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400">
+                <Inbox className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <h3 className="text-2xl font-black text-sky-600 dark:text-sky-400 font-mono tracking-tight">
+                {receivedCount}
+              </h3>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-medium">
+              Por ser revisados por PM
+            </div>
+          </div>
+
+          {/* Card 3: En Atención */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-card dark:from-amber-500/20 relative overflow-hidden group shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                En Atención
+              </span>
+              <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
+                {inProgressCount}
+              </h3>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-medium">
+              En proceso de solución
+            </div>
+          </div>
+
+          {/* Card 4: Resueltos */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card dark:from-emerald-500/20 relative overflow-hidden group shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Resueltos
+              </span>
+              <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                {resolvedCount}
+              </h3>
+            </div>
+            <div className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium font-mono">
+              {resolutionPercentage}% resueltos
+            </div>
           </div>
         </section>
+
+        {/* Toolbar: SearchFilterBar Combobox + Espacio Radix Select */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <SearchFilterBar
+            searchTerm={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Buscar por código, título o descripción..."
+            filters={[
+              { id: "all", label: "Todos", count: totalCount },
+              { id: "received", label: "Recibidos", count: receivedCount, color: "sky" },
+              { id: "in_progress", label: "En Atención", count: inProgressCount, color: "amber" },
+              { id: "resolved", label: "Resueltos", count: resolvedCount, color: "emerald" },
+            ]}
+            activeFilter={statusFilter}
+            onFilterChange={(f) => setStatusFilter(f as any)}
+            defaultShowFilters={true}
+            className="flex-1"
+          />
+
+          {/* Workspace Filter if multi-workspace */}
+          {enabledWorkspaces.length > 1 && (
+            <Select value={selectedWorkspaceFilter} onValueChange={setSelectedWorkspaceFilter}>
+              <SelectTrigger className="h-10 text-xs w-[190px] sm:w-[220px] rounded-2xl bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-white/10 shadow-xs font-medium text-left">
+                <div className="flex items-center truncate text-left flex-1 min-w-0">
+                  <SelectValue placeholder="Todos los espacios" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl max-h-[320px]">
+                <SelectItem value="all" className="text-xs font-medium">
+                  Todos los Espacios
+                </SelectItem>
+                {enabledWorkspaces.map((ws) => (
+                  <SelectItem key={ws.id} value={ws.id} className="text-xs">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: ws.color || brandColor }}
+                      />
+                      <span className="truncate">{ws.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
 
         {/* Tickets List */}
         <section className="space-y-3">
@@ -585,6 +674,8 @@ export function TaskParallelSupportPortal({
               const wsId = projectWorkspaceMap.get(ticket.project_id)
               const ws = wsId ? workspaceMap.get(wsId) : null
               const createdAtDate = parseISO(ticket.created_at)
+              const unreadComments = getUnreadCommentCount(ticket, staff.id, readState)
+              const totalComments = ticket.comments_count || 0
 
               return (
                 <div
@@ -633,15 +724,17 @@ export function TaskParallelSupportPortal({
 
                       <span
                         className={cn(
-                          "text-[10px] px-2 py-0.2 rounded font-semibold uppercase tracking-wider",
+                          "text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wider",
                           ticket.priority === "urgent"
                             ? "bg-red-500/10 text-red-600 border border-red-500/30"
                             : ticket.priority === "high"
                             ? "bg-orange-500/10 text-orange-600 border border-orange-500/30"
+                            : ticket.priority === "medium"
+                            ? "bg-sky-500/10 text-sky-600 border border-sky-500/30"
                             : "bg-muted text-muted-foreground"
                         )}
                       >
-                        {ticket.priority}
+                        {TASK_PRIORITY_LABELS[ticket.priority] || ticket.priority}
                       </span>
                     </div>
 
@@ -657,10 +750,10 @@ export function TaskParallelSupportPortal({
 
                     <div className="flex items-center gap-4 text-[11px] text-muted-foreground pt-1">
                       <span>Reportado hace {formatDistanceToNow(createdAtDate, { locale: es })}</span>
-                      {ticket.comments_count !== undefined && ticket.comments_count > 0 && (
+                      {totalComments > 0 && (
                         <span className="flex items-center gap-1 font-semibold text-primary">
                           <MessageSquare className="w-3 h-3" />
-                          {ticket.comments_count} {ticket.comments_count === 1 ? "mensaje" : "mensajes"}
+                          {totalComments} {totalComments === 1 ? "mensaje" : "mensajes"}
                         </span>
                       )}
                     </div>
@@ -670,10 +763,26 @@ export function TaskParallelSupportPortal({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs gap-1.5 pointer-events-none"
+                      className={cn(
+                        "h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 transition-all pointer-events-none",
+                        unreadComments > 0
+                          ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/40 shadow-xs"
+                          : totalComments > 0
+                          ? "bg-card text-foreground border-border/80"
+                          : "bg-muted/20 text-muted-foreground border-border/60"
+                      )}
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Ver Respuestas</span>
+                      {unreadComments > 0 ? (
+                        <>
+                          <MessageSquare className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                          <span>Mensaje nuevo</span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span>Ver Hilo</span>
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -768,7 +877,9 @@ export function TaskParallelSupportPortal({
               </label>
               <Select value={priority} onValueChange={(val: TaskPriority) => setPriority(val)}>
                 <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
+                  <SelectValue placeholder="Seleccionar prioridad...">
+                    {TASK_PRIORITY_LABELS[priority]}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low" className="text-xs">Baja</SelectItem>
@@ -859,10 +970,10 @@ export function TaskParallelSupportPortal({
         </DialogContent>
       </Dialog>
 
-      {/* Detail Modal for chatting with PM and viewing progress */}
+      {/* Detail Modal for chatting with PM and viewing ticket details (Clean, no developer controls) */}
       {selectedTicket && isDetailModalOpen && (
-        <TaskPortalDetailModal
-          task={selectedTicket}
+        <TaskSupportTicketDetailModal
+          ticket={selectedTicket}
           isOpen={isDetailModalOpen}
           onClose={() => {
             setIsDetailModalOpen(false)
@@ -870,15 +981,14 @@ export function TaskParallelSupportPortal({
           }}
           token={token}
           isLeadOrPm={false}
-          isQa={false}
           currentStaffId={staff.id}
-          projects={projects}
-          teamMembers={[]}
+          workspace={(() => {
+            const wsId = projectWorkspaceMap.get(selectedTicket.project_id)
+            return wsId ? workspaceMap.get(wsId) || null : null
+          })()}
+          teamMembers={portalData.teamMembers || []}
           brandColor={brandColor}
-          availableTasks={supportTickets}
-          sprints={[]}
-          defaultStatus="backlog"
-          onTaskUpdated={(updatedTicket) => {
+          onTicketUpdated={(updatedTicket) => {
             onTicketsChange((prev) =>
               prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
             )

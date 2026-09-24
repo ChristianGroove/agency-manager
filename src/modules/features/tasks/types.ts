@@ -277,6 +277,8 @@ export interface TaskItem {
     color: string;
   } | null;
   comments_count?: number;
+  last_comment_at?: string | null;
+  last_comment_author_id?: string | null;
   // Sprint Association
   sprint_id?: string | null;
   sprint?: TaskSprint | null;
