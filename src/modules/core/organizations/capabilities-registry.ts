@@ -21,7 +21,16 @@ export type UICapability =
   | 'whitelabel.branding'
   | 'whitelabel.domain_custom'
   | 'module_rentals'
-  | 'tasks.management';
+  | 'tasks.management'
+  | 'school.core'
+  | 'school.curriculum_matrix'
+  | 'school.teacher_portal'
+  | 'school.zero_trust_attendance'
+  | 'school.neuro_badges'
+  | 'school.executive_reports'
+  | 'school.early_warning_radar'
+  | 'school.student_parent_portal'
+  | 'school.tuition_billing';
 
 export interface TerminologyConfig {
   client: string;
@@ -298,7 +307,62 @@ export const CAPABILITY_PRESETS: Record<string, DynamicSpaceConfig> = {
       'whitelabel.branding',
       'whitelabel.domain_custom'
     ]
-  }
+  },
+  school: {
+    terminology: {
+      client: 'Estudiante',
+      clients: 'Estudiantes',
+      project: 'Asignatura / Área',
+      sale: 'Pensión / Matrícula',
+      action_new: 'Matricular Estudiante',
+      task: 'Competencia / Actividad',
+      tasks: 'Logros y Calificaciones',
+    },
+    policies: {
+      visibleTabs: ['info', 'activity', 'academics', 'attendance', 'grades', 'bulletins', 'billing'],
+      showBilling: true,
+      showHosting: false,
+      showServices: true,
+      showOrders: false,
+      allowedChannels: ['whatsapp', 'email', 'sms'],
+      defaultDashboard: 'school',
+    },
+    management: {
+      visibleTabs: ['info', 'activity', 'academics', 'grades', 'attendance', 'bulletins', 'billing'],
+      profileSections: ['contact_info', 'academic_details', 'guardian_details', 'medical_info', 'preferences'],
+    },
+    rules: {
+      allowedChannels: ['whatsapp', 'email', 'sms'],
+    },
+    capabilities: [
+      'crm.core',
+      'crm.advanced',
+      'messaging.standard',
+      'messaging.bulk',
+      'billing.management',
+      'automation.engine',
+      'whitelabel.branding',
+      'whitelabel.domain_custom',
+      'school.core',
+      'school.curriculum_matrix',
+      'school.teacher_portal',
+      'school.zero_trust_attendance',
+      'school.neuro_badges',
+      'school.executive_reports',
+      'school.early_warning_radar',
+      'school.student_parent_portal',
+      'school.tuition_billing',
+    ],
+    modules: [
+      'core_crm',
+      'core_clients',
+      'module_messaging',
+      'module_billing',
+      'module_automation',
+      'module_attendance',
+      'module_school',
+    ],
+  },
 };
 
 export const REAL_ESTATE_DEFAULT_MODULES = [
@@ -311,4 +375,15 @@ export const REAL_ESTATE_DEFAULT_MODULES = [
   'core_locations',
   'module_rentals'
 ];
+
+export const SCHOOL_DEFAULT_MODULES = [
+  'core_crm',
+  'core_clients',
+  'module_messaging',
+  'module_billing',
+  'module_automation',
+  'module_attendance',
+  'module_school'
+];
+
 

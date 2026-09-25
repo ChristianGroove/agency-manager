@@ -32,7 +32,8 @@ import {
     ClipboardList,
     Wrench,
     Building2,
-    KeyRound
+    KeyRound,
+    GraduationCap
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -288,6 +289,19 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         parentModule: 'module_rentals',
         access: {
             allowedSpaces: ['real_estate']
+        }
+    },
+    {
+        key: 'module_school',
+        label: 'Gestión Académica',
+        href: '/school',
+        icon: GraduationCap,
+        category: 'operations',
+        parentModule: 'module_school',
+        description: 'Control de áreas, calificaciones Decreto 1290, boletines, carnets y asistencia escolar',
+        access: {
+            allowedSpaces: ['school'],
+            requiredCapabilities: ['school.core']
         }
     },
     // HIDDEN FOR REGULAR USERS
