@@ -4,7 +4,10 @@
 -- IDEMPOTENT: Safe to run multiple times
 -- ==============================================================================
 
--- 1. Insert or update the SaaS App for School Space
+-- 1. Ensure ui_config column exists in saas_apps (SaaS Space Engine V2)
+ALTER TABLE public.saas_apps ADD COLUMN IF NOT EXISTS ui_config JSONB;
+
+-- 2. Insert or update the SaaS App for School Space
 INSERT INTO public.saas_apps (
     id,
     name,
