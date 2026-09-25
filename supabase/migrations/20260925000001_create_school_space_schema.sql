@@ -19,7 +19,9 @@ INSERT INTO public.saas_apps (
     trial_days,
     is_active,
     is_featured,
-    sort_order
+    sort_order,
+    space_category,
+    ui_config
 ) VALUES (
     'app_school_pro',
     'Pixy Edu - School Operating System',
@@ -34,7 +36,47 @@ INSERT INTO public.saas_apps (
     14,
     true,
     true,
-    8
+    8,
+    'school',
+    '{
+        "terminology": {
+            "client": "Estudiante",
+            "clients": "Estudiantes",
+            "project": "Asignatura / Área",
+            "sale": "Pensión / Matrícula",
+            "action_new": "Matricular Estudiante",
+            "task": "Competencia / Actividad",
+            "tasks": "Logros y Calificaciones"
+        },
+        "capabilities": [
+            "crm.core",
+            "crm.advanced",
+            "messaging.standard",
+            "messaging.bulk",
+            "billing.management",
+            "automation.engine",
+            "whitelabel.branding",
+            "whitelabel.domain_custom",
+            "school.core",
+            "school.curriculum_matrix",
+            "school.teacher_portal",
+            "school.zero_trust_attendance",
+            "school.neuro_badges",
+            "school.executive_reports",
+            "school.early_warning_radar",
+            "school.student_parent_portal",
+            "school.tuition_billing"
+        ],
+        "policies": {
+            "visibleTabs": ["info", "activity", "academics", "attendance", "grades", "bulletins", "billing"],
+            "showBilling": true,
+            "showHosting": false,
+            "showServices": true,
+            "showOrders": false,
+            "allowedChannels": ["whatsapp", "email", "sms"],
+            "defaultDashboard": "school"
+        }
+    }'::jsonb
 ) ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     slug = EXCLUDED.slug,
@@ -49,6 +91,8 @@ INSERT INTO public.saas_apps (
     is_active = EXCLUDED.is_active,
     is_featured = EXCLUDED.is_featured,
     sort_order = EXCLUDED.sort_order,
+    space_category = EXCLUDED.space_category,
+    ui_config = EXCLUDED.ui_config,
     updated_at = NOW();
 
 -- 2. Link modules to School Space app
@@ -68,6 +112,28 @@ INSERT INTO public.saas_app_modules (
     ('app_school_pro', 'module_attendance', true, false, false, 6),
     ('app_school_pro', 'module_school', true, true, false, 7)
 ON CONFLICT (app_id, module_key) DO NOTHING;
+
+-- 3. Register Welcome Banner for School Space in global_dashboard_banners
+INSERT INTO public.global_dashboard_banners (
+    title, 
+    description, 
+    space_type, 
+    is_active, 
+    cta_text, 
+    cta_url
+) VALUES (
+    'Bienvenido a Pixy Edu',
+    '["Has activado el Sistema Operativo Académico (AOS) para colegios y academias.", "Gestiona calificaciones Decreto 1290, toma asistencia con QR y despacha boletines por WhatsApp."]',
+    'school',
+    true,
+    'Ir al Campus',
+    '/school'
+) ON CONFLICT (space_type) DO UPDATE SET
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active,
+    cta_text = EXCLUDED.cta_text,
+    cta_url = EXCLUDED.cta_url;
 
 -- 3. Academic Years (Años Lectivos)
 CREATE TABLE IF NOT EXISTS public.school_academic_years (

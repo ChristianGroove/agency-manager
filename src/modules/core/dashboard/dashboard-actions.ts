@@ -121,8 +121,9 @@ export async function getDashboardPayload() {
         orgDetails?.name?.toLowerCase().includes('retail') ||
         orgDetails?.slug?.toLowerCase().includes('retail')
     const isSaaS = spaceCategory === 'saas' || modules.includes('module_saas') || modules.includes('vertical_saas')
+    const isSchool = spaceCategory === 'school' || modules.includes('module_school') || orgDetails?.active_app_id === 'app_school_pro'
 
-    const orgType = isRealEstate ? 'real_estate' : (isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : (isSaaS ? 'saas' : ((isPlatform || isReseller) ? 'reseller' : 'agency')))))
+    const orgType = isSchool ? 'school' : (isRealEstate ? 'real_estate' : (isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : (isSaaS ? 'saas' : ((isPlatform || isReseller) ? 'reseller' : 'agency'))))))
 
     // Step 2: Fetch vertical data AND banner in parallel (was sequential)
     const bannerSpaceType = orgDetails?.organization_type === 'platform' ? 'platform' : orgType

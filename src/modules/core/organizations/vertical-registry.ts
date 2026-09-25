@@ -4,7 +4,7 @@
  * Defines how the CRM UI adapts to different industry verticals (Spaces).
  */
 
-export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform' | 'real_estate';
+export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform' | 'real_estate' | 'school';
 
 export interface VerticalConfig {
     crmTemplateId: string; // Link to CRMTemplates configuration
@@ -219,6 +219,33 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         management: {
             visibleTabs: ['info', 'activity', 'services', 'billing'],
             profileSections: ['identity', 'communication', 'digital_presence'],
+            actions: {
+                showBilling: true,
+                showHosting: false,
+                showServices: true,
+                showOrders: false
+            }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email', 'sms']
+        }
+    },
+    school: {
+        crmTemplateId: 'school',
+        terminology: {
+            client: 'Estudiante',
+            clients: 'Estudiantes',
+            project: 'Asignatura / Área',
+            sale: 'Pensión / Matrícula',
+            action_new: 'Matricular Estudiante'
+        },
+        insights: {
+            primary: { label: 'Promedio Período', key: 'overall_average' },
+            secondary: { label: 'Inasistencias', key: 'total_absences' }
+        },
+        management: {
+            visibleTabs: ['info', 'activity', 'academics', 'grades', 'attendance', 'bulletins', 'billing'],
+            profileSections: ['identity', 'communication'],
             actions: {
                 showBilling: true,
                 showHosting: false,
