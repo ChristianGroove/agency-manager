@@ -27,6 +27,7 @@ import type {
 import { MEETING_PRESETS } from "../../types"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { TaskGoogleMeetConnector } from "./task-google-meet-connector"
 
 interface TaskMeetingFormSectionProps {
   modality: TaskMeetingModality
@@ -43,6 +44,8 @@ interface TaskMeetingFormSectionProps {
   setAttendees: React.Dispatch<React.SetStateAction<TaskMeetingAttendee[]>>
   collaborators: TaskCollaborator[]
   onApplyPreset?: (preset: typeof MEETING_PRESETS[number]) => void
+  autoGenerateMeet?: boolean
+  setAutoGenerateMeet?: (enabled: boolean) => void
 }
 
 export function TaskMeetingFormSection({
@@ -60,7 +63,12 @@ export function TaskMeetingFormSection({
   setAttendees,
   collaborators,
   onApplyPreset,
+  autoGenerateMeet,
+  setAutoGenerateMeet,
 }: TaskMeetingFormSectionProps) {
+  const [internalAutoGenerate, setInternalAutoGenerate] = React.useState(false)
+  const isAutoGenerate = autoGenerateMeet !== undefined ? autoGenerateMeet : internalAutoGenerate
+  const handleAutoGenerateChange = setAutoGenerateMeet || setInternalAutoGenerate
   const toggleAttendee = (collabId: string) => {
     setAttendees((prev) => {
       const exists = prev.some((a) => a.staff_id === collabId)
@@ -189,21 +197,30 @@ export function TaskMeetingFormSection({
         </div>
       </div>
 
-      {/* Virtual URL input */}
+      {/* Virtual URL input & Google Meet integration */}
       {(modality === "virtual" || modality === "hybrid") && (
-        <div>
-          <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-            Enlace de Videollamada (Meet / Zoom / Teams)
-          </label>
-          <div className="relative">
-            <Link2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={meetingUrl}
-              onChange={(e) => setMeetingUrl(e.target.value)}
-              placeholder="https://meet.google.com/xxx-yyyy-zzz"
-              className="pl-8 bg-background text-xs h-9 rounded-xl font-mono"
-            />
-          </div>
+        <div className="space-y-2.5">
+          <TaskGoogleMeetConnector
+            autoGenerateMeet={isAutoGenerate}
+            onAutoGenerateMeetChange={handleAutoGenerateChange}
+          />
+
+          {!isAutoGenerate && (
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                Enlace de Videollamada (Meet / Zoom / Teams)
+              </label>
+              <div className="relative">
+                <Link2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={meetingUrl}
+                  onChange={(e) => setMeetingUrl(e.target.value)}
+                  placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                  className="pl-8 bg-background text-xs h-9 rounded-xl font-mono"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

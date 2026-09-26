@@ -770,6 +770,58 @@ export async function createTask(
       ticketCode = await generateNextTicketCode(orgId, data.project_id, customPrefix);
     }
 
+    // Generación automática de enlace de Google Meet si está habilitado para actividades sincrónicas
+    let finalMeetingUrl = data.meeting_url || null;
+    let finalExternalMeetingId = data.external_meeting_id || null;
+
+    if (
+      data.type === "meeting" &&
+      (data.meeting_modality === "virtual" || data.meeting_modality === "hybrid" || !data.meeting_modality)
+    ) {
+      const shouldAutogenerate = (data as any).auto_generate_meet ?? (!data.meeting_url);
+      if (shouldAutogenerate) {
+        try {
+          const supabase = await createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const attendeeStaffIds = (data.meeting_attendees || [])
+              .map((a: any) => a.staff_id)
+              .filter(Boolean);
+
+            let attendeeEmails: string[] = [];
+            if (attendeeStaffIds.length > 0) {
+              const { data: staffRecords } = await supabaseAdmin
+                .from("organization_staff")
+                .select("email")
+                .in("id", attendeeStaffIds);
+              attendeeEmails = (staffRecords || []).map((s: any) => s.email).filter(Boolean);
+            }
+
+            const { createGoogleCalendarMeetingEvent } = await import(
+              "@/modules/features/integrations/google/google-calendar-service"
+            );
+
+            const meetResult = await createGoogleCalendarMeetingEvent({
+              title: data.title,
+              description: data.description,
+              startAt: data.meeting_start_at,
+              durationMinutes: data.meeting_duration_minutes,
+              attendeeEmails,
+              userId: user.id,
+              orgId,
+            });
+
+            if (meetResult.meetingUrl) {
+              finalMeetingUrl = meetResult.meetingUrl;
+              finalExternalMeetingId = meetResult.externalMeetingId;
+            }
+          }
+        } catch (meetErr) {
+          console.error("Error al autogenerar reunión de Google Meet:", meetErr);
+        }
+      }
+    }
+
     const { data: newTask, error } = await supabaseAdmin
       .from("task_items")
       .insert({
@@ -804,11 +856,12 @@ export async function createTask(
         origin_type: data.origin_type || "internal",
         promoted_from_id: data.promoted_from_id || null,
         meeting_modality: data.meeting_modality || (data.type === "meeting" ? "virtual" : null),
-        meeting_url: data.meeting_url || null,
+        meeting_url: finalMeetingUrl,
         meeting_location: data.meeting_location || null,
         meeting_start_at: data.meeting_start_at || null,
         meeting_duration_minutes: data.meeting_duration_minutes !== undefined && data.meeting_duration_minutes !== null ? Number(data.meeting_duration_minutes) : (data.type === "meeting" ? 30 : null),
         meeting_attendees: Array.isArray(data.meeting_attendees) ? data.meeting_attendees : [],
+        external_meeting_id: finalExternalMeetingId,
       })
       .select(`
         *,
@@ -863,6 +916,14 @@ export async function createTask(
           }
         }
       }
+    }
+
+    if (finalMeetingUrl && finalMeetingUrl.includes("meet.google.com")) {
+      await logTaskAuditComment(
+        orgId,
+        newTask.id,
+        `Enlace de Google Meet generado y sincronizado con Google Calendar: ${finalMeetingUrl}`
+      );
     }
 
     revalidatePath("/operations/tasks");

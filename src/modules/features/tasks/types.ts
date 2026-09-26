@@ -483,6 +483,22 @@ export interface TaskItem {
   meeting_duration_minutes?: number | null;
   meeting_attendees?: TaskMeetingAttendee[];
   recurrence_days?: number[] | null;
+  external_meeting_id?: string | null;
+  external_calendar_event_id?: string | null;
+}
+
+export interface UserOAuthConnection {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  provider: 'google';
+  account_email: string;
+  account_name?: string | null;
+  account_avatar_url?: string | null;
+  is_active: boolean;
+  scopes?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TaskComment {
@@ -638,6 +654,8 @@ export function normalizeTask(task: any): TaskItem {
     meeting_duration_minutes: task.meeting_duration_minutes !== undefined && task.meeting_duration_minutes !== null ? Number(task.meeting_duration_minutes) : (task.type === "meeting" ? 30 : null),
     meeting_attendees: Array.isArray(task.meeting_attendees) ? task.meeting_attendees : [],
     recurrence_days: Array.isArray(task.recurrence_days) ? task.recurrence_days : null,
+    external_meeting_id: task.external_meeting_id || null,
+    external_calendar_event_id: task.external_calendar_event_id || null,
   };
 }
 

@@ -1546,6 +1546,56 @@ Para erradicar estos cuellos de botella sin fragmentar la experiencia de usuario
    - Al cambiar de proyecto, sprint o aplicar filtros de búsqueda textual, el cupo visible se reinicia a 25.
    - En operaciones locales de arrastre (donde los identificadores no cambian, solo el estado de la tarea), la firma permanece intacta, evitando el colapso abrupto de columnas previamente expandidas por el usuario.
 
+---
+
+## 39. Integración Autónoma de Google Meet y Calendar por Usuario (OAuth 2.0 y Sincronización Sincrónica)
+
+### A. Principio de Autonomía Individual y Cero Fricción Multitenant
+A diferencia de los canales de comunicación a nivel de organización (como WhatsApp Meta Business o CRM corporativo), las reuniones sincrónicas y agendas de trabajo operan bajo calendarios individuales de cada Project Manager o Administrador.
+1. **Conexión Autónoma por Usuario**: Cada usuario gestiona su propia credencial de Google (`auth.uid() = user_id`) de manera independiente. No existe una cuenta maestra centralizada que deba compartirse ni riesgo de saturación de cuotas globales.
+2. **Resiliencia Operativa**: Si un PM no vincula su cuenta de Google, el sistema opera con total normalidad mediante ingreso manual del enlace de videollamada (`meeting_url`).
+3. **Aislamiento Multiusuario**: Si un PM revoca sus credenciales o abandona la organización, las reuniones previamente generadas en `task_items` preservan sus enlaces y telemetría de asistencia en Pixy, y los calendarios de los demás PMs permanecen completamente operativos.
+
+### B. Modelo Relacional y Seguridad de Credenciales (`user_oauth_connections`)
+Para desacoplar las conexiones de usuario de las conexiones organizacionales (`integration_connections`), se introdujo la tabla `public.user_oauth_connections`:
+- **Esquema Relacional**:
+  - `id` (UUID, PK)
+  - `organization_id` (UUID, FK a `organizations`)
+  - `user_id` (UUID, FK a `auth.users`)
+  - `provider` (TEXT, e.g. `'google'`)
+  - `account_email`, `account_name`, `account_avatar_url` (Metadatos visuales del perfil conectado)
+  - `encrypted_access_token`, `encrypted_refresh_token` (Tokens cifrados con clave simétrica AES-256-GCM)
+  - `token_expires_at` (TIMESTAMPTZ, marca temporal de caducidad del token de acceso)
+  - `scopes` (TEXT[], permisos concedidos: `calendar.events`, `userinfo.email`, `userinfo.profile`)
+  - `is_active` (BOOLEAN, estado de habilitación operativa)
+  - Restricción de unicidad: `UNIQUE (organization_id, user_id, provider)`.
+- **Seguridad y RLS (Row Level Security)**:
+  - Políticas de seguridad a nivel de fila aseguran que ningún usuario pueda consultar ni actualizar las credenciales de otro usuario (`auth.uid() = user_id`).
+  - Cifrado simétrico robusto: Los tokens de acceso y de refresco son encriptados en reposo utilizando `aes-256-gcm` con vector de inicialización único por registro y validación de tag de autenticación en `src/modules/infrastructure/integrations/encryption.ts`.
+- **Extensiones en `task_items`**:
+  - `external_meeting_id` (TEXT, identificador remoto de la sesión)
+  - `external_calendar_event_id` (TEXT, identificador del evento en Google Calendar para cancelaciones o actualizaciones futuras)
+
+### C. Flujo de Autorización OAuth Contextual sin Pérdida de Estado
+Para garantizar la mejor experiencia de usuario en formularios modales (`TaskMeetingModal` y `TaskMeetingFormSection`):
+1. **Modal Contextual**: El botón de conexión lanza una ventana emergente (*popup*) centrada (`/api/integrations/google/authorize`) sin navegar fuera del formulario actual.
+2. **Firma y Cifrado de State**: El endpoint de autorización genera un estado firmado y encriptado que contiene el `organization_id`, `user_id`, marca de tiempo y firma criptográfica para prevenir ataques CSRF.
+3. **Intercambio Seguro de Código (`/api/integrations/google/callback`)**: El callback valida la expiración del estado (15 minutos), intercambia el código por tokens ante Google, consulta el perfil del usuario, cifra y almacena las credenciales en la base de datos vía Supabase Admin Client.
+4. **Notificación Bidireccional (`postMessage`)**: Al finalizar, la ventana secundaria emite un mensaje `PIXY_GOOGLE_AUTH_SUCCESS` a la ventana primaria (`window.opener.postMessage`) y se cierra automáticamente. El componente `TaskGoogleMeetConnector` captura el evento, refresca su estado local y permite continuar la creación de la reunión con los datos prellenados intactos.
+
+### D. Creación Automatizada de Sesiones Google Meet y Registro de Calendario
+Cuando un PM con cuenta conectada mantiene activo el interruptor "Generar enlace y agendar en Google Calendar automáticamente":
+1. **Resolución de Asistentes**: Se obtienen los correos electrónicos de los colaboradores convocados (`meeting_attendees`) a través de sus perfiles en el espacio de trabajo.
+2. **Inyección en Google Calendar**: `createGoogleCalendarMeetingEvent` utiliza el cliente oficial de `googleapis` configurado con refresco automático de tokens. Crea un evento en el calendario principal del PM con:
+   - Resumen y descripción del requerimiento.
+   - Ventana temporal definida por `meeting_start_at` y `meeting_duration_minutes`.
+   - Lista de asistentes con invitación por correo (`sendUpdates: 'all'`).
+   - Generación explícita de videoconferencia (`conferenceDataVersion: 1`, tipo `hangoutsMeet`).
+3. **Persistencia en Pixy**: Se extrae `hangoutLink` oficial (`https://meet.google.com/xxx-xxxx-xxx`) y el ID del evento de calendario, insertándose en `meeting_url`, `external_meeting_id` y `external_calendar_event_id` de `task_items`.
+4. **Trazabilidad en Auditoría**: Se genera automáticamente una entrada en los comentarios de auditoría de la tarea documentando la creación remota del evento y la generación del enlace.
+5. **Telemetría y Pacing Preservados**: La asistencia mediante clic en el enlace, la ventana de tolerancia de 5 minutos, la acreditación de horas en el portal del colaborador y el ritmo semanal continúan gobernados con precisión absoluta por Pixy.
+
+
 
 
 

@@ -51,6 +51,7 @@ import { createTask } from "../../actions/task-actions"
 import { portalCreateTask } from "../../actions/collaborator-portal-actions"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
+import { TaskGoogleMeetConnector } from "./task-google-meet-connector"
 
 interface TaskMeetingModalProps {
   isOpen: boolean
@@ -98,6 +99,7 @@ export function TaskMeetingModal({
   const [meetingLocation, setMeetingLocation] = useState("")
   const [meetingStartAt, setMeetingStartAt] = useState("")
   const [durationMinutes, setDurationMinutes] = useState<number>(30)
+  const [autoGenerateMeet, setAutoGenerateMeet] = useState(false)
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>("weekly")
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([1])
@@ -247,7 +249,7 @@ export function TaskMeetingModal({
       return
     }
 
-    if ((modality === "virtual" || modality === "hybrid") && !meetingUrl.trim()) {
+    if ((modality === "virtual" || modality === "hybrid") && !meetingUrl.trim() && !autoGenerateMeet) {
       toast.warning("Te recomendamos incluir el enlace de videollamada para habilitar el acceso automático", {
         duration: 3500,
       })
@@ -316,6 +318,7 @@ export function TaskMeetingModal({
           tags: [modality === "virtual" ? "Reunión Virtual" : modality === "in_person" ? "Reunión Presencial" : "Reunión Híbrida"],
           meeting_modality: modality,
           meeting_url: meetingUrl.trim() || null,
+          ...(autoGenerateMeet ? { auto_generate_meet: true } : {}),
           meeting_location: meetingLocation.trim() || null,
           meeting_start_at: meetingIsoDate,
           meeting_duration_minutes: durationMinutes,
@@ -638,24 +641,33 @@ export function TaskMeetingModal({
               </button>
             </div>
 
-            {/* URL Enlace de Videollamada */}
+            {/* Integración Google Meet & URL Enlace de Videollamada */}
             {(modality === "virtual" || modality === "hybrid") && (
-              <div>
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                  Enlace de Videollamada (Google Meet, Zoom, MS Teams)
-                </label>
-                <div className="relative">
-                  <Link2 className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    value={meetingUrl}
-                    onChange={(e) => setMeetingUrl(e.target.value)}
-                    placeholder="https://meet.google.com/xxx-yyyy-zzz"
-                    className="pl-9 bg-background h-10 text-xs font-mono rounded-xl"
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Los participantes podrán acceder directamente con 1 clic desde el portal, registrando su asistencia en automático.
-                </p>
+              <div className="space-y-3">
+                <TaskGoogleMeetConnector
+                  autoGenerateMeet={autoGenerateMeet}
+                  onAutoGenerateMeetChange={setAutoGenerateMeet}
+                />
+
+                {!autoGenerateMeet && (
+                  <div>
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                      Enlace de Videollamada (Google Meet, Zoom, MS Teams)
+                    </label>
+                    <div className="relative">
+                      <Link2 className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Input
+                        value={meetingUrl}
+                        onChange={(e) => setMeetingUrl(e.target.value)}
+                        placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                        className="pl-9 bg-background h-10 text-xs font-mono rounded-xl"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Los participantes podrán acceder directamente con 1 clic desde el portal, registrando su asistencia en automático.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
