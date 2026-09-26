@@ -1308,3 +1308,132 @@ En `renderSupportCommentContent` y `renderFormattedComment`:
 - Al hacer clic sobre la tarjeta de imagen, el recurso se abre a pantalla completa en una nueva pestaña del navegador.
 - En la barra de redacción se integró adicionalmente un botón discreto de adjuntos (icono de clip) que permite tanto subir archivos desde disco como pegar capturas del portapapeles.
 
+---
+
+## 36. Actividades Sincrónicas / Reuniones con Imputación Automatizada de Horas y Recurrencia Just-in-Time
+
+### A. Diagnóstico y Propuesta de Valor
+En herramientas tradicionales como Jira, las reuniones operativas (dailies, refinamientos, sesiones de diseño, 1:1s) generan una fricción significativa:
+1. Las reuniones convocadas por el Project Manager o administradores se crean como tickets comunes o eventos de calendario dispersos.
+2. Cada participante convocado está obligado a imputar manualmente sus horas consumidas después de cada sesión (worklog manual), lo cual conduce a omisiones frecuentes, inconsistencias de ritmo semanal (pacing) y reportes ficticios o extemporáneos.
+3. El módulo de tareas de Pixy resuelve esto introduciendo el tipo de tarea `meeting` (Reunión / Actividad Sincrónica): una experiencia nativa donde la confirmación de asistencia (mediante un clic para ingresar a la videollamada o botón de registro) acredita automáticamente las horas calculadas al colaborador en su capacidad semanal y acumula las horas-hombre dedicadas al proyecto/sprint.
+
+### B. Modelo Relacional y Migración de Base de Datos
+En la migración `20260924000003_add_meeting_activities_and_recurrence_days.sql`:
+1. Se extendió la restricción `task_items_type_check` para permitir el valor `'meeting'`.
+2. Se incorporaron columnas especializadas:
+   - `meeting_modality`: Texto restringido a `'virtual'`, `'presencial'` o `'hibrida'` (por defecto `'virtual'`).
+   - `meeting_url`: URL de la sesión remota (Google Meet, Zoom, Microsoft Teams, etc.).
+   - `meeting_location`: Dirección o sala física para modalidades presenciales o híbridas.
+   - `meeting_start_at`: Marca de tiempo ISO con zona horaria que estipula el inicio programado de la sesión.
+   - `meeting_duration_minutes`: Duración planificada en minutos (entero positivo no nulo, por defecto 30 minutos).
+   - `meeting_attendees`: Estructura JSONB que almacena el listado de participantes convocados, su estado de asistencia, hora de check-in, método y horas acreditadas.
+   - `recurrence_days`: Array de enteros `INTEGER[]` que almacena los días específicos de la semana seleccionados para la recurrencia (estándar ISO 8601: 1 = Lunes, ..., 7 = Domingo).
+3. Se generaron índices B-Tree y GIN para consultas concurrentes:
+   - `idx_task_items_meeting_start_at` sobre `meeting_start_at`.
+   - `idx_task_items_meeting_attendees` empleando el operador `jsonb_path_ops`.
+   - `idx_task_items_recurrence_days` empleando `gin (recurrence_days)`.
+
+### C. Esquema y Estructura de Asistentes (`TaskMeetingAttendee`)
+Cada elemento en `meeting_attendees` contiene:
+- `staff_id`: Identificador único del miembro de equipo convocado.
+- `staff_name`: Nombre visible del participante.
+- `status`: Estado de presencia (`'pending'`, `'present'`, `'excused'`, `'absent'`).
+- `checked_in_at`: Marca de tiempo ISO del momento exacto del registro de asistencia (o `null`).
+- `checkin_method`: Origen de la verificación (`'auto_click'`, `'manual_cta'`, `'pm_override'` o `null`).
+- `hours_logged`: Horas decimales imputadas al participante (equivalente a `meeting_duration_minutes / 60`).
+
+> [!IMPORTANT]
+> **Desacoplamiento Estricto del Checklist de Entregables:**
+> Los participantes de la reunión se gestionan de forma exclusiva en la estructura JSONB `meeting_attendees` y jamás se mapean como ítems del `checklist`. En el motor de Pixy, la función de guarda `hasUnfinishedDeliverables` degrada automáticamente las tareas incompletas al 95% e impide su transición a `done`. Al desacoplar a los asistentes, un participante ausente o con falta justificada no bloquea el cierre formal de la reunión ni compromete el flujo del sprint.
+
+### D. Ventana Temporal Prudente y Prevención de Asistencia Extemporánea
+Para evitar fraudes o registros retrospectivos sin haber asistido realmente a la sesión, la función pura `getMeetingAttendanceWindowStatus` y la acción de servidor `registerMeetingAttendance` imponen una regla estricta de ventana temporal:
+- **Apertura:** 15 minutos antes de la hora estipulada en `meeting_start_at`.
+- **Cierre:** 15 minutos después de finalizada la sesión (`meeting_start_at + meeting_duration_minutes + 15m`).
+- **Estados de Ventana:**
+  - `upcoming`: La sesión aún no está próxima; el botón de asistencia permanece inactivo informando los minutos u horas restantes.
+  - `open`: La ventana se encuentra activa; el colaborador puede hacer clic en "Unirme a la Videollamada" o "Confirmar Asistencia".
+  - `closed`: La reunión concluyó y la ventana de gracia de 15 minutos expiró. El colaborador ya no puede auto-marcar asistencia.
+- **Anulación y Certificación Manual del PM (`pm_override`):**
+  Exclusivamente el Project Manager o administradores de la plataforma disponen de un selector rápido de pase de lista en la consola para certificar asistencia fuera de la ventana si el colaborador experimentó fallos técnicos o avisó por otro canal.
+
+### E. Presets de Alta Productividad y Selector Multi-Día
+En la creación de reuniones mediante `TaskMeetingFormSection`:
+1. **3 Presets Guía de un Clic:**
+   - **Daily Standup (15 min):** Título sugerido, 15 minutos de duración, modalidad virtual y checklist prellenado ("Alineación de bloqueos y progreso diario").
+   - **Sprint Planning / Review (60 min):** Título sugerido, 60 minutos de duración y agenda con revisión de backlog, estimaciones y compromisos.
+   - **Sync de Alineación (30 min):** Título sugerido, 30 minutos de duración para sincronizaciones breves de diseño o arquitectura.
+2. **Selector de Días de Recurrencia (`TaskRecurrenceDaysSelector`):**
+   - Permite seleccionar combinaciones multi-día flexibles (ej. Semanal Lunes y Miércoles, o Diario de Lunes a Viernes).
+   - Atajos rápidos de un clic: "Todos los días", "Lunes a Viernes" y "Lun / Mié / Vie".
+   - Soporta sincronización bidireccional con el cálculo de recurrencia Just-in-Time.
+
+### F. Consola de Sesión en Vivo (`TaskMeetingConsole`)
+Tanto en el modal de detalle del Project Manager (`TaskDetailModal`) como en el portal del colaborador (`TaskPortalDetailModal`):
+- Exhibe cabecera destacada en color índigo con icono de videollamada, horario local formateado, duración y modalidad.
+- Botón principal de acceso directo "Unirme a la Videollamada" que abre el enlace remoto y registra la asistencia atómicamente.
+- Si el colaborador ya confirmó su asistencia, el botón cambia a estado completado con la hora exacta registrada y las horas imputadas.
+- Lista de convocados con avatares, estado visual (Presente en esmeralda, Pendiente en ámbar, Ausente en rojo) y controles directos de pase de lista para el PM.
+- Adaptabilidad dinámica del checklist tradicional: cuando la tarea es de tipo `meeting`, la sección pasa a titularse "Agenda de la Sesión".
+
+### G. Recurrencia Just-in-Time (JIT) en el Cron de Tareas
+En `src/app/api/cron/tasks-recurrence/route.ts`:
+- En lugar de saturar la base de datos y la vista Kanban proyectando 50 sesiones ficticias a futuro, el sistema genera la próxima ocurrencia Just-in-Time cuando vence la sesión actual.
+- Utiliza la función `calculateNextRecurrence` considerando `recurrence_days`. Si una reunión está pautada para "Lunes y Miércoles" y hoy es lunes, la próxima instancia se calcula automáticamente para el siguiente miércoles a la misma hora exacta.
+- La nueva sesión reinicia el estado de todos los convocados a `pending` con 0 horas, permitiendo que la sesión actual quede archivada con su historial de asistencia intacto y fidedigno.
+
+### H. Cómputo Dual de Horas y Matriz de Ritmo Semanal (Pacing)
+1. **Capacidad del Colaborador:**
+   La función `getTaskMemberHours` examina `meeting_attendees`. Para los colaboradores presentes o justificados, acredita sus horas individuales (`hours_logged`), sumándolas inmediatamente a su volumen de horas registradas de la semana.
+2. **Consumo de Presupuesto del Proyecto / Sprint:**
+   La acción `registerMeetingAttendance` incrementa en tiempo real el campo `actual_hours` del ticket acumulando el tiempo real de cada asistente.
+3. **Pacing Semanal:**
+   `getTaskWeeklyPacing` alinea las tareas de tipo `meeting` directamente con la semana ISO de su fecha de ejecución (`meeting_start_at`), reflejando el 100% de progreso semanal una vez que la reunión transiciona a estado `done`.
+
+### I. Ciclo de Vida, Auto-Cierre por Tiempo Expirado y Normalización Terminal
+Las actividades sincrónicas se rigen por un ciclo de vida temporal autónomo y desacoplado del movimiento manual entre estados Kanban:
+1. **Detección Determinista en Tiempo de Ejecución (`normalizeTask`):**
+   En `src/modules/features/tasks/types.ts`, el motor normalizador verifica si `task.type === 'meeting'`. Si la marca de tiempo calculada de finalización (`meeting_start_at + meeting_duration_minutes`) es menor a `Date.now()`, el estado se computa de forma inmediata e inmutable como `'done'`, fijando `is_completed: true` y `completed_at: task.completed_at || expirationDate`. Esto garantiza que ninguna reunión pasada permanezca como pendiente en el cliente, incluso si no ha ocurrido una invocación al servidor.
+2. **Sincronización Asíncrona No Bloqueante en Base de Datos:**
+   Tanto en `getTasks` (`task-actions.ts`) como en `portalGetTasks` (`collaborator-portal-actions.ts`), se identifican en background las tareas sincrónicas expiradas que aún figuran en la base de datos con estado `'todo'` o `'in_progress'`. Se dispara una actualización no bloqueante (`UPDATE task_items SET status = 'done', is_completed = true, completed_at = ...`) para consolidar el estado físico sin degradar la latencia de respuesta de la petición del usuario.
+3. **Gobernanza de Horas Imputadas ante Eliminación o Cancelación:**
+   Las horas acreditadas a un colaborador por asistencia confirmada son un registro histórico de tiempo invertido. Si un Project Manager elimina un ticket de reunión pasada de la base de datos, el registro de la tarea desaparece, pero las horas ya computadas en los balances de asistencia y snapshots semanales históricos no sufren descalces retroactivos indebidos. En la consola y modal de detalle, la edición de parámetros de la sesión queda inhabilitada para reuniones ya concluidas, protegiendo la inmutabilidad de los registros asistenciales.
+
+### J. Aislamiento Estricto del Tablero Kanban y Prevención de Mutación de Etapas
+Las reuniones no son entregables técnicos incrementales ni admiten flujo por columnas de desarrollo (`backlog` -> `todo` -> `in_progress` -> `review` -> `done`):
+1. **Exclusión Dinámica en `TaskKanbanBoard`:**
+   En `src/modules/features/tasks/components/kanban/task-kanban-board.tsx`, la lista de tareas a renderizar en las columnas del tablero aplica un filtro estricto: `tasks.filter(task => task.type !== 'meeting')`.
+2. **Desactivación Completa de Drag & Drop (`SortableTaskCard`):**
+   Para tarjetas de tipo `meeting` (en vistas combinadas u overlays):
+   - Se pasa `disabled: isOverlay || task.type === "meeting"` al hook `useSortable` de `@dnd-kit`.
+   - Se oculta por completo el control de arrastre (`GripVertical`).
+   - Se sustituyen los cursores de arrastre (`cursor-grab`, `cursor-grabbing`) por `cursor-default` o `cursor-pointer`.
+   - Se añadieron guardias defensivas en `handleDragStart` y `handleDragEnd` que abortan de inmediato cualquier intento de mutación de etapa sobre ítems donde `task.type === 'meeting'`.
+
+### K. Estabilidad Geométrica de Controles: `TaskMeetingViewToggle` y `ViewToggle`
+Para erradicar saltos visuales de interfaz (Layout Shift) al alternar entre la visualización de entregables y actividades sincrónicas:
+1. **Prevención de Reducción en `ViewToggle`:**
+   En `src/modules/core/ui/components/view-toggle.tsx`, se incorporaron las propiedades `disableKanban` y `disableKanbanTooltip`. Cuando el usuario activa la vista de reuniones, el botón de vista Kanban no se desmonta del DOM. En su lugar, permanece visible pero en estado inactivo (`opacity-35 cursor-not-allowed pointer-events-none`) acompañado de un tooltip explicativo ("La vista Kanban solo está disponible para tickets y entregables técnicos"), preservando exactamente el ancho del grupo de botones y eliminando el redimensionamiento del encabezado de filtros.
+2. **Componente Unificado `TaskMeetingViewToggle`:**
+   En `src/modules/features/tasks/components/shared/task-meeting-view-toggle.tsx`:
+   - Dimensionamiento con ancho rígido de `w-[140px]` tanto en el dashboard del PM como en el portal del colaborador.
+   - Alternancia entre las etiquetas "Ver reuniones" y "Ver Tickets".
+   - Iconografía semántica diferenciada: icono `Video` de Lucide para reuniones e icono `Ticket` de Lucide para entregables técnicos.
+   - Micro-animación fluida de texto e iconos mediante `AnimatePresence` y `motion.span` de Framer Motion, suprimiendo efectos abruptos de zoom o escalado.
+
+### L. Badge Unificado de Modalidad y Frecuencia de Recurrencia
+Para clarificar de un vistazo el régimen temporal de la sesión sin saturar la tarjeta con múltiples indicadores:
+1. **Función Helper Centralizada (`getMeetingModalityBadgeLabel`):**
+   Ubicada en `src/modules/features/tasks/utils/recurrence-utils.ts`, combina la modalidad (`virtual`, `presencial`, `hibrida`) y el intervalo de recurrencia (`daily`, `weekly`, `monthly`) en un string cohesivo:
+   - Ejemplo: `"Reunión Virtual - Semanal"`, `"Reunión Presencial - Diaria"`, `"Reunión Virtual"`.
+2. **Despliegue Homogéneo:**
+   Se utiliza de forma estándar en el badge de cabecera de `TaskMeetingConsole`, en la columna de modalidad de `TaskListView` y en los modales de detalle (`TaskDetailModal`, `TaskPortalDetailModal`).
+3. **Erradicación Terminológica:**
+   Se eliminó por completo el término informal "ceremonia" en toda la interfaz, reemplazándolo unívocamente por "Reunión / Sesión Sincrónica".
+
+### M. Despeje Vertical de Acciones Masivas sobre Dock de Reuniones
+En interfaces donde conviven la barra de selección múltiple y el dock inferior de reuniones:
+1. En `src/modules/core/ui/components/bulk-actions-floating-bar.tsx`, se elevó la cota de posicionamiento a `bottom-[88px] sm:bottom-[96px]` con capa de apilamiento `z-40`.
+2. Esta elevación garantiza exactamente 24px de luz vertical sobre la consola o widget flotante inferior, asegurando que los botones de acción masiva (eliminación múltiple, asignación masiva, etc.) sean 100% visibles e interactuables sin solapamientos.
+
