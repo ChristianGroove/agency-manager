@@ -73,7 +73,7 @@ async function logTaskAuditComment(
   explicitMentions?: string[]
 ) {
   try {
-    const extracted = explicitMentions && explicitMentions.length > 0
+    const extracted = explicitMentions !== undefined
       ? explicitMentions
       : Array.from(content.matchAll(/@([a-zA-Z0-9_\.\u00C0-\u017F]+)/g)).map((m) => m[1]);
 
@@ -2921,7 +2921,9 @@ export async function registerMeetingAttendance(params: {
     await logTaskAuditComment(
       task.organization_id,
       taskId,
-      `Asistencia confirmada para @${staff?.first_name || staffName} (${durationHours}h acreditadas vía ${methodLabel})`
+      `Asistencia confirmada: ${staff?.first_name || staffName} (${durationHours}h acreditadas vía ${methodLabel})`,
+      "Sistema",
+      []
     );
 
     revalidatePath("/operations/tasks");
@@ -3071,7 +3073,9 @@ export async function updateMeetingAttendeeStatus(params: {
     await logTaskAuditComment(
       task.organization_id,
       taskId,
-      `Pase de lista: @${staff?.first_name || "Colaborador"} marcado como ${statusLabels[status]}`
+      `Pase de lista: ${staff?.first_name || "Colaborador"} marcado como ${statusLabels[status]}`,
+      "Sistema",
+      []
     );
 
     revalidatePath("/operations/tasks");

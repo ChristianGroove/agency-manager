@@ -1537,7 +1537,18 @@ export function TaskCollaboratorPortal({
 
   // 2. Mentions & System Audits
   const mentionNotifs = (recentMentions || [])
-    .filter((m) => !dismissedNotificationIds.includes(`mention-${m.id}`))
+    .filter((m) => {
+      if (dismissedNotificationIds.includes(`mention-${m.id}`)) return false
+      const contentLower = (m.content || "").toLowerCase()
+      if (
+        contentLower.includes("asistencia confirmada") ||
+        contentLower.includes("asistencia registrada") ||
+        contentLower.includes("pase de lista")
+      ) {
+        return false
+      }
+      return true
+    })
     .map((m) => {
       const notifKey = `mention-${m.id}`
       const isUnseen = !seenTaskIds.includes(notifKey)

@@ -745,6 +745,15 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const recentMentions = (mentionsData || [])
     .filter((m: any) => {
       if (!m.task_id || !accessibleTaskIds.has(m.task_id)) return false;
+      // Excluir notas de sistema de asistencia a reuniones o pase de lista para evitar spam en la campana
+      const contentLower = (m.content || "").toLowerCase();
+      if (
+        contentLower.includes("asistencia confirmada") ||
+        contentLower.includes("asistencia registrada") ||
+        contentLower.includes("pase de lista")
+      ) {
+        return false;
+      }
       // Parallel support collaborators only receive notifications on their own reported tickets
       if (isParallelSupport) {
         return m.task?.created_by_staff_id === staff.id;
