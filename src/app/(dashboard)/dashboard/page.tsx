@@ -12,6 +12,7 @@ import { RetailDashboard } from "@/modules/core/dashboard/components/retail-dash
 import { RealEstateDashboard } from "@/modules/core/dashboard/components/real-estate-dashboard"
 import { DefaultDashboard } from "@/modules/core/dashboard/components/default-dashboard"
 import { SaasDashboard } from "@/modules/core/dashboard/components/saas-dashboard"
+import { SchoolDashboardView } from "@/modules/features/school/components/school-dashboard-view"
 
 export default async function DashboardPage() {
     const payload = await getDashboardPayload()
@@ -29,6 +30,7 @@ export default async function DashboardPage() {
               Solo el dashboard correspondiente al orgType del tenant será hidratado en el cliente.
             */}
             <Suspense fallback={<DashboardSkeleton />}>
+                {orgType === 'school' && <SchoolDashboardView />}
                 {orgType === 'agency' && <AgencyDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'cleaning' && <CleaningDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
                 {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
@@ -38,7 +40,7 @@ export default async function DashboardPage() {
                 {orgType === 'saas' && <SaasDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} />}
 
                 {/* Fallback de Seguridad */}
-                {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas', 'real_estate'].includes(orgType) && (
+                {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas', 'real_estate', 'school'].includes(orgType) && (
                     <AgencyDashboard dashboardData={dashboardData} extraData={extraData} />
                 )}
             </Suspense>

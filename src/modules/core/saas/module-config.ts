@@ -300,6 +300,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         parentModule: 'module_school',
         description: 'Control de áreas, calificaciones Decreto 1290, boletines, carnets y asistencia escolar',
         access: {
+            allowedRoles: ['owner', 'admin', 'member'],
             allowedSpaces: ['school'],
             requiredCapabilities: ['school.core']
         }
@@ -653,6 +654,14 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
         category: 'operations',
         icon: KeyRound,
         allowedSpaces: ['real_estate']
+    },
+    module_school: {
+        key: 'module_school',
+        name: 'Gestión Académica (Pixy Edu)',
+        description: 'Control de áreas, calificaciones Decreto 1290, boletines, carnets y asistencia escolar',
+        category: 'operations',
+        icon: GraduationCap,
+        allowedSpaces: ['school']
     }
 };
 

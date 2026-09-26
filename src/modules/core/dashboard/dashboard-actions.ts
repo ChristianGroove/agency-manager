@@ -173,7 +173,11 @@ export async function getDashboardPayload() {
     let dashboardData: any = null
     let extraData: any = null
 
-    if (orgType === 'real_estate') {
+    if (orgType === 'school') {
+        const [bannerRes] = await Promise.all([bannerPromise])
+        dashboardData = { orgType: 'school', bannerConfig: bannerRes.data || null }
+        extraData = {}
+    } else if (orgType === 'real_estate') {
         const now = new Date()
         const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
         const in60Days = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
