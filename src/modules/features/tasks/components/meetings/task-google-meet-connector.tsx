@@ -15,6 +15,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 interface TaskGoogleMeetConnectorProps {
   autoGenerateMeet: boolean
   onAutoGenerateMeetChange: (enabled: boolean) => void
+  portalToken?: string
   className?: string
 }
 
@@ -44,6 +45,7 @@ function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
 export function TaskGoogleMeetConnector({
   autoGenerateMeet,
   onAutoGenerateMeetChange,
+  portalToken,
   className,
 }: TaskGoogleMeetConnectorProps) {
   const [isConnected, setIsConnected] = useState(false)
@@ -58,7 +60,7 @@ export function TaskGoogleMeetConnector({
 
     async function checkStatus() {
       try {
-        const res = await getCurrentUserGoogleConnection()
+        const res = await getCurrentUserGoogleConnection({ portalToken })
         if (isMounted) {
           setIsConnected(res.isConnected)
           setAccountEmail(res.accountEmail || null)
@@ -80,7 +82,7 @@ export function TaskGoogleMeetConnector({
     return () => {
       isMounted = false
     }
-  }, [onAutoGenerateMeetChange])
+  }, [onAutoGenerateMeetChange, portalToken])
 
   // Iniciar flujo OAuth en popup
   const handleConnect = useCallback(() => {
@@ -91,8 +93,12 @@ export function TaskGoogleMeetConnector({
     const left = window.screenX + (window.outerWidth - width) / 2
     const top = window.screenY + (window.outerHeight - height) / 2
 
+    const authUrl = portalToken
+      ? `/api/integrations/google/authorize?portal_token=${encodeURIComponent(portalToken)}`
+      : "/api/integrations/google/authorize"
+
     const popup = window.open(
-      "/api/integrations/google/authorize",
+      authUrl,
       "google_oauth_popup",
       `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`
     )
@@ -136,13 +142,13 @@ export function TaskGoogleMeetConnector({
         setIsConnecting(false)
       }
     }, 800)
-  }, [onAutoGenerateMeetChange])
+  }, [onAutoGenerateMeetChange, portalToken])
 
   // Desconectar cuenta
   const handleDisconnect = async () => {
     try {
       setIsDisconnecting(true)
-      const res = await disconnectCurrentUserGoogle()
+      const res = await disconnectCurrentUserGoogle({ portalToken })
       if (res.success) {
         setIsConnected(false)
         setAccountEmail(null)

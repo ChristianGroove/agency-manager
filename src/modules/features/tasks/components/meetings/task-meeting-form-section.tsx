@@ -46,6 +46,7 @@ interface TaskMeetingFormSectionProps {
   onApplyPreset?: (preset: typeof MEETING_PRESETS[number]) => void
   autoGenerateMeet?: boolean
   setAutoGenerateMeet?: (enabled: boolean) => void
+  portalToken?: string
 }
 
 export function TaskMeetingFormSection({
@@ -65,6 +66,7 @@ export function TaskMeetingFormSection({
   onApplyPreset,
   autoGenerateMeet,
   setAutoGenerateMeet,
+  portalToken,
 }: TaskMeetingFormSectionProps) {
   const [internalAutoGenerate, setInternalAutoGenerate] = React.useState(false)
   const isAutoGenerate = autoGenerateMeet !== undefined ? autoGenerateMeet : internalAutoGenerate
@@ -203,6 +205,7 @@ export function TaskMeetingFormSection({
           <TaskGoogleMeetConnector
             autoGenerateMeet={isAutoGenerate}
             onAutoGenerateMeetChange={handleAutoGenerateChange}
+            portalToken={portalToken}
           />
 
           {!isAutoGenerate && (

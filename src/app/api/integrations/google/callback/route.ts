@@ -9,14 +9,18 @@ function getGoogleRedirectUri(req: NextRequest): string {
   const customRedirect = process.env.GOOGLE_REDIRECT_URI
   if (customRedirect) return customRedirect
 
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || req.nextUrl.host
+  if (host) {
+    const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https")
+    return `${proto}://${host}/api/integrations/google/callback`
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (appUrl) {
     return `${appUrl.replace(/\/$/, "")}/api/integrations/google/callback`
   }
 
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3001"
-  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https")
-  return `${proto}://${host}/api/integrations/google/callback`
+  return "http://localhost:3001/api/integrations/google/callback"
 }
 
 function renderHtmlResponse(success: boolean, title: string, description: string, messagePayload: any) {
@@ -85,7 +89,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Descifrar y validar state
-    let stateData: { userId: string; orgId: string; timestamp: number }
+    let stateData: { userId?: string | null; staffId?: string | null; orgId: string; timestamp: number; redirectUri?: string }
     try {
       const decrypted = decrypt(rawState)
       stateData = JSON.parse(decrypted)
@@ -110,7 +114,7 @@ export async function GET(req: NextRequest) {
 
     const clientId = process.env.GOOGLE_CLIENT_ID
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = getGoogleRedirectUri(req)
+    const redirectUri = stateData.redirectUri || getGoogleRedirectUri(req)
 
     if (!clientId || !clientSecret) {
       return renderHtmlResponse(
@@ -150,23 +154,64 @@ export async function GET(req: NextRequest) {
     const tokenExpiresAt = tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null
 
     // Verificar si ya existe conexión previa para preservar refresh_token si Google no lo devolvió esta vez
-    const { data: existingConnection } = await supabaseAdmin
+    let existingQuery = supabaseAdmin
       .from("user_oauth_connections")
       .select("id, encrypted_refresh_token")
       .eq("organization_id", stateData.orgId)
-      .eq("user_id", stateData.userId)
       .eq("provider", "google")
-      .maybeSingle()
+
+    if (stateData.staffId) {
+      existingQuery = existingQuery.eq("staff_id", stateData.staffId)
+    } else if (stateData.userId) {
+      existingQuery = existingQuery.eq("user_id", stateData.userId)
+    }
+
+    const { data: existingConnection } = await existingQuery.maybeSingle()
+
+    const grantedScopes = tokens.scope ? tokens.scope.split(" ") : []
+    const hasCalendarScope = grantedScopes.some((s) => s.includes("calendar"))
+
+    if (!hasCalendarScope) {
+      return renderHtmlResponse(
+        false,
+        "Permiso de Google Calendar Faltante",
+        `Tu cuenta (${accountEmail}) inició sesión, pero no marcaste la casilla de verificación de Google Calendar en la pantalla de autorización. Para generar enlaces de Meet automáticamente, vuelve a conectar y asegúrate de marcar la casilla de verificación de Calendar.`,
+        {
+          type: "GOOGLE_OAUTH_ERROR",
+          message: "Falta marcar la casilla de permisos de Google Calendar al autorizar la cuenta.",
+        }
+      )
+    }
 
     const finalRefreshToken = encryptedRefreshToken || existingConnection?.encrypted_refresh_token || null
 
-    // Upsert en la tabla de conexiones individuales
-    const { error: upsertError } = await supabaseAdmin
-      .from("user_oauth_connections")
-      .upsert(
-        {
+    // Guardar o actualizar la conexión
+    let upsertError: any = null
+    if (existingConnection) {
+      const { error } = await supabaseAdmin
+        .from("user_oauth_connections")
+        .update({
+          account_email: accountEmail,
+          account_name: accountName,
+          account_avatar_url: accountAvatarUrl,
+          encrypted_access_token: encryptedAccessToken,
+          encrypted_refresh_token: finalRefreshToken,
+          token_expires_at: tokenExpiresAt,
+          scopes: tokens.scope ? tokens.scope.split(" ") : [],
+          is_active: true,
+          user_id: stateData.userId || null,
+          staff_id: stateData.staffId || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingConnection.id)
+      upsertError = error
+    } else {
+      const { error } = await supabaseAdmin
+        .from("user_oauth_connections")
+        .insert({
           organization_id: stateData.orgId,
-          user_id: stateData.userId,
+          user_id: stateData.userId || null,
+          staff_id: stateData.staffId || null,
           provider: "google",
           account_email: accountEmail,
           account_name: accountName,
@@ -177,11 +222,9 @@ export async function GET(req: NextRequest) {
           scopes: tokens.scope ? tokens.scope.split(" ") : [],
           is_active: true,
           updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "organization_id,user_id,provider",
-        }
-      )
+        })
+      upsertError = error
+    }
 
     if (upsertError) {
       console.error("[Google OAuth Callback Upsert Error]", upsertError)

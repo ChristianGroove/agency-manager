@@ -490,7 +490,8 @@ export interface TaskItem {
 export interface UserOAuthConnection {
   id: string;
   organization_id: string;
-  user_id: string;
+  user_id?: string | null;
+  staff_id?: string | null;
   provider: 'google';
   account_email: string;
   account_name?: string | null;

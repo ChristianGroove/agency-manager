@@ -1561,30 +1561,31 @@ Para desacoplar las conexiones de usuario de las conexiones organizacionales (`i
 - **Esquema Relacional**:
   - `id` (UUID, PK)
   - `organization_id` (UUID, FK a `organizations`)
-  - `user_id` (UUID, FK a `auth.users`)
+  - `user_id` (UUID, FK a `auth.users`, opcional)
+  - `staff_id` (UUID, FK a `public.organization_staff`, opcional)
   - `provider` (TEXT, e.g. `'google'`)
   - `account_email`, `account_name`, `account_avatar_url` (Metadatos visuales del perfil conectado)
   - `encrypted_access_token`, `encrypted_refresh_token` (Tokens cifrados con clave simétrica AES-256-GCM)
   - `token_expires_at` (TIMESTAMPTZ, marca temporal de caducidad del token de acceso)
-  - `scopes` (TEXT[], permisos concedidos: `calendar.events`, `userinfo.email`, `userinfo.profile`)
+  - `scopes` (TEXT[], permisos concedidos: `calendar`, `calendar.events`, `userinfo.email`, `userinfo.profile`)
   - `is_active` (BOOLEAN, estado de habilitación operativa)
-  - Restricción de unicidad: `UNIQUE (organization_id, user_id, provider)`.
+  - Índices únicos: `(organization_id, user_id, provider)` para usuarios de plataforma y `(organization_id, staff_id, provider)` para colaboradores del portal.
 - **Seguridad y RLS (Row Level Security)**:
-  - Políticas de seguridad a nivel de fila aseguran que ningún usuario pueda consultar ni actualizar las credenciales de otro usuario (`auth.uid() = user_id`).
+  - Políticas de seguridad a nivel de fila aseguran que ningún usuario pueda consultar ni actualizar las credenciales de otro usuario (`auth.uid() = user_id`), con acceso administrativo seguro mediante `supabaseAdmin` para operaciones contextuales del portal de colaboradores.
   - Cifrado simétrico robusto: Los tokens de acceso y de refresco son encriptados en reposo utilizando `aes-256-gcm` con vector de inicialización único por registro y validación de tag de autenticación en `src/modules/infrastructure/integrations/encryption.ts`.
 - **Extensiones en `task_items`**:
   - `external_meeting_id` (TEXT, identificador remoto de la sesión)
   - `external_calendar_event_id` (TEXT, identificador del evento en Google Calendar para cancelaciones o actualizaciones futuras)
 
-### C. Flujo de Autorización OAuth Contextual sin Pérdida de Estado
-Para garantizar la mejor experiencia de usuario en formularios modales (`TaskMeetingModal` y `TaskMeetingFormSection`):
-1. **Modal Contextual**: El botón de conexión lanza una ventana emergente (*popup*) centrada (`/api/integrations/google/authorize`) sin navegar fuera del formulario actual.
-2. **Firma y Cifrado de State**: El endpoint de autorización genera un estado firmado y encriptado que contiene el `organization_id`, `user_id`, marca de tiempo y firma criptográfica para prevenir ataques CSRF.
-3. **Intercambio Seguro de Código (`/api/integrations/google/callback`)**: El callback valida la expiración del estado (15 minutos), intercambia el código por tokens ante Google, consulta el perfil del usuario, cifra y almacena las credenciales en la base de datos vía Supabase Admin Client.
+### C. Flujo de Autorización OAuth Dual (Plataforma Central y Portal de Colaboradores)
+Para garantizar la mejor experiencia de usuario tanto en la plataforma administrativa (`/operations/tasks`) como en el portal público de colaboradores (`/portal/tasks/[token]`):
+1. **Modal Contextual y Detección de Origen**: El botón de conexión lanza una ventana emergente (*popup*) centrada (`/api/integrations/google/authorize`). Si la acción se origina en el portal, se transmite el parámetro seguro `portal_token`.
+2. **Firma y Cifrado de State**: El endpoint de autorización valida la sesión de Supabase Auth o el token de colaborador en `organization_staff`, encriptando `orgId`, `userId` y `staffId` en el estado.
+3. **Validación Preventiva de Permisos**: Si durante el consentimiento de Google el usuario omite marcar la casilla de verificación de Google Calendar, el callback lo detecta de inmediato y presenta una alerta visual explicativa sin persistir estados inconsistentes.
 4. **Notificación Bidireccional (`postMessage`)**: Al finalizar, la ventana secundaria emite un mensaje `PIXY_GOOGLE_AUTH_SUCCESS` a la ventana primaria (`window.opener.postMessage`) y se cierra automáticamente. El componente `TaskGoogleMeetConnector` captura el evento, refresca su estado local y permite continuar la creación de la reunión con los datos prellenados intactos.
 
 ### D. Creación Automatizada de Sesiones Google Meet y Registro de Calendario
-Cuando un PM con cuenta conectada mantiene activo el interruptor "Generar enlace y agendar en Google Calendar automáticamente":
+Cuando un PM con cuenta conectada mantiene activo el interruptor "Generar enlace y agendar en Google Calendar automáticamente" (tanto en `createTask` como en `portalCreateTask`):
 1. **Resolución de Asistentes**: Se obtienen los correos electrónicos de los colaboradores convocados (`meeting_attendees`) a través de sus perfiles en el espacio de trabajo.
 2. **Inyección en Google Calendar**: `createGoogleCalendarMeetingEvent` utiliza el cliente oficial de `googleapis` configurado con refresco automático de tokens. Crea un evento en el calendario principal del PM con:
    - Resumen y descripción del requerimiento.
@@ -1593,10 +1594,11 @@ Cuando un PM con cuenta conectada mantiene activo el interruptor "Generar enlace
    - Generación explícita de videoconferencia (`conferenceDataVersion: 1`, tipo `hangoutsMeet`).
 3. **Persistencia en Pixy**: Se extrae `hangoutLink` oficial (`https://meet.google.com/xxx-xxxx-xxx`) y el ID del evento de calendario, insertándose en `meeting_url`, `external_meeting_id` y `external_calendar_event_id` de `task_items`.
 4. **Trazabilidad en Auditoría**: Se genera automáticamente una entrada en los comentarios de auditoría de la tarea documentando la creación remota del evento y la generación del enlace.
-5. **Telemetría y Pacing Preservados**: La asistencia mediante clic en el enlace, la ventana de tolerancia de 5 minutos, la acreditación de horas en el portal del colaborador y el ritmo semanal continúan gobernados con precisión absoluta por Pixy.
-
-
-
-
+### E. Recurrencia Nativa con Google Calendar (RFC 5545 RRULE) y Enlace de Sala Persistente
+Para reuniones periódicas (ej. daily standups de lunes a viernes, syncs semanales, planificaciones quincenales o revisiones mensuales):
+1. **Directivas iCalendar RFC 5545 (`RRULE`)**: `formatGoogleCalendarRrule` en `google-calendar-service.ts` transforma la parametrización de recurrencia de Pixy (`recurrence_interval`, `recurrence_days`, `recurrence_day`) en reglas formales reconocidas por Google Calendar (`FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=MO,WE,FR`, `FREQ=WEEKLY;INTERVAL=2`, `FREQ=MONTHLY;BYMONTHDAY=15`, etc.).
+2. **Definición Obligatoria de Zona Horaria (`timeZone`)**: La API de Google Calendar exige explícitamente `timeZone` en los objetos `start` y `end` al recibir directivas de recurrencia. El servicio resuelve la zona horaria del sistema (`Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Bogota'`), garantizando una programación precisa y sin rechazos 400.
+3. **Persistencia del Enlace de Videollamada**: En Google Calendar, toda la serie recurrente comparte un identificador y enlace de Meet idéntico y persistente (`hangoutLink`). Los convocados conservan el mismo acceso virtual para todas sus sesiones.
+4. **Gobierno Operativo y Ciclos en Pixy**: A nivel operativo en Pixy, el cron de recurrencia (`/api/cron/tasks-recurrence`) clona el ticket al cumplirse el ciclo proyectando la fecha correspondiente, reseteando la lista de asistencia a estado `pending` y propagando `meeting_url` y `external_meeting_id`. Esto permite auditar la asistencia y acreditar horas de forma independiente en cada semana o ciclo sin romper la continuidad del calendario remoto.
 
 

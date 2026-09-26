@@ -187,6 +187,7 @@ async function handleRecurrence(req: NextRequest) {
           meeting_start_at: newMeetingStartAt,
           meeting_duration_minutes: oldTask.meeting_duration_minutes ?? (oldTask.type === "meeting" ? 30 : null),
           meeting_attendees: freshMeetingAttendees,
+          external_meeting_id: oldTask.external_meeting_id || null,
         })
         .select("id, ticket_code, title")
         .single();

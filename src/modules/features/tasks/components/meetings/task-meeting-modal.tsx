@@ -290,6 +290,7 @@ export function TaskMeetingModal({
           tags: [modality === "virtual" ? "Reunión Virtual" : modality === "in_person" ? "Reunión Presencial" : "Reunión Híbrida"],
           meetingModality: modality,
           meetingUrl: meetingUrl.trim() || null,
+          autoGenerateMeet,
           meetingLocation: meetingLocation.trim() || null,
           meetingStartAt: meetingIsoDate,
           meetingDurationMinutes: durationMinutes,
@@ -332,7 +333,11 @@ export function TaskMeetingModal({
       }
 
       if (res.success && res.task) {
-        toast.success(`Reunión "${res.task.title}" programada con éxito`)
+        if ((res as any).warning) {
+          toast.warning((res as any).warning, { duration: 6000 })
+        } else {
+          toast.success(`Reunión "${res.task.title}" programada con éxito`)
+        }
         onMeetingCreated?.(res.task)
         onClose()
       } else {
@@ -647,6 +652,7 @@ export function TaskMeetingModal({
                 <TaskGoogleMeetConnector
                   autoGenerateMeet={autoGenerateMeet}
                   onAutoGenerateMeetChange={setAutoGenerateMeet}
+                  portalToken={portalToken}
                 />
 
                 {!autoGenerateMeet && (

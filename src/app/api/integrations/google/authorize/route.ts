@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
 import { createClient } from "@/modules/core/database/supabase-server"
+import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { encrypt } from "@/modules/infrastructure/integrations/encryption"
 
 export const dynamic = "force-dynamic"
 
 const GOOGLE_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
@@ -16,46 +18,82 @@ function getGoogleRedirectUri(req: NextRequest): string {
   const customRedirect = process.env.GOOGLE_REDIRECT_URI
   if (customRedirect) return customRedirect
 
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || req.nextUrl.host
+  if (host) {
+    const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https")
+    return `${proto}://${host}/api/integrations/google/callback`
+  }
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (appUrl) {
     return `${appUrl.replace(/\/$/, "")}/api/integrations/google/callback`
   }
 
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3001"
-  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https")
-  return `${proto}://${host}/api/integrations/google/callback`
+  return "http://localhost:3001/api/integrations/google/callback"
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const searchParams = req.nextUrl.searchParams
+    const portalToken = searchParams.get("portal_token")
 
-    if (!user) {
-      return new NextResponse(
-        `<!DOCTYPE html><html><body><script>
-          if (window.opener) {
-            window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', message: 'Sesión no iniciada' }, window.location.origin);
-          }
-          window.close();
-        </script><p>No autorizado. Inicia sesión en Pixy.</p></body></html>`,
-        { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } }
-      )
-    }
+    let orgId: string | null = null
+    let userId: string | null = null
+    let staffId: string | null = null
 
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) {
-      return new NextResponse(
-        `<!DOCTYPE html><html><body><script>
-          if (window.opener) {
-            window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', message: 'Organización no activa' }, window.location.origin);
-          }
-          window.close();
-        </script><p>No se encontró organización activa.</p></body></html>`,
-        { status: 400, headers: { "Content-Type": "text/html; charset=utf-8" } }
-      )
+    if (portalToken) {
+      const { data: staff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, organization_id, user_id, is_active")
+        .eq("access_token", portalToken)
+        .eq("is_active", true)
+        .maybeSingle()
+
+      if (!staff) {
+        return new NextResponse(
+          `<!DOCTYPE html><html><body><script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', message: 'Token de portal inválido' }, window.location.origin);
+            }
+            window.close();
+          </script><p>Acceso no autorizado en portal.</p></body></html>`,
+          { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        )
+      }
+      staffId = staff.id
+      userId = staff.user_id || null
+      orgId = staff.organization_id
+    } else {
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        return new NextResponse(
+          `<!DOCTYPE html><html><body><script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', message: 'Sesión no iniciada' }, window.location.origin);
+            }
+            window.close();
+          </script><p>No autorizado. Inicia sesión en Pixy.</p></body></html>`,
+          { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        )
+      }
+
+      orgId = await getCurrentOrganizationId()
+      userId = user.id
+      if (!orgId) {
+        return new NextResponse(
+          `<!DOCTYPE html><html><body><script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'GOOGLE_OAUTH_ERROR', message: 'Organización no activa' }, window.location.origin);
+            }
+            window.close();
+          </script><p>No se encontró organización activa.</p></body></html>`,
+          { status: 400, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        )
+      }
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID
@@ -90,11 +128,13 @@ export async function GET(req: NextRequest) {
     const redirectUri = getGoogleRedirectUri(req)
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri)
 
-    // Cifrar state firmado con userId y orgId
+    // Cifrar state firmado con userId, staffId, orgId y redirectUri
     const statePayload = {
-      userId: user.id,
+      userId,
+      staffId,
       orgId,
       timestamp: Date.now(),
+      redirectUri,
     }
     const state = encrypt(JSON.stringify(statePayload))
 

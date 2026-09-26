@@ -5,43 +5,84 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { encrypt, decrypt } from "@/modules/infrastructure/integrations/encryption"
-import type { UserOAuthConnection } from "@/modules/features/tasks/types"
+import type { UserOAuthConnection, RecurrenceInterval } from "@/modules/features/tasks/types"
 
 /**
- * Consulta el estado de vinculación de Google Meet del usuario actual
+ * Consulta el estado de vinculación de Google Meet del usuario actual (plataforma o portal)
  */
-export async function getCurrentUserGoogleConnection(): Promise<{
+export async function getCurrentUserGoogleConnection(params?: { portalToken?: string }): Promise<{
   isConnected: boolean
+  hasCalendarScope?: boolean
   accountEmail?: string
   accountName?: string
   accountAvatarUrl?: string
 }> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    let orgId: string | null = null
+    let userId: string | null = null
+    let staffId: string | null = null
 
-    if (!user) return { isConnected: false }
+    if (params?.portalToken) {
+      const { data: staff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, organization_id, user_id")
+        .eq("access_token", params.portalToken)
+        .eq("is_active", true)
+        .maybeSingle()
 
-    const orgId = await getCurrentOrganizationId()
+      if (!staff) return { isConnected: false }
+      staffId = staff.id
+      userId = staff.user_id || null
+      orgId = staff.organization_id
+    } else {
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return { isConnected: false }
+      userId = user.id
+      orgId = await getCurrentOrganizationId()
+    }
+
     if (!orgId) return { isConnected: false }
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("user_oauth_connections")
-      .select("account_email, account_name, account_avatar_url, is_active")
+      .select("account_email, account_name, account_avatar_url, is_active, scopes")
       .eq("organization_id", orgId)
-      .eq("user_id", user.id)
       .eq("provider", "google")
       .eq("is_active", true)
+
+    if (staffId && userId) {
+      query = query.or(`staff_id.eq.${staffId},user_id.eq.${userId}`)
+    } else if (staffId) {
+      query = query.or(`staff_id.eq.${staffId},is_active.eq.true`)
+    } else if (userId) {
+      query = query.eq("user_id", userId)
+    }
+
+    const { data, error } = await query
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (error || !data) {
       return { isConnected: false }
     }
 
+    const hasCalendarScope = Array.isArray(data.scopes) && data.scopes.some((s: string) => s.includes("calendar"))
+    if (!hasCalendarScope) {
+      return {
+        isConnected: false,
+        hasCalendarScope: false,
+        accountEmail: data.account_email,
+      }
+    }
+
     return {
       isConnected: true,
+      hasCalendarScope: true,
       accountEmail: data.account_email,
       accountName: data.account_name || undefined,
       accountAvatarUrl: data.account_avatar_url || undefined,
@@ -53,29 +94,57 @@ export async function getCurrentUserGoogleConnection(): Promise<{
 }
 
 /**
- * Desconecta la cuenta de Google del usuario actual para esta organización
+ * Desconecta la cuenta de Google del usuario actual para esta organización (plataforma o portal)
  */
-export async function disconnectCurrentUserGoogle(): Promise<{ success: boolean; error?: string }> {
+export async function disconnectCurrentUserGoogle(params?: { portalToken?: string }): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    let orgId: string | null = null
+    let userId: string | null = null
+    let staffId: string | null = null
 
-    if (!user) return { success: false, error: "No autorizado" }
+    if (params?.portalToken) {
+      const { data: staff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, organization_id, user_id")
+        .eq("access_token", params.portalToken)
+        .eq("is_active", true)
+        .maybeSingle()
 
-    const orgId = await getCurrentOrganizationId()
+      if (!staff) return { success: false, error: "No autorizado" }
+      staffId = staff.id
+      userId = staff.user_id || null
+      orgId = staff.organization_id
+    } else {
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return { success: false, error: "No autorizado" }
+      userId = user.id
+      orgId = await getCurrentOrganizationId()
+    }
+
     if (!orgId) return { success: false, error: "Organización no encontrada" }
 
-    const { error } = await supabaseAdmin
+    let updateQuery = supabaseAdmin
       .from("user_oauth_connections")
       .update({
         is_active: false,
         updated_at: new Date().toISOString(),
       })
       .eq("organization_id", orgId)
-      .eq("user_id", user.id)
       .eq("provider", "google")
+
+    if (staffId && userId) {
+      updateQuery = updateQuery.or(`staff_id.eq.${staffId},user_id.eq.${userId}`)
+    } else if (staffId) {
+      updateQuery = updateQuery.or(`staff_id.eq.${staffId},is_active.eq.true`)
+    } else if (userId) {
+      updateQuery = updateQuery.eq("user_id", userId)
+    }
+
+    const { error } = await updateQuery
 
     if (error) {
       console.error("[disconnectCurrentUserGoogle Error]", error)
@@ -93,23 +162,35 @@ export async function disconnectCurrentUserGoogle(): Promise<{ success: boolean;
  * Obtiene un cliente OAuth2 autenticado con refresco de token transparente
  */
 export async function getValidGoogleOAuthClient(
-  userId: string,
-  orgId: string
+  userId?: string | null,
+  orgId?: string,
+  staffId?: string | null
 ) {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !orgId) {
     return null
   }
 
-  const { data: conn, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("user_oauth_connections")
     .select("*")
     .eq("organization_id", orgId)
-    .eq("user_id", userId)
     .eq("provider", "google")
     .eq("is_active", true)
+
+  if (staffId && userId) {
+    query = query.or(`staff_id.eq.${staffId},user_id.eq.${userId}`)
+  } else if (staffId) {
+    query = query.or(`staff_id.eq.${staffId},is_active.eq.true`)
+  } else if (userId) {
+    query = query.eq("user_id", userId)
+  }
+
+  const { data: conn, error } = await query
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (error || !conn) {
@@ -170,14 +251,92 @@ export async function getValidGoogleOAuthClient(
   return oauth2Client
 }
 
+const ISO_TO_RRULE_DAY: Record<number, string> = {
+  1: "MO",
+  2: "TU",
+  3: "WE",
+  4: "TH",
+  5: "FR",
+  6: "SA",
+  7: "SU",
+}
+
+/**
+ * Convierte la configuración de recurrencia de Pixy en directivas estándar RFC 5545 RRULE para Google Calendar
+ */
+export function formatGoogleCalendarRrule(params: {
+  isRecurring?: boolean | null
+  recurrenceInterval?: RecurrenceInterval | null
+  recurrenceDays?: number[] | null
+  recurrenceDay?: number | null
+}): string[] | null {
+  if (!params.isRecurring || !params.recurrenceInterval) {
+    return null
+  }
+
+  const { recurrenceInterval, recurrenceDays, recurrenceDay } = params
+
+  const byDays = Array.isArray(recurrenceDays) && recurrenceDays.length > 0
+    ? recurrenceDays
+        .map((d) => ISO_TO_RRULE_DAY[Number(d)])
+        .filter(Boolean)
+        .join(",")
+    : recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 7 && ISO_TO_RRULE_DAY[Number(recurrenceDay)]
+    ? ISO_TO_RRULE_DAY[Number(recurrenceDay)]
+    : null
+
+  switch (recurrenceInterval) {
+    case "daily":
+      return ["RRULE:FREQ=DAILY"]
+
+    case "weekly":
+      return byDays ? [`RRULE:FREQ=WEEKLY;BYDAY=${byDays}`] : ["RRULE:FREQ=WEEKLY"]
+
+    case "biweekly":
+      return byDays
+        ? [`RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=${byDays}`]
+        : ["RRULE:FREQ=WEEKLY;INTERVAL=2"]
+
+    case "monthly":
+      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
+        return [`RRULE:FREQ=MONTHLY;BYMONTHDAY=${recurrenceDay}`]
+      }
+      return ["RRULE:FREQ=MONTHLY"]
+
+    case "quarterly":
+      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
+        return [`RRULE:FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=${recurrenceDay}`]
+      }
+      return ["RRULE:FREQ=MONTHLY;INTERVAL=3"]
+
+    case "biannual":
+      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
+        return [`RRULE:FREQ=MONTHLY;INTERVAL=6;BYMONTHDAY=${recurrenceDay}`]
+      }
+      return ["RRULE:FREQ=MONTHLY;INTERVAL=6"]
+
+    case "yearly":
+      return ["RRULE:FREQ=YEARLY"]
+
+    default:
+      return null
+  }
+}
+
 export interface CreateGoogleMeetEventParams {
   title: string
   description?: string | null
   startAt?: string | null
   durationMinutes?: number | null
   attendeeEmails?: string[]
-  userId: string
+  userId?: string | null
+  staffId?: string | null
   orgId: string
+  isRecurring?: boolean | null
+  recurrenceInterval?: RecurrenceInterval | null
+  recurrenceDays?: number[] | null
+  recurrenceDay?: number | null
+  timeZone?: string
 }
 
 export interface CreateGoogleMeetEventResult {
@@ -193,7 +352,7 @@ export async function createGoogleCalendarMeetingEvent(
   params: CreateGoogleMeetEventParams
 ): Promise<CreateGoogleMeetEventResult> {
   try {
-    const oauth2Client = await getValidGoogleOAuthClient(params.userId, params.orgId)
+    const oauth2Client = await getValidGoogleOAuthClient(params.userId, params.orgId, params.staffId)
     if (!oauth2Client) {
       return {
         meetingUrl: null,
@@ -215,6 +374,18 @@ export async function createGoogleCalendarMeetingEvent(
 
     const end = new Date(start.getTime() + duration * 60 * 1000)
 
+    const timeZone =
+      params.timeZone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "America/Bogota"
+
+    const rrule = formatGoogleCalendarRrule({
+      isRecurring: params.isRecurring,
+      recurrenceInterval: params.recurrenceInterval,
+      recurrenceDays: params.recurrenceDays,
+      recurrenceDay: params.recurrenceDay,
+    })
+
     // Filtrar emails válidos
     const validEmails = (params.attendeeEmails || [])
       .map((e) => e?.trim())
@@ -231,10 +402,13 @@ export async function createGoogleCalendarMeetingEvent(
         description: params.description || undefined,
         start: {
           dateTime: start.toISOString(),
+          timeZone,
         },
         end: {
           dateTime: end.toISOString(),
+          timeZone,
         },
+        ...(rrule ? { recurrence: rrule } : {}),
         attendees: validEmails.map((email) => ({ email })),
         conferenceData: {
           createRequest: {

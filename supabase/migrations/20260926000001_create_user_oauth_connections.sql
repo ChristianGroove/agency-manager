@@ -5,7 +5,8 @@
 CREATE TABLE IF NOT EXISTS public.user_oauth_connections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    staff_id UUID REFERENCES public.organization_staff(id) ON DELETE CASCADE,
     provider TEXT NOT NULL CHECK (provider IN ('google')),
     account_email TEXT NOT NULL,
     account_name TEXT,
@@ -17,13 +18,16 @@ CREATE TABLE IF NOT EXISTS public.user_oauth_connections (
     metadata JSONB DEFAULT '{}'::jsonb,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT user_oauth_connections_org_user_provider_key UNIQUE (organization_id, user_id, provider)
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- 2. Indexes
 CREATE INDEX IF NOT EXISTS idx_user_oauth_connections_org_user 
     ON public.user_oauth_connections(organization_id, user_id, provider);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_oauth_connections_staff_provider
+    ON public.user_oauth_connections(organization_id, staff_id, provider)
+    WHERE staff_id IS NOT NULL;
 
 -- 3. RLS
 ALTER TABLE public.user_oauth_connections ENABLE ROW LEVEL SECURITY;

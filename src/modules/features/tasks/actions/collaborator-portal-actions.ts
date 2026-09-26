@@ -1522,12 +1522,13 @@ export async function portalCreateTask(
     meetingStartAt?: string | null;
     meetingDurationMinutes?: number | null;
     meetingAttendees?: TaskMeetingAttendee[];
+    autoGenerateMeet?: boolean;
   }
-): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+): Promise<{ success: boolean; task?: TaskItem; error?: string; warning?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, task_role, organization_id, user_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1576,6 +1577,62 @@ export async function portalCreateTask(
       customPrefix
     );
 
+    // Generación automática de Google Meet en el Portal para actividades sincrónicas
+    let finalMeetingUrl = taskData.type === "meeting" ? (taskData.meetingUrl?.trim() || null) : null;
+    let finalExternalMeetingId: string | null = null;
+    let meetError: string | null = null;
+
+    const shouldAutogenerate = taskData.type === "meeting" &&
+      (taskData.meetingModality === "virtual" || taskData.meetingModality === "hybrid" || !taskData.meetingModality)
+      ? Boolean(taskData.autoGenerateMeet ?? (!taskData.meetingUrl))
+      : false;
+
+    if (shouldAutogenerate) {
+      try {
+        const attendeeStaffIds = (taskData.meetingAttendees || [])
+          .map((a: any) => a.staff_id)
+          .filter(Boolean);
+
+        let attendeeEmails: string[] = [];
+        if (attendeeStaffIds.length > 0) {
+          const { data: staffRecords } = await supabaseAdmin
+            .from("organization_staff")
+            .select("email")
+            .in("id", attendeeStaffIds);
+          attendeeEmails = (staffRecords || []).map((s: any) => s.email).filter(Boolean);
+        }
+
+        const { createGoogleCalendarMeetingEvent } = await import(
+          "@/modules/features/integrations/google/google-calendar-service"
+        );
+
+        const meetResult = await createGoogleCalendarMeetingEvent({
+          title: taskData.title,
+          description: taskData.description,
+          startAt: taskData.meetingStartAt,
+          durationMinutes: taskData.meetingDurationMinutes,
+          attendeeEmails,
+          userId: staff.user_id,
+          staffId: staff.id,
+          orgId: staff.organization_id,
+          isRecurring: isLeadOrPm ? taskData.isRecurring : false,
+          recurrenceInterval: isLeadOrPm ? taskData.recurrenceInterval : null,
+          recurrenceDays: isLeadOrPm ? taskData.recurrenceDays : null,
+          recurrenceDay: isLeadOrPm ? taskData.recurrenceDay : null,
+        });
+
+        if (meetResult.meetingUrl) {
+          finalMeetingUrl = meetResult.meetingUrl;
+          finalExternalMeetingId = meetResult.externalMeetingId;
+        } else if (meetResult.error) {
+          meetError = meetResult.error;
+        }
+      } catch (meetErr: any) {
+        console.error("Portal: Error al autogenerar reunión de Google Meet:", meetErr);
+        meetError = meetErr?.message || "Error al comunicarse con Google Meet";
+      }
+    }
+
     const { data: newTask, error } = await supabaseAdmin
       .from("task_items")
       .insert({
@@ -1605,11 +1662,12 @@ export async function portalCreateTask(
         recurrence_days: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval === "weekly" ? (taskData.recurrenceDays || null) : null,
         next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1, taskData.recurrenceDays || null).toISOString() : null,
         meeting_modality: taskData.type === "meeting" ? (taskData.meetingModality || "virtual") : null,
-        meeting_url: taskData.type === "meeting" ? (taskData.meetingUrl?.trim() || null) : null,
+        meeting_url: finalMeetingUrl,
         meeting_location: taskData.type === "meeting" ? (taskData.meetingLocation?.trim() || null) : null,
         meeting_start_at: taskData.type === "meeting" && taskData.meetingStartAt ? new Date(taskData.meetingStartAt).toISOString() : null,
         meeting_duration_minutes: taskData.type === "meeting" ? (taskData.meetingDurationMinutes || 30) : null,
         meeting_attendees: taskData.type === "meeting" ? (taskData.meetingAttendees || []) : [],
+        external_meeting_id: finalExternalMeetingId,
         origin_type: isSupportStaff ? "support" : "internal",
       })
       .select(`
@@ -1692,8 +1750,30 @@ export async function portalCreateTask(
       }
     }
 
+    if (finalMeetingUrl && finalMeetingUrl.includes("meet.google.com")) {
+      await logPortalTaskAuditComment(
+        staff.organization_id,
+        newTask.id,
+        `Enlace de Google Meet generado y sincronizado con Google Calendar: ${finalMeetingUrl}`,
+        staff
+      );
+    } else if (taskData.type === "meeting" && shouldAutogenerate) {
+      await logPortalTaskAuditComment(
+        staff.organization_id,
+        newTask.id,
+        `Aviso Google Meet: No se generó enlace automático (${meetError || "Faltan permisos de Google Calendar"}). Puedes ingresar el enlace manualmente editando la sesión.`,
+        staff
+      );
+    }
+
     safeRevalidateOperations();
-    return { success: true, task: normalizeTask(newTask) };
+    return {
+      success: true,
+      task: normalizeTask(newTask),
+      warning: (!finalMeetingUrl && shouldAutogenerate)
+        ? (meetError || "No se pudo generar el enlace de Google Meet. Verifique los permisos de Google Calendar.")
+        : undefined,
+    };
   } catch (err: any) {
     console.error("Portal create task error:", err);
     return { success: false, error: err.message };
