@@ -53,6 +53,7 @@ import {
   Briefcase,
   TrendingUp,
   Ban,
+  Video,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -114,6 +115,7 @@ export function TaskWeeklyPacingMatrix({
   const [selectedProject, setSelectedProject] = useState("all")
   const [filterPreset, setFilterPreset] = useState<string>("all")
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [includeMeetings, setIncludeMeetings] = useState(false)
 
   // Selected collaborator object if filtering by specific member
   const selectedStaff = useMemo(() => {
@@ -143,7 +145,7 @@ export function TaskWeeklyPacingMatrix({
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedMember, selectedProject, filterPreset, currentDate])
+  }, [searchQuery, selectedMember, selectedProject, filterPreset, currentDate, includeMeetings])
 
   // Base tasks for current project and member scope (excludes backlog as it represents unscheduled/dormant work)
   const baseTasks = useMemo(() => {
@@ -151,11 +153,18 @@ export function TaskWeeklyPacingMatrix({
       // Exclude backlog tickets from sprint pacing
       if (task.status === "backlog") return false
 
-      // Member filter (includes assigned lead or assigned deliverable / subtask)
+      // Excluir por defecto las reuniones de las filas de entregables técnicos de sprint
+      // Al filtrar por un colaborador específico, o si el usuario activa el interruptor, se incluyen
+      if (task.type === "meeting" && !includeMeetings && selectedMember === "all") {
+        return false
+      }
+
+      // Member filter (includes assigned lead, deliverable / subtask, or meeting attendee)
       if (selectedMember !== "all") {
         const isAssigned = task.assigned_staff_id === selectedMember
         const hasSubtask = task.checklist && parseTaskChecklist(task.checklist).some((c) => c.assigned_staff_id === selectedMember)
-        if (!isAssigned && !hasSubtask) return false
+        const isAttendee = Array.isArray(task.meeting_attendees) && task.meeting_attendees.some((a) => a.staff_id === selectedMember)
+        if (!isAssigned && !hasSubtask && !isAttendee) return false
       }
 
       // Project / Workspace filter
@@ -190,7 +199,7 @@ export function TaskWeeklyPacingMatrix({
 
       return true
     })
-  }, [tasks, selectedMember, selectedProject, projects, currentDate])
+  }, [tasks, selectedMember, selectedProject, projects, currentDate, includeMeetings])
 
   // Dynamic counts for SearchFilterBar pills
   const countAll = baseTasks.length
@@ -267,6 +276,12 @@ export function TaskWeeklyPacingMatrix({
         return
       }
 
+      // Las reuniones no son entregables técnicos rezagados; se consideran al día en el ritmo semanal
+      if (task.type === "meeting") {
+        onTrackCount++
+        return
+      }
+
       const pacing = getTaskWeeklyPacing(task, currentDate)
       const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
 
@@ -325,10 +340,10 @@ export function TaskWeeklyPacingMatrix({
         ? "Completas"
         : "Todas"
 
-    let report = `📊 *RITMO SEMANAL — ${monthName.toUpperCase()}*\n`
-    report += `👤 *Responsable:* ${memberLabel} | 🏢 *Alcance:* ${scopeLabel} | 🔍 *Filtro:* ${filterLabel} (${filteredTasks.length})\n\n`
+    let report = `*RITMO SEMANAL — ${monthName.toUpperCase()}*\n`
+    report += `*Responsable:* ${memberLabel} | *Alcance:* ${scopeLabel} | *Filtro:* ${filterLabel} (${filteredTasks.length})\n\n`
 
-    report += `📈 *INSIGHTS CLAVE:*\n`
+    report += `*INSIGHTS CLAVE:*\n`
     report += `• Avance Activo: ${metrics.averageActiveProgress}%\n`
     report += `• Total Periodo: ${metrics.total} (${metrics.activeCount} en curso · ${metrics.completedCount} listas)\n`
     report += `• A Tiempo: ${metrics.onTrackCount} · En Riesgo: ${metrics.atRiskCount} · Rezagadas: ${metrics.delayedCount}\n`
@@ -337,7 +352,7 @@ export function TaskWeeklyPacingMatrix({
     }
     report += `\n`
 
-    report += `📋 *TICKETS (${filteredTasks.length}):*\n`
+    report += `*TICKETS (${filteredTasks.length}):*\n`
     if (filteredTasks.length === 0) {
       report += `(Sin tareas para los filtros activos)\n`
     } else {
@@ -393,7 +408,7 @@ export function TaskWeeklyPacingMatrix({
           ]}
           activeFilter={filterPreset}
           onFilterChange={setFilterPreset}
-          defaultShowFilters={true}
+          defaultShowFilters={false}
           className="flex-1 min-w-0"
         />
 
@@ -537,6 +552,23 @@ export function TaskWeeklyPacingMatrix({
               </SelectContent>
             </Select>
           )}
+
+          {/* Switch opcional de incluir reuniones */}
+          <Button
+            type="button"
+            variant={includeMeetings ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setIncludeMeetings(!includeMeetings)}
+            className={cn(
+              "h-10 px-3.5 rounded-2xl text-xs font-semibold gap-1.5 shrink-0 transition-all cursor-pointer border-zinc-200/80 dark:border-white/10",
+              includeMeetings
+                ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+                : "text-muted-foreground hover:text-foreground bg-white dark:bg-zinc-900"
+            )}
+          >
+            <Video className="w-3.5 h-3.5" />
+            <span>Incluir reuniones</span>
+          </Button>
 
           {/* Separador visual sutil */}
           <div className="hidden xl:block h-6 w-px bg-zinc-200 dark:bg-white/10" />
@@ -848,6 +880,12 @@ export function TaskWeeklyPacingMatrix({
                             >
                               {task.ticket_code}
                             </Badge>
+                            {task.type === "meeting" && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+                                <Video className="w-2.5 h-2.5" />
+                                Reunión
+                              </span>
+                            )}
                             {(task.status === "blocked" || (task.blocked_by && task.blocked_by.status !== "done")) && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -989,7 +1027,9 @@ export function TaskWeeklyPacingMatrix({
                               </div>
                               {weekData.totalDeliverables > 0 && (
                                 <span className="text-[9px] text-muted-foreground font-mono">
-                                  {weekData.completedDeliverables}/{weekData.totalDeliverables} entregables
+                                  {task.type === "meeting"
+                                    ? (weekData.status === "completed" ? "sesión realizada" : "sesión agendada")
+                                    : `${weekData.completedDeliverables}/${weekData.totalDeliverables} entregables`}
                                 </span>
                               )}
                             </div>

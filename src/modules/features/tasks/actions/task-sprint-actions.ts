@@ -1,5 +1,6 @@
 "use server"
 
+import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
@@ -17,7 +18,7 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
   if (portalToken) {
     const { data: staff, error } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, role, organization_id, is_active, first_name, last_name")
+      .select("id, role, task_role, organization_id, is_active, first_name, last_name")
       .eq("access_token", portalToken)
       .eq("is_active", true)
       .maybeSingle()
@@ -26,7 +27,7 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
       throw new Error("Acceso no autorizado o token inválido")
     }
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role)
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role)
 
     return {
       organizationId: staff.organization_id,
@@ -37,11 +38,29 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
     }
   }
 
-  // Platform context
-  let orgId: string | null | undefined = providedOrgId
-  if (!orgId) {
-    orgId = await getCurrentOrganizationId()
+  // Platform context: verify session and membership
+  const currentOrgId = await getCurrentOrganizationId()
+  let orgId = currentOrgId
+
+  if (providedOrgId && providedOrgId !== currentOrgId) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("No autorizado")
+
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("organization_id", providedOrgId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles")
+    if (!membership && !(await isSuperAdmin(user.id))) {
+      throw new Error("No tienes acceso a la organización especificada")
+    }
+    orgId = providedOrgId
   }
+
   if (!orgId) {
     throw new Error("No se pudo resolver la organización activa en plataforma")
   }
@@ -86,6 +105,7 @@ async function logSprintAuditComment(
 function safeRevalidatePath(path = "/portal/tasks") {
   try {
     revalidatePath(path)
+    revalidatePath("/operations/tasks")
   } catch {
     // Silently ignore in non-request contexts (scripts, crons, unit tests)
   }
@@ -196,23 +216,9 @@ export async function getActiveSprint(options?: {
     const { data: sprint, error } = await query.maybeSingle()
     if (error || !sprint) return null
 
-    // Check auto-rollover: if end_date has passed (yesterday or older) and auto_rollover is enabled
+    // Flag overdue status cleanly without triggering side-effect mutations during read
     const todayStr = new Date().toISOString().slice(0, 10)
-    if (sprint.auto_rollover && sprint.end_date < todayStr) {
-      console.log(`[Sprint Auto-Rollover] Sprint "${sprint.name}" ended on ${sprint.end_date}. Triggering cycle rollover...`)
-      
-      const rolloverRes = await completeSprint({
-        sprintId: sprint.id,
-        rolloverAction: "next_sprint",
-        createNewSprint: true,
-        orgId: organizationId,
-        token: options?.token
-      })
-
-      if (rolloverRes.success && rolloverRes.nextSprint) {
-        return rolloverRes.nextSprint
-      }
-    }
+    const isOverdue = Boolean(sprint.end_date && sprint.end_date < todayStr)
 
     // Compute live stats
     const { data: sTasks } = await supabaseAdmin
@@ -235,7 +241,8 @@ export async function getActiveSprint(options?: {
       completed_tasks,
       total_hours,
       completed_hours,
-      progress_percentage
+      progress_percentage,
+      isOverdue
     }
   } catch (err) {
     console.error("Error in getActiveSprint:", err)
@@ -334,12 +341,30 @@ export async function startSprint(params: {
       return { success: false, error: "No tienes permisos de PM/Líder para iniciar sprints" }
     }
 
-    // Complete any currently active sprint
-    await supabaseAdmin
+    // 1. Fetch target sprint to determine its workspace_id
+    const { data: targetSprint, error: fetchErr } = await supabaseAdmin
+      .from("task_sprints")
+      .select("id, workspace_id, organization_id")
+      .eq("id", params.sprintId)
+      .eq("organization_id", auth.organizationId)
+      .single()
+
+    if (fetchErr || !targetSprint) {
+      return { success: false, error: "Sprint no encontrado" }
+    }
+
+    // 2. Complete any currently active sprint IN THIS WORKSPACE ONLY (A6 fix)
+    let closeQuery = supabaseAdmin
       .from("task_sprints")
       .update({ status: "completed", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("organization_id", auth.organizationId)
       .eq("status", "active")
+
+    if (targetSprint.workspace_id) {
+      closeQuery = closeQuery.eq("workspace_id", targetSprint.workspace_id)
+    }
+
+    await closeQuery
 
     const { error } = await supabaseAdmin
       .from("task_sprints")
@@ -468,7 +493,7 @@ export async function completeSprint(params: {
             await logSprintAuditComment(
               auth.organizationId,
               t.id,
-              `🔁 Rollover de Sprint: Movida de "${currentSprint.name}" hacia "${targetSprint.name}".`,
+              `Rollover de Sprint: Movida de "${currentSprint.name}" hacia "${targetSprint.name}".`,
               auth.staffName
             )
           }
@@ -479,12 +504,13 @@ export async function completeSprint(params: {
           .from("task_items")
           .update({ sprint_id: null, updated_at: new Date().toISOString() })
           .in("id", incompleteIds)
+          .eq("organization_id", auth.organizationId)
 
         for (const t of incompleteTasks) {
           await logSprintAuditComment(
             auth.organizationId,
             t.id,
-            `📦 Cierre de Sprint "${currentSprint.name}": Tarea devuelta al Backlog general.`,
+            `Cierre de Sprint "${currentSprint.name}": Tarea devuelta al Backlog general.`,
             auth.staffName
           )
         }
@@ -500,6 +526,7 @@ export async function completeSprint(params: {
         updated_at: new Date().toISOString()
       })
       .eq("id", params.sprintId)
+      .eq("organization_id", auth.organizationId)
 
     safeRevalidatePath("/portal/tasks")
     return {
@@ -558,8 +585,8 @@ export async function assignTasksToSprint(params: {
 
     // Log audit comments
     const auditText = params.sprintId
-      ? `🎯 Asignada al sprint "${sprintName}".`
-      : `📦 Retirada del sprint al Backlog.`
+      ? `Asignada al sprint "${sprintName}".`
+      : `Retirada del sprint al Backlog.`
 
     for (const tid of params.taskIds) {
       await logSprintAuditComment(auth.organizationId, tid, auditText, auth.staffName)

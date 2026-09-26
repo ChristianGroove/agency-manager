@@ -56,9 +56,12 @@ import {
   Check,
   Zap,
   Timer,
+  Video,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
+import { TaskMeetingConsole } from "../meetings/task-meeting-console"
+import { TaskMeetingFormSection } from "../meetings/task-meeting-form-section"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type {
   TaskItem,
@@ -71,8 +74,10 @@ import type {
   TaskAttachment,
   RecurrenceInterval,
   TaskSprint,
+  TaskMeetingModality,
+  TaskMeetingAttendee,
 } from "../../types"
-import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote, MEETING_PRESETS } from "../../types"
 import {
   portalCreateTask,
   portalUpdateTask,
@@ -95,152 +100,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-function renderFormattedComment(
-  content: string,
-  availableTasks?: TaskItem[],
-  onSelectTask?: (task: TaskItem) => void
-) {
-  const regex = /(#[A-Za-z0-9_-]+|@[A-Za-z0-9_\u00C0-\u017F]+|https?:\/\/[^\s]+)/g
-  const parts = content.split(regex)
-
-  return parts.map((part, index) => {
-    if (!part) return null
-
-    if (part.startsWith("#")) {
-      const code = part.slice(1)
-      const matchedTask = availableTasks?.find(
-        (t) =>
-          (t.ticket_code && t.ticket_code.toLowerCase() === code.toLowerCase()) ||
-          t.id.toLowerCase() === code.toLowerCase() ||
-          `tk-${t.id.slice(0, 4)}`.toLowerCase() === code.toLowerCase()
-      )
-
-      const tooltipTitle = matchedTask ? `${matchedTask.ticket_code || code}: ${matchedTask.title}` : `Ticket #${code}`
-      return (
-        <Tooltip key={index}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => {
-                if (matchedTask && onSelectTask) {
-                  onSelectTask(matchedTask)
-                  toast.info(`Abriendo ticket ${matchedTask.ticket_code || code}`)
-                }
-              }}
-              className={cn(
-                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-semibold transition-all shadow-2xs mx-0.5 align-baseline",
-                matchedTask && onSelectTask
-                  ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 cursor-pointer"
-                  : "bg-muted text-foreground/90 border border-border/60"
-              )}
-              aria-label={tooltipTitle}
-            >
-              <Hash className="w-3 h-3 text-primary shrink-0" />
-              <span>{matchedTask?.ticket_code || code}</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <span>{tooltipTitle}</span>
-          </TooltipContent>
-        </Tooltip>
-      )
-    }
-
-    if (part.startsWith("@")) {
-      const name = part.slice(1)
-      return (
-        <span
-          key={index}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 font-medium text-[11px] mx-0.5 align-baseline"
-        >
-          <AtSign className="w-2.5 h-2.5 shrink-0" />
-          <span>{name}</span>
-        </span>
-      )
-    }
-
-    if (part.startsWith("http://") || part.startsWith("https://")) {
-      const isImage = /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(part) || (part.includes("/tasks/") && !part.endsWith(".pdf") && !part.endsWith(".xlsx"))
-      if (isImage) {
-        return (
-          <div key={index} className="my-1.5 block">
-            <a
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block rounded-xl overflow-hidden border border-border/70 hover:ring-2 hover:ring-primary/40 transition-all max-w-sm shadow-2xs group bg-black/5"
-            >
-              <img
-                src={part}
-                alt="Captura adjunta"
-                className="max-h-56 max-w-full w-auto object-contain rounded-xl group-hover:scale-[1.01] transition-transform"
-                loading="lazy"
-              />
-            </a>
-          </div>
-        )
-      }
-
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 text-primary hover:underline font-mono text-[11px] mx-0.5 align-baseline"
-        >
-          <ExternalLink className="w-2.5 h-2.5 inline" />
-          <span>{part.replace(/^https?:\/\/(www\.)?/, "").slice(0, 30)}</span>
-        </a>
-      )
-    }
-
-    return <span key={index}>{part}</span>
-  })
-}
-
-function parseProgressAudit(content: string) {
-  const isProgress =
-    content.startsWith("📈") ||
-    content.startsWith("📉") ||
-    content.toLowerCase().includes("avance de tarea actualizado") ||
-    content.toLowerCase().includes("regresión de tarea actualizado") ||
-    content.toLowerCase().includes("regresion de tarea actualizado")
-
-  if (!isProgress) {
-    return { isProgress: false, isRegression: false, formattedContent: content }
-  }
-
-  const match = content.match(/del\s+(\d+)%\s+al\s+(\d+)%/i)
-  let isRegression =
-    content.startsWith("📉") ||
-    content.toLowerCase().includes("regresión") ||
-    content.toLowerCase().includes("regresion")
-
-  if (match) {
-    const fromVal = parseInt(match[1], 10)
-    const toVal = parseInt(match[2], 10)
-    if (toVal < fromVal) {
-      isRegression = true
-    } else if (toVal > fromVal) {
-      isRegression = false
-    }
-  }
-
-  let formattedContent = content
-  if (isRegression) {
-    formattedContent = content
-      .replace(/📈/g, "📉")
-      .replace(/Avance de tarea/gi, "Regresión de tarea")
-  } else {
-    formattedContent = content
-      .replace(/📉/g, "📈")
-      .replace(/Regresión de tarea/gi, "Avance de tarea")
-      .replace(/Regresion de tarea/gi, "Avance de tarea")
-  }
-
-  return { isProgress: true, isRegression, formattedContent }
-}
+import { TaskChecklistEditor } from "../detail/task-checklist-editor"
+import { TaskAttachmentsSection } from "../detail/task-attachments-section"
+import { TaskDiscussionFeed } from "../detail/task-discussion-feed"
+import { TaskTimeCompactStrip } from "../detail/task-time-compact-strip"
+import { renderFormattedComment, parseProgressAudit } from "../../utils/task-comment-utils"
 
 interface TaskPortalDetailModalProps {
   task: TaskItem | null
@@ -268,6 +132,7 @@ interface TaskPortalDetailModalProps {
   availableTasks?: TaskItem[]
   onSelectTask?: (task: TaskItem) => void
   sprints?: TaskSprint[]
+  defaultType?: TaskType
 }
 
 export function TaskPortalDetailModal({
@@ -282,6 +147,7 @@ export function TaskPortalDetailModal({
   isCreateMode = false,
   defaultStatus,
   defaultProjectId,
+  defaultType = "task",
   brandColor = "#8ec045",
   currentStaffId,
   onTaskCreated,
@@ -314,7 +180,7 @@ export function TaskPortalDetailModal({
   const [status, setStatus] = useState<TaskStatus>(initialDefaultStatus)
   const initialStatusRef = useRef<TaskStatus>(initialDefaultStatus)
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || "medium")
-  const [type, setType] = useState<TaskType>(task?.type || "task")
+  const [type, setType] = useState<TaskType>(task?.type || defaultType || "task")
   const [tags, setTags] = useState<string[]>(task?.tags || [])
   const [progress, setProgress] = useState(task?.progress_percentage || 0)
   const [savedProgress, setSavedProgress] = useState(task?.progress_percentage || 0)
@@ -324,9 +190,6 @@ export function TaskPortalDetailModal({
   const [actualHours, setActualHours] = useState(task?.actual_hours || 0)
   const [dueDate, setDueDate] = useState(task?.due_date || "")
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>(parseTaskChecklist(task?.checklist))
-  const [newChecklistTitle, setNewChecklistTitle] = useState("")
-  const [newChecklistWeek, setNewChecklistWeek] = useState<1 | 2 | 3 | 4 | null>(null)
-  const [newChecklistAssignee, setNewChecklistAssignee] = useState<string>("unassigned")
   const [blockedByTaskId, setBlockedByTaskId] = useState<string>(task?.blocked_by_task_id || "none")
   const [blockedReason, setBlockedReason] = useState<string>(task?.blocked_reason || "")
   const [selectedSprintId, setSelectedSprintId] = useState<string>(task?.sprint_id || "none")
@@ -336,6 +199,27 @@ export function TaskPortalDetailModal({
     targetLabel?: string
     isManualLog?: boolean
   } | null>(null)
+
+  // Meeting configuration
+  const [meetingModality, setMeetingModality] = useState<TaskMeetingModality>(task?.meeting_modality || "virtual")
+  const [meetingUrl, setMeetingUrl] = useState<string>(task?.meeting_url || "")
+  const [meetingLocation, setMeetingLocation] = useState<string>(task?.meeting_location || "")
+  const [meetingStartAt, setMeetingStartAt] = useState<string>(task?.meeting_start_at ? task.meeting_start_at.slice(0, 16) : "")
+  const [meetingDurationMinutes, setMeetingDurationMinutes] = useState<number>(task?.meeting_duration_minutes || 30)
+  const [meetingAttendees, setMeetingAttendees] = useState<TaskMeetingAttendee[]>(Array.isArray(task?.meeting_attendees) ? task.meeting_attendees : [])
+
+  const handleApplyPreset = (preset: typeof MEETING_PRESETS[number]) => {
+    if (!title.trim() || title === "Daily Standup" || title === "Sprint Planning & Review" || title === "Sync de Alineación") {
+      setTitle(preset.defaultTitle)
+    }
+    setMeetingDurationMinutes(preset.durationMinutes)
+    setEstimatedHours(preset.durationMinutes / 60)
+    setMeetingModality(preset.modality)
+    if (preset.recurrenceInterval) {
+      setIsRecurring(true)
+      setRecurrenceInterval(preset.recurrenceInterval)
+    }
+  }
 
   const currentBlocker = useMemo(() => {
     if (!blockedByTaskId || blockedByTaskId === "none") return null
@@ -356,38 +240,12 @@ export function TaskPortalDetailModal({
 
   // Attachments & Project References / Files
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments || [])
-  const [newRefUrl, setNewRefUrl] = useState("")
-  const [newRefName, setNewRefName] = useState("")
-  const [newRefType, setNewRefType] = useState<string>("auto")
-  const [showAddRef, setShowAddRef] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingFile, setIsUploadingFile] = useState(false)
 
-  // Comments & Mentions
+  // Comments
   const [comments, setComments] = useState<TaskComment[]>([])
-  const [visibleCommentsCount, setVisibleCommentsCount] = useState(10)
-  const [newCommentText, setNewCommentText] = useState("")
   const [loadingComments, setLoadingComments] = useState(false)
-  const [stagedCommentAttachments, setStagedCommentAttachments] = useState<TaskAttachment[]>([])
-  const [isUploadingCommentAttachment, setIsUploadingCommentAttachment] = useState(false)
-  const commentFileInputRef = useRef<HTMLInputElement>(null)
-  const [isSendingComment, setIsSendingComment] = useState(false)
-  const [mentionType, setMentionType] = useState<"collaborator" | "ticket" | null>(null)
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
-  const [mentionCursorPos, setMentionCursorPos] = useState<number>(0)
-  const commentInputRef = useRef<HTMLInputElement>(null)
-
-  const sortedComments = useMemo(() => {
-    return [...comments].sort((a, b) => {
-      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0
-      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0
-      return timeB - timeA
-    })
-  }, [comments])
-
-  const displayedComments = useMemo(() => {
-    return sortedComments.slice(0, visibleCommentsCount)
-  }, [sortedComments, visibleCommentsCount])
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false)
@@ -419,8 +277,12 @@ export function TaskPortalDetailModal({
       setBlockedByTaskId(task.blocked_by_task_id || "none")
       setBlockedReason(task.blocked_reason || "")
       setSelectedSprintId(task.sprint_id || "none")
-      setNewChecklistWeek(null)
-      setNewChecklistAssignee("unassigned")
+      setMeetingModality(task.meeting_modality || "virtual")
+      setMeetingUrl(task.meeting_url || "")
+      setMeetingLocation(task.meeting_location || "")
+      setMeetingStartAt(task.meeting_start_at ? task.meeting_start_at.slice(0, 16) : "")
+      setMeetingDurationMinutes(task.meeting_duration_minutes || 30)
+      setMeetingAttendees(Array.isArray(task.meeting_attendees) ? task.meeting_attendees : [])
       loadComments(task.id)
     } else if (isCreating) {
       setSelectedProjectId(defaultProjectId || projects[0]?.id || "")
@@ -428,7 +290,7 @@ export function TaskPortalDetailModal({
       setDescription("")
       setStatus(defaultStatus || "todo")
       setPriority("medium")
-      setType("task")
+      setType(defaultType || "task")
       setTags([])
       setProgress(0)
       setSavedProgress(0)
@@ -443,14 +305,17 @@ export function TaskPortalDetailModal({
       setChecklist([])
       setAttachments([])
       setComments([])
-      setVisibleCommentsCount(10)
       setIsRecurring(false)
       setRecurrenceInterval("monthly")
       setRecurrenceDay(1)
-      setNewChecklistWeek(null)
-      setNewChecklistAssignee("unassigned")
+      setMeetingModality("virtual")
+      setMeetingUrl("")
+      setMeetingLocation("")
+      setMeetingStartAt("")
+      setMeetingDurationMinutes(30)
+      setMeetingAttendees([])
     }
-  }, [task?.id, isCreating, isOpen])
+  }, [task?.id, isCreating, isOpen, defaultType, defaultProjectId, defaultStatus])
 
   const handleTagsChange = async (newTags: string[]) => {
     setTags(newTags)
@@ -472,7 +337,6 @@ export function TaskPortalDetailModal({
     try {
       const data = await portalGetTaskComments(token, taskId)
       setComments(data)
-      setVisibleCommentsCount(10)
     } catch (err) {
       console.error("Error loading comments:", err)
     } finally {
@@ -512,8 +376,8 @@ export function TaskPortalDetailModal({
           type,
           assignedStaffId: assignedStaffId === "unassigned" ? null : assignedStaffId,
           qaStaffId: qaStaffId === "unassigned" ? null : qaStaffId,
-          dueDate: dueDate || null,
-          estimatedHours: Number(estimatedHours),
+          dueDate: type === "meeting" && meetingStartAt ? meetingStartAt.split("T")[0] : (dueDate || null),
+          estimatedHours: type === "meeting" ? Number(meetingDurationMinutes) / 60 : Number(estimatedHours),
           checklist,
           tags,
           attachments,
@@ -522,6 +386,12 @@ export function TaskPortalDetailModal({
           recurrenceDay: isRecurring ? recurrenceDay : null,
           blockedByTaskId: blockedByTaskId === "none" ? null : blockedByTaskId,
           sprintId: isLeadOrPm ? (selectedSprintId === "none" ? null : selectedSprintId) : undefined,
+          meetingModality: type === "meeting" ? meetingModality : null,
+          meetingUrl: type === "meeting" ? (meetingUrl.trim() || null) : null,
+          meetingLocation: type === "meeting" ? (meetingLocation.trim() || null) : null,
+          meetingStartAt: type === "meeting" && meetingStartAt ? new Date(meetingStartAt).toISOString() : null,
+          meetingDurationMinutes: type === "meeting" ? meetingDurationMinutes : null,
+          meetingAttendees: type === "meeting" ? meetingAttendees : [],
         })
 
         if (res.success && res.task) {
@@ -637,6 +507,12 @@ export function TaskPortalDetailModal({
         blockedReason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
         loggedHours: incrementalHours > 0 ? incrementalHours : undefined,
         note: note,
+        meetingModality: isLeadOrPm && type === "meeting" ? meetingModality : undefined,
+        meetingUrl: isLeadOrPm && type === "meeting" ? (meetingUrl.trim() || null) : undefined,
+        meetingLocation: isLeadOrPm && type === "meeting" ? (meetingLocation.trim() || null) : undefined,
+        meetingStartAt: isLeadOrPm && type === "meeting" && meetingStartAt ? new Date(meetingStartAt).toISOString() : undefined,
+        meetingDurationMinutes: isLeadOrPm && type === "meeting" ? meetingDurationMinutes : undefined,
+        meetingAttendees: isLeadOrPm && type === "meeting" ? meetingAttendees : undefined,
       })
 
       if (res.success && res.task) {
@@ -773,25 +649,22 @@ export function TaskPortalDetailModal({
     setChecklist(updated)
   }
 
-  const handleAddChecklistItem = () => {
+  const handleAddChecklistItem = (title: string, week: 1 | 2 | 3 | 4 | null, assigneeId: string | null) => {
     if (!isCreating && !isLeadOrPm) {
       toast.error("Solo los líderes o Project Managers pueden añadir nuevos entregables")
       return
     }
-    if (!newChecklistTitle.trim()) return
+    if (!title.trim()) return
     const newItem: TaskChecklistItem = {
       id: `chk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      title: newChecklistTitle.trim(),
+      title: title.trim(),
       completed: false,
-      target_week: newChecklistWeek,
+      target_week: week,
       assigned_staff_id: !isLeadOrPm
-        ? (newChecklistAssignee === currentStaffId ? currentStaffId : null)
-        : (newChecklistAssignee === "unassigned" ? null : newChecklistAssignee),
+        ? (assigneeId === currentStaffId ? currentStaffId : null)
+        : (assigneeId === "unassigned" ? null : assigneeId),
     }
     setChecklist((prev) => [...prev, newItem])
-    setNewChecklistTitle("")
-    setNewChecklistWeek(null)
-    setNewChecklistAssignee("unassigned")
   }
 
   const handleUpdateChecklistWeek = (itemId: string, week: 1 | 2 | 3 | 4 | null) => {
@@ -862,45 +735,17 @@ export function TaskPortalDetailModal({
     }
   }
 
-  const handleAddAttachment = () => {
-    if (!newRefUrl.trim()) return
-    const rawUrl = newRefUrl.trim()
-    const fullUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : `https://${rawUrl}`
-
-    let detectedType = newRefType
-    if (detectedType === "auto") {
-      if (fullUrl.includes("figma.com")) detectedType = "figma"
-      else if (fullUrl.includes("github.com")) detectedType = "github"
-      else if (fullUrl.includes("docs.google.com") || fullUrl.includes("drive.google.com")) detectedType = "doc"
-      else if (/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(fullUrl)) detectedType = "image"
-      else detectedType = "link"
-    }
-
-    const defaultName =
-      detectedType === "figma"
-        ? "Diseño en Figma"
-        : detectedType === "github"
-        ? "Pull Request / Repositorio"
-        : detectedType === "doc"
-        ? "Documento de Especificación"
-        : detectedType === "image"
-        ? "Captura / Imagen de Referencia"
-        : "Enlace de Referencia"
-
+  const handleAddAttachment = (name: string, url: string, type: string) => {
     const newAttachment: TaskAttachment = {
       id: `att-${Date.now()}`,
-      name: newRefName.trim() || defaultName,
-      url: fullUrl,
-      type: detectedType,
+      name: name.trim() || "Enlace de Referencia",
+      url,
+      type: type as any,
       created_at: new Date().toISOString(),
     }
 
     const updated = [...attachments, newAttachment]
     setAttachments(updated)
-    setNewRefUrl("")
-    setNewRefName("")
-    setNewRefType("auto")
-    setShowAddRef(false)
 
     if (task && !isCreating) {
       portalUpdateTask(token, task.id, { attachments: updated }).then((res) => {
@@ -926,164 +771,46 @@ export function TaskPortalDetailModal({
     }
   }
 
-  // Mentions autocomplete handler (Collaborators @ & Tickets #)
-  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setNewCommentText(val)
-    const cursor = e.target.selectionStart || val.length
-
-    const textBeforeCursor = val.slice(0, cursor)
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@")
-    const lastHashIndex = textBeforeCursor.lastIndexOf("#")
-
-    if (lastAtIndex !== -1 && (lastHashIndex === -1 || lastAtIndex > lastHashIndex)) {
-      const query = textBeforeCursor.slice(lastAtIndex + 1)
-      if (!/\s/.test(query)) {
-        setMentionType("collaborator")
-        setMentionQuery(query.toLowerCase())
-        setMentionCursorPos(lastAtIndex)
-        return
-      }
-    } else if (lastHashIndex !== -1 && (lastAtIndex === -1 || lastHashIndex > lastAtIndex)) {
-      const query = textBeforeCursor.slice(lastHashIndex + 1)
-      if (!/\s/.test(query)) {
-        setMentionType("ticket")
-        setMentionQuery(query.toLowerCase())
-        setMentionCursorPos(lastHashIndex)
-        return
-      }
-    }
-
-    setMentionType(null)
-    setMentionQuery(null)
-  }
-
-  const handleSelectMention = (member: { first_name: string; last_name: string }) => {
-    const mentionTag = `@${member.first_name}${member.last_name ? member.last_name.slice(0, 1) : ""} `
-    const before = newCommentText.slice(0, mentionCursorPos)
-    const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
-    const newText = before + mentionTag + after
-    setNewCommentText(newText)
-    setMentionType(null)
-    setMentionQuery(null)
-    setTimeout(() => {
-      if (commentInputRef.current) {
-        commentInputRef.current.focus()
-        const newPos = before.length + mentionTag.length
-        commentInputRef.current.setSelectionRange(newPos, newPos)
-      }
-    }, 50)
-  }
-
-  const handleSelectTicket = (t: TaskItem) => {
-    const code = t.ticket_code || `TK-${t.id.slice(0, 4)}`
-    const mentionTag = `#${code} `
-    const before = newCommentText.slice(0, mentionCursorPos)
-    const after = newCommentText.slice(mentionCursorPos + (mentionQuery?.length || 0) + 1)
-    const newText = before + mentionTag + after
-    setNewCommentText(newText)
-    setMentionType(null)
-    setMentionQuery(null)
-    setTimeout(() => {
-      if (commentInputRef.current) {
-        commentInputRef.current.focus()
-        const newPos = before.length + mentionTag.length
-        commentInputRef.current.setSelectionRange(newPos, newPos)
-      }
-    }, 50)
-  }
-
-  const filteredMentionMembers =
-    mentionType === "collaborator" && mentionQuery !== null
-      ? teamMembers.filter(
-          (m) =>
-            m.first_name.toLowerCase().includes(mentionQuery) ||
-            m.last_name.toLowerCase().includes(mentionQuery) ||
-            m.role.toLowerCase().includes(mentionQuery)
-        )
-      : []
-
-  const filteredMentionTickets =
-    mentionType === "ticket" && mentionQuery !== null
-      ? (availableTasks || [])
-          .filter(
-            (t) =>
-              t.id !== task?.id &&
-              ((t.ticket_code && t.ticket_code.toLowerCase().includes(mentionQuery)) ||
-                t.title.toLowerCase().includes(mentionQuery))
-          )
-          .slice(0, 8)
-      : []
-
-  const handleCommentFileProcess = async (file: File) => {
+  const handleAddComment = async (content: string, stagedAttachments: TaskAttachment[]) => {
     if (!task) return
-    setIsUploadingCommentAttachment(true)
+    const textToSend = [
+      content.trim(),
+      ...stagedAttachments.map((a) => a.url)
+    ].filter(Boolean).join("\n")
+
+    if (!textToSend) return
+    try {
+      const res = await portalAddTaskComment(token, task.id, textToSend)
+      if (res.success && res.comment) {
+        setComments((prev) => [res.comment!, ...prev])
+        toast.success("Comentario publicado")
+      } else {
+        toast.error(res.error || "Error al enviar comentario")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al enviar comentario")
+    }
+  }
+
+  const handleUploadCommentAttachment = async (file: File): Promise<TaskAttachment | null> => {
+    if (!task) return null
     try {
       const formData = new FormData()
       formData.append("file", file)
 
       const res = await portalUploadTaskAttachment(token, formData)
       if (res.success && res.attachment) {
-        const newAtt = res.attachment
-        setStagedCommentAttachments((prev) => [...prev, newAtt])
-        toast.success(`Captura "${newAtt.name}" adjunta`)
-
-        const nextAttachments = [...attachments, newAtt]
+        const nextAttachments = [...attachments, res.attachment]
         setAttachments(nextAttachments)
         portalUpdateTask(token, task.id, { attachments: nextAttachments }).then((uRes) => {
           if (uRes.success && uRes.task) onTaskUpdated?.(uRes.task)
         })
-      } else {
-        toast.error(res.error || "Error al subir la imagen")
+        return res.attachment
       }
     } catch (err: any) {
-      toast.error(err.message || "Error al procesar la imagen")
-    } finally {
-      setIsUploadingCommentAttachment(false)
-      if (commentFileInputRef.current) commentFileInputRef.current.value = ""
+      console.error("Error al subir archivo adjunto:", err)
     }
-  }
-
-  const handleCommentPaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
-      if (item.type.startsWith("image/")) {
-        e.preventDefault()
-        const file = item.getAsFile()
-        if (file) {
-          handleCommentFileProcess(file)
-        }
-        break
-      }
-    }
-  }
-
-  const handleAddComment = async () => {
-    const textToSend = [
-      newCommentText.trim(),
-      ...stagedCommentAttachments.map((a) => a.url)
-    ].filter(Boolean).join("\n")
-
-    if (!textToSend || !task) return
-    setIsSendingComment(true)
-    try {
-      const res = await portalAddTaskComment(token, task.id, textToSend)
-      if (res.success && res.comment) {
-        setComments((prev) => [res.comment!, ...prev])
-        setNewCommentText("")
-        setStagedCommentAttachments([])
-        setMentionType(null)
-        setMentionQuery(null)
-        toast.success("Comentario publicado")
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Error al enviar comentario")
-    } finally {
-      setIsSendingComment(false)
-    }
+    return null
   }
 
   const handleDelete = async () => {
@@ -1105,10 +832,6 @@ export function TaskPortalDetailModal({
       setIsDeleting(false)
     }
   }
-
-  const completedChecklistCount = checklist.filter((c) => c.completed).length
-  const checklistPercentage =
-    checklist.length > 0 ? Math.round((completedChecklistCount / checklist.length) * 100) : 0
 
   const resolvedProject =
     projects.find((p) => p.id === (task?.project_id || selectedProjectId)) ||
@@ -1257,6 +980,17 @@ export function TaskPortalDetailModal({
               </div>
             )}
 
+            {/* If Meeting: Live Session Room & Attendance Console */}
+            {!isCreating && task && task.type === "meeting" && (
+              <TaskMeetingConsole
+                task={task}
+                currentStaffId={currentStaffId}
+                isLeadOrPm={isLeadOrPm}
+                portalToken={token}
+                onTaskUpdated={onTaskUpdated}
+              />
+            )}
+
             {/* Title Section */}
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
@@ -1266,7 +1000,7 @@ export function TaskPortalDetailModal({
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="text-base sm:text-lg font-bold bg-background rounded-xl"
+                  className="text-sm sm:text-base font-normal bg-background rounded-xl h-10 placeholder:text-muted-foreground/60"
                   placeholder="Título de la tarea o requerimiento..."
                 />
               ) : (
@@ -1276,7 +1010,7 @@ export function TaskPortalDetailModal({
               )}
             </div>
 
-            {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
+            {/* Compact Progress Slider */}
             {!isCreating && (
               <div className="space-y-1.5">
                 <div className={cn(
@@ -1394,13 +1128,13 @@ export function TaskPortalDetailModal({
             {/* Description & Criteria */}
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Descripción & Criterios de Aceptación
+                {type === "meeting" ? "Objetivos & Contexto de la Sesión" : "Descripción & Criterios de Aceptación"}
               </label>
               {isCreating || isLeadOrPm ? (
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detalla los requerimientos técnicos, especificaciones, alcance, endpoints o casos de prueba..."
+                  placeholder={type === "meeting" ? "Detalla los objetivos, acuerdos previos o contexto necesario para la sesión..." : "Detalla los requerimientos técnicos, especificaciones, alcance, endpoints o casos de prueba..."}
                   rows={4}
                   className="bg-background resize-none text-xs sm:text-sm rounded-xl"
                 />
@@ -1412,715 +1146,45 @@ export function TaskPortalDetailModal({
             </div>
 
             {/* Checklist of Deliverables & Subtasks */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Checklist de Entregables / Subtareas ({completedChecklistCount}/{checklist.length})
-                  </span>
-                </div>
-                {checklist.length > 0 && (
-                  <span className="text-xs font-bold text-muted-foreground font-mono">
-                    {checklistPercentage}% completado
-                  </span>
-                )}
-              </div>
-
-              {/* Progress bar of checklist */}
-              {checklist.length > 0 && (
-                <div className="w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-primary h-full transition-all duration-300"
-                    style={{ width: `${checklistPercentage}%` }}
-                  />
-                </div>
-              )}
-
-              {/* Checklist items */}
-              <div className="space-y-2">
-                {checklist.map((item) => {
-                  const isToggleAllowed = canToggleItem(item) && !isTerminalLocked
-                  const isMySubtask = !isCreating && Boolean(item.assigned_staff_id && currentStaffId && item.assigned_staff_id === currentStaffId)
-                  return (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      className={cn(
-                        "flex items-center gap-2.5 p-2.5 rounded-xl border transition-colors group",
-                        isToggleAllowed
-                          ? "bg-background border-border/60 hover:border-primary/40"
-                          : "bg-muted/20 border-border/40 opacity-75",
-                        isMySubtask && !item.completed && "animate-border-beam"
-                      )}
-                      style={isMySubtask && !item.completed ? { "--beam-color": brandColor } as React.CSSProperties : undefined}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        disabled={!isToggleAllowed}
-                        onChange={() => handleToggleChecklist(item.id, item.completed)}
-                        className={cn(
-                          "w-4 h-4 rounded text-primary focus:ring-primary accent-primary shrink-0 transition-opacity",
-                          isToggleAllowed ? "cursor-pointer" : "cursor-not-allowed opacity-40"
-                        )}
-                        title={isTerminalLocked ? "Ticket finalizado: solo el PM puede modificar entregables" : !isToggleAllowed ? "Solo el colaborador asignado a esta subtarea puede marcarla" : undefined}
-                      />
-                      <span
-                        className={`text-xs sm:text-sm flex-1 ${
-                          item.completed
-                            ? "line-through text-muted-foreground"
-                            : "text-foreground font-medium"
-                        }`}
-                      >
-                        {isMySubtask && !item.completed ? (
-                          <ShimmerText key={`${item.id}-${isOpen}`} active duration={3000}>{item.title}</ShimmerText>
-                        ) : (
-                          item.title
-                        )}
-                      </span>
-                      {!isToggleAllowed && (
-                        <span title="Subtarea asignada a otro colaborador" className="inline-flex shrink-0">
-                          <Lock className="w-3.5 h-3.5 text-muted-foreground/60" />
-                        </span>
-                      )}
-
-                    {/* Subtask Assignee selector / badge */}
-                    {isLeadOrPm ? (
-                      <Select
-                        value={item.assigned_staff_id || "unassigned"}
-                        onValueChange={(val) =>
-                          handleUpdateChecklistAssignee(
-                            item.id,
-                            val === "unassigned" ? null : val
-                          )
-                        }
-                      >
-                        <SelectTrigger className="h-6 max-w-[120px] text-[10px] font-medium rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0 truncate">
-                          <SelectValue placeholder="Responsable" />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs max-w-[220px]">
-                          <SelectItem value="unassigned" className="text-[11px] text-muted-foreground">
-                            Sin asignar
-                          </SelectItem>
-                          {teamMembers.map((m) => (
-                            <SelectItem key={m.id} value={m.id} className="text-[11px]">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <span className="truncate">{m.first_name} {m.last_name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : item.assigned_staff_id ? (
-                      (() => {
-                        const assignedMember = teamMembers.find((m) => m.id === item.assigned_staff_id) || item.assigned_staff
-                        const name = assignedMember ? `${assignedMember.first_name} ${assignedMember.last_name?.slice(0, 1) || ""}.` : "Asignado"
-                        return (
-                          <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 shrink-0 border-border/60 bg-primary/5 text-primary gap-1">
-                            <User className="w-2.5 h-2.5" />
-                            <span className="truncate max-w-[80px]">{name}</span>
-                          </Badge>
-                        )
-                      })()
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 shrink-0 border-dashed border-border/50 text-muted-foreground">
-                        Sin asignar
-                      </Badge>
-                    )}
-
-                    {/* Week tag / selector */}
-                    {isLeadOrPm ? (
-                      <Select
-                        value={item.target_week ? String(item.target_week) : "general"}
-                        onValueChange={(val) =>
-                          handleUpdateChecklistWeek(
-                            item.id,
-                            val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4)
-                          )
-                        }
-                      >
-                        <SelectTrigger className="h-6 w-20 text-[10px] font-semibold rounded-md border-border/60 bg-muted/30 px-1.5 py-0 gap-1 shrink-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs">
-                          <SelectItem value="general" className="text-[11px] text-muted-foreground">General</SelectItem>
-                          <SelectItem value="1" className="text-[11px] font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
-                          <SelectItem value="2" className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
-                          <SelectItem value="3" className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
-                          <SelectItem value="4" className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : item.target_week ? (
-                      <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0 shrink-0 border-border/60 bg-muted/30">
-                        Semana {item.target_week}
-                      </Badge>
-                    ) : null}
-
-                    {item.completed && (
-                      <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/20 font-semibold px-2 py-0 shrink-0">
-                        Listo
-                      </Badge>
-                    )}
-                    {(isCreating || isLeadOrPm) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        onClick={() => handleRemoveChecklistItem(item.id)}
-                        aria-label="Eliminar entregable"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </motion.div>
-                )})}
-
-                {/* Add new checklist item with optional week selector and assignee - Only for PM / Lead */}
-                {(isCreating || isLeadOrPm) ? (
-                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-1">
-                    <Input
-                      value={newChecklistTitle}
-                      onChange={(e) => setNewChecklistTitle(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                      placeholder="Añadir subtarea / entregable..."
-                      className="h-8 text-xs bg-background rounded-lg flex-1 min-w-[140px]"
-                    />
-                    <Select
-                      value={newChecklistAssignee}
-                      onValueChange={setNewChecklistAssignee}
-                    >
-                      <SelectTrigger className="h-8 w-28 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
-                        <SelectValue placeholder="Responsable" />
-                      </SelectTrigger>
-                      <SelectContent className="text-xs max-w-[220px]">
-                        <SelectItem value="unassigned" className="text-xs text-muted-foreground">
-                          Sin asignar
-                        </SelectItem>
-                        {isLeadOrPm ? (
-                          teamMembers.map((m) => (
-                            <SelectItem key={m.id} value={m.id} className="text-xs">
-                              <span className="truncate">{m.first_name} {m.last_name}</span>
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value={currentStaffId || "me"} className="text-xs">
-                            <span className="truncate">Para mí (Tú)</span>
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={newChecklistWeek ? String(newChecklistWeek) : "general"}
-                      onValueChange={(val) =>
-                        setNewChecklistWeek(val === "general" ? null : (Number(val) as 1 | 2 | 3 | 4))
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-24 text-xs rounded-lg border-border/80 bg-background px-2 shrink-0">
-                        <SelectValue placeholder="Semana" />
-                      </SelectTrigger>
-                      <SelectContent className="text-xs">
-                        <SelectItem value="general" className="text-xs text-muted-foreground">General</SelectItem>
-                        <SelectItem value="1" className="text-xs font-medium text-sky-600 dark:text-sky-400">Semana 1</SelectItem>
-                        <SelectItem value="2" className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Semana 2</SelectItem>
-                        <SelectItem value="3" className="text-xs font-medium text-amber-600 dark:text-amber-400">Semana 3</SelectItem>
-                        <SelectItem value="4" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Semana 4</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAddChecklistItem}
-                      className="h-8 px-3 text-xs rounded-lg border-border hover:border-primary/40 shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" />
-                      Añadir
-                    </Button>
-                  </div>
-                ) : checklist.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic py-1">
-                    No hay entregables asignados para este ticket.
-                  </p>
-                ) : null}
-              </div>
-            </div>
+            <TaskChecklistEditor
+              checklist={checklist}
+              collaborators={teamMembers as any}
+              isMeeting={type === "meeting"}
+              disabled={isTerminalLocked}
+              canManageChecklist={isCreating || isLeadOrPm}
+              canToggleItem={canToggleItem}
+              currentStaffId={currentStaffId}
+              brandColor={brandColor}
+              onToggleItem={handleToggleChecklist}
+              onUpdateAssignee={handleUpdateChecklistAssignee}
+              onUpdateWeek={handleUpdateChecklistWeek}
+              onRemoveItem={handleRemoveChecklistItem}
+              onAddItem={handleAddChecklistItem}
+            />
 
             {/* Enlaces & Referencias */}
-            <div className="space-y-3 pt-4 border-t border-border/60">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span className="text-xs font-semibold uppercase tracking-wider truncate">
-                    Enlaces & Referencias ({attachments.length})
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isUploadingFile}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
-                  >
-                    {isUploadingFile ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                    ) : (
-                      <Upload className="w-3.5 h-3.5 mr-1 text-primary" />
-                    )}
-                    Subir desde PC
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddRef(!showAddRef)}
-                    className="h-7 text-xs px-2.5 rounded-lg border-border text-foreground hover:bg-muted/40 font-medium shrink-0"
-                  >
-                    <Link2 className="w-3.5 h-3.5 mr-1 text-primary" />
-                    {showAddRef ? "Cancelar" : "Enlaces"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Add Reference Collapsible Form */}
-              <AnimatePresence>
-                {showAddRef && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-3.5 rounded-xl bg-muted/30 border border-primary/20 space-y-3 overflow-hidden shadow-xs"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="sm:col-span-2">
-                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                          URL del Recurso (Figma, GitHub, Docs, Imagen...)
-                        </label>
-                        <Input
-                          value={newRefUrl}
-                          onChange={(e) => setNewRefUrl(e.target.value)}
-                          placeholder="https://figma.com/... o https://..."
-                          className="h-8 text-xs bg-background rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                          Tipo de Enlace
-                        </label>
-                        <Select value={newRefType} onValueChange={setNewRefType}>
-                          <SelectTrigger className="h-8 text-xs bg-background rounded-lg">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="auto">Auto-detectar</SelectItem>
-                            <SelectItem value="figma">Figma Design</SelectItem>
-                            <SelectItem value="github">GitHub PR / Repo</SelectItem>
-                            <SelectItem value="image">Imagen / Captura</SelectItem>
-                            <SelectItem value="doc">Documento / Especificación</SelectItem>
-                            <SelectItem value="link">Enlace General</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                        Título o Descripción Breve (Opcional)
-                      </label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newRefName}
-                          onChange={(e) => setNewRefName(e.target.value)}
-                          placeholder="Ej: Mockup UI V2, Captura de bug, PR #12..."
-                          className="h-8 text-xs bg-background flex-1 rounded-lg"
-                          onKeyDown={(e) => e.key === "Enter" && handleAddAttachment()}
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleAddAttachment}
-                          disabled={!newRefUrl.trim()}
-                          className="h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-medium"
-                        >
-                          <Plus className="w-3.5 h-3.5 mr-1" />
-                          Guardar Enlace
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* References & Files List */}
-              {attachments.length === 0 ? (
-                <div className="py-2.5 px-3 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground bg-muted/10">
-                  <p>Sin referencias adjuntas</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {attachments.map((att) => {
-                    const isImg = att.type === "image" || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(att.url)
-                    const isFigma = att.type === "figma" || att.url.includes("figma.com")
-                    const isGithub = att.type === "github" || att.url.includes("github.com")
-                    const isDoc = att.type === "doc" || att.type === "sheet" || att.type === "pdf"
-
-                    const formattedSize = att.size
-                      ? att.size > 1024 * 1024
-                        ? `${(att.size / (1024 * 1024)).toFixed(1)} MB`
-                        : `${Math.round(att.size / 1024)} KB`
-                      : null
-
-                    return (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60 hover:border-primary/40 transition-colors group gap-2"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          {isImg ? (
-                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-border/80 bg-muted/40 relative flex items-center justify-center">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={att.url}
-                                alt={att.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = "none"
-                                }}
-                              />
-                              <ImageIcon className="w-4 h-4 text-muted-foreground absolute" />
-                            </div>
-                          ) : (
-                            <div
-                              className={cn(
-                                "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold",
-                                isFigma
-                                  ? "bg-purple-500/15 text-purple-600 dark:text-purple-400"
-                                  : isGithub
-                                  ? "bg-zinc-800 text-zinc-100 dark:bg-zinc-700"
-                                  : isDoc
-                                  ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                                  : "bg-primary/10 text-primary"
-                              )}
-                            >
-                              {isFigma ? (
-                                <span className="font-mono text-[11px] font-extrabold">F</span>
-                              ) : isGithub ? (
-                                <span className="font-mono text-[11px] font-extrabold">GH</span>
-                              ) : isDoc ? (
-                                <FileText className="w-3.5 h-3.5" />
-                              ) : (
-                                <Link2 className="w-3.5 h-3.5" />
-                              )}
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <a
-                              href={att.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 truncate group-hover:underline"
-                            >
-                              <span className="truncate">{att.name}</span>
-                              <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
-                            </a>
-                            <p className="text-[10px] text-muted-foreground font-mono truncate">
-                              {formattedSize ? formattedSize : att.url.replace(/^https?:\/\/(www\.)?/, "")}
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-6 h-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={() => handleRemoveAttachment(att.id)}
-                          aria-label="Eliminar recurso"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            <TaskAttachmentsSection
+              attachments={attachments}
+              disabled={isTerminalLocked}
+              isUploadingFile={isUploadingFile}
+              onTriggerFileUpload={() => fileInputRef.current?.click()}
+              onAddAttachment={handleAddAttachment}
+              onRemoveAttachment={handleRemoveAttachment}
+            />
 
             {/* Discussion Feed & Mentions (@) (Only in Edit Mode) */}
             {!isCreating && (
-              <div className="space-y-4 pt-4 border-t border-border/60">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Actividad & Discusión ({comments.length})
-                  </span>
-                </div>
-
-                {/* Comment List */}
-                <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
-                  {loadingComments ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                      Cargando comentarios...
-                    </div>
-                  ) : comments.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground italic border border-dashed rounded-xl">
-                      No hay comentarios en este ticket aún. ¡Inicia la conversación usando @nombre!
-                    </div>
-                  ) : (
-                    <>
-                      {displayedComments.map((c) => {
-                        const auditInfo = parseSystemAuditNote(c.content)
-                        const isSystemEvent = c.author_type === "system" || auditInfo.isAudit
-
-                        // Single-line sleek compact note for system audit events (status, assignment, dates, blockers, progress)
-                        if (isSystemEvent) {
-                          return (
-                            <div
-                              key={c.id}
-                              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs transition-colors border border-border/40"
-                            >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="text-xs shrink-0">{auditInfo.icon}</span>
-                                <span className="font-semibold text-foreground text-xs shrink-0">{c.author_name || "Sistema"}</span>
-                                <span className="text-muted-foreground/40 shrink-0">·</span>
-                                <span className="truncate text-xs text-foreground/85 font-normal">
-                                  {renderFormattedComment(auditInfo.formattedText, availableTasks, onSelectTask)}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
-                                {new Date(c.created_at).toLocaleDateString("es-ES", {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                          )
-                        }
-
-                        // Regular discussion comments (multi-line)
-                        return (
-                          <div
-                            key={c.id}
-                            className="p-3 rounded-xl border border-border/60 bg-background text-xs space-y-1.5 shadow-2xs"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {c.author_name && (
-                                  <Avatar className="w-5 h-5 shrink-0" style={{ backgroundColor: brandColor }}>
-                                    <AvatarImage src={getCollaboratorAvatar(c.author_avatar, c.author_name)} className="object-cover" />
-                                    <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
-                                      {c.author_name.slice(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                                <span className="font-semibold text-foreground">{c.author_name}</span>
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
-                                  {c.author_type === "system" ? "Sistema" : c.author_type === "owner" ? "Admin" : "Colaborador"}
-                                </Badge>
-                              </div>
-                              <span className="text-[10px] text-muted-foreground font-mono">
-                                {new Date(c.created_at).toLocaleDateString("es-ES", {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                            <div className="text-foreground/90 leading-relaxed pl-7 whitespace-pre-wrap">
-                              {renderFormattedComment(c.content, availableTasks, onSelectTask)}
-                            </div>
-                          </div>
-                        )
-                      })}
-
-                      {sortedComments.length > visibleCommentsCount && (
-                        <div className="pt-1 pb-0.5 flex justify-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setVisibleCommentsCount((prev) => prev + 10)}
-                            className="text-xs text-muted-foreground hover:text-foreground h-7 gap-1.5 rounded-lg border border-border/40 hover:bg-muted/60 transition-colors"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                            <span>Cargar más ({sortedComments.length - visibleCommentsCount} anteriores)</span>
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Add Comment Input with @ & # Mention Autocomplete Popover */}
-                <div className="relative">
-                  {/* Floating Mention Autocomplete Menu */}
-                  <AnimatePresence>
-                    {mentionType === "collaborator" && filteredMentionMembers.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 5 }}
-                        className="absolute bottom-full left-0 mb-2 w-72 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
-                      >
-                        <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
-                          <AtSign className="w-3 h-3 text-primary" />
-                          Mencionar a un miembro del equipo
-                        </div>
-                        {filteredMentionMembers.map((member) => (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => handleSelectMention(member)}
-                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-muted/80 text-xs transition-colors"
-                          >
-                            <Avatar className="w-5 h-5">
-                              <AvatarImage src={member.photo_url || undefined} />
-                              <AvatarFallback className="text-[9px] font-bold">
-                                {member.first_name.slice(0, 1)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-foreground truncate">
-                                {member.first_name} {member.last_name}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground truncate">
-                                {member.role}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-
-                    {mentionType === "ticket" && filteredMentionTickets.length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 5 }}
-                        className="absolute bottom-full left-0 mb-2 w-80 max-h-52 overflow-y-auto bg-popover border border-border/80 rounded-xl shadow-xl z-30 p-1 space-y-0.5"
-                      >
-                        <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1 border-b border-border/40">
-                          <Hash className="w-3 h-3 text-primary" />
-                          Vincular Ticket / Tarea
-                        </div>
-                        {filteredMentionTickets.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => handleSelectTicket(t)}
-                            className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-muted/80 text-xs transition-colors group"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="font-mono text-[10px] font-bold text-primary px-1.5 py-0.2 bg-primary/10 rounded border border-primary/20">
-                                  {t.ticket_code || `TK-${t.id.slice(0, 4)}`}
-                                </span>
-                                {t.project?.name && (
-                                  <span className="text-[10px] text-muted-foreground truncate">
-                                    {t.project.name}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="font-medium text-foreground truncate text-xs">
-                                {t.title}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Staged Comment Attachments Preview Chips */}
-                  {stagedCommentAttachments.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-muted/40 rounded-xl border border-border/60">
-                      {stagedCommentAttachments.map((att) => (
-                        <div
-                          key={att.id}
-                          className="relative group flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-lg bg-card border border-border/80 text-xs shadow-2xs"
-                        >
-                          <img
-                            src={att.url}
-                            alt={att.name}
-                            className="w-6 h-6 rounded object-cover border border-border/60 shrink-0"
-                          />
-                          <span className="truncate max-w-[120px] text-[11px] font-medium text-foreground">
-                            {att.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setStagedCommentAttachments((prev) => prev.filter((a) => a.id !== att.id))}
-                            className="w-4 h-4 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-                            title="Quitar captura"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <input
-                      ref={commentFileInputRef}
-                      type="file"
-                      accept="image/*,.pdf,.xlsx,.csv"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleCommentFileProcess(file)
-                      }}
-                    />
-                    <div className="relative flex-1">
-                      <Input
-                        ref={commentInputRef}
-                        value={newCommentText}
-                        onChange={handleCommentChange}
-                        onPaste={handleCommentPaste}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey && mentionType === null) {
-                            e.preventDefault()
-                            handleAddComment()
-                          } else if (e.key === "Escape") {
-                            setMentionType(null)
-                            setMentionQuery(null)
-                          }
-                        }}
-                        placeholder="Escribe un comentario, pega capturas (Ctrl+V) o usa @ / #..."
-                        className="text-xs h-9 bg-background rounded-xl pr-8"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => commentFileInputRef.current?.click()}
-                        disabled={isUploadingCommentAttachment}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded cursor-pointer"
-                        title="Adjuntar o pegar captura (Ctrl+V)"
-                      >
-                        {isUploadingCommentAttachment ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                        ) : (
-                          <Paperclip className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={handleAddComment}
-                      disabled={isSendingComment || isUploadingCommentAttachment || (!newCommentText.trim() && stagedCommentAttachments.length === 0)}
-                      className="h-9 px-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                    >
-                      {isSendingComment ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <TaskDiscussionFeed
+                comments={comments}
+                loadingComments={loadingComments}
+                collaborators={teamMembers as any}
+                availableTasks={availableTasks}
+                onSelectTask={onSelectTask}
+                onAddComment={handleAddComment}
+                onUploadCommentAttachment={handleUploadCommentAttachment}
+                brandColor={brandColor}
+                disabled={isTerminalLocked}
+              />
             )}
           </div>
 
@@ -2264,6 +1328,7 @@ export function TaskPortalDetailModal({
                     <SelectItem value="bug">Reporte de Bug</SelectItem>
                     <SelectItem value="improvement">Mejora</SelectItem>
                     <SelectItem value="delivery">Entrega de Cliente</SelectItem>
+                    <SelectItem value="meeting">Reunión</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -2276,6 +1341,8 @@ export function TaskPortalDetailModal({
                     ? "Bug"
                     : type === "improvement"
                     ? "Mejora"
+                    : type === "meeting"
+                    ? "Reunión"
                     : "Entrega de Cliente"}
                 </Badge>
               )}
@@ -2526,81 +1593,22 @@ export function TaskPortalDetailModal({
             )}
 
             {/* Compact Time Tracking */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                Tiempo
-              </label>
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/20 border border-border/60 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Estimado:</span>
-                  {isCreating && !isLeadOrPm ? (
-                    <span className="font-mono text-xs font-semibold text-foreground">0h</span>
-                  ) : isCreating || isLeadOrPm ? (
-                    <div className="inline-flex items-center gap-0.5">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={estimatedHours || ""}
-                        onChange={(e) => setEstimatedHours(Number(e.target.value))}
-                        className="w-10 bg-transparent text-xs font-mono font-bold text-foreground focus:outline-none border-b border-border/80 focus:border-primary text-center p-0 h-4"
-                        placeholder="0"
-                      />
-                      <span className="font-mono text-xs font-medium text-muted-foreground">h</span>
-                    </div>
-                  ) : (
-                    <span className="font-mono text-xs font-semibold text-foreground">
-                      {Number(estimatedHours) > 0 ? `${estimatedHours}h` : "—"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="h-3 w-px bg-border/80" />
-
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Registrado:</span>
-                  <span className="font-mono text-xs font-bold text-foreground">
-                    {actualHours || 0}h
-                  </span>
-                  {!isCreating && Number(actualHours) > 0 && Number(estimatedHours) > 0 && Number(actualHours) > Number(estimatedHours) && (
-                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">
-                      (+{Math.round((Number(actualHours) - Number(estimatedHours)) * 10) / 10}h)
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Dedicated CTA Button: Registrar Horas */}
-              {!isCreating && task && (
-                <div>
-                  {isLeadOrPm || task.status !== "done" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setPendingLogWork({
-                          finalStatus: status,
-                          finalProgress: progress,
-                          targetLabel: "Registrar tiempo",
-                          isManualLog: true,
-                        })
-                      }
-                      className="w-full h-8 text-xs font-semibold rounded-xl bg-background hover:bg-primary/5 hover:text-primary hover:border-primary/40 border-border/80 text-foreground transition-all cursor-pointer gap-1.5 shadow-2xs"
-                    >
-                      <Timer className="w-3.5 h-3.5 text-primary" />
-                      <span>Registrar Horas de Trabajo</span>
-                    </Button>
-                  ) : (
-                    <div className="text-[11px] text-muted-foreground flex items-center justify-center gap-1.5 py-1 font-medium bg-muted/40 rounded-xl">
-                      <Lock className="w-3 h-3 text-muted-foreground/70" />
-                      <span>Registro cerrado (Ticket completado)</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
+            <TaskTimeCompactStrip
+              estimatedHours={estimatedHours}
+              actualHours={actualHours}
+              isTerminalLocked={isTerminalLocked}
+              canEditEstimated={isCreating || isLeadOrPm}
+              showLogWorkButton={!isCreating && !!task}
+              onUpdateEstimatedHours={(hrs) => setEstimatedHours(hrs)}
+              onOpenLogWork={() =>
+                setPendingLogWork({
+                  finalStatus: status,
+                  finalProgress: progress,
+                  targetLabel: "Registrar tiempo",
+                  isManualLog: true,
+                })
+              }
+            />
             {/* Metadata Card (Edit Mode) */}
             {!isCreating && task && (
               <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 text-[11px] text-muted-foreground space-y-1 font-mono">

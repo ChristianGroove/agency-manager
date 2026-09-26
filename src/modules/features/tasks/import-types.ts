@@ -73,7 +73,7 @@ export const PixyImportTaskSchema = z.object({
   project_slug: z.string().optional().nullable(),
   project_name: z.string().optional().nullable(),
   workspace_key: z.string().optional().nullable(),
-  type: z.enum(["task", "feature", "bug", "improvement", "delivery"] as const).optional().default("task"),
+  type: z.enum(["task", "feature", "bug", "improvement", "delivery", "meeting"] as const).optional().default("task"),
   status: z.enum(["backlog", "todo", "in_progress", "in_review", "done", "blocked"] as const).optional().default("todo"),
   priority: z.enum(["low", "medium", "high", "urgent"] as const).optional().default("medium"),
   progress_percentage: z.number().min(0).max(100).optional().default(0),

@@ -20,6 +20,7 @@ export interface TaskSubtasksTooltipBadgeProps {
     last_name?: string
   }>
   className?: string
+  taskType?: string
   onClick?: (e: React.MouseEvent) => void
 }
 
@@ -27,8 +28,11 @@ export function TaskSubtasksTooltipBadge({
   checklist,
   teamMembers = [],
   className,
+  taskType,
   onClick,
 }: TaskSubtasksTooltipBadgeProps) {
+  if (taskType === "meeting") return null
+
   const items = parseTaskChecklist(checklist)
   if (!items || items.length === 0) return null
 

@@ -28,6 +28,7 @@ import {
   GripVertical,
   Ban,
   Timer,
+  Video,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -59,6 +60,8 @@ interface TaskKanbanBoardProps {
   onQuickMoveTask: (taskId: string, newStatus: TaskStatus) => void
   onNewTaskInColumn?: (status: TaskStatus) => void
   brandColor?: string
+  includeMeetings?: boolean
+  onIncludeMeetingsChange?: (include: boolean) => void
 }
 
 const COLUMNS: {
@@ -148,6 +151,7 @@ const SortableTaskCard = React.memo(
     isOverlay?: boolean
     brandColor?: string
   }) {
+  const isMeeting = task.type === "meeting"
   const {
     attributes,
     listeners,
@@ -155,7 +159,7 @@ const SortableTaskCard = React.memo(
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, disabled: isOverlay })
+  } = useSortable({ id: task.id, disabled: isOverlay || isMeeting })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -169,6 +173,7 @@ const SortableTaskCard = React.memo(
   const checklistTotal = safeChecklist.length
   const checklistDone = safeChecklist.filter((c) => c.completed).length
   const isOverdue =
+    task.type !== "meeting" &&
     task.due_date &&
     new Date(task.due_date) < new Date() &&
     task.status !== "done"
@@ -177,12 +182,13 @@ const SortableTaskCard = React.memo(
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(isMeeting ? {} : attributes)}
+      {...(isMeeting ? {} : listeners)}
       onClick={() => !isDragging && onSelectTask && onSelectTask(task)}
       className={cn(
         "group p-3.5 rounded-2xl bg-card border border-zinc-200/80 dark:border-white/10 shadow-sm transition-all duration-150 space-y-2.5 relative touch-none select-none",
-        !isDragging && "cursor-grab active:cursor-grabbing hover:border-zinc-300 dark:hover:border-white/20",
+        !isMeeting && !isDragging && "cursor-grab active:cursor-grabbing hover:border-zinc-300 dark:hover:border-white/20",
+        isMeeting && "cursor-pointer hover:border-zinc-300 dark:hover:border-white/20",
         isDragging && "z-50 shadow-xl opacity-35 scale-95",
         isOverlay && "cursor-grabbing shadow-2xl border-primary ring-2 ring-primary/40 bg-card rotate-1"
       )}
@@ -190,13 +196,21 @@ const SortableTaskCard = React.memo(
       {/* Top Bar: Code, Project & Priority */}
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 truncate">
-          <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+          {!isMeeting && (
+            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors shrink-0" />
+          )}
           <Badge
             variant="outline"
             className="font-mono text-xs font-bold text-primary bg-primary/10 border-primary/25 dark:bg-primary/15 dark:text-primary dark:border-primary/30 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 tracking-wide"
           >
             {task.ticket_code}
           </Badge>
+          {task.type === "meeting" && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+              <Video className="w-2.5 h-2.5" />
+              Reunión
+            </span>
+          )}
           {task.blocked_by && task.blocked_by.status !== "done" && (
             <TooltipProvider>
               <Tooltip>
@@ -241,10 +255,13 @@ const SortableTaskCard = React.memo(
         <h4 className="text-xs font-bold text-foreground line-clamp-2 leading-snug flex-1">
           {task.title}
         </h4>
-        <TaskSubtasksTooltipBadge
-          checklist={task.checklist}
-          onClick={() => onSelectTask && onSelectTask(task)}
-        />
+        {task.type !== "meeting" && (
+          <TaskSubtasksTooltipBadge
+            checklist={task.checklist}
+            taskType={task.type}
+            onClick={() => onSelectTask && onSelectTask(task)}
+          />
+        )}
       </div>
 
       {/* Blocker Reason Note */}
@@ -285,16 +302,25 @@ const SortableTaskCard = React.memo(
         </div>
       )}
 
-      {/* Progress Bar & Percentage */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span className="font-medium">Progreso</span>
-          <span className="font-mono font-bold text-foreground">
-            {task.progress_percentage}%
-          </span>
+      {/* Progress Bar & Percentage: Solo para tickets de desarrollo */}
+      {task.type !== "meeting" ? (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span className="font-medium">Progreso</span>
+            <span className="font-mono font-bold text-foreground">
+              {task.progress_percentage}%
+            </span>
+          </div>
+          <Progress value={task.progress_percentage} className="h-1 bg-zinc-100 dark:bg-white/10" />
         </div>
-        <Progress value={task.progress_percentage} className="h-1 bg-zinc-100 dark:bg-white/10" />
-      </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-zinc-50 dark:bg-zinc-800/40 px-2 py-1 rounded-md border border-zinc-200/50 dark:border-white/5">
+          <Video className="w-3 h-3 text-zinc-500 shrink-0" />
+          <span>{task.meeting_modality === "in_person" ? "Presencial" : "Virtual"}</span>
+          <span>·</span>
+          <span className="font-mono">{task.meeting_duration_minutes || 30}m</span>
+        </div>
+      )}
 
       {/* Meta Footer: Checklist, QA Badge, Due Date, Assignee */}
       <div className="flex items-center justify-between pt-1.5 text-[11px] text-muted-foreground border-t border-zinc-100 dark:border-white/5">
@@ -320,7 +346,15 @@ const SortableTaskCard = React.memo(
             </span>
           )}
 
-          {task.due_date && (
+          {task.type === "meeting" && task.meeting_start_at ? (
+            <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
+              <Clock className="w-3 h-3 text-indigo-500" />
+              {new Date(task.meeting_start_at).toLocaleDateString("es-ES", {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          ) : task.due_date ? (
             <span
               className={cn(
                 "flex items-center gap-1 text-[10px] font-mono",
@@ -333,7 +367,7 @@ const SortableTaskCard = React.memo(
                 day: "numeric",
               })}
             </span>
-          )}
+          ) : null}
         </div>
 
         {task.assigned_staff ? (
@@ -394,9 +428,15 @@ export function TaskKanbanBoard({
     })
   )
 
+  // El tablero Kanban es exclusivamente para entregables técnicos de sprint (tickets)
+  // Las reuniones sincrónicas se visualizan y gestionan en su vista dedicada de Lista / Agenda
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => t.type !== "meeting")
+  }, [tasks])
+
   const activeTask = useMemo(
-    () => (activeId ? tasks.find((t) => t.id === activeId) : null),
-    [activeId, tasks]
+    () => (activeId ? filteredTasks.find((t) => t.id === activeId) : null),
+    [activeId, filteredTasks]
   )
 
   // O(N) single-pass column partition instead of 6 filter passes
@@ -409,7 +449,7 @@ export function TaskKanbanBoard({
       blocked: [],
       done: [],
     }
-    tasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       if (map[t.status]) {
         map[t.status].push(t)
       } else {
@@ -417,11 +457,13 @@ export function TaskKanbanBoard({
       }
     })
     return map
-  }, [tasks])
+  }, [filteredTasks])
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    const currentTask = filteredTasks.find((t) => t.id === event.active.id)
+    if (currentTask?.type === "meeting") return
     setActiveId(event.active.id as string)
-  }, [])
+  }, [filteredTasks])
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -438,14 +480,14 @@ export function TaskKanbanBoard({
         targetStatus = over.id as TaskStatus
       } else {
         // Dropped onto another task card
-        const overTask = tasks.find((t) => t.id === over.id)
+        const overTask = filteredTasks.find((t) => t.id === over.id)
         if (overTask) {
           targetStatus = overTask.status
         }
       }
 
-      const currentTask = tasks.find((t) => t.id === taskId)
-      if (!currentTask || !targetStatus || currentTask.status === targetStatus) return
+      const currentTask = filteredTasks.find((t) => t.id === taskId)
+      if (!currentTask || currentTask.type === "meeting" || !targetStatus || currentTask.status === targetStatus) return
 
       const checklist = Array.isArray(currentTask.checklist)
         ? currentTask.checklist
@@ -470,7 +512,7 @@ export function TaskKanbanBoard({
 
       onQuickMoveTask(taskId, targetStatus)
     },
-    [tasks, onQuickMoveTask]
+    [filteredTasks, onQuickMoveTask]
   )
 
   return (
@@ -480,6 +522,18 @@ export function TaskKanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      {/* Barra superior de control del Kanban: conteo de entregables */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Tablero de Entregables
+          </span>
+          <Badge variant="outline" className="text-[11px] font-mono font-bold bg-background text-foreground">
+            {filteredTasks.length} {filteredTasks.length === 1 ? "ticket" : "tickets"}
+          </Badge>
+        </div>
+      </div>
+
       {/* Kanban Rail: Continuous horizontal track with horizontal scroll just like CRM Pipeline */}
       <div className="w-full overflow-x-auto scrollbar-modern pb-4">
         <div className="flex flex-nowrap gap-4 items-stretch min-w-max">

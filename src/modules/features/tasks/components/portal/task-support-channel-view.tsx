@@ -411,7 +411,7 @@ export function TaskSupportChannelView({
           ]}
           activeFilter={statusFilter}
           onFilterChange={(f) => setStatusFilter(f)}
-          defaultShowFilters={true}
+          defaultShowFilters={false}
           className="flex-1"
         />
 

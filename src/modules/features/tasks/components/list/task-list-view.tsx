@@ -19,11 +19,21 @@ import {
   ChevronLeft,
   Ban,
   Timer,
+  Video,
+  MapPin,
+  CheckSquare,
+  Users,
+  Calendar,
+  UserX,
+  CheckCircle2,
+  Lock,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { SYSTEM_STAGE_TAGS } from "../../types"
+import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
+import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +41,63 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Checkbox } from "@/components/ui/checkbox"
+
+function isMeetingPast(task: TaskItem): boolean {
+  if (task.status === "done") return true
+  if (!task.meeting_start_at) return false
+  const start = new Date(task.meeting_start_at).getTime()
+  if (isNaN(start)) return false
+  const durationMs = (task.meeting_duration_minutes || 60) * 60 * 1000
+  const end = start + durationMs
+  return Date.now() > end
+}
+
+function isMeetingLive(task: TaskItem): boolean {
+  if (task.status === "done" || !task.meeting_start_at) return false
+  const start = new Date(task.meeting_start_at).getTime()
+  if (isNaN(start)) return false
+  const durationMs = (task.meeting_duration_minutes || 60) * 60 * 1000
+  const end = start + durationMs
+  const now = Date.now()
+  return now >= start && now <= end
+}
+
+function canJoinMeeting(task: TaskItem): boolean {
+  if (!task.meeting_url || task.status === "done") return false
+  if (isMeetingPast(task)) return false
+  if (!task.meeting_start_at) return true
+  const start = new Date(task.meeting_start_at).getTime()
+  if (isNaN(start)) return true
+  const fiveMinBefore = start - 5 * 60 * 1000
+  return Date.now() >= fiveMinBefore
+}
+
+function formatMeetingDateSchedule(isoString?: string | null): string {
+  if (!isoString) return ""
+  try {
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return ""
+    const today = new Date()
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    const isYesterday =
+      d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear()
+
+    const timeStr = d.toLocaleTimeString("es-ES", { hour: "numeric", minute: "2-digit", hour12: true })
+    if (isToday) return `Hoy · ${timeStr}`
+    if (isYesterday) return `Ayer · ${timeStr}`
+    const dateStr = d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })
+    return `${dateStr} · ${timeStr}`
+  } catch {
+    return ""
+  }
+}
 
 interface TaskListViewProps {
   tasks: TaskItem[]
@@ -44,6 +111,8 @@ interface TaskListViewProps {
   selectedTaskIds?: Set<string>
   onToggleSelectTask?: (taskId: string) => void
   onToggleSelectAll?: () => void
+  includeMeetings?: boolean
+  onIncludeMeetingsChange?: (include: boolean) => void
 }
 
 export function TaskListView({
@@ -54,25 +123,49 @@ export function TaskListView({
   selectedTaskIds = new Set(),
   onToggleSelectTask,
   onToggleSelectAll,
+  includeMeetings: controlledIncludeMeetings,
+  onIncludeMeetingsChange,
 }: TaskListViewProps) {
   const [pageSize, setPageSize] = useState<number>(25)
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [internalIncludeMeetings, setInternalIncludeMeetings] = useState<boolean>(false)
+
+  const isControlled = controlledIncludeMeetings !== undefined
+  const includeMeetings = isControlled ? controlledIncludeMeetings : internalIncludeMeetings
+
+  const toggleIncludeMeetings = () => {
+    const nextVal = !includeMeetings
+    if (onIncludeMeetingsChange) {
+      onIncludeMeetingsChange(nextVal)
+    }
+    if (!isControlled) {
+      setInternalIncludeMeetings(nextVal)
+    }
+  }
+
+  const ticketCount = useMemo(() => tasks.filter((t) => t.type !== "meeting").length, [tasks])
+  const meetingCount = useMemo(() => tasks.filter((t) => t.type === "meeting").length, [tasks])
+
+  const visibleTasks = useMemo(() => {
+    if (includeMeetings) return tasks.filter((t) => t.type === "meeting")
+    return tasks.filter((t) => t.type !== "meeting")
+  }, [tasks, includeMeetings])
 
   // Reset to page 1 whenever filter or task list size changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [tasks.length])
+  }, [visibleTasks.length])
 
-  const totalPages = Math.max(1, Math.ceil(tasks.length / pageSize))
+  const totalPages = Math.max(1, Math.ceil(visibleTasks.length / pageSize))
   const safePage = Math.min(currentPage, totalPages)
 
   const paginatedTasks = useMemo(() => {
     const start = (safePage - 1) * pageSize
-    return tasks.slice(start, start + pageSize)
-  }, [tasks, safePage, pageSize])
+    return visibleTasks.slice(start, start + pageSize)
+  }, [visibleTasks, safePage, pageSize])
 
-  const startRecord = tasks.length === 0 ? 0 : (safePage - 1) * pageSize + 1
-  const endRecord = Math.min(safePage * pageSize, tasks.length)
+  const startRecord = visibleTasks.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+  const endRecord = Math.min(safePage * pageSize, visibleTasks.length)
   const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
       case "backlog":
@@ -123,11 +216,22 @@ export function TaskListView({
     }
   }
 
-  const allSelected = tasks.length > 0 && tasks.every((t) => selectedTaskIds.has(t.id))
-  const isIndeterminate = !allSelected && tasks.some((t) => selectedTaskIds.has(t.id))
+  const allSelected = visibleTasks.length > 0 && visibleTasks.every((t) => selectedTaskIds.has(t.id))
+  const isIndeterminate = !allSelected && visibleTasks.some((t) => selectedTaskIds.has(t.id))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Control opcional de alternancia de reuniones (cuando no esté controlado por la barra superior) */}
+      {!isControlled && (meetingCount > 0 || includeMeetings) && (
+        <div className="flex items-center justify-end">
+          <TaskMeetingViewToggle
+            includeMeetings={includeMeetings}
+            size="sm"
+            onToggle={toggleIncludeMeetings}
+          />
+        </div>
+      )}
+
       {/* Tasks Table */}
       <div className="border border-border/60 rounded-2xl bg-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -146,24 +250,26 @@ export function TaskListView({
                 <th className={cn("p-3.5 w-24", !onToggleSelectAll && "pl-4")}>Ticket</th>
                 <th className="p-3.5">Título</th>
                 <th className="p-3.5 w-32">Estado</th>
-                <th className="p-3.5 w-24">Prioridad</th>
-                <th className="p-3.5 w-36">Progreso</th>
+                {!includeMeetings && <th className="p-3.5 w-24">Prioridad</th>}
+                {!includeMeetings && <th className="p-3.5 w-36">Progreso</th>}
                 <th className="p-3.5 w-28 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Timer className="w-3 h-3 text-muted-foreground" />
-                    <span>Horas</span>
-                  </div>
+                  <span>Tiempo</span>
                 </th>
-                <th className="p-3.5 w-40">Asignado</th>
-                <th className="p-3.5 w-28">Fecha límite</th>
-                <th className="p-3.5 w-16 text-right pr-4"></th>
+                {!includeMeetings && <th className="p-3.5 w-40">Asignado</th>}
+                {!includeMeetings && <th className="p-3.5 w-28">Fecha límite</th>}
+                <th className="p-3.5 w-20 text-right pr-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
-              {tasks.length === 0 ? (
+              {visibleTasks.length === 0 ? (
                 <tr>
-                  <td colSpan={onToggleSelectTask ? 10 : 9} className="p-8 text-center text-muted-foreground">
-                    No se encontraron tareas con los filtros seleccionados.
+                  <td
+                    colSpan={(onToggleSelectTask ? 1 : 0) + 5 + (!includeMeetings ? 4 : 0)}
+                    className="p-8 text-center text-muted-foreground"
+                  >
+                    {includeMeetings
+                      ? "No se encontraron reuniones con los filtros seleccionados."
+                      : "No se encontraron tareas con los filtros seleccionados."}
                   </td>
                 </tr>
               ) : (
@@ -191,63 +297,147 @@ export function TaskListView({
                         </td>
                       )}
                       <td className={cn("p-3.5 whitespace-nowrap", !onToggleSelectTask && "pl-4")}>
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/25 rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs"
-                        >
-                          {task.ticket_code}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-mono text-xs font-bold rounded-lg px-2.5 py-1 whitespace-nowrap shrink-0 tracking-wide min-w-[70px] inline-flex items-center justify-center shadow-xs",
+                              task.type === "meeting"
+                                ? "text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700"
+                                : "text-primary bg-primary/10 border border-primary/25"
+                            )}
+                          >
+                            {task.type === "meeting"
+                              ? (task.ticket_code?.startsWith("MTG-") ? task.ticket_code : task.ticket_code?.replace(/^[A-Za-z]+-/, "MTG-"))
+                              : task.ticket_code}
+                          </Badge>
+                        </div>
                       </td>
-                    <td className="p-3.5">
+                    <td className="p-3.5 font-medium">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                            {task.title}
-                          </span>
-                          <TaskSubtasksTooltipBadge
-                            checklist={task.checklist}
-                            teamMembers={teamMembers}
-                            onClick={() => onSelectTask(task)}
-                          />
-                          {task.tags && task.tags.length > 0 && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              {task.tags.map((tag) => {
-                                const sysTag = SYSTEM_STAGE_TAGS[tag]
-                                if (sysTag) {
-                                  return (
-                                    <span
-                                      key={tag}
-                                      className={cn(
-                                        "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
-                                        sysTag.badgeClass
-                                      )}
-                                    >
-                                      {sysTag.shortLabel || sysTag.label}
-                                    </span>
-                                  )
-                                }
-                                return (
-                                  <span
-                                    key={tag}
-                                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
-                                  >
-                                    #{tag}
-                                  </span>
-                                )
-                              })}
-                            </div>
+                          {task.type === "meeting" ? (
+                            <>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-100/90 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5 shrink-0">
+                                {task.meeting_modality === "in_person" ? (
+                                  <MapPin className="w-3 h-3 text-zinc-500 shrink-0" />
+                                ) : (
+                                  <Video className="w-3 h-3 text-zinc-500 shrink-0" />
+                                )}
+                                <span>{getMeetingModalityBadgeLabel(task)}</span>
+                              </span>
+                              <span className={cn(
+                                "font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1",
+                                includeMeetings ? "max-w-none" : ""
+                              )}>
+                                {task.title}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={cn(
+                                "font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1",
+                                includeMeetings ? "max-w-none" : ""
+                              )}>
+                                {task.title}
+                              </span>
+                              <TaskSubtasksTooltipBadge
+                                checklist={task.checklist}
+                                teamMembers={teamMembers}
+                                taskType={task.type}
+                                onClick={() => onSelectTask(task)}
+                              />
+                              {task.tags && task.tags.length > 0 && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {task.tags.map((tag) => {
+                                    const sysTag = SYSTEM_STAGE_TAGS[tag]
+                                    if (sysTag) {
+                                      return (
+                                        <span
+                                          key={tag}
+                                          className={cn(
+                                            "text-[9px] font-bold px-1.5 py-0.5 rounded-md border",
+                                            sysTag.badgeClass
+                                          )}
+                                        >
+                                          {sysTag.shortLabel || sysTag.label}
+                                        </span>
+                                      )
+                                    }
+                                    return (
+                                      <span
+                                        key={tag}
+                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md border border-border/80 bg-secondary/80 text-secondary-foreground"
+                                      >
+                                        #{tag}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
-                        {task.project && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Layers className="w-3 h-3 text-muted-foreground" />
-                            {task.project.name}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                          {task.project && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Layers className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span>{task.project.name}</span>
+                            </span>
+                          )}
+                          {task.type === "meeting" && task.meeting_start_at && (
+                            <>
+                              {task.project && <span className="text-zinc-300 dark:text-zinc-700">·</span>}
+                              <span className="flex items-center gap-1 text-foreground/80 font-medium">
+                                <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span>{formatMeetingDateSchedule(task.meeting_start_at)}</span>
+                              </span>
+                            </>
+                          )}
+                          {task.type === "meeting" && (
+                            <>
+                              <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                              <span className="inline-flex items-center gap-1 text-muted-foreground font-medium">
+                                <Users className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span>
+                                  {Array.isArray(task.meeting_attendees) && task.meeting_attendees.length > 0
+                                    ? `${task.meeting_attendees.length} convocado${task.meeting_attendees.length === 1 ? "" : "s"}`
+                                    : "Toda la empresa"}
+                                </span>
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
-                      {task.status === "blocked" ? (
+                      {task.type === "meeting" ? (
+                        isMeetingLive(task) ? (
+                          <Badge
+                            variant="outline"
+                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 inline-flex items-center gap-1 text-[10px]"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>En Vivo</span>
+                          </Badge>
+                        ) : isMeetingPast(task) ? (
+                          <Badge
+                            variant="outline"
+                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                          >
+                            <UserX className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                            <span>Finalizada</span>
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                          >
+                            <Clock className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                            <span>Programada</span>
+                          </Badge>
+                        )
+                      ) : task.status === "blocked" ? (
                         <TooltipProvider delayDuration={1000}>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -328,80 +518,133 @@ export function TaskListView({
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5">{getPriorityBadge(task.priority)}</td>
-                    <td className="p-3.5">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-xs sm:text-[13px]">
-                          <span className="font-mono font-bold text-foreground">
-                            {task.progress_percentage}%
-                          </span>
+                    {!includeMeetings && (
+                      <td className="p-3.5">
+                        {getPriorityBadge(task.priority)}
+                      </td>
+                    )}
+                    {!includeMeetings && (
+                      <td className="p-3.5">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs sm:text-[13px]">
+                            <span className="font-mono font-bold text-foreground">
+                              {task.progress_percentage}%
+                            </span>
+                          </div>
+                          <Progress value={task.progress_percentage} className="h-1.5 w-28" />
                         </div>
-                        <Progress value={task.progress_percentage} className="h-1.5 w-28" />
-                      </div>
-                    </td>
+                      </td>
+                    )}
                     <td className="p-3.5 text-right font-mono whitespace-nowrap">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span className={cn(
-                          "text-xs font-semibold",
-                          Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
-                            ? "text-rose-600 dark:text-rose-400 font-bold"
-                            : "text-foreground"
-                        )}>
-                          {Number(task.actual_hours) || 0}h
-                          <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
+                      {task.type === "meeting" ? (
+                        <span className="text-xs font-semibold text-foreground">
+                          {task.meeting_duration_minutes || 30} min
                         </span>
-                        {Number(task.estimated_hours) > 0 && (
+                      ) : (
+                        <div className="flex flex-col items-end gap-0.5">
                           <span className={cn(
-                            "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
-                            Number(task.actual_hours) > Number(task.estimated_hours)
-                              ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
-                              : Number(task.actual_hours) === Number(task.estimated_hours)
-                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                              : "text-muted-foreground"
+                            "text-xs font-semibold",
+                            Number(task.actual_hours) > Number(task.estimated_hours) && Number(task.estimated_hours) > 0
+                              ? "text-rose-600 dark:text-rose-400 font-bold"
+                              : "text-foreground"
                           )}>
-                            {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                            {Number(task.actual_hours) || 0}h
+                            <span className="text-muted-foreground font-normal text-[11px]"> / {Number(task.estimated_hours) || 0}h</span>
                           </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      {task.assigned_staff ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-5 h-5">
-                            <AvatarImage src={task.assigned_staff.photo_url || undefined} />
-                            <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                              {task.assigned_staff.first_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium text-foreground line-clamp-1">
-                            {task.assigned_staff.first_name} {task.assigned_staff.last_name}
-                          </span>
+                          {Number(task.estimated_hours) > 0 && (
+                            <span className={cn(
+                              "text-[10px] px-1.5 py-0.2 rounded font-mono font-medium",
+                              Number(task.actual_hours) > Number(task.estimated_hours)
+                                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold"
+                                : Number(task.actual_hours) === Number(task.estimated_hours)
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : "text-muted-foreground"
+                            )}>
+                              {Math.round(((Number(task.actual_hours) || 0) / Number(task.estimated_hours)) * 100)}%
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground/60 italic">Sin asignar</span>
                       )}
                     </td>
-                    <td className="p-3.5 font-mono text-muted-foreground">
-                      {task.due_date ? (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(task.due_date).toLocaleDateString("es-ES", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="p-3.5 text-right pr-4">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-7 h-7 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </Button>
+                    {!includeMeetings && (
+                      <td className="p-3.5">
+                        {task.assigned_staff ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-5 h-5">
+                              <AvatarImage src={task.assigned_staff.photo_url || undefined} />
+                              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                                {task.assigned_staff.first_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-foreground line-clamp-1">
+                              {task.assigned_staff.first_name} {task.assigned_staff.last_name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/60 italic">Sin asignar</span>
+                        )}
+                      </td>
+                    )}
+                    {!includeMeetings && (
+                      <td className="p-3.5 font-mono text-muted-foreground">
+                        {task.due_date ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(task.due_date).toLocaleDateString("es-ES", {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    )}
+                    <td className="p-3.5 text-right pr-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {task.type === "meeting" && task.meeting_url && !isMeetingPast(task) && (
+                          canJoinMeeting(task) ? (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                window.open(task.meeting_url!, "_blank")
+                              }}
+                              className="h-7 px-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Video className="w-3 h-3" />
+                              <span>Unirme</span>
+                            </Button>
+                          ) : (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block">
+                                    <Button
+                                      size="sm"
+                                      disabled
+                                      className="h-7 px-2.5 text-xs bg-muted text-muted-foreground opacity-60 cursor-not-allowed font-medium rounded-lg shadow-none flex items-center gap-1.5"
+                                    >
+                                      <Video className="w-3 h-3" />
+                                      <span>Unirme</span>
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <span>Disponible 5 min antes del inicio</span>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onSelectTask(task)}
+                          className="w-7 h-7 rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        >
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                   )
@@ -413,12 +656,12 @@ export function TaskListView({
       </div>
 
       {/* Pagination Footer */}
-      {tasks.length > 0 && (
+      {visibleTasks.length > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-card border border-border/60 rounded-2xl text-xs text-muted-foreground shadow-xs">
           <div className="flex items-center gap-2">
             <span>
               Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
-              <strong className="text-foreground font-semibold">{tasks.length}</strong> tareas
+              <strong className="text-foreground font-semibold">{visibleTasks.length}</strong> {includeMeetings ? (visibleTasks.length === 1 ? "reunión" : "reuniones") : (visibleTasks.length === 1 ? "tarea" : "tareas")}
             </span>
           </div>
 

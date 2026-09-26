@@ -62,7 +62,27 @@ async function handleRecurrence(req: NextRequest) {
     for (const oldTask of dueTasks) {
       const interval: RecurrenceInterval = oldTask.recurrence_interval || "monthly";
       const dayOfMonth = oldTask.recurrence_day || 1;
-      const nextRun = calculateNextRecurrence(interval, now, dayOfMonth);
+      const recurrenceDays = Array.isArray(oldTask.recurrence_days) ? oldTask.recurrence_days : null;
+      const nextRun = calculateNextRecurrence(interval, now, dayOfMonth, recurrenceDays);
+
+      // Atomic CAS claim: advance next_recurrence_at into the future immediately
+      // If a concurrent cron run already picked this up, the .lte condition matches 0 rows
+      const { data: claimedTask, error: claimErr } = await supabase
+        .from("task_items")
+        .update({
+          next_recurrence_at: nextRun.toISOString(),
+          last_recurred_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("id", oldTask.id)
+        .lte("next_recurrence_at", now.toISOString())
+        .select("id")
+        .maybeSingle();
+
+      if (claimErr || !claimedTask) {
+        // Concurrently claimed by another worker; skip cleanly to prevent duplicates
+        continue;
+      }
 
       // Determine ticket code prefix
       let prefix = "TK";
@@ -70,23 +90,29 @@ async function handleRecurrence(req: NextRequest) {
         prefix = (oldTask as any).project.workspace.key_prefix;
       }
 
-      // Calculate sequential ticket code
+      // Calculate sequential ticket code across latest 20 items to find true max integer
       const { data: latestItems } = await supabase
         .from("task_items")
         .select("ticket_code")
         .eq("organization_id", oldTask.organization_id)
         .ilike("ticket_code", `${prefix}-%`)
         .order("created_at", { ascending: false })
-        .limit(1);
+        .limit(20);
 
-      let nextNum = 101;
-      if (latestItems && latestItems.length > 0 && latestItems[0].ticket_code) {
-        const match = latestItems[0].ticket_code.match(/(\d+)$/);
-        if (match) {
-          nextNum = parseInt(match[1], 10) + 1;
+      let maxNum = 100;
+      if (latestItems && latestItems.length > 0) {
+        for (const item of latestItems) {
+          if (!item.ticket_code) continue;
+          const match = item.ticket_code.match(/(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) {
+              maxNum = num;
+            }
+          }
         }
       }
-      const newTicketCode = `${prefix}-${nextNum}`;
+      const newTicketCode = `${prefix}-${maxNum + 1}`;
 
       // Reset checklist items for the new cycle while preserving target_week
       const freshChecklist = Array.isArray(oldTask.checklist)
@@ -99,6 +125,30 @@ async function handleRecurrence(req: NextRequest) {
             target_week: c.target_week || null,
           }))
         : [];
+
+      // Reset meeting attendees for the new cycle (fresh attendance tracking)
+      const durationHours = oldTask.meeting_duration_minutes ? Number(oldTask.meeting_duration_minutes) / 60 : 0.5;
+      const freshMeetingAttendees = Array.isArray(oldTask.meeting_attendees)
+        ? oldTask.meeting_attendees.map((a: any) => ({
+            staff_id: a.staff_id,
+            status: "pending",
+            attended_at: null,
+            check_in_method: null,
+            hours_allocated: durationHours,
+            notes: null,
+          }))
+        : [];
+
+      // Calculate new meeting start time preserving original session hour/minute
+      let newMeetingStartAt: string | null = null;
+      if (oldTask.meeting_start_at) {
+        const prevStart = new Date(oldTask.meeting_start_at);
+        const scheduledNext = new Date(nextRun);
+        if (!isNaN(prevStart.getTime())) {
+          scheduledNext.setHours(prevStart.getHours(), prevStart.getMinutes(), 0, 0);
+        }
+        newMeetingStartAt = scheduledNext.toISOString();
+      }
 
       const parentRecurringId = oldTask.parent_recurring_id || oldTask.id;
 
@@ -127,26 +177,46 @@ async function handleRecurrence(req: NextRequest) {
           is_recurring: true,
           recurrence_interval: interval,
           recurrence_day: dayOfMonth,
+          recurrence_days: recurrenceDays,
           parent_recurring_id: parentRecurringId,
           last_recurred_at: now.toISOString(),
           next_recurrence_at: nextRun.toISOString(),
+          meeting_modality: oldTask.meeting_modality || (oldTask.type === "meeting" ? "virtual" : null),
+          meeting_url: oldTask.meeting_url || null,
+          meeting_location: oldTask.meeting_location || null,
+          meeting_start_at: newMeetingStartAt,
+          meeting_duration_minutes: oldTask.meeting_duration_minutes ?? (oldTask.type === "meeting" ? 30 : null),
+          meeting_attendees: freshMeetingAttendees,
         })
         .select("id, ticket_code, title")
         .single();
 
       if (insertErr) {
         console.error(`[Cron Recurrence] Error creating new cycle for task ${oldTask.id}:`, insertErr);
+        // Rollback next_recurrence_at so it can retry later
+        await supabase
+          .from("task_items")
+          .update({ next_recurrence_at: oldTask.next_recurrence_at })
+          .eq("id", oldTask.id);
         continue;
       }
 
       // Mark old instance as non-recurring (historical cycle instance)
+      const oldInstanceUpdates: any = {
+        is_recurring: false,
+        last_recurred_at: now.toISOString(),
+        parent_recurring_id: parentRecurringId,
+      };
+
+      // If old meeting was not yet completed, mark it done to prevent duplicate open sessions
+      if (oldTask.type === "meeting" && oldTask.status !== "done") {
+        oldInstanceUpdates.status = "done";
+        oldInstanceUpdates.progress_percentage = 100;
+      }
+
       await supabase
         .from("task_items")
-        .update({
-          is_recurring: false,
-          last_recurred_at: now.toISOString(),
-          parent_recurring_id: parentRecurringId,
-        })
+        .update(oldInstanceUpdates)
         .eq("id", oldTask.id);
 
       createdTasks.push(newInstance);

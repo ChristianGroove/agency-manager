@@ -611,7 +611,7 @@ export function TaskParallelSupportPortal({
             ]}
             activeFilter={statusFilter}
             onFilterChange={(f) => setStatusFilter(f as any)}
-            defaultShowFilters={true}
+            defaultShowFilters={false}
             className="flex-1"
           />
 

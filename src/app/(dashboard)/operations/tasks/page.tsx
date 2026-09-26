@@ -22,13 +22,18 @@ export default async function TasksPage() {
     redirect("/dashboard")
   }
 
-  const [workspaces, projects, tasks, collaborators, branding, sprints] = await Promise.all([
-    getWorkspaces(orgId),
-    getProjects(orgId),
+  const [tasks, collaborators, branding, sprints] = await Promise.all([
     getTasks({ orgId }),
     getCollaborators(orgId),
     getOrganizationBranding(),
     getSprints({ orgId })
+  ])
+
+  const tasksSummary = tasks.map((t) => ({ project_id: t.project_id, status: t.status }))
+
+  const [workspaces, projects] = await Promise.all([
+    getWorkspaces(orgId, tasksSummary),
+    getProjects(orgId, undefined, tasksSummary)
   ])
 
   return (

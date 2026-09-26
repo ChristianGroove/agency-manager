@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Rocket,
   UploadCloud,
+  Video,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -49,7 +50,9 @@ import type {
   TaskMetrics,
   TaskStatus,
   TaskSprint,
+  TaskType,
 } from "../types"
+import { parseTaskChecklist } from "../types"
 import { TaskKanbanBoard } from "./kanban/task-kanban-board"
 import { TaskListView } from "./list/task-list-view"
 import { TaskMetricsView } from "./metrics/task-metrics-view"
@@ -61,8 +64,11 @@ import { TaskFormModal } from "./modals/task-form-modal"
 import { ProjectFormModal } from "./modals/project-form-modal"
 import { WorkspaceFormModal } from "./modals/workspace-form-modal"
 import { TaskLogWorkModal } from "./shared/task-log-work-modal"
+import { TaskMeetingViewToggle } from "./shared/task-meeting-view-toggle"
 import { TaskSprintModal } from "./modals/task-sprint-modal"
 import { TaskImportModal } from "./modals/task-import-modal"
+import { TaskMeetingModal } from "./meetings/task-meeting-modal"
+import { TaskMeetingDetailModal } from "./meetings/task-meeting-detail-modal"
 import { updateTaskStatus, getTasks, deleteTasks } from "../actions/task-actions"
 import { toast } from "sonner"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
@@ -148,13 +154,83 @@ export function TaskManagerView({
             setTasks((prev) =>
               prev.map((t) => {
                 if (t.id === updatedRow.id) {
+                  let assignedStaff = t.assigned_staff
+                  if (updatedRow.assigned_staff_id !== undefined) {
+                    if (!updatedRow.assigned_staff_id) {
+                      assignedStaff = null
+                    } else {
+                      const matched = collaborators.find((c) => c.id === updatedRow.assigned_staff_id)
+                      if (matched) {
+                        assignedStaff = {
+                          id: matched.id,
+                          first_name: matched.first_name,
+                          last_name: matched.last_name,
+                          photo_url: matched.photo_url,
+                          role: matched.role,
+                          email: matched.email || undefined,
+                        }
+                      }
+                    }
+                  }
+
+                  let qaStaff = t.qa_staff
+                  if (updatedRow.qa_staff_id !== undefined) {
+                    if (!updatedRow.qa_staff_id) {
+                      qaStaff = null
+                    } else {
+                      const matched = collaborators.find((c) => c.id === updatedRow.qa_staff_id)
+                      if (matched) {
+                        qaStaff = {
+                          id: matched.id,
+                          first_name: matched.first_name,
+                          last_name: matched.last_name,
+                          photo_url: matched.photo_url,
+                          role: matched.role,
+                        }
+                      }
+                    }
+                  }
+
+                  let projectRel = t.project
+                  if (updatedRow.project_id !== undefined) {
+                    if (!updatedRow.project_id) {
+                      projectRel = null
+                    } else {
+                      const matched = projects.find((p) => p.id === updatedRow.project_id)
+                      if (matched) {
+                        projectRel = {
+                          id: matched.id,
+                          name: matched.name,
+                          color: matched.color,
+                        }
+                      }
+                    }
+                  }
+
+                  let blockedByRel = t.blocked_by
+                  if (updatedRow.blocked_by_task_id !== undefined) {
+                    if (!updatedRow.blocked_by_task_id) {
+                      blockedByRel = null
+                    } else {
+                      const matched = prev.find((p) => p.id === updatedRow.blocked_by_task_id)
+                      if (matched) {
+                        blockedByRel = {
+                          id: matched.id,
+                          ticket_code: matched.ticket_code,
+                          title: matched.title,
+                          status: matched.status,
+                        }
+                      }
+                    }
+                  }
+
                   return {
                     ...t,
                     ...updatedRow,
-                    assigned_staff: t.assigned_staff,
-                    qa_staff: t.qa_staff,
-                    project: t.project,
-                    blocked_by: t.blocked_by,
+                    assigned_staff: assignedStaff,
+                    qa_staff: qaStaff,
+                    project: projectRel,
+                    blocked_by: blockedByRel,
                   }
                 }
                 return t
@@ -283,7 +359,11 @@ export function TaskManagerView({
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false)
   const [workspaceToEdit, setWorkspaceToEdit] = useState<TaskWorkspace | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false)
+  const [selectedMeetingForDetail, setSelectedMeetingForDetail] = useState<TaskItem | null>(null)
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<TaskStatus>("todo")
+  const [newTaskInitialType, setNewTaskInitialType] = useState<TaskType>("task")
+  const [includeMeetings, setIncludeMeetings] = useState(false)
   const [logWorkState, setLogWorkState] = useState<{ task: TaskItem; targetStatus: TaskStatus } | null>(null)
 
   // Unified Scope filter (hierarchical tree: all | workspace:id | project_id)
@@ -399,7 +479,16 @@ export function TaskManagerView({
       : projectTasks
   }, [activeTab, selectedMemberFilter, projectTasks])
 
-  // Summary counts for filter tabs
+  // Meetings & tickets count in current scope
+  const meetingCount = useMemo(() => {
+    return baseTasks.filter((t: TaskItem) => t.type === "meeting").length
+  }, [baseTasks])
+
+  const ticketCount = useMemo(() => {
+    return baseTasks.filter((t: TaskItem) => t.type !== "meeting").length
+  }, [baseTasks])
+
+  // Summary counts for filter tabs - segregate by mode
   const summaryCounts = useMemo(() => {
     let backlog = 0
     let todo = 0
@@ -408,7 +497,11 @@ export function TaskManagerView({
     let blocked = 0
     let completed = 0
 
-    baseTasks.forEach((t: TaskItem) => {
+    const countableTasks = includeMeetings
+      ? baseTasks.filter((t: TaskItem) => t.type === "meeting")
+      : baseTasks.filter((t: TaskItem) => t.type !== "meeting")
+
+    countableTasks.forEach((t: TaskItem) => {
       if (t.status === "backlog") backlog++
       else if (t.status === "todo") todo++
       else if (t.status === "in_progress") inProgress++
@@ -420,7 +513,7 @@ export function TaskManagerView({
     const active = todo + inProgress + inQa + blocked
 
     return {
-      total: baseTasks.length,
+      total: countableTasks.length,
       active,
       backlog,
       todo,
@@ -429,7 +522,7 @@ export function TaskManagerView({
       blocked,
       completed,
     }
-  }, [baseTasks])
+  }, [baseTasks, includeMeetings])
 
   const {
     total: totalCount,
@@ -446,13 +539,22 @@ export function TaskManagerView({
   const visibleTasks = useMemo(() => {
     const q = searchTerm.trim().toLowerCase()
     return baseTasks.filter((t: TaskItem) => {
+      if (includeMeetings ? t.type !== "meeting" : t.type === "meeting") return false
+
       let matchesStatus = true
-      if (statusFilter === "active") {
-        matchesStatus = t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
-      } else if (statusFilter === "all") {
-        matchesStatus = true
+      if (!includeMeetings) {
+        if (statusFilter === "active") {
+          matchesStatus = t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+        } else if (statusFilter === "all") {
+          matchesStatus = true
+        } else {
+          matchesStatus = t.status === statusFilter
+        }
       } else {
-        matchesStatus = t.status === statusFilter
+        // In meetings view, show all meetings unless an explicit status was chosen
+        if (statusFilter !== "all" && statusFilter !== "active") {
+          matchesStatus = t.status === statusFilter
+        }
       }
 
       if (!matchesStatus) return false
@@ -471,9 +573,13 @@ export function TaskManagerView({
 
       return true
     })
-  }, [baseTasks, statusFilter, searchTerm])
+  }, [baseTasks, statusFilter, searchTerm, includeMeetings])
 
   const handleSelectTask = (task: TaskItem) => {
+    if (task.type === "meeting") {
+      setSelectedMeetingForDetail(task)
+      return
+    }
     setSelectedTask(task)
     setIsDetailModalOpen(true)
   }
@@ -485,12 +591,31 @@ export function TaskManagerView({
     note?: string
   ) => {
     const targetTask = tasks.find((t) => t.id === taskId)
+    if (targetTask?.type === "meeting") {
+      toast.warning("Las reuniones sincrónicas no forman parte del flujo de etapas técnicas.")
+      return
+    }
+
     if ((newStatus === "done" || newStatus === "in_review") && targetTask?.blocked_by && targetTask.blocked_by.status !== "done") {
       const actionLabel = newStatus === "in_review" ? "enviar a Revisión / QA" : "completar"
       toast.error(
         `No se puede ${actionLabel} este ticket porque depende de #${targetTask.blocked_by.ticket_code} (${targetTask.blocked_by.title}), el cual aún está pendiente.`
       )
       return
+    }
+
+    if (newStatus === "done" && targetTask) {
+      const checklist = Array.isArray(targetTask.checklist)
+        ? targetTask.checklist
+        : parseTaskChecklist(targetTask.checklist)
+      const hasUnfinishedDeliverables = checklist.length > 0 && checklist.some((c: any) => !c.completed)
+
+      if (hasUnfinishedDeliverables) {
+        toast.warning("Entregables pendientes", {
+          description: "No se puede mover la tarea a 'Completado' porque aún tiene entregables sin finalizar. Debe estar al 100% de entregables."
+        })
+        return
+      }
     }
 
     // When moving to in_review or done without loggedHours explicitly defined, trigger the agile log work modal!
@@ -530,18 +655,38 @@ export function TaskManagerView({
         note
       )
       if (res.success) {
-        const hoursMessage = incrementalHours > 0 ? ` (+${incrementalHours}h imputadas)` : ""
-        toast.success(
-          `Tarea movida a: ${
-            newStatus === "done"
-              ? "Completado"
-              : newStatus === "in_review"
-              ? "Revisión / QA"
-              : newStatus === "in_progress"
-              ? "En Progreso"
-              : newStatus
-          }${hoursMessage}`
-        )
+        if ((res as any).downgraded) {
+          const effectiveStatus = (res as any).effectiveStatus || "in_review"
+          const effectiveProgress = (res as any).effectiveProgress ?? 95
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    status: effectiveStatus,
+                    progress_percentage: effectiveProgress,
+                  }
+                : t
+            )
+          )
+          toast.warning(
+            (res as any).downgradeReason ||
+              "La tarea tiene entregables pendientes en el checklist y fue movida a Revisión / QA (95%)."
+          )
+        } else {
+          const hoursMessage = incrementalHours > 0 ? ` (+${incrementalHours}h imputadas)` : ""
+          toast.success(
+            `Tarea movida a: ${
+              newStatus === "done"
+                ? "Completado"
+                : newStatus === "in_review"
+                ? "Revisión / QA"
+                : newStatus === "in_progress"
+                ? "En Progreso"
+                : newStatus
+            }${hoursMessage}`
+          )
+        }
         if (res.unblockedTasks && res.unblockedTasks.length > 0) {
           const unblockedMap = new Map<string, TaskItem>(res.unblockedTasks.map((u: TaskItem) => [u.id, u]))
           setTasks((prev: TaskItem[]) => prev.map((t) => unblockedMap.get(t.id) || t))
@@ -789,7 +934,10 @@ export function TaskManagerView({
             <Button
               variant={activeTab === "kanban" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setActiveTab("kanban")}
+              onClick={() => {
+                setActiveTab("kanban")
+                if (includeMeetings) setIncludeMeetings(false)
+              }}
               className="h-8 text-xs font-semibold gap-1.5 rounded-md shrink-0"
             >
               <Kanban className="w-3.5 h-3.5" />
@@ -862,7 +1010,7 @@ export function TaskManagerView({
             ]}
             activeFilter={statusFilter}
             onFilterChange={setStatusFilter}
-            defaultShowFilters={true}
+            defaultShowFilters={false}
             className="flex-1"
           />
 
@@ -994,6 +1142,21 @@ export function TaskManagerView({
               <span className="hidden sm:inline font-semibold">Sincronizar</span>
             </Button>
 
+            {/* Alternador exclusivo: Ver reuniones vs Ver Tickets con ancho uniforme y animación moderna */}
+            {(meetingCount > 0 || includeMeetings) && (
+              <TaskMeetingViewToggle
+                includeMeetings={includeMeetings}
+                size="md"
+                onToggle={() => {
+                  const nextVal = !includeMeetings
+                  setIncludeMeetings(nextVal)
+                  if (nextVal && activeTab === "kanban") {
+                    setActiveTab("list")
+                  }
+                }}
+              />
+            )}
+
             {/* Unified + Nuevo Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1013,6 +1176,7 @@ export function TaskManagerView({
                 <DropdownMenuItem
                   onClick={() => {
                     setNewTaskColumnStatus("todo")
+                    setNewTaskInitialType("task")
                     setIsTaskModalOpen(true)
                   }}
                   className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
@@ -1024,6 +1188,21 @@ export function TaskManagerView({
                     <span className="font-bold text-xs text-foreground block">Nueva Tarea</span>
                     <span className="text-[11px] text-muted-foreground block leading-tight">
                       Crear ticket o requerimiento en el tablero
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => setIsMeetingModalOpen(true)}
+                  className="flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-foreground block">Nueva Reunión / Actividad</span>
+                    <span className="text-[11px] text-muted-foreground block leading-tight">
+                      Sesión sincrónica con asistencia y horas automáticas
                     </span>
                   </div>
                 </DropdownMenuItem>
@@ -1132,6 +1311,8 @@ export function TaskManagerView({
               selectedTaskIds={selectedTaskIds}
               onToggleSelectTask={handleToggleSelectTask}
               onToggleSelectAll={handleToggleSelectAll}
+              includeMeetings={includeMeetings}
+              onIncludeMeetingsChange={setIncludeMeetings}
             />
           </div>
         )}
@@ -1216,7 +1397,44 @@ export function TaskManagerView({
         collaborators={collaborators}
         defaultProjectId={selectedProjectId}
         defaultStatus={newTaskColumnStatus}
+        defaultType={newTaskInitialType}
       />
+
+      {/* Dedicated Meeting Creation Modal */}
+      {isMeetingModalOpen && (
+        <TaskMeetingModal
+          isOpen={isMeetingModalOpen}
+          onClose={() => setIsMeetingModalOpen(false)}
+          projects={projects}
+          collaborators={collaborators}
+          sprints={sprints}
+          defaultProjectId={selectedProjectId !== "all" ? selectedProjectId : projects[0]?.id}
+          onMeetingCreated={(createdMeeting) => {
+            setTasks((prev) => [createdMeeting, ...prev])
+            setIsMeetingModalOpen(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {/* Dedicated Meeting Detail Modal */}
+      {selectedMeetingForDetail && (
+        <TaskMeetingDetailModal
+          meeting={selectedMeetingForDetail}
+          isOpen={Boolean(selectedMeetingForDetail)}
+          onClose={() => setSelectedMeetingForDetail(null)}
+          isLeadOrPm={true}
+          collaborators={collaborators}
+          onMeetingUpdated={(updated) => {
+            handleTaskUpdated(updated)
+            setSelectedMeetingForDetail(updated)
+          }}
+          onMeetingDeleted={(deletedId) => {
+            handleTaskDeleted(deletedId)
+            setSelectedMeetingForDetail(null)
+          }}
+        />
+      )}
 
       {/* Project Creation & Edit Modal */}
       <ProjectFormModal

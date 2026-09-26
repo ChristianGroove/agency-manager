@@ -47,6 +47,7 @@ import {
   RefreshCw,
   Ban,
   Headset,
+  Video,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -62,6 +63,7 @@ import type {
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
 import { createTask, uploadTaskAttachment, promoteSupportTicketToTask } from "../../actions/task-actions"
 import { TaskTagSelector } from "../tags/task-tag-selector"
+import { TaskRecurrenceDaysSelector } from "../meetings/task-recurrence-days-selector"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -75,6 +77,7 @@ interface TaskFormModalProps {
   collaborators: TaskCollaborator[]
   defaultProjectId?: string
   defaultStatus?: TaskStatus
+  defaultType?: TaskType
   promotedFromTask?: TaskItem | null
 }
 
@@ -86,6 +89,7 @@ export function TaskFormModal({
   collaborators,
   defaultProjectId,
   defaultStatus = "todo",
+  defaultType = "task",
   promotedFromTask,
 }: TaskFormModalProps) {
   const [projectId, setProjectId] = useState(
@@ -97,7 +101,7 @@ export function TaskFormModal({
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState<TaskStatus>(defaultStatus)
   const [priority, setPriority] = useState<TaskPriority>("medium")
-  const [type, setType] = useState<TaskType>("task")
+  const [type, setType] = useState<TaskType>(defaultType || "task")
   const [tags, setTags] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [assignedStaffId, setAssignedStaffId] = useState("unassigned")
@@ -115,6 +119,7 @@ export function TaskFormModal({
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>("monthly")
   const [recurrenceDay, setRecurrenceDay] = useState(1)
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([1])
 
   // Attachments & References
   const [attachments, setAttachments] = useState<TaskAttachment[]>([])
@@ -155,6 +160,7 @@ export function TaskFormModal({
         setIsRecurring(false)
         setRecurrenceInterval("monthly")
         setRecurrenceDay(1)
+        setRecurrenceDays([1])
         setAttachments(promotedFromTask.attachments || [])
         setNewRefUrl("")
         setNewRefName("")
@@ -165,7 +171,7 @@ export function TaskFormModal({
         setStatus(defaultStatus || "todo")
         setBlockedReason("")
         setPriority("medium")
-        setType("task")
+        setType(defaultType || "task")
         setTags([])
         setProgress(0)
         setAssignedStaffId("unassigned")
@@ -179,13 +185,14 @@ export function TaskFormModal({
         setIsRecurring(false)
         setRecurrenceInterval("monthly")
         setRecurrenceDay(1)
+        setRecurrenceDays([1])
         setAttachments([])
         setNewRefUrl("")
         setNewRefName("")
         setShowAddRef(false)
       }
     }
-  }, [isOpen, defaultProjectId, defaultStatus, projects, promotedFromTask])
+  }, [isOpen, defaultProjectId, defaultStatus, defaultType, projects, promotedFromTask])
 
   const selectedProject = projects.find((p) => p.id === projectId)
 
@@ -386,7 +393,6 @@ export function TaskFormModal({
           type,
           progress_percentage: finalProgress,
           assigned_staff_id: assignedStaffId === "unassigned" ? null : assignedStaffId,
-          qa_staff_id: qaStaffId === "unassigned" ? null : qaStaffId,
           due_date: dueDate || null,
           estimated_hours: Number(estimatedHours) || 0,
           actual_hours: Number(actualHours) || 0,
@@ -396,6 +402,7 @@ export function TaskFormModal({
           is_recurring: isRecurring,
           recurrence_interval: isRecurring ? recurrenceInterval : null,
           recurrence_day: isRecurring ? recurrenceDay : null,
+          recurrence_days: isRecurring && recurrenceInterval === "weekly" ? recurrenceDays : null,
           blocked_reason: finalStatus === "blocked" ? (blockedReason.trim() || null) : null,
         })
       }
@@ -439,7 +446,9 @@ export function TaskFormModal({
               <CheckSquare className="w-4 h-4 text-primary shrink-0" />
             )}
             <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight">
-              {promotedFromTask ? `Promover Ticket de Soporte #${promotedFromTask.ticket_code}` : "Nuevo Requerimiento / Ticket"}
+              {promotedFromTask
+                ? `Promover Ticket de Soporte #${promotedFromTask.ticket_code}`
+                : "Nuevo Requerimiento / Ticket"}
             </h2>
           </div>
 
@@ -449,7 +458,7 @@ export function TaskFormModal({
               onClick={handleSubmit}
               disabled={isSubmitting || isUploadingFile}
               className={cn(
-                "text-xs h-8 px-4 font-semibold shadow-sm rounded-lg",
+                "text-xs h-8 px-4 font-semibold shadow-sm rounded-lg cursor-pointer transition-all",
                 promotedFromTask
                   ? "bg-sky-600 hover:bg-sky-700 text-white"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -530,12 +539,12 @@ export function TaskFormModal({
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-base sm:text-lg font-bold bg-background rounded-xl"
+                className="text-sm sm:text-base font-normal bg-background rounded-xl h-10 placeholder:text-muted-foreground/60"
                 placeholder="Título de la tarea o requerimiento..."
               />
             </div>
 
-            {/* Compact Progress Slider: [Avance] [Slider] [XX%] */}
+            {/* Compact Progress Slider */}
             <div className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-muted/30 border border-border/60">
               <div className="flex items-center gap-1.5 shrink-0">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -1037,6 +1046,7 @@ export function TaskFormModal({
                   <SelectItem value="bug">Reporte de Bug</SelectItem>
                   <SelectItem value="improvement">Mejora</SelectItem>
                   <SelectItem value="delivery">Entrega de Cliente</SelectItem>
+                  <SelectItem value="meeting">Reunión</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1171,26 +1181,29 @@ export function TaskFormModal({
                     </Select>
                   </div>
 
-                  {recurrenceInterval !== "daily" && (
+                  {recurrenceInterval === "weekly" ? (
+                    <TaskRecurrenceDaysSelector
+                      selectedDays={recurrenceDays}
+                      onChange={setRecurrenceDays}
+                    />
+                  ) : recurrenceInterval !== "daily" ? (
                     <div>
                       <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                        {recurrenceInterval === "weekly"
-                          ? "Día de la semana (1 = Lun, 7 = Dom)"
-                          : "Día del mes (1 al 28/31)"}
+                        Día del mes (1 al 28/31)
                       </label>
                       <Input
                         type="number"
                         min={1}
-                        max={recurrenceInterval === "weekly" ? 7 : 31}
+                        max={31}
                         value={recurrenceDay}
                         onChange={(e) => setRecurrenceDay(Math.max(1, Number(e.target.value)))}
                         className="w-full bg-background h-8 text-xs font-mono rounded-lg"
                       />
                     </div>
-                  )}
+                  ) : null}
 
                   <p className="text-[10px] text-muted-foreground/90 leading-tight bg-primary/5 p-2 rounded-lg border border-primary/10">
-                    🔁 Al cumplirse el ciclo, se autogenerará una nueva tarea con checklist reiniciado y nuevo correlativo.
+                    Generación Just-in-Time: Al cumplirse el ciclo, se autogenerará la siguiente sesión activa sin saturar el tablero Kanban.
                   </p>
                 </div>
               )}

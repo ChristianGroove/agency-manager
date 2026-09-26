@@ -47,8 +47,7 @@ async function handleSnapshot(req: NextRequest) {
     // 1. Fetch active tasks for snapshot recording
     const { data: tasks, error: fetchErr } = await supabase
       .from("task_items")
-      .select("id, checklist, progress_percentage, status, weekly_snapshots")
-      .neq("status", "archived");
+      .select("id, checklist, progress_percentage, status, weekly_snapshots");
 
     if (fetchErr) {
       console.error("[Cron Pacing Snapshot] Error fetching tasks:", fetchErr);
@@ -63,7 +62,7 @@ async function handleSnapshot(req: NextRequest) {
       });
     }
 
-    let updatedCount = 0;
+    const tasksToUpdate: { id: string; weekly_snapshots: any }[] = [];
 
     for (const task of tasks) {
       const checklist = parseTaskChecklist(task.checklist);
@@ -83,24 +82,46 @@ async function handleSnapshot(req: NextRequest) {
       }
 
       const currentSnapshots = task.weekly_snapshots && typeof task.weekly_snapshots === "object"
-        ? task.weekly_snapshots
+        ? (task.weekly_snapshots as Record<string, number>)
         : {};
+
+      // If the snapshot value for this week is already recorded with identical value, skip redundant DB write
+      if (currentSnapshots[weekKey] === weekProgress) {
+        continue;
+      }
 
       const nextSnapshots = {
         ...currentSnapshots,
         [weekKey]: weekProgress,
       };
 
-      const { error: updateErr } = await supabase
-        .from("task_items")
-        .update({
-          weekly_snapshots: nextSnapshots,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", task.id);
+      tasksToUpdate.push({
+        id: task.id,
+        weekly_snapshots: nextSnapshots,
+      });
+    }
 
-      if (!updateErr) {
-        updatedCount++;
+    let updatedCount = 0;
+    const CHUNK_SIZE = 20;
+
+    for (let i = 0; i < tasksToUpdate.length; i += CHUNK_SIZE) {
+      const chunk = tasksToUpdate.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(
+        chunk.map((item) =>
+          supabase
+            .from("task_items")
+            .update({
+              weekly_snapshots: item.weekly_snapshots,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", item.id)
+        )
+      );
+
+      for (const res of results) {
+        if (res.status === "fulfilled" && !res.value.error) {
+          updatedCount++;
+        }
       }
     }
 

@@ -16,23 +16,48 @@ import type {
   TaskType,
   CollaboratorRole,
   TaskChecklistItem,
-  TaskAttachment
+  TaskAttachment,
+  TaskMeetingAttendee,
+  TaskMeetingAttendanceStatus,
+  TaskMeetingCheckinMethod
 } from "../types";
 import {
   normalizeTask,
   parseTaskChecklist,
   inferTaskRole,
+  isStaffLeadOrPmRole,
   TASK_STATUS_LABELS,
-  TASK_PRIORITY_LABELS
+  TASK_PRIORITY_LABELS,
+  getMeetingAttendanceWindowStatus
 } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 
 /**
- * Helper to get current organization ID safely
+ * Helper to get current organization ID safely with authenticated session validation
  */
 async function resolveOrgId(providedOrgId?: string): Promise<string> {
-  if (providedOrgId) return providedOrgId;
-  const orgId = await getCurrentOrganizationId();
+  const currentOrgId = await getCurrentOrganizationId();
+  let orgId = currentOrgId;
+
+  if (providedOrgId && providedOrgId !== currentOrgId) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autorizado");
+
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("organization_id", providedOrgId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles");
+    if (!membership && !(await isSuperAdmin(user.id))) {
+      throw new Error("No tienes acceso a la organización especificada");
+    }
+    orgId = providedOrgId;
+  }
+
   if (!orgId) throw new Error("No se pudo resolver la organización activa");
   return orgId;
 }
@@ -85,7 +110,7 @@ async function handleTaskUnblocking(completedTaskId: string, ticketCode: string,
       await logTaskAuditComment(
         bt.organization_id,
         bt.id,
-        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
+        `Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
       );
 
       if (bt.status === "blocked") {
@@ -194,25 +219,20 @@ async function notifyStakeholdersOnStatusChange(
     const newLabel = TASK_STATUS_LABELS[newStatus] || newStatus;
     const oldLabel = TASK_STATUS_LABELS[prevStatus] || prevStatus;
 
-    let icon = "🔄";
     let actionDesc = `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
 
     if (newStatus === "in_review") {
-      icon = "🔍";
       actionDesc = `Requerimiento enviado a Revisión / QA por ${authorName}`;
     } else if (newStatus === "done") {
-      icon = "✅";
       actionDesc = `Tarea completada exitosamente por ${authorName}`;
     } else if (newStatus === "blocked") {
-      icon = "🚫";
       const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
       actionDesc = `Tarea bloqueada${reasonText}`;
     } else if (newStatus === "in_progress" && prevStatus === "blocked") {
-      icon = "🔓";
       actionDesc = `Tarea desbloqueada y en progreso`;
     }
 
-    const auditContent = `${icon} ${actionDesc}`;
+    const auditContent = actionDesc;
     const explicitNames = targetStaff.map((s) => s.first_name);
 
     await logTaskAuditComment(
@@ -230,7 +250,10 @@ async function notifyStakeholdersOnStatusChange(
 /**
  * Fetch all workspaces for an organization
  */
-export async function getWorkspaces(orgId?: string): Promise<TaskWorkspace[]> {
+export async function getWorkspaces(
+  orgId?: string,
+  preloadedTasks?: { project_id: string }[]
+): Promise<TaskWorkspace[]> {
   const activeOrgId = await resolveOrgId(orgId);
 
   const { data: workspaces, error } = await supabaseAdmin
@@ -255,10 +278,14 @@ export async function getWorkspaces(orgId?: string): Promise<TaskWorkspace[]> {
     .select("id, workspace_id")
     .eq("organization_id", activeOrgId);
 
-  const { data: tasks } = await supabaseAdmin
-    .from("task_items")
-    .select("project_id")
-    .eq("organization_id", activeOrgId);
+  let taskList = preloadedTasks;
+  if (!taskList) {
+    const { data: tasks } = await supabaseAdmin
+      .from("task_items")
+      .select("project_id")
+      .eq("organization_id", activeOrgId);
+    taskList = tasks || [];
+  }
 
   const projectWorkspaceMap = new Map<string, string>();
   const workspaceProjectCount = new Map<string, number>();
@@ -270,7 +297,7 @@ export async function getWorkspaces(orgId?: string): Promise<TaskWorkspace[]> {
   });
 
   const workspaceTaskCount = new Map<string, number>();
-  (tasks || []).forEach((t) => {
+  (taskList || []).forEach((t) => {
     const wsId = projectWorkspaceMap.get(t.project_id);
     if (wsId) {
       workspaceTaskCount.set(wsId, (workspaceTaskCount.get(wsId) || 0) + 1);
@@ -345,9 +372,11 @@ export async function createWorkspace(data: {
  */
 export async function updateWorkspace(
   workspaceId: string,
-  data: Partial<TaskWorkspace>
+  data: Partial<TaskWorkspace>,
+  orgId?: string
 ): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
   try {
+    const activeOrgId = await resolveOrgId(orgId);
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
     delete updateData.lead_staff;
     delete updateData.project_count;
@@ -357,6 +386,7 @@ export async function updateWorkspace(
       .from("task_workspaces")
       .update(updateData)
       .eq("id", workspaceId)
+      .eq("organization_id", activeOrgId)
       .select(`
         *,
         lead_staff:organization_staff!task_workspaces_lead_staff_id_fkey(
@@ -377,12 +407,14 @@ export async function updateWorkspace(
 /**
  * Delete a workspace
  */
-export async function deleteWorkspace(workspaceId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteWorkspace(workspaceId: string, orgId?: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const activeOrgId = await resolveOrgId(orgId);
     const { error } = await supabaseAdmin
       .from("task_workspaces")
       .delete()
-      .eq("id", workspaceId);
+      .eq("id", workspaceId)
+      .eq("organization_id", activeOrgId);
 
     if (error) throw error;
     revalidatePath("/operations/tasks");
@@ -396,7 +428,11 @@ export async function deleteWorkspace(workspaceId: string): Promise<{ success: b
 /**
  * Fetch all projects for an organization
  */
-export async function getProjects(orgId?: string, workspaceId?: string): Promise<TaskProject[]> {
+export async function getProjects(
+  orgId?: string,
+  workspaceId?: string,
+  preloadedTasks?: { project_id: string; status: string }[]
+): Promise<TaskProject[]> {
   const activeOrgId = await resolveOrgId(orgId);
 
   let query = supabaseAdmin
@@ -425,10 +461,14 @@ export async function getProjects(orgId?: string, workspaceId?: string): Promise
   }
 
   // Fetch task counts per project
-  const { data: taskCounts } = await supabaseAdmin
-    .from("task_items")
-    .select("project_id, status")
-    .eq("organization_id", activeOrgId);
+  let taskCounts = preloadedTasks;
+  if (!taskCounts) {
+    const { data } = await supabaseAdmin
+      .from("task_items")
+      .select("project_id, status")
+      .eq("organization_id", activeOrgId);
+    taskCounts = data || [];
+  }
 
   const countsMap = new Map<string, { total: number; done: number }>();
   (taskCounts || []).forEach((t) => {
@@ -517,9 +557,11 @@ export async function createProject(data: {
  */
 export async function updateProject(
   projectId: string,
-  data: Partial<TaskProject>
+  data: Partial<TaskProject>,
+  orgId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const activeOrgId = await resolveOrgId(orgId);
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
     delete updateData.lead_staff;
     delete updateData.task_count;
@@ -529,7 +571,8 @@ export async function updateProject(
     const { error } = await supabaseAdmin
       .from("task_projects")
       .update(updateData)
-      .eq("id", projectId);
+      .eq("id", projectId)
+      .eq("organization_id", activeOrgId);
 
     if (error) throw error;
     revalidatePath("/operations/tasks");
@@ -543,12 +586,14 @@ export async function updateProject(
 /**
  * Delete a project
  */
-export async function deleteProject(projectId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteProject(projectId: string, orgId?: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const activeOrgId = await resolveOrgId(orgId);
     const { error } = await supabaseAdmin
       .from("task_projects")
       .delete()
-      .eq("id", projectId);
+      .eq("id", projectId)
+      .eq("organization_id", activeOrgId);
 
     if (error) throw error;
     revalidatePath("/operations/tasks");
@@ -626,12 +671,87 @@ export async function getTasks(params?: {
   }
 
   const { data, error } = await query;
-  if (error) {
-    console.error("Error fetching tasks:", error);
-    return [];
+  const rawTasks = data || [];
+
+  // Auto-cierre no bloqueante en base de datos para reuniones cuyo tiempo programado ya transcurrió
+  const expiredMeetingIds = rawTasks
+    .filter((t: any) => {
+      if (t.type !== "meeting" || t.status === "done" || !t.meeting_start_at) return false;
+      const startMs = new Date(t.meeting_start_at).getTime();
+      if (isNaN(startMs)) return false;
+      const durationMinutes = t.meeting_duration_minutes != null ? Number(t.meeting_duration_minutes) : 30;
+      return Date.now() > (startMs + durationMinutes * 60 * 1000);
+    })
+    .map((t: any) => t.id);
+
+  if (expiredMeetingIds.length > 0) {
+    Promise.resolve(
+      supabaseAdmin
+        .from("task_items")
+        .update({ status: "done", progress_percentage: 100, updated_at: new Date().toISOString() })
+        .in("id", expiredMeetingIds)
+    )
+      .then(({ error }: any) => {
+        if (error) console.error("Error al auto-cerrar reuniones expiradas en BD:", error);
+      })
+      .catch((err: any) => {
+        console.error("Error en auto-cierre en segundo plano de reuniones:", err);
+      });
   }
 
-  return (data || []).map(normalizeTask);
+  return rawTasks.map(normalizeTask);
+}
+
+/**
+ * Calculate the next sequential ticket code for an organization and project
+ * Reads the latest ticket codes matching the workspace key prefix to ensure correct integer sequence
+ */
+export async function generateNextTicketCode(
+  orgId: string,
+  projectId?: string | null,
+  customPrefix?: string
+): Promise<string> {
+  let prefix = (customPrefix || "").toUpperCase().trim().replace(/[^A-Z0-9]/g, "");
+
+  if (!prefix && projectId) {
+    const { data: projectData } = await supabaseAdmin
+      .from("task_projects")
+      .select("workspace:task_workspaces!task_projects_workspace_id_fkey(key_prefix)")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if ((projectData as any)?.workspace?.key_prefix) {
+      prefix = (projectData as any).workspace.key_prefix;
+    }
+  }
+
+  if (!prefix) {
+    prefix = "TK";
+  }
+
+  const { data: latestItems } = await supabaseAdmin
+    .from("task_items")
+    .select("ticket_code")
+    .eq("organization_id", orgId)
+    .ilike("ticket_code", `${prefix}-%`)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  let maxNum = 100;
+  if (latestItems && latestItems.length > 0) {
+    for (const item of latestItems) {
+      if (!item.ticket_code) continue;
+      const match = item.ticket_code.match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
+  return `${prefix}-${maxNum + 1}`;
 }
 
 /**
@@ -646,36 +766,8 @@ export async function createTask(
     let ticketCode = data.ticket_code;
 
     if (!ticketCode) {
-      // Determine prefix based on project's workspace if available
-      let prefix = "TK";
-      const { data: projectData } = await supabaseAdmin
-        .from("task_projects")
-        .select("workspace:task_workspaces!task_projects_workspace_id_fkey(key_prefix)")
-        .eq("id", data.project_id)
-        .single();
-
-      if ((projectData as any)?.workspace?.key_prefix) {
-        prefix = (projectData as any).workspace.key_prefix;
-      }
-
-      // Calculate sequential ticket code based on existing items with this prefix
-      const { data: latest } = await supabaseAdmin
-        .from("task_items")
-        .select("ticket_code")
-        .eq("organization_id", orgId)
-        .ilike("ticket_code", `${prefix}-%`)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let nextNum = 101;
-      if (latest && latest.length > 0 && latest[0].ticket_code) {
-        const match = latest[0].ticket_code.match(/(\d+)$/);
-        if (match) {
-          nextNum = parseInt(match[1], 10) + 1;
-        }
-      }
-
-      ticketCode = `${prefix}-${nextNum}`;
+      const customPrefix = data.type === "meeting" ? "MTG" : undefined;
+      ticketCode = await generateNextTicketCode(orgId, data.project_id, customPrefix);
     }
 
     const { data: newTask, error } = await supabaseAdmin
@@ -700,14 +792,23 @@ export async function createTask(
         tags: data.tags || [],
         attachments: data.attachments || [],
         order_index: data.order_index ?? 0,
+        sprint_id: data.sprint_id || null,
         blocked_by_task_id: data.blocked_by_task_id || null,
+        blocked_reason: data.status === "blocked" ? (data.blocked_reason || null) : null,
         is_recurring: data.is_recurring ?? false,
         recurrence_interval: data.recurrence_interval || null,
         recurrence_day: data.recurrence_day || 1,
+        recurrence_days: data.recurrence_days || null,
         parent_recurring_id: data.parent_recurring_id || null,
-        next_recurrence_at: data.next_recurrence_at || (data.is_recurring && data.recurrence_interval ? calculateNextRecurrence(data.recurrence_interval, new Date(), data.recurrence_day || 1).toISOString() : null),
+        next_recurrence_at: data.next_recurrence_at || (data.is_recurring && data.recurrence_interval ? calculateNextRecurrence(data.recurrence_interval, new Date(), data.recurrence_day || 1, data.recurrence_days).toISOString() : null),
         origin_type: data.origin_type || "internal",
         promoted_from_id: data.promoted_from_id || null,
+        meeting_modality: data.meeting_modality || (data.type === "meeting" ? "virtual" : null),
+        meeting_url: data.meeting_url || null,
+        meeting_location: data.meeting_location || null,
+        meeting_start_at: data.meeting_start_at || null,
+        meeting_duration_minutes: data.meeting_duration_minutes !== undefined && data.meeting_duration_minutes !== null ? Number(data.meeting_duration_minutes) : (data.type === "meeting" ? 30 : null),
+        meeting_attendees: Array.isArray(data.meeting_attendees) ? data.meeting_attendees : [],
       })
       .select(`
         *,
@@ -943,23 +1044,25 @@ export async function updateTask(
       if (updateData.is_recurring) {
         const interval = updateData.recurrence_interval;
         const day = updateData.recurrence_day || 1;
+        const days = updateData.recurrence_days;
         if (interval && !updateData.next_recurrence_at) {
-          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day).toISOString();
+          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day, days).toISOString();
         }
       } else {
         updateData.next_recurrence_at = null;
       }
-    } else if (updateData.recurrence_interval || updateData.recurrence_day) {
+    } else if (updateData.recurrence_interval || updateData.recurrence_day || updateData.recurrence_days) {
       const { data: currRTask } = await supabaseAdmin
         .from("task_items")
-        .select("is_recurring, recurrence_interval, recurrence_day")
+        .select("is_recurring, recurrence_interval, recurrence_day, recurrence_days")
         .eq("id", taskId)
         .single();
       if (currRTask?.is_recurring) {
         const interval = updateData.recurrence_interval || currRTask.recurrence_interval;
         const day = updateData.recurrence_day || currRTask.recurrence_day || 1;
+        const days = updateData.recurrence_days !== undefined ? updateData.recurrence_days : currRTask.recurrence_days;
         if (interval) {
-          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day).toISOString();
+          updateData.next_recurrence_at = calculateNextRecurrence(interval, new Date(), day, days).toISOString();
         }
       }
     }
@@ -1020,7 +1123,7 @@ export async function updateTask(
       if (updateData.priority && updateData.priority !== prevTask.priority) {
         const oldP = TASK_PRIORITY_LABELS[prevTask.priority as TaskPriority] || prevTask.priority;
         const newP = TASK_PRIORITY_LABELS[updateData.priority as TaskPriority] || updateData.priority;
-        await logTaskAuditComment(orgId, taskId, `⚡ Prioridad cambiada a ${newP} (anterior: ${oldP})`);
+        await logTaskAuditComment(orgId, taskId, `Prioridad cambiada a ${newP} (anterior: ${oldP})`);
       }
 
       // Work hours logged audit
@@ -1029,7 +1132,7 @@ export async function updateTask(
         await logTaskAuditComment(
           orgId,
           taskId,
-          `⏱️ Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`
+          `Registro de trabajo: +${loggedHours}h (Total: ${updateData.actual_hours ?? prevTask.actual_hours ?? 0}h)${noteStr}`
         );
       }
 
@@ -1037,9 +1140,9 @@ export async function updateTask(
       if (updateData.due_date !== undefined && updateData.due_date !== prevTask.due_date) {
         if (updateData.due_date) {
           const dateFormatted = new Date(updateData.due_date + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
-          await logTaskAuditComment(orgId, taskId, `📅 Fecha límite establecida para el ${dateFormatted}`);
+          await logTaskAuditComment(orgId, taskId, `Fecha límite establecida para el ${dateFormatted}`);
         } else {
-          await logTaskAuditComment(orgId, taskId, `📅 Fecha límite eliminada`);
+          await logTaskAuditComment(orgId, taskId, `Fecha límite eliminada`);
         }
       }
 
@@ -1053,9 +1156,9 @@ export async function updateTask(
             .single();
           const staffTag = staffMember ? `@${staffMember.first_name}` : "colaborador";
           const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : "colaborador";
-          await logTaskAuditComment(orgId, taskId, `👤 Asignado a ${staffTag} (${staffName})`);
+          await logTaskAuditComment(orgId, taskId, `Asignado a ${staffTag} (${staffName})`);
         } else {
-          await logTaskAuditComment(orgId, taskId, `👤 Asignación de tarea removida`);
+          await logTaskAuditComment(orgId, taskId, `Asignación de tarea removida`);
         }
       }
 
@@ -1069,18 +1172,18 @@ export async function updateTask(
             .single();
           const blkCode = blockerTask ? `#${blockerTask.ticket_code}` : "ticket predecesor";
           const blkTitle = blockerTask?.title ? ` (${blockerTask.title})` : "";
-          await logTaskAuditComment(orgId, taskId, `🚫 Bloqueado por ${blkCode}${blkTitle}`);
+          await logTaskAuditComment(orgId, taskId, `Bloqueado por ${blkCode}${blkTitle}`);
         } else {
-          await logTaskAuditComment(orgId, taskId, `🔓 Bloqueo removido manualmente`);
+          await logTaskAuditComment(orgId, taskId, `Bloqueo removido manualmente`);
         }
       }
 
       // Blocker reason audit
       if (updateData.blocked_reason !== undefined && updateData.blocked_reason !== prevTask.blocked_reason) {
         if (updateData.blocked_reason && updateData.blocked_reason.trim()) {
-          await logTaskAuditComment(orgId, taskId, `🚫 Motivo del bloqueo: ${updateData.blocked_reason.trim()}`);
+          await logTaskAuditComment(orgId, taskId, `Motivo del bloqueo: ${updateData.blocked_reason.trim()}`);
         } else if (prevTask.blocked_reason) {
-          await logTaskAuditComment(orgId, taskId, `🔓 Motivo del bloqueo removido`);
+          await logTaskAuditComment(orgId, taskId, `Motivo del bloqueo removido`);
         }
       }
 
@@ -1109,7 +1212,7 @@ export async function updateTask(
             await logTaskAuditComment(
               orgId,
               taskId,
-              `☑️ Subtarea completada: ${itemTitle}`,
+              `Subtarea completada: ${itemTitle}`,
               "Sistema",
               notifyStaffNames
             );
@@ -1117,7 +1220,7 @@ export async function updateTask(
             await logTaskAuditComment(
               orgId,
               taskId,
-              `⬜ Subtarea reactivada: ${itemTitle}`
+              `Subtarea reactivada: ${itemTitle}`
             );
           }
 
@@ -1135,7 +1238,7 @@ export async function updateTask(
                 await logTaskAuditComment(
                   orgId,
                   taskId,
-                  `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
+                  `Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`
                 );
               }
             }
@@ -1162,13 +1265,28 @@ export async function updateTaskStatus(
   blockedReason?: string | null,
   loggedHours?: number,
   note?: string
-): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
+): Promise<{
+  success: boolean;
+  unblockedTasks?: TaskItem[];
+  effectiveStatus?: TaskStatus;
+  effectiveProgress?: number;
+  downgraded?: boolean;
+  downgradeReason?: string;
+  error?: string;
+}> {
   try {
     const { data: currentTask } = await supabaseAdmin
       .from("task_items")
-      .select("progress_percentage, status, checklist, ticket_code, title, organization_id, blocked_by_task_id, blocked_reason, actual_hours")
+      .select("progress_percentage, status, checklist, ticket_code, title, organization_id, blocked_by_task_id, blocked_reason, actual_hours, type")
       .eq("id", taskId)
       .single();
+
+    if (currentTask?.type === "meeting") {
+      return {
+        success: false,
+        error: "Las reuniones sincronizadas no forman parte del flujo de etapas técnicas de desarrollo."
+      };
+    }
 
     if ((status === "done" || status === "in_review" || progress === 100) && currentTask?.blocked_by_task_id) {
       const { data: blocker } = await supabaseAdmin
@@ -1260,8 +1378,20 @@ export async function updateTaskStatus(
       }
     }
 
+    const downgraded = effectiveStatus !== status;
+    const downgradeReason = downgraded
+      ? "La tarea tiene entregables pendientes en el checklist y fue movida a revisión (95%)."
+      : undefined;
+
     revalidatePath("/operations/tasks");
-    return { success: true, unblockedTasks };
+    return {
+      success: true,
+      unblockedTasks,
+      effectiveStatus,
+      effectiveProgress: updateData.progress_percentage ?? currentTask?.progress_percentage,
+      downgraded,
+      downgradeReason
+    };
   } catch (err: any) {
     console.error("Error updating task status:", err);
     return { success: false, error: err.message };
@@ -1274,7 +1404,15 @@ export async function updateTaskStatus(
 export async function updateTaskProgress(
   taskId: string,
   progress: number
-): Promise<{ success: boolean; unblockedTasks?: TaskItem[]; error?: string }> {
+): Promise<{
+  success: boolean;
+  unblockedTasks?: TaskItem[];
+  effectiveProgress?: number;
+  effectiveStatus?: TaskStatus;
+  capped?: boolean;
+  capReason?: string;
+  error?: string;
+}> {
   try {
     const { data: current } = await supabaseAdmin
       .from("task_items")
@@ -1342,8 +1480,20 @@ export async function updateTaskProgress(
       unblockedTasks = await handleTaskUnblocking(taskId, current.ticket_code, current.title);
     }
 
+    const capped = hasUnfinishedDeliverables && clampedProgress === 95 && progress > 95;
+    const capReason = capped
+      ? "El progreso fue limitado a 95% porque existen entregables pendientes en el checklist."
+      : undefined;
+
     revalidatePath("/operations/tasks");
-    return { success: true, unblockedTasks };
+    return {
+      success: true,
+      unblockedTasks,
+      effectiveProgress: clampedProgress,
+      effectiveStatus: updateData.status || current?.status,
+      capped,
+      capReason
+    };
   } catch (err: any) {
     console.error("Error updating task progress:", err);
     return { success: false, error: err.message };
@@ -1419,8 +1569,8 @@ export async function toggleChecklistItem(
     if (toggledItem && task.organization_id) {
       const itemTitle = toggledItem.title ? `"${toggledItem.title}"` : "subtarea";
       const auditMsg = completed
-        ? `☑️ Subtarea completada: ${itemTitle}`
-        : `⬜ Subtarea reactivada: ${itemTitle}`;
+        ? `Subtarea completada: ${itemTitle}`
+        : `Subtarea reactivada: ${itemTitle}`;
       await logTaskAuditComment(task.organization_id, taskId, auditMsg);
     }
 
@@ -1482,7 +1632,7 @@ export async function updateChecklistItemAssignee(
         await logTaskAuditComment(
           task.organization_id,
           taskId,
-          `👤 Subtarea ${itemTitle} asignada a @${staffMember.first_name} (${staffMember.first_name} ${staffMember.last_name})`
+          `Subtarea ${itemTitle} asignada a @${staffMember.first_name} (${staffMember.first_name} ${staffMember.last_name})`
         );
       }
     }
@@ -2158,6 +2308,61 @@ export async function deleteCollaborator(params: {
       .eq("organization_id", activeOrgId)
       .eq("lead_staff_id", collaboratorId);
 
+    // 5.b Handle JSONB references in checklist and meeting_attendees (B3)
+    const { data: tasksWithJsonb } = await supabaseAdmin
+      .from("task_items")
+      .select("id, checklist, meeting_attendees")
+      .eq("organization_id", activeOrgId);
+
+    if (tasksWithJsonb && tasksWithJsonb.length > 0) {
+      for (const t of tasksWithJsonb) {
+        let changed = false;
+        let newChecklist = t.checklist;
+        let newAttendees = t.meeting_attendees;
+
+        if (Array.isArray(newChecklist) && newChecklist.length > 0) {
+          const updatedChecklist = newChecklist.map((item: any) => {
+            if (item && item.assigned_staff_id === collaboratorId) {
+              changed = true;
+              return {
+                ...item,
+                assigned_staff_id: reassignToStaffId || null,
+                assigned_staff: null,
+              };
+            }
+            return item;
+          });
+          if (changed) newChecklist = updatedChecklist;
+        }
+
+        if (Array.isArray(newAttendees) && newAttendees.length > 0) {
+          const updatedAttendees = newAttendees.map((att: any) => {
+            if (att && att.staff_id === collaboratorId) {
+              changed = true;
+              return {
+                ...att,
+                staff_id: reassignToStaffId || null,
+              };
+            }
+            return att;
+          });
+          if (changed) newAttendees = updatedAttendees;
+        }
+
+        if (changed) {
+          await supabaseAdmin
+            .from("task_items")
+            .update({
+              checklist: newChecklist,
+              meeting_attendees: newAttendees,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", t.id)
+            .eq("organization_id", activeOrgId);
+        }
+      }
+    }
+
     // 6. Delete the collaborator from organization_staff
     const { error: deleteErr } = await supabaseAdmin
       .from("organization_staff")
@@ -2343,3 +2548,444 @@ export async function saveTaskWeeklySnapshot(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Register meeting attendance for a collaborator with automated time release.
+ * Validates check-in window (opens 15m before start, closes 15m after duration).
+ * PM / Admin can override window restrictions.
+ */
+export async function registerMeetingAttendance(params: {
+  taskId: string;
+  staffId: string;
+  method?: TaskMeetingCheckinMethod;
+  isPmOverride?: boolean;
+  token?: string;
+}): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+  try {
+    const { taskId, staffId, method = "manual_checkin", isPmOverride = false, token } = params;
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("*, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name, last_name)")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) {
+      return { success: false, error: "Actividad o reunión no encontrada" };
+    }
+
+    if (task.type !== "meeting") {
+      return { success: false, error: "Esta acción solo es aplicable a tareas de tipo reunión" };
+    }
+
+    // Authenticate caller (Portal token or Platform session)
+    if (token) {
+      const { data: callerStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, role, task_role, organization_id")
+        .eq("access_token", token)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!callerStaff || callerStaff.organization_id !== task.organization_id) {
+        return { success: false, error: "Acceso no autorizado o token inválido" };
+      }
+
+      const isCallerPm = isStaffLeadOrPmRole(callerStaff.role, callerStaff.task_role);
+      if (isPmOverride && !isCallerPm) {
+        return { success: false, error: "Solo un Gestor de Proyecto puede certificar asistencia fuera de ventana" };
+      }
+      if (!isCallerPm && callerStaff.id !== staffId) {
+        return { success: false, error: "Solo puedes registrar tu propia asistencia" };
+      }
+    } else {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: "No autorizado. Inicie sesión en la plataforma" };
+      }
+
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("role, organization_id")
+        .eq("organization_id", task.organization_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles");
+      if (!member && !(await isSuperAdmin(user.id))) {
+        return { success: false, error: "No tienes acceso a esta organización" };
+      }
+    }
+
+    // Validate attendance window:
+    // Self-checkin before the window opens (-5m) is strictly blocked for everyone
+    // to prevent premature crediting of hours before the meeting actually begins.
+    const windowCheck = getMeetingAttendanceWindowStatus(
+      task.meeting_start_at,
+      task.meeting_duration_minutes || 30
+    );
+
+    if (windowCheck.isBefore) {
+      return { success: false, error: windowCheck.message };
+    }
+
+    // If window is closed (after meeting end + 15m grace), only PM override can certify presence
+    if (windowCheck.isAfter && !isPmOverride) {
+      return { success: false, error: windowCheck.message };
+    }
+
+    // Retrieve staff info for audit comment
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, first_name, last_name, role")
+      .eq("id", staffId)
+      .maybeSingle();
+
+    const staffName = staff ? `${staff.first_name} ${staff.last_name}` : "Colaborador";
+    const durationHours = task.meeting_duration_minutes ? Number(task.meeting_duration_minutes) / 60 : 0.5;
+
+    // Clone or initialize attendees list
+    const currentAttendees: TaskMeetingAttendee[] = Array.isArray(task.meeting_attendees)
+      ? [...task.meeting_attendees]
+      : [];
+
+    const existingIndex = currentAttendees.findIndex((a) => a.staff_id === staffId);
+    const nowIso = new Date().toISOString();
+
+    if (existingIndex >= 0) {
+      // If already attended, do not duplicate
+      if (currentAttendees[existingIndex].status === "attended") {
+        return {
+          success: true,
+          task: normalizeTask(task),
+        };
+      }
+      currentAttendees[existingIndex] = {
+        ...currentAttendees[existingIndex],
+        status: "attended",
+        attended_at: nowIso,
+        check_in_method: method,
+        hours_allocated: durationHours,
+      };
+    } else {
+      currentAttendees.push({
+        staff_id: staffId,
+        status: "attended",
+        attended_at: nowIso,
+        check_in_method: method,
+        hours_allocated: durationHours,
+        notes: null,
+      });
+    }
+
+    // Recalculate total meeting actual_hours (sum of attended participants)
+    const totalActualHours = currentAttendees
+      .filter((a) => a.status === "attended")
+      .reduce((sum, a) => sum + (Number(a.hours_allocated) || durationHours), 0);
+
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        meeting_attendees: currentAttendees,
+        actual_hours: totalActualHours,
+        updated_at: nowIso,
+      })
+      .eq("id", taskId)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role, email
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    const methodLabel = method === "link_click" ? "enlace virtual" : isPmOverride ? "verificación PM" : "check-in directo";
+    await logTaskAuditComment(
+      task.organization_id,
+      taskId,
+      `Asistencia confirmada para @${staff?.first_name || staffName} (${durationHours}h acreditadas vía ${methodLabel})`
+    );
+
+    revalidatePath("/operations/tasks");
+    return { success: true, task: normalizeTask(updatedTask) };
+  } catch (err: any) {
+    console.error("Error registering meeting attendance:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Roll-call update for PMs to modify any attendee status ('attended', 'excused', 'absent', 'pending')
+ */
+export async function updateMeetingAttendeeStatus(params: {
+  taskId: string;
+  staffId: string;
+  status: TaskMeetingAttendanceStatus;
+  notes?: string;
+  token?: string;
+}): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+  try {
+    const { taskId, staffId, status, notes, token } = params;
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("*, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name, last_name)")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) {
+      return { success: false, error: "Actividad o reunión no encontrada" };
+    }
+
+    if (task.type !== "meeting") {
+      return { success: false, error: "Esta acción solo es aplicable a tareas de tipo reunión" };
+    }
+
+    // Authenticate caller: PM/Lead role required to alter roll-call
+    if (token) {
+      const { data: callerStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, role, task_role, organization_id")
+        .eq("access_token", token)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!callerStaff || callerStaff.organization_id !== task.organization_id) {
+        return { success: false, error: "Acceso no autorizado o token inválido" };
+      }
+
+      const isCallerPm = isStaffLeadOrPmRole(callerStaff.role, callerStaff.task_role);
+      if (!isCallerPm) {
+        return { success: false, error: "Solo un Gestor de Proyecto puede modificar el pase de lista" };
+      }
+    } else {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: "No autorizado. Inicie sesión en la plataforma" };
+      }
+
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("role, organization_id")
+        .eq("organization_id", task.organization_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles");
+      if (!member && !(await isSuperAdmin(user.id))) {
+        return { success: false, error: "No tienes acceso a esta organización" };
+      }
+    }
+
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, first_name, last_name")
+      .eq("id", staffId)
+      .maybeSingle();
+
+    const durationHours = task.meeting_duration_minutes ? Number(task.meeting_duration_minutes) / 60 : 0.5;
+    const currentAttendees: TaskMeetingAttendee[] = Array.isArray(task.meeting_attendees)
+      ? [...task.meeting_attendees]
+      : [];
+
+    const existingIndex = currentAttendees.findIndex((a) => a.staff_id === staffId);
+    const nowIso = new Date().toISOString();
+
+    if (existingIndex >= 0) {
+      currentAttendees[existingIndex] = {
+        ...currentAttendees[existingIndex],
+        status,
+        attended_at: status === "attended" ? (currentAttendees[existingIndex].attended_at || nowIso) : null,
+        check_in_method: status === "attended" ? "pm_verified" : currentAttendees[existingIndex].check_in_method,
+        hours_allocated: status === "attended" ? durationHours : 0,
+        notes: notes !== undefined ? notes : currentAttendees[existingIndex].notes,
+      };
+    } else {
+      currentAttendees.push({
+        staff_id: staffId,
+        status,
+        attended_at: status === "attended" ? nowIso : null,
+        check_in_method: status === "attended" ? "pm_verified" : null,
+        hours_allocated: status === "attended" ? durationHours : 0,
+        notes: notes || null,
+      });
+    }
+
+    const totalActualHours = currentAttendees
+      .filter((a) => a.status === "attended")
+      .reduce((sum, a) => sum + (Number(a.hours_allocated) || durationHours), 0);
+
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        meeting_attendees: currentAttendees,
+        actual_hours: totalActualHours,
+        updated_at: nowIso,
+      })
+      .eq("id", taskId)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role, email
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    const statusLabels: Record<TaskMeetingAttendanceStatus, string> = {
+      attended: `Presente (${durationHours}h acreditadas)`,
+      excused: "Justificado (ausencia justificada)",
+      absent: "Ausente",
+      pending: "Pendiente",
+    };
+
+    await logTaskAuditComment(
+      task.organization_id,
+      taskId,
+      `Pase de lista: @${staff?.first_name || "Colaborador"} marcado como ${statusLabels[status]}`
+    );
+
+    revalidatePath("/operations/tasks");
+    return { success: true, task: normalizeTask(updatedTask) };
+  } catch (err: any) {
+    console.error("Error updating meeting attendee status:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Conclude / finalize a meeting session.
+ * Marks task status as 'done', sets progress to 100%, consolidates attendance, and logs audit comment.
+ */
+export async function completeMeetingSession(params: {
+  taskId: string;
+  concludedByStaffId?: string;
+  token?: string;
+}): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+  try {
+    const { taskId, concludedByStaffId, token } = params;
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("*, assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name, last_name)")
+      .eq("id", taskId)
+      .single();
+
+    if (fetchErr || !task) {
+      return { success: false, error: "Actividad o reunión no encontrada" };
+    }
+
+    if (token) {
+      const { data: callerStaff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id, role, task_role, organization_id")
+        .eq("access_token", token)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!callerStaff || callerStaff.organization_id !== task.organization_id) {
+        return { success: false, error: "Acceso no autorizado o token inválido" };
+      }
+
+      const isCallerPm = isStaffLeadOrPmRole(callerStaff.role, callerStaff.task_role);
+      if (!isCallerPm) {
+        return { success: false, error: "Solo un Gestor de Proyecto puede concluir formalmente la sesión" };
+      }
+    } else {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: "No autorizado. Inicie sesión en la plataforma" };
+      }
+
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("role, organization_id")
+        .eq("organization_id", task.organization_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles");
+      if (!member && !(await isSuperAdmin(user.id))) {
+        return { success: false, error: "No tienes acceso a esta organización" };
+      }
+    }
+
+    let authorName = "Gestor de Proyecto";
+    if (concludedByStaffId) {
+      const { data: staff } = await supabaseAdmin
+        .from("organization_staff")
+        .select("first_name, last_name")
+        .eq("id", concludedByStaffId)
+        .maybeSingle();
+      if (staff) {
+        authorName = `${staff.first_name} ${staff.last_name}`;
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        status: "done",
+        progress_percentage: 100,
+        updated_at: nowIso,
+      })
+      .eq("id", taskId)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role, email
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    await logTaskAuditComment(
+      task.organization_id,
+      taskId,
+      `Sesión concluida por @${authorName}. Ticket marcado como completado.`
+    );
+
+    revalidatePath("/operations/tasks");
+    return { success: true, task: normalizeTask(updatedTask) };
+  } catch (err: any) {
+    console.error("Error completing meeting session:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+

@@ -2,7 +2,7 @@
 
 import { Search, ListFilter, X, Check, ChevronDown } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -55,27 +55,55 @@ export function SearchFilterBar({
     className
 }: SearchFilterBarProps) {
     const [showFilters, setShowFilters] = useState(defaultShowFilters)
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    // Detección de clic fuera para colapsar automáticamente el componente retráctil
+    useEffect(() => {
+        if (!showFilters) return
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setShowFilters(false)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [showFilters])
+
+    // Sincronizar estado inicial si cambia defaultShowFilters
+    useEffect(() => {
+        setShowFilters(defaultShowFilters)
+    }, [defaultShowFilters])
 
     // Current single active filter resolution
     const currentActiveId = activeFilter || (filters.some(f => f.id === "active") ? "active" : "all")
 
     const handlePillClick = (filterId: string) => {
         onFilterChange?.(filterId)
+        setShowFilters(false)
     }
 
     const handleSubOptionClick = (subId: string) => {
         onFilterChange?.(subId)
+        setShowFilters(false)
     }
 
     const handleClearSubOption = (parentFilterId: string) => {
         onFilterChange?.(parentFilterId)
+        setShowFilters(false)
     }
 
     return (
-        <div className={cn(
-            "glass-card rounded-2xl p-1.5 flex items-center gap-2 flex-1 min-w-0 max-w-full overflow-hidden transition-all hover:shadow-md",
-            className
-        )}>
+        <div 
+            ref={containerRef}
+            className={cn(
+                "glass-card rounded-2xl p-1.5 flex items-center gap-2 flex-1 min-w-0 max-w-full overflow-hidden transition-all hover:shadow-md",
+                className
+            )}
+        >
             {/* Integrated Search - Takes all available space on the left */}
             <div className="relative flex items-center px-3 gap-2 flex-1 min-w-[120px] sm:min-w-[160px]">
                 <Search className="h-4 w-4 text-zinc-400 shrink-0" />

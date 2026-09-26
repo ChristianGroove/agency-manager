@@ -62,6 +62,7 @@ import {
   Play,
   ChevronDown,
   FolderPlus,
+  Video,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -120,6 +121,7 @@ interface TaskPmOperationsDashboardProps {
   onSwitchToGestion?: () => void
   onSelectTask?: (task: TaskItem) => void
   onCreateTask?: () => void
+  onCreateMeeting?: () => void
   onCreateProject?: () => void
   onCreateSprint?: () => void
 }
@@ -209,6 +211,7 @@ export function TaskPmOperationsDashboard({
   onSwitchToGestion = () => {},
   onSelectTask,
   onCreateTask,
+  onCreateMeeting,
   onCreateProject,
   onCreateSprint,
 }: TaskPmOperationsDashboardProps) {
@@ -239,6 +242,9 @@ export function TaskPmOperationsDashboard({
 
   // Selected Sprint: Always default to "all" (Todos los tickets) upon load/reload
   const [selectedSprintId, setSelectedSprintId] = useState<string>("all")
+
+  // Include meetings toggle state (default: false, isolating meetings from deliverable metrics by default)
+  const [includeMeetings, setIncludeMeetings] = useState<boolean>(false)
 
   // Keep selectedSprintId resilient when sprints list changes
   useEffect(() => {
@@ -334,7 +340,8 @@ export function TaskPmOperationsDashboard({
       if (selectedMemberFilter !== "all") {
         const isAssigned =
           t.assigned_staff_id === selectedMemberFilter ||
-          (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter))
+          (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === selectedMemberFilter)) ||
+          (Array.isArray(t.meeting_attendees) && t.meeting_attendees.some((a: any) => a.staff_id === selectedMemberFilter))
         if (!isAssigned) return false
       }
       // Date filter for historical completed tasks (active tasks always remain visible in the sprint)
@@ -352,20 +359,79 @@ export function TaskPmOperationsDashboard({
     })
   }, [tasks, selectedPeriod, selectedProjectFilter, selectedMemberFilter, projects])
 
-  // 2. Sprint Segregation: Sprint Tasks vs Backlog
-  const { sprintTasks, backlogTasks } = useMemo(() => {
+  // Meetings in scope:
+  // - Global Mode (no currentSprint): all meetings matching period / project / member filters
+  // - Sprint Mode (currentSprint): meetings assigned to currentSprint or scheduled within sprint dates
+  const inScopeMeetings = useMemo(() => {
+    return filteredTasks.filter((t) => {
+      if (t.type !== "meeting") return false
+      if (!currentSprint) return true
+      if (t.sprint_id === currentSprint.id) return true
+      if (
+        !t.sprint_id &&
+        t.meeting_start_at &&
+        currentSprint.start_date &&
+        currentSprint.end_date
+      ) {
+        const start = new Date(t.meeting_start_at).getTime()
+        const sStart = new Date(currentSprint.start_date).getTime()
+        const sEnd = new Date(currentSprint.end_date).getTime()
+        return start >= sStart && start <= sEnd
+      }
+      return false
+    })
+  }, [filteredTasks, currentSprint])
+
+  // Total meeting hours in scope
+  const inScopeMeetingHours = useMemo(() => {
+    let est = 0
+    let act = 0
+    for (const m of inScopeMeetings) {
+      est += Number(m.estimated_hours) || (Number(m.meeting_duration_minutes) ? Number(m.meeting_duration_minutes) / 60 : 0.5)
+      act += Number(m.actual_hours) || 0
+    }
+    return {
+      estimated: Math.round(est * 10) / 10,
+      actual: Math.round(act * 10) / 10,
+    }
+  }, [inScopeMeetings])
+
+  // 2. Sprint / Scope Segregation: Sprint Tasks vs Backlog
+  // - When includeMeetings is false: strictly excludes meetings from deliverables
+  // - When includeMeetings is true: incorporates inScopeMeetings for capacity, budget & workload metrics
+  const { sprintTasks, backlogTasks, deliverableTasks } = useMemo(() => {
+    const isMeetingAllowed = (t: TaskItem) => {
+      if (t.type !== "meeting") return true
+      return includeMeetings && inScopeMeetings.some((m) => m.id === t.id)
+    }
+
     if (currentSprint) {
       // Formal Sprint Mode: Tasks assigned to currentSprint belong to the sprint
-      const inSprint = filteredTasks.filter((t) => t.sprint_id === currentSprint.id && t.status !== "backlog")
-      const inBacklog = filteredTasks.filter((t) => !t.sprint_id || t.sprint_id !== currentSprint.id || t.status === "backlog")
-      return { sprintTasks: inSprint, backlogTasks: inBacklog }
+      const inSprint = filteredTasks.filter(
+        (t) =>
+          ((t.sprint_id === currentSprint.id && t.status !== "backlog") ||
+            (includeMeetings && inScopeMeetings.some((m) => m.id === t.id))) &&
+          isMeetingAllowed(t)
+      )
+      const inBacklog = filteredTasks.filter(
+        (t) =>
+          (!t.sprint_id || t.sprint_id !== currentSprint.id || t.status === "backlog") &&
+          t.type !== "meeting"
+      )
+      const deliverables = inSprint.filter((t) => t.type !== "meeting")
+      return { sprintTasks: inSprint, backlogTasks: inBacklog, deliverableTasks: deliverables }
     } else {
       // Global / No sprint filter Mode: All tasks
-      const inSprint = filteredTasks.filter((t) => t.status !== "backlog")
-      const inBacklog = filteredTasks.filter((t) => t.status === "backlog")
-      return { sprintTasks: inSprint, backlogTasks: inBacklog }
+      const inSprint = filteredTasks.filter(
+        (t) => t.status !== "backlog" && isMeetingAllowed(t)
+      )
+      const inBacklog = filteredTasks.filter(
+        (t) => t.status === "backlog" && t.type !== "meeting"
+      )
+      const deliverables = inSprint.filter((t) => t.type !== "meeting")
+      return { sprintTasks: inSprint, backlogTasks: inBacklog, deliverableTasks: deliverables }
     }
-  }, [filteredTasks, currentSprint])
+  }, [filteredTasks, currentSprint, includeMeetings, inScopeMeetings])
 
   // Status breakdown within the Sprint (never counting backlog as todo!)
   const completedTasks = useMemo(() => sprintTasks.filter((t) => t.status === "done"), [sprintTasks])
@@ -379,33 +445,39 @@ export function TaskPmOperationsDashboard({
   )
 
   // Real Sprint Progress (Weighted: done = 100%, in_progress = slider%, todo = 0%)
+  // Always calculated over technical deliverables so meetings never inflate product progress
   const sprintProgress = useMemo(() => {
-    if (sprintTasks.length === 0) return 0
-    const totalPercentage = sprintTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
-    return Math.round(totalPercentage / sprintTasks.length)
-  }, [sprintTasks])
+    const targetTasks = deliverableTasks.length > 0 ? deliverableTasks : sprintTasks
+    if (targetTasks.length === 0) return 0
+    const totalPercentage = targetTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
+    return Math.round(totalPercentage / targetTasks.length)
+  }, [deliverableTasks, sprintTasks])
 
   // Active workload average progress (for tasks currently in flight)
   const activeProgress = useMemo(() => {
-    if (activeTasks.length === 0) return completedTasks.length > 0 ? 100 : 0
-    const totalPercentage = activeTasks.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
-    return Math.round(totalPercentage / activeTasks.length)
-  }, [activeTasks, completedTasks.length])
+    const targetActive = deliverableTasks.filter(
+      (t) => t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+    )
+    const targetDone = deliverableTasks.filter((t) => t.status === "done")
+    if (targetActive.length === 0) return targetDone.length > 0 ? 100 : 0
+    const totalPercentage = targetActive.reduce((acc, t) => acc + (t.progress_percentage || 0), 0)
+    return Math.round(totalPercentage / targetActive.length)
+  }, [deliverableTasks])
 
   // Hours budget metrics
   const totalEstimatedHours = useMemo(
-    () => sprintTasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0),
+    () => Math.round(sprintTasks.reduce((acc, t) => acc + (Number(t.estimated_hours) || 0), 0) * 10) / 10,
     [sprintTasks]
   )
   const totalActualHours = useMemo(
-    () => sprintTasks.reduce((acc, t) => acc + (Number(t.actual_hours) || 0), 0),
+    () => Math.round(sprintTasks.reduce((acc, t) => acc + (Number(t.actual_hours) || 0), 0) * 10) / 10,
     [sprintTasks]
   )
   const hoursBurnRate =
     totalEstimatedHours > 0
       ? Math.round((totalActualHours / totalEstimatedHours) * 100)
-      : 0
-  const hoursEfficiencyDelta = totalEstimatedHours - totalActualHours
+      : (totalActualHours > 0 ? 100 : 0)
+  const hoursEfficiencyDelta = Math.round((totalEstimatedHours - totalActualHours) * 10) / 10
 
   // Overdue / Stalled Risk (strictly within Sprint, never backlog!)
   const now = new Date()
@@ -413,6 +485,7 @@ export function TaskPmOperationsDashboard({
     () =>
       sprintTasks.filter((t) => {
         if (t.status === "done") return false
+        if (t.type === "meeting") return false
         if (!t.due_date) return false
         return new Date(t.due_date) < now
       }),
@@ -422,6 +495,7 @@ export function TaskPmOperationsDashboard({
     () =>
       sprintTasks.filter((t) => {
         if (t.status === "done" || t.status === "todo") return false
+        if (t.type === "meeting") return false
         if (!t.updated_at) return false
         const diffHours = (now.getTime() - new Date(t.updated_at).getTime()) / (1000 * 60 * 60)
         return diffHours > 48 // 48h without movement
@@ -476,7 +550,8 @@ export function TaskPmOperationsDashboard({
         const mTasks = sprintTasks.filter(
           (t) =>
             t.assigned_staff_id === member.id ||
-            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === member.id))
+            (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === member.id)) ||
+            (Array.isArray(t.meeting_attendees) && t.meeting_attendees.some((a: any) => a.staff_id === member.id))
         )
         const mActive = mTasks.filter((t) => t.status !== "done").length
         const mCompleted = mTasks.filter((t) => t.status === "done").length
@@ -838,6 +913,24 @@ export function TaskPmOperationsDashboard({
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Toggle de Inclusión de Reuniones (Modo Global o Sprint) */}
+            {inScopeMeetings.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIncludeMeetings(!includeMeetings)}
+                className={cn(
+                  "h-8 px-3 text-xs font-semibold rounded-xl gap-1.5 cursor-pointer border-zinc-200/80 dark:border-white/10 transition-all shadow-none",
+                  includeMeetings
+                    ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+                    : "text-muted-foreground hover:text-foreground bg-card"
+                )}
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>{includeMeetings ? "Ocultar reuniones" : `Incluir reuniones (${inScopeMeetings.length})`}</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -913,6 +1006,21 @@ export function TaskPmOperationsDashboard({
                   <span className="font-bold text-xs text-foreground block">Nuevo Ticket</span>
                   <span className="text-[11px] text-muted-foreground block leading-tight">
                     Crear ticket o requerimiento en el proyecto
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => onCreateMeeting?.()}
+                className="flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-muted/60"
+              >
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                  <Video className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-foreground block">Nueva Reunión / Actividad</span>
+                  <span className="text-[11px] text-muted-foreground block leading-tight">
+                    Sesión sincrónica con asistencia y horas automáticas
                   </span>
                 </div>
               </DropdownMenuItem>
@@ -1089,7 +1197,10 @@ export function TaskPmOperationsDashboard({
                 />
               </div>
               <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
-                <span>{hoursBurnRate}% de ejecución</span>
+                <span>
+                  {hoursBurnRate}% de ejecución
+                  {includeMeetings && inScopeMeetingHours.actual > 0 ? ` (${inScopeMeetingHours.actual}h reuniones)` : ""}
+                </span>
                 <span>{hoursEfficiencyDelta >= 0 ? "Bajo presupuesto" : "Sobreestimado"}</span>
               </div>
             </>
@@ -1654,6 +1765,12 @@ export function TaskPmOperationsDashboard({
                         {task.ticket_code && (
                           <span className="text-[10px] font-mono text-muted-foreground">
                             {task.ticket_code}
+                          </span>
+                        )}
+                        {task.type === "meeting" && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <Video className="w-2.5 h-2.5 shrink-0" />
+                            <span>Reunión</span>
                           </span>
                         )}
                         {task.blocked_by && task.blocked_by.status !== "done" && (

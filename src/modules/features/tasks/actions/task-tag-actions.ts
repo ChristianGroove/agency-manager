@@ -1,5 +1,6 @@
 "use server"
 
+import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
@@ -16,7 +17,7 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
   if (portalToken) {
     const { data: staff, error } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, role, organization_id, is_active")
+      .select("id, role, task_role, organization_id, is_active")
       .eq("access_token", portalToken)
       .eq("is_active", true)
       .maybeSingle()
@@ -25,7 +26,7 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
       throw new Error("Acceso de colaborador no autorizado o token inválido")
     }
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role)
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role)
 
     return {
       organizationId: staff.organization_id,
@@ -35,11 +36,29 @@ async function resolveOrgAndAuthority(providedOrgId?: string, portalToken?: stri
     }
   }
 
-  // Platform context
-  let orgId: string | null | undefined = providedOrgId
-  if (!orgId) {
-    orgId = await getCurrentOrganizationId()
+  // Platform context: verify session and membership
+  const currentOrgId = await getCurrentOrganizationId()
+  let orgId = currentOrgId
+
+  if (providedOrgId && providedOrgId !== currentOrgId) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("No autorizado")
+
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("organization_id", providedOrgId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles")
+    if (!membership && !(await isSuperAdmin(user.id))) {
+      throw new Error("No tienes acceso a la organización especificada")
+    }
+    orgId = providedOrgId
   }
+
   if (!orgId) {
     throw new Error("No se pudo resolver la organización activa en plataforma")
   }

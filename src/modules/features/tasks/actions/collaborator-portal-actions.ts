@@ -1,9 +1,22 @@
 "use server"
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
-import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint } from "../types";
+import { revalidatePath } from "next/cache";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint, TaskMeetingModality, TaskMeetingAttendee } from "../types";
 import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
+import { generateNextTicketCode } from "./task-actions";
+
+/**
+ * Safely revalidate platform operations view from portal actions
+ */
+function safeRevalidateOperations() {
+  try {
+    revalidatePath("/operations/tasks");
+  } catch {
+    // Non-request context
+  }
+}
 
 /**
  * Helper to log single-line system audit notes into task_comments for portal
@@ -65,7 +78,7 @@ async function handlePortalTaskUnblocking(completedTaskId: string, ticketCode: s
       await logPortalTaskAuditComment(
         bt.organization_id,
         bt.id,
-        `🔓 Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
+        `Desbloqueo: El ticket predecesor #${ticketCode} (${title}) fue completado. Tarea lista para avanzar.${mentionTag}`
       );
 
       if (bt.status === "blocked") {
@@ -180,25 +193,20 @@ async function notifyStakeholdersOnStatusChange(
     const newLabel = TASK_STATUS_LABELS[newStatus] || newStatus;
     const oldLabel = TASK_STATUS_LABELS[prevStatus] || prevStatus;
 
-    let icon = "🔄";
     let actionDesc = `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
 
     if (newStatus === "in_review") {
-      icon = "🔍";
       actionDesc = `Requerimiento enviado a Revisión / QA por @${currentActorStaff.first_name}`;
     } else if (newStatus === "done") {
-      icon = "✅";
       actionDesc = `Tarea completada exitosamente por @${currentActorStaff.first_name}`;
     } else if (newStatus === "blocked") {
-      icon = "🚫";
       const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
       actionDesc = `Tarea bloqueada${reasonText}`;
     } else if (newStatus === "in_progress" && prevStatus === "blocked") {
-      icon = "🔓";
       actionDesc = `Tarea desbloqueada y en progreso`;
     }
 
-    const auditContent = `${icon} ${actionDesc}`;
+    const auditContent = actionDesc;
     const explicitNames = targetStaff.map((s) => s.first_name);
 
     await logPortalTaskAuditComment(
@@ -489,6 +497,33 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     .order("created_at", { ascending: false });
 
   const { data: allTasksData } = await tasksQuery;
+
+  // Auto-cierre no bloqueante en base de datos para reuniones cuyo tiempo programado ya transcurrió
+  const expiredMeetingIds = (allTasksData || [])
+    .filter((t: any) => {
+      if (t.type !== "meeting" || t.status === "done" || !t.meeting_start_at) return false;
+      const startMs = new Date(t.meeting_start_at).getTime();
+      if (isNaN(startMs)) return false;
+      const durationMinutes = t.meeting_duration_minutes != null ? Number(t.meeting_duration_minutes) : 30;
+      return Date.now() > (startMs + durationMinutes * 60 * 1000);
+    })
+    .map((t: any) => t.id);
+
+  if (expiredMeetingIds.length > 0) {
+    Promise.resolve(
+      supabaseAdmin
+        .from("task_items")
+        .update({ status: "done", progress_percentage: 100, updated_at: new Date().toISOString() })
+        .in("id", expiredMeetingIds)
+    )
+      .then(({ error }: any) => {
+        if (error) console.error("Portal: Error al auto-cerrar reuniones expiradas en BD:", error);
+      })
+      .catch((err: any) => {
+        console.error("Portal: Error en auto-cierre en segundo plano de reuniones:", err);
+      });
+  }
+
   const rawTasks = (allTasksData || []).map(normalizeTask);
 
   // Fetch comments count & latest comment telemetry for tickets/tasks in this organization
@@ -535,16 +570,18 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       (t) =>
         allowedProjectIds.has(t.project_id) ||
         t.assigned_staff_id === staff.id ||
-        (t.checklist && t.checklist.some((c) => c.assigned_staff_id === staff.id))
+        (t.checklist && t.checklist.some((c) => c.assigned_staff_id === staff.id)) ||
+        (t.type === "meeting" && t.meeting_attendees && t.meeting_attendees.some((a) => a.staff_id === staff.id))
     );
   }
 
-  // Filter tasks assigned to this collaborator (as lead, QA, or subtask/deliverable owner)
+  // Filter tasks assigned to this collaborator (as lead, QA, subtask owner, or meeting attendee)
   const myTasks = allTasks.filter(
     (t) =>
       t.assigned_staff_id === staff.id ||
       (isQa && t.qa_staff_id === staff.id) ||
-      (t.checklist && t.checklist.some((c) => c.assigned_staff_id === staff.id))
+      (t.checklist && t.checklist.some((c) => c.assigned_staff_id === staff.id)) ||
+      (t.type === "meeting" && t.meeting_attendees && t.meeting_attendees.some((a) => a.staff_id === staff.id))
   );
 
   const completed = myTasks.filter((t) => t.status === "done").length;
@@ -916,13 +953,13 @@ export async function portalUpdateTaskProgress(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, organization_id, first_name, last_name, photo_url, role")
+      .select("id, organization_id, first_name, last_name, photo_url, role, task_role")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
@@ -984,7 +1021,6 @@ export async function portalUpdateTaskProgress(
 
     if (current && current.progress_percentage !== clamped) {
       const isRegression = clamped < (current.progress_percentage ?? 0);
-      const icon = isRegression ? "📉" : "📈";
       const actionWord = isRegression ? "Regresión" : "Avance";
       await supabaseAdmin.from("task_comments").insert({
         organization_id: staff.organization_id,
@@ -993,7 +1029,7 @@ export async function portalUpdateTaskProgress(
         author_id: staff.id,
         author_name: `${staff.first_name} ${staff.last_name}`.trim(),
         author_avatar: staff.photo_url || null,
-        content: `${icon} ${actionWord} de tarea actualizado del ${current.progress_percentage ?? 0}% al ${clamped}%`,
+        content: `${actionWord} de tarea actualizado del ${current.progress_percentage ?? 0}% al ${clamped}%`,
         mentions: []
       });
     }
@@ -1039,6 +1075,7 @@ export async function portalUpdateTaskProgress(
       unblockedTasks = await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
     }
 
+    safeRevalidateOperations();
     return { success: true, unblockedTasks };
   } catch (err: any) {
     console.error("Portal update progress error:", err);
@@ -1060,7 +1097,7 @@ export async function portalUpdateTaskStatus(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1069,12 +1106,19 @@ export async function portalUpdateTaskStatus(
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("checklist, progress_percentage, status, ticket_code, title, blocked_by_task_id, blocked_reason, actual_hours")
+      .select("checklist, progress_percentage, status, ticket_code, title, blocked_by_task_id, blocked_reason, actual_hours, type")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    if (current?.type === "meeting") {
+      return {
+        success: false,
+        error: "Las reuniones sincronizadas no forman parte del flujo de etapas técnicas de desarrollo."
+      };
+    }
+
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
 
     // Terminal Governance: Completed tasks cannot be reopened or transitioned by regular staff
     if (current?.status === "done" && status !== current.status && !isLeadOrPm) {
@@ -1195,9 +1239,11 @@ export async function portalUpdateTaskStatus(
       if (updateData.status === "done") {
         unblockedTasks = await handlePortalTaskUnblocking(taskId, current.ticket_code, current.title);
       }
+      safeRevalidateOperations();
       return { success: true, unblockedTasks };
     }
 
+    safeRevalidateOperations();
     return { success: true };
   } catch (err: any) {
     console.error("Portal update status error:", err);
@@ -1217,7 +1263,7 @@ export async function portalToggleChecklist(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1241,7 +1287,7 @@ export async function portalToggleChecklist(
     const targetItem = currentChecklist.find((i) => i.id === checklistItemId);
     if (!targetItem) throw new Error("Subtarea no encontrada");
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
     const isMainAssignee = task.assigned_staff_id === staff.id;
     const canToggleAny = isLeadOrPm || isMainAssignee;
 
@@ -1338,8 +1384,8 @@ export async function portalToggleChecklist(
       }
       const explicitNames = notifyTags.map((t) => t.replace("@", ""));
       const auditMsg = completed
-        ? `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}`
-        : `⬜ Subtarea reactivada: ${itemTitle} por @${staff.first_name}`;
+        ? `Subtarea completada: ${itemTitle} por @${staff.first_name}`
+        : `Subtarea reactivada: ${itemTitle} por @${staff.first_name}`;
       await logPortalTaskAuditComment(staff.organization_id, taskId, auditMsg, staff, explicitNames);
     }
 
@@ -1353,9 +1399,7 @@ export async function portalToggleChecklist(
       );
     }
 
-    if (progress === 100 && task.status !== "done") {
-      await handlePortalTaskUnblocking(taskId, task.ticket_code, task.title);
-    }
+    safeRevalidateOperations();
 
     return {
       success: true,
@@ -1469,8 +1513,15 @@ export async function portalCreateTask(
     isRecurring?: boolean;
     recurrenceInterval?: RecurrenceInterval | null;
     recurrenceDay?: number | null;
+    recurrenceDays?: number[] | null;
     blockedByTaskId?: string | null;
     sprintId?: string | null;
+    meetingModality?: TaskMeetingModality | null;
+    meetingUrl?: string | null;
+    meetingLocation?: string | null;
+    meetingStartAt?: string | null;
+    meetingDurationMinutes?: number | null;
+    meetingAttendees?: TaskMeetingAttendee[];
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
@@ -1483,7 +1534,7 @@ export async function portalCreateTask(
 
     if (!staff) throw new Error("Acceso no autorizado");
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
     const isSupportStaff = staff.task_role === "support" && !isLeadOrPm;
 
     // Standard Collaborator Governance:
@@ -1494,8 +1545,12 @@ export async function portalCreateTask(
     // 5. QA staff defaults to unassigned.
     // 6. Subtasks can only be assigned to self or unassigned (no imposing subtasks on peers).
     const finalStatus: TaskStatus = isLeadOrPm ? (taskData.status || "todo") : "backlog";
-    const finalEstimatedHours = isLeadOrPm ? Number(taskData.estimatedHours || 0) : 0;
-    const finalDueDate = isLeadOrPm ? (taskData.dueDate || null) : null;
+    const finalEstimatedHours = isLeadOrPm
+      ? (taskData.type === "meeting" ? Number(taskData.meetingDurationMinutes || 30) / 60 : Number(taskData.estimatedHours || 0))
+      : 0;
+    const finalDueDate = isLeadOrPm
+      ? (taskData.type === "meeting" && taskData.meetingStartAt ? taskData.meetingStartAt.split("T")[0] : (taskData.dueDate || null))
+      : null;
     const finalPriority: TaskPriority = taskData.priority || "medium";
     const finalAssignedStaffId = isSupportStaff
       ? null
@@ -1514,24 +1569,12 @@ export async function portalCreateTask(
       estimated_hours: isLeadOrPm ? item.estimated_hours : null,
     }));
 
-    const codePrefix = isSupportStaff ? "SUP" : "TK";
-    const { data: latest } = await supabaseAdmin
-      .from("task_items")
-      .select("ticket_code")
-      .eq("organization_id", staff.organization_id)
-      .ilike("ticket_code", `${codePrefix}-%`)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    let nextNum = 101;
-    if (latest && latest.length > 0 && latest[0].ticket_code) {
-      const match = latest[0].ticket_code.match(/(\d+)$/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
-      }
-    }
-
-    const ticketCode = `${codePrefix}-${nextNum}`;
+    const customPrefix = taskData.type === "meeting" ? "MTG" : isSupportStaff ? "SUP" : undefined;
+    const ticketCode = await generateNextTicketCode(
+      staff.organization_id,
+      taskData.projectId,
+      customPrefix
+    );
 
     const { data: newTask, error } = await supabaseAdmin
       .from("task_items")
@@ -1559,7 +1602,14 @@ export async function portalCreateTask(
         is_recurring: isLeadOrPm ? (taskData.isRecurring ?? false) : false,
         recurrence_interval: isLeadOrPm ? (taskData.recurrenceInterval || null) : null,
         recurrence_day: isLeadOrPm ? (taskData.recurrenceDay || 1) : 1,
-        next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1).toISOString() : null,
+        recurrence_days: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval === "weekly" ? (taskData.recurrenceDays || null) : null,
+        next_recurrence_at: isLeadOrPm && taskData.isRecurring && taskData.recurrenceInterval ? calculateNextRecurrence(taskData.recurrenceInterval, new Date(), taskData.recurrenceDay || 1, taskData.recurrenceDays || null).toISOString() : null,
+        meeting_modality: taskData.type === "meeting" ? (taskData.meetingModality || "virtual") : null,
+        meeting_url: taskData.type === "meeting" ? (taskData.meetingUrl?.trim() || null) : null,
+        meeting_location: taskData.type === "meeting" ? (taskData.meetingLocation?.trim() || null) : null,
+        meeting_start_at: taskData.type === "meeting" && taskData.meetingStartAt ? new Date(taskData.meetingStartAt).toISOString() : null,
+        meeting_duration_minutes: taskData.type === "meeting" ? (taskData.meetingDurationMinutes || 30) : null,
+        meeting_attendees: taskData.type === "meeting" ? (taskData.meetingAttendees || []) : [],
         origin_type: isSupportStaff ? "support" : "internal",
       })
       .select(`
@@ -1615,7 +1665,7 @@ export async function portalCreateTask(
         await logPortalTaskAuditComment(
           staff.organization_id,
           newTask.id,
-          `👤 Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`,
+          `Asignado a @${mainStaff.first_name} (${mainStaff.first_name} ${mainStaff.last_name})`,
           staff
         );
       }
@@ -1634,7 +1684,7 @@ export async function portalCreateTask(
             await logPortalTaskAuditComment(
               staff.organization_id,
               newTask.id,
-              `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+              `Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
               staff
             );
           }
@@ -1642,6 +1692,7 @@ export async function portalCreateTask(
       }
     }
 
+    safeRevalidateOperations();
     return { success: true, task: normalizeTask(newTask) };
   } catch (err: any) {
     console.error("Portal create task error:", err);
@@ -1782,18 +1833,25 @@ export async function portalUpdateTask(
     blockedByTaskId?: string | null;
     blockedReason?: string | null;
     sprintId?: string | null;
+    meetingModality?: TaskMeetingModality | null;
+    meetingUrl?: string | null;
+    meetingLocation?: string | null;
+    meetingStartAt?: string | null;
+    meetingDurationMinutes?: number | null;
+    meetingAttendees?: TaskMeetingAttendee[];
+    recurrenceDays?: number[] | null;
   }
 ): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, organization_id")
+      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
 
     // Fetch previous state for audit comparison and stakeholder notifications
     const { data: prevTask } = await supabaseAdmin
@@ -1859,7 +1917,6 @@ export async function portalUpdateTask(
       if (curTask && curTask.progress_percentage !== clamped) {
         // Automatically record progress audit in discussion feed
         const isRegression = clamped < (curTask.progress_percentage ?? 0);
-        const icon = isRegression ? "📉" : "📈";
         const actionWord = isRegression ? "Regresión" : "Avance";
         await supabaseAdmin.from("task_comments").insert({
           organization_id: staff.organization_id,
@@ -1868,7 +1925,7 @@ export async function portalUpdateTask(
           author_id: staff.id,
           author_name: `${staff.first_name} ${staff.last_name}`.trim(),
           author_avatar: staff.photo_url || null,
-          content: `${icon} ${actionWord} de tarea actualizado del ${curTask.progress_percentage ?? 0}% al ${clamped}%`,
+          content: `${actionWord} de tarea actualizado del ${curTask.progress_percentage ?? 0}% al ${clamped}%`,
           mentions: []
         });
       }
@@ -1884,7 +1941,10 @@ export async function portalUpdateTask(
         updateData.progress_percentage = 100;
       }
     }
-    if (data.actualHours !== undefined) {
+    if (data.loggedHours !== undefined && data.loggedHours > 0) {
+      const prevActual = Number(prevTask?.actual_hours) || 0;
+      updateData.actual_hours = Math.round((prevActual + data.loggedHours) * 100) / 100;
+    } else if (data.actualHours !== undefined) {
       updateData.actual_hours = Number(data.actualHours);
     }
     if (data.checklist !== undefined) {
@@ -1998,6 +2058,28 @@ export async function portalUpdateTask(
           }
         }
       }
+
+      if (data.recurrenceDays !== undefined) {
+        updateData.recurrence_days = data.recurrenceDays;
+      }
+      if (data.meetingModality !== undefined) {
+        updateData.meeting_modality = data.meetingModality;
+      }
+      if (data.meetingUrl !== undefined) {
+        updateData.meeting_url = data.meetingUrl?.trim() || null;
+      }
+      if (data.meetingLocation !== undefined) {
+        updateData.meeting_location = data.meetingLocation?.trim() || null;
+      }
+      if (data.meetingStartAt !== undefined) {
+        updateData.meeting_start_at = data.meetingStartAt ? new Date(data.meetingStartAt).toISOString() : null;
+      }
+      if (data.meetingDurationMinutes !== undefined) {
+        updateData.meeting_duration_minutes = data.meetingDurationMinutes;
+      }
+      if (data.meetingAttendees !== undefined) {
+        updateData.meeting_attendees = data.meetingAttendees;
+      }
     } else {
       // Collaborators can also update description or title if provided
       if (data.description !== undefined) updateData.description = data.description;
@@ -2032,6 +2114,17 @@ export async function portalUpdateTask(
           `No se puede ${actionLabel} el ticket porque depende de #${blocker.ticket_code} (${blocker.title}), el cual aún está pendiente (${TASK_STATUS_LABELS[blocker.status as TaskStatus] || blocker.status}).`
         );
       }
+    }
+
+    // Validate deliverable completion rule: cannot complete (100% or done) if checklist has pending items
+    const parsedChecklist = updateData.checklist !== undefined ? parseTaskChecklist(updateData.checklist) : parseTaskChecklist(prevTask?.checklist);
+    const hasUnfinishedDeliverables = parsedChecklist.length > 0 && parsedChecklist.some((c: any) => !c.completed);
+
+    if (updateData.status === "done" && hasUnfinishedDeliverables) {
+      updateData.status = "in_review";
+      updateData.progress_percentage = 95;
+    } else if (updateData.progress_percentage === 100 && hasUnfinishedDeliverables) {
+      updateData.progress_percentage = 95;
     }
 
     const { data: updatedTask, error } = await supabaseAdmin
@@ -2092,16 +2185,16 @@ export async function portalUpdateTask(
       if (updateData.priority && updateData.priority !== prevTask.priority) {
         const oldP = TASK_PRIORITY_LABELS[prevTask.priority as TaskPriority] || prevTask.priority;
         const newP = TASK_PRIORITY_LABELS[updateData.priority as TaskPriority] || updateData.priority;
-        await logPortalTaskAuditComment(orgId, taskId, `⚡ Prioridad cambiada a ${newP} (anterior: ${oldP})`, staff);
+        await logPortalTaskAuditComment(orgId, taskId, `Prioridad cambiada a ${newP} (anterior: ${oldP})`, staff);
       }
 
       // Due date audit
       if (updateData.due_date !== undefined && updateData.due_date !== prevTask.due_date) {
         if (updateData.due_date) {
           const dateFormatted = new Date(updateData.due_date + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
-          await logPortalTaskAuditComment(orgId, taskId, `📅 Fecha límite establecida para el ${dateFormatted}`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Fecha límite establecida para el ${dateFormatted}`, staff);
         } else {
-          await logPortalTaskAuditComment(orgId, taskId, `📅 Fecha límite eliminada`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Fecha límite eliminada`, staff);
         }
       }
 
@@ -2115,9 +2208,9 @@ export async function portalUpdateTask(
             .single();
           const staffTag = staffMember ? `@${staffMember.first_name}` : "colaborador";
           const staffName = staffMember ? `${staffMember.first_name} ${staffMember.last_name}`.trim() : "colaborador";
-          await logPortalTaskAuditComment(orgId, taskId, `👤 Asignado a ${staffTag} (${staffName})`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Asignado a ${staffTag} (${staffName})`, staff);
         } else {
-          await logPortalTaskAuditComment(orgId, taskId, `👤 Asignación de tarea removida`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Asignación de tarea removida`, staff);
         }
       }
 
@@ -2131,18 +2224,18 @@ export async function portalUpdateTask(
             .single();
           const blkCode = blockerTask ? `#${blockerTask.ticket_code}` : "ticket predecesor";
           const blkTitle = blockerTask?.title ? ` (${blockerTask.title})` : "";
-          await logPortalTaskAuditComment(orgId, taskId, `🚫 Bloqueado por ${blkCode}${blkTitle}`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Bloqueado por ${blkCode}${blkTitle}`, staff);
         } else {
-          await logPortalTaskAuditComment(orgId, taskId, `🔓 Bloqueo removido manualmente`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Bloqueo removido manualmente`, staff);
         }
       }
 
       // Blocker reason audit
       if (updateData.blocked_reason !== undefined && updateData.blocked_reason !== prevTask.blocked_reason) {
         if (updateData.blocked_reason && updateData.blocked_reason.trim()) {
-          await logPortalTaskAuditComment(orgId, taskId, `🚫 Motivo del bloqueo: ${updateData.blocked_reason.trim()}`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Motivo del bloqueo: ${updateData.blocked_reason.trim()}`, staff);
         } else if (prevTask.blocked_reason) {
-          await logPortalTaskAuditComment(orgId, taskId, `🔓 Motivo del bloqueo removido`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Motivo del bloqueo removido`, staff);
         }
       }
 
@@ -2155,9 +2248,9 @@ export async function portalUpdateTask(
             .eq("id", updateData.sprint_id)
             .maybeSingle();
           const sprintName = sprintRecord?.name || "Sprint";
-          await logPortalTaskAuditComment(orgId, taskId, `🎯 Asignada al ${sprintName}`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Asignada al ${sprintName}`, staff);
         } else {
-          await logPortalTaskAuditComment(orgId, taskId, `📦 Retirada del sprint al Backlog`, staff);
+          await logPortalTaskAuditComment(orgId, taskId, `Retirada del sprint al Backlog`, staff);
         }
       }
 
@@ -2199,7 +2292,7 @@ export async function portalUpdateTask(
             await logPortalTaskAuditComment(
               orgId,
               taskId,
-              `☑️ Subtarea completada: ${itemTitle} por @${staff.first_name}`,
+              `Subtarea completada: ${itemTitle} por @${staff.first_name}`,
               staff,
               notifyStaffNames
             );
@@ -2207,7 +2300,7 @@ export async function portalUpdateTask(
             await logPortalTaskAuditComment(
               orgId,
               taskId,
-              `⬜ Subtarea reactivada: ${itemTitle} por @${staff.first_name}`,
+              `Subtarea reactivada: ${itemTitle} por @${staff.first_name}`,
               staff
             );
           }
@@ -2226,7 +2319,7 @@ export async function portalUpdateTask(
                 await logPortalTaskAuditComment(
                   orgId,
                   taskId,
-                  `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+                  `Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
                   staff
                 );
               }
@@ -2236,6 +2329,7 @@ export async function portalUpdateTask(
       }
     }
 
+    safeRevalidateOperations();
     return { success: true, task: normalizeTask(updatedTask) };
   } catch (err: any) {
     console.error("Portal update task error:", err);
@@ -2307,7 +2401,7 @@ export async function portalUpdateChecklistItemAssignee(
         await logPortalTaskAuditComment(
           staff.organization_id,
           taskId,
-          `👤 Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
+          `Subtarea ${itemTitle} asignada a @${assignedStaff.first_name} (${assignedStaff.first_name} ${assignedStaff.last_name})`,
           staff
         );
       }
@@ -2330,14 +2424,14 @@ export async function portalDeleteTask(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, role, organization_id")
+      .select("id, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
 
     if (!staff) throw new Error("Acceso no autorizado");
 
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role);
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
 
     if (!isLeadOrPm) {
       throw new Error("Solo los líderes o Project Managers tienen permiso para eliminar tareas.");
@@ -2350,6 +2444,7 @@ export async function portalDeleteTask(
       .eq("organization_id", staff.organization_id);
 
     if (error) throw error;
+    safeRevalidateOperations();
     return { success: true };
   } catch (err: any) {
     console.error("Portal delete task error:", err);
@@ -2511,7 +2606,7 @@ export async function portalBulkDeleteTasks(
     // 1. Verify staff by token
     const { data: staff, error: staffErr } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, organization_id, role, can_bulk_delete_tasks")
+      .select("id, organization_id, role, task_role, can_bulk_delete_tasks")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -2520,7 +2615,7 @@ export async function portalBulkDeleteTasks(
       return { success: false, error: "Colaborador no autorizado" };
     }
 
-    const isLead = isStaffLeadOrPmRole(staff.role);
+    const isLead = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
     const hasPermission =
       staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
         ? Boolean(staff.can_bulk_delete_tasks)
@@ -2546,10 +2641,77 @@ export async function portalBulkDeleteTasks(
       totalDeleted += count ?? chunk.length;
     }
 
+    safeRevalidateOperations();
     return { success: true, count: totalDeleted };
   } catch (err: any) {
     console.error("Portal bulk delete tasks error:", err);
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Conclude / finalize a meeting session from collaborator portal
+ */
+export async function portalCompleteMeetingSession(
+  token: string,
+  taskId: string
+): Promise<{ success: boolean; task?: TaskItem; error?: string }> {
+  try {
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, organization_id, first_name, last_name, role, task_role")
+      .eq("access_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staff) throw new Error("Acceso no autorizado");
+    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
+    if (!isLeadOrPm) {
+      throw new Error("Solo un Gestor de Proyecto o Administrador puede concluir formalmente la sesión.");
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data: updatedTask, error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        status: "done",
+        progress_percentage: 100,
+        updated_at: nowIso,
+      })
+      .eq("id", taskId)
+      .eq("organization_id", staff.organization_id)
+      .select(`
+        *,
+        assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        qa_staff:organization_staff!task_items_qa_staff_id_fkey(
+          id, first_name, last_name, photo_url, role
+        ),
+        project:task_projects!task_items_project_id_fkey(
+          id, name, color
+        ),
+        blocked_by:blocked_by_task_id(
+          id, ticket_code, title, status
+        )
+      `)
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    await logPortalTaskAuditComment(
+      staff.organization_id,
+      taskId,
+      `Sesión concluida por @${staff.first_name} ${staff.last_name}. Ticket marcado como completado.`,
+      staff
+    );
+
+    safeRevalidateOperations();
+    return { success: true, task: normalizeTask(updatedTask) };
+  } catch (err: any) {
+    console.error("Portal complete meeting error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 

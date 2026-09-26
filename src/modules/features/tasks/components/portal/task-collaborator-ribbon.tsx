@@ -12,6 +12,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import { toast } from "sonner"
 import { Users, CheckCircle2, Clock, ShieldCheck, Code2, Palette, Briefcase, Info } from "lucide-react"
 import type { TaskItem } from "../../types"
+import { getTaskMemberHours } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 
 interface StaffMember {
@@ -89,36 +90,88 @@ export function TaskCollaboratorRibbon({
       }
     > = {}
 
+    // Single-pass O(N) accumulator over allTasks to eliminate nested O(M * N) iterations
+    const memberAccumulators = new Map<
+      string,
+      {
+        total: number
+        completed: number
+        inProgress: number
+        inReview: number
+        activeHours: number
+        activeProgressSum: number
+        activeCount: number
+      }
+    >()
+
     teamMembers.forEach((m) => {
-      const mTasks = allTasks.filter((t) => t.assigned_staff_id === m.id)
-      const mActiveTasks = mTasks.filter(
-        (t) =>
-          t.status === "todo" ||
-          t.status === "in_progress" ||
-          t.status === "in_review" ||
-          t.status === "blocked"
-      )
-      const completed = mTasks.filter((t) => t.status === "done").length
-      const inProgress = mTasks.filter((t) => t.status === "in_progress").length
-      const inReview = mTasks.filter((t) => t.status === "in_review").length
-      const hours = mActiveTasks.reduce((sum, t) => sum + (Number(t.estimated_hours) || 0), 0)
+      memberAccumulators.set(m.id, {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        inReview: 0,
+        activeHours: 0,
+        activeProgressSum: 0,
+        activeCount: 0,
+      })
+    })
+
+    allTasks.forEach((t) => {
+      if (t.type === "meeting") return
+
+      const associatedMembers = new Set<string>()
+      if (t.assigned_staff_id && memberAccumulators.has(t.assigned_staff_id)) {
+        associatedMembers.add(t.assigned_staff_id)
+      }
+      if (Array.isArray(t.checklist)) {
+        t.checklist.forEach((c: any) => {
+          if (c.assigned_staff_id && memberAccumulators.has(c.assigned_staff_id)) {
+            associatedMembers.add(c.assigned_staff_id)
+          }
+        })
+      }
+
+      const isActive =
+        t.status === "todo" ||
+        t.status === "in_progress" ||
+        t.status === "in_review" ||
+        t.status === "blocked"
+
+      associatedMembers.forEach((mId) => {
+        const acc = memberAccumulators.get(mId)!
+        acc.total += 1
+        if (t.status === "done") {
+          acc.completed += 1
+        } else if (t.status === "in_progress") {
+          acc.inProgress += 1
+        } else if (t.status === "in_review") {
+          acc.inReview += 1
+        }
+
+        if (isActive) {
+          acc.activeCount += 1
+          acc.activeHours += getTaskMemberHours(t, mId).estimated || 0
+          acc.activeProgressSum += t.progress_percentage || 0
+        }
+      })
+    })
+
+    teamMembers.forEach((m) => {
+      const acc = memberAccumulators.get(m.id)!
       const progress =
-        mActiveTasks.length > 0
-          ? Math.round(
-              mActiveTasks.reduce((sum, t) => sum + (t.progress_percentage || 0), 0) /
-                mActiveTasks.length
-            )
-          : completed > 0
+        acc.activeCount > 0
+          ? Math.round(acc.activeProgressSum / acc.activeCount)
+          : acc.completed > 0
           ? 100
           : 0
 
       map[m.id] = {
-        total: mTasks.length,
-        activeTotal: mActiveTasks.length,
-        completed,
-        inProgress,
-        inReview,
-        hours,
+        total: acc.total,
+        activeTotal: acc.activeCount,
+        completed: acc.completed,
+        inProgress: acc.inProgress,
+        inReview: acc.inReview,
+        hours: Math.round(acc.activeHours * 10) / 10,
         progress,
       }
     })
@@ -128,10 +181,15 @@ export function TaskCollaboratorRibbon({
 
   // Active tasks metrics for the ribbon header (strictly active tasks, excluding backlog and done)
   const activeMetrics = React.useMemo(() => {
+    const isMemberTask = (t: TaskItem, memberId: string) =>
+      t.assigned_staff_id === memberId ||
+      (Array.isArray(t.checklist) && t.checklist.some((c: any) => c.assigned_staff_id === memberId)) ||
+      (Array.isArray(t.meeting_attendees) && t.meeting_attendees.some((a: any) => a.staff_id === memberId))
+
     const isAll = selectedMemberId === "all"
     const relevantTasks = isAll
       ? allTasks
-      : allTasks.filter((t) => t.assigned_staff_id === selectedMemberId)
+      : allTasks.filter((t) => isMemberTask(t, selectedMemberId))
 
     const activeTasks = relevantTasks.filter(
       (t) =>
@@ -223,7 +281,7 @@ export function TaskCollaboratorRibbon({
     const portalUrl = token ? `${origin}/portal/tasks/${token}` : `${origin}/portal/tasks`
     const org = organizationName || "la agencia"
 
-    const message = `Hola *${member.first_name}* 👋\n\nTe comparto el enlace directo a tu *Portal de Tareas y Entregables* en *${org}*:\n\n🔗 ${portalUrl}\n\nDesde tu portal podrás:\n📋 Ver tus requerimientos y entregables asignados\n⏱️ Registrar avances y horas de trabajo\n💬 Comentar y coordinar revisiones de QA\n📊 Consultar el ritmo semanal del sprint\n\n_Acceso seguro y directo (no requiere contraseña)._`
+    const message = `Hola *${member.first_name}*:\n\nTe comparto el enlace directo a tu *Portal de Tareas y Entregables* en *${org}*:\n\n${portalUrl}\n\nDesde tu portal podrás:\n- Ver tus requerimientos y entregables asignados\n- Registrar avances y horas de trabajo\n- Comentar y coordinar revisiones de QA\n- Consultar el ritmo semanal del sprint\n\n_Acceso seguro y directo (no requiere contraseña)._`
 
     const formattedPhone = formatWhatsAppNumber(member.phone)
 

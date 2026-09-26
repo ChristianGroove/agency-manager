@@ -16,7 +16,183 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   high: 'Alta',
   urgent: 'Urgente',
 };
-export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery';
+export type TaskType = 'task' | 'feature' | 'bug' | 'improvement' | 'delivery' | 'meeting';
+
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  task: 'Tarea',
+  feature: 'Funcionalidad',
+  bug: 'Error / Bug',
+  improvement: 'Mejora',
+  delivery: 'Entrega de Cliente',
+  meeting: 'Reunión',
+};
+
+export type TaskMeetingModality = 'virtual' | 'in_person' | 'hybrid';
+
+export type TaskMeetingAttendanceStatus = 'pending' | 'attended' | 'excused' | 'absent';
+
+export type TaskMeetingCheckinMethod = 'link_click' | 'manual_checkin' | 'pm_verified';
+
+export interface TaskMeetingAttendee {
+  staff_id: string;
+  status: TaskMeetingAttendanceStatus;
+  attended_at?: string | null;
+  check_in_method?: TaskMeetingCheckinMethod | null;
+  hours_allocated: number;
+  notes?: string | null;
+  staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    photo_url?: string | null;
+    role?: string;
+    email?: string;
+  } | null;
+}
+
+export interface MeetingPreset {
+  id: 'daily_standup' | 'sprint_planning' | 'sync_alignment';
+  label: string;
+  description: string;
+  defaultTitle: string;
+  durationMinutes: number;
+  modality: TaskMeetingModality;
+  recurrenceInterval?: RecurrenceInterval | null;
+  recurrenceDays?: number[] | null;
+}
+
+export const MEETING_PRESETS: MeetingPreset[] = [
+  {
+    id: 'daily_standup',
+    label: 'Daily Standup',
+    description: 'Sincronización diaria ágil (15 min, Lun - Vie)',
+    defaultTitle: 'Daily Standup',
+    durationMinutes: 15,
+    modality: 'virtual',
+    recurrenceInterval: 'weekly',
+    recurrenceDays: [1, 2, 3, 4, 5],
+  },
+  {
+    id: 'sprint_planning',
+    label: 'Sprint Planning / Review',
+    description: 'Planificación o retrospectiva de ciclo (60 min)',
+    defaultTitle: 'Sprint Planning & Review',
+    durationMinutes: 60,
+    modality: 'virtual',
+    recurrenceInterval: 'biweekly',
+    recurrenceDays: [1],
+  },
+  {
+    id: 'sync_alignment',
+    label: 'Sync de Alineación / 1-on-1',
+    description: 'Alineación de objetivos y dudas (30 min)',
+    defaultTitle: 'Sync de Alineación',
+    durationMinutes: 30,
+    modality: 'hybrid',
+    recurrenceInterval: 'weekly',
+    recurrenceDays: [3],
+  },
+];
+
+/**
+ * Attendance window validation:
+ * - Opens 5 minutes before meeting_start_at
+ * - Closes 15 minutes after meeting scheduled end (start_at + duration + 15m)
+ * Prevents post-meeting unattended auto-checkins while allowing PM overrides
+ */
+export function getMeetingAttendanceWindowStatus(
+  startAt?: string | null,
+  durationMinutes: number = 30,
+  now: Date = new Date()
+): {
+  isOpen: boolean;
+  isBefore: boolean;
+  isAfter: boolean;
+  windowStart: Date | null;
+  windowEnd: Date | null;
+  minutesUntilOpen: number;
+  message: string;
+} {
+  if (!startAt) {
+    return {
+      isOpen: true,
+      isBefore: false,
+      isAfter: false,
+      windowStart: null,
+      windowEnd: null,
+      minutesUntilOpen: 0,
+      message: 'Horario flexible / sin ventana restrictiva',
+    };
+  }
+
+  const start = new Date(startAt);
+  if (isNaN(start.getTime())) {
+    return {
+      isOpen: true,
+      isBefore: false,
+      isAfter: false,
+      windowStart: null,
+      windowEnd: null,
+      minutesUntilOpen: 0,
+      message: 'Horario flexible',
+    };
+  }
+
+  const windowStart = new Date(start.getTime() - 5 * 60 * 1000);
+  const windowEnd = new Date(start.getTime() + (durationMinutes + 15) * 60 * 1000);
+  const nowTime = now.getTime();
+
+  if (nowTime < windowStart.getTime()) {
+    const minutesUntilOpen = Math.max(1, Math.ceil((windowStart.getTime() - nowTime) / (60 * 1000)));
+    return {
+      isOpen: false,
+      isBefore: true,
+      isAfter: false,
+      windowStart,
+      windowEnd,
+      minutesUntilOpen,
+      message: `La ventana de asistencia abre 5 min antes del inicio programado (en ${minutesUntilOpen} min).`,
+    };
+  }
+
+  if (nowTime > windowEnd.getTime()) {
+    return {
+      isOpen: false,
+      isBefore: false,
+      isAfter: true,
+      windowStart,
+      windowEnd,
+      minutesUntilOpen: 0,
+      message: 'Ventana de auto-registro cerrada. Solicita al PM certificar tu presencia.',
+    };
+  }
+
+  return {
+    isOpen: true,
+    isBefore: false,
+    isAfter: false,
+    windowStart,
+    windowEnd,
+    minutesUntilOpen: 0,
+    message: 'Ventana de asistencia activa',
+  };
+}
+
+/**
+ * Ensures a meeting or external URL starts with http:// or https://,
+ * fixing issues with relative URL navigation and accidental comma typos like 'www,pixy.com.co'.
+ */
+export function ensureAbsoluteUrl(url?: string | null): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const sanitized = trimmed.replace(/^www,/i, 'www.');
+  if (/^https?:\/\//i.test(sanitized)) {
+    return sanitized;
+  }
+  return `https://${sanitized}`;
+}
+
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
 export type CollaboratorRole = 'pm' | 'qa_lead' | 'developer' | 'designer' | 'specialist' | 'observer' | 'sales' | 'operations' | 'support' | 'consultant';
 
@@ -299,6 +475,14 @@ export interface TaskItem {
     ticket_code: string;
     title: string;
   } | null;
+  // Synchronous Activities / Meetings
+  meeting_modality?: TaskMeetingModality | null;
+  meeting_url?: string | null;
+  meeting_location?: string | null;
+  meeting_start_at?: string | null;
+  meeting_duration_minutes?: number | null;
+  meeting_attendees?: TaskMeetingAttendee[];
+  recurrence_days?: number[] | null;
 }
 
 export interface TaskComment {
@@ -424,9 +608,20 @@ export function parseTaskChecklist(rawChecklist: any): TaskChecklistItem[] {
  * Normalize all dynamic JSON fields of a TaskItem
  */
 export function normalizeTask(task: any): TaskItem {
-  const isDone = task.status === "done";
+  let isMeetingExpired = false;
+  if (task.type === "meeting" && task.meeting_start_at) {
+    const startMs = new Date(task.meeting_start_at).getTime();
+    if (!isNaN(startMs)) {
+      const durationMinutes = task.meeting_duration_minutes !== undefined && task.meeting_duration_minutes !== null
+        ? Number(task.meeting_duration_minutes)
+        : 30;
+      isMeetingExpired = Date.now() > (startMs + durationMinutes * 60 * 1000);
+    }
+  }
+  const isDone = task.status === "done" || isMeetingExpired;
   return {
     ...task,
+    status: isDone ? "done" : task.status,
     origin_type: task.origin_type || "internal",
     promoted_from_id: task.promoted_from_id || null,
     checklist: parseTaskChecklist(task.checklist),
@@ -436,6 +631,13 @@ export function normalizeTask(task: any): TaskItem {
     estimated_hours: Number(task.estimated_hours || 0),
     actual_hours: Number(task.actual_hours || 0),
     weekly_snapshots: task.weekly_snapshots && typeof task.weekly_snapshots === "object" ? task.weekly_snapshots : {},
+    meeting_modality: task.meeting_modality || (task.type === "meeting" ? "virtual" : null),
+    meeting_url: task.meeting_url || null,
+    meeting_location: task.meeting_location || null,
+    meeting_start_at: task.meeting_start_at || null,
+    meeting_duration_minutes: task.meeting_duration_minutes !== undefined && task.meeting_duration_minutes !== null ? Number(task.meeting_duration_minutes) : (task.type === "meeting" ? 30 : null),
+    meeting_attendees: Array.isArray(task.meeting_attendees) ? task.meeting_attendees : [],
+    recurrence_days: Array.isArray(task.recurrence_days) ? task.recurrence_days : null,
   };
 }
 
@@ -446,6 +648,34 @@ export function normalizeTask(task: any): TaskItem {
  * - If the member is the primary assignee and has no subtasks assigned to others, or no subtasks exist, computes task-level hours.
  */
 export function getTaskMemberHours(task: TaskItem, memberId: string): { estimated: number; actual: number } {
+  // Synchronous Activities / Meetings: Multi-attendee allocation without subtask requirement
+  if (task.type === 'meeting') {
+    const attendees = Array.isArray(task.meeting_attendees) ? task.meeting_attendees : [];
+    const attendee = attendees.find((a) => a.staff_id === memberId);
+    const meetingEstHours = Number(task.estimated_hours) || (Number(task.meeting_duration_minutes) ? Number(task.meeting_duration_minutes) / 60 : 0.5);
+
+    if (attendee) {
+      if (attendee.status === 'attended') {
+        const allocated = Number(attendee.hours_allocated) || meetingEstHours;
+        return { estimated: meetingEstHours, actual: allocated };
+      } else if (attendee.status === 'pending') {
+        return { estimated: meetingEstHours, actual: 0 };
+      } else {
+        // 'excused' or 'absent': does not consume hours or mark delayed
+        return { estimated: 0, actual: 0 };
+      }
+    }
+
+    if (task.assigned_staff_id === memberId) {
+      return {
+        estimated: meetingEstHours,
+        actual: task.status === 'done' ? (Number(task.actual_hours) || meetingEstHours) : 0,
+      };
+    }
+
+    return { estimated: 0, actual: 0 };
+  }
+
   const safeChecklist = Array.isArray(task.checklist) ? task.checklist : parseTaskChecklist(task.checklist);
   const memberSubtasks = safeChecklist.filter((c) => c.assigned_staff_id === memberId);
   const otherSubtasks = safeChecklist.filter((c) => c.assigned_staff_id && c.assigned_staff_id !== memberId);
@@ -580,12 +810,13 @@ export function getTaskWeeklyPacing(
     task.status === 'blocked' ||
     (Boolean(task.blocked_by_task_id) && Boolean(task.blocked_by) && task.blocked_by?.status !== 'done');
 
-  // Parse due date if present to determine if a week is overdue
+  // Parse due date or meeting start date if present to determine if a week is scheduled/overdue
   let dueWeek: number | null = null;
   let isDueInPastMonth = false;
 
-  if (task.due_date) {
-    const due = new Date(task.due_date);
+  const targetDateStr = task.type === 'meeting' ? (task.meeting_start_at || task.due_date) : task.due_date;
+  if (targetDateStr) {
+    const due = new Date(targetDateStr);
     if (!isNaN(due.getTime())) {
       const dueYear = due.getFullYear();
       const dueMonth = due.getMonth();
@@ -631,6 +862,48 @@ export function getTaskWeeklyPacing(
     let doneItems = 0;
     let hasSchedule = false;
     let status: 'completed' | 'on_track' | 'at_risk' | 'delayed' | 'pending' = 'pending';
+
+    // Synchronous activities / meetings: paced by scheduled session week
+    if (task.type === 'meeting') {
+      const isMeetingWeek = dueWeek === w;
+      if (isTaskDone) {
+        return {
+          week: w,
+          label: `Semana ${w}`,
+          dateRange: dateRanges[idx],
+          progress: isMeetingWeek || isPastWeek ? 100 : 0,
+          totalDeliverables: 1,
+          completedDeliverables: 1,
+          status: isMeetingWeek || isPastWeek ? 'completed' : 'pending',
+          hasSchedule: isMeetingWeek,
+        };
+      }
+
+      if (isMeetingWeek) {
+        const meetingStatus = isBlocked ? 'delayed' : isPastWeek ? 'on_track' : isCurrentWeek ? 'on_track' : 'pending';
+        return {
+          week: w,
+          label: `Semana ${w}`,
+          dateRange: dateRanges[idx],
+          progress: isPastWeek ? 100 : 50,
+          totalDeliverables: 1,
+          completedDeliverables: isPastWeek ? 1 : 0,
+          status: meetingStatus,
+          hasSchedule: true,
+        };
+      }
+
+      return {
+        week: w,
+        label: `Semana ${w}`,
+        dateRange: dateRanges[idx],
+        progress: 0,
+        totalDeliverables: 0,
+        completedDeliverables: 0,
+        status: 'pending',
+        hasSchedule: false,
+      };
+    }
 
     // If task is globally completed, evaluate based on week timing
     if (isTaskDone) {
@@ -953,33 +1226,64 @@ export function parseSystemAuditNote(rawContent: string): ParsedAuditNote {
 }
 
 /**
- * Standardized role matcher: Checks if a staff member has PM, Lead, QA, or Management permissions
- * Matches Spanish and English role variations (Gestor de Proyecto, Líder Técnico, PM, etc.)
+ * Standardized role matcher: Checks if a staff member has PM, Lead, or Management permissions.
+ * Prioritizes structured task_role if present, otherwise evaluates role string strictly.
+ * Explicitly separates QA/testing roles from PM management permissions.
  */
-export function isStaffLeadOrPmRole(role?: string | null): boolean {
+export function isStaffLeadOrPmRole(
+  role?: string | null,
+  taskRole?: CollaboratorRole | string | null
+): boolean {
+  if (taskRole) {
+    const tr = taskRole.toLowerCase();
+    if (tr === "pm" || tr === "admin" || tr === "owner") return true;
+    if (
+      tr === "qa_lead" ||
+      tr === "developer" ||
+      tr === "designer" ||
+      tr === "support" ||
+      tr === "sales" ||
+      tr === "operations"
+    ) {
+      return false;
+    }
+  }
+
   if (!role) return false;
-  const r = role.toLowerCase();
-  return (
-    r.includes("pm") ||
-    r.includes("lead") ||
-    r.includes("project") ||
-    r.includes("proyecto") ||
-    r.includes("gestor") ||
-    r.includes("gestora") ||
-    r.includes("gerente") ||
-    r.includes("manager") ||
-    r.includes("lider") ||
-    r.includes("líder") ||
-    r.includes("coordinad") ||
-    r.includes("director") ||
-    r.includes("directora") ||
+  const r = role.toLowerCase().trim();
+
+  // Exclude pure QA or tester roles explicitly
+  if (
     r.includes("qa") ||
     r.includes("tester") ||
     r.includes("calidad") ||
     r.includes("revisor") ||
-    r.includes("pruebas") ||
-    r.includes("owner") ||
-    r.includes("admin")
+    r.includes("pruebas")
+  ) {
+    return false;
+  }
+
+  // Match PM with word boundary or exact token
+  const hasPmToken = /\bpm\b/i.test(r) || /\bp\.m\.\b/i.test(r);
+  if (hasPmToken) return true;
+
+  return (
+    r.includes("project manager") ||
+    r.includes("gestor de proyecto") ||
+    r.includes("gestora de proyecto") ||
+    r.includes("lider tecnico") ||
+    r.includes("líder técnico") ||
+    r.includes("tech lead") ||
+    r.includes("team lead") ||
+    r.includes("gerente") ||
+    r.includes("director") ||
+    r.includes("directora") ||
+    r.includes("coordinador") ||
+    r.includes("coordinadora") ||
+    r.includes("administrator") ||
+    r.includes("administrador") ||
+    r.includes("admin") ||
+    r.includes("owner")
   );
 }
 

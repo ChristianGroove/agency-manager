@@ -15,19 +15,21 @@ interface BulkActionsFloatingBarProps {
     onDelete: () => void
     onClearSelection: () => void
     isDeleting?: boolean
+    className?: string
 }
 
 export function BulkActionsFloatingBar({
     selectedCount,
     onDelete,
     onClearSelection,
-    isDeleting = false
+    isDeleting = false,
+    className,
 }: BulkActionsFloatingBarProps) {
     if (selectedCount === 0) return null
 
     return (
         <TooltipProvider delayDuration={150}>
-            <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none">
+            <div className={cn("fixed bottom-[88px] sm:bottom-[96px] left-0 right-0 flex justify-center z-[60] pointer-events-none", className)}>
                 <div className="bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-gray-200 dark:border-white/10 p-1.5 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto ring-1 ring-black/5">
                     {/* Count Badge */}
                     <div className="pl-3 flex items-center gap-2">
