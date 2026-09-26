@@ -369,3 +369,179 @@ export async function createGoogleCalendarMeetingEvent(
     }
   }
 }
+
+export interface UpdateGoogleMeetEventParams {
+  externalMeetingId: string
+  title?: string
+  description?: string | null
+  startAt?: string | null
+  durationMinutes?: number | null
+  attendeeEmails?: string[]
+  userId?: string | null
+  staffId?: string | null
+  orgId: string
+  isRecurring?: boolean | null
+  recurrenceInterval?: RecurrenceInterval | null
+  recurrenceDays?: number[] | null
+  recurrenceDay?: number | null
+  timeZone?: string
+}
+
+export interface UpdateGoogleMeetEventResult {
+  success: boolean
+  meetingUrl?: string | null
+  error?: string
+}
+
+/**
+ * Actualiza una reunión existente en Google Calendar y notifica a los convocados por correo
+ */
+export async function updateGoogleCalendarMeetingEvent(
+  params: UpdateGoogleMeetEventParams
+): Promise<UpdateGoogleMeetEventResult> {
+  try {
+    if (!params.externalMeetingId) {
+      return { success: false, error: "Identificador de reunión externa no especificado" }
+    }
+
+    const oauth2Client = await getValidGoogleOAuthClient(params.userId, params.orgId, params.staffId)
+    if (!oauth2Client) {
+      return {
+        success: false,
+        error: "No hay cuenta de Google vinculada o las credenciales no son válidas",
+      }
+    }
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client })
+    const requestBody: any = {}
+
+    if (params.title !== undefined) {
+      requestBody.summary = params.title
+    }
+
+    if (params.description !== undefined) {
+      requestBody.description = params.description || ""
+    }
+
+    const timeZone =
+      params.timeZone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "America/Bogota"
+
+    if (params.startAt !== undefined && params.startAt) {
+      const start = !isNaN(new Date(params.startAt).getTime())
+        ? new Date(params.startAt)
+        : new Date(Date.now() + 5 * 60 * 1000)
+
+      const duration = params.durationMinutes && params.durationMinutes > 0
+        ? Number(params.durationMinutes)
+        : 30
+
+      const end = new Date(start.getTime() + duration * 60 * 1000)
+
+      requestBody.start = {
+        dateTime: start.toISOString(),
+        timeZone,
+      }
+      requestBody.end = {
+        dateTime: end.toISOString(),
+        timeZone,
+      }
+    }
+
+    if (params.isRecurring !== undefined || params.recurrenceInterval !== undefined) {
+      const rrule = formatGoogleCalendarRrule({
+        isRecurring: params.isRecurring,
+        recurrenceInterval: params.recurrenceInterval,
+        recurrenceDays: params.recurrenceDays,
+        recurrenceDay: params.recurrenceDay,
+      })
+      requestBody.recurrence = rrule || []
+    }
+
+    if (params.attendeeEmails !== undefined) {
+      const validEmails = (params.attendeeEmails || [])
+        .map((e) => e?.trim())
+        .filter((e): e is string => Boolean(e && e.includes("@")))
+      requestBody.attendees = validEmails.map((email) => ({ email }))
+    }
+
+    const response = await calendar.events.patch({
+      calendarId: "primary",
+      eventId: params.externalMeetingId,
+      sendUpdates: "all", // Envía actualización por correo a los convocados
+      requestBody,
+    })
+
+    const event = response.data
+    const meetingUrl =
+      event.hangoutLink ||
+      event.conferenceData?.entryPoints?.find((ep) => ep.entryPointType === "video")?.uri ||
+      null
+
+    return {
+      success: true,
+      meetingUrl,
+    }
+  } catch (error: any) {
+    console.error("[updateGoogleCalendarMeetingEvent Error]", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar reunión en Google Calendar",
+    }
+  }
+}
+
+export interface DeleteGoogleMeetEventParams {
+  externalMeetingId: string
+  userId?: string | null
+  staffId?: string | null
+  orgId: string
+}
+
+export interface DeleteGoogleMeetEventResult {
+  success: boolean
+  error?: string
+}
+
+/**
+ * Cancela y elimina una reunión de Google Calendar y notifica la cancelación a los convocados
+ */
+export async function deleteGoogleCalendarMeetingEvent(
+  params: DeleteGoogleMeetEventParams
+): Promise<DeleteGoogleMeetEventResult> {
+  try {
+    if (!params.externalMeetingId) {
+      return { success: true }
+    }
+
+    const oauth2Client = await getValidGoogleOAuthClient(params.userId, params.orgId, params.staffId)
+    if (!oauth2Client) {
+      return {
+        success: false,
+        error: "No hay cuenta de Google vinculada o las credenciales no son válidas",
+      }
+    }
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client })
+
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId: params.externalMeetingId,
+      sendUpdates: "all", // Envía correo de cancelación a todos los convocados
+    })
+
+    return { success: true }
+  } catch (error: any) {
+    // Si el evento ya fue cancelado o no existe en Google (404 o 410), se considera completado
+    if (error?.code === 404 || error?.code === 410 || error?.status === 404 || error?.status === 410) {
+      return { success: true }
+    }
+    console.error("[deleteGoogleCalendarMeetingEvent Error]", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cancelar reunión en Google Calendar",
+    }
+  }
+}
+

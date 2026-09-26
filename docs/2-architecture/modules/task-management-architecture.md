@@ -1601,4 +1601,10 @@ Para reuniones periódicas (ej. daily standups de lunes a viernes, syncs semanal
 3. **Persistencia del Enlace de Videollamada**: En Google Calendar, toda la serie recurrente comparte un identificador y enlace de Meet idéntico y persistente (`hangoutLink`). Los convocados conservan el mismo acceso virtual para todas sus sesiones.
 4. **Gobierno Operativo y Ciclos en Pixy**: A nivel operativo en Pixy, el cron de recurrencia (`/api/cron/tasks-recurrence`) clona el ticket al cumplirse el ciclo proyectando la fecha correspondiente, reseteando la lista de asistencia a estado `pending` y propagando `meeting_url` y `external_meeting_id`. Esto permite auditar la asistencia y acreditar horas de forma independiente en cada semana o ciclo sin romper la continuidad del calendario remoto.
 
+### F. Sincronización de Edición y Cancelación/Eliminación Remota
+Para asegurar que los calendarios de los convocados no queden desfasados respecto a Pixy:
+1. **Actualización Remota (`calendar.events.patch`)**: Cuando un PM o líder modifica una reunión desde `updateTask` o `portalUpdateTask` (título, descripción, fecha/hora `meeting_start_at`, duración `meeting_duration_minutes`, lista de convocados `meeting_attendees` o directivas de recurrencia), el servicio `updateGoogleCalendarMeetingEvent` sincroniza los cambios hacia Google Calendar con `sendUpdates: 'all'`. Google actualiza el evento y envía notificaciones por correo electrónico a los invitados con los datos corregidos.
+2. **Cancelación Automática al Eliminar (`calendar.events.delete`)**: Al eliminar una reunión (individualmente en `deleteTask` / `portalDeleteTask` o en lote mediante `deleteTasks` / `portalBulkDeleteTasks`), el servicio `deleteGoogleCalendarMeetingEvent` cancela el evento remoto en Google Calendar con `sendUpdates: 'all'`, removiendo la sesión del calendario de los asistentes y enviando la confirmación de cancelación oficial. Si el evento es una serie recurrente, la cancelación elimina todas las instancias futuras asociadas.
+
+
 

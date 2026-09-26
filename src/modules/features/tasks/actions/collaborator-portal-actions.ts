@@ -1925,7 +1925,7 @@ export async function portalUpdateTask(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, first_name, last_name, photo_url, role, task_role, organization_id")
+      .select("id, user_id, first_name, last_name, photo_url, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -1933,11 +1933,12 @@ export async function portalUpdateTask(
     if (!staff) throw new Error("Acceso no autorizado");
     const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
 
-    // Fetch previous state for audit comparison and stakeholder notifications
+    // Fetch previous state for audit comparison, stakeholder notifications and calendar sync
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
         status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours, progress_percentage,
+        type, external_meeting_id, meeting_start_at, meeting_duration_minutes, meeting_attendees, description, is_recurring, recurrence_interval, recurrence_days, recurrence_day,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -2409,6 +2410,70 @@ export async function portalUpdateTask(
       }
     }
 
+    // Sincronizar cambios en Google Calendar si es una reunion vinculada
+    const extMeetingId = prevTask?.external_meeting_id || (updatedTask as any)?.external_meeting_id;
+    if (extMeetingId && (prevTask?.type === "meeting" || updatedTask.type === "meeting")) {
+      const meetingFieldsChanged =
+        (data.title !== undefined && data.title !== prevTask?.title) ||
+        (data.description !== undefined && data.description !== prevTask?.description) ||
+        (data.meetingStartAt !== undefined) ||
+        (data.meetingDurationMinutes !== undefined) ||
+        (data.meetingAttendees !== undefined) ||
+        (data.isRecurring !== undefined) ||
+        (data.recurrenceInterval !== undefined) ||
+        (data.recurrenceDays !== undefined) ||
+        (data.recurrenceDay !== undefined);
+
+      if (meetingFieldsChanged) {
+        try {
+          const { updateGoogleCalendarMeetingEvent } = await import(
+            "@/modules/features/integrations/google/google-calendar-service"
+          );
+
+          let attendeeEmails: string[] | undefined = undefined;
+          if (data.meetingAttendees !== undefined) {
+            const staffIds = (data.meetingAttendees || []).map((a: any) => a.staff_id).filter(Boolean);
+            if (staffIds.length > 0) {
+              const { data: staffRecords } = await supabaseAdmin
+                .from("organization_staff")
+                .select("email")
+                .in("id", staffIds);
+              attendeeEmails = (staffRecords || []).map((s: any) => s.email).filter(Boolean);
+            } else {
+              attendeeEmails = [];
+            }
+          }
+
+          const gUpdateRes = await updateGoogleCalendarMeetingEvent({
+            externalMeetingId: extMeetingId,
+            title: data.title !== undefined ? data.title : prevTask?.title,
+            description: data.description !== undefined ? data.description : prevTask?.description,
+            startAt: data.meetingStartAt !== undefined ? data.meetingStartAt : prevTask?.meeting_start_at,
+            durationMinutes: data.meetingDurationMinutes !== undefined ? Number(data.meetingDurationMinutes) : Number(prevTask?.meeting_duration_minutes || 30),
+            attendeeEmails,
+            userId: staff.user_id || null,
+            staffId: staff.id,
+            orgId: staff.organization_id,
+            isRecurring: isLeadOrPm ? (data.isRecurring !== undefined ? data.isRecurring : prevTask?.is_recurring) : prevTask?.is_recurring,
+            recurrenceInterval: isLeadOrPm ? (data.recurrenceInterval !== undefined ? data.recurrenceInterval : prevTask?.recurrence_interval) : prevTask?.recurrence_interval,
+            recurrenceDays: isLeadOrPm ? (data.recurrenceDays !== undefined ? data.recurrenceDays : prevTask?.recurrence_days) : prevTask?.recurrence_days,
+            recurrenceDay: isLeadOrPm ? (data.recurrenceDay !== undefined ? data.recurrenceDay : prevTask?.recurrence_day) : prevTask?.recurrence_day,
+          });
+
+          if (gUpdateRes.success) {
+            await logPortalTaskAuditComment(
+              staff.organization_id,
+              taskId,
+              "Sincronizacion Google Calendar: Los cambios de la reunion han sido actualizados en Google Calendar.",
+              staff
+            );
+          }
+        } catch (gErr) {
+          console.error("Portal: Error sincronizando actualizacion en Google Calendar:", gErr);
+        }
+      }
+    }
+
     safeRevalidateOperations();
     return { success: true, task: normalizeTask(updatedTask) };
   } catch (err: any) {
@@ -2504,7 +2569,7 @@ export async function portalDeleteTask(
   try {
     const { data: staff } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, role, task_role, organization_id")
+      .select("id, user_id, role, task_role, organization_id")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -2515,6 +2580,30 @@ export async function portalDeleteTask(
 
     if (!isLeadOrPm) {
       throw new Error("Solo los líderes o Project Managers tienen permiso para eliminar tareas.");
+    }
+
+    // Cancelar en Google Calendar si es una reunion vinculada
+    const { data: taskToDelete } = await supabaseAdmin
+      .from("task_items")
+      .select("id, external_meeting_id, type")
+      .eq("organization_id", staff.organization_id)
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (taskToDelete?.external_meeting_id && taskToDelete?.type === "meeting") {
+      try {
+        const { deleteGoogleCalendarMeetingEvent } = await import(
+          "@/modules/features/integrations/google/google-calendar-service"
+        );
+        await deleteGoogleCalendarMeetingEvent({
+          externalMeetingId: taskToDelete.external_meeting_id,
+          orgId: staff.organization_id,
+          userId: staff.user_id || null,
+          staffId: staff.id,
+        });
+      } catch (calErr) {
+        console.error("Portal: Error al cancelar reunion en Google Calendar:", calErr);
+      }
     }
 
     const { error } = await supabaseAdmin
@@ -2686,7 +2775,7 @@ export async function portalBulkDeleteTasks(
     // 1. Verify staff by token
     const { data: staff, error: staffErr } = await supabaseAdmin
       .from("organization_staff")
-      .select("id, organization_id, role, task_role, can_bulk_delete_tasks")
+      .select("id, user_id, organization_id, role, task_role, can_bulk_delete_tasks")
       .eq("access_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -2703,6 +2792,35 @@ export async function portalBulkDeleteTasks(
 
     if (!hasPermission) {
       return { success: false, error: "No tienes permiso para eliminar tareas en masa" };
+    }
+
+    // Cancelar reuniones en Google Calendar antes de eliminarlas
+    const { data: meetingTasks } = await supabaseAdmin
+      .from("task_items")
+      .select("id, external_meeting_id, type")
+      .in("id", taskIds)
+      .eq("organization_id", staff.organization_id)
+      .eq("type", "meeting")
+      .not("external_meeting_id", "is", null);
+
+    if (meetingTasks && meetingTasks.length > 0) {
+      try {
+        const { deleteGoogleCalendarMeetingEvent } = await import(
+          "@/modules/features/integrations/google/google-calendar-service"
+        );
+        for (const mTask of meetingTasks) {
+          if (mTask.external_meeting_id) {
+            await deleteGoogleCalendarMeetingEvent({
+              externalMeetingId: mTask.external_meeting_id,
+              orgId: staff.organization_id,
+              userId: staff.user_id || null,
+              staffId: staff.id,
+            });
+          }
+        }
+      } catch (calErr) {
+        console.error("Portal: Error al cancelar reuniones en Google Calendar:", calErr);
+      }
     }
 
     // 2. Delete tasks in chunks of 100

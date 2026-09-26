@@ -1061,11 +1061,12 @@ export async function updateTask(
     delete updateData.loggedHours;
     delete updateData.note;
 
-    // Fetch previous state for audit comparison
+    // Fetch previous state for audit comparison and remote calendar sync
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
         status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist, actual_hours,
+        type, external_meeting_id, meeting_start_at, meeting_duration_minutes, meeting_attendees, description, is_recurring, recurrence_interval, recurrence_days, recurrence_day,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
       `)
@@ -1323,6 +1324,72 @@ export async function updateTask(
               }
             }
           }
+        }
+      }
+    }
+
+    // Sincronizar cambios en Google Calendar si es una sesión vinculada remotamente
+    const extMeetingId = prevTask?.external_meeting_id || updatedTask?.external_meeting_id;
+    if (extMeetingId && (prevTask?.type === "meeting" || updatedTask?.type === "meeting")) {
+      const meetingFieldsChanged =
+        (updateData.title !== undefined && updateData.title !== prevTask?.title) ||
+        (updateData.description !== undefined && updateData.description !== prevTask?.description) ||
+        (updateData.meeting_start_at !== undefined && updateData.meeting_start_at !== prevTask?.meeting_start_at) ||
+        (updateData.meeting_duration_minutes !== undefined && Number(updateData.meeting_duration_minutes) !== Number(prevTask?.meeting_duration_minutes)) ||
+        (updateData.meeting_attendees !== undefined) ||
+        (updateData.is_recurring !== undefined && updateData.is_recurring !== prevTask?.is_recurring) ||
+        (updateData.recurrence_interval !== undefined && updateData.recurrence_interval !== prevTask?.recurrence_interval) ||
+        (updateData.recurrence_days !== undefined) ||
+        (updateData.recurrence_day !== undefined);
+
+      if (meetingFieldsChanged) {
+        try {
+          const { updateGoogleCalendarMeetingEvent } = await import(
+            "@/modules/features/integrations/google/google-calendar-service"
+          );
+
+          let attendeeEmails: string[] | undefined = undefined;
+          if (updateData.meeting_attendees !== undefined) {
+            const staffIds = (updateData.meeting_attendees || []).map((a: any) => a.staff_id).filter(Boolean);
+            if (staffIds.length > 0) {
+              const { data: staffRecords } = await supabaseAdmin
+                .from("organization_staff")
+                .select("email")
+                .in("id", staffIds);
+              attendeeEmails = (staffRecords || []).map((s: any) => s.email).filter(Boolean);
+            } else {
+              attendeeEmails = [];
+            }
+          }
+
+          const supabase = await createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+
+          const gUpdateRes = await updateGoogleCalendarMeetingEvent({
+            externalMeetingId: extMeetingId,
+            title: updateData.title !== undefined ? updateData.title : prevTask?.title,
+            description: updateData.description !== undefined ? updateData.description : prevTask?.description,
+            startAt: updateData.meeting_start_at !== undefined ? updateData.meeting_start_at : prevTask?.meeting_start_at,
+            durationMinutes: updateData.meeting_duration_minutes !== undefined ? Number(updateData.meeting_duration_minutes) : Number(prevTask?.meeting_duration_minutes || 30),
+            attendeeEmails,
+            userId: user?.id || null,
+            staffId: prevTask?.created_by_staff_id || null,
+            orgId: prevTask?.organization_id || updatedTask.organization_id,
+            isRecurring: updateData.is_recurring !== undefined ? updateData.is_recurring : prevTask?.is_recurring,
+            recurrenceInterval: updateData.recurrence_interval !== undefined ? updateData.recurrence_interval : prevTask?.recurrence_interval,
+            recurrenceDays: updateData.recurrence_days !== undefined ? updateData.recurrence_days : prevTask?.recurrence_days,
+            recurrenceDay: updateData.recurrence_day !== undefined ? updateData.recurrence_day : prevTask?.recurrence_day,
+          });
+
+          if (gUpdateRes.success) {
+            await logTaskAuditComment(
+              prevTask?.organization_id || updatedTask.organization_id,
+              taskId,
+              "Sincronizacion Google Calendar: Los cambios de la reunion han sido actualizados en Google Calendar."
+            );
+          }
+        } catch (gErr) {
+          console.error("Error sincronizando actualizacion en Google Calendar:", gErr);
         }
       }
     }
@@ -1795,6 +1862,33 @@ export async function deleteTask(
   try {
     const activeOrgId = await resolveOrgId(orgId);
 
+    // Cancelar en Google Calendar si es una reunion vinculada
+    const { data: taskToDelete } = await supabaseAdmin
+      .from("task_items")
+      .select("id, external_meeting_id, type, created_by_staff_id, assigned_staff_id")
+      .eq("organization_id", activeOrgId)
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (taskToDelete?.external_meeting_id && taskToDelete?.type === "meeting") {
+      try {
+        const { deleteGoogleCalendarMeetingEvent } = await import(
+          "@/modules/features/integrations/google/google-calendar-service"
+        );
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        await deleteGoogleCalendarMeetingEvent({
+          externalMeetingId: taskToDelete.external_meeting_id,
+          orgId: activeOrgId,
+          userId: user?.id || null,
+          staffId: taskToDelete.created_by_staff_id || taskToDelete.assigned_staff_id || null,
+        });
+      } catch (calErr) {
+        console.error("Error al cancelar reunion en Google Calendar:", calErr);
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("task_items")
       .delete()
@@ -1823,6 +1917,38 @@ export async function deleteTasks(
     }
 
     const activeOrgId = await resolveOrgId(orgId);
+
+    // Cancelar reuniones en Google Calendar antes de su eliminacion
+    const { data: meetingTasks } = await supabaseAdmin
+      .from("task_items")
+      .select("id, external_meeting_id, type, created_by_staff_id, assigned_staff_id")
+      .in("id", taskIds)
+      .eq("organization_id", activeOrgId)
+      .eq("type", "meeting")
+      .not("external_meeting_id", "is", null);
+
+    if (meetingTasks && meetingTasks.length > 0) {
+      try {
+        const { deleteGoogleCalendarMeetingEvent } = await import(
+          "@/modules/features/integrations/google/google-calendar-service"
+        );
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        for (const mTask of meetingTasks) {
+          if (mTask.external_meeting_id) {
+            await deleteGoogleCalendarMeetingEvent({
+              externalMeetingId: mTask.external_meeting_id,
+              orgId: activeOrgId,
+              userId: user?.id || null,
+              staffId: mTask.created_by_staff_id || mTask.assigned_staff_id || null,
+            });
+          }
+        }
+      } catch (calErr) {
+        console.error("Error al cancelar reuniones en Google Calendar:", calErr);
+      }
+    }
 
     // Delete in chunks of 100 to avoid query length limits
     const CHUNK_SIZE = 100;
