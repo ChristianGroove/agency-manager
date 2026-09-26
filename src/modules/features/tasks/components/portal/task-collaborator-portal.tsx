@@ -130,6 +130,7 @@ import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { TaskKanbanBoard } from "../kanban/task-kanban-board"
+import { TaskCalendarView } from "../calendar/task-calendar-view"
 import { TaskPortalDetailModal } from "./task-portal-detail-modal"
 import { ProjectFormModal } from "../modals/project-form-modal"
 import { WorkspaceFormModal } from "../modals/workspace-form-modal"
@@ -2255,6 +2256,7 @@ export function TaskCollaboratorPortal({
   // Count meetings and tickets in current scope before segregation
   const totalMeetingsCount = baseSourceTasks.filter((t) => t.type === "meeting").length
   const totalTicketsCount = baseSourceTasks.filter((t) => t.type !== "meeting").length
+  const consolidatedCalendarScopeTasks = baseSourceTasks
 
   // Segregate meetings:
   // If includeMeetings is true, display EXCLUSIVELY meetings (pure meetings mode)
@@ -2266,14 +2268,15 @@ export function TaskCollaboratorPortal({
   }
 
   // Calculate status counts on base source before status filter
-  const countAll = baseSourceTasks.length
-  const countBacklog = baseSourceTasks.filter((t) => t.status === "backlog").length
-  const countTodo = baseSourceTasks.filter((t) => t.status === "todo").length
-  const countInProgress = baseSourceTasks.filter((t) => t.status === "in_progress").length
-  const countInReview = baseSourceTasks.filter((t) => t.status === "in_review").length
-  const countBlocked = baseSourceTasks.filter((t) => t.status === "blocked").length
-  const countDone = baseSourceTasks.filter((t) => t.status === "done").length
-  const countActive = baseSourceTasks.filter((t) =>
+  const countSourceTasks = viewMode === "calendar" ? consolidatedCalendarScopeTasks : baseSourceTasks
+  const countAll = countSourceTasks.length
+  const countBacklog = countSourceTasks.filter((t) => t.status === "backlog").length
+  const countTodo = countSourceTasks.filter((t) => t.status === "todo").length
+  const countInProgress = countSourceTasks.filter((t) => t.status === "in_progress").length
+  const countInReview = countSourceTasks.filter((t) => t.status === "in_review").length
+  const countBlocked = countSourceTasks.filter((t) => t.status === "blocked").length
+  const countDone = countSourceTasks.filter((t) => t.status === "done").length
+  const countActive = countSourceTasks.filter((t) =>
     t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
   ).length
 
@@ -2302,7 +2305,7 @@ export function TaskCollaboratorPortal({
     filteredTasks = filteredTasks.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
-        t.ticket_code.toLowerCase().includes(q) ||
+        (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
         (t.description && t.description.toLowerCase().includes(q)) ||
         (t.assigned_staff &&
           `${t.assigned_staff.first_name} ${t.assigned_staff.last_name || ""}`
@@ -2312,6 +2315,33 @@ export function TaskCollaboratorPortal({
   }
 
   const displayedTasks = filteredTasks
+
+  // Listado consolidado para vista Calendario (entregables y reuniones sin exclusion mutua)
+  const calendarTasks = useMemo(() => {
+    let list = consolidatedCalendarScopeTasks
+    if (statusFilter === "active") {
+      list = list.filter((t) =>
+        t.status === "todo" || t.status === "in_progress" || t.status === "in_review" || t.status === "blocked"
+      )
+    } else if (statusFilter !== "all") {
+      list = list.filter((t) => t.status === statusFilter)
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
+          (t.description && t.description.toLowerCase().includes(q)) ||
+          (t.assigned_staff &&
+            `${t.assigned_staff.first_name} ${t.assigned_staff.last_name || ""}`
+              .toLowerCase()
+              .includes(q))
+      )
+    }
+    return list
+  }, [consolidatedCalendarScopeTasks, statusFilter, searchQuery])
 
   // Pagination calculations for Grid, Compact, and List views
   const totalPages = Math.max(1, Math.ceil(displayedTasks.length / pageSize))
@@ -3297,6 +3327,7 @@ export function TaskCollaboratorPortal({
             {(totalMeetingsCount > 0 || includeMeetings) && (
               <TaskMeetingViewToggle
                 includeMeetings={includeMeetings}
+                disabled={viewMode === "calendar"}
                 size="default"
                 onToggle={() => {
                   const nextVal = !includeMeetings
@@ -3402,6 +3433,7 @@ export function TaskCollaboratorPortal({
               }}
               showCompact={false}
               showKanban={true}
+              showCalendar={true}
               disableKanban={includeMeetings}
               disableKanbanTooltip="Tablero Kanban disponible solo para tickets y entregables"
             />
@@ -4589,8 +4621,21 @@ export function TaskCollaboratorPortal({
           </div>
         )}
 
+        {/* 5. CALENDAR VIEW */}
+        {viewMode === "calendar" && (
+          <div className="pt-1">
+            <TaskCalendarView
+              tasks={calendarTasks}
+              sprints={sprints}
+              includeMeetings={includeMeetings}
+              onTaskClick={openTaskDetail}
+              brandColor={brandColor}
+            />
+          </div>
+        )}
+
         {/* Pagination Footer (Para vistas Grid, Compact y List) */}
-        {displayedTasks.length > 0 && viewMode !== "kanban" && (
+        {displayedTasks.length > 0 && viewMode !== "kanban" && viewMode !== "calendar" && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 bg-card/80 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 rounded-2xl text-xs text-muted-foreground shadow-2xs">
             <div className="flex items-center gap-2">
               <span>

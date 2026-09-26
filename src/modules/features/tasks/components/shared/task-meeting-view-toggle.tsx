@@ -8,6 +8,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 export interface TaskMeetingViewToggleProps {
   includeMeetings: boolean
   onToggle: () => void
+  disabled?: boolean
   size?: "default" | "md" | "sm"
   className?: string
 }
@@ -15,6 +16,7 @@ export interface TaskMeetingViewToggleProps {
 export function TaskMeetingViewToggle({
   includeMeetings,
   onToggle,
+  disabled = false,
   size = "default",
   className,
 }: TaskMeetingViewToggleProps) {
@@ -27,21 +29,25 @@ export function TaskMeetingViewToggle({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      disabled={disabled}
+      onClick={disabled ? undefined : onToggle}
       aria-label={includeMeetings ? "Ver Tickets" : "Ver reuniones"}
       className={cn(
         "group relative w-[140px] min-w-[140px] max-w-[140px] shrink-0 font-semibold",
-        "flex items-center justify-center border transition-colors duration-200",
-        "cursor-pointer select-none overflow-hidden outline-none",
-        includeMeetings
+        "flex items-center justify-center border transition-all duration-200",
+        "select-none overflow-hidden outline-none",
+        disabled
+          ? "opacity-35 cursor-not-allowed pointer-events-none bg-zinc-100/60 dark:bg-white/5 border-zinc-200/50 dark:border-white/5 text-zinc-400 dark:text-zinc-500 shadow-none ring-0"
+          : "cursor-pointer",
+        !disabled && (includeMeetings
           ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/15 dark:border-primary/40 shadow-xs ring-1 ring-primary/20 hover:bg-primary/20"
-          : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-white/10 text-muted-foreground hover:text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/60 shadow-2xs",
+          : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-white/10 text-muted-foreground hover:text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/60 shadow-2xs"),
         sizeClasses,
         className
       )}
     >
       {/* Dynamic Ambient Glow on Active Meetings Mode */}
-      {includeMeetings && (
+      {includeMeetings && !disabled && (
         <motion.div
           layoutId="meeting-toggle-glow"
           className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent pointer-events-none"

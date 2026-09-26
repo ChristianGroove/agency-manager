@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutGrid, Rows, LayoutTemplate, Kanban } from "lucide-react"
+import { LayoutGrid, Rows, LayoutTemplate, Kanban, CalendarDays } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import {
     Tooltip,
@@ -9,7 +9,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-export type ViewMode = 'grid' | 'list' | 'compact' | 'kanban'
+export type ViewMode = 'grid' | 'list' | 'compact' | 'kanban' | 'calendar'
 
 interface ViewToggleProps<T extends string = ViewMode> {
     view: T
@@ -17,6 +17,7 @@ interface ViewToggleProps<T extends string = ViewMode> {
     className?: string
     showCompact?: boolean
     showKanban?: boolean
+    showCalendar?: boolean
     disableKanban?: boolean
     disableKanbanTooltip?: string
 }
@@ -27,6 +28,7 @@ export function ViewToggle<T extends string = ViewMode>({
     className,
     showCompact = true,
     showKanban = false,
+    showCalendar = false,
     disableKanban = false,
     disableKanbanTooltip = "Tablero Kanban disponible solo para tickets",
 }: ViewToggleProps<T>) {
@@ -45,13 +47,13 @@ export function ViewToggle<T extends string = ViewMode>({
                                     "p-2 rounded-lg transition-all cursor-pointer",
                                     view === ('list' as string) ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                                 )}
-                                aria-label="Vista Lista"
+                                aria-label="Lista"
                             >
                                 <Rows className="h-4 w-4" />
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
-                            <span>Vista Lista</span>
+                            <span>Lista</span>
                         </TooltipContent>
                     </Tooltip>
 
@@ -72,14 +74,14 @@ export function ViewToggle<T extends string = ViewMode>({
                                                 ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                                                 : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10")
                                         )}
-                                        aria-label="Tablero Kanban"
+                                        aria-label="Kanban"
                                     >
                                         <Kanban className="h-4 w-4" />
                                     </button>
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <span>{disableKanban ? disableKanbanTooltip : "Tablero Kanban"}</span>
+                                <span>{disableKanban ? disableKanbanTooltip : "Kanban"}</span>
                             </TooltipContent>
                         </Tooltip>
                     )}
@@ -93,13 +95,13 @@ export function ViewToggle<T extends string = ViewMode>({
                                         "p-2 rounded-lg transition-all cursor-pointer",
                                         view === ('compact' as string) ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                                     )}
-                                    aria-label="Vista Compacta"
+                                    aria-label="Compacta"
                                 >
                                     <LayoutTemplate className="h-4 w-4" />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <span>Vista Compacta</span>
+                                <span>Compacta</span>
                             </TooltipContent>
                         </Tooltip>
                     )}
@@ -112,15 +114,35 @@ export function ViewToggle<T extends string = ViewMode>({
                                     "p-2 rounded-lg transition-all cursor-pointer",
                                     view === ('grid' as string) ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
                                 )}
-                                aria-label="Vista Detallada"
+                                aria-label="Detalle"
                             >
                                 <LayoutGrid className="h-4 w-4" />
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
-                            <span>Vista Detallada</span>
+                            <span>Detalle</span>
                         </TooltipContent>
                     </Tooltip>
+
+                    {showCalendar && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => onViewChange('calendar' as T)}
+                                    className={cn(
+                                        "p-2 rounded-lg transition-all cursor-pointer",
+                                        view === ('calendar' as string) ? "bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"
+                                    )}
+                                    aria-label="Calendario"
+                                >
+                                    <CalendarDays className="h-4 w-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <span>Calendario</span>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                 </div>
             </div>
         </TooltipProvider>

@@ -27,6 +27,7 @@ import {
   ChevronDown,
   CheckSquare,
   CalendarDays,
+  CalendarRange,
   RefreshCw,
   Rocket,
   UploadCloud,
@@ -55,6 +56,7 @@ import type {
 import { parseTaskChecklist } from "../types"
 import { TaskKanbanBoard } from "./kanban/task-kanban-board"
 import { TaskListView } from "./list/task-list-view"
+import { TaskCalendarView } from "./calendar/task-calendar-view"
 import { TaskMetricsView } from "./metrics/task-metrics-view"
 import { TaskCollaboratorsManager } from "./collaborators/task-collaborators-manager"
 import { TaskCollaboratorRibbon } from "./portal/task-collaborator-ribbon"
@@ -304,7 +306,7 @@ export function TaskManagerView({
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedMemberFilter, setSelectedMemberFilter] = useState<string>("all")
-  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators">("list")
+  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "pacing" | "metrics" | "collaborators" | "calendar">("list")
 
   // Bulk Selection & Deletion State (Exclusively in List table view)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
@@ -497,9 +499,11 @@ export function TaskManagerView({
     let blocked = 0
     let completed = 0
 
-    const countableTasks = includeMeetings
-      ? baseTasks.filter((t: TaskItem) => t.type === "meeting")
-      : baseTasks.filter((t: TaskItem) => t.type !== "meeting")
+    const countableTasks = activeTab === "calendar"
+      ? baseTasks
+      : (includeMeetings
+          ? baseTasks.filter((t: TaskItem) => t.type === "meeting")
+          : baseTasks.filter((t: TaskItem) => t.type !== "meeting"))
 
     countableTasks.forEach((t: TaskItem) => {
       if (t.status === "backlog") backlog++
@@ -522,7 +526,7 @@ export function TaskManagerView({
       blocked,
       completed,
     }
-  }, [baseTasks, includeMeetings])
+  }, [baseTasks, includeMeetings, activeTab])
 
   const {
     total: totalCount,
@@ -562,10 +566,10 @@ export function TaskManagerView({
       if (q) {
         return (
           t.title.toLowerCase().includes(q) ||
-          t.ticket_code.toLowerCase().includes(q) ||
+          (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
           (t.description && t.description.toLowerCase().includes(q)) ||
           (t.assigned_staff &&
-            `${t.assigned_staff.first_name} ${t.assigned_staff.last_name}`
+            `${t.assigned_staff.first_name} ${t.assigned_staff.last_name || ""}`
               .toLowerCase()
               .includes(q))
         )
@@ -574,6 +578,41 @@ export function TaskManagerView({
       return true
     })
   }, [baseTasks, statusFilter, searchTerm, includeMeetings])
+
+  // Listado consolidado para la vista Calendario (sin segregación excluyente de reuniones o entregables)
+  const calendarTasks = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase()
+    return baseTasks.filter((t: TaskItem) => {
+      let matchesStatus = true
+      if (statusFilter === "active") {
+        matchesStatus =
+          t.status === "todo" ||
+          t.status === "in_progress" ||
+          t.status === "in_review" ||
+          t.status === "blocked"
+      } else if (statusFilter === "all") {
+        matchesStatus = true
+      } else {
+        matchesStatus = t.status === statusFilter
+      }
+
+      if (!matchesStatus) return false
+
+      if (q) {
+        return (
+          t.title.toLowerCase().includes(q) ||
+          (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
+          (t.description && t.description.toLowerCase().includes(q)) ||
+          (t.assigned_staff &&
+            `${t.assigned_staff.first_name} ${t.assigned_staff.last_name || ""}`
+              .toLowerCase()
+              .includes(q))
+        )
+      }
+
+      return true
+    })
+  }, [baseTasks, statusFilter, searchTerm])
 
   const handleSelectTask = (task: TaskItem) => {
     if (task.type === "meeting") {
@@ -944,6 +983,15 @@ export function TaskManagerView({
               Tablero Kanban
             </Button>
             <Button
+              variant={activeTab === "calendar" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("calendar")}
+              className="h-8 text-xs font-semibold gap-1.5 rounded-md shrink-0"
+            >
+              <CalendarRange className="w-3.5 h-3.5" />
+              Calendario
+            </Button>
+            <Button
               variant={activeTab === "pacing" ? "default" : "ghost"}
               size="sm"
               onClick={() => setActiveTab("pacing")}
@@ -984,8 +1032,8 @@ export function TaskManagerView({
         />
       )}
 
-      {/* Unified SearchFilterBar & Actions Row - Only for Kanban and List views */}
-      {(activeTab === "kanban" || activeTab === "list") && (
+      {/* Unified SearchFilterBar & Actions Row - For Kanban, List and Calendar views */}
+      {(activeTab === "kanban" || activeTab === "list" || activeTab === "calendar") && (
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           <SearchFilterBar
             searchTerm={searchTerm}
@@ -1146,6 +1194,7 @@ export function TaskManagerView({
             {(meetingCount > 0 || includeMeetings) && (
               <TaskMeetingViewToggle
                 includeMeetings={includeMeetings}
+                disabled={activeTab === "calendar"}
                 size="md"
                 onToggle={() => {
                   const nextVal = !includeMeetings
@@ -1315,6 +1364,15 @@ export function TaskManagerView({
               onIncludeMeetingsChange={setIncludeMeetings}
             />
           </div>
+        )}
+
+        {activeTab === "calendar" && (
+          <TaskCalendarView
+            tasks={calendarTasks}
+            sprints={sprints}
+            includeMeetings={includeMeetings}
+            onTaskClick={handleSelectTask}
+          />
         )}
 
         {activeTab === "pacing" && (

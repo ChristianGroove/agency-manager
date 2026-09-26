@@ -486,10 +486,10 @@ graph LR
   1. **Plataforma Central (`/operations/tasks`)**: Nueva pestaña permanente **"Ritmo Semanal"** junto a General, Tablero Kanban y Métricas.
   2. **Portal de Gestores PM (`/portal/tasks/[token]`)**: Switch superior de tres estados (**Dashboard**, **Gestión**, **Ritmo Semanal**).
 - **Indicadores y Semáforos en Tiempo Real**:
-  - 🟢 **En Ritmo (On Track)**: El avance de la semana en curso cumple o supera la cuota programada.
-  - 🟡 **En Riesgo (At Risk)**: Existe retraso leve o entregables de la semana previa incompletos.
-  - 🔴 **Rezagada (Delayed)**: La semana activa está vencida sin los entregables mínimos completados.
-  - ⚪ **No Iniciada (Not Started)**: Semana futura programada aún sin actividad.
+  - **En Ritmo (On Track)**: El avance de la semana en curso cumple o supera la cuota programada.
+  - **En Riesgo (At Risk)**: Existe retraso leve o entregables de la semana previa incompletos.
+  - **Rezagada (Delayed)**: La semana activa está vencida sin los entregables mínimos completados.
+  - **No Iniciada (Not Started)**: Semana futura programada aún sin actividad.
 - **Barra de Herramientas y Filtros Integrada (`SearchFilterBar`)**:
   - Buscador reactivo por código, título y colaborador.
   - Píldoras de filtro rápido con contadores dinámicos: *Todas*, *Con Retraso*, *Periódicas*, *En Riesgo*, *En Ritmo*.
@@ -1436,4 +1436,86 @@ Para clarificar de un vistazo el régimen temporal de la sesión sin saturar la 
 En interfaces donde conviven la barra de selección múltiple y el dock inferior de reuniones:
 1. En `src/modules/core/ui/components/bulk-actions-floating-bar.tsx`, se elevó la cota de posicionamiento a `bottom-[88px] sm:bottom-[96px]` con capa de apilamiento `z-40`.
 2. Esta elevación garantiza exactamente 24px de luz vertical sobre la consola o widget flotante inferior, asegurando que los botones de acción masiva (eliminación múltiple, asignación masiva, etc.) sean 100% visibles e interactuables sin solapamientos.
+
+---
+
+## 37. Arquitectura de Vista de Calendario para Planificación Temporal y Gestión Unificada
+
+### A. Diagnóstico y Propuesta de Valor
+Las vistas tradicionales de lista y tablero Kanban proporcionan visibilidad sobre el estado de avance y los flujos de trabajo técnicos, pero carecen de una representación cronológica intuitiva para:
+1. Visualizar la distribución temporal de reuniones sincronizadas (`type === 'meeting'`) en el día, semana o mes.
+2. Supervisar los compromisos de entrega de tickets técnicos con fecha límite (`due_date`).
+3. Delimitar visualmente los horizontes de inicio y finalización de los sprints activos (`TaskSprint`).
+
+La vista de Calendario (`TaskCalendarView`) se introduce como un tercer modo de visualización de primer orden tanto en el centro de operaciones del Project Manager (`TaskManagerView`) como en el portal individual del colaborador (`TaskCollaboratorPortal`).
+
+### B. Principios de Diseño y Alcance Funcional
+1. **Modo de Consulta y Planificación**: Diseñado como una vista limpia de alta legibilidad, sin operaciones destructivas ni reprogramación accidental por arrastre.
+2. **Navegación Temporal Adaptativa**: Permite alternar fluidamente entre vistas de **Mes**, **Semana** y **Día**, con controles de avance, retroceso y retorno inmediato a la fecha actual ("Hoy").
+3. **Internacionalización Nativa**: Totalmente localizado en español mediante `date-fns/locale/es` (nombres de días, meses y etiquetas operativas).
+4. **Armonización Visual con el Sistema de Diseño**:
+   - Respaldo de tema oscuro (`dark:`) y claro mediante variables semánticas (`bg-card`, `border-zinc-200/80`, `dark:border-white/10`).
+   - Celdas del mes con altura mínima de 100px para evitar saturación visual.
+   - Resalte suave de la fecha en curso (`.rbc-today`) en tono índigo adaptativo.
+
+### C. Mapeo y Transformación de Datos (`tasksToCalendarEvents`)
+La función pura de transformación segrega los eventos en función del estado de visualización activo:
+1. **Actividades Sincrónicas (`includeMeetings === true`)**:
+   - Filtra exclusivamente tareas con `task.type === 'meeting'`.
+   - Se calculan como eventos temporizados (`allDay: false`):
+     - `start`: Instancia `Date` derivada de `meeting_start_at`.
+     - `end`: `meeting_start_at + (meeting_duration_minutes || 30) * 60000`.
+   - Estilizado distintivo: Fondo índigo sólido (`bg-indigo-600`), texto blanco y bordes redondeados.
+2. **Entregables Técnicos (`includeMeetings === false`)**:
+   - Filtra tareas con `task.type !== 'meeting'` que cuenten con `due_date`.
+   - Se posicionan como eventos de día completo (`allDay: true`) en su fecha límite.
+   - Código de color según prioridad:
+     - Urgente: Rojo (`bg-red-600`).
+     - Alta: Ámbar (`bg-amber-600`).
+     - Media: Azul (`bg-blue-600`).
+     - Baja / Regular: Zinc (`bg-zinc-500`).
+   - Tareas completadas (`status === 'done'`): Opacidad al 50% con tachado visual (`line-through`).
+3. **Horizontes de Sprints**:
+   - Se proyectan como eventos de fondo (`isBackground: true`, `.rbc-background-event`) que abarcan desde `start_date` hasta `end_date`, proporcionando contexto del ciclo ágil sin obstaculizar la interacción con las tareas individuales.
+
+### D. Interacción e Integración en la Plataforma
+1. **Apertura Contextual de Modales**: Al hacer clic sobre cualquier evento, se invoca `onTaskClick(task)`, desplegando automáticamente:
+   - `TaskMeetingDetailModal` para actividades sincrónicas / reuniones.
+   - `TaskDetailModal` / `TaskPortalDetailModal` para entregables técnicos.
+2. **Extensión del Control `ViewToggle`**:
+   - Se añadió el modo `'calendar'` al tipo `ViewMode`.
+   - Se agregó la propiedad booleana `showCalendar` y el botón con icono `CalendarDays` de Lucide.
+3. **Desacoplamiento de la Paginación en Portales**:
+   - A diferencia de las vistas de tabla o tarjetas detalladas que seccionan los registros por páginas (`pageSize`), el calendario recibe el conjunto completo de tareas visibles del filtro activo (`displayedTasks`), garantizando que no se oculten eventos del mes en curso por cortes de paginación.
+
+### E. Remediación UX/UI, Accesibilidad WCAG y Tooltips Enriquecidos Radix
+Tras una auditoría visual y funcional rigurosa del componente, se implementaron las siguientes optimizaciones de calidad:
+1. **Erradicación de Tooltips Negros Nativos y Reemplazo por Radix UI**:
+   - Se configuró `tooltipAccessor={() => ''}` en `<Calendar />` para anular la inyección del atributo `title` de HTML por parte de `react-big-calendar`.
+   - Se implementó `components.eventWrapper` (`CustomCalendarEventWrapper`) integrando los componentes de `@/components/ui/tooltip` con renderizado en portal (`z-[60]`).
+   - El tooltip enriquecido despliega: código de ticket y badge de estado coloreado, título completo, horario programado o fecha límite, modalidad con icono dinámico (`Video` o `MapPin`) y enlace directo "Unirse", responsable asignado con foto/iniciales, proyecto asociado con punto de color, y bloque de alerta si la tarea posee dependencias bloqueantes (`blocked_by`).
+2. **Píldoras de Evento con Información Contextual (`CustomCalendarEvent`)**:
+   - En reuniones: hora de inicio formateada (ej. `09:30`), icono de modalidad y título.
+   - En entregables: código de ticket, avatar o iniciales del responsable, título e icono de bloqueo (`AlertOctagon`) si la tarea está impedida.
+   - Cumplimiento estricto de WCAG 2.1 AA: la prioridad alta se renderiza con `bg-amber-400 text-zinc-950 font-semibold` (ratio de contraste superior a 12:1), y las tareas completadas usan `bg-emerald-50 text-emerald-900 border border-emerald-300` con texto tachado de alta legibilidad.
+3. **Calibración de Contraste y Estilos en Tema Claro**:
+   - Sustitución de la clase `.glass-card` (cuyo `border: none !important` anulaba los límites visuales) por `bg-card border border-border shadow-sm` con fondo blanco opaco.
+   - Indicador de día actual (`.rbc-today`) diferenciado: círculo de 26px en la celda mensual y píldora dinámica con padding horizontal en las cabeceras de semana/día para evitar el recorte de texto ("sáb. 26").
+   - Sobrescritura de la ventana emergente "+N más" (`.rbc-overlay`) con `color-mix(in srgb, var(--popover) 95%, transparent)`, `backdrop-blur-md`, bordes semánticos y sombra profunda.
+   - Eliminación de bordes duros `#ddd` de `react-big-calendar.css` y reemplazo de la línea verde oliva de la hora actual por `#4f46e5` / `#818cf8`.
+4. **Corrección de Vistas, Localización y Scroll Horario**:
+   - Se restringió `views={['month', 'week', 'day']}` en `<Calendar />`, suprimiendo el botón duplicado "Día" provocado por la vista `agenda` no contemplada.
+   - Se añadió `showMore: (total) => `+${total} más`` y tildes en etiquetas ("Día", "Todo el día").
+   - Desplazamiento inicial mediante `scrollToTime` a las 08:00 AM para comenzar directamente en la jornada operativa.
+   - Normalización de fechas en `parseSafeDate` protegiendo contra cadenas con espacios o formatos ISO mixtos.
+5. **Agenda Consolidada (Unificación de Tareas y Reuniones)**:
+   - Se crearon las colecciones `calendarTasks` en `TaskManagerView` y `TaskCollaboratorPortal` para suministrar al calendario la totalidad de eventos temporales sin aplicar la segregación excluyente de `TaskMeetingViewToggle`, permitiendo supervisar tanto entregables como reuniones sincrónicas en una cuadrícula temporal unificada.
+6. **Inhabilitación Condicional de `TaskMeetingViewToggle` en Modo Calendario**:
+   - Cuando el usuario se encuentra en la vista de Calendario (`activeTab === 'calendar'` o `viewMode === 'calendar'`), el botón de alternancia "Ver reuniones / Ver Tickets" se desactiva (`disabled={true}`, `opacity-35`, `pointer-events-none`) sin tooltips flotantes, preservando su ancho estricto de 140px para evitar saltos geométricos en la barra de controles.
+7. **Homologación de Tooltips y Secuencia en `ViewToggle`**:
+   - Se simplificaron los textos descriptivos de los tooltips a: "Lista", "Kanban", "Detalle" y "Calendario".
+   - Se reorganizó la secuencia de botones ubicando a "Calendario" en la última posición (extremo derecho) del grupo.
+
+
+
 
