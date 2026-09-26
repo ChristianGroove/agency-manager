@@ -6,6 +6,7 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { encrypt, decrypt } from "@/modules/infrastructure/integrations/encryption"
 import type { UserOAuthConnection, RecurrenceInterval } from "@/modules/features/tasks/types"
+import { formatGoogleCalendarRrule } from "@/modules/features/tasks/utils/recurrence-utils"
 
 /**
  * Consulta el estado de vinculación de Google Meet del usuario actual (plataforma o portal)
@@ -249,78 +250,6 @@ export async function getValidGoogleOAuthClient(
   }
 
   return oauth2Client
-}
-
-const ISO_TO_RRULE_DAY: Record<number, string> = {
-  1: "MO",
-  2: "TU",
-  3: "WE",
-  4: "TH",
-  5: "FR",
-  6: "SA",
-  7: "SU",
-}
-
-/**
- * Convierte la configuración de recurrencia de Pixy en directivas estándar RFC 5545 RRULE para Google Calendar
- */
-export function formatGoogleCalendarRrule(params: {
-  isRecurring?: boolean | null
-  recurrenceInterval?: RecurrenceInterval | null
-  recurrenceDays?: number[] | null
-  recurrenceDay?: number | null
-}): string[] | null {
-  if (!params.isRecurring || !params.recurrenceInterval) {
-    return null
-  }
-
-  const { recurrenceInterval, recurrenceDays, recurrenceDay } = params
-
-  const byDays = Array.isArray(recurrenceDays) && recurrenceDays.length > 0
-    ? recurrenceDays
-        .map((d) => ISO_TO_RRULE_DAY[Number(d)])
-        .filter(Boolean)
-        .join(",")
-    : recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 7 && ISO_TO_RRULE_DAY[Number(recurrenceDay)]
-    ? ISO_TO_RRULE_DAY[Number(recurrenceDay)]
-    : null
-
-  switch (recurrenceInterval) {
-    case "daily":
-      return ["RRULE:FREQ=DAILY"]
-
-    case "weekly":
-      return byDays ? [`RRULE:FREQ=WEEKLY;BYDAY=${byDays}`] : ["RRULE:FREQ=WEEKLY"]
-
-    case "biweekly":
-      return byDays
-        ? [`RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=${byDays}`]
-        : ["RRULE:FREQ=WEEKLY;INTERVAL=2"]
-
-    case "monthly":
-      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
-        return [`RRULE:FREQ=MONTHLY;BYMONTHDAY=${recurrenceDay}`]
-      }
-      return ["RRULE:FREQ=MONTHLY"]
-
-    case "quarterly":
-      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
-        return [`RRULE:FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=${recurrenceDay}`]
-      }
-      return ["RRULE:FREQ=MONTHLY;INTERVAL=3"]
-
-    case "biannual":
-      if (recurrenceDay && recurrenceDay >= 1 && recurrenceDay <= 31) {
-        return [`RRULE:FREQ=MONTHLY;INTERVAL=6;BYMONTHDAY=${recurrenceDay}`]
-      }
-      return ["RRULE:FREQ=MONTHLY;INTERVAL=6"]
-
-    case "yearly":
-      return ["RRULE:FREQ=YEARLY"]
-
-    default:
-      return null
-  }
 }
 
 export interface CreateGoogleMeetEventParams {
