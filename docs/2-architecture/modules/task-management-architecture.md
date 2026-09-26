@@ -1516,6 +1516,37 @@ Tras una auditoría visual y funcional rigurosa del componente, se implementaron
    - Se simplificaron los textos descriptivos de los tooltips a: "Lista", "Kanban", "Detalle" y "Calendario".
    - Se reorganizó la secuencia de botones ubicando a "Calendario" en la última posición (extremo derecho) del grupo.
 
+---
+
+## 38. Carga Progresiva y Paginación por Columna en Tableros Kanban
+
+### A. Contexto y Diagnóstico de Rendimiento
+En tableros ágiles con proyectos de gran envergadura o repositorios con cientos de tareas acumuladas, renderizar todas las tarjetas simultáneamente dentro de cada columna del tablero Kanban (`TaskKanbanBoard`) produce degradación de rendimiento:
+1. **Sobrecarga de Nodos en el DOM**: Cientos de tarjetas con observadores de arrastre (`useSortable`), avatares, barras de progreso y listas de verificación montados concurrentemente.
+2. **Latencia en Drag & Drop**: El árbol de `@dnd-kit` experimenta lentitud al recalcular colisiones (`closestCorners`) entre una cantidad excesiva de elementos sorteables.
+3. **Consumo de Memoria**: Aumento innecesario de retención de memoria en el navegador para elementos que se encuentran fuera del campo visual inmediato del usuario.
+
+### B. Arquitectura de Carga Progresiva
+Para erradicar estos cuellos de botella sin fragmentar la experiencia de usuario, se implementó un modelo de carga progresiva por columna (*column-based progressive slicing*):
+1. **Límite Inicial de Carga**: Se define una constante `KANBAN_INITIAL_ITEMS_PER_COLUMN = 25` que restringe el número de tarjetas visibles por columna en el montaje inicial.
+2. **Estado de Paginación por Columna (`visibleCounts`)**:
+   - Cada columna gestiona su propio cupo visible de manera independiente (`Record<TaskStatus, number>`).
+   - El incremento por acción es de 25 tarjetas adicionales por columna.
+3. **Control Interactivo "Cargar más"**:
+   - Se muestra al pie de cada columna exclusivamente cuando `columnTasks.length > currentLimit`.
+   - Etiqueta informativa con progreso explícito: `"Cargar más ({renderedTasks.length} de {columnTasks.length})"`.
+   - Estilizado acorde al sistema de diseño con `ChevronDown`, variantes de borde y fondo semánticos.
+4. **Visibilidad Global en Cabeceras**:
+   - El badge de la cabecera de cada columna y las horas totales estimadas (`totalEstimated`) continúan computando y reflejando la totalidad de las tareas existentes en dicha columna (ej. `52`), asegurando total transparencia de la carga de trabajo real.
+5. **Compatibilidad con `@dnd-kit`**:
+   - `SortableContext` recibe exclusivamente `renderedTasks.map((t) => t.id)`, optimizando el árbol de colisiones al número exacto de elementos en pantalla.
+   - Las operaciones de arrastre y soltado entre columnas y sobre tarjetas visibles o áreas de columna vacías funcionan fluidamente consultando `filteredTasks`.
+6. **Reseteo Reactivo Inteligente (`tasksScopeKey`)**:
+   - Se calcula una firma basada en los identificadores ordenados de las tareas (`tasks.map(t => t.id).sort().join(',')`).
+   - Al cambiar de proyecto, sprint o aplicar filtros de búsqueda textual, el cupo visible se reinicia a 25.
+   - En operaciones locales de arrastre (donde los identificadores no cambian, solo el estado de la tarea), la firma permanece intacta, evitando el colapso abrupto de columnas previamente expandidas por el usuario.
+
+
 
 
 

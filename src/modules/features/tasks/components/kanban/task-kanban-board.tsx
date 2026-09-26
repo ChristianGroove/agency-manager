@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useCallback } from "react"
+import React, { useState, useMemo, useCallback, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   GripVertical,
   Ban,
   Timer,
@@ -53,6 +54,8 @@ import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
+
+const KANBAN_INITIAL_ITEMS_PER_COLUMN = 25
 
 interface TaskKanbanBoardProps {
   tasks: TaskItem[]
@@ -419,6 +422,44 @@ export function TaskKanbanBoard({
 }: TaskKanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  const [visibleCounts, setVisibleCounts] = useState<Record<TaskStatus, number>>({
+    backlog: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    todo: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    in_progress: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    in_review: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    blocked: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    done: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+  })
+
+  // Firma de identificadores de tareas para resetear paginacion al cambiar filtros, busqueda o proyecto
+  // Preserva la cantidad expandida durante operaciones de arrastre o cambio de estado local
+  const tasksScopeKey = useMemo(() => {
+    return tasks.map((t) => t.id).sort().join(",")
+  }, [tasks])
+
+  const prevScopeKeyRef = React.useRef(tasksScopeKey)
+
+  useEffect(() => {
+    if (prevScopeKeyRef.current !== tasksScopeKey) {
+      prevScopeKeyRef.current = tasksScopeKey
+      setVisibleCounts({
+        backlog: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+        todo: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+        in_progress: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+        in_review: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+        blocked: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+        done: KANBAN_INITIAL_ITEMS_PER_COLUMN,
+      })
+    }
+  }, [tasksScopeKey])
+
+  const handleLoadMore = useCallback((status: TaskStatus) => {
+    setVisibleCounts((prev) => ({
+      ...prev,
+      [status]: (prev[status] || KANBAN_INITIAL_ITEMS_PER_COLUMN) + KANBAN_INITIAL_ITEMS_PER_COLUMN,
+    }))
+  }, [])
+
   // Configure sensors for drag & drop
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -539,6 +580,9 @@ export function TaskKanbanBoard({
         <div className="flex flex-nowrap gap-4 items-stretch min-w-max">
           {COLUMNS.map((col) => {
             const columnTasks = tasksByColumn[col.id] || []
+            const currentLimit = visibleCounts[col.id] || KANBAN_INITIAL_ITEMS_PER_COLUMN
+            const renderedTasks = columnTasks.slice(0, currentLimit)
+            const hasMore = columnTasks.length > currentLimit
             const totalEstimated = columnTasks.reduce(
               (acc, curr) => acc + Number(curr.estimated_hours || 0),
               0
@@ -548,7 +592,7 @@ export function TaskKanbanBoard({
               <SortableContext
                 key={col.id}
                 id={col.id}
-                items={columnTasks.map((t) => t.id)}
+                items={renderedTasks.map((t) => t.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div
@@ -612,14 +656,30 @@ export function TaskKanbanBoard({
                         <span className="text-[10px] text-muted-foreground/60">+ Crear aquí</span>
                       </div>
                     ) : (
-                      columnTasks.map((task) => (
-                        <SortableTaskCard
-                          key={task.id}
-                          task={task}
-                          onSelectTask={onSelectTask}
-                          brandColor={brandColor}
-                        />
-                      ))
+                      <>
+                        {renderedTasks.map((task) => (
+                          <SortableTaskCard
+                            key={task.id}
+                            task={task}
+                            onSelectTask={onSelectTask}
+                            brandColor={brandColor}
+                          />
+                        ))}
+                        {hasMore && (
+                          <div className="pt-2 pb-1 px-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoadMore(col.id)}
+                              className="w-full h-8 text-xs font-semibold rounded-xl bg-background/80 hover:bg-accent border-zinc-200/80 dark:border-white/10 shadow-2xs gap-1.5 transition-all cursor-pointer text-muted-foreground hover:text-foreground"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                              <span>Cargar más ({renderedTasks.length} de {columnTasks.length})</span>
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </DroppableColumn>
