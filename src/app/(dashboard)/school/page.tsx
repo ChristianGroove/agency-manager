@@ -23,7 +23,11 @@ export async function generateMetadata() {
   };
 }
 
-export default async function SchoolPage() {
+export default async function SchoolPage(props: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  const initialTab = searchParams?.tab || "dashboard";
   const supabase = await createClient();
   const {
     data: { user },
@@ -97,6 +101,7 @@ export default async function SchoolPage() {
           brandColor={brandColor}
           courses={courses}
           badges={badges}
+          initialTab={initialTab}
         />
       </Suspense>
     </div>

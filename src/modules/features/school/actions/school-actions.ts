@@ -30,13 +30,8 @@ import type {
   SchoolAwardedBadge,
   SchoolTuitionInvoice,
   SchoolPeriodBulletin,
+  ActionResponse,
 } from "../types/school.types";
-
-export interface ActionResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 async function resolveOrgId(providedOrgId?: string): Promise<string> {
   if (providedOrgId) return providedOrgId;

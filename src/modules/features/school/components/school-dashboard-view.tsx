@@ -20,6 +20,12 @@ import {
   Printer,
   ChevronRight,
   TrendingUp,
+  FileSpreadsheet,
+  CalendarDays,
+  Scale,
+  ShieldAlert,
+  Accessibility,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +35,11 @@ import { TeacherTacticalRibbon } from "./teacher-tactical-ribbon";
 import { SchoolPacingMatrix } from "./school-pacing-matrix";
 import { SchoolBadgeCard } from "./school-badge-card";
 import { SchoolCredentialsGeneratorModal } from "./school-credentials-generator-modal";
+import { SchoolGradesSheetView } from "./school-grades-sheet-view";
+import { SchoolSchedulesGridView } from "./school-schedules-grid-view";
+import { SchoolConvivenciaObserverView } from "./school-convivencia-observer-view";
+import { SchoolBulletinsCredentialsView } from "./school-bulletins-credentials-view";
+import { SchoolTuitionTreasuryView } from "./school-tuition-treasury-view";
 import type { SchoolCourse, SchoolBadge } from "../types/school.types";
 
 interface SchoolDashboardViewProps {
@@ -36,6 +47,7 @@ interface SchoolDashboardViewProps {
   brandColor?: string;
   courses?: SchoolCourse[];
   badges?: SchoolBadge[];
+  initialTab?: string;
 }
 
 export function SchoolDashboardView({
@@ -43,11 +55,12 @@ export function SchoolDashboardView({
   brandColor = "#2563eb",
   courses = [],
   badges = [],
+  initialTab = "dashboard",
 }: SchoolDashboardViewProps) {
-  const [activeTab, setActiveTab] = useState("pacing");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || "demo-c1");
 
-  // Mock Fallback Courses if empty for immediate demo rendering
+  // Fallback Courses if empty for immediate live experience
   const displayCourses: SchoolCourse[] = courses.length > 0 ? courses : [
     {
       id: "demo-c1",
@@ -123,7 +136,7 @@ export function SchoolDashboardView({
     },
   ];
 
-  // Mock Fallback Badges if empty
+  // Fallback Badges
   const displayBadges: SchoolBadge[] = badges.length > 0 ? badges : [
     {
       id: "b-1",
@@ -167,7 +180,7 @@ export function SchoolDashboardView({
     },
   ];
 
-  // Mock Pacing Rows
+  // Pacing Rows for 10-week Sprint Matrix
   const pacingRows = displayCourses.map((c, idx) => ({
     course: c,
     weeklyStatus: {
@@ -211,148 +224,232 @@ export function SchoolDashboardView({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Año Lectivo 2026 • 1° Período Académico (Decreto 1290 / Ley 115)
+              Año Lectivo 2026 • 1° Período Académico (Decreto 1290 / Ley 115 / Ley 1620 / Decreto 1421)
             </p>
           </div>
         </div>
 
-        {/* Action Hub Buttons */}
+        {/* Global Action Hub Buttons */}
         <div className="flex items-center gap-2.5">
           <SchoolCredentialsGeneratorModal
             schoolName={organizationName}
             academicYear="2026"
             students={[]}
           />
-          <Button className="gap-2 rounded-xl" style={{ backgroundColor: brandColor }}>
-            <Plus className="w-4 h-4" />
-            <span>Nueva Actividad</span>
+          <Button
+            onClick={() => setActiveTab("grades")}
+            className="gap-2 rounded-xl shadow-sm text-xs font-bold"
+            style={{ backgroundColor: brandColor }}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Planilla de Notas</span>
           </Button>
         </div>
       </div>
 
-      {/* KPI Telemetry Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Card 1: Students */}
-        <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Estudiantes</p>
-              <h3 className="text-2xl font-black text-foreground mt-1">482</h3>
-              <p className="text-[11px] text-emerald-500 font-medium mt-1">100% matriculados</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-              <Users className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Faculty */}
-        <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Docentes</p>
-              <h3 className="text-2xl font-black text-foreground mt-1">34</h3>
-              <p className="text-[11px] text-muted-foreground mt-1">32 cursos activos</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Attendance Today */}
-        <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Asistencia Hoy</p>
-              <h3 className="text-2xl font-black text-foreground mt-1">96.4%</h3>
-              <p className="text-[11px] text-emerald-500 font-medium mt-1">Zero-Trust QR Gate</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Tuition Recaudo */}
-        <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Cobranza Pensión</p>
-              <h3 className="text-2xl font-black text-foreground mt-1">88.5%</h3>
-              <p className="text-[11px] text-muted-foreground mt-1">Wompi + WhatsApp HSM</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 5: Early Warning Radar */}
-        <Card className="rounded-2xl shadow-sm border">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Alerta Temprana</p>
-              <h3 className="text-2xl font-black text-rose-500 mt-1">4</h3>
-              <p className="text-[11px] text-rose-500 font-medium mt-1">Riesgo de rezago SIEE</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Teacher Tactical Ribbon */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Cursos Asignados al Docente (Portal Táctico)
-          </span>
-          <span className="text-xs text-primary font-medium cursor-pointer hover:underline">
-            Ver todas las asignaturas
-          </span>
-        </div>
-        <TeacherTacticalRibbon
-          courses={displayCourses}
-          selectedCourseId={selectedCourseId}
-          onSelectCourse={setSelectedCourseId}
-          brandColor={brandColor}
-        />
-      </div>
-
-      {/* Main Feature Tabs */}
+      {/* Master 7-Pillar Sub-router Navigation Hub */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-muted/60 p-1 rounded-2xl h-11">
-          <TabsTrigger value="pacing" className="rounded-xl text-xs font-bold gap-2">
-            <Calendar className="w-3.5 h-3.5" />
-            Matriz de Ritmo Curricular
-          </TabsTrigger>
-          <TabsTrigger value="badges" className="rounded-xl text-xs font-bold gap-2">
-            <Award className="w-3.5 h-3.5" />
-            Insignias & Gamificación
-          </TabsTrigger>
-          <TabsTrigger value="bulletins" className="rounded-xl text-xs font-bold gap-2">
-            <FileText className="w-3.5 h-3.5" />
-            Boletines Decreto 1290
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="rounded-xl text-xs font-bold gap-2">
-            <CreditCard className="w-3.5 h-3.5" />
-            Cobranza WhatsApp & Wompi
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="bg-muted/60 p-1.5 rounded-2xl h-auto flex gap-1.5 min-w-max border">
+            {/* 1. Dashboard */}
+            <TabsTrigger value="dashboard" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <TrendingUp className="w-3.5 h-3.5" />
+              1. Dashboard SIEE
+            </TabsTrigger>
 
-        {/* Tab 1: Pacing Matrix */}
-        <TabsContent value="pacing" className="mt-4">
+            {/* 2. Curriculum & Pacing */}
+            <TabsTrigger value="curriculum" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <Calendar className="w-3.5 h-3.5" />
+              2. Plan de Estudios & Ritmo
+            </TabsTrigger>
+
+            {/* 3. Grades Sheet */}
+            <TabsTrigger value="grades" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              3. Planilla Notas (Dec. 1290)
+            </TabsTrigger>
+
+            {/* 4. Weekly Schedules */}
+            <TabsTrigger value="schedules" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <CalendarDays className="w-3.5 h-3.5" />
+              4. Horarios Escolares
+            </TabsTrigger>
+
+            {/* 5. Observer & Convivencia */}
+            <TabsTrigger value="convivencia" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <Scale className="w-3.5 h-3.5" />
+              5. Observador & Convivencia
+            </TabsTrigger>
+
+            {/* 6. Bulletins & Credentials */}
+            <TabsTrigger value="bulletins" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <FileText className="w-3.5 h-3.5" />
+              6. Boletines & Carnets CR80
+            </TabsTrigger>
+
+            {/* 7. Tuition Treasury */}
+            <TabsTrigger value="treasury" className="rounded-xl text-xs font-bold gap-2 py-2 px-3.5 data-[state=active]:shadow-sm">
+              <CreditCard className="w-3.5 h-3.5" />
+              7. Tesorería Escolar
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* ============================================================== */}
+        {/* VIEW 1: DASHBOARD / TELEMETRÍA SIEE */}
+        {/* ============================================================== */}
+        <TabsContent value="dashboard" className="mt-4 flex flex-col gap-6">
+          {/* KPI Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card className="rounded-2xl shadow-sm border">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Estudiantes</p>
+                  <h3 className="text-2xl font-black text-foreground mt-1">482</h3>
+                  <p className="text-[11px] text-emerald-500 font-medium mt-1">100% matriculados</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                  <Users className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl shadow-sm border">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Docentes</p>
+                  <h3 className="text-2xl font-black text-foreground mt-1">34</h3>
+                  <p className="text-[11px] text-muted-foreground mt-1">32 cursos activos</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl shadow-sm border">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Asistencia Hoy</p>
+                  <h3 className="text-2xl font-black text-foreground mt-1">96.4%</h3>
+                  <p className="text-[11px] text-emerald-500 font-medium mt-1">Zero-Trust QR Gate</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl shadow-sm border">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Cobranza Pensión</p>
+                  <h3 className="text-2xl font-black text-foreground mt-1">88.5%</h3>
+                  <p className="text-[11px] text-muted-foreground mt-1">Wompi + WhatsApp HSM</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl shadow-sm border">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Alerta Temprana</p>
+                  <h3 className="text-2xl font-black text-rose-500 mt-1">4</h3>
+                  <p className="text-[11px] text-rose-500 font-medium mt-1">Riesgo de rezago SIEE</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Teacher Tactical Ribbon */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Portal Docente Táctico • Asignaturas en Curso
+              </span>
+              <span
+                onClick={() => setActiveTab("curriculum")}
+                className="text-xs text-primary font-medium cursor-pointer hover:underline flex items-center gap-1"
+              >
+                Ver Plan de Estudios <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+            <TeacherTacticalRibbon
+              courses={displayCourses}
+              selectedCourseId={selectedCourseId}
+              onSelectCourse={setSelectedCourseId}
+              brandColor={brandColor}
+            />
+          </div>
+
+          {/* Quick Pillar Jump Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card
+              onClick={() => setActiveTab("grades")}
+              className="rounded-2xl border shadow-sm p-5 hover:border-primary/50 transition-all cursor-pointer group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              </div>
+              <h4 className="font-bold text-sm text-foreground mt-3">Planilla Decreto 1290</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Registro masivo de calificaciones, autoevaluación y actas de nivelación periódica.
+              </p>
+            </Card>
+
+            <Card
+              onClick={() => setActiveTab("convivencia")}
+              className="rounded-2xl border shadow-sm p-5 hover:border-primary/50 transition-all cursor-pointer group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              </div>
+              <h4 className="font-bold text-sm text-foreground mt-3">Observador & Convivencia</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Expediente Ley 115, comités Ley 1620 y adaptaciones curriculares PIAR Decreto 1421.
+              </p>
+            </Card>
+
+            <Card
+              onClick={() => setActiveTab("bulletins")}
+              className="rounded-2xl border shadow-sm p-5 hover:border-primary/50 transition-all cursor-pointer group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              </div>
+              <h4 className="font-bold text-sm text-foreground mt-3">Boletines & Carnets CR80</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Generador de PDF marca blanca con verificación QR y carnets en lote PVC.
+              </p>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ============================================================== */}
+        {/* VIEW 2: PLAN DE ESTUDIOS & RITMO */}
+        {/* ============================================================== */}
+        <TabsContent value="curriculum" className="mt-4 flex flex-col gap-6">
           <SchoolPacingMatrix
             periodName="1° Período (10 Semanas)"
             rows={pacingRows}
             brandColor={brandColor}
           />
-        </TabsContent>
 
-        {/* Tab 2: Badges & Gamification */}
-        <TabsContent value="badges" className="mt-4">
           <div className="flex flex-col gap-4 bg-card p-6 rounded-2xl border">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -377,85 +474,54 @@ export function SchoolDashboardView({
           </div>
         </TabsContent>
 
-        {/* Tab 3: Bulletins */}
-        <TabsContent value="bulletins" className="mt-4">
-          <Card className="rounded-2xl border">
-            <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base font-bold">
-                    Generador de Boletines Ejecutivos en PDF Marca Blanca
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Cumplimiento Decreto 1290, escalas valorativas nacionales, gráficos de radar y verificación por QR anti-falsificación.
-                  </CardDescription>
-                </div>
-                <Button className="gap-2 rounded-xl" style={{ backgroundColor: brandColor }}>
-                  <Send className="w-4 h-4" />
-                  <span>Despacho Masivo por WhatsApp (482 PDFs)</span>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <div className="p-4 bg-muted/40 rounded-xl border border-dashed flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-foreground">
-                      Boletín Oficial 1° Período • Grado 9°A (32 Estudiantes)
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Paz y salvo verificado: 30 habilitados para descarga directa. 2 en retención financiera.
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="rounded-lg">
-                  Previsualizar Muestra
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* ============================================================== */}
+        {/* VIEW 3: PLANILLA DE CALIFICACIONES DECRETO 1290 */}
+        {/* ============================================================== */}
+        <TabsContent value="grades" className="mt-4">
+          <SchoolGradesSheetView
+            courses={displayCourses}
+            selectedCourseId={selectedCourseId}
+            onSelectCourse={setSelectedCourseId}
+            brandColor={brandColor}
+          />
         </TabsContent>
 
-        {/* Tab 4: Billing Hub */}
-        <TabsContent value="billing" className="mt-4">
-          <Card className="rounded-2xl border">
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base font-bold">
-                    Cobranza Conversacional Mensual de Pensiones
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Disparo de órdenes de pago mediante Meta WhatsApp Cloud API con pasarela Wompi integrada.
-                  </CardDescription>
-                </div>
-                <Badge variant="outline" className="text-emerald-500 border-emerald-500 font-bold">
-                  Canal Meta Verificado
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-3">
-                <div className="p-4 bg-emerald-950/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-sm text-foreground">
-                      Ciclo de Cobranza: Septiembre 2026
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      440 de 482 acudientes han cancelado puntualmente por PSE/Nequi.
-                    </p>
-                  </div>
-                  <Button size="sm" variant="outline" className="gap-2 rounded-lg text-xs">
-                    <Send className="w-3.5 h-3.5 text-emerald-500" />
-                    Reenviar Recordatorio a 42 en Mora
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* ============================================================== */}
+        {/* VIEW 4: HORARIOS ESCOLARES SEMANALES */}
+        {/* ============================================================== */}
+        <TabsContent value="schedules" className="mt-4">
+          <SchoolSchedulesGridView
+            courses={displayCourses}
+            brandColor={brandColor}
+          />
+        </TabsContent>
+
+        {/* ============================================================== */}
+        {/* VIEW 5: OBSERVADOR, CONVIVENCIA & PIAR */}
+        {/* ============================================================== */}
+        <TabsContent value="convivencia" className="mt-4">
+          <SchoolConvivenciaObserverView
+            brandColor={brandColor}
+          />
+        </TabsContent>
+
+        {/* ============================================================== */}
+        {/* VIEW 6: BOLETINES & CARNETIZACIÓN */}
+        {/* ============================================================== */}
+        <TabsContent value="bulletins" className="mt-4">
+          <SchoolBulletinsCredentialsView
+            organizationName={organizationName}
+            brandColor={brandColor}
+          />
+        </TabsContent>
+
+        {/* ============================================================== */}
+        {/* VIEW 7: TESORERÍA ESCOLAR & WOMPI */}
+        {/* ============================================================== */}
+        <TabsContent value="treasury" className="mt-4">
+          <SchoolTuitionTreasuryView
+            brandColor={brandColor}
+          />
         </TabsContent>
       </Tabs>
     </div>

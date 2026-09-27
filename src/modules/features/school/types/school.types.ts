@@ -4,6 +4,12 @@
 // Path: src/modules/features/school/types/school.types.ts
 // ==============================================================================
 
+export interface ActionResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 export type SchoolLevel = 'preschool' | 'primary' | 'secondary' | 'high_school';
 
 export type ColombianPerformanceTier = 'Superior' | 'Alto' | 'Básico' | 'Bajo';
@@ -290,3 +296,211 @@ export interface StudentAcademicSummary {
   hasTuitionDebt: boolean;
   clearedForBulletin: boolean;
 }
+
+// ==============================================================================
+// 1. GUARDIANS (Multi-acudiente: Ley 115 / DIAN)
+// ==============================================================================
+
+export type GuardianRelationship = 'mother' | 'father' | 'legal_guardian' | 'grandparent' | 'uncle_aunt' | 'other';
+export type GuardianDocumentType = 'CC' | 'CE' | 'TI' | 'PP' | 'NIT' | 'PEP' | 'PPT';
+
+export interface SchoolGuardian {
+  id: string;
+  organization_id: string;
+  student_id: string;
+  relationship: GuardianRelationship;
+  first_name: string;
+  last_name: string;
+  document_type: GuardianDocumentType;
+  document_number: string;
+  email?: string | null;
+  phone: string;
+  whatsapp_enabled?: boolean;
+  is_primary_contact: boolean;
+  is_emergency_contact: boolean;
+  is_financial_responsible: boolean;
+  occupation?: string | null;
+  company_name?: string | null;
+  billing_address?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  student?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email?: string | null;
+    phone?: string | null;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==============================================================================
+// 2. OBSERVER LOGS (Observador del Estudiante - Ley 115)
+// ==============================================================================
+
+export type ObserverLogType = 'pedagogical' | 'positive' | 'formative' | 'disciplinary' | 'academic_alert' | 'attendance';
+
+export interface SchoolObserverLog {
+  id: string;
+  organization_id: string;
+  enrollment_id: string;
+  period_id?: string | null;
+  logged_by_staff_id: string;
+  log_type: ObserverLogType;
+  title: string;
+  description: string;
+  context_location?: string | null;
+  student_statement?: string | null;
+  student_commitment?: string | null;
+  guardian_commitment?: string | null;
+  institutional_actions?: string | null;
+  is_resolved: boolean;
+  follow_up_date?: string | null;
+  student_signed_at?: string | null;
+  guardian_signed_at?: string | null;
+  staff_signed_at: string;
+  attachments?: Array<{ name: string; url: string; type?: string }>;
+  enrollment?: SchoolEnrollment;
+  logged_by_staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email?: string | null;
+  };
+  period?: SchoolPeriod;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==============================================================================
+// 3. CONVIVENCIA ESCOLAR (Comité de Convivencia - Ley 1620 de 2013)
+// ==============================================================================
+
+export type ConvivenciaIncidentType = 'tipo_1' | 'tipo_2' | 'tipo_3';
+export type ConvivenciaIncidentStatus =
+  | 'reported'
+  | 'under_investigation'
+  | 'conciliation_session'
+  | 'committee_review'
+  | 'sanctioned'
+  | 'closed'
+  | 'referred_siuce';
+
+export interface InvolvedStudent {
+  enrollment_id: string;
+  student_name?: string;
+  role: 'agresor' | 'victima' | 'testigo' | 'involucrado';
+  notes?: string;
+}
+
+export interface ConvivenciaProtocolStep {
+  step_name: string;
+  executed_at: string;
+  executed_by_name: string;
+  details?: string;
+}
+
+export interface SchoolConvivenciaIncident {
+  id: string;
+  organization_id: string;
+  incident_number: string;
+  incident_type: ConvivenciaIncidentType;
+  title: string;
+  description: string;
+  date_occurred: string;
+  location?: string | null;
+  involved_students: InvolvedStudent[];
+  reporter_staff_id: string;
+  status: ConvivenciaIncidentStatus;
+  protocol_steps_applied: ConvivenciaProtocolStep[];
+  conciliation_agreements?: string | null;
+  committee_minutes?: string | null;
+  siuce_report_number?: string | null;
+  reported_to_external_entities: boolean;
+  closed_at?: string | null;
+  closed_by_staff_id?: string | null;
+  reporter_staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==============================================================================
+// 4. PIAR (Plan Individual de Ajustes Razonables - Decreto 1421 de 2017)
+// ==============================================================================
+
+export type PiarStatus = 'draft' | 'active' | 'reviewed' | 'archived';
+
+export interface DiagnosedBarrier {
+  barrier_type: 'comunicativa' | 'actitudinal' | 'pedagogica' | 'metodologica' | 'fisica_espacial';
+  description: string;
+}
+
+export interface CurricularAdaptation {
+  course_id?: string;
+  subject_name: string;
+  learning_objectives_adapted: string;
+  methodology_adjustments: string;
+  evaluation_adjustments: string;
+  reasonable_accommodations: string[];
+}
+
+export interface PedagogicalGoal {
+  period_number: number;
+  goal: string;
+  status: 'pending' | 'in_progress' | 'achieved';
+  evidence?: string;
+}
+
+export interface SchoolPiarPlan {
+  id: string;
+  organization_id: string;
+  enrollment_id: string;
+  academic_year_id: string;
+  medical_diagnosis?: string | null;
+  diagnosed_barriers: DiagnosedBarrier[];
+  individual_strengths?: string | null;
+  curricular_adaptations: CurricularAdaptation[];
+  pedagogical_goals: PedagogicalGoal[];
+  family_commitments?: string | null;
+  school_commitments?: string | null;
+  review_period: string;
+  status: PiarStatus;
+  created_by_staff_id: string;
+  approved_by_staff_id?: string | null;
+  last_reviewed_at?: string | null;
+  enrollment?: SchoolEnrollment;
+  academic_year?: SchoolAcademicYear;
+  created_by_staff?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ==============================================================================
+// 5. SCHEDULES (Horarios Semanales por Bloques)
+// ==============================================================================
+
+export interface SchoolSchedule {
+  id: string;
+  organization_id: string;
+  course_id: string;
+  day_of_week: number; // 1 = Lunes ... 7 = Domingo
+  block_start_time: string; // HH:mm:ss or HH:mm
+  block_end_time: string;
+  block_number?: number | null;
+  classroom_location?: string | null;
+  recurrence: 'weekly' | 'biweekly' | 'custom';
+  is_active: boolean;
+  course?: SchoolCourse;
+  created_at?: string;
+  updated_at?: string;
+}
+
