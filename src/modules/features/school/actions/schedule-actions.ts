@@ -197,3 +197,55 @@ export async function deleteScheduleBlockAction(
     return { success: false, error: err?.message || "Error al eliminar bloque de clase" };
   }
 }
+
+/**
+ * Updates an existing weekly schedule block
+ */
+export async function updateScheduleBlockAction(
+  scheduleId: string,
+  rawInput: unknown
+): Promise<ActionResponse<SchoolSchedule>> {
+  try {
+    const orgId = await resolveOrgId();
+    const validated = SchoolScheduleSchema.parse(rawInput);
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("school_schedules")
+      .update({
+        course_id: validated.course_id,
+        day_of_week: validated.day_of_week,
+        block_start_time: validated.block_start_time,
+        block_end_time: validated.block_end_time,
+        block_number: validated.block_number || null,
+        classroom_location: validated.classroom_location || null,
+        recurrence: validated.recurrence || "weekly",
+        is_active: validated.is_active ?? true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", scheduleId)
+      .eq("organization_id", orgId)
+      .select(`
+        *,
+        course:school_courses (
+          id,
+          subject_name,
+          color,
+          icon
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath("/school");
+
+    return {
+      success: true,
+      data: data as unknown as SchoolSchedule,
+    };
+  } catch (err: any) {
+    console.error("[ACTION:updateScheduleBlockAction] Error:", err);
+    return { success: false, error: err?.message || "Error al actualizar bloque de clase" };
+  }
+}

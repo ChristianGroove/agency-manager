@@ -10,6 +10,7 @@ import { createClient } from "@/modules/core/database/supabase-server";
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions";
 import { revalidatePath } from "next/cache";
 import { SchoolPiarPlanSchema } from "../schemas/school.schema";
+import { resolveOrEnsureStaff } from "./staff-resolver";
 import type { SchoolPiarPlan, CurricularAdaptation, ActionResponse } from "../types/school.types";
 
 async function resolveOrgId(providedOrgId?: string): Promise<string> {
@@ -147,14 +148,9 @@ export async function savePiarPlanAction(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .maybeSingle();
-
-    const staffId = staff?.id || (user?.id as string);
+    // Resolve staff id for creator/orientador
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "orientador");
+    const staffId = staff.id;
 
     const payload = {
       organization_id: orgId,

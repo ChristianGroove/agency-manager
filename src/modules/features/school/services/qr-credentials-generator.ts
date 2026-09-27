@@ -41,6 +41,30 @@ export const CR80_STANDARD_SPEC: SheetGridDimensions = {
   cardHeightMm: 53.98,
 };
 
+function encodeBase64(str: string): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(str, 'utf8').toString('base64');
+  }
+  if (typeof btoa === 'function') {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+  }
+  return '';
+}
+
+function decodeBase64(b64: string): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(b64, 'base64').toString('utf8');
+  }
+  if (typeof atob === 'function') {
+    return decodeURIComponent(
+      Array.prototype.map
+        .call(atob(b64), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+  }
+  return '';
+}
+
 /**
  * Builds the encrypted verification payload stored inside the student's QR code.
  * Used by gate scanners, classroom apps, cafeterias, and libraries.
@@ -60,7 +84,7 @@ export function buildStudentQrPayload(data: {
     ts: Date.now(),
   };
 
-  return `PIXY:EDU:${Buffer.from(JSON.stringify(payload)).toString('base64')}`;
+  return `PIXY:EDU:${encodeBase64(JSON.stringify(payload))}`;
 }
 
 /**
@@ -83,7 +107,7 @@ export function parseScannedQrPayload(qrString: string): {
 
   try {
     const rawBase64 = qrString.replace('PIXY:EDU:', '');
-    const jsonStr = Buffer.from(rawBase64, 'base64').toString('utf8');
+    const jsonStr = decodeBase64(rawBase64);
     const parsed = JSON.parse(jsonStr);
 
     if (!parsed.eid || !parsed.tok) {

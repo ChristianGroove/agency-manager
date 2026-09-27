@@ -22,6 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -32,20 +35,89 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+export interface ObserverLogItem {
+  id: string;
+  studentName: string;
+  grade: string;
+  logType: "positive" | "formative" | "disciplinary" | "academic_alert" | "pedagogical";
+  title: string;
+  description: string;
+  studentStatement?: string;
+  studentCommitment?: string;
+  guardianCommitment?: string;
+  date: string;
+  loggedBy: string;
+  studentSigned: boolean;
+  guardianSigned: boolean;
+  isResolved: boolean;
+}
+
+export interface ConvivenciaIncidentItem {
+  id: string;
+  incidentNumber: string;
+  incidentType: "tipo_1" | "tipo_2" | "tipo_3";
+  title: string;
+  description: string;
+  status: "reported" | "under_investigation" | "conciliation_session" | "committee_review" | "sanctioned" | "closed" | "referred_siuce";
+  dateOccurred: string;
+  reporter: string;
+  conciliation?: string;
+  protocolStep?: string;
+  siuceReported: boolean;
+  siuceNumber?: string;
+}
+
+export interface PiarPlanItem {
+  id: string;
+  studentName: string;
+  grade: string;
+  diagnosis: string;
+  barriers: string[];
+  adaptationsCount: number;
+  goalsCount: number;
+  status: "draft" | "active" | "reviewed" | "archived";
+  lastReviewed: string;
+}
+
 interface SchoolConvivenciaObserverViewProps {
   brandColor?: string;
+  initialSubTab?: "observer" | "convivencia" | "piar";
 }
 
 export function SchoolConvivenciaObserverView({
   brandColor = "#2563eb",
+  initialSubTab = "observer",
 }: SchoolConvivenciaObserverViewProps) {
-  const [subTab, setSubTab] = useState<"observer" | "convivencia" | "piar">("observer");
+  const [subTab, setSubTab] = useState<"observer" | "convivencia" | "piar">(initialSubTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewObserverModal, setShowNewObserverModal] = useState(false);
   const [showNewIncidentModal, setShowNewIncidentModal] = useState(false);
+  const [showNewPiarModal, setShowNewPiarModal] = useState(false);
+
+  // New Observer Note Form State
+  const [obsStudentName, setObsStudentName] = useState("Santiago Gómez Rojas");
+  const [obsGrade, setObsGrade] = useState("9°A");
+  const [obsType, setObsType] = useState<"positive" | "formative" | "disciplinary" | "academic_alert">("formative");
+  const [obsTitle, setObsTitle] = useState("");
+  const [obsDescription, setObsDescription] = useState("");
+  const [obsStudentCommitment, setObsStudentCommitment] = useState("");
+  const [obsGuardianCommitment, setObsGuardianCommitment] = useState("");
+
+  // New Incident Form State
+  const [incTitle, setIncTitle] = useState("");
+  const [incType, setIncType] = useState<"tipo_1" | "tipo_2" | "tipo_3">("tipo_1");
+  const [incDesc, setIncDesc] = useState("");
+  const [incLocation, setIncLocation] = useState("Patio Principal");
+  const [incStudent, setIncStudent] = useState("Samuel Cárdenas Duarte (9°A)");
+
+  // New PIAR Form State
+  const [piarStudent, setPiarStudent] = useState("");
+  const [piarGrade, setPiarGrade] = useState("9°A");
+  const [piarDiagnosis, setPiarDiagnosis] = useState("");
+  const [piarBarriers, setPiarBarriers] = useState("");
 
   // Mock Observer Logs (Ley 115)
-  const [observerLogs, setObserverLogs] = useState([
+  const [observerLogs, setObserverLogs] = useState<ObserverLogItem[]>([
     {
       id: "obs-1",
       studentName: "Santiago Gómez Rojas",
@@ -91,7 +163,7 @@ export function SchoolConvivenciaObserverView({
   ]);
 
   // Mock Convivencia Incidents (Ley 1620)
-  const [incidents, setIncidents] = useState([
+  const [incidents, setIncidents] = useState<ConvivenciaIncidentItem[]>([
     {
       id: "inc-1",
       incidentNumber: "SEC-2026-004",
@@ -132,7 +204,7 @@ export function SchoolConvivenciaObserverView({
   ]);
 
   // Mock PIAR Plans (Decreto 1421)
-  const [piarPlans, setPiarPlans] = useState([
+  const [piarPlans, setPiarPlans] = useState<PiarPlanItem[]>([
     {
       id: "piar-1",
       studentName: "Santiago Gómez Rojas",
@@ -181,6 +253,79 @@ export function SchoolConvivenciaObserverView({
       case "tipo_3":
         return <Badge className="bg-rose-600 text-white font-black animate-pulse">Falta Tipo III (Delito / SIUCE)</Badge>;
     }
+  };
+
+  const handleCreateObserverNote = () => {
+    if (!obsTitle.trim() || !obsDescription.trim()) return;
+    const newNote = {
+      id: `obs-${Date.now()}`,
+      studentName: obsStudentName,
+      grade: obsGrade,
+      logType: obsType,
+      title: obsTitle,
+      description: obsDescription,
+      studentCommitment: obsStudentCommitment || undefined,
+      guardianCommitment: obsGuardianCommitment || undefined,
+      date: new Date().toISOString().split("T")[0],
+      loggedBy: "Prof. Coordinación Académica",
+      studentSigned: false,
+      guardianSigned: false,
+      isResolved: false,
+    };
+    setObserverLogs([newNote, ...observerLogs]);
+    setObsTitle("");
+    setObsDescription("");
+    setObsStudentCommitment("");
+    setObsGuardianCommitment("");
+    setShowNewObserverModal(false);
+  };
+
+  const handleCreateIncident = () => {
+    if (!incTitle.trim() || !incDesc.trim()) return;
+    const year = new Date().getFullYear();
+    const count = incidents.length + 1;
+    const isTipo3 = incType === "tipo_3";
+    const newInc = {
+      id: `inc-${Date.now()}`,
+      incidentNumber: `SEC-${year}-${String(count).padStart(3, "0")}`,
+      incidentType: incType,
+      title: incTitle,
+      description: incDesc,
+      status: isTipo3 ? ("referred_siuce" as const) : ("reported" as const),
+      dateOccurred: new Date().toISOString().split("T")[0],
+      reporter: "Comité de Convivencia Escolar",
+      protocolStep: isTipo3
+        ? "Ruta de Atención Integral activada (Ley 1620 Art. 31) - Reporte SIUCE en proceso"
+        : "Paso 1 de 3: Apertura de expediente formativo",
+      siuceReported: isTipo3,
+      siuceNumber: isTipo3 ? `SIUCE-${year}-${Math.floor(10000 + Math.random() * 90000)}` : undefined,
+    };
+    setIncidents([newInc, ...incidents]);
+    setIncTitle("");
+    setIncDesc("");
+    setShowNewIncidentModal(false);
+  };
+
+  const handleCreatePiar = () => {
+    if (!piarStudent.trim() || !piarDiagnosis.trim()) return;
+    const newPlan = {
+      id: `piar-${Date.now()}`,
+      studentName: piarStudent,
+      grade: piarGrade,
+      diagnosis: piarDiagnosis,
+      barriers: piarBarriers
+        ? piarBarriers.split("\n").filter(Boolean)
+        : ["Barreras de aprendizaje identificadas en valoración inicial"],
+      adaptationsCount: 3,
+      goalsCount: 2,
+      status: "active" as const,
+      lastReviewed: new Date().toISOString().split("T")[0],
+    };
+    setPiarPlans([newPlan, ...piarPlans]);
+    setPiarStudent("");
+    setPiarDiagnosis("");
+    setPiarBarriers("");
+    setShowNewPiarModal(false);
   };
 
   return (
@@ -234,6 +379,7 @@ export function SchoolConvivenciaObserverView({
               size="sm"
               className="gap-2 rounded-xl text-xs h-9 shadow-sm"
               style={{ backgroundColor: brandColor }}
+              onClick={() => setShowNewPiarModal(true)}
             >
               <Accessibility className="w-3.5 h-3.5" />
               Nuevo Plan PIAR (Decreto 1421)
@@ -420,6 +566,290 @@ export function SchoolConvivenciaObserverView({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* MODAL 1: NUEVA ANOTACIÓN EN OBSERVADOR (LEY 115) */}
+      <Dialog open={showNewObserverModal} onOpenChange={setShowNewObserverModal}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <BookMarked className="w-5 h-5 text-primary" />
+              Nueva Anotación en Observador (Ley 115)
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Registro del debido proceso socio-formativo del estudiante con descargos y compromisos vinculantes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Tipo de Anotación</Label>
+                <Select value={obsType} onValueChange={(v) => setObsType(v as any)}>
+                  <SelectTrigger className="rounded-xl text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="positive" className="text-xs">Mérito Positivo</SelectItem>
+                    <SelectItem value="formative" className="text-xs">Acuerdo Formativo</SelectItem>
+                    <SelectItem value="disciplinary" className="text-xs">Falta Disciplinaria</SelectItem>
+                    <SelectItem value="academic_alert" className="text-xs">Alerta Rezago SIEE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Grado y Sección</Label>
+                <Input
+                  value={obsGrade}
+                  onChange={(e) => setObsGrade(e.target.value)}
+                  placeholder="9°A"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Estudiante</Label>
+              <Input
+                value={obsStudentName}
+                onChange={(e) => setObsStudentName(e.target.value)}
+                placeholder="Nombre completo del estudiante"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Título del Registro</Label>
+              <Input
+                value={obsTitle}
+                onChange={(e) => setObsTitle(e.target.value)}
+                placeholder="Ej: Compromiso de puntualidad y entrega de actividades"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Descripción de los Hechos / Contexto</Label>
+              <Textarea
+                value={obsDescription}
+                onChange={(e) => setObsDescription(e.target.value)}
+                placeholder="Detalle los hechos observados de manera clara y objetiva..."
+                className="rounded-xl text-xs min-h-[70px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Compromiso del Estudiante</Label>
+                <Textarea
+                  value={obsStudentCommitment}
+                  onChange={(e) => setObsStudentCommitment(e.target.value)}
+                  placeholder="Acuerdos y compromisos adquiridos..."
+                  className="rounded-xl text-xs min-h-[50px]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Compromiso del Acudiente</Label>
+                <Textarea
+                  value={obsGuardianCommitment}
+                  onChange={(e) => setObsGuardianCommitment(e.target.value)}
+                  placeholder="Acompañamiento familiar acordado..."
+                  className="rounded-xl text-xs min-h-[50px]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs"
+              onClick={() => setShowNewObserverModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-xl text-xs font-bold"
+              style={{ backgroundColor: brandColor }}
+              onClick={handleCreateObserverNote}
+            >
+              Guardar Anotación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 2: RADICAR CASO DE CONVIVENCIA (LEY 1620) */}
+      <Dialog open={showNewIncidentModal} onOpenChange={setShowNewIncidentModal}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
+              <ShieldAlert className="w-5 h-5 text-rose-600" />
+              Radicar Caso en Comité de Convivencia (Ley 1620)
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Clasificación y activación de la Ruta de Atención Integral conforme al Manual de Convivencia.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Tipo de Falta</Label>
+                <Select value={incType} onValueChange={(v) => setIncType(v as any)}>
+                  <SelectTrigger className="rounded-xl text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tipo_1" className="text-xs">Falta Tipo I (Conflicto Leve)</SelectItem>
+                    <SelectItem value="tipo_2" className="text-xs">Falta Tipo II (Acoso / Ciberacoso)</SelectItem>
+                    <SelectItem value="tipo_3" className="text-xs font-bold text-rose-600">Falta Tipo III (Delito / SIUCE)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Lugar de los Hechos</Label>
+                <Input
+                  value={incLocation}
+                  onChange={(e) => setIncLocation(e.target.value)}
+                  placeholder="Ej: Patio, Aula 201, Redes sociales"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Estudiante(s) Involucrado(s)</Label>
+              <Input
+                value={incStudent}
+                onChange={(e) => setIncStudent(e.target.value)}
+                placeholder="Nombres de estudiantes involucrados"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Título del Caso</Label>
+              <Input
+                value={incTitle}
+                onChange={(e) => setIncTitle(e.target.value)}
+                placeholder="Ej: Desacuerdo verbal reiterado durante actividades deportivas"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Hechos Descriptivos</Label>
+              <Textarea
+                value={incDesc}
+                onChange={(e) => setIncDesc(e.target.value)}
+                placeholder="Describa puntualmente las circunstancias de tiempo, modo y lugar..."
+                className="rounded-xl text-xs min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs"
+              onClick={() => setShowNewIncidentModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={handleCreateIncident}
+            >
+              Radicar Caso
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: NUEVO PLAN PIAR (DECRETO 1421) */}
+      <Dialog open={showNewPiarModal} onOpenChange={setShowNewPiarModal}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-primary">
+              <Accessibility className="w-5 h-5 text-primary" />
+              Nuevo Plan Individual de Ajustes Razonables (PIAR)
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Instrumento de planeación pedagógica conforme al Decreto 1421 de 2017 para inclusión escolar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Estudiante</Label>
+                <Input
+                  value={piarStudent}
+                  onChange={(e) => setPiarStudent(e.target.value)}
+                  placeholder="Nombre del estudiante"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Grado / Grupo</Label>
+                <Input
+                  value={piarGrade}
+                  onChange={(e) => setPiarGrade(e.target.value)}
+                  placeholder="9°A"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Diagnóstico Médico / Neuropsicológico</Label>
+              <Input
+                value={piarDiagnosis}
+                onChange={(e) => setPiarDiagnosis(e.target.value)}
+                placeholder="Ej: TDAH tipo combinado / Hipoacusia bilateral"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Barreras para el Aprendizaje Identificadas</Label>
+              <Textarea
+                value={piarBarriers}
+                onChange={(e) => setPiarBarriers(e.target.value)}
+                placeholder="Escriba las barreras identificadas (una por línea)..."
+                className="rounded-xl text-xs min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs"
+              onClick={() => setShowNewPiarModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-xl text-xs font-bold"
+              style={{ backgroundColor: brandColor }}
+              onClick={handleCreatePiar}
+            >
+              Crear Plan PIAR
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

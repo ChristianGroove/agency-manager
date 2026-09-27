@@ -89,6 +89,22 @@ export const GeneratePeriodBulletinSchema = z.object({
   override_tuition_lock: z.boolean().default(false),
 });
 
+export const SchoolPeriodBulletinSchema = z.object({
+  id: z.string().uuid().optional(),
+  enrollment_id: z.string().uuid({ message: 'Matrícula es requerida' }),
+  period_id: z.string().uuid({ message: 'Período es requerido' }),
+  overall_average: z.number().min(1.0).max(5.0),
+  cohort_ranking: z.number().int().positive().optional().nullable(),
+  general_performance_tier: PerformanceTierSchema,
+  radar_competency_data: z.record(z.string(), z.number()).default({}),
+  total_absences: z.number().int().nonnegative().default(0),
+  homeroom_teacher_comment: z.string().max(2000).optional().nullable(),
+  is_cleared_for_download: z.boolean().default(false),
+  pdf_storage_path: z.string().optional().nullable(),
+  verification_sha256: z.string().length(64, { message: 'El hash SHA-256 debe tener exactamente 64 caracteres hex' }),
+  sent_whatsapp_at: z.string().optional().nullable(),
+});
+
 // ==============================================================================
 // 1. GUARDIANS SCHEMAS
 // ==============================================================================

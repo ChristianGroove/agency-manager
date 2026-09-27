@@ -10,6 +10,7 @@ import { createClient } from "@/modules/core/database/supabase-server";
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions";
 import { revalidatePath } from "next/cache";
 import { SchoolConvivenciaIncidentSchema } from "../schemas/school.schema";
+import { resolveOrEnsureStaff } from "./staff-resolver";
 import type { SchoolConvivenciaIncident, ConvivenciaProtocolStep, ActionResponse } from "../types/school.types";
 
 async function resolveOrgId(providedOrgId?: string): Promise<string> {
@@ -80,15 +81,9 @@ export async function createConvivenciaIncidentAction(
     } = await supabase.auth.getUser();
 
     // Resolve staff id and staff name
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id, first_name, last_name")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .maybeSingle();
-
-    const staffId = staff?.id || (user?.id as string);
-    const staffName = staff ? `${staff.first_name} ${staff.last_name}` : "Coordinación";
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "coordinacion");
+    const staffId = staff.id;
+    const staffName = staff.name || "Coordinación";
 
     // Auto-generate sequential incident number (e.g., SEC-2026-001)
     const { count } = await supabase

@@ -57,7 +57,38 @@ export function SchoolDashboardView({
   badges = [],
   initialTab = "dashboard",
 }: SchoolDashboardViewProps) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const resolveTabState = (tab?: string) => {
+    const raw = (tab || "dashboard").toLowerCase();
+    if (raw === "curriculum" || raw === "pacing" || raw === "ritmo" || raw === "plan") {
+      return { tab: "curriculum", subTab: "observer" as const };
+    }
+    if (raw === "grades" || raw === "calificaciones" || raw === "notas" || raw === "planilla") {
+      return { tab: "grades", subTab: "observer" as const };
+    }
+    if (raw === "schedules" || raw === "horarios" || raw === "horario") {
+      return { tab: "schedules", subTab: "observer" as const };
+    }
+    if (raw === "observer" || raw === "observador") {
+      return { tab: "convivencia", subTab: "observer" as const };
+    }
+    if (raw === "convivencia" || raw === "comite" || raw === "incidents") {
+      return { tab: "convivencia", subTab: "convivencia" as const };
+    }
+    if (raw === "piar" || raw === "inclusion") {
+      return { tab: "convivencia", subTab: "piar" as const };
+    }
+    if (raw === "bulletins" || raw === "boletines" || raw === "carnets" || raw === "carnet") {
+      return { tab: "bulletins", subTab: "observer" as const };
+    }
+    if (raw === "treasury" || raw === "tesoreria" || raw === "pensiones" || raw === "cobranza") {
+      return { tab: "treasury", subTab: "observer" as const };
+    }
+    return { tab: "dashboard", subTab: "observer" as const };
+  };
+
+  const initialResolved = resolveTabState(initialTab);
+  const [activeTab, setActiveTab] = useState(initialResolved.tab);
+  const [convivenciaSubTab, setConvivenciaSubTab] = useState<"observer" | "convivencia" | "piar">(initialResolved.subTab);
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || "demo-c1");
 
   // Fallback Courses if empty for immediate live experience
@@ -502,6 +533,7 @@ export function SchoolDashboardView({
         <TabsContent value="convivencia" className="mt-4">
           <SchoolConvivenciaObserverView
             brandColor={brandColor}
+            initialSubTab={convivenciaSubTab}
           />
         </TabsContent>
 

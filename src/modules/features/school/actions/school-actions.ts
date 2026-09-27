@@ -15,6 +15,7 @@ import {
   BulkAttendanceSchema,
   AwardBadgeSchema,
   CreateTuitionInvoiceSchema,
+  SchoolPeriodBulletinSchema,
 } from "../schemas/school.schema";
 import {
   resolvePerformanceTier,
@@ -22,6 +23,7 @@ import {
   evaluateAbsenceThreshold,
 } from "../services/grading-calculator";
 import { generateBulletinVerificationHash } from "../services/bulletin-generator";
+import { resolveOrEnsureStaff } from "./staff-resolver";
 import type {
   SchoolCourse,
   SchoolAssignment,
@@ -117,15 +119,9 @@ export async function createAcademicAssignmentAction(
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Find staff id for user
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .single();
-
-    const teacherId = staff?.id || (user?.id as string);
+    // Resolve staff id for user
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "docente");
+    const teacherId = staff.id;
 
     const { data, error } = await supabase
       .from("school_assignments")
@@ -173,14 +169,9 @@ export async function recordStudentGradesAction(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .single();
-
-    const teacherId = staff?.id || (user?.id as string);
+    // Resolve staff id for teacher
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "docente");
+    const teacherId = staff.id;
 
     const recordsToUpsert = validated.records.map((r) => {
       const tier = r.score !== undefined && r.score !== null ? resolvePerformanceTier(r.score) : null;
@@ -227,14 +218,13 @@ export async function recordClassAttendanceAction(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .single();
-
-    const staffId = staff?.id || null;
+    let staffId: string | null = null;
+    try {
+      const staff = await resolveOrEnsureStaff(supabase, orgId, user, "docente");
+      staffId = staff.id;
+    } catch {
+      // staffId can be null for attendance logs
+    }
 
     const logsToUpsert = validated.marks.map((m) => ({
       organization_id: orgId,
@@ -277,14 +267,9 @@ export async function awardStudentBadgeAction(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .single();
-
-    const teacherId = staff?.id || (user?.id as string);
+    // Resolve staff id for awarding teacher
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "docente");
+    const teacherId = staff.id;
 
     const { data, error } = await supabase
       .from("school_awarded_badges")
@@ -337,10 +322,212 @@ export async function createTuitionInvoiceAction(
 
     if (error) throw error;
 
-    revalidatePath("/school");
+      revalidatePath("/school");
     return { success: true, data };
   } catch (err: any) {
     console.error("[ACTION:createTuitionInvoiceAction] Error:", err);
     return { success: false, error: err?.message || "Error al generar factura de pensión" };
   }
 }
+
+/**
+ * Saves or updates an official period bulletin (Boletín Decreto 1290)
+ */
+export async function savePeriodBulletinAction(
+  rawInput: unknown
+): Promise<ActionResponse<SchoolPeriodBulletin>> {
+  try {
+    const orgId = await resolveOrgId();
+    const validated = SchoolPeriodBulletinSchema.parse(rawInput);
+    const supabase = await createClient();
+
+    const payload = {
+      organization_id: orgId,
+      enrollment_id: validated.enrollment_id,
+      period_id: validated.period_id,
+      overall_average: validated.overall_average,
+      cohort_ranking: validated.cohort_ranking || null,
+      general_performance_tier: validated.general_performance_tier,
+      radar_competency_data: validated.radar_competency_data,
+      total_absences: validated.total_absences,
+      homeroom_teacher_comment: validated.homeroom_teacher_comment || null,
+      is_cleared_for_download: validated.is_cleared_for_download,
+      pdf_storage_path: validated.pdf_storage_path || null,
+      verification_sha256: validated.verification_sha256,
+      sent_whatsapp_at: validated.sent_whatsapp_at || null,
+    };
+
+    const { data, error } = await supabase
+      .from("school_period_bulletins")
+      .upsert(payload, { onConflict: "enrollment_id,period_id" })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath("/school");
+    return { success: true, data: data as unknown as SchoolPeriodBulletin };
+  } catch (err: any) {
+    console.error("[ACTION:savePeriodBulletinAction] Error:", err);
+    return { success: false, error: err?.message || "Error al registrar boletín periódico" };
+  }
+}
+
+/**
+ * Retrieves all generated period bulletins for a section and period
+ */
+export async function getPeriodBulletinsBySectionAction(
+  sectionId: string,
+  periodId: string
+): Promise<ActionResponse<SchoolPeriodBulletin[]>> {
+  try {
+    const orgId = await resolveOrgId();
+    const supabase = await createClient();
+
+    const { data: enrollments, error: enrollErr } = await supabase
+      .from("school_enrollments")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("section_id", sectionId);
+
+    if (enrollErr) throw enrollErr;
+
+    const enrollmentIds = (enrollments || []).map((e) => e.id);
+    if (enrollmentIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from("school_period_bulletins")
+      .select("*")
+      .eq("organization_id", orgId)
+      .eq("period_id", periodId)
+      .in("enrollment_id", enrollmentIds)
+      .order("overall_average", { ascending: false });
+
+    if (error) throw error;
+
+    return { success: true, data: (data || []) as unknown as SchoolPeriodBulletin[] };
+  } catch (err: any) {
+    console.error("[ACTION:getPeriodBulletinsBySectionAction] Error:", err);
+    return { success: false, error: err?.message || "Error al obtener boletines de la sección" };
+  }
+}
+
+/**
+ * Clears or locks a student's bulletin download access based on institutional policy/tuition
+ */
+export async function toggleBulletinDownloadClearanceAction(
+  bulletinId: string,
+  isCleared: boolean
+): Promise<ActionResponse<boolean>> {
+  try {
+    const orgId = await resolveOrgId();
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("school_period_bulletins")
+      .update({ is_cleared_for_download: isCleared })
+      .eq("id", bulletinId)
+      .eq("organization_id", orgId);
+
+    if (error) throw error;
+
+    revalidatePath("/school");
+    return { success: true, data: isCleared };
+  } catch (err: any) {
+    console.error("[ACTION:toggleBulletinDownloadClearanceAction] Error:", err);
+    return { success: false, error: err?.message || "Error al actualizar estado de descarga del boletín" };
+  }
+}
+
+/**
+ * Retrieves monthly tuition invoices for financial treasury management
+ */
+export async function getTuitionInvoicesAction(
+  month?: string
+): Promise<ActionResponse<SchoolTuitionInvoice[]>> {
+  try {
+    const orgId = await resolveOrgId();
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("school_tuition_invoices")
+      .select(`
+        *,
+        enrollment:school_enrollments (
+          id,
+          student_code,
+          student:leads (
+            id,
+            first_name,
+            last_name,
+            email,
+            phone
+          ),
+          section:school_sections (
+            id,
+            name
+          )
+        )
+      `)
+      .eq("organization_id", orgId)
+      .order("due_date", { ascending: false });
+
+    if (month) {
+      query = query.eq("period_month", month);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return { success: true, data: (data || []) as unknown as SchoolTuitionInvoice[] };
+  } catch (err: any) {
+    console.error("[ACTION:getTuitionInvoicesAction] Error:", err);
+    return { success: false, error: err?.message || "Error al obtener facturas de tesorería" };
+  }
+}
+
+/**
+ * Updates payment status of a tuition invoice (e.g., when webhook confirms Wompi payment)
+ */
+export async function updateTuitionInvoiceStatusAction(
+  invoiceId: string,
+  status: "pending" | "paid" | "late" | "canceled",
+  wompiTransactionId?: string
+): Promise<ActionResponse<SchoolTuitionInvoice>> {
+  try {
+    const orgId = await resolveOrgId();
+    const supabase = await createClient();
+
+    const updatePayload: Record<string, any> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === "paid") {
+      updatePayload.paid_at = new Date().toISOString();
+      if (wompiTransactionId) {
+        updatePayload.wompi_transaction_id = wompiTransactionId;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("school_tuition_invoices")
+      .update(updatePayload)
+      .eq("id", invoiceId)
+      .eq("organization_id", orgId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath("/school");
+    return { success: true, data: data as unknown as SchoolTuitionInvoice };
+  } catch (err: any) {
+    console.error("[ACTION:updateTuitionInvoiceStatusAction] Error:", err);
+    return { success: false, error: err?.message || "Error al actualizar estado de la factura" };
+  }
+}
+

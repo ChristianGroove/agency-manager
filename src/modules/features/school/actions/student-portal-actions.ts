@@ -128,10 +128,17 @@ export async function getStudentPortalData(token: string): Promise<StudentPortal
       `)
       .eq("section_id", enrollment.section_id);
 
-    // 4. Fetch grades records for this student
+    // 4. Fetch grades records for this student with assignment course mapping
     const { data: gradesData } = await supabase
       .from("school_grades_records")
-      .select("*")
+      .select(`
+        *,
+        assignment:school_assignments (
+          id,
+          course_id,
+          weight_percentage
+        )
+      `)
       .eq("enrollment_id", enrollment.id);
 
     // 5. Fetch badges awarded
@@ -160,13 +167,26 @@ export async function getStudentPortalData(token: string): Promise<StudentPortal
       .eq("enrollment_id", enrollment.id)
       .order("due_date", { ascending: false });
 
-    // 7. Calculate aggregate evaluations
+    // 7. Calculate aggregate evaluations per course
     const courseEvaluations = (coursesData || []).map((c: any) => {
-      // Find grades in this course
-      const studentGrades = (gradesData || []).filter((g) => g.score !== null);
-      const avgScore = studentGrades.length > 0
-        ? studentGrades.reduce((sum, g) => sum + Number(g.score), 0) / studentGrades.length
-        : 4.2; // Demo fallback average
+      // Find grades in this specific course
+      const courseGrades = (gradesData || []).filter(
+        (g: any) => g.assignment?.course_id === c.id && g.score !== null && !g.is_excused
+      );
+
+      let avgScore: number;
+      if (courseGrades.length > 0) {
+        let totalWeighted = 0;
+        let totalWeight = 0;
+        for (const g of courseGrades) {
+          const weight = g.assignment?.weight_percentage || 1;
+          totalWeighted += Number(g.score) * weight;
+          totalWeight += weight;
+        }
+        avgScore = totalWeight > 0 ? totalWeighted / totalWeight : 4.0;
+      } else {
+        avgScore = 4.0; // Standard baseline when no evaluations recorded yet
+      }
 
       const teacherName = c.lead_teacher
         ? `${c.lead_teacher.first_name} ${c.lead_teacher.last_name}`

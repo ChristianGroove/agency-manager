@@ -10,6 +10,7 @@ import { createClient } from "@/modules/core/database/supabase-server";
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions";
 import { revalidatePath } from "next/cache";
 import { SchoolObserverLogSchema } from "../schemas/school.schema";
+import { resolveOrEnsureStaff } from "./staff-resolver";
 import type { SchoolObserverLog, ActionResponse } from "../types/school.types";
 
 async function resolveOrgId(providedOrgId?: string): Promise<string> {
@@ -77,14 +78,8 @@ export async function createStudentObserverLogAction(
     } = await supabase.auth.getUser();
 
     // Resolve logged_by_staff_id from current session
-    const { data: staff } = await supabase
-      .from("organization_staff")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("user_id", user?.id)
-      .maybeSingle();
-
-    const staffId = staff?.id || (user?.id as string);
+    const staff = await resolveOrEnsureStaff(supabase, orgId, user, "docente");
+    const staffId = staff.id;
 
     const nowIso = new Date().toISOString();
 

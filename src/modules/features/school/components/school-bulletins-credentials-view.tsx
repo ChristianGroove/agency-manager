@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { generateOfficialBulletinPdf } from "../services/bulletin-generator";
+import { generateOfficialBulletinPdf, generateBulletinVerificationHash } from "../services/bulletin-generator";
 import { generateCr80BatchCardsPdf } from "../services/qr-credentials-generator";
 import type { StudentBadgeCardData } from "../services/qr-credentials-generator";
 
@@ -139,7 +139,13 @@ export function SchoolBulletinsCredentialsView({
           Artes: 88,
         },
         principalName: "Dra. María Fernanda Henao",
-        verificationSha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        verificationSha256: generateBulletinVerificationHash({
+          orgId: "org-colegio-britanico",
+          studentCode: student.code,
+          periodId: "p-2026-1",
+          overallAverage: student.average,
+          timestamp: "2026-09-26T12:00:00Z",
+        }),
         verificationQrUrl: `https://pixy.edu.co/verify/2026-${student.code}`,
         generatedAt: "2026-09-26",
       });

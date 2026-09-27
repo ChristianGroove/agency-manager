@@ -10,6 +10,7 @@ export * from './services/grading-calculator';
 export * from './services/qr-credentials-generator';
 export * from './services/tuition-billing-service';
 export * from './services/bulletin-generator';
+export * from './services/sha256';
 export * from './actions/school-actions';
 export * from './actions/teacher-portal-actions';
 export * from './actions/student-portal-actions';

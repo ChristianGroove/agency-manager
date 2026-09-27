@@ -70,7 +70,7 @@ export function calculateCourseWeightedScore(
     }
 
     if (grade.score !== undefined && grade.score !== null) {
-      totalWeightedScore += grade.score * (assignment.weight_percentage / 100);
+      totalWeightedScore += grade.score * assignment.weight_percentage;
       totalEvaluatedWeight += assignment.weight_percentage;
     }
   }
@@ -79,8 +79,8 @@ export function calculateCourseWeightedScore(
     return { score: 0, completedWeight: 0 };
   }
 
-  // Normalize score if some activities have not occurred yet
-  const normalizedScore = (totalWeightedScore / totalEvaluatedWeight) * (totalEvaluatedWeight > 0 ? 1 : 0);
+  // Normalize score against evaluated weight
+  const normalizedScore = totalWeightedScore / totalEvaluatedWeight;
   const rounded = Math.round(normalizedScore * 100) / 100;
 
   return {

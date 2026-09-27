@@ -4,9 +4,9 @@
 // Path: src/modules/features/school/services/bulletin-generator.ts
 // ==============================================================================
 
-import crypto from 'crypto';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { sha256 } from './sha256';
 import type {
   AreaFinalEvaluation,
   ColombianPerformanceTier,
@@ -42,6 +42,7 @@ export interface BulletinRenderData {
 
 /**
  * Computes a tamper-proof SHA-256 integrity hash for an official academic report card.
+ * 100% compliant FIPS 180-4 standard SHA-256 in all runtimes (Server, Client, Edge).
  */
 export function generateBulletinVerificationHash(params: {
   orgId: string;
@@ -51,7 +52,7 @@ export function generateBulletinVerificationHash(params: {
   timestamp: string;
 }): string {
   const data = `${params.orgId}:${params.studentCode}:${params.periodId}:${params.overallAverage}:${params.timestamp}`;
-  return crypto.createHash('sha256').update(data).digest('hex');
+  return sha256(data);
 }
 
 /**

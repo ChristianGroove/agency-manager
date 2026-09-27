@@ -16,7 +16,17 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { SchoolCourse, SchoolSchedule } from "../types/school.types";
 
 interface TimeBlock {
@@ -98,6 +108,44 @@ export function SchoolSchedulesGridView({
     { id: "s21", dayOfWeek: 5, blockNumber: 4, subjectName: "Educación Física", teacherName: "Prof. David Morales", classroom: "Canchas", color: "#0284c7" },
   ]);
 
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newDay, setNewDay] = useState<number>(1);
+  const [newBlock, setNewBlock] = useState<number>(1);
+  const [newSubject, setNewSubject] = useState("");
+  const [newTeacher, setNewTeacher] = useState("");
+  const [newClassroom, setNewClassroom] = useState("Aula 201");
+
+  const handleOpenAddModal = (day: number, block: number) => {
+    setNewDay(day);
+    setNewBlock(block);
+    const defaultCourse = courses[0];
+    setNewSubject(defaultCourse?.subject_name || "Álgebra y Trigonometría");
+    setNewTeacher(
+      defaultCourse?.lead_teacher
+        ? `${defaultCourse.lead_teacher.first_name} ${defaultCourse.lead_teacher.last_name}`
+        : "Prof. Alberto García"
+    );
+    setShowAddModal(true);
+  };
+
+  const handleSaveBlock = () => {
+    if (!newSubject.trim()) return;
+    const newEntry = {
+      id: `s-${Date.now()}`,
+      dayOfWeek: newDay,
+      blockNumber: newBlock,
+      subjectName: newSubject,
+      teacherName: newTeacher || "Docente Asignado",
+      classroom: newClassroom || "Aula 201",
+      color: brandColor,
+    };
+    setSchedules((prev) => [
+      ...prev.filter((s) => !(s.dayOfWeek === newDay && s.blockNumber === newBlock)),
+      newEntry,
+    ]);
+    setShowAddModal(false);
+  };
+
   return (
     <Card className="rounded-2xl border shadow-sm">
       <CardHeader className="p-6 border-b bg-muted/20">
@@ -138,7 +186,12 @@ export function SchoolSchedulesGridView({
               Imprimir Horario
             </Button>
 
-            <Button size="sm" className="rounded-xl text-xs gap-1.5 h-9" style={{ backgroundColor: brandColor }}>
+            <Button
+              size="sm"
+              className="rounded-xl text-xs gap-1.5 h-9"
+              style={{ backgroundColor: brandColor }}
+              onClick={() => handleOpenAddModal(1, 1)}
+            >
               <Plus className="w-3.5 h-3.5" />
               Programar Bloque
             </Button>
@@ -198,6 +251,7 @@ export function SchoolSchedulesGridView({
                       return (
                         <div
                           key={`cell-${day.dayNumber}-${block.blockNumber}`}
+                          onClick={() => handleOpenAddModal(day.dayNumber, block.blockNumber)}
                           className="p-3 bg-muted/10 border border-dashed rounded-xl flex items-center justify-center text-muted-foreground/40 hover:bg-muted/30 transition-colors cursor-pointer group"
                         >
                           <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -245,6 +299,114 @@ export function SchoolSchedulesGridView({
           </div>
         </div>
       </CardContent>
+
+      {/* MODAL: PROGRAMAR BLOQUE SEMANAL */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              Programar Bloque de Clase Semanal
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Asignación de materia, docente y aula en la malla horaria semanal institucional.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Día de la Semana</Label>
+                <Select
+                  value={String(newDay)}
+                  onValueChange={(v) => setNewDay(Number(v))}
+                >
+                  <SelectTrigger className="rounded-xl text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((d) => (
+                      <SelectItem key={d.dayNumber} value={String(d.dayNumber)} className="text-xs">
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Bloque Horario</Label>
+                <Select
+                  value={String(newBlock)}
+                  onValueChange={(v) => setNewBlock(Number(v))}
+                >
+                  <SelectTrigger className="rounded-xl text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEFAULT_TIME_BLOCKS.filter((b) => !b.isBreak).map((b) => (
+                      <SelectItem key={b.blockNumber} value={String(b.blockNumber)} className="text-xs">
+                        {b.label} ({b.startTime} - {b.endTime})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Asignatura / Curso</Label>
+              <Input
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+                placeholder="Nombre de la asignatura"
+                className="rounded-xl text-xs h-9"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Docente Encargado</Label>
+                <Input
+                  value={newTeacher}
+                  onChange={(e) => setNewTeacher(e.target.value)}
+                  placeholder="Prof. Nombre Apellido"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">Aula / Ubicación</Label>
+                <Input
+                  value={newClassroom}
+                  onChange={(e) => setNewClassroom(e.target.value)}
+                  placeholder="Aula 201"
+                  className="rounded-xl text-xs h-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-xl text-xs font-bold"
+              style={{ backgroundColor: brandColor }}
+              onClick={handleSaveBlock}
+            >
+              Guardar en Horario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

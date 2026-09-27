@@ -4,7 +4,7 @@
 // Path: src/modules/features/school/services/tuition-billing-service.ts
 // ==============================================================================
 
-import crypto from 'crypto';
+import { sha256 } from './sha256';
 import type { SchoolTuitionInvoice, SchoolEnrollment } from '../types/school.types';
 
 export interface TuitionCheckoutPayload {
@@ -57,7 +57,7 @@ export function generateWompiIntegritySignature(
   integritySecret: string
 ): string {
   const rawString = `${reference}${amountInCents}${currency}${integritySecret}`;
-  return crypto.createHash('sha256').update(rawString).digest('hex');
+  return sha256(rawString);
 }
 
 /**
