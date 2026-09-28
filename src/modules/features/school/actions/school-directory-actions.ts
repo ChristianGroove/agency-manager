@@ -347,8 +347,7 @@ export async function getSchoolDirectoryDataAction(
           ),
           student:leads (
             id,
-            first_name,
-            last_name,
+            name,
             email,
             phone,
             avatar_url,
@@ -411,8 +410,11 @@ export async function getSchoolDirectoryDataAction(
           *,
           student:leads (
             id,
-            first_name,
-            last_name
+            name,
+            email,
+            phone,
+            avatar_url,
+            metadata
           )
         `)
         .eq("organization_id", orgId)
@@ -449,7 +451,24 @@ export async function getSchoolDirectoryDataAction(
     ]);
 
     const rawCourses = (coursesRes?.data || []) as unknown as SchoolCourse[];
-    const rawGuardians = (guardiansRes?.data || []) as unknown as SchoolGuardian[];
+    const rawGuardians: SchoolGuardian[] = (guardiansRes?.data || []).map((g: any) => {
+      const studentLead = g.student || {};
+      const parts = (studentLead.name || "").trim().split(" ");
+      const firstName = parts[0] || studentLead.first_name || "";
+      const lastName = parts.slice(1).join(" ") || studentLead.last_name || "";
+      return {
+        ...g,
+        student: studentLead.id
+          ? {
+              id: studentLead.id,
+              first_name: firstName,
+              last_name: lastName,
+              email: studentLead.email,
+              phone: studentLead.phone,
+            }
+          : undefined,
+      };
+    });
     const activeYearId = yearRes?.data?.id || "b1111111-2222-3333-4444-555555555555";
 
     // Build Staff list
@@ -485,6 +504,10 @@ export async function getSchoolDirectoryDataAction(
       const primaryGuardian = studentGuardians.find((g) => g.is_primary_contact) || studentGuardians[0] || null;
       const financialGuardian = studentGuardians.find((g) => g.is_financial_responsible) || primaryGuardian;
 
+      const parts = (studentLead.name || "").trim().split(" ");
+      const firstName = parts[0] || studentLead.first_name || "Estudiante";
+      const lastName = parts.slice(1).join(" ") || studentLead.last_name || "";
+
       return {
         id: e.id,
         organization_id: e.organization_id,
@@ -492,8 +515,8 @@ export async function getSchoolDirectoryDataAction(
         student_code: e.student_code,
         status: e.status || "active",
         qr_access_token: e.qr_access_token,
-        first_name: studentLead.first_name || "Estudiante",
-        last_name: studentLead.last_name || "",
+        first_name: firstName,
+        last_name: lastName,
         email: studentLead.email,
         phone: studentLead.phone,
         avatar_url: studentLead.avatar_url,
@@ -587,8 +610,7 @@ export async function createStudentEnrollmentAction(
         .from("leads")
         .insert({
           organization_id: orgId,
-          first_name: input.firstName.trim(),
-          last_name: input.lastName.trim(),
+          name: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
           email,
           phone: input.phone?.trim() || null,
           status: "client",
@@ -767,8 +789,7 @@ export async function updateStudentEnrollmentAction(
     await supabase
       .from("leads")
       .update({
-        first_name: input.firstName.trim(),
-        last_name: input.lastName.trim(),
+        name: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
         email: input.email?.trim() || null,
         phone: input.phone?.trim() || null,
         metadata: {

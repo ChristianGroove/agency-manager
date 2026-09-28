@@ -77,8 +77,7 @@ export async function getStudentPortalData(token: string): Promise<StudentPortal
         section_id,
         student:leads (
           id,
-          first_name,
-          last_name,
+          name,
           email,
           phone,
           avatar_url,
@@ -203,14 +202,17 @@ export async function getStudentPortalData(token: string): Promise<StudentPortal
       const tuitionClearance = evaluateTuitionClearance((tuitionData || []) as SchoolTuitionInvoice[]);
 
       const studentLead = enrollment.student as any;
+      const parts = (studentLead?.name || "").trim().split(" ");
+      const firstName = parts[0] || studentLead?.first_name || "Estudiante";
+      const lastName = parts.slice(1).join(" ") || studentLead?.last_name || "";
       const sectionData = enrollment.section as any;
 
       return {
         enrollment: {
           id: enrollment.id,
           studentCode: enrollment.student_code,
-          firstName: studentLead?.first_name || "Estudiante",
-          lastName: studentLead?.last_name || "",
+          firstName,
+          lastName,
           avatarUrl: studentLead?.avatar_url,
           gradeName: sectionData?.grade?.name || "Noveno Grado",
           sectionName: sectionData?.name || "9°A",

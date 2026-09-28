@@ -460,8 +460,7 @@ export async function getTuitionInvoicesAction(
           student_code,
           student:leads (
             id,
-            first_name,
-            last_name,
+            name,
             email,
             phone
           ),
@@ -482,7 +481,17 @@ export async function getTuitionInvoicesAction(
 
     if (error) throw error;
 
-    return { success: true, data: (data || []) as unknown as SchoolTuitionInvoice[] };
+    const invoices = (data || []).map((inv: any) => {
+      const en = inv.enrollment;
+      if (en?.student) {
+        const parts = (en.student.name || "").trim().split(" ");
+        en.student.first_name = parts[0] || en.student.first_name || "";
+        en.student.last_name = parts.slice(1).join(" ") || en.student.last_name || "";
+      }
+      return inv;
+    });
+
+    return { success: true, data: invoices as unknown as SchoolTuitionInvoice[] };
   } catch (err: any) {
     console.error("[ACTION:getTuitionInvoicesAction] Error:", err);
     return { success: false, error: err?.message || "Error al obtener facturas de tesorería" };

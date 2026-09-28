@@ -245,8 +245,7 @@ export async function getObserverLogsByOrganizationAction(filters?: {
           student_code,
           student:leads (
             id,
-            first_name,
-            last_name
+            name
           ),
           section:school_sections (
             id,
@@ -277,9 +276,19 @@ export async function getObserverLogsByOrganizationAction(filters?: {
 
     if (error) throw error;
 
+    const logs = (data || []).map((log: any) => {
+      const en = log.enrollment;
+      if (en?.student) {
+        const parts = (en.student.name || "").trim().split(" ");
+        en.student.first_name = parts[0] || en.student.first_name || "";
+        en.student.last_name = parts.slice(1).join(" ") || en.student.last_name || "";
+      }
+      return log;
+    });
+
     return {
       success: true,
-      data: (data || []) as unknown as SchoolObserverLog[],
+      data: logs as unknown as SchoolObserverLog[],
     };
   } catch (err: any) {
     console.error("[ACTION:getObserverLogsByOrganizationAction] Error:", err);

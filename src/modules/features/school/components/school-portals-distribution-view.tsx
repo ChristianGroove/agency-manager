@@ -370,8 +370,8 @@ export function SchoolPortalsDistributionView({
                             className="font-bold text-white text-xs rounded-xl"
                             style={{ backgroundColor: brandColor }}
                           >
-                            {member.first_name[0]}
-                            {member.last_name[0] || ""}
+                            {member.first_name?.[0] || "D"}
+                            {member.last_name?.[0] || ""}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -556,8 +556,8 @@ export function SchoolPortalsDistributionView({
                             className="font-bold text-white text-xs rounded-xl"
                             style={{ backgroundColor: brandColor }}
                           >
-                            {st.first_name[0]}
-                            {st.last_name[0] || ""}
+                            {st.first_name?.[0] || "E"}
+                            {st.last_name?.[0] || ""}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -570,12 +570,11 @@ export function SchoolPortalsDistributionView({
                         </div>
                       </div>
 
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-[9px] px-1.5 py-0.5 border-primary/30 text-primary bg-primary/5"
+                      <span
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border/70 shrink-0 leading-none"
                       >
                         {st.student_code}
-                      </Badge>
+                      </span>
                     </div>
 
                     {/* QR Code and Quick Details */}

@@ -78,8 +78,6 @@ export const en = {
         module_whitelabel: "White Label",
         module_rentals: "Rental Management",
         module_school: "Academic Management",
-        module_school_directory: "School Directory",
-        module_school_portals: "Zero-Login Portals",
         // Categories
         cat_core: "Main",
         cat_crm: "CRM",

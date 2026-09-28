@@ -304,30 +304,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
             allowedRoles: ['owner', 'admin', 'member'],
         }
     },
-    {
-        key: 'module_school_directory',
-        label: 'Directorio Escolar',
-        href: '/school?tab=directory',
-        icon: Users,
-        category: 'operations',
-        parentModule: 'module_school',
-        description: 'Alta, baja y fichas integrales de estudiantes, docentes y acudientes',
-        access: {
-            allowedRoles: ['owner', 'admin', 'member'],
-        }
-    },
-    {
-        key: 'module_school_portals',
-        label: 'Portales Cero-Login',
-        href: '/school?tab=portals',
-        icon: Globe,
-        category: 'operations',
-        parentModule: 'module_school',
-        description: 'Distribución y accesos directos para docentes, estudiantes y familias',
-        access: {
-            allowedRoles: ['owner', 'admin', 'member'],
-        }
-    },
     // HIDDEN FOR REGULAR USERS
     {
         key: 'module_contracts',
@@ -567,7 +543,7 @@ export function filterRoutesByModules(
 
         // 4. VERTICAL MODULES LOGIC (Requires subscription)
         const checkKey = parentModule || key
-        const isSubscribed = activeModules.includes(checkKey) || checkKey === 'module_school'
+        const isSubscribed = activeModules.includes(checkKey) || (checkKey === 'module_school' && vertical === 'school')
         
         // If not subscribed, it's hidden regardless of who you are
         if (!isSubscribed) return false

@@ -21,7 +21,8 @@ export function SplitText({
 
     // Normalizar saltos de línea (\r\n -> \n)
     const sanitized = typeof children === "string" ? children.replace(/\r\n/g, "\n") : String(children)
-    const letters = sanitized.split("")
+    // Split by words to ensure words and numbers (like '2026') do not break awkwardly mid-word
+    const words = sanitized.split(" ")
 
     const container = {
         hidden: { opacity: 0 },
@@ -47,31 +48,34 @@ export function SplitText({
         },
     }
 
+    let charCount = 0
+
     return (
         <motion.span
             key={sanitized}
-            className={cn("inline", className)}
+            className={cn("inline min-w-0", className)}
             variants={container}
             initial="hidden"
             animate="visible"
         >
-            {letters.map((letter, index) => {
-                if (letter === "\n") {
-                    return <br key={index} className="select-none" />
-                }
-                if (letter === " ") {
-                    return (
-                        <span key={index} className="inline">
-                            {" "}
-                        </span>
-                    )
-                }
-                return (
-                    <motion.span key={index} variants={child} className="inline-block">
-                        {letter}
-                    </motion.span>
-                )
-            })}
+            {words.map((word, wIdx) => (
+                <span key={wIdx} className="inline">
+                    <span className="inline-block whitespace-nowrap">
+                        {word.split("").map((letter) => {
+                            const idx = charCount++
+                            if (letter === "\n") {
+                                return <br key={idx} className="select-none" />
+                            }
+                            return (
+                                <motion.span key={idx} variants={child} className="inline-block">
+                                    {letter}
+                                </motion.span>
+                            )
+                        })}
+                    </span>
+                    {wIdx < words.length - 1 ? " " : ""}
+                </span>
+            ))}
         </motion.span>
     )
 }

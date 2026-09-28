@@ -183,8 +183,7 @@ async function seed() {
         await supabase.from('leads').upsert({
             id: st.id,
             organization_id: schoolOrgId,
-            first_name: st.first,
-            last_name: st.last,
+            name: `${st.first} ${st.last}`.trim(),
             email: `${st.code.toLowerCase()}@sanmateo.edu.co`,
             phone: st.phone,
             status: 'client',

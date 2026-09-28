@@ -571,6 +571,7 @@ export function SchoolDashboardView({
       {/* Standard Platform SectionHeader matching Tasks module */}
       <SectionHeader
         title={organizationName}
+        titleClassName="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight"
         subtitle="Campus Digital AOS • SIEE Decreto 1290 • Ley 115 • Carnets QR y Portales Cero-Login"
         icon={GraduationCap}
         action={
@@ -633,25 +634,6 @@ export function SchoolDashboardView({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleOpenCreateStaff}
-              className="h-8 text-xs font-semibold gap-1.5 rounded-md shrink-0 shadow-xs hidden sm:flex"
-            >
-              <Plus className="w-3.5 h-3.5 text-primary" />
-              Alta Docente
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleOpenCreateStudent}
-              className="h-8 text-xs font-semibold gap-1.5 rounded-md shrink-0 text-white shadow-xs hidden sm:flex"
-              style={{ backgroundColor: brandColor }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Alta Estudiante
-            </Button>
           </div>
         }
       />

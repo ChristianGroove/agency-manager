@@ -40,8 +40,7 @@ export async function getPiarPlanByEnrollmentAction(
           student_code,
           student:leads (
             id,
-            first_name,
-            last_name
+            name
           ),
           section:school_sections (
             id,
@@ -64,6 +63,13 @@ export async function getPiarPlanByEnrollmentAction(
     const { data, error } = await query.maybeSingle();
 
     if (error) throw error;
+
+    if (data && (data as any).enrollment?.student) {
+      const en = (data as any).enrollment;
+      const parts = (en.student.name || "").trim().split(" ");
+      en.student.first_name = parts[0] || en.student.first_name || "";
+      en.student.last_name = parts.slice(1).join(" ") || en.student.last_name || "";
+    }
 
     return {
       success: true,
@@ -95,8 +101,7 @@ export async function getAllPiarPlansAction(filters?: {
           student_code,
           student:leads (
             id,
-            first_name,
-            last_name
+            name
           ),
           section:school_sections (
             id,
@@ -123,9 +128,19 @@ export async function getAllPiarPlansAction(filters?: {
 
     if (error) throw error;
 
+    const plans = (data || []).map((p: any) => {
+      const en = p.enrollment;
+      if (en?.student) {
+        const parts = (en.student.name || "").trim().split(" ");
+        en.student.first_name = parts[0] || en.student.first_name || "";
+        en.student.last_name = parts.slice(1).join(" ") || en.student.last_name || "";
+      }
+      return p;
+    });
+
     return {
       success: true,
-      data: (data || []) as unknown as SchoolPiarPlan[],
+      data: plans as unknown as SchoolPiarPlan[],
     };
   } catch (err: any) {
     console.error("[ACTION:getAllPiarPlansAction] Error:", err);
@@ -179,14 +194,20 @@ export async function savePiarPlanAction(
           student_code,
           student:leads (
             id,
-            first_name,
-            last_name
+            name
           )
         )
       `)
       .single();
 
     if (error) throw error;
+
+    if (data && (data as any).enrollment?.student) {
+      const en = (data as any).enrollment;
+      const parts = (en.student.name || "").trim().split(" ");
+      en.student.first_name = parts[0] || en.student.first_name || "";
+      en.student.last_name = parts.slice(1).join(" ") || en.student.last_name || "";
+    }
 
     revalidatePath("/school");
 

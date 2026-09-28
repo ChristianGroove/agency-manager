@@ -252,8 +252,7 @@ export async function getCourseRosterAction(courseId: string, periodId?: string)
           qr_access_token,
           student:leads (
             id,
-            first_name,
-            last_name,
+            name,
             email,
             phone,
             avatar_url
@@ -289,11 +288,26 @@ export async function getCourseRosterAction(courseId: string, periodId?: string)
       }
 
       if (enrollments && enrollments.length > 0) {
+        const mappedEnrollments = enrollments.map((en: any) => {
+          const studentLead = en.student || {};
+          const parts = (studentLead.name || "").trim().split(" ");
+          const firstName = parts[0] || studentLead.first_name || "Estudiante";
+          const lastName = parts.slice(1).join(" ") || studentLead.last_name || "";
+          return {
+            ...en,
+            student: {
+              ...studentLead,
+              first_name: firstName,
+              last_name: lastName,
+            },
+          };
+        });
+
         return {
           success: true,
           data: {
             course,
-            enrollments,
+            enrollments: mappedEnrollments,
             assignments: assignments || [],
             grades,
           },

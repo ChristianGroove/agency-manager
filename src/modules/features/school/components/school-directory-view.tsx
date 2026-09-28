@@ -963,29 +963,26 @@ export function SchoolDirectoryView({
                       {/* Name & Avatar */}
                       <td className="p-3.5 pl-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-9 h-9 rounded-xl border shadow-xs">
+                          <Avatar className="w-9 h-9 rounded-xl border shadow-xs shrink-0">
                             <AvatarImage src={st.avatar_url || ""} />
                             <AvatarFallback
                               className="font-bold text-white text-xs rounded-xl"
                               style={{ backgroundColor: brandColor }}
                             >
-                              {st.first_name[0]}
-                              {st.last_name[0] || ""}
+                              {st.first_name?.[0] || "E"}
+                              {st.last_name?.[0] || ""}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <span className="font-bold text-foreground text-xs block leading-tight">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-foreground text-xs block leading-tight truncate">
                               {st.first_name} {st.last_name}
                             </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <Badge
-                                variant="outline"
-                                className="font-mono text-[9px] px-1 py-0 h-4 border-primary/30 text-primary bg-primary/5"
-                              >
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border/70 shrink-0 leading-none">
                                 {st.student_code}
-                              </Badge>
+                              </span>
                               {st.email && (
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[130px]">
+                                <span className="text-[11px] text-muted-foreground truncate" title={st.email}>
                                   {st.email}
                                 </span>
                               )}
@@ -1253,8 +1250,8 @@ export function SchoolDirectoryView({
                               className="font-bold text-white text-xs rounded-xl"
                               style={{ backgroundColor: brandColor }}
                             >
-                              {st.first_name[0]}
-                              {st.last_name[0] || ""}
+                              {st.first_name?.[0] || "D"}
+                              {st.last_name?.[0] || ""}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -2219,8 +2216,8 @@ export function SchoolDirectoryView({
                       className="font-black text-white text-base rounded-2xl"
                       style={{ backgroundColor: brandColor }}
                     >
-                      {selectedStudentDetail.first_name[0]}
-                      {selectedStudentDetail.last_name[0] || ""}
+                      {selectedStudentDetail.first_name?.[0] || "E"}
+                      {selectedStudentDetail.last_name?.[0] || ""}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -2424,8 +2421,8 @@ export function SchoolDirectoryView({
                       className="font-black text-white text-base rounded-2xl"
                       style={{ backgroundColor: brandColor }}
                     >
-                      {selectedStaffDetail.first_name[0]}
-                      {selectedStaffDetail.last_name[0] || ""}
+                      {selectedStaffDetail.first_name?.[0] || "D"}
+                      {selectedStaffDetail.last_name?.[0] || ""}
                     </AvatarFallback>
                   </Avatar>
                   <div>
