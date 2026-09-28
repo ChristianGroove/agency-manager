@@ -504,3 +504,117 @@ export interface SchoolSchedule {
   updated_at?: string;
 }
 
+// ==============================================================================
+// 6. PERSONAS DIRECTORY & PORTAL MANAGEMENT TYPES
+// ==============================================================================
+
+export interface SchoolStaffMember {
+  id: string;
+  organization_id: string;
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+  role: string;
+  access_token?: string | null;
+  is_active: boolean;
+  photo_url?: string | null;
+  document_id?: string | null;
+  assigned_courses_count?: number;
+  assigned_courses?: SchoolCourse[];
+  weekly_hours?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SchoolStudentWithDetails {
+  id: string; // enrollmentId
+  organization_id: string;
+  student_id: string; // lead id
+  student_code: string;
+  status: 'active' | 'withdrawn' | 'suspended' | 'graduated';
+  qr_access_token: string;
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  blood_type?: string;
+  eps?: string;
+  emergency_phone?: string;
+  section_id: string;
+  section_name: string;
+  grade_name: string;
+  academic_year_name: string;
+  guardians: SchoolGuardian[];
+  primary_guardian?: SchoolGuardian | null;
+  financial_guardian?: SchoolGuardian | null;
+  tuition_pending_count?: number;
+  average_grade?: number;
+  created_at?: string;
+}
+
+export interface CreateStudentInput {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  studentCode?: string;
+  sectionId: string;
+  academicYearId?: string;
+  bloodType?: string;
+  eps?: string;
+  emergencyPhone?: string;
+  // Optional first guardian
+  guardian?: {
+    firstName: string;
+    lastName: string;
+    relationship: GuardianRelationship;
+    phone: string;
+    email?: string;
+    documentType?: GuardianDocumentType;
+    documentNumber?: string;
+    isFinancialResponsible?: boolean;
+  };
+}
+
+export interface UpdateStudentInput {
+  enrollmentId: string;
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  studentCode: string;
+  sectionId: string;
+  status: 'active' | 'withdrawn' | 'suspended' | 'graduated';
+  bloodType?: string;
+  eps?: string;
+  emergencyPhone?: string;
+}
+
+export interface CreateStaffInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  photoUrl?: string;
+  documentId?: string;
+  courseIds?: string[];
+}
+
+export interface UpdateStaffInput {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  photoUrl?: string;
+  documentId?: string;
+  isActive?: boolean;
+  courseIds?: string[];
+}
+
+

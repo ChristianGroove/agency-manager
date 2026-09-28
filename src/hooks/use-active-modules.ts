@@ -45,6 +45,9 @@ const MODULE_PERMISSION_MAP: Record<string, string> = {
     'module_appointments': 'appointments',
     'module_staff': 'staff',
     'module_payroll': 'payroll',
+
+    // School vertical module
+    'module_school': 'school',
 }
 
 /**

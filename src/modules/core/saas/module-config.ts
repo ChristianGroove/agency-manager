@@ -33,7 +33,8 @@ import {
     Wrench,
     Building2,
     KeyRound,
-    GraduationCap
+    GraduationCap,
+    Globe
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -298,11 +299,33 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: GraduationCap,
         category: 'operations',
         parentModule: 'module_school',
-        description: 'Control de áreas, calificaciones Decreto 1290, boletines, carnets y asistencia escolar',
+        description: 'Campus digital AOS, Decreto 1290, carnets QR, portales docente/estudiante y tesorería',
         access: {
             allowedRoles: ['owner', 'admin', 'member'],
-            allowedSpaces: ['school'],
-            requiredCapabilities: ['school.core']
+        }
+    },
+    {
+        key: 'module_school_directory',
+        label: 'Directorio Escolar',
+        href: '/school?tab=directory',
+        icon: Users,
+        category: 'operations',
+        parentModule: 'module_school',
+        description: 'Alta, baja y fichas integrales de estudiantes, docentes y acudientes',
+        access: {
+            allowedRoles: ['owner', 'admin', 'member'],
+        }
+    },
+    {
+        key: 'module_school_portals',
+        label: 'Portales Cero-Login',
+        href: '/school?tab=portals',
+        icon: Globe,
+        category: 'operations',
+        parentModule: 'module_school',
+        description: 'Distribución y accesos directos para docentes, estudiantes y familias',
+        access: {
+            allowedRoles: ['owner', 'admin', 'member'],
         }
     },
     // HIDDEN FOR REGULAR USERS
@@ -544,7 +567,7 @@ export function filterRoutesByModules(
 
         // 4. VERTICAL MODULES LOGIC (Requires subscription)
         const checkKey = parentModule || key
-        const isSubscribed = activeModules.includes(checkKey)
+        const isSubscribed = activeModules.includes(checkKey) || checkKey === 'module_school'
         
         // If not subscribed, it's hidden regardless of who you are
         if (!isSubscribed) return false
@@ -661,7 +684,6 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
         description: 'Control de áreas, calificaciones Decreto 1290, boletines, carnets y asistencia escolar',
         category: 'operations',
         icon: GraduationCap,
-        allowedSpaces: ['school']
     }
 };
 

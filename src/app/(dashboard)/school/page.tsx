@@ -11,8 +11,16 @@ import {
   getCurrentOrgName,
 } from "@/modules/core/organizations/organization-actions";
 import { getEffectiveBranding } from "@/modules/core/branding/actions";
-import { SchoolDashboardView } from "@/modules/features/school";
-import type { SchoolCourse, SchoolBadge } from "@/modules/features/school";
+import {
+  SchoolDashboardView,
+  getSchoolDirectoryDataAction,
+  type SchoolCourse,
+  type SchoolBadge,
+  type SchoolStudentWithDetails,
+  type SchoolStaffMember,
+  type SchoolGuardian,
+  type SchoolSection,
+} from "@/modules/features/school";
 
 export async function generateMetadata() {
   const orgName = (await getCurrentOrgName()) || "Pixy Edu";
@@ -40,14 +48,18 @@ export default async function SchoolPage(props: {
   const orgId = await getCurrentOrganizationId();
   const orgName = (await getCurrentOrgName()) || "Institución Educativa";
   const branding = orgId ? await getEffectiveBranding(orgId) : null;
-  const brandColor = branding?.colors?.primary || "#2563eb";
+  const brandColor = branding?.colors?.primary || "#1e40af";
 
-  // Fetch courses and badges for this organization if they exist
+  // Fetch courses, badges and complete directory for this organization
   let courses: SchoolCourse[] = [];
   let badges: SchoolBadge[] = [];
+  let directoryStudents: SchoolStudentWithDetails[] = [];
+  let directoryStaff: SchoolStaffMember[] = [];
+  let directoryGuardians: SchoolGuardian[] = [];
+  let directorySections: SchoolSection[] = [];
 
   if (orgId) {
-    const [coursesRes, badgesRes] = await Promise.all([
+    const [coursesRes, badgesRes, directoryRes] = await Promise.all([
       supabase
         .from("school_courses")
         .select(`
@@ -83,6 +95,7 @@ export default async function SchoolPage(props: {
         .select("*")
         .eq("organization_id", orgId)
         .eq("is_active", true),
+      getSchoolDirectoryDataAction(orgId),
     ]);
 
     if (coursesRes.data) {
@@ -90,6 +103,12 @@ export default async function SchoolPage(props: {
     }
     if (badgesRes.data) {
       badges = badgesRes.data as unknown as SchoolBadge[];
+    }
+    if (directoryRes.success && directoryRes.data) {
+      directoryStudents = directoryRes.data.students;
+      directoryStaff = directoryRes.data.staff;
+      directoryGuardians = directoryRes.data.guardians;
+      directorySections = directoryRes.data.sections;
     }
   }
 
@@ -102,6 +121,10 @@ export default async function SchoolPage(props: {
           courses={courses}
           badges={badges}
           initialTab={initialTab}
+          directoryStudents={directoryStudents}
+          directoryStaff={directoryStaff}
+          directoryGuardians={directoryGuardians}
+          directorySections={directorySections}
         />
       </Suspense>
     </div>

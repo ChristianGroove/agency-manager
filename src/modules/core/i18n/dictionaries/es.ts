@@ -77,6 +77,9 @@ export const es = {
         module_resto_staff: "Personal Operativo",
         module_whitelabel: "Marca Blanca",
         module_rentals: "Gestión de Arriendos",
+        module_school: "Gestión Académica",
+        module_school_directory: "Directorio Escolar",
+        module_school_portals: "Portales Cero-Login",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",
