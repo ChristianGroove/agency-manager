@@ -61,6 +61,9 @@ export default async function TaskCollaboratorPortalPage({ params }: PageProps) 
     )
   }
 
+  const primaryColor = portalData.organization.primary_color || "#8ec045"
+  const secondaryColor = portalData.organization.secondary_color || "#5c8ea9"
+
   const brandingConfig: BrandingConfig = {
     name: portalData.organization.name || "Portal",
     logos: {
@@ -71,8 +74,8 @@ export default async function TaskCollaboratorPortalPage({ params }: PageProps) 
       login_bg: null,
     },
     colors: {
-      primary: portalData.organization.primary_color || "#8ec045",
-      secondary: portalData.organization.secondary_color || "#5c8ea9",
+      primary: primaryColor,
+      secondary: secondaryColor,
     },
     font_family: "Inter",
     socials: {},
@@ -80,10 +83,35 @@ export default async function TaskCollaboratorPortalPage({ params }: PageProps) 
 
   return (
     <BrandingProvider initialBranding={brandingConfig}>
-      {/* Script DOM local: garantiza que la carga inicial del portal sea en tema claro sin destellos y sin tocar localStorage */}
+      {/* Script & Style DOM local: garantiza que la carga inicial del portal sea en tema claro sin destellos y con los colores exactos del tenant */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            :root, :root.dark, .dark, [data-theme="dark"], html, body {
+              --primary: ${primaryColor} !important;
+              --color-primary: ${primaryColor} !important;
+              --brand-pink: ${primaryColor} !important;
+              --sidebar-primary: ${primaryColor} !important;
+              --ring: ${secondaryColor} !important;
+              --color-ring: ${secondaryColor} !important;
+              --brand-cyan: ${secondaryColor} !important;
+            }
+          `,
+        }}
+      />
       <script
         dangerouslySetInnerHTML={{
-          __html: `try{document.documentElement.classList.remove('dark');}catch(e){}`,
+          __html: `
+            try {
+              document.documentElement.style.setProperty('--primary', '${primaryColor}', 'important');
+              document.documentElement.style.setProperty('--color-primary', '${primaryColor}', 'important');
+              document.documentElement.style.setProperty('--brand-pink', '${primaryColor}', 'important');
+              document.documentElement.style.setProperty('--sidebar-primary', '${primaryColor}', 'important');
+              document.documentElement.style.setProperty('--ring', '${secondaryColor}', 'important');
+              document.documentElement.style.setProperty('--color-ring', '${secondaryColor}', 'important');
+              document.documentElement.style.setProperty('--brand-cyan', '${secondaryColor}', 'important');
+            } catch(e) {}
+          `,
         }}
       />
       <TaskCollaboratorPortal portalData={portalData} token={token} />

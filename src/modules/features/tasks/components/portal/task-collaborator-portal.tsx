@@ -116,11 +116,20 @@ import {
   portalCreateTask,
   portalUpdateTaskPriority,
   portalAssignTask,
-  portalBulkDeleteTasks
+  portalBulkDeleteTasks,
+  getUnlockedCollaboratorPortalData,
 } from "../../actions/collaborator-portal-actions"
 import { realtimeManager } from "@/modules/core/database/supabase-realtime-manager"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
+import {
+  PortalLockscreen,
+  PortalAvatarSecurityMenu,
+  PortalSecurityModal,
+  PortalSecurityBanner,
+  lockPortalSessionAction,
+} from "@/modules/features/portal-security"
 import dynamic from "next/dynamic"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -578,6 +587,51 @@ export function TaskCollaboratorPortal({
   const [recentMentions, setRecentMentions] = useState(portalData.recentMentions || [])
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([])
   const teamMembers = portalData.teamMembers || []
+
+  const router = useRouter()
+
+  // Portal Security State & Handlers
+  const [isLocked, setIsLocked] = useState(Boolean(portalData.isLocked))
+  const [hasPinCode, setHasPinCode] = useState(Boolean(portalData.staff?.has_pin_code ?? staff.has_pin_code))
+  const [securityModalMode, setSecurityModalMode] = useState<"setup" | "change" | "remove">("setup")
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false)
+
+  useEffect(() => {
+    setIsLocked(Boolean(portalData.isLocked))
+    setHasPinCode(Boolean(portalData.staff?.has_pin_code ?? staff.has_pin_code))
+  }, [portalData.isLocked, portalData.staff?.has_pin_code, staff.has_pin_code])
+
+  const handlePortalUnlocked = (unlockedData?: CollaboratorPortalData | null) => {
+    if (unlockedData) {
+      if (unlockedData.tasks) setTasks(unlockedData.tasks)
+      if (unlockedData.allTeamTasks) setAllTeamTasks(unlockedData.allTeamTasks)
+      if (unlockedData.availableTasks) setAvailableTasks(unlockedData.availableTasks || unlockedData.allTeamTasks || unlockedData.tasks || [])
+      if (unlockedData.projects) setProjects(unlockedData.projects)
+      if (unlockedData.workspaces) setWorkspaces(unlockedData.workspaces)
+      if (unlockedData.sprints) setSprints(unlockedData.sprints)
+      if (unlockedData.activeSprint) setActiveSprint(unlockedData.activeSprint)
+      if (unlockedData.supportTickets) setSupportTickets(unlockedData.supportTickets)
+      if (unlockedData.recentMentions) setRecentMentions(unlockedData.recentMentions)
+    }
+    setIsLocked(false)
+    router.refresh()
+  }
+
+  const handleLockPortal = async () => {
+    setIsLocked(true)
+    await lockPortalSessionAction(token)
+    router.refresh()
+  }
+
+  const handleOpenSecurityModal = (mode: "setup" | "change" | "remove") => {
+    setSecurityModalMode(mode)
+    setIsSecurityModalOpen(true)
+  }
+
+  const handleSecuritySuccess = (newHasPin: boolean) => {
+    setHasPinCode(newHasPin)
+    router.refresh()
+  }
 
   // Prop Synchronization
   useEffect(() => {
@@ -2436,30 +2490,72 @@ export function TaskCollaboratorPortal({
 
   if (portalData.portalMode === "support") {
     return (
-      <TaskParallelSupportPortal
-        portalData={portalData}
-        token={token}
-        supportTickets={supportTickets}
-        onTicketsChange={setSupportTickets}
-        workspaces={workspaces}
-        projects={projects}
-        brandColor={brandColor}
-        portalTheme={portalTheme}
-        togglePortalTheme={togglePortalTheme}
-      />
+      <div
+        style={{
+          "--primary": brandColor,
+          "--brand-pink": brandColor,
+          "--color-primary": brandColor,
+          "--sidebar-primary": brandColor,
+        } as React.CSSProperties}
+        className={cn("relative min-h-screen", isLocked ? "overflow-hidden max-h-screen" : "")}
+      >
+        <div className={cn("transition-all duration-700", isLocked ? "filter blur-md pointer-events-none select-none opacity-40 scale-[0.99]" : "filter-none opacity-100 scale-100")}>
+          <TaskParallelSupportPortal
+            portalData={portalData}
+            token={token}
+            supportTickets={supportTickets}
+            onTicketsChange={setSupportTickets}
+            workspaces={workspaces}
+            projects={projects}
+            brandColor={brandColor}
+            portalTheme={portalTheme}
+            togglePortalTheme={togglePortalTheme}
+            hasPinCode={hasPinCode}
+            onLock={handleLockPortal}
+            onOpenSecurityModal={handleOpenSecurityModal}
+          />
+        </div>
+        {isLocked && (
+          <PortalLockscreen
+            token={token}
+            staff={staff}
+            organization={organization}
+            onUnlocked={handlePortalUnlocked}
+            fetchUnlockedData={() => getUnlockedCollaboratorPortalData(token)}
+          />
+        )}
+        <PortalSecurityModal
+          isOpen={isSecurityModalOpen}
+          onClose={() => setIsSecurityModalOpen(false)}
+          mode={securityModalMode}
+          token={token}
+          onSuccess={handleSecuritySuccess}
+          brandColor={brandColor}
+        />
+      </div>
     )
   }
 
   return (
-    <div className={cn("min-h-screen relative bg-gray-100 dark:bg-[#0a0a0a] text-foreground font-sans selection:bg-primary/20 transition-colors duration-200", portalTheme === "dark" ? "dark" : "")}>
+    <div
+      style={{
+        "--primary": brandColor,
+        "--brand-pink": brandColor,
+        "--color-primary": brandColor,
+        "--sidebar-primary": brandColor,
+      } as React.CSSProperties}
+      className={cn("min-h-screen relative bg-gray-100 dark:bg-[#0a0a0a] text-foreground font-sans selection:bg-primary/20 transition-colors duration-200", portalTheme === "dark" ? "dark" : "", isLocked ? "overflow-hidden max-h-screen" : "")}
+    >
       {/* Partículas animadas globales de la plataforma */}
       <div className="fixed inset-0 z-0 opacity-100 pointer-events-none overflow-hidden">
         <GlobalParticles orgId={organization?.id} primaryColor={brandColor} />
       </div>
 
-      {/* Header: Logo del Tenant a la izquierda y Nombre del Colaborador (sin cargo) a la derecha */}
-      <header className="border-b border-zinc-200/80 dark:border-white/10 bg-card/70 backdrop-blur-md sticky top-0 z-30">
-        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
+      {/* Main Portal Body: blurred and non-interactive while locked */}
+      <div className={cn("flex-1 flex flex-col transition-all duration-700", isLocked ? "filter blur-md pointer-events-none select-none opacity-40 scale-[0.99]" : "filter-none opacity-100 scale-100")}>
+        {/* Header: Logo del Tenant a la izquierda y Nombre del Colaborador (sin cargo) a la derecha */}
+        <header className="border-b border-zinc-200/80 dark:border-white/10 bg-card/70 backdrop-blur-md sticky top-0 z-30">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
           {/* Logo del tenant a la izquierda (cambia reactivamente en modo oscuro/claro) */}
           <div className="flex items-center">
             {activeLogo ? (
@@ -2746,34 +2842,26 @@ export function TaskCollaboratorPortal({
 
             <div className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
 
-            {/* Colaborador a la derecha: solo nombre y icono profile normal */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <span className="text-sm font-semibold text-foreground hidden sm:inline">
-                {staff.first_name} {staff.last_name}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center transition-colors bg-zinc-100 dark:bg-white/10 text-muted-foreground cursor-pointer"
-                    aria-label={`Perfil de ${staff.first_name} ${staff.last_name}`}
-                  >
-                    <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-semibold text-foreground">{staff.first_name} {staff.last_name}</span>
-                    <span className="text-[10px] text-muted-foreground">{staff.role || "Colaborador del Equipo"}</span>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            {/* Colaborador y Menú de Seguridad a la derecha */}
+            <PortalAvatarSecurityMenu
+              staff={{ ...staff, has_pin_code: hasPinCode }}
+              brandColor={brandColor}
+              onLock={handleLockPortal}
+              onOpenSecurityModal={handleOpenSecurityModal}
+            />
           </div>
         </div>
       </header>
 
       {/* Main Container */}
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6 relative z-10">
+        {/* Onboarding Banner de Seguridad si no tiene PIN configurado */}
+        {!hasPinCode && (
+          <PortalSecurityBanner
+            onOpenSetup={() => handleOpenSecurityModal("setup")}
+            brandColor={brandColor}
+          />
+        )}
         {/* Hero Section: Card compacta con Avatar 3D en posición absoluta y efecto pop-out flotante */}
         {(!isLeadOrPm || pmViewMode === "dashboard") && (
           <section className="w-full relative overflow-visible rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-sm bg-gradient-to-br from-card via-card to-primary/[0.03] dark:to-primary/[0.06] p-4 sm:p-5 md:py-5 md:px-7 transition-all flex items-center min-h-[140px] sm:min-h-[155px]">
@@ -5328,6 +5416,29 @@ export function TaskCollaboratorPortal({
           }}
         />
       )}
+
+      </div>
+
+      {/* Modal de Bloqueo con Backdrop Desenfocado */}
+      {isLocked && (
+        <PortalLockscreen
+          token={token}
+          staff={staff}
+          organization={organization}
+          onUnlocked={handlePortalUnlocked}
+          fetchUnlockedData={() => getUnlockedCollaboratorPortalData(token)}
+        />
+      )}
+
+      {/* Modal de Configuración / Cambio / Desactivación de PIN */}
+      <PortalSecurityModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        mode={securityModalMode}
+        token={token}
+        onSuccess={handleSecuritySuccess}
+        brandColor={brandColor}
+      />
     </div>
   )
 }

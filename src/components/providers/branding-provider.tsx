@@ -24,21 +24,40 @@ export function BrandingProvider({ initialBranding, children }: BrandingProvider
         // Update Brand Colors
         if (initialBranding.colors.primary) {
             root.style.setProperty("--brand-pink", initialBranding.colors.primary)
-            // Primary is already linked to brand-pink in CSS, but we enforce it just in case logic changes
-            // or if we want to support direct --primary override
             root.style.setProperty("--primary", initialBranding.colors.primary)
+            root.style.setProperty("--color-primary", initialBranding.colors.primary)
             root.style.setProperty("--sidebar-primary", initialBranding.colors.primary)
         }
 
         if (initialBranding.colors.secondary) {
             root.style.setProperty("--brand-cyan", initialBranding.colors.secondary)
             root.style.setProperty("--ring", initialBranding.colors.secondary)
+            root.style.setProperty("--color-ring", initialBranding.colors.secondary)
         }
 
     }, [initialBranding])
 
+    const primary = initialBranding?.colors?.primary
+    const secondary = initialBranding?.colors?.secondary
+
     return (
         <BrandingContext.Provider value={initialBranding}>
+            {primary && (
+                <style
+                    id="branding-provider-dynamic-css"
+                    dangerouslySetInnerHTML={{
+                        __html: `
+:root, :root.dark, .dark, [data-theme="dark"], html, body {
+  --primary: ${primary} !important;
+  --color-primary: ${primary} !important;
+  --brand-pink: ${primary} !important;
+  --sidebar-primary: ${primary} !important;
+  ${secondary ? `--ring: ${secondary} !important; --color-ring: ${secondary} !important; --brand-cyan: ${secondary} !important;` : ''}
+}
+`,
+                    }}
+                />
+            )}
             {children}
         </BrandingContext.Provider>
     )

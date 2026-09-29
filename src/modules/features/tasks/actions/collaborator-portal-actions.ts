@@ -6,6 +6,7 @@ import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, Ta
 import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 import { generateNextTicketCode } from "./task-actions";
+import { isPortalSessionUnlocked } from "@/modules/features/portal-security/utils/session-cookie";
 
 /**
  * Safely revalidate platform operations view from portal actions
@@ -236,6 +237,7 @@ export interface SupportTeamMember {
 }
 
 export interface CollaboratorPortalData {
+  isLocked?: boolean;
   latestAudits?: Record<string, TaskProgressAuditSummary>;
   staff: {
     id: string;
@@ -247,6 +249,7 @@ export interface CollaboratorPortalData {
     photo_url?: string | null;
     access_token: string;
     can_bulk_delete_tasks?: boolean;
+    has_pin_code?: boolean;
   };
   canBulkDeleteTasks?: boolean;
   organization: {
@@ -345,13 +348,33 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const { data: settings } = await supabaseAdmin
     .from("organization_settings")
-    .select("agency_name, portal_logo_url, main_logo_light_url, main_logo_url, isotipo_url, portal_primary_color, portal_secondary_color")
+    .select("agency_name, portal_logo_url, main_logo_light_url, main_logo_url, isotipo_url, portal_primary_color, portal_secondary_color, document_primary_color, document_secondary_color")
     .eq("organization_id", staff.organization_id)
     .maybeSingle();
 
   // Detect platform defaults to avoid leaking Pixy logo to white-labeled tenants
   const isPlatformDefault = (url?: string | null) =>
     !url || url.includes("c3b2058f-487c-442f-a9a0-c1c7d3fb0883") || url.includes("/branding/logo");
+
+  let tenantPrimary = settings?.portal_primary_color || settings?.document_primary_color || null;
+  let tenantSecondary = settings?.portal_secondary_color || settings?.document_secondary_color || null;
+
+  if (!tenantPrimary) {
+    const { data: platform } = await supabaseAdmin
+      .from("platform_settings")
+      .select("brand_color_primary, brand_color_secondary")
+      .eq("id", 1)
+      .maybeSingle();
+    tenantPrimary = platform?.brand_color_primary || "#8ec045";
+    tenantSecondary = platform?.brand_color_secondary || "#5c8ea9";
+  }
+
+  if (tenantPrimary && !tenantPrimary.startsWith("#") && !tenantPrimary.startsWith("rgb") && !tenantPrimary.startsWith("hsl")) {
+    tenantPrimary = `#${tenantPrimary}`;
+  }
+  if (tenantSecondary && !tenantSecondary.startsWith("#") && !tenantSecondary.startsWith("rgb") && !tenantSecondary.startsWith("hsl")) {
+    tenantSecondary = `#${tenantSecondary}`;
+  }
 
   // En ADN de Marca:
   // - main_logo_url: "Logo Principal - Para fondos oscuros (Ej: Sidebar, Header)"
@@ -379,11 +402,44 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     logo_dark_url: logoDark || logoLight,
     logo_light_url: logoLight || logoDark,
     isotipo_url: tenantIsotipo,
-    primary_color: settings?.portal_primary_color || "#8ec045",
-    secondary_color: settings?.portal_secondary_color || "#5c8ea9"
+    primary_color: tenantPrimary || "#8ec045",
+    secondary_color: tenantSecondary || "#5c8ea9"
   };
 
-  // 3. Determine role permissions
+  // 3. Security Gatekeeper: Zero-leak check for PIN protected access
+  const hasPinCode = Boolean(staff.pin_code);
+  const isUnlocked = hasPinCode ? await isPortalSessionUnlocked(token, staff.id) : true;
+
+  if (hasPinCode && !isUnlocked) {
+    return {
+      isLocked: true,
+      staff: {
+        id: staff.id,
+        organization_id: staff.organization_id,
+        first_name: staff.first_name,
+        last_name: staff.last_name,
+        email: staff.email,
+        role: staff.role,
+        photo_url: staff.photo_url,
+        access_token: staff.access_token,
+        has_pin_code: true,
+      },
+      organization: orgData,
+      projects: [],
+      tasks: [],
+      metrics: {
+        totalAssigned: 0,
+        completed: 0,
+        inProgress: 0,
+        inReview: 0,
+        completionPercentage: 0,
+      },
+      isLeadOrPm: false,
+      isQa: false,
+    };
+  }
+
+  // 4. Determine role permissions
   const roleLower = (staff.role || "").toLowerCase();
   const hasLeadKeywords = isStaffLeadOrPmRole(staff.role);
 
@@ -848,6 +904,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       : isLeadOrPm;
 
   return {
+    isLocked: false,
     latestAudits,
     staff: {
       id: staff.id,
@@ -859,6 +916,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       photo_url: staff.photo_url,
       access_token: staff.access_token,
       can_bulk_delete_tasks: canBulkDeleteTasks,
+      has_pin_code: hasPinCode,
     },
     canBulkDeleteTasks,
     organization: orgData,
@@ -886,6 +944,13 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     }
   };
 });
+
+/**
+ * Fetch unlocked portal data after client PIN verification
+ */
+export async function getUnlockedCollaboratorPortalData(token: string): Promise<CollaboratorPortalData | null> {
+  return getCollaboratorPortalData(token);
+}
 
 /**
  * Update task priority from portal (e.g. PM in sprint review)

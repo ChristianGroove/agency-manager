@@ -2129,6 +2129,7 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       assigned_tasks_count: counts.total,
       completed_tasks_count: counts.done,
       can_bulk_delete_tasks: s.can_bulk_delete_tasks ?? (inferTaskRole(s.role) === "pm"),
+      has_pin_code: Boolean(s.pin_code),
     };
   });
 }

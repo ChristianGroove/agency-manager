@@ -54,6 +54,10 @@ import { TaskSupportTicketDetailModal } from "./task-support-ticket-detail-modal
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { getTicketReadState, getUnreadCommentCount, type SupportReadState } from "../../utils/support-thread-read-state"
 import { toast } from "sonner"
+import {
+  PortalAvatarSecurityMenu,
+  PortalSecurityBanner,
+} from "@/modules/features/portal-security"
 
 interface TaskParallelSupportPortalProps {
   portalData: CollaboratorPortalData
@@ -65,6 +69,9 @@ interface TaskParallelSupportPortalProps {
   brandColor?: string
   portalTheme: "light" | "dark"
   togglePortalTheme: () => void
+  hasPinCode?: boolean
+  onLock?: () => void
+  onOpenSecurityModal?: (mode: "setup" | "change" | "remove") => void
 }
 
 const ODOMETER_DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -137,6 +144,9 @@ export function TaskParallelSupportPortal({
   brandColor = "#0284c7",
   portalTheme,
   togglePortalTheme,
+  hasPinCode = false,
+  onLock,
+  onOpenSecurityModal,
 }: TaskParallelSupportPortalProps) {
   const { staff, organization } = portalData
 
@@ -399,34 +409,37 @@ export function TaskParallelSupportPortal({
 
             <div className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
 
-            {/* Colaborador a la derecha */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <span className="text-sm font-semibold text-foreground hidden sm:inline">
-                {staff.first_name} {staff.last_name}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center transition-colors bg-zinc-100 dark:bg-white/10 text-muted-foreground cursor-pointer"
-                    aria-label={`Perfil de ${staff.first_name} ${staff.last_name}`}
-                  >
-                    <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-semibold text-foreground">{staff.first_name} {staff.last_name}</span>
-                    <span className="text-[10px] text-muted-foreground">{staff.role || "Equipo de Soporte"}</span>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            {/* Colaborador y Menú de Seguridad a la derecha */}
+            {onLock && onOpenSecurityModal ? (
+              <PortalAvatarSecurityMenu
+                staff={{ ...staff, has_pin_code: hasPinCode }}
+                brandColor={brandColor}
+                onLock={onLock}
+                onOpenSecurityModal={onOpenSecurityModal}
+              />
+            ) : (
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="text-sm font-semibold text-foreground hidden sm:inline">
+                  {staff.first_name} {staff.last_name}
+                </span>
+                <div className="w-8 h-8 rounded-full border border-zinc-200/80 dark:border-white/10 shadow-xs flex items-center justify-center bg-zinc-100 dark:bg-white/10 text-muted-foreground">
+                  <User className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6 relative z-10 flex-1">
+        {/* Onboarding Banner de Seguridad si no tiene PIN configurado */}
+        {!hasPinCode && onOpenSecurityModal && (
+          <PortalSecurityBanner
+            onOpenSetup={() => onOpenSecurityModal("setup")}
+            brandColor={brandColor}
+          />
+        )}
         {/* Hero Section: Card compacta con Avatar 3D en posición absoluta y efecto pop-out flotante */}
         <section className="w-full relative overflow-visible rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-sm bg-gradient-to-br from-card via-card to-primary/[0.03] dark:to-primary/[0.06] p-4 sm:p-5 md:py-5 md:px-7 transition-all flex items-center min-h-[140px] sm:min-h-[155px]">
           {/* Ambient Glow Orbs & Watermark Active Progress */}

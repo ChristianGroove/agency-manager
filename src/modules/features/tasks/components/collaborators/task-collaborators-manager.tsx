@@ -60,6 +60,10 @@ import {
   Layers,
   AlertTriangle,
   AlertCircle,
+  Lock,
+  Unlock,
+  KeyRound,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import type { TaskCollaborator, CollaboratorRole, TaskWorkspace } from "../../types"
@@ -69,6 +73,10 @@ import {
   deleteCollaborator,
   uploadCollaboratorAvatar,
 } from "../../actions/task-actions"
+import {
+  adminResetCollaboratorPinAction,
+  adminSetCollaboratorPinAction,
+} from "@/modules/features/portal-security"
 import { toast } from "sonner"
 import { TASK_PACK_AVATARS, getCollaboratorAvatar } from "../../utils/avatar-presets"
 
@@ -280,6 +288,79 @@ export function TaskCollaboratorsManager({
   const [editIsActive, setEditIsActive] = useState<boolean>(true)
   const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
+
+  // Collaborator PIN Security Modal State
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false)
+  const [selectedCollabForSecurity, setSelectedCollabForSecurity] = useState<TaskCollaborator | null>(null)
+  const [customTempPin, setCustomTempPin] = useState("")
+  const [isSubmittingPinAction, setIsSubmittingPinAction] = useState(false)
+
+  const handleOpenSecurity = (collab: TaskCollaborator) => {
+    setSelectedCollabForSecurity(collab)
+    setCustomTempPin("")
+    setIsSecurityModalOpen(true)
+  }
+
+  const handleAdminResetPin = async (collabId: string) => {
+    setIsSubmittingPinAction(true)
+    try {
+      const res = await adminResetCollaboratorPinAction(collabId)
+      if (res.success) {
+        toast.success("PIN de seguridad restablecido con éxito", {
+          description: "El colaborador ahora puede ingresar directamente o configurar un nuevo PIN.",
+        })
+        setLocalCollaborators((prev) =>
+          prev.map((c) => (c.id === collabId ? { ...c, has_pin_code: false } : c))
+        )
+        if (selectedCollabForSecurity && selectedCollabForSecurity.id === collabId) {
+          setSelectedCollabForSecurity((prev) => (prev ? { ...prev, has_pin_code: false } : null))
+        }
+        if (editingCollab && editingCollab.id === collabId) {
+          setEditingCollab((prev) => (prev ? { ...prev, has_pin_code: false } : null))
+        }
+        setIsSecurityModalOpen(false)
+      } else {
+        toast.error(res.error || "Error al restablecer el PIN")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar la solicitud")
+    } finally {
+      setIsSubmittingPinAction(false)
+    }
+  }
+
+  const handleAdminSetPin = async (collabId: string) => {
+    if (!/^\d{6}$/.test(customTempPin.trim())) {
+      toast.error("El PIN temporal debe tener exactamente 6 dígitos numéricos")
+      return
+    }
+
+    setIsSubmittingPinAction(true)
+    try {
+      const res = await adminSetCollaboratorPinAction(collabId, customTempPin.trim())
+      if (res.success) {
+        toast.success("Nuevo PIN asignado con éxito", {
+          description: `El PIN asignado es: ${customTempPin.trim()}`,
+        })
+        setLocalCollaborators((prev) =>
+          prev.map((c) => (c.id === collabId ? { ...c, has_pin_code: true } : c))
+        )
+        if (selectedCollabForSecurity && selectedCollabForSecurity.id === collabId) {
+          setSelectedCollabForSecurity((prev) => (prev ? { ...prev, has_pin_code: true } : null))
+        }
+        if (editingCollab && editingCollab.id === collabId) {
+          setEditingCollab((prev) => (prev ? { ...prev, has_pin_code: true } : null))
+        }
+        setIsSecurityModalOpen(false)
+      } else {
+        toast.error(res.error || "Error al asignar el PIN")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar la solicitud")
+    } finally {
+      setIsSubmittingPinAction(false)
+    }
+  }
 
   // Delete Collaborator Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -584,9 +665,22 @@ export function TaskCollaboratorsManager({
                           <span className="font-semibold text-foreground block">
                             {collab.first_name} {collab.last_name}
                           </span>
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {collab.access_token.slice(0, 8)}...
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {collab.access_token.slice(0, 8)}...
+                            </span>
+                            {collab.has_pin_code ? (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md">
+                                <Lock className="w-2.5 h-2.5" />
+                                PIN Activo
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-zinc-400 dark:text-zinc-500 bg-zinc-500/10 px-1.5 py-0.2 rounded-md">
+                                <Unlock className="w-2.5 h-2.5" />
+                                Sin PIN
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -737,6 +831,26 @@ export function TaskCollaboratorsManager({
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               Abrir portal del colaborador
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* Seguridad / PIN */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenSecurity(collab)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                aria-label="Seguridad y PIN de acceso"
+                              >
+                                <KeyRound className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="rounded-xl text-xs">
+                              {collab.has_pin_code
+                                ? "Gestionar / Restablecer PIN de seguridad"
+                                : "Asignar PIN de seguridad"}
                             </TooltipContent>
                           </Tooltip>
 
@@ -1417,6 +1531,37 @@ export function TaskCollaboratorsManager({
                 onCheckedChange={setEditIsActive}
               />
             </div>
+
+            {/* Seguridad del Portal */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/40 border border-border/60">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                  PIN de Acceso al Portal
+                </span>
+                <span className="text-[11px] text-muted-foreground block">
+                  {editingCollab?.has_pin_code
+                    ? "Este colaborador tiene un PIN de 6 dígitos configurado y activo."
+                    : "No tiene PIN configurado (acceso directo con enlace)."}
+                </span>
+              </div>
+              {editingCollab?.has_pin_code && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (editingCollab) {
+                      handleAdminResetPin(editingCollab.id)
+                    }
+                  }}
+                  disabled={isSubmittingPinAction}
+                  className="h-8 text-xs text-rose-600 hover:bg-rose-500/10 border-rose-500/30 cursor-pointer"
+                >
+                  {isSubmittingPinAction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Restablecer PIN"}
+                </Button>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="p-4 px-6 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-between gap-2">
@@ -1626,6 +1771,133 @@ export function TaskCollaboratorsManager({
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Gestionar Seguridad y PIN del Colaborador */}
+      <Dialog open={isSecurityModalOpen} onOpenChange={setIsSecurityModalOpen}>
+        <DialogContent className="max-w-md w-full p-6 rounded-3xl bg-card border border-border/80 shadow-2xl">
+          <DialogHeader className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mb-2">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-base font-bold">
+              Seguridad y PIN de Acceso
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {selectedCollabForSecurity?.first_name} {selectedCollabForSecurity?.last_name} ({selectedCollabForSecurity?.role})
+            </p>
+          </DialogHeader>
+
+          <div className="py-3 space-y-4">
+            {/* Estado actual */}
+            <div className="p-3 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {selectedCollabForSecurity?.has_pin_code ? (
+                  <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+                ) : (
+                  <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
+                )}
+                <div className="text-left">
+                  <span className="text-xs font-semibold text-foreground block">
+                    {selectedCollabForSecurity?.has_pin_code
+                      ? "PIN de 6 dígitos activo"
+                      : "Sin PIN configurado"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    {selectedCollabForSecurity?.has_pin_code
+                      ? "El portal requiere PIN para acceder."
+                      : "El portal es de acceso directo con el enlace."}
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] px-2 py-0.5 font-bold",
+                  selectedCollabForSecurity?.has_pin_code
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                )}
+              >
+                {selectedCollabForSecurity?.has_pin_code ? "Protegido" : "Público"}
+              </Badge>
+            </div>
+
+            {/* Restablecer PIN (si tiene PIN activo) */}
+            {selectedCollabForSecurity?.has_pin_code && (
+              <div className="p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-2">
+                <div className="text-left">
+                  <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block">
+                    Restablecer PIN (Quitar Bloqueo)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Si el colaborador olvidó su PIN, restablecerlo eliminará la clave y le permitirá acceder directamente y configurar uno nuevo.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedCollabForSecurity && handleAdminResetPin(selectedCollabForSecurity.id)}
+                  disabled={isSubmittingPinAction}
+                  className="w-full h-9 rounded-xl border-rose-500/30 text-rose-600 hover:bg-rose-500/10 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isSubmittingPinAction ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Restablecer y Eliminar PIN Actual</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Asignar un PIN nuevo manual */}
+            <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 space-y-2 text-left">
+              <span className="text-xs font-bold text-foreground block">
+                {selectedCollabForSecurity?.has_pin_code
+                  ? "Asignar un nuevo PIN temporal"
+                  : "Asignar un PIN de 6 dígitos"}
+              </span>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Ingresa 6 dígitos numéricos si deseas asignarle manualmente un PIN al colaborador:
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  maxLength={6}
+                  value={customTempPin}
+                  onChange={(e) => setCustomTempPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="Ej: 123456"
+                  className="h-9 text-xs font-mono font-bold tracking-widest text-center"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => selectedCollabForSecurity && handleAdminSetPin(selectedCollabForSecurity.id)}
+                  disabled={customTempPin.length !== 6 || isSubmittingPinAction}
+                  className="h-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shrink-0 cursor-pointer"
+                >
+                  {isSubmittingPinAction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Guardar"}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSecurityModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

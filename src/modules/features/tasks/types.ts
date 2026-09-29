@@ -543,6 +543,7 @@ export interface TaskCollaborator {
   assigned_tasks_count?: number;
   completed_tasks_count?: number;
   can_bulk_delete_tasks?: boolean;
+  has_pin_code?: boolean;
 }
 
 export interface TaskWorkspaceMember {
