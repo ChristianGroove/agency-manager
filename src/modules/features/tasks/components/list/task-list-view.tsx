@@ -34,6 +34,7 @@ import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
+import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
 import {
   Tooltip,
   TooltipContent,
@@ -415,7 +416,7 @@ export function TaskListView({
                         isMeetingLive(task) ? (
                           <Badge
                             variant="outline"
-                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 inline-flex items-center gap-1 text-[10px]"
+                            className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 inline-flex items-center gap-1 text-[10px]"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span>En Vivo</span>
@@ -423,7 +424,7 @@ export function TaskListView({
                         ) : isMeetingPast(task) ? (
                           <Badge
                             variant="outline"
-                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                            className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
                           >
                             <UserX className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
                             <span>Finalizada</span>
@@ -431,91 +432,23 @@ export function TaskListView({
                         ) : (
                           <Badge
                             variant="outline"
-                            className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                            className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
                           >
                             <Clock className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
                             <span>Programada</span>
                           </Badge>
                         )
-                      ) : task.status === "blocked" ? (
-                        <TooltipProvider delayDuration={1000}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="inline-block cursor-help">
-                                {onQuickMoveTask ? (
-                                  <Select
-                                    value={task.status}
-                                    onValueChange={(val: TaskStatus) => onQuickMoveTask(task.id, val)}
-                                  >
-                                    <SelectTrigger className="h-7 w-[108px] text-xs font-semibold rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-none px-2 focus:ring-0 hover:bg-rose-500/20 transition-colors">
-                                      <div className="flex items-center gap-1.5 truncate">
-                                        <Ban className="w-3 h-3 shrink-0" />
-                                        <span>Bloqueado</span>
-                                      </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="backlog">Backlog</SelectItem>
-                                      <SelectItem value="todo">Por Hacer</SelectItem>
-                                      <SelectItem value="in_progress">En Progreso</SelectItem>
-                                      <SelectItem value="in_review" disabled={Boolean(task.blocked_by && task.blocked_by.status !== "done")}>
-                                        Revisión / QA {task.blocked_by && task.blocked_by.status !== "done" ? "(Bloqueado)" : ""}
-                                      </SelectItem>
-                                      <SelectItem value="blocked">Bloqueado</SelectItem>
-                                      <SelectItem value="done" disabled={Boolean(task.blocked_by && task.blocked_by.status !== "done")}>
-                                        Completado {task.blocked_by && task.blocked_by.status !== "done" ? "(Bloqueado)" : ""}
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] w-24 justify-center text-center py-0.5 rounded-lg font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 inline-flex items-center gap-1"
-                                  >
-                                    <Ban className="w-2.5 h-2.5 shrink-0" />
-                                    <span>Bloqueado</span>
-                                  </Badge>
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="top"
-                              className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5"
-                            >
-                              <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
-                                <Ban className="w-3.5 h-3.5 shrink-0" />
-                                <span>Motivo del Bloqueo</span>
-                              </div>
-                              <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
-                                {task.blocked_reason || (task.blocked_by ? `Bloqueado por dependencia #${task.blocked_by.ticket_code}: ${task.blocked_by.title}` : "Esta tarea se encuentra bloqueada.")}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : onQuickMoveTask ? (
-                        <Select
-                          value={task.status}
-                          onValueChange={(val: TaskStatus) => onQuickMoveTask(task.id, val)}
-                        >
-                          <SelectTrigger className="h-7 w-[120px] text-xs font-normal border-transparent bg-transparent hover:bg-muted/50 transition-colors shadow-none px-1.5 focus:ring-0">
-                            <SelectValue placeholder="Estado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="backlog">Backlog</SelectItem>
-                            <SelectItem value="todo">Por Hacer</SelectItem>
-                            <SelectItem value="in_progress">En Progreso</SelectItem>
-                            <SelectItem value="in_review" disabled={Boolean(task.blocked_by && task.blocked_by.status !== "done")}>
-                              Revisión / QA {task.blocked_by && task.blocked_by.status !== "done" ? "(Bloqueado)" : ""}
-                            </SelectItem>
-                            <SelectItem value="blocked">Bloqueado</SelectItem>
-                            <SelectItem value="done" disabled={Boolean(task.blocked_by && task.blocked_by.status !== "done")}>
-                              Completado {task.blocked_by && task.blocked_by.status !== "done" ? "(Bloqueado)" : ""}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
                       ) : (
-                        <span className="text-xs text-foreground px-1.5">
-                          {getStatusLabel(task.status)}
-                        </span>
+                        <TaskStatusInteractiveBadge
+                          status={task.status}
+                          taskId={task.id}
+                          taskType={task.type}
+                          isLeadOrPm={true}
+                          blockedReason={task.blocked_reason}
+                          blockedBy={task.blocked_by}
+                          onStatusChange={onQuickMoveTask ? (newStatus) => onQuickMoveTask(task.id, newStatus) : undefined}
+                          readOnly={!onQuickMoveTask}
+                        />
                       )}
                     </td>
                     {!includeMeetings && (

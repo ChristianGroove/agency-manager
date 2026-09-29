@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
 import {
   CalendarDays,
   CheckCircle2,
@@ -63,7 +64,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
-import type { TaskItem, TaskProject, TaskWorkspace } from "../../types"
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus } from "../../types"
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
 import { getTaskWeeklyPacing, parseTaskChecklist, getTaskMemberHours } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
@@ -94,6 +95,9 @@ interface TaskWeeklyPacingMatrixProps {
   projects?: { id: string; name: string; color?: string; workspace_id?: string | null }[]
   workspaces?: TaskWorkspace[]
   onSelectTask?: (task: TaskItem) => void
+  onStatusChange?: (taskId: string, newStatus: TaskStatus) => void
+  isLeadOrPm?: boolean
+  isQa?: boolean
   brandColor?: string
   tenantBranding?: TenantBranding
   className?: string
@@ -105,6 +109,9 @@ export function TaskWeeklyPacingMatrix({
   projects = [],
   workspaces = [],
   onSelectTask,
+  onStatusChange,
+  isLeadOrPm = false,
+  isQa = false,
   brandColor = "#8ec045",
   tenantBranding,
   className,
@@ -880,6 +887,19 @@ export function TaskWeeklyPacingMatrix({
                             >
                               {task.ticket_code}
                             </Badge>
+                            {task.type !== "meeting" && (
+                              <TaskStatusInteractiveBadge
+                                status={task.status}
+                                taskId={task.id}
+                                taskType={task.type}
+                                isLeadOrPm={isLeadOrPm}
+                                isQa={isQa}
+                                blockedReason={task.blocked_reason}
+                                blockedBy={task.blocked_by}
+                                onStatusChange={onStatusChange ? (newStatus) => onStatusChange(task.id, newStatus) : undefined}
+                                readOnly={!onStatusChange}
+                              />
+                            )}
                             {task.type === "meeting" && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
                                 <Video className="w-2.5 h-2.5" />

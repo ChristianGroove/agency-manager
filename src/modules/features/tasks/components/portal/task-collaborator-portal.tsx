@@ -104,7 +104,7 @@ import {
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type { TaskItem, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint, TaskCollaborator } from "../../types"
-import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote } from "../../types"
+import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote, isDisallowedStatusRegression } from "../../types"
 import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
@@ -158,6 +158,7 @@ import { GlobalParticles } from "@/components/layout/global-particles"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
+import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -2164,6 +2165,15 @@ export function TaskCollaboratorPortal({
       return
     }
 
+    // Stage regression restriction: collaborators cannot regress workflow stages
+    if (!isLeadOrPm && task && isDisallowedStatusRegression(task.status, newStatus, isLeadOrPm, isQa)) {
+      toast.warning("Retroceso de etapa restringido", {
+        description: "Solo un Project Manager tiene autorización para retroceder etapas en el flujo de trabajo.",
+        id: "collaborator-regression-restricted"
+      })
+      return
+    }
+
     if (newStatus === "done" && !canCloseParentTask) {
       toast.warning("Permiso de cierre restringido", {
         description: "Solo el responsable directo de la tarea o un Líder/PM puede marcarla como Completada.",
@@ -3224,6 +3234,19 @@ export function TaskCollaboratorPortal({
               projects={projects}
               workspaces={workspaces}
               onSelectTask={openTaskDetail}
+              onStatusChange={(taskId, newStatus) => {
+                const targetTask = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
+                if (targetTask && newStatus === "done") {
+                  const checklist = Array.isArray(targetTask.checklist) ? targetTask.checklist : []
+                  if (checklist.length > 0 && checklist.some((c: any) => !c.completed)) {
+                    setTaskToComplete(targetTask)
+                    return
+                  }
+                }
+                handleStatusChange(taskId, newStatus)
+              }}
+              isLeadOrPm={isLeadOrPm}
+              isQa={isQa}
               brandColor={brandColor}
               tenantBranding={{
                 name: organization?.name,
@@ -4524,7 +4547,7 @@ export function TaskCollaboratorPortal({
                                 hasAttendedMeeting(task, staff.id) ? (
                                   <Badge
                                     variant="outline"
-                                    className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 inline-flex items-center gap-1 text-[10px]"
+                                    className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 inline-flex items-center gap-1 text-[10px]"
                                   >
                                     <CheckCircle2 className="w-2.5 h-2.5 shrink-0 text-emerald-500" />
                                     <span>Asistido</span>
@@ -4532,7 +4555,7 @@ export function TaskCollaboratorPortal({
                                 ) : isMeetingLive(task) ? (
                                   <Badge
                                     variant="outline"
-                                    className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 inline-flex items-center gap-1 text-[10px]"
+                                    className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 inline-flex items-center gap-1 text-[10px]"
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span>En Vivo</span>
@@ -4540,7 +4563,7 @@ export function TaskCollaboratorPortal({
                                 ) : isMeetingPast(task) ? (
                                   <Badge
                                     variant="outline"
-                                    className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                                    className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800/90 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
                                   >
                                     <UserX className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
                                     <span>No asistió</span>
@@ -4548,64 +4571,32 @@ export function TaskCollaboratorPortal({
                                 ) : (
                                   <Badge
                                     variant="outline"
-                                    className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
+                                    className="h-6.5 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-1 text-[10px]"
                                   >
                                     <Clock className="w-2.5 h-2.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
                                     <span>Programada</span>
                                   </Badge>
                                 )
-                              ) : task.status === "blocked" ? (
-                                <TooltipProvider delayDuration={1000}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Badge
-                                        variant="outline"
-                                        className="h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 cursor-help inline-flex items-center gap-1 hover:bg-rose-500/20 transition-colors text-[10px]"
-                                      >
-                                        <Ban className="w-2.5 h-2.5 shrink-0" />
-                                        <span>Bloqueado</span>
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent
-                                      side="top"
-                                      className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5"
-                                    >
-                                      <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
-                                        <Ban className="w-3.5 h-3.5 shrink-0" />
-                                        <span>Motivo del Bloqueo</span>
-                                      </div>
-                                      <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
-                                        {task.blocked_reason || (task.blocked_by ? `Bloqueado por dependencia #${task.blocked_by.ticket_code}: ${task.blocked_by.title}` : "Esta tarea se encuentra bloqueada.")}
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
                               ) : (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "h-6 w-24 justify-center text-center rounded-lg font-semibold shadow-none inline-flex items-center text-[10px]",
-                                    task.status === "done"
-                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                      : task.status === "in_review"
-                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                      : task.status === "in_progress"
-                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                                      : task.status === "backlog"
-                                      ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
-                                      : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                                  )}
-                                >
-                                  {task.status === "done"
-                                    ? "Completado"
-                                    : task.status === "in_review"
-                                    ? "En QA"
-                                    : task.status === "in_progress"
-                                    ? "En Curso"
-                                    : task.status === "backlog"
-                                    ? "Backlog"
-                                    : "Por Hacer"}
-                                </Badge>
+                                <TaskStatusInteractiveBadge
+                                  status={task.status}
+                                  taskId={task.id}
+                                  taskType={task.type}
+                                  isLeadOrPm={isLeadOrPm}
+                                  isQa={isQa}
+                                  blockedReason={task.blocked_reason}
+                                  blockedBy={task.blocked_by}
+                                  onStatusChange={(newStatus) => {
+                                    if (newStatus === "done") {
+                                      const checklist = Array.isArray(task.checklist) ? task.checklist : []
+                                      if (checklist.length > 0 && checklist.some((c: any) => !c.completed)) {
+                                        setTaskToComplete(task)
+                                        return
+                                      }
+                                    }
+                                    handleStatusChange(task.id, newStatus)
+                                  }}
+                                />
                               )}
                             </td>
                             <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>

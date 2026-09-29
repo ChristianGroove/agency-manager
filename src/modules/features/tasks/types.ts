@@ -10,6 +10,60 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   blocked: 'Bloqueada',
 };
 
+export const TASK_STAGE_ORDER: Record<TaskStatus, number> = {
+  backlog: 0,
+  todo: 1,
+  in_progress: 2,
+  in_review: 3,
+  done: 4,
+  blocked: 99,
+};
+
+/**
+ * Validates whether a requested task status transition constitutes a prohibited stage regression
+ * for standard collaborators. Only Project Managers (PM / Admin / Owner) can regress stages.
+ */
+export function isDisallowedStatusRegression(
+  currentStatus: TaskStatus,
+  targetStatus: TaskStatus,
+  isLeadOrPm: boolean,
+  isQa: boolean = false
+): boolean {
+  if (isLeadOrPm) return false;
+  if (currentStatus === targetStatus) return false;
+
+  // Completed tasks are terminal: only PM can reopen
+  if (currentStatus === "done") return true;
+
+  // Backlog tasks require PM evaluation/approval before transitioning
+  if (currentStatus === "backlog") return true;
+
+  // Regressing into backlog is strictly prohibited for non-PMs
+  if (targetStatus === "backlog") return true;
+
+  // Moving to blocked (reporting an impediment) is always allowed
+  if (targetStatus === "blocked") return false;
+
+  // Unblocking from blocked to active execution is allowed
+  if (currentStatus === "blocked") return false;
+
+  // QA staff can send tickets back to in_progress from in_review (QA Bug finding)
+  if (isQa && currentStatus === "in_review" && targetStatus === "in_progress") {
+    return false;
+  }
+
+  const currentIdx = TASK_STAGE_ORDER[currentStatus];
+  const targetIdx = TASK_STAGE_ORDER[targetStatus];
+
+  if (currentIdx !== undefined && targetIdx !== undefined) {
+    if (targetIdx < currentIdx) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   low: 'Baja',
   medium: 'Media',
