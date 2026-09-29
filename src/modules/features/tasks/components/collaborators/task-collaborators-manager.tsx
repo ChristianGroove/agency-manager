@@ -779,20 +779,19 @@ export function TaskCollaboratorsManager({
 
                     {/* Acceso al Portal / Acciones */}
                     <td className="p-3.5 pr-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <TooltipProvider delayDuration={150}>
                           {/* Editar */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <button
+                                type="button"
                                 onClick={() => handleOpenEdit(collab)}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer active:scale-95 focus:outline-none"
                                 aria-label="Editar colaborador"
                               >
-                                <Pencil className="w-3.5 h-3.5 text-primary" />
-                              </Button>
+                                <Pencil className="w-4 h-4" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               Editar colaborador
@@ -802,15 +801,14 @@ export function TaskCollaboratorsManager({
                           {/* Copiar enlace */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <button
+                                type="button"
                                 onClick={() => copyPortalLink(collab)}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:bg-muted/50 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all cursor-pointer active:scale-95 focus:outline-none"
                                 aria-label="Copiar enlace directo"
                               >
-                                <Copy className="w-3.5 h-3.5" />
-                              </Button>
+                                <Copy className="w-4 h-4" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               Copiar enlace al portal
@@ -820,14 +818,14 @@ export function TaskCollaboratorsManager({
                           {/* Abrir portal */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
+                              <button
+                                type="button"
                                 onClick={() => openPortal(collab)}
-                                className="h-8 w-8 p-0 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer active:scale-95 focus:outline-none"
                                 aria-label="Abrir portal del colaborador"
                               >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </Button>
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               Abrir portal del colaborador
@@ -837,15 +835,19 @@ export function TaskCollaboratorsManager({
                           {/* Seguridad / PIN */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <button
+                                type="button"
                                 onClick={() => handleOpenSecurity(collab)}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground border-border/60 hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-all cursor-pointer active:scale-95 focus:outline-none",
+                                  collab.has_pin_code
+                                    ? "text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10"
+                                    : "text-zinc-400 hover:text-amber-500 hover:bg-amber-500/10"
+                                )}
                                 aria-label="Seguridad y PIN de acceso"
                               >
-                                <KeyRound className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                              </Button>
+                                <KeyRound className="w-4 h-4" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               {collab.has_pin_code
@@ -857,15 +859,14 @@ export function TaskCollaboratorsManager({
                           {/* Eliminar */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <button
+                                type="button"
                                 onClick={() => handleOpenDelete(collab)}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer active:scale-95 focus:outline-none"
                                 aria-label="Eliminar colaborador"
                               >
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </Button>
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent className="rounded-xl text-xs">
                               Eliminar colaborador
