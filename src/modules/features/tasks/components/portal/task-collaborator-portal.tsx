@@ -2022,6 +2022,13 @@ export function TaskCollaboratorPortal({
       return
     }
 
+    // Intercept 100% completion: prompt user for work attribution / log hours before marking done
+    if (clamped === 100 && task && task.status !== "done") {
+      handleSliderDrag(taskId, savedProg)
+      setLogWorkState({ task, targetStatus: "done" })
+      return
+    }
+
     if (clamped === 100) {
       const task = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
       if (task) {
