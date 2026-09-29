@@ -3241,19 +3241,6 @@ export function TaskCollaboratorPortal({
               projects={projects}
               workspaces={workspaces}
               onSelectTask={openTaskDetail}
-              onStatusChange={(taskId, newStatus) => {
-                const targetTask = tasks.find((t) => t.id === taskId) || allTeamTasks.find((t) => t.id === taskId)
-                if (targetTask && newStatus === "done") {
-                  const checklist = Array.isArray(targetTask.checklist) ? targetTask.checklist : []
-                  if (checklist.length > 0 && checklist.some((c: any) => !c.completed)) {
-                    setTaskToComplete(targetTask)
-                    return
-                  }
-                }
-                handleStatusChange(taskId, newStatus)
-              }}
-              isLeadOrPm={isLeadOrPm}
-              isQa={isQa}
               brandColor={brandColor}
               tenantBranding={{
                 name: organization?.name,

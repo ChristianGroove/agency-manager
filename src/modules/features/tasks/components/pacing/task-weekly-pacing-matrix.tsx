@@ -28,7 +28,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
 import {
   CalendarDays,
   CheckCircle2,
@@ -89,15 +88,45 @@ interface TenantBranding {
   primaryColor?: string
 }
 
+const STATUS_BADGE_CONFIG: Record<TaskStatus, { label: string; className: string; dotClass: string }> = {
+  backlog: {
+    label: "Backlog",
+    className: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+    dotClass: "bg-slate-400",
+  },
+  todo: {
+    label: "Por Hacer",
+    className: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+    dotClass: "bg-sky-500",
+  },
+  in_progress: {
+    label: "En Curso",
+    className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+    dotClass: "bg-indigo-500",
+  },
+  in_review: {
+    label: "En QA",
+    className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    dotClass: "bg-amber-500",
+  },
+  done: {
+    label: "Completado",
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    dotClass: "bg-emerald-500",
+  },
+  blocked: {
+    label: "Bloqueado",
+    className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    dotClass: "bg-rose-500",
+  },
+}
+
 interface TaskWeeklyPacingMatrixProps {
   tasks: TaskItem[]
   teamMembers?: StaffMember[]
   projects?: { id: string; name: string; color?: string; workspace_id?: string | null }[]
   workspaces?: TaskWorkspace[]
   onSelectTask?: (task: TaskItem) => void
-  onStatusChange?: (taskId: string, newStatus: TaskStatus) => void
-  isLeadOrPm?: boolean
-  isQa?: boolean
   brandColor?: string
   tenantBranding?: TenantBranding
   className?: string
@@ -109,9 +138,6 @@ export function TaskWeeklyPacingMatrix({
   projects = [],
   workspaces = [],
   onSelectTask,
-  onStatusChange,
-  isLeadOrPm = false,
-  isQa = false,
   brandColor = "#8ec045",
   tenantBranding,
   className,
@@ -887,19 +913,20 @@ export function TaskWeeklyPacingMatrix({
                             >
                               {task.ticket_code}
                             </Badge>
-                            {task.type !== "meeting" && (
-                              <TaskStatusInteractiveBadge
-                                status={task.status}
-                                taskId={task.id}
-                                taskType={task.type}
-                                isLeadOrPm={isLeadOrPm}
-                                isQa={isQa}
-                                blockedReason={task.blocked_reason}
-                                blockedBy={task.blocked_by}
-                                onStatusChange={onStatusChange ? (newStatus) => onStatusChange(task.id, newStatus) : undefined}
-                                readOnly={!onStatusChange}
-                              />
-                            )}
+                            {task.type !== "meeting" && (() => {
+                              const statusCfg = STATUS_BADGE_CONFIG[task.status] || STATUS_BADGE_CONFIG.todo
+                              return (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border shrink-0 select-none",
+                                    statusCfg.className
+                                  )}
+                                >
+                                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusCfg.dotClass)} />
+                                  {statusCfg.label}
+                                </span>
+                              )
+                            })()}
                             {task.type === "meeting" && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
                                 <Video className="w-2.5 h-2.5" />

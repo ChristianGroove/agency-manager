@@ -1382,8 +1382,6 @@ export function TaskManagerView({
             projects={projects}
             workspaces={workspaces}
             onSelectTask={handleSelectTask}
-            onStatusChange={handleQuickMoveTask}
-            isLeadOrPm={true}
             tenantBranding={tenantBranding}
           />
         )}
