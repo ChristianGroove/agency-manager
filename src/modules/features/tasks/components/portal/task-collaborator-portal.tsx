@@ -2499,7 +2499,7 @@ export function TaskCollaboratorPortal({
         } as React.CSSProperties}
         className={cn("relative min-h-screen", isLocked ? "overflow-hidden max-h-screen" : "")}
       >
-        <div className={cn("transition-all duration-700", isLocked ? "filter blur-md pointer-events-none select-none opacity-40 scale-[0.99]" : "filter-none opacity-100 scale-100")}>
+        <div className={cn("transition-all duration-500", isLocked && "blur-md pointer-events-none select-none opacity-40")}>
           <TaskParallelSupportPortal
             portalData={portalData}
             token={token}
@@ -2552,7 +2552,7 @@ export function TaskCollaboratorPortal({
       </div>
 
       {/* Main Portal Body: blurred and non-interactive while locked */}
-      <div className={cn("flex-1 flex flex-col transition-all duration-700", isLocked ? "filter blur-md pointer-events-none select-none opacity-40 scale-[0.99]" : "filter-none opacity-100 scale-100")}>
+      <div className={cn("flex-1 flex flex-col transition-all duration-500", isLocked && "blur-md pointer-events-none select-none opacity-40")}>
         {/* Header: Logo del Tenant a la izquierda y Nombre del Colaborador (sin cargo) a la derecha */}
         <header className="border-b border-zinc-200/80 dark:border-white/10 bg-card/70 backdrop-blur-md sticky top-0 z-30">
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3 flex items-center justify-between gap-4">
@@ -5006,24 +5006,6 @@ export function TaskCollaboratorPortal({
         />
       )}
 
-      {/* Floating Glass Dock de Sesiones y Reuniones (Flotante al pie de pantalla centrado) */}
-      <TaskMeetingHeroWidget
-        tasks={tasks}
-        allTeamTasks={allTeamTasks}
-        currentStaffId={staff.id}
-        isLeadOrPm={isLeadOrPm}
-        portalToken={token}
-        onOpenMeeting={(meeting) => setSelectedMeetingForDetail(meeting)}
-        onMeetingUpdated={(updated) => {
-          const updater = (prev: TaskItem[]) =>
-            prev.map((t) => (t.id === updated.id ? updated : t))
-          setTasks(updater)
-          setAllTeamTasks(updater)
-          setAvailableTasks(updater)
-          setSelectedMeetingForDetail(updated)
-        }}
-      />
-
       {/* Modal de Promoción de Ticket de Soporte a Tarea Operativa */}
       {taskToPromote && (
         <TaskFormModal
@@ -5418,6 +5400,26 @@ export function TaskCollaboratorPortal({
       )}
 
       </div>
+
+      {/* Floating Glass Dock de Sesiones y Reuniones (Flotante al pie de pantalla centrado) */}
+      {!isLocked && (
+        <TaskMeetingHeroWidget
+          tasks={tasks}
+          allTeamTasks={allTeamTasks}
+          currentStaffId={staff.id}
+          isLeadOrPm={isLeadOrPm}
+          portalToken={token}
+          onOpenMeeting={(meeting) => setSelectedMeetingForDetail(meeting)}
+          onMeetingUpdated={(updated) => {
+            const updater = (prev: TaskItem[]) =>
+              prev.map((t) => (t.id === updated.id ? updated : t))
+            setTasks(updater)
+            setAllTeamTasks(updater)
+            setAvailableTasks(updater)
+            setSelectedMeetingForDetail(updated)
+          }}
+        />
+      )}
 
       {/* Modal de Bloqueo con Backdrop Desenfocado */}
       {isLocked && (
