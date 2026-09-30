@@ -28,13 +28,14 @@ import {
   CheckCircle2,
   Lock,
 } from "lucide-react"
-import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskQuickNote } from "../../types"
 import { SYSTEM_STAGE_TAGS } from "../../types"
 import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
 import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
+import { TaskQuickNoteAction } from "../shared/task-quick-note-action"
 import {
   Tooltip,
   TooltipContent,
@@ -114,6 +115,8 @@ interface TaskListViewProps {
   onToggleSelectAll?: () => void
   includeMeetings?: boolean
   onIncludeMeetingsChange?: (include: boolean) => void
+  onTaskNoteUpdate?: (taskId: string, newNote: TaskQuickNote | null) => void
+  currentAuthorName?: string
 }
 
 export function TaskListView({
@@ -126,6 +129,8 @@ export function TaskListView({
   onToggleSelectAll,
   includeMeetings: controlledIncludeMeetings,
   onIncludeMeetingsChange,
+  onTaskNoteUpdate,
+  currentAuthorName,
 }: TaskListViewProps) {
   const [pageSize, setPageSize] = useState<number>(25)
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -569,6 +574,11 @@ export function TaskListView({
                             </TooltipProvider>
                           )
                         )}
+                        <TaskQuickNoteAction
+                          task={task}
+                          currentAuthorName={currentAuthorName || "Tú"}
+                          onNoteUpdate={onTaskNoteUpdate}
+                        />
                         <Button
                           variant="ghost"
                           size="icon"

@@ -103,7 +103,7 @@ import {
   UserX,
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
-import type { TaskItem, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint, TaskCollaborator } from "../../types"
+import type { TaskItem, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint, TaskCollaborator, TaskQuickNote } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote, isDisallowedStatusRegression } from "../../types"
 import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
@@ -159,6 +159,7 @@ import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
 import { TaskStatusInteractiveBadge } from "../shared/task-status-interactive-badge"
+import { TaskQuickNoteAction } from "../shared/task-quick-note-action"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -670,6 +671,18 @@ export function TaskCollaboratorPortal({
   useEffect(() => {
     setRecentMentions(portalData.recentMentions || [])
   }, [portalData.recentMentions])
+
+  const handleQuickNoteUpdate = (taskId: string, newNote: TaskQuickNote | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, quick_note: newNote } : t))
+    )
+    setAllTeamTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, quick_note: newNote } : t))
+    )
+    setAvailableTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, quick_note: newNote } : t))
+    )
+  }
 
   // Realtime subscription for collaborator portal (task_items and task_comments)
   useEffect(() => {
@@ -4630,16 +4643,13 @@ export function TaskCollaboratorPortal({
                                     </TooltipProvider>
                                   )
                                 )}
-                                {task.type !== "meeting" && task.status !== "done" && (isLeadOrPm || isQa || task.assigned_staff_id === staff.id) && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => setTaskToComplete(task)}
-                                    className="w-7 h-7 p-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
-                                    aria-label="Marcar como listo"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
+                                <TaskQuickNoteAction
+                                  task={task}
+                                  portalToken={token}
+                                  currentAuthorName={`${staff.first_name} ${staff.last_name}`.trim()}
+                                  currentAuthorId={staff.id}
+                                  onNoteUpdate={handleQuickNoteUpdate}
+                                />
                                 {isPastMeetingDisabled ? (
                                   <TooltipProvider delayDuration={200}>
                                     <Tooltip>

@@ -88,36 +88,30 @@ interface TenantBranding {
   primaryColor?: string
 }
 
-const STATUS_BADGE_CONFIG: Record<TaskStatus, { label: string; className: string; dotClass: string }> = {
+const STATUS_TEXT_CONFIG: Record<TaskStatus, { label: string; className: string }> = {
   backlog: {
     label: "Backlog",
-    className: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
-    dotClass: "bg-slate-400",
+    className: "text-slate-500 dark:text-slate-400",
   },
   todo: {
     label: "Por Hacer",
-    className: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-    dotClass: "bg-sky-500",
+    className: "text-sky-600 dark:text-sky-400",
   },
   in_progress: {
     label: "En Curso",
-    className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-    dotClass: "bg-indigo-500",
+    className: "text-indigo-600 dark:text-indigo-400",
   },
   in_review: {
     label: "En QA",
-    className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    dotClass: "bg-amber-500",
+    className: "text-amber-600 dark:text-amber-400",
   },
   done: {
     label: "Completado",
-    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    dotClass: "bg-emerald-500",
+    className: "text-emerald-600 dark:text-emerald-400",
   },
   blocked: {
     label: "Bloqueado",
-    className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-    dotClass: "bg-rose-500",
+    className: "text-rose-600 dark:text-rose-400",
   },
 }
 
@@ -186,9 +180,8 @@ export function TaskWeeklyPacingMatrix({
       // Exclude backlog tickets from sprint pacing
       if (task.status === "backlog") return false
 
-      // Excluir por defecto las reuniones de las filas de entregables técnicos de sprint
-      // Al filtrar por un colaborador específico, o si el usuario activa el interruptor, se incluyen
-      if (task.type === "meeting" && !includeMeetings && selectedMember === "all") {
+      // Excluir reuniones si el interruptor "incluir reuniones" está apagado (aplica a todo el equipo y a filtros individuales)
+      if (task.type === "meeting" && !includeMeetings) {
         return false
       }
 
@@ -913,20 +906,6 @@ export function TaskWeeklyPacingMatrix({
                             >
                               {task.ticket_code}
                             </Badge>
-                            {task.type !== "meeting" && (() => {
-                              const statusCfg = STATUS_BADGE_CONFIG[task.status] || STATUS_BADGE_CONFIG.todo
-                              return (
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md border shrink-0 select-none",
-                                    statusCfg.className
-                                  )}
-                                >
-                                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusCfg.dotClass)} />
-                                  {statusCfg.label}
-                                </span>
-                              )
-                            })()}
                             {task.type === "meeting" && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
                                 <Video className="w-2.5 h-2.5" />
@@ -998,8 +977,8 @@ export function TaskWeeklyPacingMatrix({
                                 <span className="truncate max-w-[140px]">{resolvedProject.name}</span>
                               </div>
                             )}
-                            {task.assigned_staff && (
-                              <div className="flex items-center gap-1 text-muted-foreground/80">
+                            {task.assigned_staff ? (
+                              <div className="flex items-center gap-1.5 text-muted-foreground/80">
                                 <Avatar className="w-3.5 h-3.5 shrink-0">
                                   <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} />
                                   <AvatarFallback className="text-[7px]">
@@ -1007,7 +986,28 @@ export function TaskWeeklyPacingMatrix({
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="truncate max-w-[120px] font-medium">{task.assigned_staff.first_name}</span>
+                                {task.type !== "meeting" && (
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-semibold shrink-0 select-none",
+                                      STATUS_TEXT_CONFIG[task.status]?.className || "text-muted-foreground"
+                                    )}
+                                  >
+                                    ({STATUS_TEXT_CONFIG[task.status]?.label || task.status})
+                                  </span>
+                                )}
                               </div>
+                            ) : (
+                              task.type !== "meeting" && (
+                                <span
+                                  className={cn(
+                                    "text-[10px] font-semibold shrink-0 select-none",
+                                    STATUS_TEXT_CONFIG[task.status]?.className || "text-muted-foreground"
+                                  )}
+                                >
+                                  {STATUS_TEXT_CONFIG[task.status]?.label || task.status}
+                                </span>
+                              )
                             )}
                             {(Number(task.estimated_hours) > 0 || Number(task.actual_hours) > 0) && (
                               <div

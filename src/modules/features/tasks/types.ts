@@ -539,6 +539,16 @@ export interface TaskItem {
   recurrence_days?: number[] | null;
   external_meeting_id?: string | null;
   external_calendar_event_id?: string | null;
+  // Quick Notes (Private per collaborator/user)
+  quick_note?: TaskQuickNote | null;
+  quick_notes?: Record<string, TaskQuickNote> | null;
+}
+
+export interface TaskQuickNote {
+  content: string;
+  author_name: string;
+  author_id?: string;
+  updated_at: string;
 }
 
 export interface UserOAuthConnection {
@@ -712,6 +722,8 @@ export function normalizeTask(task: any): TaskItem {
     recurrence_days: Array.isArray(task.recurrence_days) ? task.recurrence_days : null,
     external_meeting_id: task.external_meeting_id || null,
     external_calendar_event_id: task.external_calendar_event_id || null,
+    quick_note: task.quick_note || null,
+    quick_notes: task.quick_notes && typeof task.quick_notes === "object" ? task.quick_notes : {},
   };
 }
 

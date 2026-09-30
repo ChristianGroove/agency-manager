@@ -1607,5 +1607,41 @@ Para asegurar que los calendarios de los convocados no queden desfasados respect
 1. **Actualización Remota (`calendar.events.patch`)**: Cuando un PM o líder modifica una reunión desde `updateTask` o `portalUpdateTask` (título, descripción, fecha/hora `meeting_start_at`, duración `meeting_duration_minutes`, lista de convocados `meeting_attendees` o directivas de recurrencia), el servicio `updateGoogleCalendarMeetingEvent` sincroniza los cambios hacia Google Calendar con `sendUpdates: 'all'`. Google actualiza el evento y envía notificaciones por correo electrónico a los invitados con los datos corregidos.
 2. **Cancelación Automática al Eliminar (`calendar.events.delete`)**: Al eliminar una reunión (individualmente en `deleteTask` / `portalDeleteTask` o en lote mediante `deleteTasks` / `portalBulkDeleteTasks`), el servicio `deleteGoogleCalendarMeetingEvent` cancela el evento remoto en Google Calendar con `sendUpdates: 'all'`, removiendo la sesión del calendario de los asistentes y enviando la confirmación de cancelación oficial. Si el evento es una serie recurrente, la cancelación elimina todas las instancias futuras asociadas.
 
+---
+
+## 40. Notas Rápidas Personales por Ticket y Refinamientos Visuales de Estado
+
+### A. Sustitución de Acción en Tablas por Nota Rápida Minimalista
+Para maximizar la productividad y permitir a cada miembro del equipo registrar recordatorios, enlaces o apuntes personales sobre cualquier ticket:
+1. **Reemplazo del Botón de Listo**: El botón de check verde en la columna de Acciones en las tablas de tareas (`TaskCollaboratorPortal` y `TaskListView`) fue sustituido por el componente minimalista `TaskQuickNoteAction` (`StickyNote`).
+2. **Interacción en Dos Capas**:
+   - **Hover**: Despliega un tooltip con título conciso `"Nota"` si no hay contenido, o el texto formateado de la nota si ya existe, parseando URLs automáticamente en enlaces clicables seguros (`target="_blank"`, `rel="noopener noreferrer"`) junto a un pie sutil con tipografía diminuta `Por [Autor] • [Fecha/Hora]` sin avatares.
+   - **Clic**: Abre un popover ultra-minimalista anclado al botón con un `Textarea` auto-enfocado, botón de guardado (`Check` / `Ctrl+Enter`) y botón de eliminación rápida (`Trash2`).
+
+### B. Arquitectura de Aislamiento Privado (Zero-Leak)
+Las notas rápidas son estrictamente individuales y privadas para cada colaborador o usuario de la plataforma:
+1. **Estructura en Base de Datos**: La tabla `public.task_items` almacena la columna `quick_notes JSONB DEFAULT '{}'::jsonb` con un índice GIN (`idx_task_items_quick_notes_gin`). En ella se persiste un mapa indexado por el ID del autor:
+   ```json
+   {
+     "<staff_or_user_id>": {
+       "content": "Texto de la nota privada...",
+       "author_name": "Nombre del Colaborador",
+       "author_id": "<staff_or_user_id>",
+       "updated_at": "2026-09-29T19:00:00.000Z"
+     }
+   }
+   ```
+2. **Filtrado Seguro en Lectura**:
+   - En `getCollaboratorPortalData`: Se extrae únicamente la nota correspondiente a `staff.id` en `t.quick_note` y se elimina por completo el diccionario `quick_notes` del payload antes de remitirlo al cliente. De esta manera, ningún colaborador puede inspeccionar o acceder a las notas de sus compañeros.
+   - En `getTasks`: Se resuelve el usuario autenticado y se asigna su nota privada personal en `task.quick_note`.
+3. **Mutaciones Atómicas**:
+   - `portalUpdateTaskQuickNote`: Permite crear, modificar o eliminar la nota privada de un colaborador desde el portal, validando el token de acceso y actualizando el JSONB de forma atómica.
+   - `updateTaskQuickNote`: Realiza la misma operación desde la plataforma administrativa para usuarios de sesión activa.
+
+### C. Refinamientos de Estados y Tooltip de Bloqueo
+1. **Ritmo Semanal**: El estado en las filas de entregables técnicos de la Matriz de Ritmo Semanal (`TaskWeeklyPacingMatrix`) se renderiza como un indicador visual de solo lectura, con tipografía compacta en color corporativo y ubicado junto al nombre del responsable (sin selector dropdown ni indicador circular redundante).
+2. **Tooltip de Bloqueo en Tablas**: En `TaskStatusInteractiveBadge`, al pasar el cursor (hover) sobre un ticket con estado `blocked` (bloqueado), se despliega un tooltip con el motivo exacto del bloqueo (`blocked_reason`) o la dependencia predecesora no resuelta (`blocked_by`).
+
+
 
 

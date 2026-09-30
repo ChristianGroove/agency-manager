@@ -52,6 +52,7 @@ import type {
   TaskStatus,
   TaskSprint,
   TaskType,
+  TaskQuickNote,
 } from "../types"
 import { parseTaskChecklist } from "../types"
 import { TaskKanbanBoard } from "./kanban/task-kanban-board"
@@ -131,6 +132,12 @@ export function TaskManagerView({
   useEffect(() => {
     setSprints(initialSprints)
   }, [initialSprints])
+
+  const handleQuickNoteUpdate = (taskId: string, newNote: TaskQuickNote | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, quick_note: newNote } : t))
+    )
+  }
 
   // Realtime WebSocket Subscription via singleton manager (Zero-Thundering-Herd)
   useEffect(() => {
@@ -1362,6 +1369,7 @@ export function TaskManagerView({
               onToggleSelectAll={handleToggleSelectAll}
               includeMeetings={includeMeetings}
               onIncludeMeetingsChange={setIncludeMeetings}
+              onTaskNoteUpdate={handleQuickNoteUpdate}
             />
           </div>
         )}

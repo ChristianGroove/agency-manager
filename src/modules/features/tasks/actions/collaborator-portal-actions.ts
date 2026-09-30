@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { revalidatePath } from "next/cache";
-import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint, TaskMeetingModality, TaskMeetingAttendee } from "../types";
+import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus, TaskPriority, TaskType, TaskAttachment, TaskComment, TaskChecklistItem, RecurrenceInterval, TaskProgressAuditSummary, TaskSprint, TaskMeetingModality, TaskMeetingAttendee, TaskQuickNote } from "../types";
 import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 import { generateNextTicketCode } from "./task-actions";
@@ -605,7 +605,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     }
   }
 
-  // Enrich rawTasks with comment stats
+  // Enrich rawTasks with comment stats and isolate private quick notes
   rawTasks.forEach((t) => {
     const stats = commentStatsMap.get(t.id);
     if (stats) {
@@ -615,6 +615,12 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     } else {
       t.comments_count = 0;
     }
+
+    // Zero-leak private quick notes isolation:
+    // Extract only current staff's private quick note, and scrub the global dictionary
+    const notesDict = (t.quick_notes && typeof t.quick_notes === "object") ? t.quick_notes : {};
+    t.quick_note = notesDict[staff.id] || null;
+    delete (t as any).quick_notes;
   });
 
   // Segregate support tickets from operational development tasks
@@ -2985,5 +2991,90 @@ export async function portalCompleteMeetingSession(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Create, update or delete a private quick note on a task from the collaborator portal.
+ * Isolates notes per collaborator so that no other collaborator can access or view them.
+ */
+export async function portalUpdateTaskQuickNote(
+  token: string,
+  taskId: string,
+  content: string | null
+): Promise<{ success: boolean; quickNote?: TaskQuickNote | null; error?: string }> {
+  try {
+    const { data: staff } = await supabaseAdmin
+      .from("organization_staff")
+      .select("id, organization_id, first_name, last_name")
+      .eq("access_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staff) throw new Error("Acceso no autorizado");
+
+    if (!taskId) throw new Error("ID de tarea no válido");
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("id, organization_id, quick_notes")
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error("Portal update task quick note query error:", fetchErr);
+      throw new Error(fetchErr.message || "Error al consultar la tarea");
+    }
+
+    if (!task) throw new Error("Tarea no encontrada");
+
+    // Verificar pertenencia o autorizacion organizacional
+    if (task.organization_id !== staff.organization_id) {
+      const { data: memberCheck } = await supabaseAdmin
+        .from("organization_staff")
+        .select("id")
+        .eq("id", staff.id)
+        .eq("organization_id", task.organization_id)
+        .maybeSingle();
+
+      if (!memberCheck) {
+        throw new Error("No tienes permisos para modificar notas en esta tarea");
+      }
+    }
+
+    const currentNotes = (task.quick_notes && typeof task.quick_notes === "object") ? { ...task.quick_notes } : {};
+
+    let updatedQuickNote: TaskQuickNote | null = null;
+    const trimmed = (content || "").trim();
+
+    if (trimmed) {
+      updatedQuickNote = {
+        content: trimmed,
+        author_name: `${staff.first_name || ""} ${staff.last_name || ""}`.trim() || "Colaborador",
+        author_id: staff.id,
+        updated_at: new Date().toISOString(),
+      };
+      currentNotes[staff.id] = updatedQuickNote;
+    } else {
+      delete currentNotes[staff.id];
+      updatedQuickNote = null;
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        quick_notes: currentNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId)
+      .eq("organization_id", task.organization_id);
+
+    if (updateErr) throw updateErr;
+
+    return { success: true, quickNote: updatedQuickNote };
+  } catch (err: any) {
+    console.error("Portal update task quick note error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 

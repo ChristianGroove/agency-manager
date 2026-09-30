@@ -19,7 +19,8 @@ import type {
   TaskAttachment,
   TaskMeetingAttendee,
   TaskMeetingAttendanceStatus,
-  TaskMeetingCheckinMethod
+  TaskMeetingCheckinMethod,
+  TaskQuickNote,
 } from "../types";
 import {
   normalizeTask,
@@ -699,7 +700,22 @@ export async function getTasks(params?: {
       });
   }
 
-  return rawTasks.map(normalizeTask);
+  // Extract personal quick note for the authenticated user in platform
+  let currentUserId: string | null = null;
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    currentUserId = user?.id || null;
+  } catch {
+    // Non-auth context
+  }
+
+  return rawTasks.map((t: any) => {
+    const normalized = normalizeTask(t);
+    const notesDict = (t.quick_notes && typeof t.quick_notes === "object") ? t.quick_notes : {};
+    normalized.quick_note = currentUserId ? (notesDict[currentUserId] || null) : null;
+    return normalized;
+  });
 }
 
 /**
@@ -3198,5 +3214,80 @@ export async function completeMeetingSession(params: {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Create, update or delete a private quick note on a task from the platform module.
+ * Isolates notes per user so that each member has their own personal notes.
+ */
+export async function updateTaskQuickNote(
+  taskId: string,
+  content: string | null,
+  orgId?: string
+): Promise<{ success: boolean; quickNote?: TaskQuickNote | null; error?: string }> {
+  try {
+    const activeOrgId = await resolveOrgId(orgId);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autorizado. Inicie sesión en la plataforma.");
+
+    const authorId = user.id;
+    const authorName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "Usuario";
+
+    if (!taskId) throw new Error("ID de tarea no válido");
+
+    const { data: task, error: fetchErr } = await supabaseAdmin
+      .from("task_items")
+      .select("id, organization_id, quick_notes")
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error("Update task quick note query error:", fetchErr);
+      throw new Error(fetchErr.message || "Error al consultar la tarea");
+    }
+
+    if (!task) throw new Error("Tarea no encontrada");
+
+    const currentNotes = (task.quick_notes && typeof task.quick_notes === "object") ? { ...task.quick_notes } : {};
+
+    let updatedQuickNote: TaskQuickNote | null = null;
+    const trimmed = (content || "").trim();
+
+    if (trimmed) {
+      updatedQuickNote = {
+        content: trimmed,
+        author_name: authorName,
+        author_id: authorId,
+        updated_at: new Date().toISOString(),
+      };
+      currentNotes[authorId] = updatedQuickNote;
+    } else {
+      delete currentNotes[authorId];
+      updatedQuickNote = null;
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("task_items")
+      .update({
+        quick_notes: currentNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", taskId)
+      .eq("organization_id", task.organization_id);
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath("/operations/tasks");
+    return { success: true, quickNote: updatedQuickNote };
+  } catch (err: any) {
+    console.error("Update task quick note error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 

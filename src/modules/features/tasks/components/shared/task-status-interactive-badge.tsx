@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { Check, ChevronDown, Ban } from "lucide-react"
 import {
   TaskStatus,
@@ -112,23 +112,28 @@ export function TaskStatusInteractiveBadge({
   onStatusChange,
   className,
 }: TaskStatusInteractiveBadgeProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const currentConfig = STATUS_CONFIGS[status] || STATUS_CONFIGS.todo
   const isMeeting = taskType === "meeting"
   const isTerminalDone = status === "done" && !isLeadOrPm
   const canInteract = Boolean(onStatusChange && !disabled && !readOnly && !isMeeting && !isTerminalDone)
+  const isBlocked = status === "blocked"
+
+  const blockedReasonText = useMemo(() => {
+    if (!isBlocked) return null
+    if (blockedBy && blockedBy.status !== "done") {
+      return `Bloqueado por dependencia #${blockedBy.ticket_code}: ${blockedBy.title}`
+    }
+    return blockedReason ? `Motivo: ${blockedReason}` : "Esta tarea se encuentra bloqueada."
+  }, [isBlocked, blockedBy, blockedReason])
 
   // Mensaje para tooltip en caso no interactivo
   const nonInteractiveReason = useMemo(() => {
     if (isMeeting) return "Las reuniones sincrónicas se gestionan mediante su propia consola de sesión."
     if (isTerminalDone) return "Tarea completada: solo un Project Manager tiene permiso para reabrirla o modificar su estado."
-    if (status === "blocked") {
-      if (blockedBy && blockedBy.status !== "done") {
-        return `Bloqueado por dependencia #${blockedBy.ticket_code}: ${blockedBy.title}`
-      }
-      return blockedReason ? `Motivo: ${blockedReason}` : "Esta tarea se encuentra bloqueada."
-    }
+    if (isBlocked) return blockedReasonText
     return null
-  }, [isMeeting, isTerminalDone, status, blockedBy, blockedReason])
+  }, [isMeeting, isTerminalDone, isBlocked, blockedReasonText])
 
   const renderBadgeBody = (
     <span
@@ -151,8 +156,38 @@ export function TaskStatusInteractiveBadge({
     </span>
   )
 
+  const blockedTooltipContent = (
+    <TooltipContent
+      side="top"
+      className="max-w-[300px] p-3 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md space-y-1.5 z-[80]"
+    >
+      <div className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400 text-xs">
+        <Ban className="w-3.5 h-3.5 shrink-0" />
+        <span>Motivo del Bloqueo</span>
+      </div>
+      <p className="text-xs text-foreground/90 font-normal leading-relaxed whitespace-pre-wrap">
+        {blockedReasonText}
+      </p>
+    </TooltipContent>
+  )
+
   // Si no puede interactuar (solo lectura, reunión o completada sin rol PM)
   if (!canInteract) {
+    if (isBlocked && blockedReasonText) {
+      return (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="inline-flex cursor-help" onClick={(e) => e.stopPropagation()}>
+                {renderBadgeBody}
+              </div>
+            </TooltipTrigger>
+            {blockedTooltipContent}
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+
     if (nonInteractiveReason) {
       return (
         <TooltipProvider delayDuration={400}>
@@ -164,7 +199,7 @@ export function TaskStatusInteractiveBadge({
             </TooltipTrigger>
             <TooltipContent
               side="top"
-              className="max-w-[280px] p-2.5 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md text-xs leading-relaxed"
+              className="max-w-[280px] p-2.5 rounded-xl border border-border/80 bg-popover/95 text-popover-foreground shadow-xl backdrop-blur-md text-xs leading-relaxed z-[80]"
             >
               <p>{nonInteractiveReason}</p>
             </TooltipContent>
@@ -181,18 +216,36 @@ export function TaskStatusInteractiveBadge({
   }
 
   // Interactivo con Menú Desplegable de Estados
+  const renderTriggerButton = (
+    <button
+      type="button"
+      className="focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded-lg cursor-pointer"
+      aria-label={`Cambiar estado de tarea, estado actual: ${currentConfig.label}`}
+    >
+      {renderBadgeBody}
+    </button>
+  )
+
   return (
     <div className="inline-flex" onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded-lg"
-            aria-label={`Cambiar estado de tarea, estado actual: ${currentConfig.label}`}
-          >
-            {renderBadgeBody}
-          </button>
-        </DropdownMenuTrigger>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        {isBlocked && blockedReasonText ? (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip open={dropdownOpen ? false : undefined}>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  {renderTriggerButton}
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              {blockedTooltipContent}
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <DropdownMenuTrigger asChild>
+            {renderTriggerButton}
+          </DropdownMenuTrigger>
+        )}
+
         <DropdownMenuContent
           align="start"
           sideOffset={4}
