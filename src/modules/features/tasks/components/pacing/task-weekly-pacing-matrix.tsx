@@ -302,7 +302,12 @@ export function TaskWeeklyPacingMatrix({
         return
       }
 
-      // Las reuniones no son entregables técnicos rezagados; se consideran al día en el ritmo semanal
+      if (task.status === "blocked") {
+        delayedCount++
+        return
+      }
+
+      // Las reuniones activas no bloqueadas se consideran al día en el ritmo semanal
       if (task.type === "meeting") {
         onTrackCount++
         return
@@ -311,11 +316,11 @@ export function TaskWeeklyPacingMatrix({
       const pacing = getTaskWeeklyPacing(task, currentDate)
       const currentWeekPacing = pacing.find((p) => p.week === (activeMonthWeek || 1))
 
-      if (pacing.some((p) => p.status === "delayed") || task.status === "blocked") {
+      if (pacing.some((p) => p.status === "delayed")) {
         delayedCount++
       } else if (currentWeekPacing?.status === "at_risk") {
         atRiskCount++
-      } else {
+      } else if (currentWeekPacing?.status === "on_track" || currentWeekPacing?.status === "completed") {
         onTrackCount++
       }
     })

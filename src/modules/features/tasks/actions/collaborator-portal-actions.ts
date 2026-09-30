@@ -1043,7 +1043,7 @@ export async function portalUpdateTaskProgress(
 
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist, progress_percentage, assigned_staff_id, blocked_by_task_id, ticket_code, title")
+      .select("status, checklist, progress_percentage, assigned_staff_id, blocked_by_task_id, ticket_code, title, qa_staff_id")
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id)
       .single();
@@ -1126,8 +1126,10 @@ export async function portalUpdateTaskProgress(
         clamped = 95;
         updateData.progress_percentage = 95;
       }
-    } else if (clamped > 0) {
-      if (current && (current.status === "todo" || current.status === "backlog")) {
+    } else if (clamped < 100) {
+      if (current?.status === "done") {
+        updateData.status = current.qa_staff_id ? "in_review" : "in_progress";
+      } else if (clamped > 0 && (current && (current.status === "todo" || current.status === "backlog"))) {
         updateData.status = "in_progress";
       }
     }
@@ -2017,7 +2019,7 @@ export async function portalUpdateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours, progress_percentage,
+        status, priority, due_date, assigned_staff_id, qa_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, checklist, sprint_id, actual_hours, progress_percentage,
         type, external_meeting_id, meeting_start_at, meeting_duration_minutes, meeting_attendees, description, is_recurring, recurrence_interval, recurrence_days, recurrence_day,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
@@ -2075,9 +2077,10 @@ export async function portalUpdateTask(
         .eq("id", taskId)
         .maybeSingle();
 
-      if (curTask && curTask.progress_percentage !== clamped) {
+      const prevProg = curTask?.progress_percentage ?? (curTask?.status === "done" ? 100 : 0);
+      if (curTask && prevProg !== clamped) {
         // Automatically record progress audit in discussion feed
-        const isRegression = clamped < (curTask.progress_percentage ?? 0);
+        const isRegression = clamped < prevProg;
         const actionWord = isRegression ? "Regresión" : "Avance";
         await supabaseAdmin.from("task_comments").insert({
           organization_id: staff.organization_id,
@@ -2086,20 +2089,26 @@ export async function portalUpdateTask(
           author_id: staff.id,
           author_name: `${staff.first_name} ${staff.last_name}`.trim(),
           author_avatar: staff.photo_url || null,
-          content: `${actionWord} de tarea actualizado del ${curTask.progress_percentage ?? 0}% al ${clamped}%`,
+          content: `${actionWord} de tarea actualizado del ${prevProg}% al ${clamped}%`,
           mentions: []
         });
       }
 
       updateData.progress_percentage = clamped;
-      if (clamped === 100 && !data.status) {
-        updateData.status = "done";
-      }
     }
     if (data.status !== undefined) {
       updateData.status = data.status;
       if (data.status === "done" && data.progressPercentage === undefined) {
         updateData.progress_percentage = 100;
+      }
+    } else if (updateData.progress_percentage === 100) {
+      updateData.status = "done";
+    }
+
+    if (updateData.progress_percentage !== undefined && updateData.progress_percentage < 100) {
+      if (prevTask?.status === "done" && (!updateData.status || updateData.status === "done")) {
+        const effectiveQaId = data.qaStaffId !== undefined ? data.qaStaffId : prevTask?.qa_staff_id;
+        updateData.status = effectiveQaId ? "in_review" : "in_progress";
       }
     }
     if (data.loggedHours !== undefined && data.loggedHours > 0) {
@@ -2286,6 +2295,13 @@ export async function portalUpdateTask(
       updateData.progress_percentage = 95;
     } else if (updateData.progress_percentage === 100 && hasUnfinishedDeliverables) {
       updateData.progress_percentage = 95;
+    }
+
+    if (updateData.progress_percentage !== undefined && updateData.progress_percentage < 100) {
+      if (prevTask?.status === "done" && (!updateData.status || updateData.status === "done")) {
+        const effectiveQaId = updateData.qa_staff_id !== undefined ? updateData.qa_staff_id : prevTask?.qa_staff_id;
+        updateData.status = effectiveQaId ? "in_review" : "in_progress";
+      }
     }
 
     const { data: updatedTask, error } = await supabaseAdmin
@@ -2816,17 +2832,28 @@ export async function portalSaveTaskWeeklySnapshot(
       ? task.weekly_snapshots
       : {};
 
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const weekKey = `s${week}`;
+    const roundedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+    const currentMonthSnapshots = currentSnapshots[monthKey] && typeof currentSnapshots[monthKey] === "object"
+      ? currentSnapshots[monthKey]
+      : {};
+
     const nextSnapshots = {
       ...currentSnapshots,
-      [weekKey]: Math.max(0, Math.min(100, Math.round(progress))),
+      [weekKey]: roundedProgress,
+      [monthKey]: {
+        ...currentMonthSnapshots,
+        [weekKey]: roundedProgress,
+      },
     };
 
     const { error: updateErr } = await supabaseAdmin
       .from("task_items")
       .update({
         weekly_snapshots: nextSnapshots,
-        updated_at: new Date().toISOString(),
       })
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id);

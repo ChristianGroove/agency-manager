@@ -482,7 +482,8 @@ export interface TaskItem {
     s2?: number | null;
     s3?: number | null;
     s4?: number | null;
-  } | null;
+    [key: string]: any;
+  } | Record<string, any> | null;
   created_at: string;
   updated_at: string;
   // Joined
@@ -916,6 +917,8 @@ export function getTaskWeeklyPacing(
     }
   }
 
+  const viewMonthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+
   const weeks: (1 | 2 | 3 | 4)[] = [1, 2, 3, 4];
   const dateRanges = [
     'Días 1 - 7',
@@ -925,6 +928,34 @@ export function getTaskWeeklyPacing(
   ];
 
   return weeks.map((w, idx) => {
+    // 1. Limite de fin de semana para validar existencia temporal por fecha de creacion
+    let weekEnd: Date;
+    if (w === 1) {
+      weekEnd = new Date(viewYear, viewMonth, 7, 23, 59, 59, 999);
+    } else if (w === 2) {
+      weekEnd = new Date(viewYear, viewMonth, 14, 23, 59, 59, 999);
+    } else if (w === 3) {
+      weekEnd = new Date(viewYear, viewMonth, 21, 23, 59, 59, 999);
+    } else {
+      weekEnd = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59, 999);
+    }
+
+    if (task.created_at) {
+      const createdAt = new Date(task.created_at);
+      if (!isNaN(createdAt.getTime()) && createdAt.getTime() > weekEnd.getTime()) {
+        return {
+          week: w,
+          label: `Semana ${w}`,
+          dateRange: dateRanges[idx],
+          progress: 0,
+          totalDeliverables: 0,
+          completedDeliverables: 0,
+          status: 'pending',
+          hasSchedule: false,
+        };
+      }
+    }
+
     // Determine time status of week w
     let isPastWeek = false;
     let isCurrentWeek = false;
@@ -952,28 +983,28 @@ export function getTaskWeeklyPacing(
     // Synchronous activities / meetings: paced by scheduled session week
     if (task.type === 'meeting') {
       const isMeetingWeek = dueWeek === w;
-      if (isTaskDone) {
-        return {
-          week: w,
-          label: `Semana ${w}`,
-          dateRange: dateRanges[idx],
-          progress: isMeetingWeek || isPastWeek ? 100 : 0,
-          totalDeliverables: 1,
-          completedDeliverables: 1,
-          status: isMeetingWeek || isPastWeek ? 'completed' : 'pending',
-          hasSchedule: isMeetingWeek,
-        };
-      }
-
       if (isMeetingWeek) {
-        const meetingStatus = isBlocked ? 'delayed' : isPastWeek ? 'on_track' : isCurrentWeek ? 'on_track' : 'pending';
+        if (isTaskDone) {
+          return {
+            week: w,
+            label: `Semana ${w}`,
+            dateRange: dateRanges[idx],
+            progress: 100,
+            totalDeliverables: 1,
+            completedDeliverables: 1,
+            status: 'completed',
+            hasSchedule: true,
+          };
+        }
+
+        const meetingStatus = isBlocked ? 'delayed' : isPastWeek ? 'delayed' : isCurrentWeek ? 'on_track' : 'pending';
         return {
           week: w,
           label: `Semana ${w}`,
           dateRange: dateRanges[idx],
-          progress: isPastWeek ? 100 : 50,
+          progress: isPastWeek ? 0 : 50,
           totalDeliverables: 1,
-          completedDeliverables: isPastWeek ? 1 : 0,
+          completedDeliverables: 0,
           status: meetingStatus,
           hasSchedule: true,
         };
@@ -991,10 +1022,72 @@ export function getTaskWeeklyPacing(
       };
     }
 
-    // If task is globally completed, evaluate based on week timing
+    // 2. Resolver snapshot historico (soporta formato particionado por mes 'YYYY-MM' y plano legado)
+    const snapshotKey = `s${w}` as 's1' | 's2' | 's3' | 's4';
+    let snapshotVal: number | null = null;
+    if (task.weekly_snapshots && typeof task.weekly_snapshots === 'object') {
+      const snapRecord = task.weekly_snapshots as Record<string, any>;
+      const monthSnapshots = snapRecord[viewMonthKey];
+      if (monthSnapshots && typeof monthSnapshots === 'object' && typeof monthSnapshots[snapshotKey] === 'number') {
+        snapshotVal = monthSnapshots[snapshotKey];
+      } else if (typeof snapRecord[snapshotKey] === 'number') {
+        const hasAnyMonthKeys = Object.keys(snapRecord).some((k) => /^\d{4}-\d{2}$/.test(k));
+        if (!hasAnyMonthKeys || isCurrentMonth) {
+          snapshotVal = snapRecord[snapshotKey];
+        }
+      }
+    }
+
+    // 3. Evaluar cortes historicos congelados en semanas pasadas (incluso en tareas completadas)
+    if (isPastWeek && snapshotVal !== null) {
+      progress = snapshotVal;
+      hasSchedule = true;
+      if (progress === 100) {
+        status = 'completed';
+      } else if (hasTargetWeeks) {
+        const itemsInWeek = checklist.filter((c) => c.target_week === w);
+        totalItems = itemsInWeek.length;
+        doneItems = itemsInWeek.filter((c) => c.completed).length;
+        if (totalItems > 0) {
+          status = doneItems === totalItems ? 'completed' : 'delayed';
+        } else {
+          const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
+          if (isBlocked || isPastDue) {
+            status = 'delayed';
+          } else if (progress > 0) {
+            status = 'on_track';
+          } else {
+            status = 'pending';
+            hasSchedule = false;
+          }
+        }
+      } else {
+        const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
+        if (isBlocked || isPastDue) {
+          status = 'delayed';
+        } else if (progress > 0) {
+          status = 'on_track';
+        } else {
+          status = 'pending';
+          hasSchedule = false;
+        }
+      }
+
+      return {
+        week: w,
+        label: `Semana ${w}`,
+        dateRange: dateRanges[idx],
+        progress,
+        totalDeliverables: totalItems,
+        completedDeliverables: doneItems,
+        status,
+        hasSchedule,
+      };
+    }
+
+    // 4. Si la tarea esta globalmente completada y no tenia snapshot previo en esta semana
     if (isTaskDone) {
       if (hasTargetWeeks) {
-        // Evaluate deliverables explicitly planned for this week w
         const itemsInWeek = checklist.filter((c) => c.target_week === w);
         totalItems = itemsInWeek.length;
         doneItems = itemsInWeek.filter((c) => c.completed).length;
@@ -1009,14 +1102,11 @@ export function getTaskWeeklyPacing(
           status = 'on_track';
         }
       } else {
-        // Standard task without weekly deliverables
         if (isFutureWeek) {
-          // Future week cannot be completed in advance if no future schedule
           progress = 0;
           status = 'pending';
           hasSchedule = false;
         } else {
-          // Past week or current active week when task was finished
           progress = 100;
           status = 'completed';
           hasSchedule = true;
@@ -1035,103 +1125,51 @@ export function getTaskWeeklyPacing(
       };
     }
 
-    // 1. Check if there is an inmutable recorded snapshot for past week w
-    const snapshotKey = `s${w}` as 's1' | 's2' | 's3' | 's4';
-    const snapshotVal = task.weekly_snapshots && typeof task.weekly_snapshots[snapshotKey] === 'number'
-      ? task.weekly_snapshots[snapshotKey]
-      : null;
-
-    if (isPastWeek && snapshotVal !== null) {
-      // Use frozen historical cut for past week!
-      progress = snapshotVal;
-      hasSchedule = true;
-      if (progress === 100) {
-        status = 'completed';
-      } else if (hasTargetWeeks) {
-        const itemsInWeek = checklist.filter((c) => c.target_week === w);
-        totalItems = itemsInWeek.length;
-        doneItems = itemsInWeek.filter((c) => c.completed).length;
-        status = totalItems > 0 && doneItems < totalItems ? 'delayed' : 'pending';
-      } else {
-        const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
-        if (isBlocked || isPastDue) {
-          status = 'delayed';
-        } else if (progress > 0) {
-          status = 'on_track';
-        } else {
-          status = 'pending';
-        }
-      }
-
-      return {
-        week: w,
-        label: `Semana ${w}`,
-        dateRange: dateRanges[idx],
-        progress,
-        totalDeliverables: totalItems,
-        completedDeliverables: doneItems,
-        status,
-        hasSchedule,
-      };
-    }
-
+    // 5. Tarea activa en curso
     if (hasTargetWeeks) {
-      // CASE 1: Task has explicit checklist deliverables per week
       const itemsInWeek = checklist.filter((c) => c.target_week === w);
       totalItems = itemsInWeek.length;
       doneItems = itemsInWeek.filter((c) => c.completed).length;
       hasSchedule = totalItems > 0;
       progress = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
 
-      // If single deliverable in this week is not yet checked, but global slider has progress, reflect active progress!
       if (totalItems === 1 && doneItems === 0 && globalProg > 0 && isCurrentWeek) {
         progress = globalProg;
       }
 
       if (!hasSchedule) {
-        // No deliverables planned for this week -> Not a delay!
         status = 'pending';
       } else if (doneItems === totalItems) {
         status = 'completed';
       } else if (isBlocked) {
         status = 'delayed';
       } else if (isPastWeek) {
-        // Had deliverables in a past week and failed to complete them -> True delay!
         status = 'delayed';
       } else if (isCurrentWeek) {
-        // Current week with deliverables in progress
         if (progress >= 50) {
           status = 'on_track';
         } else {
           status = 'at_risk';
         }
       } else {
-        // Future week
         status = progress > 0 ? 'on_track' : 'pending';
       }
     } else {
-      // CASE 2: Standard task WITHOUT target_week checklist (Global progress & dates)
+      // Tarea estandar sin checklist por semana
       if (isPastWeek) {
-        // In past weeks: only marked delayed if blocked or due_date expired on/before this week
         const isPastDue = isDueInPastMonth || (dueWeek !== null && dueWeek <= w);
 
         if (isBlocked || isPastDue) {
           status = 'delayed';
           progress = globalProg;
           hasSchedule = true;
-        } else if (globalProg > 0) {
-          // If task has reached progress today, earlier weeks were successfully worked
-          status = 'completed';
-          progress = 100;
-          hasSchedule = true;
         } else {
-          // 0% progress and not past due -> Scheduled/Plan, NOT a delay!
+          // No estaba vencida ni bloqueada: plan no programado
           status = 'pending';
           progress = 0;
           hasSchedule = false;
         }
       } else if (isCurrentWeek) {
-        // Current active week: reflects current global progress
         progress = globalProg;
         hasSchedule = true;
 
@@ -1142,16 +1180,13 @@ export function getTaskWeeklyPacing(
         } else if (progress >= 20) {
           status = 'on_track';
         } else if (dueWeek !== null && dueWeek <= w) {
-          // Due this week or overdue with low progress
           status = 'at_risk';
         } else if (progress > 0) {
           status = 'on_track';
         } else {
-          // 0% progress
           status = 'pending';
         }
       } else {
-        // Future week: cannot have arbitrary progress allocated!
         progress = 0;
         status = 'pending';
         hasSchedule = false;

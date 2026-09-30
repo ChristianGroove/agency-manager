@@ -1638,10 +1638,21 @@ Las notas rápidas son estrictamente individuales y privadas para cada colaborad
    - `portalUpdateTaskQuickNote`: Permite crear, modificar o eliminar la nota privada de un colaborador desde el portal, validando el token de acceso y actualizando el JSONB de forma atómica.
    - `updateTaskQuickNote`: Realiza la misma operación desde la plataforma administrativa para usuarios de sesión activa.
 
-### C. Refinamientos de Estados y Tooltip de Bloqueo
-1. **Ritmo Semanal**: El estado en las filas de entregables técnicos de la Matriz de Ritmo Semanal (`TaskWeeklyPacingMatrix`) se renderiza como un indicador visual de solo lectura, con tipografía compacta en color corporativo y ubicado junto al nombre del responsable (sin selector dropdown ni indicador circular redundante).
-2. **Tooltip de Bloqueo en Tablas**: En `TaskStatusInteractiveBadge`, al pasar el cursor (hover) sobre un ticket con estado `blocked` (bloqueado), se despliega un tooltip con el motivo exacto del bloqueo (`blocked_reason`) o la dependencia predecesora no resuelta (`blocked_by`).
 
+---
 
+## 41. Saneamiento del Motor de Ritmo Semanal (Pacing), Integridad de Snapshots y Manejo de Regresiones
 
+### A. Eliminación del Fallback Artificial de 100% y Validación Temporal por `created_at`
+1. **Validación Temporal Estricta**: Cada celda semanal de la Matriz de Ritmo Semanal (`TaskWeeklyPacingMatrix`) evalúa el fin de semana contra la marca temporal de creación del requerimiento (`task.created_at`). Si un ticket fue creado con posterioridad a la semana evaluada (ej. creado en Semana 4), las semanas previas (Semanas 1 a 3) se clasifican obligatoriamente como no programadas (`progress = 0`, `status = 'pending'`, `hasSchedule = false`, renderizado como `"— Plan"`), erradicando la anomalía de trabajo inventado en periodos donde el ticket no existía.
+2. **Supresión del 100% Automático**: Se removió el condicional de conveniencia que forzaba `progress = 100` y `status = 'completed'` en semanas pasadas cuando `globalProg > 0`. Las semanas anteriores sin corte congelado ni entregables reflejan su estado genuino: `"— Plan"` si no estaban vencidas, o `delayed` si la tarea o entregable superó la fecha límite sin completarse.
+3. **Preservación de Snapshots en Tareas Finalizadas**: Se desacopló la consulta de `weekly_snapshots` del estado terminal `done`. Cuando una tarea es completada, sus cortes históricos registrados en semanas pasadas (ej. 25% en semana 1, 60% en semana 2) se conservan intactos en la vista en lugar de sobrescribirse arbitrariamente con 100%.
 
+### B. Consistencia de Estado y Auditoría ante Regresiones de Progreso
+1. **Desbloqueo de Estado Sellado**: Cuando un usuario, colaborador o PM reduce el progreso en el slider por debajo del 100% (ej. de 100% a 75%) en `updateTaskProgress`, `portalUpdateTaskProgress`, `updateTask` o `portalUpdateTask`, el sistema detecta la regresión y revierte automáticamente el estado de la tarea de `"done"` a `"in_review"` (si cuenta con `qa_staff_id`) o a `"in_progress"` (desarrollo activo).
+2. **Auditoría Simétrica**: Tanto en la plataforma administrativa como en el portal de colaboradores, las reducciones de avance registran una entrada formal en `task_comments` documentando el ajuste de porcentaje para garantizar trazabilidad.
+
+### C. Partición Mensual de Snapshots y Cron Seguro
+1. **Estructura Particionada**: El tipo `weekly_snapshots` soporta almacenamiento particionado por periodo mensual (`weekly_snapshots['YYYY-MM']?.s1`), previniendo que los cortes de un mes sobrescriban o contaminen la navegación por meses históricos. Se preserva compatibilidad con claves planas legadas (`s1..s4`).
+2. **Inmutabilidad de `updated_at` en Cron**: El endpoint `/api/cron/tasks-pacing-snapshot` persiste los cortes semanales bajo la clave mensual correspondiente sin modificar `updated_at`, salvaguardando los filtros temporales de tareas terminadas en meses previos.
+3. **Veracidad del Scoreboard Superior**: En `TaskWeeklyPacingMatrix`, las tareas en estado `pending` (planificadas o sin avance) no se suman a `onTrackCount`, reflejando exclusivamente tickets con avance en ritmo o finalizados a tiempo.

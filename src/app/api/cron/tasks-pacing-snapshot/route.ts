@@ -29,7 +29,10 @@ async function handleSnapshot(req: NextRequest) {
   try {
     const supabase = getServiceClient();
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
     const currentDay = now.getDate();
+    const monthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
     // Determine target week to freeze (can be explicitly provided or inferred)
     const { searchParams } = new URL(req.url);
@@ -82,17 +85,25 @@ async function handleSnapshot(req: NextRequest) {
       }
 
       const currentSnapshots = task.weekly_snapshots && typeof task.weekly_snapshots === "object"
-        ? (task.weekly_snapshots as Record<string, number>)
+        ? (task.weekly_snapshots as Record<string, any>)
+        : {};
+
+      const monthSnapshots = currentSnapshots[monthKey] && typeof currentSnapshots[monthKey] === "object"
+        ? (currentSnapshots[monthKey] as Record<string, number>)
         : {};
 
       // If the snapshot value for this week is already recorded with identical value, skip redundant DB write
-      if (currentSnapshots[weekKey] === weekProgress) {
+      if (currentSnapshots[weekKey] === weekProgress && monthSnapshots[weekKey] === weekProgress) {
         continue;
       }
 
       const nextSnapshots = {
         ...currentSnapshots,
         [weekKey]: weekProgress,
+        [monthKey]: {
+          ...monthSnapshots,
+          [weekKey]: weekProgress,
+        },
       };
 
       tasksToUpdate.push({
@@ -112,7 +123,6 @@ async function handleSnapshot(req: NextRequest) {
             .from("task_items")
             .update({
               weekly_snapshots: item.weekly_snapshots,
-              updated_at: new Date().toISOString(),
             })
             .eq("id", item.id)
         )
@@ -130,6 +140,7 @@ async function handleSnapshot(req: NextRequest) {
       message: `Pacing snapshot successfully recorded for Week ${targetWeek}`,
       targetWeek,
       weekKey,
+      monthKey,
       totalTasks: tasks.length,
       updatedCount,
       timestamp: now.toISOString(),

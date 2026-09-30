@@ -1081,7 +1081,7 @@ export async function updateTask(
     const { data: prevTask } = await supabaseAdmin
       .from("task_items")
       .select(`
-        status, priority, due_date, assigned_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist, actual_hours,
+        status, priority, due_date, assigned_staff_id, qa_staff_id, created_by_staff_id, blocked_by_task_id, blocked_reason, ticket_code, title, organization_id, checklist, actual_hours, progress_percentage,
         type, external_meeting_id, meeting_start_at, meeting_duration_minutes, meeting_attendees, description, is_recurring, recurrence_interval, recurrence_days, recurrence_day,
         assigned_staff:organization_staff!task_items_assigned_staff_id_fkey(id, first_name),
         creator_staff:organization_staff!task_items_created_by_staff_id_fkey(id, first_name)
@@ -1134,6 +1134,13 @@ export async function updateTask(
     } else {
       if (updateData.status === "done") {
         updateData.progress_percentage = 100;
+      }
+    }
+
+    if (updateData.progress_percentage !== undefined && updateData.progress_percentage < 100) {
+      if (prevTask?.status === "done" && (!updateData.status || updateData.status === "done")) {
+        const effectiveQaId = updateData.qa_staff_id !== undefined ? updateData.qa_staff_id : prevTask?.qa_staff_id;
+        updateData.status = effectiveQaId ? "in_review" : "in_progress";
       }
     }
 
@@ -1214,6 +1221,20 @@ export async function updateTask(
         if (updateData.status === "done") {
           unblockedTasks = await handleTaskUnblocking(taskId, prevTask.ticket_code, prevTask.title);
         }
+      }
+
+      // Progress regression audit
+      const prevProg = prevTask?.progress_percentage ?? (prevTask?.status === "done" ? 100 : 0);
+      if (
+        updateData.progress_percentage !== undefined &&
+        prevTask &&
+        updateData.progress_percentage < prevProg
+      ) {
+        await logTaskAuditComment(
+          orgId,
+          taskId,
+          `Regresión de tarea actualizado del ${prevProg}% al ${updateData.progress_percentage}%`
+        );
       }
 
       // Priority change audit
@@ -1579,7 +1600,7 @@ export async function updateTaskProgress(
   try {
     const { data: current } = await supabaseAdmin
       .from("task_items")
-      .select("status, checklist, ticket_code, title, organization_id, blocked_by_task_id")
+      .select("status, checklist, ticket_code, title, organization_id, blocked_by_task_id, qa_staff_id, progress_percentage")
       .eq("id", taskId)
       .single();
 
@@ -1607,6 +1628,15 @@ export async function updateTaskProgress(
       clampedProgress = 95;
     }
 
+    const prevProg = current?.progress_percentage ?? (current?.status === "done" ? 100 : 0);
+    if (current && current.organization_id && clampedProgress < prevProg) {
+      await logTaskAuditComment(
+        current.organization_id,
+        taskId,
+        `Regresión de tarea actualizado del ${prevProg}% al ${clampedProgress}%`
+      );
+    }
+
     const updateData: any = {
       progress_percentage: clampedProgress,
       updated_at: new Date().toISOString()
@@ -1614,9 +1644,10 @@ export async function updateTaskProgress(
 
     if (clampedProgress === 100) {
       updateData.status = "done";
-    } else if (clampedProgress > 0 && clampedProgress < 100) {
-      // If was todo/backlog, automatically shift to in_progress
-      if (current && (current.status === "todo" || current.status === "backlog")) {
+    } else if (clampedProgress < 100) {
+      if (current?.status === "done") {
+        updateData.status = current.qa_staff_id ? "in_review" : "in_progress";
+      } else if (clampedProgress > 0 && (current?.status === "todo" || current?.status === "backlog")) {
         updateData.status = "in_progress";
       }
     }
@@ -2748,17 +2779,28 @@ export async function saveTaskWeeklySnapshot(
       ? task.weekly_snapshots
       : {};
 
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const weekKey = `s${week}`;
+    const roundedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+    const currentMonthSnapshots = currentSnapshots[monthKey] && typeof currentSnapshots[monthKey] === "object"
+      ? currentSnapshots[monthKey]
+      : {};
+
     const nextSnapshots = {
       ...currentSnapshots,
-      [weekKey]: Math.max(0, Math.min(100, Math.round(progress))),
+      [weekKey]: roundedProgress,
+      [monthKey]: {
+        ...currentMonthSnapshots,
+        [weekKey]: roundedProgress,
+      },
     };
 
     const { error: updateErr } = await supabaseAdmin
       .from("task_items")
       .update({
         weekly_snapshots: nextSnapshots,
-        updated_at: new Date().toISOString(),
       })
       .eq("id", taskId);
 
