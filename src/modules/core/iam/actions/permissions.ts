@@ -57,6 +57,7 @@ export const PERMISSIONS = {
         MANAGE_BILLING: 'org.billing.manage',
         MANAGE_ROLES: 'org.roles.manage',
         MANAGE_SETTINGS: 'org.settings.manage',
+        MANAGE_INTEGRATIONS: 'org.integrations.manage',
         VIEW_AUDIT_LOGS: 'org.audit.view',
     }
 } as const;
@@ -142,6 +143,7 @@ export const PERMISSION_GROUPS = [
             { id: PERMISSIONS.ORG.MANAGE_ROLES, label: 'Gestionar Roles', description: 'Crear y editar roles personalizados' },
             { id: PERMISSIONS.ORG.MANAGE_BILLING, label: 'Administrar Suscripción', description: 'Gestionar planes y métodos de pago' },
             { id: PERMISSIONS.ORG.MANAGE_SETTINGS, label: 'Gestionar Configuración', description: 'Acceso general al portal de configuración de la organización' },
+            { id: PERMISSIONS.ORG.MANAGE_INTEGRATIONS, label: 'Gestionar Integraciones', description: 'Instalar, configurar y revocar integraciones externas' },
             { id: PERMISSIONS.OPERATIONS.BRANDING_MANAGE, label: 'Gestionar Marca Blanca', description: 'Configurar logotipos y colores corporativos' },
         ]
     },

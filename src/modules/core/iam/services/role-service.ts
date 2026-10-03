@@ -245,6 +245,8 @@ export async function seedDefaultRoles(orgId: string) {
                 [PERMISSIONS.ORG.MANAGE_MEMBERS]: true,
                 [PERMISSIONS.ORG.MANAGE_ROLES]: true,
                 [PERMISSIONS.ORG.MANAGE_BILLING]: true,
+                [PERMISSIONS.ORG.MANAGE_SETTINGS]: true,
+                [PERMISSIONS.ORG.MANAGE_INTEGRATIONS]: true,
                 [PERMISSIONS.ORG.VIEW_AUDIT_LOGS]: true,
 
                 // Standard Modules

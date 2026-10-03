@@ -11,6 +11,7 @@ import { activateMetaChannel } from "@/modules/infrastructure/integrations/marke
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
+import { DynamicIntegrationSheet } from "./dynamic-integration-sheet"
 import {
     Sheet,
     SheetContent,
@@ -46,6 +47,20 @@ export function IntegrationSetupSheet({
     onOpenChange
 }: IntegrationSetupSheetProps) {
     const router = useRouter()
+
+    // Route non-Meta schema-based providers (like Bitbucket) to DynamicIntegrationSheet
+    if (provider && provider.key !== 'meta_business') {
+        return (
+            <DynamicIntegrationSheet
+                provider={provider}
+                existingConnection={existingConnection}
+                isOpen={isOpen}
+                onOpenChange={onOpenChange}
+                onSuccess={() => router.refresh()}
+            />
+        )
+    }
+
     const [isLoading, setIsLoading] = useState(false)
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [activating, setActivating] = useState(false)

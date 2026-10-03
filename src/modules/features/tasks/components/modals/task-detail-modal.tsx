@@ -23,6 +23,9 @@ import {
   AlertCircle,
   Ban,
   Lock,
+  GitBranch,
+  Copy,
+  Check,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -35,7 +38,7 @@ import type {
   TaskAttachment,
   RecurrenceInterval,
 } from "../../types"
-import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, resolveCollaboratorCapabilities } from "../../types"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { TaskMeetingConsole } from "../meetings/task-meeting-console"
@@ -44,6 +47,8 @@ import { TaskChecklistEditor } from "../detail/task-checklist-editor"
 import { TaskAttachmentsSection } from "../detail/task-attachments-section"
 import { TaskDiscussionFeed } from "../detail/task-discussion-feed"
 import { TaskTimeCompactStrip } from "../detail/task-time-compact-strip"
+import { TaskVcsContainer } from "../detail/task-vcs-container"
+import { generateGitBranchName } from "../../types/vcs"
 import {
   updateTask,
   deleteTask,
@@ -133,6 +138,7 @@ export function TaskDetailModal({
   const [comments, setComments] = useState<TaskComment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [hasCopiedGitBranch, setHasCopiedGitBranch] = useState(false)
 
   // Sync state when task changes
   useEffect(() => {
@@ -492,6 +498,39 @@ export function TaskDetailModal({
     }
   }
 
+  const handleCopyGitBranch = () => {
+    if (!task) return
+    const branchName = generateGitBranchName(task.ticket_code, title || task.title)
+    const branchCmd = `git checkout -b ${branchName}`
+    navigator.clipboard.writeText(branchCmd)
+    setHasCopiedGitBranch(true)
+    setTimeout(() => setHasCopiedGitBranch(false), 2000)
+    toast.success("Comando git copiado", {
+      description: branchCmd,
+    })
+  }
+
+  const isVcsProject =
+    task.project?.settings?.vcs?.enabled !== false &&
+    Boolean(
+      task.project?.settings?.vcs?.enabled ||
+        task.project?.settings?.vcs?.repository ||
+        (Array.isArray(task.project?.settings?.vcs?.repositories) && task.project.settings.vcs.repositories.length > 0) ||
+        (task.project as any)?.workspace?.settings?.vcs?.enabled ||
+        (Array.isArray((task.project as any)?.workspace?.settings?.vcs?.repositories) && (task.project as any).workspace.settings.vcs.repositories.length > 0) ||
+        task.vcs_links?.length
+    )
+
+  const activeCollaborator = currentStaffId
+    ? collaborators.find((c) => c.id === currentStaffId) || null
+    : null
+
+  const activeCapabilities = activeCollaborator
+    ? resolveCollaboratorCapabilities(activeCollaborator)
+    : (isLeadOrPm ? { vcs_code: true, design_preview: true, monitoring: true, finance_costs: true } : null)
+
+  const canViewVcs = activeCapabilities ? activeCapabilities.vcs_code !== false : isLeadOrPm
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -511,13 +550,36 @@ export function TaskDetailModal({
 
           {/* Header Jira Style */}
           <div className="p-4 sm:p-6 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <Badge
                 variant="outline"
                 className="font-mono text-xs font-bold px-3 py-1 bg-primary/10 text-primary border border-primary/25 rounded-lg whitespace-nowrap shrink-0 shadow-xs tracking-wide"
               >
                 {task.ticket_code}
               </Badge>
+              {isVcsProject && canViewVcs && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyGitBranch}
+                  title="Copiar comando git checkout de rama para esta tarea"
+                  className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground gap-1.5 border-border/60 hover:bg-muted/40 rounded-lg shrink-0 cursor-pointer"
+                >
+                  {hasCopiedGitBranch ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span className="text-[11px] text-emerald-600 font-medium">¡Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <GitBranch className="w-3 h-3 text-blue-500" />
+                      <span className="text-[11px] hidden sm:inline">Rama Git</span>
+                      <Copy className="w-2.5 h-2.5 opacity-60" />
+                    </>
+                  )}
+                </Button>
+              )}
               <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
                 <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
                 {task.project?.name || "Proyecto"}
@@ -703,6 +765,14 @@ export function TaskDetailModal({
                 onTriggerFileUpload={() => fileInputRef.current?.click()}
                 onAddAttachment={handleAddAttachment}
                 onRemoveAttachment={handleRemoveAttachment}
+              />
+
+              {/* Modular Version Control System (VCS / Git) Section */}
+              <TaskVcsContainer
+                task={task}
+                project={task.project}
+                currentCollaborator={activeCollaborator}
+                currentUserCapabilities={activeCapabilities}
               />
 
               {/* Modular Discussion Feed with Mentions and Staged Files */}

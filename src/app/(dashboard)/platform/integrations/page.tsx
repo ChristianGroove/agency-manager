@@ -1,20 +1,33 @@
 import { Suspense } from "react"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { hasRole } from "@/modules/core/iam/services/org-roles"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { Loader2 } from "lucide-react"
 import { MarketplacePage } from "@/modules/infrastructure/integrations/marketplace/components/marketplace-page"
 import { getMarketplaceProviders, getInstalledIntegrations } from "@/modules/infrastructure/integrations/marketplace/marketplace-actions"
 import { getAICredentials, getAIProviders, getTenantAIGovernanceContext } from "@/modules/infrastructure/ai-engine/actions"
 
 export default async function Page() {
-    const [providers, installed, aiCredentials, aiProviders, aiGovernance, canReviewDelivery] = await Promise.all([
+    const [canManageIntegrations, isAdmin] = await Promise.all([
+        hasPermission(PERMISSIONS.ORG.MANAGE_INTEGRATIONS),
+        hasRole('admin')
+    ])
+
+    if (!canManageIntegrations && !isAdmin) {
+        redirect('/dashboard?error=unauthorized')
+    }
+
+    const [providers, installed, aiCredentials, aiProviders, aiGovernance] = await Promise.all([
         getMarketplaceProviders(),
         getInstalledIntegrations(),
         getAICredentials(),
         getAIProviders(),
         getTenantAIGovernanceContext(),
-        hasRole('admin')
     ])
+
+    const canReviewDelivery = isAdmin
 
     return (
         <>

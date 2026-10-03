@@ -233,6 +233,7 @@ import { trashCleanup } from "@/inngest/trash-cleanup";
 import { processMetaWebhook } from '@/inngest/meta-messaging';
 import { processMetaOutbound, sweepMetaOutbound } from '@/inngest/meta-outbox';
 import { expireMetaCoexistenceOnboarding } from '@/inngest/meta-coexistence';
+import { processVcsBitbucketEvent } from '@/inngest/vcs-bitbucket';
 
 export const functions = [
     processMetaWebhook,
@@ -247,7 +248,8 @@ export const functions = [
     clientInvoicingAutomation,
     processIncomingMessage,
     processStripeWebhook,
-    trashCleanup
+    trashCleanup,
+    processVcsBitbucketEvent
 ];
 
 

@@ -18,10 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Globe, Trash2, Loader2, Users, ShieldAlert, Sparkles, Headset } from "lucide-react"
+import { Globe, Trash2, Loader2, Users, ShieldAlert, Sparkles, Headset, GitBranch, Plus, X, ChevronDown, ChevronUp, Zap } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import type { TaskWorkspace, TaskCollaborator } from "../../types"
 import { createWorkspace, updateWorkspace, deleteWorkspace } from "../../actions/task-actions"
+import { getBitbucketRepositoriesAction } from "../../actions/task-vcs-actions"
+import { DynamicIntegrationSheet } from "@/modules/infrastructure/integrations/marketplace/components/dynamic-integration-sheet"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -70,6 +73,29 @@ export function WorkspaceFormModal({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // VCS / Git Integration State
+  const [vcsEnabled, setVcsEnabled] = useState(false)
+  const [vcsRepositories, setVcsRepositories] = useState<string[]>([])
+  const [newRepoInput, setNewRepoInput] = useState("")
+  const [showVcsSection, setShowVcsSection] = useState(false)
+  const [availableRepos, setAvailableRepos] = useState<Array<{ full_name: string; name: string }>>([])
+  const [isVcsConnected, setIsVcsConnected] = useState(false)
+  const [canManageIntegrations, setCanManageIntegrations] = useState(false)
+  const [isBitbucketSheetOpen, setIsBitbucketSheetOpen] = useState(false)
+
+  const refreshVcs = async () => {
+    try {
+      const res = await getBitbucketRepositoriesAction()
+      setIsVcsConnected(res.connected)
+      setAvailableRepos(res.repositories || [])
+      if (res.canManageIntegrations !== undefined) {
+        setCanManageIntegrations(res.canManageIntegrations)
+      }
+    } catch {
+      // silently fallback
+    }
+  }
+
   useEffect(() => {
     if (isOpen) {
       setIsConfirmingDelete(false)
@@ -82,6 +108,20 @@ export function WorkspaceFormModal({
         setParallelTeamEnabled(workspaceToEdit.parallel_team_enabled ?? false)
         setSlaFirstResponse(workspaceToEdit.support_config?.sla_first_response_hours ?? 24)
         setSlaResolution(workspaceToEdit.support_config?.sla_resolution_hours ?? 72)
+
+        const vcs = workspaceToEdit.settings?.vcs
+        if (vcs) {
+          setVcsEnabled(vcs.enabled !== false)
+          const repos = Array.isArray(vcs.repositories)
+            ? vcs.repositories
+            : (vcs.repository ? [vcs.repository] : [])
+          setVcsRepositories(repos)
+          setShowVcsSection(Boolean(vcs.enabled || repos.length > 0))
+        } else {
+          setVcsEnabled(false)
+          setVcsRepositories([])
+          setShowVcsSection(false)
+        }
       } else {
         setName("")
         setKeyPrefix("WEB")
@@ -90,13 +130,31 @@ export function WorkspaceFormModal({
         setParallelTeamEnabled(false)
         setSlaFirstResponse(24)
         setSlaResolution(72)
+        setVcsEnabled(false)
+        setVcsRepositories([])
+        setShowVcsSection(false)
         const defaultLead = collaborators.find(
           (c) => c.task_role === "pm" || c.role?.toLowerCase().includes("gestor")
         )
         setLeadStaffId(defaultLead ? defaultLead.id : "unassigned")
       }
+
+      refreshVcs()
     }
   }, [isOpen, workspaceToEdit, collaborators])
+
+  const handleAddRepository = (repoSlug: string) => {
+    const clean = repoSlug.trim().toLowerCase()
+    if (!clean) return
+    if (!vcsRepositories.includes(clean)) {
+      setVcsRepositories((prev) => [...prev, clean])
+    }
+    setNewRepoInput("")
+  }
+
+  const handleRemoveRepository = (repoSlug: string) => {
+    setVcsRepositories((prev) => prev.filter((r) => r !== repoSlug))
+  }
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -117,6 +175,23 @@ export function WorkspaceFormModal({
         sla_resolution_hours: Number(slaResolution) || 72,
       }
 
+      const currentSettings = workspaceToEdit?.settings || {}
+      const vcsConfig = vcsEnabled ? {
+        enabled: true,
+        provider: 'bitbucket' as const,
+        repositories: vcsRepositories,
+        repository: vcsRepositories[0] || undefined,
+        default_branch: 'main'
+      } : {
+        enabled: false,
+        repositories: [],
+      }
+
+      const updatedSettings = {
+        ...currentSettings,
+        vcs: vcsConfig
+      }
+
       if (isEditing && workspaceToEdit) {
         const res = await updateWorkspace(workspaceToEdit.id, {
           name: name.trim(),
@@ -126,6 +201,7 @@ export function WorkspaceFormModal({
           lead_staff_id: leadStaffId === "unassigned" ? null : leadStaffId,
           parallel_team_enabled: parallelTeamEnabled,
           support_config: supportConfig,
+          settings: updatedSettings,
         })
 
         if (res.success && res.workspace) {
@@ -144,6 +220,7 @@ export function WorkspaceFormModal({
           lead_staff_id: leadStaffId === "unassigned" ? null : leadStaffId,
           parallel_team_enabled: parallelTeamEnabled,
           support_config: supportConfig,
+          settings: updatedSettings,
         })
 
         if (res.success && res.workspace) {
@@ -183,6 +260,7 @@ export function WorkspaceFormModal({
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg w-full">
         <DialogHeader>
@@ -385,6 +463,172 @@ export function WorkspaceFormModal({
               )}
             </div>
 
+            {/* Control de Versiones Git (Repositorios del Espacio) */}
+            <div className="rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowVcsSection((prev) => !prev)}
+                className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs font-semibold text-foreground/90 hover:bg-muted/20 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Control de Versiones Git (Repositorios del Espacio)</span>
+                  {vcsEnabled && vcsRepositories.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] font-mono bg-blue-500/10 text-blue-600 border-blue-500/20 py-0 h-4">
+                      {vcsRepositories.length} repo{vcsRepositories.length > 1 ? "s" : ""}
+                    </Badge>
+                  )}
+                </div>
+                {showVcsSection ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </button>
+
+              {showVcsSection && (
+                <div className="p-3.5 pt-2 border-t border-border/40 space-y-3 bg-background/50 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-medium text-foreground block">
+                        Habilitar repositorios a nivel de Espacio
+                      </span>
+                      <span className="text-[11px] text-muted-foreground block">
+                        Todos los proyectos y tickets de este espacio heredarán estos repositorios automáticamente.
+                      </span>
+                    </div>
+                    <Switch checked={vcsEnabled} onCheckedChange={setVcsEnabled} />
+                  </div>
+
+                  {vcsEnabled && (
+                    <div className="space-y-3 pt-2.5 border-t border-border/30">
+                      {!isVcsConnected ? (
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-2.5">
+                          <div className="flex items-start gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                              <GitBranch className="w-4 h-4" />
+                            </div>
+                            <div className="space-y-1 flex-1">
+                              <p className="text-xs font-semibold text-foreground">
+                                Bitbucket no está conectado
+                              </p>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                {canManageIntegrations
+                                  ? "Conecta tu espacio de trabajo de Bitbucket para sincronizar ramas, commits y pull requests automáticamente en este espacio y sus proyectos."
+                                  : "El control de versiones no está conectado en esta organización. Contacta a un administrador para vincular la cuenta de Bitbucket."}
+                              </p>
+                            </div>
+                          </div>
+
+                          {canManageIntegrations && (
+                            <div className="flex justify-end pt-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => setIsBitbucketSheetOpen(true)}
+                                className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium gap-1.5 shadow-sm cursor-pointer"
+                              >
+                                <Zap className="w-3.5 h-3.5" />
+                                <span>⚡ Conectar Bitbucket</span>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                            Agregar Repositorio (Bitbucket / Git)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {availableRepos.length > 0 ? (
+                              <Select
+                                value=""
+                                onValueChange={(val) => {
+                                  if (val) handleAddRepository(val)
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs font-mono flex-1">
+                                  <SelectValue placeholder="Seleccionar repositorio conectado..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableRepos.map((repo) => (
+                                    <SelectItem
+                                      key={repo.full_name}
+                                      value={repo.full_name}
+                                      disabled={vcsRepositories.includes(repo.full_name.toLowerCase())}
+                                      className="font-mono text-xs"
+                                    >
+                                      {repo.full_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                value={newRepoInput}
+                                onChange={(e) => setNewRepoInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault()
+                                    handleAddRepository(newRepoInput)
+                                  }
+                                }}
+                                placeholder="mi-empresa/frontend o mi-empresa/backend-api"
+                                className="h-8 text-xs font-mono flex-1"
+                              />
+                            )}
+
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleAddRepository(newRepoInput)}
+                              className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Agregar</span>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Repositories Tag List */}
+                      {vcsRepositories.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                            Repositorios Vinculados ({vcsRepositories.length})
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {vcsRepositories.map((repo) => (
+                              <div
+                                key={repo}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 font-mono text-[11px]"
+                              >
+                                <GitBranch className="w-3 h-3 text-blue-500 shrink-0" />
+                                <span>{repo}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveRepository(repo)}
+                                  className="text-muted-foreground hover:text-destructive p-0.5 transition-colors cursor-pointer"
+                                  title="Quitar repositorio"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          No hay repositorios configurados aún para este espacio.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Color Picker */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
@@ -459,5 +703,16 @@ export function WorkspaceFormModal({
         )}
       </DialogContent>
     </Dialog>
+
+    <DynamicIntegrationSheet
+      providerKey="bitbucket"
+      provider={null}
+      isOpen={isBitbucketSheetOpen}
+      onOpenChange={setIsBitbucketSheetOpen}
+      onSuccess={() => {
+        refreshVcs()
+      }}
+    />
+    </>
   )
 }

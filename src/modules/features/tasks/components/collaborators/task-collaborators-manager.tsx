@@ -20,6 +20,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover"
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -66,7 +71,8 @@ import {
   ShieldAlert,
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import type { TaskCollaborator, CollaboratorRole, TaskWorkspace } from "../../types"
+import type { TaskCollaborator, CollaboratorRole, TaskWorkspace, CollaboratorCapabilities } from "../../types"
+import { resolveCollaboratorCapabilities } from "../../types"
 import {
   createCollaborator,
   updateCollaborator,
@@ -88,7 +94,7 @@ interface TaskCollaboratorsManagerProps {
   onCollaboratorDeleted?: (collabId: string) => void
 }
 
-function AvatarUploader({
+function AvatarPickerPopover({
   photoUrl,
   firstName,
   lastName,
@@ -105,17 +111,22 @@ function AvatarUploader({
   onRemove: () => void
   onSelectPreset: (url: string) => void
 }) {
+  const [open, setOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       onUpload(file)
+      setOpen(false)
     }
   }
 
+  const hasPhoto = photoUrl && photoUrl.trim() !== ""
+  const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "?"
+
   return (
-    <div className="p-3.5 sm:p-4 rounded-2xl bg-muted/30 border border-border/60">
+    <div className="flex flex-col items-center justify-center shrink-0 self-center">
       <input
         type="file"
         ref={fileInputRef}
@@ -123,122 +134,169 @@ function AvatarUploader({
         accept="image/png,image/jpeg,image/webp,image/jpg"
         className="hidden"
       />
-      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
-        {/* Left Column: Round Preview Avatar or Empty Transparent Container */}
-        <div className="flex flex-col items-center shrink-0">
-          <div className="relative">
-            <TooltipProvider delayDuration={150}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      "relative group cursor-pointer shrink-0 rounded-full transition-all duration-200",
-                      "w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center overflow-hidden",
-                      photoUrl && photoUrl.trim() !== ""
-                        ? "border-2 border-primary/30 shadow-md bg-transparent"
-                        : "border-2 border-dashed border-border/80 hover:border-primary/60 bg-transparent"
-                    )}
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label={photoUrl ? "Clic para cambiar foto" : "Clic para subir foto"}
-                  >
-                    {photoUrl && photoUrl.trim() !== "" ? (
-                      <>
-                        <img
-                          src={photoUrl}
-                          alt="Avatar seleccionado"
-                          className="w-full h-full object-cover pointer-events-none select-none rounded-full"
-                        />
-                        <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
-                          {isUploading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <Camera className="w-5 h-5" />
-                          )}
-                        </div>
-                      </>
+      <div className="relative">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "relative group rounded-full transition-all duration-200 cursor-pointer select-none",
+                "w-20 h-20 sm:w-22 sm:h-22 flex items-center justify-center overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs",
+                hasPhoto
+                  ? "border-2 border-primary/30 hover:border-primary shadow-sm bg-transparent"
+                  : "border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/30 hover:bg-muted/50"
+              )}
+              aria-label={hasPhoto ? "Clic para cambiar avatar" : "Clic para seleccionar avatar"}
+            >
+              {hasPhoto ? (
+                <>
+                  <img
+                    src={photoUrl}
+                    alt="Avatar seleccionado"
+                    className="w-full h-full object-cover pointer-events-none select-none"
+                  />
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium gap-1">
+                    {isUploading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-muted-foreground/45 group-hover:text-primary transition-colors">
-                        {isUploading ? (
-                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        ) : (
-                          <>
-                            <Camera className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                            <span className="text-[10px] font-medium mt-1">Subir</span>
-                          </>
-                        )}
-                      </div>
+                      <>
+                        <Camera className="w-4 h-4" />
+                        <span>Cambiar</span>
+                      </>
                     )}
                   </div>
-                </TooltipTrigger>
-                <TooltipContent className="rounded-xl text-xs">
-                  {photoUrl ? "Clic para cambiar foto" : "Clic para subir foto"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-muted-foreground/60 group-hover:text-primary transition-colors gap-1">
+                  {isUploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  ) : (
+                    <>
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-semibold text-foreground/80">Avatar</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </button>
+          </PopoverTrigger>
 
-            {/* Canequita sutil en la esquina superior derecha solo cuando hay foto activa */}
-            {photoUrl && photoUrl.trim() !== "" && (
-              <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onRemove()
-                      }}
-                      disabled={isUploading}
-                      className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-background text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-border/80 hover:border-rose-200 dark:hover:border-rose-900/60 shadow-xs flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
-                      aria-label="Quitar foto"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="rounded-lg text-xs py-1 px-2">
+          <PopoverContent
+            side="right"
+            align="start"
+            sideOffset={10}
+            className="w-80 p-3.5 space-y-3 rounded-2xl shadow-xl border border-border/80 bg-popover z-[100]"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-primary" />
+                  Avatar del Colaborador
+                </span>
+                {hasPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRemove()
+                      setOpen(false)
+                    }}
+                    className="text-[10px] text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
                     Quitar foto
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                Sube una imagen personalizada o elige una ilustración prediseñada:
+              </p>
+            </div>
 
-        {/* Right side: Selector de avatares en 2 filas */}
-        <div className="flex-1 space-y-2 w-full min-w-0">
-          <span className="text-xs font-semibold text-foreground block">
-            Selecciona un avatar:
-          </span>
-          <div className="grid grid-cols-7 sm:grid-cols-10 gap-1 sm:gap-1.5">
-            {TASK_PACK_AVATARS.map((preset, idx) => {
-              const isSelected = photoUrl === preset
-              return (
+            {/* Subir archivo */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-8 text-xs font-medium gap-2 border-border/80 hover:bg-primary/5 hover:text-primary hover:border-primary/40 cursor-pointer"
+            >
+              {isUploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+              ) : (
+                <Upload className="w-3.5 h-3.5 text-primary" />
+              )}
+              <span>Subir imagen desde equipo</span>
+            </Button>
+
+            {/* Presets Grid */}
+            <div className="space-y-1.5 pt-1.5 border-t border-border/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Ilustraciones Disponibles
+              </span>
+              <div className="grid grid-cols-7 gap-1.5 p-1 bg-muted/20 rounded-xl border border-border/40 max-h-36 overflow-y-auto">
+                {TASK_PACK_AVATARS.map((preset, idx) => {
+                  const isSelected = photoUrl === preset
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        onSelectPreset(preset)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        "relative p-1 rounded-xl transition-all duration-150 select-none cursor-pointer flex items-center justify-center",
+                        isSelected
+                          ? "scale-105 ring-2 ring-primary bg-primary/10 shadow-xs"
+                          : "opacity-75 hover:opacity-100 hover:scale-110 hover:bg-muted/50"
+                      )}
+                      title={`Ilustración ${idx + 1}`}
+                    >
+                      <img
+                        src={preset}
+                        alt={`Avatar ${idx + 1}`}
+                        className="w-7 h-7 object-contain drop-shadow-xs pointer-events-none"
+                      />
+                      {isSelected && (
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-primary text-primary-foreground rounded-full p-0.5 shadow-xs">
+                          <Check className="w-2 h-2 font-bold" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Canequita rápida en la esquina superior cuando hay foto activa */}
+        {hasPhoto && (
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button
-                  key={idx}
                   type="button"
-                  onClick={() => onSelectPreset(preset)}
-                  className={cn(
-                    "relative transition-all duration-150 ease-out active:scale-95 p-1 rounded-xl select-none cursor-pointer flex items-center justify-center",
-                    isSelected
-                      ? "scale-110 ring-2 ring-primary ring-offset-2 dark:ring-offset-zinc-950 shadow-sm bg-primary/10"
-                      : "opacity-75 hover:opacity-100 hover:scale-110 hover:-translate-y-0.5"
-                  )}
-                  title={`Avatar ${idx + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemove()
+                  }}
+                  disabled={isUploading}
+                  className="absolute -top-1 -right-1 z-20 w-6 h-6 rounded-full bg-background text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-border/80 hover:border-rose-200 dark:hover:border-rose-900/60 shadow-xs flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
+                  aria-label="Quitar foto"
                 >
-                  <img
-                    src={preset}
-                    alt={`Avatar ${idx + 1}`}
-                    className="w-7 h-7 sm:w-8 sm:h-8 object-contain drop-shadow-xs pointer-events-none"
-                  />
-                  {isSelected && (
-                    <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5 shadow-sm">
-                      <Check className="w-2.5 h-2.5 font-bold" />
-                    </div>
-                  )}
+                  <Trash2 className="w-3 h-3" />
                 </button>
-              )
-            })}
-          </div>
-        </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="rounded-lg text-xs py-1 px-2">
+                Quitar foto
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
     </div>
   )
@@ -269,6 +327,9 @@ export function TaskCollaboratorsManager({
   const [hasGlobalAccess, setHasGlobalAccess] = useState(true)
   const [selectedWorkspaceIds, setSelectedWorkspaceIds] = useState<string[]>([])
   const [canBulkDelete, setCanBulkDelete] = useState(false)
+  const [capabilities, setCapabilities] = useState<CollaboratorCapabilities>(() =>
+    resolveCollaboratorCapabilities({ task_role: "specialist" })
+  )
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false)
 
@@ -281,6 +342,9 @@ export function TaskCollaboratorsManager({
   const [editPhone, setEditPhone] = useState("")
   const [editRole, setEditRole] = useState<string>("")
   const [editTaskRole, setEditTaskRole] = useState<CollaboratorRole>("developer")
+  const [editCapabilities, setEditCapabilities] = useState<CollaboratorCapabilities>(() =>
+    resolveCollaboratorCapabilities({ task_role: "developer" })
+  )
   const [editPhotoUrl, setEditPhotoUrl] = useState<string>("")
   const [editHasGlobalAccess, setEditHasGlobalAccess] = useState(true)
   const [editSelectedWorkspaceIds, setEditSelectedWorkspaceIds] = useState<string[]>([])
@@ -457,6 +521,10 @@ export function TaskCollaboratorsManager({
       return
     }
 
+    const effectiveCapabilities = taskRole === "support"
+      ? { vcs_code: false, design_preview: false, monitoring: false, finance_costs: false }
+      : capabilities
+
     setIsSubmittingCreate(true)
     try {
       const res = await createCollaborator({
@@ -470,6 +538,8 @@ export function TaskCollaboratorsManager({
         workspaceIds: hasGlobalAccess ? [] : selectedWorkspaceIds,
         hasGlobalWorkspaceAccess: hasGlobalAccess,
         canBulkDeleteTasks: canBulkDelete,
+        capabilities: effectiveCapabilities,
+        settings: { capabilities: effectiveCapabilities },
       })
 
       if (res.success && res.collaborator) {
@@ -485,6 +555,7 @@ export function TaskCollaboratorsManager({
         setHasGlobalAccess(true)
         setSelectedWorkspaceIds([])
         setCanBulkDelete(false)
+        setCapabilities(resolveCollaboratorCapabilities({ task_role: "specialist" }))
       } else {
         toast.error(res.error || "Error al crear colaborador")
       }
@@ -503,6 +574,8 @@ export function TaskCollaboratorsManager({
     setEditPhone(collab.phone || "")
     setEditRole(collab.role || "Colaborador")
     setEditTaskRole(collab.task_role || "specialist")
+    const initialCaps = resolveCollaboratorCapabilities(collab)
+    setEditCapabilities(initialCaps)
     setEditPhotoUrl(collab.photo_url || "")
     setEditIsActive(collab.is_active ?? true)
     setEditHasGlobalAccess(collab.has_global_workspace_access ?? true)
@@ -517,6 +590,10 @@ export function TaskCollaboratorsManager({
       toast.error("Por favor completa el nombre y apellido")
       return
     }
+
+    const effectiveEditCapabilities = editTaskRole === "support"
+      ? { vcs_code: false, design_preview: false, monitoring: false, finance_costs: false }
+      : editCapabilities
 
     setIsSubmittingEdit(true)
     try {
@@ -533,6 +610,11 @@ export function TaskCollaboratorsManager({
         workspaceIds: editHasGlobalAccess ? [] : editSelectedWorkspaceIds,
         hasGlobalWorkspaceAccess: editHasGlobalAccess,
         canBulkDeleteTasks: editCanBulkDelete,
+        capabilities: effectiveEditCapabilities,
+        settings: {
+          ...(editingCollab.settings || {}),
+          capabilities: effectiveEditCapabilities,
+        },
       })
 
       if (res.success && res.collaborator) {
@@ -723,6 +805,36 @@ export function TaskCollaboratorsManager({
                             </span>
                           )}
                         </div>
+                        {/* Capability Lenses Badges */}
+                        <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                          {collab.capabilities?.vcs_code && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.2 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium"
+                              title="Lente de Código y Control de Versiones Activo"
+                            >
+                              <Code2 className="w-2.5 h-2.5" />
+                              Código
+                            </span>
+                          )}
+                          {collab.capabilities?.design_preview && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.2 rounded-md bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20 font-medium"
+                              title="Lente de Diseño e Interfaces Activo"
+                            >
+                              <Palette className="w-2.5 h-2.5" />
+                              Diseño
+                            </span>
+                          )}
+                          {collab.capabilities?.monitoring && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium"
+                              title="Lente de Observabilidad y Telemetría Activo"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              Telemetría
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -885,81 +997,80 @@ export function TaskCollaboratorsManager({
 
       {/* Modal: New Collaborator */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-2xl sm:max-w-2xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
-          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/40 shrink-0">
+        <DialogContent className="max-w-2xl sm:max-w-3xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
+          <DialogHeader className="p-4 sm:p-5 pb-3 border-b border-border/40 shrink-0">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Plus className="w-4 h-4 text-primary" />
               Alta de Nuevo Colaborador
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-            {/* Avatar Uploader */}
-            <AvatarUploader
-              photoUrl={photoUrl}
-              firstName={firstName}
-              lastName={lastName}
-              isUploading={isUploadingPhoto}
-              onUpload={(file) => handleUpload(file, false)}
-              onRemove={() => setPhotoUrl("")}
-              onSelectPreset={(url) => setPhotoUrl(url)}
-            />
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+            {/* Top row: Avatar Invocable Popover + 4 Identity Inputs */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+              <AvatarPickerPopover
+                photoUrl={photoUrl}
+                firstName={firstName}
+                lastName={lastName}
+                isUploading={isUploadingPhoto}
+                onUpload={(file) => handleUpload(file, false)}
+                onRemove={() => setPhotoUrl("")}
+                onSelectPreset={(url) => setPhotoUrl(url)}
+              />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Nombre *
-                </label>
-                <Input
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Ej. Ana"
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Apellido *
-                </label>
-                <Input
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Ej. Martínez"
-                  className="h-9 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Correo Electrónico
-                </label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ana@empresa.com"
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Teléfono / WhatsApp
-                </label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+57 300 123 4567"
-                  className="h-9 text-xs"
-                />
+              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Nombre *
+                  </label>
+                  <Input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ej. Ana"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Apellido *
+                  </label>
+                  <Input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Ej. Martínez"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Correo Electrónico
+                  </label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ana@empresa.com"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Teléfono / WhatsApp
+                  </label>
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+57 300 123 4567"
+                    className="h-8 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Perfil de Tareas + Cargo Visible */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
                   Perfil de Tareas
                 </label>
                 <Select
@@ -979,152 +1090,276 @@ export function TaskCollaboratorsManager({
                       consultant: "Consultor Externo",
                     }
                     setRole(cargoMap[val] || "Colaborador")
+                    setCapabilities(resolveCollaboratorCapabilities({ task_role: val }))
                   }}
                 >
-                  <SelectTrigger className="h-9 text-xs">
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1">
-                        Equipo Operativo (Medido)
-                      </SelectLabel>
-                      <SelectItem value="pm">Gestor de Proyecto</SelectItem>
-                      <SelectItem value="specialist">Especialista</SelectItem>
-                      <SelectItem value="developer">Desarrollador</SelectItem>
-                      <SelectItem value="designer">Diseñador</SelectItem>
-                      <SelectItem value="qa_lead">QA / Tester</SelectItem>
-                      <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
-                      <SelectItem value="operations">Operaciones</SelectItem>
-                      <SelectItem value="consultant">Consultor Externo</SelectItem>
-                      <SelectItem value="observer">Observador</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    <SelectGroup>
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <SelectLabel className="text-[10px] font-bold tracking-wider text-primary uppercase p-0">
-                          Canal Paralelo (Soporte)
-                        </SelectLabel>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[220px] text-[11px] p-2 leading-relaxed">
-                              Los colaboradores de soporte reportan incidencias directamente al PM. No forman parte de la nómina de métricas de sprints ni ritmo semanal.
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                  <SelectContent className="w-[320px] sm:w-[460px] p-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Columna 1: Equipo Técnico & Producto */}
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1 block">
+                          Técnico & Producto
+                        </span>
+                        <SelectItem value="pm" textValue="Gestor de Proyecto" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            <span>Gestor de Proyecto</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="developer" textValue="Desarrollador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Code2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <span>Desarrollador</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="designer" textValue="Diseñador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Palette className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+                            <span>Diseñador</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="qa_lead" textValue="QA / Tester" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span>QA / Tester</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="specialist" textValue="Especialista" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Target className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                            <span>Especialista</span>
+                          </div>
+                        </SelectItem>
                       </div>
-                      <SelectItem value="support" className="font-medium text-foreground">
-                        Soporte / Atención al Cliente
-                      </SelectItem>
-                    </SelectGroup>
+
+                      {/* Columna 2: Operaciones & Canal Paralelo */}
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1 block">
+                          Operaciones & Soporte
+                        </span>
+                        <SelectItem value="operations" textValue="Operaciones" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Settings2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span>Operaciones</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="sales" textValue="Ejecutivo Comercial" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            <span>Ejecutivo Comercial</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="consultant" textValue="Consultor Externo" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                            <span>Consultor Externo</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="observer" textValue="Observador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                            <span>Observador</span>
+                          </div>
+                        </SelectItem>
+                        <div className="pt-1 mt-1 border-t border-border/40">
+                          <SelectItem value="support" textValue="Soporte (Canal Paralelo)" className="text-xs py-1.5 cursor-pointer font-medium text-sky-600 dark:text-sky-400">
+                            <div className="flex items-center gap-2">
+                              <Headset className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                              <span>Soporte (Canal Paralelo)</span>
+                            </div>
+                          </SelectItem>
+                        </div>
+                      </div>
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
                   Cargo Visible
                 </label>
                 <Input
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   placeholder="Ej. Coordinador Senior"
-                  className="h-9 text-xs"
+                  className="h-8 text-xs"
                 />
               </div>
             </div>
 
+            {/* Banners contextuales según rol */}
             {taskRole === "pm" && (
-              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-start gap-2.5">
-                <Briefcase className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Portal de Doble Vista Activo (Gestor de Proyecto / Lead)
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-center gap-2.5">
+                <Briefcase className="w-4 h-4 shrink-0 text-indigo-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Portal de Doble Vista Activo:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Acceso dual a Dashboard Táctico (métricas y sprints de equipo) + Tablero de Gestión.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador tendrá acceso dual en su portal privado: <strong>Dashboard Táctico</strong> (telemetría de sprints y métricas globales del equipo) + <strong>Gestión</strong> (tablero Kanban general, ribbon de miembros, creación de tickets y reasignaciones).
-                  </p>
-                </div>
-              </div>
-            )}
-            {taskRole === "pm" && (
-              <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      Permiso de Eliminación en Masa de Tareas
-                    </span>
-                    <span className="text-[11px] text-muted-foreground block">
-                      Habilita la eliminación en lote de tareas desde la vista de lista de la plataforma.
-                    </span>
-                  </div>
-                  <Switch
-                    checked={canBulkDelete}
-                    onCheckedChange={setCanBulkDelete}
-                  />
                 </div>
               </div>
             )}
             {taskRole === "qa_lead" && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Cola de QA & Validación Activa
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-amber-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Cola de QA & Validación Activa:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Acceso prioritario para auditar y validar entregables antes de certificar pasos a producción.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador tendrá acceso prioritario en su portal para revisar tickets en cola de QA, validar entregables y certificar pasos a UAT / producción.
-                  </p>
                 </div>
               </div>
             )}
             {taskRole === "support" && (
-              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-start gap-2.5">
-                <Headset className="w-4 h-4 shrink-0 mt-0.5 text-sky-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Portal de Canal de Soporte (Equipo Paralelo)
+              <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-center gap-2.5">
+                <Headset className="w-4 h-4 shrink-0 text-sky-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Canal Paralelo de Soporte:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Reporta incidencias directamente al PM. Excluido de métricas de sprints e integraciones técnicas.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador ingresará a un portal especializado para reportar tickets de soporte e incidencias al PM de los espacios autorizados. No aparecerá en la cinta de especialistas ni afectará las métricas de sprints o ritmo semanal del equipo de desarrollo.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Espacios de Trabajo Asignados */}
-            <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-primary" />
-                    {taskRole === "support" ? "Reportar a Todos los Espacios con Canal Activo" : "Acceso Global a Todos los Espacios"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block">
-                    {taskRole === "support"
-                      ? "Permite al colaborador de soporte crear tickets en cualquier espacio de trabajo que tenga el canal de soporte habilitado."
-                      : "Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área."}
-                  </span>
+            {/* Capacidades & Lentes de Integración (Solo equipo operativo, excluido canal paralelo/soporte) */}
+            {taskRole !== "support" && (
+              <div className="space-y-2 p-3 rounded-2xl bg-muted/30 border border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">
+                      Capacidades & Lentes de Integración
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] font-mono border-primary/30 text-primary py-0 h-4">
+                    RBAC
+                  </Badge>
                 </div>
-                <Switch
-                  checked={hasGlobalAccess}
-                  onCheckedChange={setHasGlobalAccess}
-                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Código & Versiones */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                        <Code2 className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={capabilities.vcs_code ?? false}
+                        onCheckedChange={(val) => setCapabilities((prev) => ({ ...prev, vcs_code: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Código & Versiones
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Ramas activas, commits, pull requests y pipelines
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Diseño & UI */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
+                        <Palette className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={capabilities.design_preview ?? false}
+                        onCheckedChange={(val) => setCapabilities((prev) => ({ ...prev, design_preview: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Diseño & Interfaces
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Previsualizaciones interactivas y especificaciones UI
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Observabilidad & Telemetría */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <Eye className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={capabilities.monitoring ?? false}
+                        onCheckedChange={(val) => setCapabilities((prev) => ({ ...prev, monitoring: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Observabilidad & Logs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Incidentes, trazabilidad técnica y monitoreo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Espacios de Trabajo y Permisos */}
+            <div className="space-y-2.5 p-3 rounded-2xl bg-muted/30 border border-border/60">
+              <div className={cn(
+                "grid gap-2",
+                taskRole === "pm" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
+              )}>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-background/60 border border-border/50">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-primary" />
+                      {taskRole === "support" ? "Reportar a Todos los Espacios" : "Acceso Global a Espacios"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block">
+                      {taskRole === "support"
+                        ? "Permite reportar tickets a cualquier espacio con canal activo"
+                        : "Permite gestionar tickets de cualquier área o espacio"}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={hasGlobalAccess}
+                    onCheckedChange={setHasGlobalAccess}
+                  />
+                </div>
+
+                {taskRole === "pm" && (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-background/60 border border-border/50">
+                    <div className="space-y-0.5 pr-2">
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        Eliminación en Masa
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Habilita la eliminación en lote de tareas desde la lista
+                      </span>
+                    </div>
+                    <Switch
+                      checked={canBulkDelete}
+                      onCheckedChange={setCanBulkDelete}
+                    />
+                  </div>
+                )}
               </div>
 
               {!hasGlobalAccess && (
-                <div className="pt-2.5 border-t border-border/40 space-y-2">
+                <div className="pt-2 border-t border-border/40 space-y-1.5">
                   <label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
                     <span>Espacios Permitidos ({selectedWorkspaceIds.length} seleccionados):</span>
                     {workspaces.length === 0 && (
                       <span className="text-destructive text-[10px]">No hay espacios creados</span>
                     )}
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                     {workspaces.map((ws) => {
                       const isSelected = selectedWorkspaceIds.includes(ws.id)
                       const isSupportActive = ws.parallel_team_enabled
@@ -1184,114 +1419,111 @@ export function TaskCollaboratorsManager({
                 </div>
               )}
             </div>
-
-            <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground space-y-1">
-              <span className="font-semibold text-foreground block">
-                Portal Autónomo Autogenerado:
-              </span>
-              Se creará un token de acceso seguro para que el colaborador consulte sus tareas, actualice avances con sliders y participe en discusiones.
-            </div>
           </div>
 
-          <DialogFooter className="p-4 px-6 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateModalOpen(false)}
-              disabled={isSubmittingCreate}
-              className="text-xs cursor-pointer"
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleCreate}
-              disabled={isSubmittingCreate}
-              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-            >
-              {isSubmittingCreate ? "Creando..." : "Crear Colaborador"}
-            </Button>
+          <DialogFooter className="p-3 sm:p-4 px-5 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground hidden sm:inline-block">
+              Se autogenerará un enlace de acceso seguro sin contraseña.
+            </span>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={isSubmittingCreate}
+                className="text-xs h-8 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCreate}
+                disabled={isSubmittingCreate}
+                className="text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                {isSubmittingCreate ? "Creando..." : "Crear Colaborador"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Modal: Edit Collaborator */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl sm:max-w-2xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
-          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/40 shrink-0">
+        <DialogContent className="max-w-2xl sm:max-w-3xl w-full max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
+          <DialogHeader className="p-4 sm:p-5 pb-3 border-b border-border/40 shrink-0">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="w-4 h-4 text-primary" />
               Editar Colaborador
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-            {/* Avatar Uploader */}
-            <AvatarUploader
-              photoUrl={editPhotoUrl}
-              firstName={editFirstName}
-              lastName={editLastName}
-              isUploading={isUploadingEditPhoto}
-              onUpload={(file) => handleUpload(file, true)}
-              onRemove={() => setEditPhotoUrl("")}
-              onSelectPreset={(url) => setEditPhotoUrl(url)}
-            />
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+            {/* Top row: Avatar Invocable Popover + 4 Identity Inputs */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
+              <AvatarPickerPopover
+                photoUrl={editPhotoUrl}
+                firstName={editFirstName}
+                lastName={editLastName}
+                isUploading={isUploadingEditPhoto}
+                onUpload={(file) => handleUpload(file, true)}
+                onRemove={() => setEditPhotoUrl("")}
+                onSelectPreset={(url) => setEditPhotoUrl(url)}
+              />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Nombre *
-                </label>
-                <Input
-                  value={editFirstName}
-                  onChange={(e) => setEditFirstName(e.target.value)}
-                  placeholder="Ej. Ana"
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Apellido *
-                </label>
-                <Input
-                  value={editLastName}
-                  onChange={(e) => setEditLastName(e.target.value)}
-                  placeholder="Ej. Martínez"
-                  className="h-9 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Correo Electrónico
-                </label>
-                <Input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="ana@empresa.com"
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
-                  Teléfono / WhatsApp
-                </label>
-                <Input
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+57 300 123 4567"
-                  className="h-9 text-xs"
-                />
+              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Nombre *
+                  </label>
+                  <Input
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    placeholder="Ej. Ana"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Apellido *
+                  </label>
+                  <Input
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    placeholder="Ej. Martínez"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Correo Electrónico
+                  </label>
+                  <Input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="ana@empresa.com"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Teléfono / WhatsApp
+                  </label>
+                  <Input
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="+57 300 123 4567"
+                    className="h-8 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Perfil de Tareas + Cargo Visible */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
                   Perfil de Tareas
                 </label>
                 <Select
@@ -1311,152 +1543,294 @@ export function TaskCollaboratorsManager({
                       consultant: "Consultor Externo",
                     }
                     setEditRole(cargoMap[val] || "Colaborador")
+                    setEditCapabilities(resolveCollaboratorCapabilities({ task_role: val }))
                   }}
                 >
-                  <SelectTrigger className="h-9 text-xs">
+                  <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1">
-                        Equipo Operativo (Medido)
-                      </SelectLabel>
-                      <SelectItem value="pm">Gestor de Proyecto</SelectItem>
-                      <SelectItem value="specialist">Especialista</SelectItem>
-                      <SelectItem value="developer">Desarrollador</SelectItem>
-                      <SelectItem value="designer">Diseñador</SelectItem>
-                      <SelectItem value="qa_lead">QA / Tester</SelectItem>
-                      <SelectItem value="sales">Ejecutivo Comercial</SelectItem>
-                      <SelectItem value="operations">Operaciones</SelectItem>
-                      <SelectItem value="consultant">Consultor Externo</SelectItem>
-                      <SelectItem value="observer">Observador</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    <SelectGroup>
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <SelectLabel className="text-[10px] font-bold tracking-wider text-primary uppercase p-0">
-                          Canal Paralelo (Soporte)
-                        </SelectLabel>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[220px] text-[11px] p-2 leading-relaxed">
-                              Los colaboradores de soporte reportan incidencias directamente al PM. No forman parte de la nómina de métricas de sprints ni ritmo semanal.
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                  <SelectContent className="w-[320px] sm:w-[460px] p-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Columna 1: Equipo Técnico & Producto */}
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1 block">
+                          Técnico & Producto
+                        </span>
+                        <SelectItem value="pm" textValue="Gestor de Proyecto" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            <span>Gestor de Proyecto</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="developer" textValue="Desarrollador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Code2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <span>Desarrollador</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="designer" textValue="Diseñador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Palette className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+                            <span>Diseñador</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="qa_lead" textValue="QA / Tester" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span>QA / Tester</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="specialist" textValue="Especialista" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Target className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                            <span>Especialista</span>
+                          </div>
+                        </SelectItem>
                       </div>
-                      <SelectItem value="support" className="font-medium text-foreground">
-                        Soporte / Atención al Cliente
-                      </SelectItem>
-                    </SelectGroup>
+
+                      {/* Columna 2: Operaciones & Canal Paralelo */}
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase px-2 py-1 block">
+                          Operaciones & Soporte
+                        </span>
+                        <SelectItem value="operations" textValue="Operaciones" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Settings2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            <span>Operaciones</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="sales" textValue="Ejecutivo Comercial" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            <span>Ejecutivo Comercial</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="consultant" textValue="Consultor Externo" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                            <span>Consultor Externo</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="observer" textValue="Observador" className="text-xs py-1.5 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Eye className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                            <span>Observador</span>
+                          </div>
+                        </SelectItem>
+                        <div className="pt-1 mt-1 border-t border-border/40">
+                          <SelectItem value="support" textValue="Soporte (Canal Paralelo)" className="text-xs py-1.5 cursor-pointer font-medium text-sky-600 dark:text-sky-400">
+                            <div className="flex items-center gap-2">
+                              <Headset className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                              <span>Soporte (Canal Paralelo)</span>
+                            </div>
+                          </SelectItem>
+                        </div>
+                      </div>
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
                   Cargo Visible
                 </label>
                 <Input
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
                   placeholder="Ej. Coordinador Senior"
-                  className="h-9 text-xs"
+                  className="h-8 text-xs"
                 />
               </div>
             </div>
 
+            {/* Banners contextuales según rol */}
             {editTaskRole === "pm" && (
-              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-start gap-2.5">
-                <Briefcase className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Portal de Doble Vista Activo (Gestor de Proyecto / Lead)
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 text-xs flex items-center gap-2.5">
+                <Briefcase className="w-4 h-4 shrink-0 text-indigo-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Portal de Doble Vista Activo:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Acceso dual a Dashboard Táctico (métricas y sprints de equipo) + Tablero de Gestión.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador tiene acceso dual en su portal privado: <strong>Dashboard Táctico</strong> (telemetría de sprints y métricas globales del equipo) + <strong>Gestión</strong> (tablero Kanban general, ribbon de miembros, creación de tickets y reasignaciones).
-                  </p>
-                </div>
-              </div>
-            )}
-            {editTaskRole === "pm" && (
-              <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      Permiso de Eliminación en Masa de Tareas
-                    </span>
-                    <span className="text-[11px] text-muted-foreground block">
-                      Habilita la eliminación en lote de tareas desde la vista de lista de la plataforma.
-                    </span>
-                  </div>
-                  <Switch
-                    checked={editCanBulkDelete}
-                    onCheckedChange={setEditCanBulkDelete}
-                  />
                 </div>
               </div>
             )}
             {editTaskRole === "qa_lead" && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Cola de QA & Validación Activa
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-amber-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Cola de QA & Validación Activa:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Acceso prioritario para auditar y certificar entregables antes de pasos a producción.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador tiene acceso prioritario en su portal para revisar tickets en cola de QA, validar entregables y certificar pasos a UAT / producción.
-                  </p>
                 </div>
               </div>
             )}
             {editTaskRole === "support" && (
-              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-start gap-2.5">
-                <Headset className="w-4 h-4 shrink-0 mt-0.5 text-sky-500" />
-                <div className="space-y-0.5">
-                  <span className="font-bold text-foreground block">
-                    Portal de Canal de Soporte (Equipo Paralelo)
+              <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex items-center gap-2.5">
+                <Headset className="w-4 h-4 shrink-0 text-sky-500" />
+                <div className="leading-tight">
+                  <span className="font-bold text-foreground">Canal Paralelo de Soporte:</span>{" "}
+                  <span className="text-[11px] text-muted-foreground">
+                    Reporta incidencias directamente al PM. Excluido de métricas de sprints e integraciones técnicas.
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Este colaborador ingresará a un portal especializado para reportar tickets de soporte e incidencias al PM de los espacios autorizados. No aparecerá en la cinta de especialistas ni afectará las métricas de sprints o ritmo semanal del equipo de desarrollo.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Espacios de Trabajo Asignados */}
-            <div className="space-y-3 p-3.5 rounded-2xl bg-muted/30 border border-border/60">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-primary" />
-                    {editTaskRole === "support" ? "Reportar a Todos los Espacios con Canal Activo" : "Acceso Global a Todos los Espacios"}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block">
-                    {editTaskRole === "support"
-                      ? "Permite al colaborador de soporte crear tickets en cualquier espacio de trabajo que tenga el canal de soporte habilitado."
-                      : "Permite al colaborador o PM ver y gestionar proyectos y tickets de cualquier área."}
-                  </span>
+            {/* Capacidades & Lentes de Integración en Edit (Solo si no es support) */}
+            {editTaskRole !== "support" && (
+              <div className="space-y-2 p-3 rounded-2xl bg-muted/30 border border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">
+                      Capacidades & Lentes de Integración
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] font-mono border-primary/30 text-primary py-0 h-4">
+                    RBAC
+                  </Badge>
                 </div>
-                <Switch
-                  checked={editHasGlobalAccess}
-                  onCheckedChange={setEditHasGlobalAccess}
-                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Código & Versiones */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                        <Code2 className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={editCapabilities.vcs_code ?? false}
+                        onCheckedChange={(val) => setEditCapabilities((prev) => ({ ...prev, vcs_code: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Código & Versiones
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Ramas activas, commits, pull requests y pipelines
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Diseño & UI */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
+                        <Palette className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={editCapabilities.design_preview ?? false}
+                        onCheckedChange={(val) => setEditCapabilities((prev) => ({ ...prev, design_preview: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Diseño & Interfaces
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Previsualizaciones interactivas y especificaciones UI
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Observabilidad & Telemetría */}
+                  <div className="p-2.5 rounded-xl border border-border/50 bg-background/60 hover:bg-background transition-colors flex flex-col justify-between gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <Eye className="w-3.5 h-3.5" />
+                      </div>
+                      <Switch
+                        checked={editCapabilities.monitoring ?? false}
+                        onCheckedChange={(val) => setEditCapabilities((prev) => ({ ...prev, monitoring: val }))}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        Observabilidad & Logs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Incidentes, trazabilidad técnica y monitoreo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Preferencias de Acceso & Gobernanza */}
+            <div className="space-y-2.5 p-3 rounded-2xl bg-muted/30 border border-border/60">
+              <div className={cn(
+                "grid gap-2",
+                editTaskRole === "pm" ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"
+              )}>
+                {/* Colaborador Activo */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-background/60 border border-border/50">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-xs font-semibold text-foreground block">
+                      Colaborador Activo
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block">
+                      Acceso al portal y asignación de tareas
+                    </span>
+                  </div>
+                  <Switch
+                    checked={editIsActive}
+                    onCheckedChange={setEditIsActive}
+                  />
+                </div>
+
+                {/* Acceso Global */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-background/60 border border-border/50">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-primary" />
+                      {editTaskRole === "support" ? "Reportar a Todos los Espacios" : "Acceso Global"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block">
+                      {editTaskRole === "support"
+                        ? "Reportar en cualquier espacio con soporte activo"
+                        : "Gestionar proyectos de cualquier área"}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={editHasGlobalAccess}
+                    onCheckedChange={setEditHasGlobalAccess}
+                  />
+                </div>
+
+                {/* Si es PM: Eliminación en Masa */}
+                {editTaskRole === "pm" && (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-background/60 border border-border/50">
+                    <div className="space-y-0.5 pr-2">
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        Eliminación Masiva
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight block">
+                        Permite eliminar lotes de tickets
+                      </span>
+                    </div>
+                    <Switch
+                      checked={editCanBulkDelete}
+                      onCheckedChange={setEditCanBulkDelete}
+                    />
+                  </div>
+                )}
               </div>
 
               {!editHasGlobalAccess && (
-                <div className="pt-2.5 border-t border-border/40 space-y-2">
+                <div className="pt-2 border-t border-border/40 space-y-1.5">
                   <label className="text-[11px] font-semibold text-foreground flex items-center justify-between">
                     <span>Espacios Permitidos ({editSelectedWorkspaceIds.length} seleccionados):</span>
                     {workspaces.length === 0 && (
                       <span className="text-destructive text-[10px]">No hay espacios creados</span>
                     )}
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                     {workspaces.map((ws) => {
                       const isSelected = editSelectedWorkspaceIds.includes(ws.id)
                       const isSupportActive = ws.parallel_team_enabled
@@ -1517,30 +1891,14 @@ export function TaskCollaboratorsManager({
               )}
             </div>
 
-            {/* Activo Switch */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/60">
-              <div className="space-y-0.5">
-                <span className="text-xs font-semibold text-foreground block">
-                  Colaborador Activo
-                </span>
-                <span className="text-[11px] text-muted-foreground block">
-                  Permite acceso directo al portal y asignación en proyectos y tareas.
-                </span>
-              </div>
-              <Switch
-                checked={editIsActive}
-                onCheckedChange={setEditIsActive}
-              />
-            </div>
-
-            {/* Seguridad del Portal */}
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/40 border border-border/60">
+            {/* Seguridad del Portal (PIN) */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60">
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-amber-500" />
                   PIN de Acceso al Portal
                 </span>
-                <span className="text-[11px] text-muted-foreground block">
+                <span className="text-[10px] text-muted-foreground block">
                   {editingCollab?.has_pin_code
                     ? "Este colaborador tiene un PIN de 6 dígitos configurado y activo."
                     : "No tiene PIN configurado (acceso directo con enlace)."}
@@ -1557,7 +1915,7 @@ export function TaskCollaboratorsManager({
                     }
                   }}
                   disabled={isSubmittingPinAction}
-                  className="h-8 text-xs text-rose-600 hover:bg-rose-500/10 border-rose-500/30 cursor-pointer"
+                  className="h-7 text-xs text-rose-600 hover:bg-rose-500/10 border-rose-500/30 cursor-pointer"
                 >
                   {isSubmittingPinAction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Restablecer PIN"}
                 </Button>
@@ -1565,7 +1923,7 @@ export function TaskCollaboratorsManager({
             </div>
           </div>
 
-          <DialogFooter className="p-4 px-6 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-between gap-2">
+          <DialogFooter className="p-3 sm:p-4 px-5 border-t border-border/40 bg-muted/20 shrink-0 flex items-center justify-between gap-2">
             <Button
               type="button"
               variant="outline"
@@ -1577,7 +1935,7 @@ export function TaskCollaboratorsManager({
                 }
               }}
               disabled={isSubmittingEdit}
-              className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 hover:border-destructive/60 gap-1.5 px-3 mr-auto cursor-pointer"
+              className="text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 hover:border-destructive/60 gap-1.5 px-3 mr-auto cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
               Eliminar
@@ -1589,7 +1947,7 @@ export function TaskCollaboratorsManager({
                 size="sm"
                 onClick={() => setIsEditModalOpen(false)}
                 disabled={isSubmittingEdit}
-                className="text-xs cursor-pointer"
+                className="text-xs h-8 cursor-pointer"
               >
                 Cancelar
               </Button>
@@ -1597,7 +1955,7 @@ export function TaskCollaboratorsManager({
                 size="sm"
                 onClick={handleUpdate}
                 disabled={isSubmittingEdit}
-                className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                className="text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
               >
                 {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
               </Button>
