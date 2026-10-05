@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import type {
   TaskWorkspace,
   TaskProject,
+  CreateProjectInput,
+  UpdateProjectInput,
   TaskItem,
   TaskComment,
   TaskCollaborator,
@@ -15,6 +17,8 @@ import type {
   TaskPriority,
   TaskType,
   CollaboratorRole,
+  CollaboratorCapabilities,
+  CollaboratorSettings,
   TaskChecklistItem,
   TaskAttachment,
   TaskMeetingAttendee,
@@ -26,6 +30,7 @@ import {
   normalizeTask,
   parseTaskChecklist,
   inferTaskRole,
+  resolveCollaboratorCapabilities,
   isStaffLeadOrPmRole,
   TASK_STATUS_LABELS,
   TASK_PRIORITY_LABELS,
@@ -66,7 +71,7 @@ async function resolveOrgId(providedOrgId?: string): Promise<string> {
 /**
  * Helper to log single-line system audit notes into task_comments with @mentions indexing
  */
-async function logTaskAuditComment(
+export async function logTaskAuditComment(
   orgId: string,
   taskId: string,
   content: string,
@@ -96,7 +101,7 @@ async function logTaskAuditComment(
 /**
  * Automatic unblocker: When a task is marked done, notify and unblock dependent tasks
  */
-async function handleTaskUnblocking(completedTaskId: string, ticketCode: string, title: string): Promise<TaskItem[]> {
+export async function handleTaskUnblocking(completedTaskId: string, ticketCode: string, title: string): Promise<TaskItem[]> {
   try {
     const { data: blockedTasks } = await supabaseAdmin
       .from("task_items")
@@ -136,7 +141,7 @@ async function handleTaskUnblocking(completedTaskId: string, ticketCode: string,
             id, first_name, last_name, photo_url, role
           ),
           project:task_projects!task_items_project_id_fkey(
-            id, name, color
+            id, name, color, settings
           ),
           blocked_by:blocked_by_task_id(
             id, ticket_code, title, status
@@ -161,14 +166,15 @@ async function handleTaskUnblocking(completedTaskId: string, ticketCode: string,
  * - blocked: notifies active PMs/leads with reason
  * - in_progress (when previously blocked): notifies assigned staff and PMs
  */
-async function notifyStakeholdersOnStatusChange(
+export async function notifyStakeholdersOnStatusChange(
   orgId: string,
   taskId: string,
   newStatus: TaskStatus,
   prevStatus: TaskStatus,
   authorName: string = "Sistema",
   currentActorStaffId?: string,
-  blockedReason?: string | null
+  blockedReason?: string | null,
+  customActionDesc?: string
 ) {
   if (newStatus === prevStatus) return;
 
@@ -220,17 +226,19 @@ async function notifyStakeholdersOnStatusChange(
     const newLabel = TASK_STATUS_LABELS[newStatus] || newStatus;
     const oldLabel = TASK_STATUS_LABELS[prevStatus] || prevStatus;
 
-    let actionDesc = `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
+    let actionDesc = customActionDesc || `Estado actualizado a "${newLabel}" (anterior: "${oldLabel}")`;
 
-    if (newStatus === "in_review") {
-      actionDesc = `Requerimiento enviado a Revisión / QA por ${authorName}`;
-    } else if (newStatus === "done") {
-      actionDesc = `Tarea completada exitosamente por ${authorName}`;
-    } else if (newStatus === "blocked") {
-      const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
-      actionDesc = `Tarea bloqueada${reasonText}`;
-    } else if (newStatus === "in_progress" && prevStatus === "blocked") {
-      actionDesc = `Tarea desbloqueada y en progreso`;
+    if (!customActionDesc) {
+      if (newStatus === "in_review") {
+        actionDesc = `Requerimiento enviado a Revisión / QA por ${authorName}`;
+      } else if (newStatus === "done") {
+        actionDesc = `Tarea completada exitosamente por ${authorName}`;
+      } else if (newStatus === "blocked") {
+        const reasonText = blockedReason && blockedReason.trim() ? `: "${blockedReason.trim()}"` : "";
+        actionDesc = `Tarea bloqueada${reasonText}`;
+      } else if (newStatus === "in_progress" && prevStatus === "blocked") {
+        actionDesc = `Tarea desbloqueada y en progreso`;
+      }
     }
 
     const auditContent = actionDesc;
@@ -325,6 +333,7 @@ export async function createWorkspace(data: {
   organization_id?: string;
   parallel_team_enabled?: boolean;
   support_config?: Record<string, any>;
+  settings?: Record<string, any>;
 }): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
   try {
     const orgId = await resolveOrgId(data.organization_id);
@@ -350,6 +359,7 @@ export async function createWorkspace(data: {
         lead_staff_id: data.lead_staff_id || null,
         parallel_team_enabled: data.parallel_team_enabled ?? false,
         support_config: data.support_config ?? {},
+        settings: data.settings ?? {},
       })
       .select(`
         *,
@@ -494,17 +504,9 @@ export async function getProjects(
 /**
  * Create a new task project
  */
-export async function createProject(data: {
-  name: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  workspace_id?: string | null;
-  start_date?: string | null;
-  target_date?: string | null;
-  lead_staff_id?: string | null;
-  organization_id?: string;
-}): Promise<{ success: boolean; project?: TaskProject; error?: string }> {
+export async function createProject(
+  data: CreateProjectInput
+): Promise<{ success: boolean; project?: TaskProject; error?: string }> {
   try {
     const orgId = await resolveOrgId(data.organization_id);
     const slug = data.name
@@ -530,6 +532,7 @@ export async function createProject(data: {
         lead_staff_id: data.lead_staff_id || null,
         start_date: data.start_date || null,
         target_date: data.target_date || null,
+        settings: data.settings || {},
         status: "active"
       })
       .select(`
@@ -558,7 +561,7 @@ export async function createProject(data: {
  */
 export async function updateProject(
   projectId: string,
-  data: Partial<TaskProject>,
+  data: UpdateProjectInput | Partial<TaskProject>,
   orgId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -629,7 +632,7 @@ export async function getTasks(params?: {
         id, first_name, last_name, photo_url, role
       ),
       project:task_projects!task_items_project_id_fkey(
-        id, name, color
+        id, name, color, settings
       ),
       blocked_by:blocked_by_task_id(
         id, ticket_code, title, status
@@ -895,7 +898,7 @@ export async function createTask(
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
@@ -1190,7 +1193,7 @@ export async function updateTask(
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
@@ -1748,7 +1751,7 @@ export async function toggleChecklistItem(
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
@@ -2158,6 +2161,8 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
 
   return (staffList || []).map((s) => {
     const counts = taskCounts.get(s.id) || { total: 0, done: 0 };
+    const taskRole = s.task_role || inferTaskRole(s.role);
+    const staffSettings = (s.settings || {}) as CollaboratorSettings;
     return {
       id: s.id,
       organization_id: s.organization_id,
@@ -2166,7 +2171,7 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       email: s.email,
       phone: s.phone,
       role: s.role,
-      task_role: inferTaskRole(s.role),
+      task_role: taskRole,
       access_token: s.access_token,
       is_active: s.is_active,
       photo_url: s.photo_url,
@@ -2175,8 +2180,14 @@ export async function getCollaborators(orgId?: string): Promise<TaskCollaborator
       workspace_ids: staffWorkspaces.get(s.id) || [],
       assigned_tasks_count: counts.total,
       completed_tasks_count: counts.done,
-      can_bulk_delete_tasks: s.can_bulk_delete_tasks ?? (inferTaskRole(s.role) === "pm"),
+      can_bulk_delete_tasks: s.can_bulk_delete_tasks ?? (taskRole === "pm"),
       has_pin_code: Boolean(s.pin_code),
+      settings: staffSettings,
+      capabilities: resolveCollaboratorCapabilities({
+        role: s.role,
+        task_role: taskRole,
+        settings: staffSettings,
+      }),
     };
   });
 }
@@ -2325,11 +2336,18 @@ export async function createCollaborator(data: {
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
   canBulkDeleteTasks?: boolean;
+  capabilities?: CollaboratorCapabilities;
+  settings?: CollaboratorSettings;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(data.orgId);
     const hasGlobal = data.hasGlobalWorkspaceAccess ?? (data.workspaceIds && data.workspaceIds.length > 0 ? false : true);
+    const resolvedRole = data.taskRole || inferTaskRole(data.role);
+    const staffSettings: CollaboratorSettings = {
+      ...(data.settings || {}),
+      ...(data.capabilities ? { capabilities: data.capabilities } : (data.settings?.capabilities ? { capabilities: data.settings.capabilities } : {})),
+    };
 
     const { data: newStaff, error } = await supabaseAdmin
       .from("organization_staff")
@@ -2340,11 +2358,12 @@ export async function createCollaborator(data: {
         email: data.email || null,
         phone: data.phone || null,
         role: data.role || data.taskRole || "developer",
-        task_role: data.taskRole || inferTaskRole(data.role),
+        task_role: resolvedRole,
         photo_url: data.photoUrl || null,
         has_global_workspace_access: hasGlobal,
         is_active: true,
-        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === "pm")
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (resolvedRole === "pm"),
+        settings: staffSettings,
       })
       .select("*")
       .single();
@@ -2353,7 +2372,7 @@ export async function createCollaborator(data: {
 
     // Sync workspace memberships
     if (data.workspaceIds && data.workspaceIds.length > 0) {
-      const isLead = data.taskRole === 'pm' || (data.role && data.role.toLowerCase().includes('gestor'));
+      const isLead = resolvedRole === 'pm' || (data.role && data.role.toLowerCase().includes('gestor'));
       const membersToInsert = data.workspaceIds.map((wsId) => ({
         organization_id: activeOrgId,
         workspace_id: wsId,
@@ -2374,7 +2393,7 @@ export async function createCollaborator(data: {
         email: newStaff.email,
         phone: newStaff.phone,
         role: newStaff.role,
-        task_role: inferTaskRole(newStaff.role),
+        task_role: resolvedRole,
         access_token: newStaff.access_token,
         is_active: newStaff.is_active,
         photo_url: newStaff.photo_url,
@@ -2383,7 +2402,13 @@ export async function createCollaborator(data: {
         workspace_ids: data.workspaceIds || [],
         assigned_tasks_count: 0,
         completed_tasks_count: 0,
-        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (data.taskRole === 'pm' || inferTaskRole(newStaff.role) === 'pm')
+        can_bulk_delete_tasks: data.canBulkDeleteTasks ?? (resolvedRole === 'pm'),
+        settings: staffSettings,
+        capabilities: resolveCollaboratorCapabilities({
+          role: newStaff.role,
+          task_role: resolvedRole,
+          settings: staffSettings,
+        }),
       }
     };
   } catch (err: any) {
@@ -2408,6 +2433,8 @@ export async function updateCollaborator(data: {
   workspaceIds?: string[];
   hasGlobalWorkspaceAccess?: boolean;
   canBulkDeleteTasks?: boolean;
+  capabilities?: CollaboratorCapabilities;
+  settings?: CollaboratorSettings;
   orgId?: string;
 }): Promise<{ success: boolean; collaborator?: TaskCollaborator; error?: string }> {
   try {
@@ -2436,6 +2463,25 @@ export async function updateCollaborator(data: {
     }
     if (data.canBulkDeleteTasks !== undefined) {
       updatePayload.can_bulk_delete_tasks = data.canBulkDeleteTasks;
+    }
+    if (data.settings !== undefined || data.capabilities !== undefined) {
+      if (data.settings !== undefined) {
+        updatePayload.settings = {
+          ...data.settings,
+          ...(data.capabilities ? { capabilities: data.capabilities } : {}),
+        };
+      } else {
+        const { data: existingStaff } = await supabaseAdmin
+          .from("organization_staff")
+          .select("settings")
+          .eq("id", data.id)
+          .maybeSingle();
+        const existingSettings = (existingStaff?.settings || {}) as CollaboratorSettings;
+        updatePayload.settings = {
+          ...existingSettings,
+          capabilities: data.capabilities,
+        };
+      }
     }
 
     const { data: updatedStaff, error } = await supabaseAdmin
@@ -2476,6 +2522,8 @@ export async function updateCollaborator(data: {
       .eq("organization_id", activeOrgId);
 
     const currentWsIds = (currentMemberships || []).map((m) => m.workspace_id);
+    const staffSettings = (updatedStaff.settings || {}) as CollaboratorSettings;
+    const computedRole = updatedStaff.task_role || inferTaskRole(updatedStaff.role);
 
     revalidatePath("/operations/tasks");
     return {
@@ -2488,7 +2536,7 @@ export async function updateCollaborator(data: {
         email: updatedStaff.email,
         phone: updatedStaff.phone,
         role: updatedStaff.role,
-        task_role: inferTaskRole(updatedStaff.role),
+        task_role: computedRole,
         access_token: updatedStaff.access_token,
         is_active: updatedStaff.is_active,
         photo_url: updatedStaff.photo_url,
@@ -2497,7 +2545,13 @@ export async function updateCollaborator(data: {
         workspace_ids: currentWsIds,
         assigned_tasks_count: 0,
         completed_tasks_count: 0,
-        can_bulk_delete_tasks: data.canBulkDeleteTasks !== undefined ? data.canBulkDeleteTasks : (updatedStaff.can_bulk_delete_tasks ?? (inferTaskRole(updatedStaff.role) === 'pm'))
+        can_bulk_delete_tasks: data.canBulkDeleteTasks !== undefined ? data.canBulkDeleteTasks : (updatedStaff.can_bulk_delete_tasks ?? (computedRole === 'pm')),
+        settings: staffSettings,
+        capabilities: resolveCollaboratorCapabilities({
+          role: updatedStaff.role,
+          task_role: computedRole,
+          settings: staffSettings,
+        }),
       }
     };
   } catch (err: any) {
@@ -2966,7 +3020,7 @@ export async function registerMeetingAttendance(params: {
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
@@ -3112,7 +3166,7 @@ export async function updateMeetingAttendeeStatus(params: {
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status
@@ -3233,7 +3287,7 @@ export async function completeMeetingSession(params: {
           id, first_name, last_name, photo_url, role
         ),
         project:task_projects!task_items_project_id_fkey(
-          id, name, color
+          id, name, color, settings
         ),
         blocked_by:blocked_by_task_id(
           id, ticket_code, title, status

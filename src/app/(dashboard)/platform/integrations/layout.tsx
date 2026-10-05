@@ -2,8 +2,8 @@ import React from "react"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Integraciones y Canales | CRM",
-    description: "Gestiona tus conexiones con servicios externos como WhatsApp, Email y más.",
+    title: "Integraciones y Conectores | Pixy",
+    description: "Gestiona tus conexiones con servicios externos, VCS, mensajería, IA y más para tu espacio de trabajo Pixy.",
 }
 
 interface IntegrationsLayoutProps {

@@ -1,3 +1,6 @@
+import type { TaskVcsLink, ProjectVcsSettings } from './types/vcs';
+export type { TaskVcsLink, ProjectVcsSettings };
+
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -321,7 +324,9 @@ export interface TaskProject {
   lead_staff_id?: string | null;
   start_date?: string | null;
   target_date?: string | null;
-  settings?: Record<string, any>;
+  settings?: (Record<string, any> & {
+    vcs?: ProjectVcsSettings;
+  }) | Record<string, any> | null;
   created_at: string;
   updated_at: string;
   // Computed / Joined
@@ -336,6 +341,32 @@ export interface TaskProject {
   task_count?: number;
   completed_count?: number;
   progress_percentage?: number;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
+  workspace_id?: string | null;
+  start_date?: string | null;
+  target_date?: string | null;
+  lead_staff_id?: string | null;
+  organization_id?: string;
+  settings?: (Record<string, any> & { vcs?: ProjectVcsSettings }) | Record<string, any> | null;
+}
+
+export interface UpdateProjectInput {
+  name?: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
+  workspace_id?: string | null;
+  start_date?: string | null;
+  target_date?: string | null;
+  lead_staff_id?: string | null;
+  status?: ProjectStatus;
+  settings?: (Record<string, any> & { vcs?: ProjectVcsSettings }) | Record<string, any> | null;
 }
 
 export type TaskSprintStatus = 'planning' | 'active' | 'completed' | 'cancelled';
@@ -506,6 +537,7 @@ export interface TaskItem {
     id: string;
     name: string;
     color: string;
+    settings?: any;
   } | null;
   comments_count?: number;
   last_comment_at?: string | null;
@@ -543,6 +575,8 @@ export interface TaskItem {
   // Quick Notes (Private per collaborator/user)
   quick_note?: TaskQuickNote | null;
   quick_notes?: Record<string, TaskQuickNote> | null;
+  // VCS / Code Repositories
+  vcs_links?: TaskVcsLink[] | null;
 }
 
 export interface TaskQuickNote {
@@ -590,6 +624,18 @@ export interface TaskProgressAuditSummary {
   createdAt: string;
 }
 
+export interface CollaboratorCapabilities {
+  vcs_code?: boolean;
+  design_preview?: boolean;
+  monitoring?: boolean;
+  finance_costs?: boolean;
+}
+
+export interface CollaboratorSettings {
+  capabilities?: CollaboratorCapabilities;
+  [key: string]: any;
+}
+
 export interface TaskCollaborator {
   id: string;
   organization_id: string;
@@ -609,6 +655,8 @@ export interface TaskCollaborator {
   completed_tasks_count?: number;
   can_bulk_delete_tasks?: boolean;
   has_pin_code?: boolean;
+  settings?: CollaboratorSettings;
+  capabilities?: CollaboratorCapabilities;
 }
 
 export interface TaskWorkspaceMember {
@@ -804,6 +852,9 @@ export function getTaskMemberHours(task: TaskItem, memberId: string): { estimate
 export function inferTaskRole(role?: string | null): CollaboratorRole {
   if (!role) return "developer";
   const r = role.toLowerCase();
+  if (r.includes("qa") || r.includes("test") || r.includes("calidad") || r.includes("revisor") || r.includes("pruebas")) {
+    return "qa_lead";
+  }
   if (
     r.includes("pm") ||
     r.includes("project") ||
@@ -818,9 +869,6 @@ export function inferTaskRole(role?: string | null): CollaboratorRole {
     r.includes("directora")
   ) {
     return "pm";
-  }
-  if (r.includes("qa") || r.includes("test") || r.includes("calidad") || r.includes("revisor") || r.includes("pruebas")) {
-    return "qa_lead";
   }
   if (r.includes("design") || r.includes("ux") || r.includes("ui") || r.includes("diseñ") || r.includes("creativ")) {
     return "designer";
@@ -844,6 +892,72 @@ export function inferTaskRole(role?: string | null): CollaboratorRole {
     return "observer";
   }
   return "specialist";
+}
+
+/**
+ * Resolves collaborator capabilities based on role smart defaults and explicit settings overrides
+ */
+export function resolveCollaboratorCapabilities(
+  collaborator?: Partial<TaskCollaborator> | { role?: string; task_role?: CollaboratorRole; settings?: any; capabilities?: CollaboratorCapabilities } | null
+): CollaboratorCapabilities {
+  if (!collaborator) {
+    return {
+      vcs_code: false,
+      design_preview: false,
+      monitoring: false,
+      finance_costs: false,
+    };
+  }
+
+  const role: CollaboratorRole =
+    collaborator.task_role ||
+    (collaborator.role ? inferTaskRole(collaborator.role) : "specialist");
+
+  let defaults: Required<CollaboratorCapabilities>;
+  switch (role) {
+    case "developer":
+      defaults = { vcs_code: true, design_preview: false, monitoring: true, finance_costs: false };
+      break;
+    case "designer":
+      defaults = { vcs_code: false, design_preview: true, monitoring: false, finance_costs: false };
+      break;
+    case "qa_lead":
+      defaults = { vcs_code: true, design_preview: true, monitoring: true, finance_costs: false };
+      break;
+    case "pm":
+      defaults = { vcs_code: true, design_preview: true, monitoring: true, finance_costs: true };
+      break;
+    case "specialist":
+    case "operations":
+    case "sales":
+    case "support":
+    case "observer":
+    case "consultant":
+    default:
+      defaults = { vcs_code: false, design_preview: false, monitoring: false, finance_costs: false };
+      break;
+  }
+
+  let settingsObj = collaborator.settings;
+  if (typeof settingsObj === "string") {
+    try {
+      settingsObj = JSON.parse(settingsObj);
+    } catch {
+      settingsObj = {};
+    }
+  }
+
+  const overrides: Partial<CollaboratorCapabilities> =
+    settingsObj?.capabilities ||
+    collaborator.capabilities ||
+    {};
+
+  return {
+    vcs_code: typeof overrides.vcs_code === "boolean" ? overrides.vcs_code : defaults.vcs_code,
+    design_preview: typeof overrides.design_preview === "boolean" ? overrides.design_preview : defaults.design_preview,
+    monitoring: typeof overrides.monitoring === "boolean" ? overrides.monitoring : defaults.monitoring,
+    finance_costs: typeof overrides.finance_costs === "boolean" ? overrides.finance_costs : defaults.finance_costs,
+  };
 }
 
 export interface WeeklyPacingSummary {
@@ -1409,3 +1523,4 @@ export function isStaffLeadOrPmRole(
 }
 
 export * from "./import-types";
+export * from "./types/vcs";

@@ -57,6 +57,8 @@ import {
   Zap,
   Timer,
   Video,
+  GitBranch,
+  Copy,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
@@ -77,7 +79,7 @@ import type {
   TaskMeetingModality,
   TaskMeetingAttendee,
 } from "../../types"
-import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote, MEETING_PRESETS } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote, MEETING_PRESETS, resolveCollaboratorCapabilities } from "../../types"
 import {
   portalCreateTask,
   portalUpdateTask,
@@ -104,6 +106,8 @@ import { TaskChecklistEditor } from "../detail/task-checklist-editor"
 import { TaskAttachmentsSection } from "../detail/task-attachments-section"
 import { TaskDiscussionFeed } from "../detail/task-discussion-feed"
 import { TaskTimeCompactStrip } from "../detail/task-time-compact-strip"
+import { TaskVcsContainer } from "../detail/task-vcs-container"
+import { generateGitBranchName } from "../../types/vcs"
 import { renderFormattedComment, parseProgressAudit } from "../../utils/task-comment-utils"
 
 interface TaskPortalDetailModalProps {
@@ -837,6 +841,16 @@ export function TaskPortalDetailModal({
     projects.find((p) => p.id === (task?.project_id || selectedProjectId)) ||
     task?.project
 
+  const handleCopyGitBranch = () => {
+    if (!task) return
+    const branchName = generateGitBranchName(task.ticket_code, title || task.title)
+    const branchCmd = `git checkout -b ${branchName}`
+    navigator.clipboard.writeText(branchCmd)
+    toast.success("Comando git copiado", {
+      description: branchCmd,
+    })
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -856,7 +870,7 @@ export function TaskPortalDetailModal({
 
         {/* Top Header - Modern Linear / Jira Style */}
         <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
             {isCreating ? (
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-primary shrink-0" />
@@ -877,6 +891,44 @@ export function TaskPortalDetailModal({
                 >
                   {task?.ticket_code}
                 </Badge>
+
+                {(() => {
+                  const currentMember = currentStaffId
+                    ? teamMembers?.find((m) => m.id === currentStaffId)
+                    : null
+                  const portalUserCapabilities = currentMember
+                    ? resolveCollaboratorCapabilities(currentMember as any)
+                    : (isLeadOrPm ? { vcs_code: true, design_preview: true, monitoring: true, finance_costs: false } : { vcs_code: false })
+                  const canPortalUserViewVcs = Boolean(portalUserCapabilities?.vcs_code)
+                  const isVcsProject = Boolean(
+                    ((resolvedProject?.settings?.vcs?.enabled !== false &&
+                      Boolean(
+                        resolvedProject?.settings?.vcs?.enabled ||
+                        resolvedProject?.settings?.vcs?.repository ||
+                        (Array.isArray(resolvedProject?.settings?.vcs?.repositories) && resolvedProject.settings.vcs.repositories.length > 0) ||
+                        (resolvedProject as any)?.workspace?.settings?.vcs?.enabled ||
+                        (Array.isArray((resolvedProject as any)?.workspace?.settings?.vcs?.repositories) && (resolvedProject as any).workspace.settings.vcs.repositories.length > 0)
+                      ))) ||
+                    task?.vcs_links?.length
+                  )
+
+                  if (!isVcsProject || !canPortalUserViewVcs) return null
+
+                  return (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyGitBranch}
+                      title="Copiar comando git checkout de rama para esta tarea"
+                      className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground gap-1.5 border-border/60 hover:bg-muted/40 rounded-lg shrink-0 cursor-pointer"
+                    >
+                      <GitBranch className="w-3 h-3 text-blue-500" />
+                      <span className="text-[11px] hidden sm:inline">Rama Git</span>
+                      <Copy className="w-2.5 h-2.5 opacity-60" />
+                    </Button>
+                  )
+                })()}
 
                 <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
                   <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -1171,6 +1223,20 @@ export function TaskPortalDetailModal({
               onAddAttachment={handleAddAttachment}
               onRemoveAttachment={handleRemoveAttachment}
             />
+
+            {/* Modular Version Control System (VCS / Git) Section */}
+            {!isCreating && task && (
+              <TaskVcsContainer
+                task={task}
+                project={resolvedProject || task?.project}
+                currentCollaborator={currentStaffId ? (teamMembers?.find((m) => m.id === currentStaffId) as any) : null}
+                currentUserCapabilities={
+                  currentStaffId
+                    ? resolveCollaboratorCapabilities(teamMembers?.find((m) => m.id === currentStaffId) as any)
+                    : (isLeadOrPm ? { vcs_code: true, design_preview: true, monitoring: true, finance_costs: false } : { vcs_code: false })
+                }
+              />
+            )}
 
             {/* Discussion Feed & Mentions (@) (Only in Edit Mode) */}
             {!isCreating && (

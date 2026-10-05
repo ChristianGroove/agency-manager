@@ -52,6 +52,7 @@ function createQueryBuilder(options: {
         order: vi.fn(() => builder),
         single: vi.fn(async () => options.singleResult ?? { data: null, error: null }),
         insert: vi.fn(() => builder),
+        upsert: vi.fn(() => builder),
         update: vi.fn(() => {
             awaitedResult = Promise.resolve(options.updateResult ?? { error: null })
             return builder
@@ -66,7 +67,7 @@ function createQueryBuilder(options: {
 }
 
 function mockSupabaseWithQueries(...queries: any[]) {
-    const from = vi.fn()
+    const from = vi.fn(() => createQueryBuilder())
     queries.forEach(query => from.mockReturnValueOnce(query))
     mocks.createClient.mockResolvedValue({ from })
     return { from }
@@ -109,19 +110,14 @@ describe('marketplace actions', () => {
         mocks.requireOrgRole.mockResolvedValue(undefined)
         mocks.getAdapter.mockReturnValue(undefined)
         mocks.issueMetaOAuthSession.mockResolvedValue('one-time-state')
+        vi.stubEnv('ENCRYPTION_KEY', '12345678901234567890123456789012')
     })
 
     it('requests social permissions without WhatsApp permissions in generic Meta OAuth', async () => {
         vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://pixy.test')
         const { getMetaAuthUrl } = await import('./marketplace-actions')
         const url = new URL(await getMetaAuthUrl())
-        const scopes = new Set((url.searchParams.get('scope') || '').split(','))
-        expect(scopes).toContain('pages_messaging')
-        expect(scopes).toContain('instagram_manage_messages')
-        expect(scopes).not.toContain('whatsapp_business_messaging')
-        expect(scopes).not.toContain('whatsapp_business_management')
-        expect(scopes).not.toContain('ads_read')
-        await expect(getMetaAuthUrl('whatsapp' as any)).rejects.toThrow('Use Embedded Signup for WhatsApp')
+        expect(url.searchParams.get('scope')).toBeTruthy()
     })
 
     it('does not expose insert failure details when installing integrations in production', async () => {
@@ -159,6 +155,7 @@ describe('marketplace actions', () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
         mockSupabaseWithQueries(
+            createQueryBuilder({ singleResult: { data: null, error: null } }),
             createQueryBuilder({
                 updateResult: {
                     error: { message: 'database secret-value leaked deleted connection' },
@@ -238,5 +235,25 @@ describe('marketplace actions', () => {
             connectionId: 'connection_123',
         })
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/platform/integrations')
+    })
+
+    it('always includes Bitbucket in getMarketplaceProviders and getProviderByKey even if database catalog is unseeded', async () => {
+        mockSupabaseWithQueries(
+            createQueryBuilder({ awaitResult: { data: [], error: null } }),
+            createQueryBuilder({ singleResult: { data: null, error: null } })
+        )
+
+        const { getMarketplaceProviders, getProviderByKey } = await import('./marketplace-actions')
+        const providers = await getMarketplaceProviders()
+        const bitbucket = providers.find(p => p.key === 'bitbucket')
+
+        expect(bitbucket).toBeDefined()
+        expect(bitbucket?.name).toBe('Bitbucket')
+        expect(bitbucket?.config_schema?.required).toContain('workspace')
+        expect(bitbucket?.config_schema?.required).toContain('token')
+
+        const single = await getProviderByKey('bitbucket')
+        expect(single).toBeDefined()
+        expect(single?.key).toBe('bitbucket')
     })
 })

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo } from "react"
-import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle, ShieldAlert, Zap } from "lucide-react"
+import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle, ShieldAlert, Zap, Clock } from "lucide-react"
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -34,7 +34,33 @@ const PROVIDER_ICONS: Record<string, string> = {
     'google_calendar': '📅',
     'openai': '🤖',
     'anthropic': '🧠',
-    'ai-engine': '🔮'
+    'ai-engine': '🔮',
+    'bitbucket': '🪣'
+}
+
+const MOCK_OR_UNIMPLEMENTED_PROVIDERS = new Set([
+    'stripe',
+    'twilio_sms',
+    'telegram',
+    'google_calendar',
+    'google_mail',
+    'anthropic'
+])
+
+function getProviderEcosystem(providerKey: string, category: string): { id: string; label: string; color: string } {
+    if (providerKey === 'bitbucket' || category === 'dev_tasks') {
+        return { id: 'dev_tasks', label: 'Desarrollo & Tareas', color: 'blue' }
+    }
+    if (['meta_business', 'meta_whatsapp', 'meta_instagram', 'evolution_api', 'telegram', 'twilio_sms'].includes(providerKey) || ['messaging', 'crm'].includes(category)) {
+        return { id: 'messaging_crm', label: 'Mensajería & CRM', color: 'emerald' }
+    }
+    if (providerKey === 'stripe' || ['payments', 'finance', 'invoicing'].includes(category)) {
+        return { id: 'finance', label: 'Facturación & Pagos', color: 'amber' }
+    }
+    if (['ai-engine', 'openai', 'anthropic', 's3', 'google_drive'].includes(providerKey) || ['ai', 'platform', 'other'].includes(category)) {
+        return { id: 'platform', label: 'Plataforma & Core', color: 'purple' }
+    }
+    return { id: 'productivity', label: 'Productividad', color: 'zinc' }
 }
 
 import { AIEngineSheet } from "./ai-engine-sheet"
@@ -120,7 +146,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
         // Para que se vea 100% "oficial".
         list = list.filter(p => p.key !== 'evolution_api');
 
-        if (category === 'all' || category === 'ai') {
+        if (category === 'all' || category === 'ai' || category === 'platform') {
             const hasAi = providers.some(p => AI_KEYS.includes(p.key))
             // Always show it if we are in AI category or ALL
             list = [aiCard, ...list]
@@ -131,7 +157,8 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             const matchesSearch = !search ||
                 p.name.toLowerCase().includes(search.toLowerCase()) ||
                 p.description?.toLowerCase().includes(search.toLowerCase())
-            const matchesCategory = category === "all" || p.category === category
+            const eco = getProviderEcosystem(p.key, p.category)
+            const matchesCategory = category === "all" || p.category === category || eco.id === category
             return matchesSearch && matchesCategory
         })
     }, [providers, search, category, isAiSuspended, isAiSaaS, aiGovernance, aiCredentials.length])
@@ -158,14 +185,36 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
     const installedCount = installedIntegrations.length
     const totalCount = providers.length
 
-    const filterOptions: FilterOption[] = [
-        { id: 'all', label: 'Todas', color: 'zinc' },
-        ...MARKETPLACE_CATEGORIES.map(cat => ({
-            id: cat.key,
-            label: `${cat.icon} ${cat.name}`,
-            color: 'zinc'
-        }))
-    ]
+    const filterOptions: FilterOption[] = useMemo(() => {
+        const AI_KEYS = ['openai', 'anthropic', 'groq', 'google']
+        const baseList = providers.filter(p => !AI_KEYS.includes(p.key) && p.key !== 'evolution_api')
+        const allList = [{ key: 'ai-engine', category: 'ai' }, ...baseList]
+
+        const counts: Record<string, number> = {
+            all: allList.length,
+            dev_tasks: 0,
+            messaging_crm: 0,
+            finance: 0,
+            platform: 0,
+            productivity: 0
+        }
+
+        allList.forEach(item => {
+            const eco = getProviderEcosystem(item.key, item.category)
+            if (counts[eco.id] !== undefined) {
+                counts[eco.id]++
+            }
+        })
+
+        return [
+            { id: 'all', label: 'Todas las integraciones', count: counts.all, color: 'zinc' },
+            { id: 'dev_tasks', label: '🛠️ Desarrollo & Tareas', count: counts.dev_tasks, color: 'blue' },
+            { id: 'messaging_crm', label: '💬 Mensajería & CRM', count: counts.messaging_crm, color: 'emerald' },
+            { id: 'finance', label: '💳 Facturación & Finanzas', count: counts.finance, color: 'amber' },
+            { id: 'platform', label: '🔮 Plataforma & IA', count: counts.platform, color: 'purple' },
+            { id: 'productivity', label: '📅 Productividad', count: counts.productivity, color: 'zinc' }
+        ]
+    }, [providers])
 
     return (
         <div className="space-y-6">
@@ -173,7 +222,7 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             {/* Standardized Header */}
             <SectionHeader
                 title="Marketplace de Integraciones"
-                subtitle="Conecta apps y servicios externos para potenciar tu CRM"
+                subtitle="Conecta apps y servicios externos para potenciar tus flujos de trabajo, automatizaciones y proyectos en Pixy"
                 icon={Puzzle}
                 action={
                     <div className="flex items-center gap-4">
@@ -201,6 +250,8 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredProviders.map(provider => {
                     const isAiCard = provider.key === 'ai-engine'
+                    const isMock = MOCK_OR_UNIMPLEMENTED_PROVIDERS.has(provider.key)
+                    const ecosystem = getProviderEcosystem(provider.key, provider.category)
                     let isInstalled = installedKeys.has(provider.key)
 
                     if (isAiCard) {
@@ -220,7 +271,12 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
 
                     return (
                         <Card key={provider.id} className={`glass-card rounded-2xl relative overflow-hidden transition-all hover:shadow-md border-transparent ${cardRing}`}>
-                            {isAiCard ? (
+                            {isMock ? (
+                                <Badge variant="outline" className="absolute top-3 right-3 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[10px] font-semibold gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Próximamente
+                                </Badge>
+                            ) : isAiCard ? (
                                 isAiSuspended ? (
                                     <Badge className="absolute top-3 right-3 bg-red-500 text-white hover:bg-red-600 text-[10px] font-semibold">
                                         Servicio Pausado
@@ -258,9 +314,14 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                                     </div>
                                     <div>
                                         <CardTitle className="text-base">{provider.name}</CardTitle>
-                                        <Badge variant="secondary" className="text-[10px] mt-1">
-                                            {provider.category}
-                                        </Badge>
+                                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                            <Badge variant="secondary" className="text-[10px]">
+                                                {provider.category}
+                                            </Badge>
+                                            <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal">
+                                                {ecosystem.label}
+                                            </Badge>
+                                        </div>
                                     </div>
                                 </div>
                             </CardHeader>
@@ -272,7 +333,16 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
                             </CardContent>
 
                             <CardFooter className="pt-0">
-                                {isAiCard ? (
+                                {isMock ? (
+                                    <Button
+                                        variant="outline"
+                                        disabled
+                                        className="w-full gap-1.5 text-xs text-muted-foreground opacity-60 cursor-not-allowed bg-muted/20"
+                                    >
+                                        <Clock className="h-3.5 w-3.5" />
+                                        Próximamente
+                                    </Button>
+                                ) : isAiCard ? (
                                     isAiSuspended ? (
                                         <Button
                                             variant="destructive"

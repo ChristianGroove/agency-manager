@@ -58,3 +58,42 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     { key: 'crm', name: 'CRM & Ventas', description: 'HubSpot, Pipedrive y más', icon: '📊' },
     { key: 'other', name: 'Otros', description: 'Integraciones adicionales', icon: '🔌' }
 ]
+
+export const BUILTIN_PROVIDERS: IntegrationProvider[] = [
+    {
+        id: 'bitbucket-provider-default',
+        key: 'bitbucket',
+        name: 'Bitbucket',
+        description: 'Sincronización nativa de ramas, commits y pull requests con Pixy Tasks',
+        category: 'productivity',
+        icon_url: '/icons/bitbucket.svg',
+        is_premium: false,
+        is_enabled: true,
+        created_at: '2026-09-30T00:00:00Z',
+        updated_at: '2026-09-30T00:00:00Z',
+        documentation_url: 'https://support.atlassian.com/bitbucket-cloud/',
+        setup_instructions: 'Ingresa el slug de tu Workspace y un Access Token de Bitbucket con permisos de lectura.',
+        config_schema: {
+            required: ['workspace', 'token'],
+            properties: {
+                workspace: {
+                    type: 'string',
+                    title: 'Bitbucket Workspace Slug',
+                    description: 'Slug del workspace en Bitbucket (ej: mi-agencia)'
+                },
+                token: {
+                    type: 'string',
+                    title: 'Workspace Access Token',
+                    description: 'Token con permisos de lectura de repositorios, webhooks y pull requests',
+                    format: 'password'
+                },
+                webhook_secret: {
+                    type: 'string',
+                    title: 'Webhook Secret (Opcional)',
+                    description: 'Clave secreta HMAC-SHA256 para validación criptográfica de webhooks',
+                    format: 'password'
+                }
+            }
+        }
+    }
+]

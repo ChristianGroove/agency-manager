@@ -5,10 +5,10 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from 'next/headers'
-import { IntegrationProvider, InstalledIntegration } from "./types"
+import { IntegrationProvider, InstalledIntegration, BUILTIN_PROVIDERS } from "./types"
 import { integrationRegistry } from "../registry"
 import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
-import { assertRawCredentialInput } from '@/modules/infrastructure/integrations/connection-secrets'
+import { assertRawCredentialInput, resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { issueMetaOAuthSession } from "@/modules/infrastructure/meta/services/oauth-session"
 
 function isDeployedRuntime() {
@@ -48,6 +48,18 @@ function sanitizeInstalledCredentials(credentials: Record<string, any> | null | 
     )
 }
 
+async function assertCanManageIntegrations() {
+    try {
+        const { hasPermission } = await import('@/modules/core/iam/services/role-service')
+        const { PERMISSIONS } = await import('@/modules/core/iam/actions/permissions')
+        const allowed = await hasPermission(PERMISSIONS.ORG.MANAGE_INTEGRATIONS).catch(() => false)
+        if (allowed) return
+    } catch {
+        // Fallback to role-based check
+    }
+    await requireOrgRole('admin')
+}
+
 /**
  * Get all available providers from the marketplace
  */
@@ -67,12 +79,41 @@ export async function getMarketplaceProviders(category?: string): Promise<Integr
 
     const { data, error } = await query
 
-    if (error) {
+    let providers: IntegrationProvider[] = (data as IntegrationProvider[]) || []
+
+    // Ensure built-in providers (e.g. Bitbucket) are included even if not yet seeded in DB
+    for (const builtin of BUILTIN_PROVIDERS) {
+        if (!providers.some(p => p.key === builtin.key)) {
+            if (!category || category === 'all' || category === builtin.category) {
+                providers.push(builtin)
+            }
+            // Background self-heal: attempt to persist to DB so future relations/lookups find it
+            try {
+                const target = supabase.from('integration_providers')
+                if (typeof (target as any)?.upsert === 'function') {
+                    (target as any).upsert({
+                        key: builtin.key,
+                        name: builtin.name,
+                        description: builtin.description,
+                        category: builtin.category,
+                        icon_url: builtin.icon_url,
+                        is_premium: builtin.is_premium,
+                        is_enabled: builtin.is_enabled,
+                        config_schema: builtin.config_schema
+                    }, { onConflict: 'key' }).then(() => {}).catch(() => {})
+                }
+            } catch {
+                // Ignore self-heal background error
+            }
+        }
+    }
+
+    if (error && providers.length === 0) {
         logMarketplaceError('[Marketplace] Error fetching providers:', error)
         return []
     }
 
-    return data as IntegrationProvider[]
+    return providers
 }
 
 /**
@@ -87,7 +128,11 @@ export async function getProviderByKey(key: string): Promise<IntegrationProvider
         .eq('key', key)
         .single()
 
-    if (error) return null
+    if (error || !data) {
+        const builtin = BUILTIN_PROVIDERS.find(p => p.key === key)
+        if (builtin) return builtin
+        return null
+    }
     return data as IntegrationProvider
 }
 
@@ -115,7 +160,7 @@ export async function getInstalledIntegrations(): Promise<InstalledIntegration[]
     return (data as any[]).map(conn => ({
         ...conn,
         credentials: sanitizeInstalledCredentials(conn.credentials),
-        provider: conn.integration_providers
+        provider: conn.integration_providers || BUILTIN_PROVIDERS.find(p => p.key === conn.provider_key)
     })) as InstalledIntegration[]
 }
 
@@ -147,16 +192,37 @@ export async function installIntegration(input: {
     }
     input.credentials = cleanCredentials
 
-    await requireOrgRole('admin')
+    await assertCanManageIntegrations()
 
     const supabase = await createClient()
 
     // 1. Get provider
-    const { data: provider } = await supabase
+    let { data: provider } = await supabase
         .from('integration_providers')
         .select('*')
         .eq('key', input.providerKey)
         .single()
+
+    if (!provider) {
+        const builtin = BUILTIN_PROVIDERS.find(p => p.key === input.providerKey)
+        if (builtin) {
+            const { data: inserted } = await supabase
+                .from('integration_providers')
+                .upsert({
+                    key: builtin.key,
+                    name: builtin.name,
+                    description: builtin.description,
+                    category: builtin.category,
+                    icon_url: builtin.icon_url,
+                    is_premium: builtin.is_premium,
+                    is_enabled: builtin.is_enabled,
+                    config_schema: builtin.config_schema
+                }, { onConflict: 'key' })
+                .select('*')
+                .single()
+            provider = inserted || builtin
+        }
+    }
 
     if (!provider) {
         return { success: false, error: 'Provider not found' }
@@ -236,6 +302,14 @@ export async function installIntegration(input: {
             return { success: false, error: publicMarketplaceError(updateError, 'Integration install failed') }
         }
 
+        if (adapter?.onConnect) {
+            try {
+                await adapter.onConnect(existing.id, input.credentials || {})
+            } catch (e) {
+                console.warn('[Marketplace] onConnect failed on update:', e)
+            }
+        }
+
         revalidatePath('/platform/integrations')
         return { success: true, connectionId: existing.id }
     }
@@ -263,6 +337,14 @@ export async function installIntegration(input: {
         return { success: false, error: publicMarketplaceError(insertError, 'Integration install failed') }
     }
 
+    if (adapter?.onConnect && newConn?.id) {
+        try {
+            await adapter.onConnect(newConn.id, input.credentials || {})
+        } catch (e) {
+            console.warn('[Marketplace] onConnect failed on create:', e)
+        }
+    }
+
     revalidatePath('/platform/integrations')
     return { success: true, connectionId: newConn.id }
 }
@@ -274,9 +356,28 @@ export async function uninstallIntegration(connectionId: string): Promise<{ succ
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: 'No organization context' }
 
-    await requireOrgRole('admin')
+    await assertCanManageIntegrations()
 
     const supabase = await createClient()
+
+    const { data: conn } = await supabase
+        .from('integration_connections')
+        .select('provider_key, credentials, metadata')
+        .eq('id', connectionId)
+        .eq('organization_id', orgId)
+        .single()
+
+    if (conn) {
+        const adapter = integrationRegistry.getAdapter(conn.provider_key)
+        if (adapter?.onDisconnect) {
+            try {
+                const creds = await resolveConnectionCredentials(conn.credentials).catch(() => ({}))
+                await adapter.onDisconnect(connectionId, { ...creds, metadata: conn.metadata })
+            } catch (e) {
+                console.warn('[Marketplace] onDisconnect failed:', e)
+            }
+        }
+    }
 
     const { error } = await supabase
         .from('integration_connections')

@@ -4,12 +4,14 @@ import { MockAdapter } from "./adapters/mock-adapter"
 import { MetaAdapter } from "./adapters/meta-adapter"
 import { S3StorageAdapter } from "./adapters/s3-adapter"
 import { GoogleDriveAdapter } from "./adapters/google-drive-adapter"
+import { BitbucketAdapter } from "./adapters/bitbucket-adapter"
 
 class IntegrationRegistry {
     private adapters: Map<string, IntegrationAdapter> = new Map()
 
     constructor() {
         this.register(new OpenAIAdapter())
+        this.register(new BitbucketAdapter())
         this.register(new MetaAdapter('meta_business')) // Unified Omnichannel
         this.register(new MetaAdapter('whatsapp_cloud')) // WA
         this.register(new MetaAdapter('instagram_dm')) // IG DM

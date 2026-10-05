@@ -1656,3 +1656,32 @@ Las notas rápidas son estrictamente individuales y privadas para cada colaborad
 1. **Estructura Particionada**: El tipo `weekly_snapshots` soporta almacenamiento particionado por periodo mensual (`weekly_snapshots['YYYY-MM']?.s1`), previniendo que los cortes de un mes sobrescriban o contaminen la navegación por meses históricos. Se preserva compatibilidad con claves planas legadas (`s1..s4`).
 2. **Inmutabilidad de `updated_at` en Cron**: El endpoint `/api/cron/tasks-pacing-snapshot` persiste los cortes semanales bajo la clave mensual correspondiente sin modificar `updated_at`, salvaguardando los filtros temporales de tareas terminadas en meses previos.
 3. **Veracidad del Scoreboard Superior**: En `TaskWeeklyPacingMatrix`, las tareas en estado `pending` (planificadas o sin avance) no se suman a `onTrackCount`, reflejando exclusivamente tickets con avance en ritmo o finalizados a tiempo.
+
+---
+
+## 42. Integración Nativa de Control de Versiones (Git / Bitbucket), Matriz de Capacidades y Gobernanza de Código
+
+### A. Vinculación Nativa VCS (`task_vcs_links`) y Procesamiento Asíncrono
+1. **Entidad `task_vcs_links`**: Persiste artefactos de Git (ramas, commits, pull requests) indexados por `task_id` y `organization_id`, garantizando soporte multi-tenant con RLS y segregación por repositorio.
+2. **Webhook Endpoint Parametrizado**: La ruta `/api/webhooks/vcs/bitbucket/[connectionId]` valida la autenticidad del payload entrante mediante verificación de firma HMAC-SHA256 en tiempo constante (`timingSafeEqual`).
+3. **Desacoplamiento Inmediato**: El webhook no bloquea la ejecución de Git; tras validar la firma, encola el evento a través de Inngest (`vcs/bitbucket.event`) y responde `200 OK` en menos de 50 ms.
+
+### B. Reglas de Negocio en `TaskVcsService`
+1. **Transición Automática a "En Curso"**: Al detectar commits o ramas con el código del ticket (ej: `WEB-101`), las tareas en estado `todo` o `backlog` transicionan automáticamente a `in_progress`.
+2. **Regla del 95% de Entregables (Checklist Safety Rule)**: Al fusionar (*merge*) un Pull Request, el sistema evalúa las subtareas del ticket. Si existen entregables y el progreso es menor al 95%, el requerimiento **no** pasa a `done`, registrando una advertencia en la auditoría del ticket.
+3. **Desbloqueo en Cascada**: Al completar el requerimiento por merge de PR, el servicio invoca automáticamente `unblockSuccessorTasks()` para habilitar las tareas dependientes.
+4. **Imputación de Horas por Commit (`Worklog`)**: Extracción de patrones `[1.5h]` en los mensajes de commit para imputar automáticamente tiempo real invertido.
+
+### C. Herencia Multi-Repositorio (Espacio ➔ Proyecto)
+1. **Repositorios del Espacio (`task_workspaces.settings.vcs.repositories`)**: Permite vincular repositorios compartidos a nivel de Espacio (ej. `mi-agencia/frontend`, `mi-agencia/backend`).
+2. **Herencia Automática en Proyectos (`task_projects.settings.vcs`)**: Los proyectos nuevos o existentes heredan visualmente los repositorios del espacio, con la opción de sobrescribir y asignar repositorios dedicados.
+
+### D. Matriz de Capacidades y Privacidad por Rol (`CollaboratorCapabilities`)
+1. **Aislamiento en `organization_staff.settings.capabilities`**:
+   - `developer` / `qa_lead` / `pm`: Acceso activo a herramientas de código (`vcs_code: true`).
+   - `designer` / `specialist` / `operations` / `support`: Bloqueo total de herramientas de código (`vcs_code: false`), previniendo fugas de repositorios corporativos.
+2. **Ergonomía y Rendimiento Zero-Bundle (`TaskVcsContainer`)**:
+   - Si `capabilities.vcs_code === false`, el componente retorna `null` inmediatamente, con 0 renderizado en el DOM y 0 carga de bundle para perfiles no técnicos.
+   - Acceso rápido a 1 clic para copiar comandos `git checkout` y botón directo `[ 🚀 Abrir PR en Bitbucket ]` con título y rama pre-llenados.
+3. **Doble Punto de Contacto (Hub-and-Spoke)**: Los administradores pueden conectar Bitbucket directamente desde los modales de Espacio y Proyecto mediante `DynamicIntegrationSheet` sin abandonar el módulo de Tareas.
+
