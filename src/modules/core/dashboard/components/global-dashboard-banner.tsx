@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
-import { SplitText } from "@/components/ui/split-text"
+import { BannerRotativeText } from "./banner-rotative-text"
 import dynamic from "next/dynamic"
 import { useBranding } from "@/components/providers/branding-provider"
 import { Button } from "@/components/ui/button"
@@ -721,9 +721,9 @@ export function GlobalDashboardBanner({
                                 className={`text-xs md:text-sm w-full max-h-full font-medium whitespace-pre-line leading-relaxed overflow-y-auto ${descClasses}`}
                                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                             >
-                                <SplitText delay={0.02} duration={0.015}>
+                                <BannerRotativeText delay={0.02} duration={0.015}>
                                     {resolvedPhrase}
-                                </SplitText>
+                                </BannerRotativeText>
                             </motion.div>
                         </AnimatePresence>
                     </div>

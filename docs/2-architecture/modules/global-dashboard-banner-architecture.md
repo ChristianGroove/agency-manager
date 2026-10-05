@@ -137,7 +137,7 @@ Para evitar que elementos multimedia alteren la altura del banner o desplace la 
 * **Frame Central Abierto y Multilínea (Sin Cortes Artificiales):**
   * Se elimina la restricción fija anterior de `max-h-[44px]` y `line-clamp-2` que recortaba el texto a 2 líneas.
   * El bloque central utiliza `flex-1 min-h-0 my-auto py-1 relative w-full flex items-center overflow-hidden` y el contenedor de texto opera con `overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`.
-  * **Soporte de Párrafos y Saltos de Línea Naturales:** Soporte nativo para saltos de línea (`\n`), doble salto para párrafos (`\n\n`) y saltos explícitos renderizados con etiquetas `<br />`. Los espacios se procesan como caracteres de ruptura de línea estándar, eliminando la conversión a `\u00A0` que causaba que las frases continuaran en una sola línea continua ("sigan de largo").
+  * **Componente Especializado (`BannerRotativeText`):** Para evitar efectos secundarios colaterales sobre la animación global de los títulos de cabecera de la plataforma (`SectionHeader`), el banner utiliza un componente dedicado e independiente (`BannerRotativeText`). Este componente gestiona nativamente saltos de línea (`\n` -> `<br />`), espacios rompibles sin `\u00A0` para prevenir desbordes horizontales, y aceleración por GPU, mientras que el componente general `<SplitText>` se mantiene fiel a su animación de entrada suave para títulos y headers de módulos.
 
 ### C. Contraste Quirúrgico del Badge Kicker
 Para evitar que el badge parezca "flotando o desalineado" debido a su padding interno en fondos claros:
