@@ -11,11 +11,13 @@ import { taskVcsService } from "../services/task-vcs-service"
 import { TaskVcsLink } from "../types/vcs"
 
 /**
- * Fetch all VCS links for a given task
+ * Fetch all VCS links for a given task (scoped by current organization context)
  */
 export async function getTaskVcsLinksAction(taskId: string): Promise<TaskVcsLink[]> {
   if (!taskId) return []
-  return await taskVcsService.getTaskVcsLinks(taskId)
+  const orgId = await getCurrentOrganizationId()
+  if (!orgId) return []
+  return await taskVcsService.getTaskVcsLinks(taskId, orgId)
 }
 
 /**
@@ -73,6 +75,16 @@ export async function getBitbucketRepositoriesAction(): Promise<{
     .maybeSingle()
 
   if (!conn) return { connected: false, repositories: [], canManageIntegrations }
+
+  // Security Guard: Non-admin users without MANAGE_INTEGRATIONS cannot list private company repositories
+  if (!canManageIntegrations) {
+    return {
+      connected: true,
+      canManageIntegrations: false,
+      repositories: [],
+      workspace: conn.metadata?.workspace
+    }
+  }
 
   try {
     const creds = await resolveConnectionCredentials(conn.credentials)

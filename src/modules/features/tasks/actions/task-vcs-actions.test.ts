@@ -87,7 +87,15 @@ describe("task-vcs-actions - Server Actions Unit Tests", () => {
 
       const result = await getTaskVcsLinksAction("task-100")
       expect(result).toEqual(mockLinks)
-      expect(mocks.getTaskVcsLinks).toHaveBeenCalledWith("task-100")
+      expect(mocks.getTaskVcsLinks).toHaveBeenCalledWith("task-100", orgId)
+    })
+
+    it("returns empty array when organization context is unavailable", async () => {
+      mocks.getCurrentOrganizationId.mockResolvedValue(null)
+
+      const result = await getTaskVcsLinksAction("task-100")
+      expect(result).toEqual([])
+      expect(mocks.getTaskVcsLinks).not.toHaveBeenCalled()
     })
   })
 
@@ -149,6 +157,43 @@ describe("task-vcs-actions - Server Actions Unit Tests", () => {
 
       const result = await getBitbucketRepositoriesAction()
       expect(result).toEqual({ connected: false, repositories: [], canManageIntegrations: false })
+    })
+
+    it("returns empty repository list and does not leak private repos when canManageIntegrations is false", async () => {
+      mocks.hasPermission.mockResolvedValue(false)
+      mocks.hasRole.mockResolvedValue(false)
+
+      const mockConn = {
+        id: "conn-bb-1",
+        credentials: { encrypted_token: "enc-xyz" },
+        metadata: { workspace: "pixy-corp" },
+      }
+
+      mocks.supabaseCreateClient.mockResolvedValue({
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                neq: vi.fn(() => ({
+                  limit: vi.fn(() => ({
+                    maybeSingle: vi.fn(async () => ({ data: mockConn })),
+                  })),
+                })),
+              })),
+            })),
+          })),
+        })),
+      })
+
+      const result = await getBitbucketRepositoriesAction()
+      expect(result).toEqual({
+        connected: true,
+        canManageIntegrations: false,
+        repositories: [],
+        workspace: "pixy-corp",
+      })
+      expect(mocks.resolveConnectionCredentials).not.toHaveBeenCalled()
+      expect(mocks.getRepositories).not.toHaveBeenCalled()
     })
 
     it("returns connected: false when no Bitbucket connection is found in database", async () => {

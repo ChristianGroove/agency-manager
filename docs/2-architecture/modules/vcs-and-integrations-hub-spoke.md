@@ -12,7 +12,7 @@ PIXY implementa una arquitectura desacoplada en dos niveles para la gestión de 
 flowchart TD
     subgraph CAPA1["CAPA 1: Bóveda Criptográfica Central & Bus de Eventos"]
         Vault["Bóveda de Credenciales Segura<br/>(AES-256 GCM + integration_connection_secrets)"]
-        Webhooks["Event Bus Unificado & Webhooks<br/>(Inngest + HMAC Verification)"]
+        Webhooks["Webhooks Nativos & Bus de Eventos<br/>(HMAC Verification + Direct Service Execution)"]
     end
 
     subgraph CAPA2["CAPA 2: The Hub (Ajustes Globales /platform/integrations)"]
@@ -58,11 +58,11 @@ La persistencia de artefactos de Git vinculados a los tickets de tareas se reali
 | `metadata` | JSONB | Carga útil extendida (source branch, dest branch, review count). |
 | `created_at` / `updated_at` | Timestamp | Registro temporal con disparador `moddatetime`. |
 
-### 2.2. Flujo de Webhooks y Procesamiento Asíncrono
+### 2.2. Flujo de Webhooks y Procesamiento Nativo
 1. **Endpoint Parametrizado:** `/api/webhooks/vcs/bitbucket/[connectionId]`
 2. **Validación Criptográfica:** Verificación de firma HMAC-SHA256 en tiempo constante (`timingSafeEqual`) contra el secret generado para la conexión.
-3. **Desacoplamiento Inmediato:** El endpoint valida y responde `200 OK` en `< 50ms` tras enviar el evento a la cola de Inngest (`inngest.send({ name: 'vcs/bitbucket.event', data: ... })`).
-4. **Worker Inngest (`src/inngest/vcs-bitbucket.ts`):** Procesa el payload sin riesgo de timeouts de red.
+3. **Procesamiento Directo y Resiliente:** Siguiendo el estándar nativo de webhooks en Pixy (similar a los webhooks de Meta/Messaging), el endpoint ejecuta directamente `taskVcsService.processBitbucketEvent(...)`. La idempotencia se garantiza a nivel de base de datos (`UPSERT` con clave natural en `task_vcs_links`), ejecutando de inmediato las transiciones de estado, registro de horas en auditoría y desbloqueo en cascada sin depender de daemons externos o runners en la nube.
+4. **Worker Opcional / Background Tasks:** Para flujos que requieran reintentos desacoplados en background, se mantiene la función `processVcsBitbucketEvent` en `src/inngest/vcs-bitbucket.ts`.
 
 ### 2.3. Lógica de Negocio y Reglas Operativas (`TaskVcsService`)
 * **Detección de Tickets:** Expresión regular que detecta códigos con prefijos de espacios (ej: `WEB-104`, `APP-201`, `CRM-50`).

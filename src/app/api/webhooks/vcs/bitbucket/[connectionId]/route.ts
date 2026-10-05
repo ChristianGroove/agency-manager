@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
-import { inngest } from '@/modules/infrastructure/automation/inngest/client'
+import { taskVcsService } from '@/modules/features/tasks/services/task-vcs-service'
 import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { decryptObject } from '@/modules/infrastructure/integrations/encryption'
 
@@ -18,8 +18,6 @@ export async function POST(
 
         const rawBody = await request.text()
         const eventKey = request.headers.get('x-event-key') || 'unknown'
-        const rawRequestUuid = request.headers.get('x-request-uuid') || request.headers.get('X-Request-UUID')
-        const requestUuid = rawRequestUuid ? rawRequestUuid.replace(/[{}]/g, '').trim() : undefined
 
         // 1. O(1) Connection Lookup in database
         const { data: connection, error: connError } = await supabaseAdmin
@@ -73,22 +71,20 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
         }
 
-        // 5. Dispatch async event to Inngest with deduplication key for resilient execution
-        const eventId = requestUuid ? `bb-${connection.id}-${requestUuid}` : undefined
-        await inngest.send({
-            id: eventId,
-            name: 'vcs/bitbucket.event',
-            data: {
-                connectionId: connection.id,
-                organizationId: connection.organization_id,
-                eventKey,
-                payload,
-                requestUuid: requestUuid || undefined
-            }
+        // 5. Direct execution of VCS event logic (idempotent, immediate transition and audit logging)
+        const result = await taskVcsService.processBitbucketEvent({
+            provider: 'bitbucket',
+            eventKey,
+            connectionId: connection.id,
+            organizationId: connection.organization_id,
+            payload
         })
 
-        // Immediate acknowledgment to stay well within Bitbucket's HTTP timeout limit (< 40ms)
-        return NextResponse.json({ received: true, event: eventKey, async: true }, { status: 200 })
+        return NextResponse.json({
+            received: true,
+            event: eventKey,
+            result
+        }, { status: 200 })
     } catch (err: any) {
         console.error('[Webhook:Bitbucket] Error processing incoming webhook:', err)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

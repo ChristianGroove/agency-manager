@@ -213,7 +213,7 @@ export function TaskVcsStrip({ task, project }: TaskVcsStripProps) {
           <span>Control de Versiones (Git)</span>
         </label>
         <div className="flex items-center gap-2">
-          {isDemoMode && (
+          {process.env.NODE_ENV !== 'production' && isDemoMode && (
             <div className="flex items-center gap-1.5">
               <Badge variant="outline" className="text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 py-0 h-4">
                 Demo
@@ -280,17 +280,19 @@ export function TaskVcsStrip({ task, project }: TaskVcsStripProps) {
                   </>
                 )}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleEnableDemo}
-                className="h-6 px-2 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 gap-1 rounded-md cursor-pointer border border-blue-500/20"
-                title="Sembrar datos de demostración para ver cómo luce la experiencia completa de control de versiones"
-              >
-                <Sparkles className="h-3 w-3 text-blue-500" />
-                <span>Simular Repositorio</span>
-              </Button>
+              {process.env.NODE_ENV !== 'production' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEnableDemo}
+                  className="h-6 px-2 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 gap-1 rounded-md cursor-pointer border border-blue-500/20"
+                  title="Sembrar datos de demostración para ver cómo luce la experiencia completa de control de versiones"
+                >
+                  <Sparkles className="h-3 w-3 text-blue-500" />
+                  <span>Simular Repositorio</span>
+                </Button>
+              )}
             </div>
           </div>
         )}

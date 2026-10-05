@@ -1238,6 +1238,31 @@ describe("TaskVcsService - Unit Tests", () => {
       expect(links[0].id).toBe("link-1")
     })
 
+    it("getTaskVcsLinks scopes query by organizationId when provided", async () => {
+      const eqSpy = vi.fn().mockReturnThis()
+      const orderSpy = vi.fn(async () => ({ data: [], error: null }))
+
+      mocks.supabaseFrom.mockImplementation((table: string) => {
+        if (table === "task_vcs_links") {
+          return {
+            select: vi.fn(() => ({
+              eq: eqSpy.mockReturnValue({
+                eq: eqSpy.mockReturnValue({
+                  order: orderSpy,
+                }),
+                order: orderSpy,
+              }),
+            })),
+          }
+        }
+        return {}
+      })
+
+      await service.getTaskVcsLinks("task-1", "org-tenant-abc")
+      expect(eqSpy).toHaveBeenCalledWith("task_id", "task-1")
+      expect(eqSpy).toHaveBeenCalledWith("organization_id", "org-tenant-abc")
+    })
+
     it("deleteVcsLink deletes link with organization isolation", async () => {
       const deleteEqOrg = vi.fn(async () => ({ error: null }))
       const deleteEqId = vi.fn(() => ({ eq: deleteEqOrg }))
@@ -1257,6 +1282,35 @@ describe("TaskVcsService - Unit Tests", () => {
       expect(success).toBe(true)
       expect(deleteEqId).toHaveBeenCalledWith("id", "link-123")
       expect(deleteEqOrg).toHaveBeenCalledWith("organization_id", orgId)
+    })
+  })
+
+  describe("matchesRepository - Workspace and Project isolation", () => {
+    it("returns false if workspaceVcs has enabled: false and project does not override with enabled: true", () => {
+      const matches = service.matchesRepository(
+        "acme/repo",
+        { repositories: ["acme/repo"] },
+        { enabled: false }
+      )
+      expect(matches).toBe(false)
+    })
+
+    it("returns true if workspaceVcs has enabled: false but project explicitly overrides with enabled: true", () => {
+      const matches = service.matchesRepository(
+        "acme/repo",
+        { enabled: true, repositories: ["acme/repo"] },
+        { enabled: false }
+      )
+      expect(matches).toBe(true)
+    })
+
+    it("returns false if projectVcs has enabled: false even if workspace has repositories", () => {
+      const matches = service.matchesRepository(
+        "acme/repo",
+        { enabled: false },
+        { enabled: true, repositories: ["acme/repo"] }
+      )
+      expect(matches).toBe(false)
     })
   })
 })

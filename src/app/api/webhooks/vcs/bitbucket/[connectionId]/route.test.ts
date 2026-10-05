@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server'
 
 const mocks = vi.hoisted(() => ({
     supabaseFrom: vi.fn(),
-    inngestSend: vi.fn(),
+    processBitbucketEvent: vi.fn(),
     resolveConnectionCredentials: vi.fn(),
     decryptObject: vi.fn(),
 }))
@@ -15,9 +15,9 @@ vi.mock('@/modules/core/database/supabase-admin', () => ({
     },
 }))
 
-vi.mock('@/modules/infrastructure/automation/inngest/client', () => ({
-    inngest: {
-        send: mocks.inngestSend,
+vi.mock('@/modules/features/tasks/services/task-vcs-service', () => ({
+    taskVcsService: {
+        processBitbucketEvent: mocks.processBitbucketEvent,
     },
 }))
 
@@ -97,7 +97,7 @@ function mockSupabaseConnection(connectionData: Record<string, any> | null, erro
 afterEach(() => {
     vi.restoreAllMocks()
     mocks.supabaseFrom.mockReset()
-    mocks.inngestSend.mockReset()
+    mocks.processBitbucketEvent.mockReset()
     mocks.resolveConnectionCredentials.mockReset()
     mocks.decryptObject.mockReset()
 })
@@ -119,12 +119,13 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
     }
     const rawBody = JSON.stringify(samplePayload)
 
-    it('successfully processes valid HMAC-SHA256 signature and dispatches event to Inngest', async () => {
+    it('successfully processes valid HMAC-SHA256 signature and executes taskVcsService directly', async () => {
         mockSupabaseConnection(validConnection)
         mocks.resolveConnectionCredentials.mockResolvedValue({
             webhook_secret: testSecret,
         })
-        mocks.inngestSend.mockResolvedValue({ ids: ['inngest-evt-1'] })
+        const mockResult = { processed: true, summary: 'Processed 1 ticket association' }
+        mocks.processBitbucketEvent.mockResolvedValue(mockResult)
 
         const request = createSignedRequest({
             connectionId: 'conn-bitbucket-001',
@@ -144,21 +145,17 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         expect(body).toEqual({
             received: true,
             event: 'repo:push',
-            async: true,
+            result: mockResult,
         })
 
-        // Verify Inngest payload formatting with deduplication ID
-        expect(mocks.inngestSend).toHaveBeenCalledTimes(1)
-        expect(mocks.inngestSend).toHaveBeenCalledWith({
-            id: 'bb-conn-bitbucket-001-uuid-trace-8888',
-            name: 'vcs/bitbucket.event',
-            data: {
-                connectionId: 'conn-bitbucket-001',
-                organizationId: 'org-pixy-100',
-                eventKey: 'repo:push',
-                payload: samplePayload,
-                requestUuid: 'uuid-trace-8888',
-            },
+        // Verify taskVcsService was called with direct payload
+        expect(mocks.processBitbucketEvent).toHaveBeenCalledTimes(1)
+        expect(mocks.processBitbucketEvent).toHaveBeenCalledWith({
+            provider: 'bitbucket',
+            connectionId: 'conn-bitbucket-001',
+            organizationId: 'org-pixy-100',
+            eventKey: 'repo:push',
+            payload: samplePayload,
         })
     })
 
@@ -167,7 +164,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         mocks.resolveConnectionCredentials.mockResolvedValue({
             webhook_secret: testSecret,
         })
-        mocks.inngestSend.mockResolvedValue({ ids: ['inngest-evt-2'] })
+        mocks.processBitbucketEvent.mockResolvedValue({ processed: true })
 
         const rawHmac = crypto.createHmac('sha256', testSecret).update(rawBody).digest('hex')
         const request = createSignedRequest({
@@ -183,14 +180,12 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         })
 
         expect(response.status).toBe(200)
-        expect(mocks.inngestSend).toHaveBeenCalledWith(
+        expect(mocks.processBitbucketEvent).toHaveBeenCalledWith(
             expect.objectContaining({
-                id: undefined,
-                name: 'vcs/bitbucket.event',
-                data: expect.objectContaining({
-                    eventKey: 'pullrequest:created',
-                    requestUuid: undefined,
-                }),
+                provider: 'bitbucket',
+                eventKey: 'pullrequest:created',
+                connectionId: 'conn-bitbucket-001',
+                organizationId: 'org-pixy-100',
             })
         )
     })
@@ -217,7 +212,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(401)
         expect(body).toEqual({ error: 'Invalid HMAC signature' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('rejects with 401 when HMAC signature format is invalid (length != 64)', async () => {
@@ -240,7 +235,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(401)
         expect(body).toEqual({ error: 'Invalid HMAC signature format' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('rejects with 401 when HMAC signature has 64 characters but contains invalid non-hex characters', async () => {
@@ -265,44 +260,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(401)
         expect(body).toEqual({ error: 'Invalid HMAC signature format' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
-    })
-
-    it('sanitizes Bitbucket curly-brace enclosed request UUID into clean Inngest deduplication ID', async () => {
-        mockSupabaseConnection(validConnection)
-        mocks.resolveConnectionCredentials.mockResolvedValue({
-            webhook_secret: testSecret,
-        })
-        mocks.inngestSend.mockResolvedValue({ ids: ['evt-braced'] })
-
-        // Bitbucket sends X-Request-UUID with curly braces: {c8bb17c7-c576-47b2-bd7b-1cb23fb299c8}
-        const bracedUuid = '{c8bb17c7-c576-47b2-bd7b-1cb23fb299c8}'
-        const expectedCleanUuid = 'c8bb17c7-c576-47b2-bd7b-1cb23fb299c8'
-
-        const request = createSignedRequest({
-            connectionId: 'conn-bitbucket-001',
-            body: rawBody,
-            secret: testSecret,
-            requestUuid: bracedUuid,
-        })
-
-        const { POST } = await import('./route')
-        const response = await POST(request, {
-            params: Promise.resolve({ connectionId: 'conn-bitbucket-001' }),
-        })
-
-        expect(response.status).toBe(200)
-        expect(mocks.inngestSend).toHaveBeenCalledWith({
-            id: `bb-conn-bitbucket-001-${expectedCleanUuid}`,
-            name: 'vcs/bitbucket.event',
-            data: {
-                connectionId: 'conn-bitbucket-001',
-                organizationId: 'org-pixy-100',
-                eventKey: 'repo:push',
-                payload: samplePayload,
-                requestUuid: expectedCleanUuid,
-            },
-        })
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('verifies constant-time signature comparison using crypto.timingSafeEqual', async () => {
@@ -311,7 +269,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         mocks.resolveConnectionCredentials.mockResolvedValue({
             webhook_secret: testSecret,
         })
-        mocks.inngestSend.mockResolvedValue({ ids: ['evt-timed'] })
+        mocks.processBitbucketEvent.mockResolvedValue({ processed: true })
 
         const request = createSignedRequest({
             connectionId: 'conn-bitbucket-001',
@@ -350,13 +308,13 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(401)
         expect(body.error).toContain('Missing HMAC signature header')
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('processes payload without signature verification when connection has no secret configured', async () => {
         mockSupabaseConnection(validConnection)
         mocks.resolveConnectionCredentials.mockResolvedValue({}) // No webhook_secret
-        mocks.inngestSend.mockResolvedValue({ ids: ['evt-no-sec'] })
+        mocks.processBitbucketEvent.mockResolvedValue({ processed: true })
 
         const request = createSignedRequest({
             connectionId: 'conn-bitbucket-001',
@@ -372,7 +330,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(200)
         expect(body.received).toBe(true)
-        expect(mocks.inngestSend).toHaveBeenCalledTimes(1)
+        expect(mocks.processBitbucketEvent).toHaveBeenCalledTimes(1)
     })
 
     it('resolves webhook secret from fallback locations (credentials.secret, config, or metadata)', async () => {
@@ -382,7 +340,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         }
         mockSupabaseConnection(connectionWithMetadataSecret)
         mocks.resolveConnectionCredentials.mockResolvedValue({}) // Empty credentials
-        mocks.inngestSend.mockResolvedValue({ ids: ['evt-fallback'] })
+        mocks.processBitbucketEvent.mockResolvedValue({ processed: true })
 
         const request = createSignedRequest({
             connectionId: 'conn-bitbucket-001',
@@ -396,7 +354,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
         })
 
         expect(response.status).toBe(200)
-        expect(mocks.inngestSend).toHaveBeenCalledTimes(1)
+        expect(mocks.processBitbucketEvent).toHaveBeenCalledTimes(1)
     })
 
     it('returns 404 when connection does not exist or is deleted', async () => {
@@ -415,7 +373,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(404)
         expect(body).toEqual({ error: 'Connection not found or inactive' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('returns 400 when connectionId parameter is missing or empty', async () => {
@@ -432,7 +390,7 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(400)
         expect(body).toEqual({ error: 'Missing connectionId parameter' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('returns 400 when request body is invalid JSON', async () => {
@@ -453,14 +411,14 @@ describe('Bitbucket Webhook Route Handler (/api/webhooks/vcs/bitbucket/[connecti
 
         expect(response.status).toBe(400)
         expect(body).toEqual({ error: 'Invalid JSON body' })
-        expect(mocks.inngestSend).not.toHaveBeenCalled()
+        expect(mocks.processBitbucketEvent).not.toHaveBeenCalled()
     })
 
     it('catches unexpected internal errors and responds with 500 without leaking details', async () => {
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         mockSupabaseConnection(validConnection)
         mocks.resolveConnectionCredentials.mockResolvedValue({})
-        mocks.inngestSend.mockRejectedValue(new Error('Inngest connection refused'))
+        mocks.processBitbucketEvent.mockRejectedValue(new Error('Internal processing failure'))
 
         const request = createSignedRequest({
             connectionId: 'conn-bitbucket-001',

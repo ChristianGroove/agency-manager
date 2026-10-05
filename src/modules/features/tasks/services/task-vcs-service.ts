@@ -358,15 +358,20 @@ export class TaskVcsService {
   }
 
   /**
-   * Fetch all VCS links attached to a task
+   * Fetch all VCS links attached to a task, scoped by organizationId if provided
    */
-  async getTaskVcsLinks(taskId: string): Promise<TaskVcsLink[]> {
+  async getTaskVcsLinks(taskId: string, organizationId?: string): Promise<TaskVcsLink[]> {
     try {
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('task_vcs_links')
         .select('*')
         .eq('task_id', taskId)
-        .order('created_at', { ascending: false })
+
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         console.error('[TaskVcsService] Error fetching VCS links:', error)
@@ -889,10 +894,17 @@ export class TaskVcsService {
     projectVcs?: any,
     workspaceVcs?: any
   ): boolean {
+    // 1. Explicitly disabled at project level
     if (projectVcs?.enabled === false) {
       return false
     }
 
+    // 2. Explicitly disabled at workspace level (unless project explicitly overrides with enabled: true)
+    if (workspaceVcs?.enabled === false && projectVcs?.enabled !== true) {
+      return false
+    }
+
+    // 3. Inheritance explicitly checked
     if (projectVcs?.inherited_from_workspace && workspaceVcs?.enabled === false) {
       return false
     }
