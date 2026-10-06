@@ -31,12 +31,11 @@ export async function unlinkVcsResourceAction(linkId: string, taskId: string): P
 
   let canManage = false
   try {
-    const [canManageTasks, isAdmin, isStaff] = await Promise.all([
+    const [canManageTasks, isAdmin] = await Promise.all([
       hasPermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE).catch(() => false),
-      hasRole('admin').catch(() => false),
-      hasRole('staff').catch(() => false)
+      hasRole('admin').catch(() => false)
     ])
-    canManage = Boolean(canManageTasks || isAdmin || isStaff)
+    canManage = Boolean(canManageTasks || isAdmin)
   } catch {
     canManage = false
   }

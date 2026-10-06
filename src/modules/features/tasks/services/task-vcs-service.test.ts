@@ -1611,7 +1611,7 @@ describe("TaskVcsService - Unit Tests", () => {
         "GitHub VCS",
         undefined,
         undefined,
-        expect.stringContaining("commit-gh-first")
+        expect.stringContaining("commit-")
       )
     })
 

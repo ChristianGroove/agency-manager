@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   getGithubRepositories: vi.fn(),
   supabaseCreateClient: vi.fn(),
   hasPermission: vi.fn(async () => true),
-  hasRole: vi.fn(async () => true),
+  hasRole: vi.fn(async (_role?: any) => true),
 }))
 
 vi.mock("next/cache", () => ({
@@ -151,17 +151,6 @@ describe("task-vcs-actions - Server Actions Unit Tests", () => {
     it("allows authorized users with admin role alone", async () => {
       mocks.hasPermission.mockResolvedValue(false)
       mocks.hasRole.mockImplementation(async (role: string) => role === "admin")
-      mocks.deleteVcsLink.mockResolvedValue(true)
-
-      const result = await unlinkVcsResourceAction("link-1", "task-100")
-      expect(result).toEqual({ success: true })
-      expect(mocks.deleteVcsLink).toHaveBeenCalledWith("link-1", orgId)
-      expect(mocks.revalidatePath).toHaveBeenCalledWith("/operations/tasks")
-    })
-
-    it("allows authorized users with staff role to unlink VCS resource", async () => {
-      mocks.hasPermission.mockResolvedValue(false)
-      mocks.hasRole.mockImplementation(async (role: string) => role === "staff")
       mocks.deleteVcsLink.mockResolvedValue(true)
 
       const result = await unlinkVcsResourceAction("link-1", "task-100")
