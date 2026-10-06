@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch"
 import { FolderPlus, Pencil, Globe, Trash2, AlertTriangle, GitBranch, ChevronDown, ChevronUp, Layers, RotateCcw, Zap } from "lucide-react"
 import type { TaskProject, TaskCollaborator, TaskWorkspace } from "../../types"
 import { createProject, updateProject, deleteProject } from "../../actions/task-actions"
-import { getBitbucketRepositoriesAction } from "../../actions/task-vcs-actions"
+import { getVcsRepositoriesAction, VcsUnifiedRepository } from "../../actions/task-vcs-actions"
 import { DynamicIntegrationSheet } from "@/modules/infrastructure/integrations/marketplace/components/dynamic-integration-sheet"
 import { toast } from "sonner"
 
@@ -75,17 +75,18 @@ export function ProjectFormModal({
   const [vcsRepository, setVcsRepository] = useState("")
   const [vcsAutoTransitions, setVcsAutoTransitions] = useState(true)
   const [showVcsSection, setShowVcsSection] = useState(false)
-  const [availableRepos, setAvailableRepos] = useState<Array<{ full_name: string; name: string }>>([])
+  const [availableRepos, setAvailableRepos] = useState<VcsUnifiedRepository[]>([])
   const [isVcsConnected, setIsVcsConnected] = useState(false)
   const [canManageIntegrations, setCanManageIntegrations] = useState(false)
-  const [isBitbucketSheetOpen, setIsBitbucketSheetOpen] = useState(false)
+  const [selectedVcsProvider, setSelectedVcsProvider] = useState<'github' | 'bitbucket'>('github')
+  const [isVcsSheetOpen, setIsVcsSheetOpen] = useState(false)
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [overrideWorkspaceVcs, setOverrideWorkspaceVcs] = useState(false)
 
   const refreshVcs = async () => {
     setLoadingRepos(true)
     try {
-      const res = await getBitbucketRepositoriesAction()
+      const res = await getVcsRepositoriesAction()
       setIsVcsConnected(res.connected)
       setAvailableRepos(res.repositories || [])
       if (res.canManageIntegrations !== undefined) {
@@ -170,7 +171,7 @@ export function ProjectFormModal({
       if (hasWorkspaceRepos && !overrideWorkspaceVcs) {
         vcsConfig = {
           enabled: true,
-          provider: 'bitbucket' as const,
+          provider: workspaceVcs?.provider || 'github',
           inherited_from_workspace: true,
           auto_transitions: vcsAutoTransitions,
         }
@@ -180,9 +181,11 @@ export function ProjectFormModal({
         }
       } else if (vcsEnabled) {
         const repo = vcsRepository.trim()
+        const selectedRepoObj = availableRepos.find(r => r.full_name.toLowerCase() === repo.toLowerCase())
+        const projectProvider = selectedRepoObj?.provider || projectToEdit?.settings?.vcs?.provider || workspaceVcs?.provider || 'github'
         vcsConfig = {
           enabled: true,
-          provider: 'bitbucket' as const,
+          provider: projectProvider,
           repository: repo || undefined,
           repositories: repo ? [repo] : undefined,
           auto_transitions: vcsAutoTransitions,
@@ -591,22 +594,37 @@ export function ProjectFormModal({
                                 </div>
                                 <div className="space-y-1 flex-1">
                                   <p className="text-xs font-semibold text-foreground">
-                                    Bitbucket no está conectado
+                                    Control de Versiones no conectado
                                   </p>
                                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                                     {canManageIntegrations
-                                      ? "Conecta tu espacio de trabajo de Bitbucket para autocompletar y sincronizar repositorios con este proyecto."
-                                      : "El control de versiones no está conectado en esta organización. Contacta a un administrador para vincular la cuenta de Bitbucket."}
+                                      ? "Conecta tu cuenta de GitHub o Bitbucket para autocompletar y sincronizar repositorios con este proyecto."
+                                      : "El control de versiones no está conectado en esta organización. Contacta a un administrador para vincular GitHub o Bitbucket."}
                                   </p>
                                 </div>
                               </div>
 
                               {canManageIntegrations && (
-                                <div className="flex justify-end pt-1">
+                                <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
                                   <Button
                                     type="button"
                                     size="sm"
-                                    onClick={() => setIsBitbucketSheetOpen(true)}
+                                    onClick={() => {
+                                      setSelectedVcsProvider('github')
+                                      setIsVcsSheetOpen(true)
+                                    }}
+                                    className="h-8 text-xs bg-zinc-800 hover:bg-zinc-900 text-white font-medium gap-1.5 shadow-sm cursor-pointer"
+                                  >
+                                    <Zap className="w-3.5 h-3.5" />
+                                    <span>⚡ Conectar GitHub</span>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedVcsProvider('bitbucket')
+                                      setIsVcsSheetOpen(true)
+                                    }}
                                     className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium gap-1.5 shadow-sm cursor-pointer"
                                   >
                                     <Zap className="w-3.5 h-3.5" />
@@ -631,8 +649,17 @@ export function ProjectFormModal({
                                     </SelectTrigger>
                                     <SelectContent>
                                       {availableRepos.map((repo) => (
-                                        <SelectItem key={repo.full_name} value={repo.full_name} className="font-mono text-xs">
-                                          {repo.full_name}
+                                        <SelectItem
+                                          key={`${repo.provider}-${repo.full_name}`}
+                                          value={repo.full_name}
+                                          className="font-mono text-xs"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded font-sans font-semibold bg-muted text-muted-foreground">
+                                              {repo.provider === 'github' ? '🐙 GitHub' : '🪣 Bitbucket'}
+                                            </span>
+                                            <span>{repo.full_name}</span>
+                                          </div>
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -711,10 +738,10 @@ export function ProjectFormModal({
     </Dialog>
 
     <DynamicIntegrationSheet
-      providerKey="bitbucket"
+      providerKey={selectedVcsProvider}
       provider={null}
-      isOpen={isBitbucketSheetOpen}
-      onOpenChange={setIsBitbucketSheetOpen}
+      isOpen={isVcsSheetOpen}
+      onOpenChange={setIsVcsSheetOpen}
       onSuccess={() => {
         refreshVcs()
       }}

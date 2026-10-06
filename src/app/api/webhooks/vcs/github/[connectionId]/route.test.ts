@@ -1,0 +1,293 @@
+import crypto from 'crypto'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
+
+const mocks = vi.hoisted(() => ({
+    supabaseFrom: vi.fn(),
+    processGithubEvent: vi.fn(),
+    resolveConnectionCredentials: vi.fn(),
+    decryptObject: vi.fn(),
+}))
+
+vi.mock('@/modules/core/database/supabase-admin', () => ({
+    supabaseAdmin: {
+        from: mocks.supabaseFrom,
+    },
+}))
+
+vi.mock('@/modules/features/tasks/services/task-vcs-service', () => ({
+    taskVcsService: {
+        processGithubEvent: mocks.processGithubEvent,
+    },
+}))
+
+vi.mock('@/modules/infrastructure/integrations/connection-secrets', () => ({
+    resolveConnectionCredentials: mocks.resolveConnectionCredentials,
+}))
+
+vi.mock('@/modules/infrastructure/integrations/encryption', () => ({
+    decryptObject: mocks.decryptObject,
+}))
+
+function createSignedRequest(options: {
+    connectionId: string
+    body: string
+    secret?: string
+    signatureHeaderName?: string
+    signatureOverride?: string
+    eventKey?: string
+}) {
+    const {
+        body,
+        secret,
+        signatureHeaderName = 'x-hub-signature-256',
+        signatureOverride,
+        eventKey = 'push',
+    } = options
+
+    const headers = new Headers({
+        'content-type': 'application/json',
+        'x-github-event': eventKey,
+    })
+
+    if (signatureOverride !== undefined) {
+        if (signatureOverride !== '') {
+            headers.set(signatureHeaderName, signatureOverride)
+        }
+    } else if (secret) {
+        const hmac = crypto.createHmac('sha256', secret).update(body).digest('hex')
+        headers.set(signatureHeaderName, `sha256=${hmac}`)
+    }
+
+    const request = new NextRequest(new URL(`http://localhost/api/webhooks/vcs/github/${options.connectionId}`), {
+        method: 'POST',
+        headers,
+        body,
+    })
+
+    return request
+}
+
+function mockSupabaseConnection(connectionData: Record<string, any> | null, error: any = null) {
+    mocks.supabaseFrom.mockImplementation((table: string) => {
+        if (table === 'integration_connections') {
+            return {
+                select: vi.fn(() => ({
+                    eq: vi.fn(() => ({
+                        neq: vi.fn(() => ({
+                            single: vi.fn(async () => ({
+                                data: connectionData,
+                                error,
+                            })),
+                        })),
+                    })),
+                })),
+            }
+        }
+        return {}
+    })
+}
+
+afterEach(() => {
+    vi.restoreAllMocks()
+    mocks.supabaseFrom.mockReset()
+    mocks.processGithubEvent.mockReset()
+    mocks.resolveConnectionCredentials.mockReset()
+    mocks.decryptObject.mockReset()
+})
+
+describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
+    it('answers instant ping handshake without querying db or requiring HMAC', async () => {
+        const { POST } = await import('./route')
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            eventKey: 'ping',
+            body: JSON.stringify({ zen: 'Keep it logically awesome.', hook_id: 123456 }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(200)
+
+        const json = await response.json()
+        expect(json.ok).toBe(true)
+        expect(json.zen).toBe('Keep it logically awesome.')
+        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 when connectionId param is missing', async () => {
+        const { POST } = await import('./route')
+
+        const request = createSignedRequest({
+            connectionId: '',
+            body: JSON.stringify({ action: 'opened' }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: '' }) })
+        expect(response.status).toBe(400)
+        const json = await response.json()
+        expect(json.error).toContain('Missing connectionId')
+    })
+
+    it('returns 404 when connection does not exist or is deleted in DB', async () => {
+        const { POST } = await import('./route')
+        mockSupabaseConnection(null, { message: 'Not found' })
+
+        const request = createSignedRequest({
+            connectionId: 'conn-missing',
+            body: JSON.stringify({ action: 'opened' }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-missing' }) })
+        expect(response.status).toBe(404)
+        const json = await response.json()
+        expect(json.error).toContain('Connection not found or inactive')
+    })
+
+    it('returns 401 when webhook has secret configured but signature header is missing', async () => {
+        const { POST } = await import('./route')
+
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: { encrypted: 'creds' },
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: 'my-super-secret',
+        })
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            body: JSON.stringify({ ref: 'refs/heads/feature/PIX-1' }),
+            signatureOverride: '',
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(401)
+        const json = await response.json()
+        expect(json.error).toContain('Missing HMAC signature header')
+    })
+
+    it('returns 401 when signature format is invalid (not 64 hex characters)', async () => {
+        const { POST } = await import('./route')
+
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: 'my-super-secret',
+        })
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            body: JSON.stringify({ ref: 'refs/heads/main' }),
+            signatureOverride: 'sha256=invalid-short-hash',
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(401)
+        const json = await response.json()
+        expect(json.error).toContain('Invalid HMAC signature format')
+    })
+
+    it('returns 401 when signature does not match (tampered payload or incorrect secret)', async () => {
+        const { POST } = await import('./route')
+
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: 'real-secret-123',
+        })
+
+        // Signed with a different secret
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            body: JSON.stringify({ ref: 'refs/heads/main' }),
+            secret: 'wrong-secret-abc',
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(401)
+        const json = await response.json()
+        expect(json.error).toContain('Invalid HMAC signature')
+    })
+
+    it('returns 400 when body is invalid JSON', async () => {
+        const { POST } = await import('./route')
+
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({})
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            body: '{ broken json ',
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(400)
+        const json = await response.json()
+        expect(json.error).toContain('Invalid JSON body')
+    })
+
+    it('authenticates valid HMAC and dispatches synchronously to taskVcsService.processGithubEvent', async () => {
+        const { POST } = await import('./route')
+
+        const secret = 'valid-super-webhook-secret'
+        mockSupabaseConnection({
+            id: 'conn-gh-999',
+            organization_id: 'org-tenant-100',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
+
+        const serviceResult = { processed: true, summary: 'Updated 1 task' }
+        mocks.processGithubEvent.mockResolvedValue(serviceResult)
+
+        const payloadObj = {
+            ref: 'refs/heads/feature/PIX-101-auth',
+            commits: [
+                { id: 'commit123', message: 'PIX-101: initial commit' }
+            ],
+            repository: { full_name: 'org/repo' }
+        }
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-999',
+            eventKey: 'push',
+            secret,
+            body: JSON.stringify(payloadObj),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-999' }) })
+        expect(response.status).toBe(200)
+
+        const json = await response.json()
+        expect(json.received).toBe(true)
+        expect(json.event).toBe('push')
+        expect(json.result).toEqual(serviceResult)
+
+        expect(mocks.processGithubEvent).toHaveBeenCalledWith({
+            provider: 'github',
+            eventKey: 'push',
+            connectionId: 'conn-gh-999',
+            organizationId: 'org-tenant-100',
+            payload: payloadObj,
+        })
+    })
+})

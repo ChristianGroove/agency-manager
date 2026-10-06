@@ -95,5 +95,41 @@ export const BUILTIN_PROVIDERS: IntegrationProvider[] = [
                 }
             }
         }
+    },
+    {
+        id: 'github-provider-default',
+        key: 'github',
+        name: 'GitHub',
+        description: 'Sincronización nativa de ramas, commits y pull requests con Pixy Tasks',
+        category: 'productivity',
+        icon_url: '/icons/github.svg',
+        is_premium: false,
+        is_enabled: true,
+        created_at: '2026-10-05T00:00:00Z',
+        updated_at: '2026-10-05T00:00:00Z',
+        documentation_url: 'https://docs.github.com/en/rest',
+        setup_instructions: 'Ingresa un Personal Access Token (PAT) con permisos de repositorio y administración de webhooks.',
+        config_schema: {
+            required: ['token'],
+            properties: {
+                token: {
+                    type: 'string',
+                    title: 'Personal Access Token',
+                    description: 'Token clásico con scopes repo y admin:org_hook, o Fine-grained token',
+                    format: 'password'
+                },
+                owner: {
+                    type: 'string',
+                    title: 'Owner / Organización (Opcional)',
+                    description: 'Usuario u organización de GitHub por defecto (ej: mi-agencia)'
+                },
+                webhook_secret: {
+                    type: 'string',
+                    title: 'Webhook Secret (Opcional)',
+                    description: 'Clave secreta HMAC-SHA256 para validación criptográfica de webhooks',
+                    format: 'password'
+                }
+            }
+        }
     }
 ]

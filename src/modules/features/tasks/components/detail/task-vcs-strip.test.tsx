@@ -409,5 +409,36 @@ describe("TaskVcsStrip Component", () => {
       expect(href).toContain("dest=master")
       expect(href).not.toContain(".git")
     })
+
+    it("renders canonical GitHub compare PR URL when active branch provider is github", () => {
+      const githubBranchLink: TaskVcsLink = {
+        id: "link-gh-1",
+        organization_id: "org-1",
+        task_id: "task-100",
+        provider: "github",
+        resource_type: "branch",
+        external_id: "feature/pix-100-gh-flow",
+        repository_name: "pixy-agency/github-repo",
+        title: "feature/pix-100-gh-flow",
+        url: "https://github.com/pixy-agency/github-repo/tree/feature/pix-100-gh-flow",
+        status: "ACTIVE",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const taskWithGithubBranch = {
+        ...baseTask,
+        vcs_links: [githubBranchLink],
+      }
+
+      render(<TaskVcsStrip task={taskWithGithubBranch} project={mockProject} />)
+
+      const prBtn = screen.getByTestId("open-bitbucket-pr-btn")
+      expect(prBtn).toBeDefined()
+      const href = prBtn.getAttribute("href")
+      expect(href).toContain("https://github.com/pixy-agency/github-repo/compare/main...feature%2Fpix-100-gh-flow")
+      expect(href).toContain("expand=1")
+      expect(href).toContain("title=PIX-100%3A%20Setup%20OAuth%20Authentication")
+    })
   })
 })

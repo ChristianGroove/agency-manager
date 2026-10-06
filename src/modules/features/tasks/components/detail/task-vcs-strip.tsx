@@ -201,8 +201,12 @@ export function TaskVcsStrip({ task, project }: TaskVcsStripProps) {
   const prTitle = `${task.ticket_code}: ${task.title || ""}`.trim()
   const prDesc = `Implementación de ticket ${task.ticket_code} - ${task.title || ""}\n\n${task.description || ""}`.trim()
 
-  const createBitbucketPrUrl = cleanRepoFullName
-    ? `https://bitbucket.org/${cleanRepoFullName}/pull-requests/new?source=${encodeURIComponent(sourceBranch)}&dest=${encodeURIComponent(destBranch)}&title=${encodeURIComponent(prTitle)}&description=${encodeURIComponent(prDesc)}`
+  const vcsProvider = primaryBranch?.provider || vcsConfig?.provider || workspaceVcs?.provider || 'bitbucket'
+
+  const createPrUrl = cleanRepoFullName
+    ? vcsProvider === 'github'
+      ? `https://github.com/${cleanRepoFullName}/compare/${encodeURIComponent(destBranch)}...${encodeURIComponent(sourceBranch)}?expand=1&title=${encodeURIComponent(prTitle)}&body=${encodeURIComponent(prDesc)}`
+      : `https://bitbucket.org/${cleanRepoFullName}/pull-requests/new?source=${encodeURIComponent(sourceBranch)}&dest=${encodeURIComponent(destBranch)}&title=${encodeURIComponent(prTitle)}&description=${encodeURIComponent(prDesc)}`
     : "#"
 
   return (
@@ -333,7 +337,7 @@ export function TaskVcsStrip({ task, project }: TaskVcsStripProps) {
             {/* Deep-Link 1-Click "Crear Pull Request" */}
             {activeBranches.length > 0 && !hasOpenOrMergedPr && (
               <a
-                href={createBitbucketPrUrl}
+                href={createPrUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="open-bitbucket-pr-btn"
@@ -433,7 +437,7 @@ export function TaskVcsStrip({ task, project }: TaskVcsStripProps) {
                               rel="noopener noreferrer"
                               className="text-[10px] text-muted-foreground hover:text-blue-500 flex items-center gap-1"
                             >
-                              Ver en Bitbucket <ExternalLink className="h-2.5 w-2.5" />
+                              {c.provider === 'github' ? 'Ver en GitHub' : 'Ver en Bitbucket'} <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           )}
                         </div>

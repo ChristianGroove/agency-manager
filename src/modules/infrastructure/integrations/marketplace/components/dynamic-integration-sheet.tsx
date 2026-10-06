@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { IntegrationProvider, InstalledIntegration } from "../types"
+import { IntegrationProvider, InstalledIntegration, BUILTIN_PROVIDERS } from "../types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -47,41 +47,9 @@ interface DynamicIntegrationSheetProps {
     onSuccess?: () => void
 }
 
-const BITBUCKET_FALLBACK_PROVIDER: IntegrationProvider = {
-    id: 'bitbucket-fallback',
-    key: 'bitbucket',
-    name: 'Bitbucket',
-    description: 'Sincronización nativa de ramas, commits y pull requests con Pixy Tasks',
-    category: 'productivity',
-    icon_url: '/icons/bitbucket.svg',
-    is_premium: false,
-    is_enabled: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    documentation_url: 'https://support.atlassian.com/bitbucket-cloud/',
-    setup_instructions: 'Ingresa el slug de tu Workspace y un Access Token de Bitbucket con permisos de lectura.',
-    config_schema: {
-        required: ['workspace', 'token'],
-        properties: {
-            workspace: {
-                type: 'string',
-                title: 'Bitbucket Workspace Slug',
-                description: 'Slug del workspace en Bitbucket (ej: mi-agencia)'
-            },
-            token: {
-                type: 'string',
-                title: 'Workspace Access Token',
-                description: 'Token con permisos de lectura de repositorios, webhooks y pull requests',
-                format: 'password'
-            },
-            webhook_secret: {
-                type: 'string',
-                title: 'Webhook Secret (Opcional)',
-                description: 'Clave secreta HMAC-SHA256 para validación criptográfica de webhooks',
-                format: 'password'
-            }
-        }
-    }
+const getFallbackProvider = (key?: string): IntegrationProvider | null => {
+    if (!key) return null
+    return BUILTIN_PROVIDERS.find((p) => p.key === key) || null
 }
 
 export function DynamicIntegrationSheet({
@@ -94,7 +62,7 @@ export function DynamicIntegrationSheet({
 }: DynamicIntegrationSheetProps) {
     const router = useRouter()
     const [provider, setProvider] = useState<IntegrationProvider | null>(
-        initialProvider || (providerKey === 'bitbucket' ? BITBUCKET_FALLBACK_PROVIDER : null)
+        initialProvider || getFallbackProvider(providerKey)
     )
     const [connection, setConnection] = useState<InstalledIntegration | undefined>(initialConnection)
     const [formData, setFormData] = useState<Record<string, string>>({})
@@ -131,8 +99,8 @@ export function DynamicIntegrationSheet({
 
                 if (loadedProvider) {
                     setProvider(loadedProvider)
-                } else if (keyToLoad === 'bitbucket') {
-                    setProvider(BITBUCKET_FALLBACK_PROVIDER)
+                } else {
+                    setProvider(getFallbackProvider(keyToLoad))
                 }
 
                 const foundConnection = installedList.find(
@@ -141,8 +109,8 @@ export function DynamicIntegrationSheet({
                 setConnection(foundConnection || initialConnection)
             } catch (err) {
                 console.error("[DynamicIntegrationSheet] Error loading provider data:", err)
-                if (keyToLoad === 'bitbucket' && isMounted) {
-                    setProvider(BITBUCKET_FALLBACK_PROVIDER)
+                if (isMounted) {
+                    setProvider(getFallbackProvider(keyToLoad))
                 }
             } finally {
                 if (isMounted) setIsLoading(false)
@@ -204,7 +172,7 @@ export function DynamicIntegrationSheet({
 
         setIsLoading(true)
         try {
-            const workspaceSlug = formData.workspace?.trim() || ""
+            const workspaceSlug = formData.workspace?.trim() || formData.owner?.trim() || ""
             const connectionName = workspaceSlug
                 ? `${provider.name} (${workspaceSlug})`
                 : `${provider.name} Connection`
@@ -216,6 +184,7 @@ export function DynamicIntegrationSheet({
                 config: {},
                 metadata: {
                     workspace: workspaceSlug,
+                    owner: formData.owner?.trim() || workspaceSlug,
                     configured_at: new Date().toISOString()
                 }
             })
@@ -242,6 +211,7 @@ export function DynamicIntegrationSheet({
                         config: {},
                         metadata: {
                             workspace: workspaceSlug,
+                            owner: formData.owner?.trim() || workspaceSlug,
                             webhook_url: `${origin}/api/webhooks/vcs/${provider.key}/${res.connectionId}`,
                             configured_at: new Date().toISOString()
                         },
@@ -306,7 +276,8 @@ export function DynamicIntegrationSheet({
         return `${origin}/api/webhooks/vcs/${connection.provider_key}/${connection.id}`
     }, [connection])
 
-    const workspaceIdentifier = connection?.metadata?.workspace || connection?.connection_name || "Workspace"
+    const workspaceIdentifier = connection?.metadata?.owner || connection?.metadata?.workspace || connection?.connection_name || (provider?.key === 'github' ? 'Owner / Organización' : 'Workspace')
+    const accountLabel = provider?.key === 'github' ? 'Owner / Organización' : 'Workspace'
 
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -331,7 +302,9 @@ export function DynamicIntegrationSheet({
                     <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg text-lg">
-                                {provider?.key === 'bitbucket' ? (
+                                {provider?.key === 'github' ? (
+                                    <span className="text-xl">🐙</span>
+                                ) : provider?.key === 'bitbucket' ? (
                                     <GitBranch className="h-5 w-5" />
                                 ) : (
                                     <Zap className="h-5 w-5" />
@@ -377,7 +350,7 @@ export function DynamicIntegrationSheet({
                                         <div>
                                             <h4 className="text-sm font-semibold text-foreground">Conexión Saludable y Verificada</h4>
                                             <p className="text-xs text-muted-foreground">
-                                                Workspace: <span className="font-mono font-medium text-foreground">{workspaceIdentifier}</span>
+                                                {accountLabel}: <span className="font-mono font-medium text-foreground">{workspaceIdentifier}</span>
                                             </p>
                                         </div>
                                     </div>
@@ -419,7 +392,11 @@ export function DynamicIntegrationSheet({
                                             </Button>
                                         </div>
                                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                            {provider?.key === 'bitbucket' ? (
+                                            {provider?.key === 'github' ? (
+                                                <>
+                                                    Registra este webhook en los <strong>Settings de tu Organización o Repositorio de GitHub</strong> (Settings → Webhooks → Add webhook) con Content type <strong>application/json</strong> y eventos de <strong>Push</strong> y <strong>Pull requests</strong> para sincronizar ramas y tickets en tiempo real.
+                                                </>
+                                            ) : provider?.key === 'bitbucket' ? (
                                                 <>
                                                     Registra este webhook en tu <strong>Workspace de Bitbucket</strong> (Configuración del Workspace → Webhooks) seleccionando los eventos de <strong>Push</strong> y <strong>Pull Requests</strong> para sincronizar ramas y tickets en tiempo real.
                                                 </>

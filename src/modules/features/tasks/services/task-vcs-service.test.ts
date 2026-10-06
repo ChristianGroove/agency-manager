@@ -1313,4 +1313,540 @@ describe("TaskVcsService - Unit Tests", () => {
       expect(matches).toBe(false)
     })
   })
+
+  describe("processGithubEvent - GitHub VCS Integration Lifecycle", () => {
+    const orgId = "org-github-vcs"
+
+    it("branch push with commits linking ticket transitions task to in_progress and records GitHub links", async () => {
+      const taskPIX501 = {
+        id: "task-501",
+        ticket_code: "PIX-501",
+        title: "GitHub Native Integration",
+        status: "todo",
+        progress_percentage: 0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      const syncedResources: any[] = []
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-501" ? taskPIX501 : null),
+          onUpsert: (record) => syncedResources.push(record),
+        })
+      )
+
+      const pushPayload = {
+        ref: "refs/heads/feature/PIX-501-github-support",
+        created: true,
+        deleted: false,
+        repository: {
+          full_name: "pixy/agency-manager",
+          html_url: "https://github.com/pixy/agency-manager",
+        },
+        commits: [
+          {
+            id: "commit-gh-1",
+            message: "PIX-501: add github webhook handler",
+            author: { name: "Octo Dev", username: "octodev" },
+            timestamp: new Date().toISOString(),
+            url: "https://github.com/pixy/agency-manager/commit/commit-gh-1",
+          },
+        ],
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "push",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: pushPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(result.summary).toContain("2 ticket associations")
+
+      // Both branch and commit recorded with provider 'github'
+      const branchLink = syncedResources.find((r) => r.resource_type === "branch")
+      expect(branchLink).toBeDefined()
+      expect(branchLink.provider).toBe("github")
+      expect(branchLink.title).toBe("feature/PIX-501-github-support")
+
+      const commitLink = syncedResources.find((r) => r.resource_type === "commit")
+      expect(commitLink).toBeDefined()
+      expect(commitLink.provider).toBe("github")
+      expect(commitLink.external_id).toBe("commit-gh-1")
+
+      // Auto-transitioned to in_progress with audit tag 'GitHub VCS'
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledWith(
+        orgId,
+        "task-501",
+        "in_progress",
+        "todo",
+        "GitHub VCS",
+        undefined,
+        undefined,
+        expect.stringContaining("feature/PIX-501-github-support")
+      )
+    })
+
+    it("branch deletion (payload.deleted === true) marks branch link as DELETED without triggering auto-transition", async () => {
+      const taskPIX502 = {
+        id: "task-502",
+        ticket_code: "PIX-502",
+        title: "Delete Me",
+        status: "in_progress",
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      const existingBranchLink = {
+        id: "link-branch-502",
+        task_id: "task-502",
+        external_id: "feature/PIX-502-delete-me",
+        title: "feature/PIX-502-delete-me",
+        status: "ACTIVE",
+        organization_id: orgId,
+      }
+
+      const updatedLinks: any[] = []
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-502" ? taskPIX502 : null),
+          findExistingLink: (extId) => (extId === "feature/PIX-502-delete-me" ? existingBranchLink : null),
+          onUpdate: (table, data) => {
+            if (table === "task_vcs_links") updatedLinks.push(data)
+          },
+        })
+      )
+
+      const deletePayload = {
+        ref: "refs/heads/feature/PIX-502-delete-me",
+        deleted: true,
+        after: "0000000000000000000000000000000000000000",
+        repository: { full_name: "pixy/agency-manager" },
+        commits: [],
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "push",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: deletePayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(mocks.notifyStakeholdersOnStatusChange).not.toHaveBeenCalled()
+      expect(updatedLinks.some((l) => l.status === "DELETED")).toBe(true)
+    })
+
+    it("ignores tag pushes (refs/tags/...) without creating branch links", async () => {
+      const syncedResources: any[] = []
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          onUpsert: (record) => syncedResources.push(record),
+        })
+      )
+
+      const tagPayload = {
+        ref: "refs/tags/v1.0.0",
+        created: true,
+        repository: { full_name: "pixy/agency-manager" },
+        commits: [],
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "push",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: tagPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(syncedResources.filter((r) => r.resource_type === "branch")).toHaveLength(0)
+    })
+
+    it("parses worklog hours [1.5h] in commit messages and accumulates on actual_hours", async () => {
+      const taskPIX503 = {
+        id: "task-503",
+        ticket_code: "PIX-503",
+        title: "Worklog Test",
+        status: "in_progress",
+        actual_hours: 2.0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      let updatedHours: number | undefined
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-503" ? taskPIX503 : null),
+          onUpdate: (table, data) => {
+            if (table === "task_items" && data.actual_hours !== undefined) {
+              updatedHours = data.actual_hours
+            }
+          },
+        })
+      )
+
+      const pushWithWorklogPayload = {
+        ref: "refs/heads/feature/PIX-503-worklog",
+        repository: { full_name: "pixy/agency-manager" },
+        commits: [
+          {
+            id: "commit-wl-1",
+            message: "PIX-503 [1.5h]: Complete adapter implementation",
+            author: { name: "Octo Engineer" },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "push",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: pushWithWorklogPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(updatedHours).toBe(3.5)
+      expect(mocks.logTaskAuditComment).toHaveBeenCalledWith(
+        orgId,
+        "task-503",
+        expect.stringContaining("+1.5h (Total: 3.5h)"),
+        "GitHub VCS"
+      )
+    })
+
+    it("pull_request opened event records PR link and auto-transitions task", async () => {
+      const taskPIX504 = {
+        id: "task-504",
+        ticket_code: "PIX-504",
+        title: "PR Open Test",
+        status: "todo",
+        progress_percentage: 0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      const syncedResources: any[] = []
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-504" ? taskPIX504 : null),
+          onUpsert: (record) => syncedResources.push(record),
+        })
+      )
+
+      const prOpenPayload = {
+        action: "opened",
+        repository: { full_name: "pixy/agency-manager" },
+        pull_request: {
+          id: 101,
+          number: 101,
+          title: "PIX-504: Feature implementation PR",
+          body: "Resolves PIX-504",
+          html_url: "https://github.com/pixy/agency-manager/pull/101",
+          state: "open",
+          merged: false,
+          user: { login: "octocat" },
+          head: { ref: "feature/PIX-504-feat" },
+          base: { ref: "main" },
+        },
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "pull_request",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: prOpenPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      const prLink = syncedResources.find((r) => r.resource_type === "pull_request")
+      expect(prLink).toBeDefined()
+      expect(prLink.provider).toBe("github")
+      expect(prLink.status).toBe("OPEN")
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalled()
+    })
+
+    it("pull_request closed (declined/unmerged) marks PR link as DECLINED and does not complete task", async () => {
+      const taskPIX505 = {
+        id: "task-505",
+        ticket_code: "PIX-505",
+        title: "Declined PR Test",
+        status: "in_review",
+        progress_percentage: 95,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      const syncedResources: any[] = []
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-505" ? taskPIX505 : null),
+          onUpsert: (record) => syncedResources.push(record),
+        })
+      )
+
+      const prDeclinedPayload = {
+        action: "closed",
+        repository: { full_name: "pixy/agency-manager" },
+        pull_request: {
+          id: 102,
+          number: 102,
+          title: "PIX-505: Cancelled feature",
+          html_url: "https://github.com/pixy/agency-manager/pull/102",
+          state: "closed",
+          merged: false,
+          head: { ref: "feature/PIX-505-cancelled" },
+        },
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "pull_request",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: prDeclinedPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      const prLink = syncedResources.find((r) => r.resource_type === "pull_request")
+      expect(prLink?.status).toBe("DECLINED")
+      expect(mocks.logTaskAuditComment).toHaveBeenCalledWith(
+        orgId,
+        "task-505",
+        expect.stringContaining("fue cerrado en GitHub sin fusionar"),
+        "GitHub VCS"
+      )
+      expect(mocks.notifyStakeholdersOnStatusChange).not.toHaveBeenCalled()
+    })
+
+    it("pull_request merged holds task at 95% if checklist deliverables are incomplete", async () => {
+      const taskPIX506 = {
+        id: "task-506",
+        ticket_code: "PIX-506",
+        title: "Task with unfinished deliverables",
+        status: "in_review",
+        progress_percentage: 80,
+        checklist: [
+          { id: "chk-1", title: "Write tests", completed: true },
+          { id: "chk-2", title: "Security review", completed: false },
+        ],
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      let updatedProgress: number | undefined
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-506" ? taskPIX506 : null),
+          onUpdate: (table, data) => {
+            if (table === "task_items" && data.progress_percentage !== undefined) {
+              updatedProgress = data.progress_percentage
+            }
+          },
+        })
+      )
+
+      const prMergedPayload = {
+        action: "closed",
+        repository: { full_name: "pixy/agency-manager" },
+        pull_request: {
+          id: 103,
+          number: 103,
+          title: "PIX-506: Merge feature with pending checklist",
+          html_url: "https://github.com/pixy/agency-manager/pull/103",
+          state: "closed",
+          merged: true,
+          head: { ref: "feature/PIX-506-feat" },
+        },
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "pull_request",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: prMergedPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(updatedProgress).toBe(95)
+      expect(mocks.logTaskAuditComment).toHaveBeenCalledWith(
+        orgId,
+        "task-506",
+        expect.stringContaining("entregables pendientes en el checklist de control"),
+        "GitHub VCS"
+      )
+      expect(mocks.handleTaskUnblocking).not.toHaveBeenCalled()
+    })
+
+    it("pull_request merged holds task at 95% if blocked by incomplete predecessor task", async () => {
+      const blockerTask = {
+        id: "task-blocker-99",
+        ticket_code: "PIX-499",
+        title: "Database Migration",
+        status: "in_progress",
+      }
+
+      const taskPIX508 = {
+        id: "task-508",
+        ticket_code: "PIX-508",
+        title: "API Endpoint Depending on DB",
+        status: "in_review",
+        progress_percentage: 80,
+        blocked_by_task_id: "task-blocker-99",
+        checklist: [],
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      let updatedProgress: number | undefined
+      mocks.supabaseFrom.mockImplementation((table: string) => {
+        let currentId = ""
+        let currentCode = ""
+        const chain: any = {
+          select: vi.fn(() => chain),
+          update: vi.fn((data: any) => {
+            if (table === "task_items" && data.progress_percentage !== undefined) {
+              updatedProgress = data.progress_percentage
+            }
+            return chain
+          }),
+          upsert: vi.fn((record: any) => ({
+            select: vi.fn(() => ({
+              single: vi.fn(async () => ({ data: { id: "link-id", ...record }, error: null })),
+            })),
+          })),
+          eq: vi.fn((field: string, val: any) => {
+            if (field === "id") currentId = String(val)
+            return chain
+          }),
+          ilike: vi.fn((field: string, val: any) => {
+            if (field === "ticket_code") currentCode = String(val).toUpperCase()
+            return chain
+          }),
+          maybeSingle: vi.fn(async () => {
+            if (table === "task_items") {
+              if (currentId === "task-blocker-99") return { data: blockerTask, error: null }
+              if (currentCode === "PIX-508") return { data: taskPIX508, error: null }
+            }
+            return { data: null, error: null }
+          }),
+        }
+        return chain
+      })
+
+      const prMergedPayload = {
+        action: "closed",
+        repository: { full_name: "pixy/agency-manager" },
+        pull_request: {
+          id: 105,
+          number: 105,
+          title: "PIX-508: PR merged with active blocker",
+          html_url: "https://github.com/pixy/agency-manager/pull/105",
+          state: "closed",
+          merged: true,
+          head: { ref: "feature/PIX-508-feat" },
+        },
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "pull_request",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: prMergedPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(updatedProgress).toBe(95)
+      expect(mocks.logTaskAuditComment).toHaveBeenCalledWith(
+        orgId,
+        "task-508",
+        expect.stringContaining("depende de #PIX-499"),
+        "GitHub VCS"
+      )
+      expect(mocks.handleTaskUnblocking).not.toHaveBeenCalled()
+    })
+
+    it("pull_request merged completes task to done (100%) and unblocks dependent tasks when clean", async () => {
+      const taskPIX507 = {
+        id: "task-507",
+        ticket_code: "PIX-507",
+        title: "Clean Feature Ready for Done",
+        status: "in_review",
+        progress_percentage: 95,
+        checklist: [
+          { id: "chk-1", title: "All done", completed: true },
+        ],
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      let finalStatus: string | undefined
+      let finalProgress: number | undefined
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-507" ? taskPIX507 : null),
+          onUpdate: (table, data) => {
+            if (table === "task_items") {
+              if (data.status !== undefined) finalStatus = data.status
+              if (data.progress_percentage !== undefined) finalProgress = data.progress_percentage
+            }
+          },
+        })
+      )
+
+      const prMergedPayload = {
+        action: "closed",
+        repository: { full_name: "pixy/agency-manager" },
+        pull_request: {
+          id: 104,
+          number: 104,
+          title: "PIX-507: Merge clean feature",
+          html_url: "https://github.com/pixy/agency-manager/pull/104",
+          state: "closed",
+          merged: true,
+          head: { ref: "feature/PIX-507-feat" },
+        },
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "pull_request",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: prMergedPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(finalStatus).toBe("done")
+      expect(finalProgress).toBe(100)
+      expect(mocks.handleTaskUnblocking).toHaveBeenCalledWith("task-507", "PIX-507", "Clean Feature Ready for Done")
+    })
+
+    it("safely handles empty payloads without throwing", async () => {
+      const nullRes = await service.processGithubEvent(null as any)
+      expect(nullRes.processed).toBe(false)
+      expect(nullRes.summary).toBe("Empty or missing event payload")
+
+      const unknownRes = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "star",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: {},
+      })
+      expect(unknownRes.processed).toBe(false)
+      expect(unknownRes.summary).toBe("Ignored GitHub event: star")
+    })
+  })
 })
+

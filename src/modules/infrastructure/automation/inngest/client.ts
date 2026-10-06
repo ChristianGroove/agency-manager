@@ -51,6 +51,18 @@ export type VcsBitbucketEvent = {
     };
 };
 
+export type VcsGithubEvent = {
+    name: "vcs/github.event";
+    id?: string;
+    data: {
+        connectionId: string;
+        organizationId: string;
+        eventKey: string;
+        payload: any;
+        requestUuid?: string;
+    };
+};
+
 type Events = {
     "meta/webhook.received": { name: "meta/webhook.received"; data: { eventId: string } };
     "meta/outbound.queued": { name: "meta/outbound.queued"; data: { outboxId: string } };
@@ -59,6 +71,7 @@ type Events = {
     "whatsapp/message.received": WhatsAppReceivedEvent;
     "stripe/webhook.received": StripeWebhookEvent;
     "vcs/bitbucket.event": VcsBitbucketEvent;
+    "vcs/github.event": VcsGithubEvent;
 };
 
 

@@ -35,7 +35,8 @@ const PROVIDER_ICONS: Record<string, string> = {
     'openai': '🤖',
     'anthropic': '🧠',
     'ai-engine': '🔮',
-    'bitbucket': '🪣'
+    'bitbucket': '🪣',
+    'github': '🐙'
 }
 
 const MOCK_OR_UNIMPLEMENTED_PROVIDERS = new Set([
@@ -48,7 +49,7 @@ const MOCK_OR_UNIMPLEMENTED_PROVIDERS = new Set([
 ])
 
 function getProviderEcosystem(providerKey: string, category: string): { id: string; label: string; color: string } {
-    if (providerKey === 'bitbucket' || category === 'dev_tasks') {
+    if (providerKey === 'bitbucket' || providerKey === 'github' || category === 'dev_tasks') {
         return { id: 'dev_tasks', label: 'Desarrollo & Tareas', color: 'blue' }
     }
     if (['meta_business', 'meta_whatsapp', 'meta_instagram', 'evolution_api', 'telegram', 'twilio_sms'].includes(providerKey) || ['messaging', 'crm'].includes(category)) {
