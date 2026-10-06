@@ -117,6 +117,7 @@ export class TaskVcsService {
     organizationId: string
     task: any
     trigger: 'branch_created' | 'commit_pushed' | 'pr_opened' | 'pr_merged'
+    provider?: VcsProviderType
     context: {
       branchName?: string
       commitHash?: string
@@ -126,6 +127,9 @@ export class TaskVcsService {
     }
   }): Promise<{ transitioned: boolean; newStatus?: TaskStatus; reason?: string }> {
     const { organizationId, task, trigger, context } = params
+    const provider: VcsProviderType = params.provider || 'bitbucket'
+    const providerName = provider === 'github' ? 'GitHub' : 'Bitbucket'
+    const auditTag = provider === 'github' ? 'GitHub VCS' : 'Bitbucket VCS'
 
     // 1. Opt-out: Honor project settings if auto-transitions explicitly disabled
     const project = Array.isArray(task.project) ? task.project[0] : task.project
@@ -150,7 +154,8 @@ export class TaskVcsService {
             prevStatus,
             'in_progress',
             25,
-            auditMsg
+            auditMsg,
+            provider
           )
           return { transitioned: true, newStatus: 'in_progress' }
         }
@@ -168,7 +173,8 @@ export class TaskVcsService {
             prevStatus,
             'in_progress',
             25,
-            auditMsg
+            auditMsg,
+            provider
           )
           return { transitioned: true, newStatus: 'in_progress' }
         }
@@ -189,7 +195,8 @@ export class TaskVcsService {
             prevStatus,
             'in_review',
             nextProgress,
-            auditMsg
+            auditMsg,
+            provider
           )
           return { transitioned: true, newStatus: 'in_review' }
         }
@@ -217,7 +224,7 @@ export class TaskVcsService {
               })
               .eq('id', task.id)
 
-            const blockerAudit = `⚠️ Pull Request ${prNum} fusionado en Bitbucket, pero el ticket depende de #${blocker.ticket_code} (${blocker.title}) que aún está pendiente (${blocker.status}). Se mantiene en Revisión / QA (95%).`
+            const blockerAudit = `⚠️ Pull Request ${prNum} fusionado en ${providerName}, pero el ticket depende de #${blocker.ticket_code} (${blocker.title}) que aún está pendiente (${blocker.status}). Se mantiene en Revisión / QA (95%).`
 
             if (prevStatus !== 'in_review') {
               await notifyStakeholdersOnStatusChange(
@@ -225,7 +232,7 @@ export class TaskVcsService {
                 task.id,
                 'in_review',
                 prevStatus,
-                'Bitbucket VCS',
+                auditTag,
                 undefined,
                 undefined,
                 blockerAudit
@@ -235,7 +242,7 @@ export class TaskVcsService {
                 organizationId,
                 task.id,
                 blockerAudit,
-                'Bitbucket VCS'
+                auditTag
               )
             }
 
@@ -256,7 +263,7 @@ export class TaskVcsService {
             })
             .eq('id', task.id)
 
-          const auditMsg = `⚠️ Pull Request ${prNum} fusionado en Bitbucket, pero el ticket contiene entregables pendientes en el checklist de control. El avance se retiene en el 95% a la espera de la validación final del equipo.`
+          const auditMsg = `⚠️ Pull Request ${prNum} fusionado en ${providerName}, pero el ticket contiene entregables pendientes en el checklist de control. El avance se retiene en el 95% a la espera de la validación final del equipo.`
 
           if (prevStatus !== 'in_review') {
             await notifyStakeholdersOnStatusChange(
@@ -264,7 +271,7 @@ export class TaskVcsService {
               task.id,
               'in_review',
               prevStatus,
-              'Bitbucket VCS',
+              auditTag,
               undefined,
               undefined,
               auditMsg
@@ -274,7 +281,7 @@ export class TaskVcsService {
               organizationId,
               task.id,
               auditMsg,
-              'Bitbucket VCS'
+              auditTag
             )
           }
 
@@ -290,14 +297,14 @@ export class TaskVcsService {
             })
             .eq('id', task.id)
 
-          const auditMsg = `🎉 Pull Request ${prNum} fusionado exitosamente en Bitbucket. Todos los entregables validados. Tarea marcada como Completada.`
+          const auditMsg = `🎉 Pull Request ${prNum} fusionado exitosamente en ${providerName}. Todos los entregables validados. Tarea marcada como Completada.`
 
           await notifyStakeholdersOnStatusChange(
             organizationId,
             task.id,
             'done',
             prevStatus,
-            'Bitbucket VCS',
+            auditTag,
             undefined,
             undefined,
             auditMsg
@@ -448,6 +455,14 @@ export class TaskVcsService {
   ): Promise<{ processed: boolean; summary: string }> {
     const changes = Array.isArray(payload.push?.changes) ? payload.push.changes : []
     let processedTickets = 0
+    const taskCache = new Map<string, any>()
+    const getTask = async (ticketCode: string) => {
+      const cached = taskCache.get(ticketCode)
+      if (cached) return cached
+      const t = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+      if (t) taskCache.set(ticketCode, t)
+      return t
+    }
 
     for (const change of changes) {
       // 1. Branch Deletion: change.closed === true must NOT trigger branch_created transitions
@@ -456,7 +471,7 @@ export class TaskVcsService {
         if (deletedBranchName) {
           const branchTickets = this.extractTicketCodes(deletedBranchName)
           for (const ticketCode of branchTickets) {
-            const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+            const task = await getTask(ticketCode)
             if (!task) continue
 
             const { data: existingLink } = await supabaseAdmin
@@ -493,7 +508,7 @@ export class TaskVcsService {
         const branchTickets = this.extractTicketCodes(branchName)
 
         for (const ticketCode of branchTickets) {
-          const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+          const task = await getTask(ticketCode)
           if (!task) continue
 
           await this.syncVcsResource(organizationId, task.id, {
@@ -510,12 +525,15 @@ export class TaskVcsService {
             }
           })
 
-          await this.handleVcsAutoTransition({
+          const branchTransition = await this.handleVcsAutoTransition({
             organizationId,
             task,
             trigger: 'branch_created',
             context: { branchName }
           })
+          if (branchTransition?.transitioned) {
+            task.status = 'in_progress'
+          }
 
           processedTickets++
         }
@@ -541,7 +559,7 @@ export class TaskVcsService {
         const worklogHours = this.extractWorklogHours(message)
 
         for (const ticketCode of commitTickets) {
-          const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+          const task = await getTask(ticketCode)
           if (!task) continue
 
           // Idempotency: Check if commit was already linked for this task
@@ -593,12 +611,15 @@ export class TaskVcsService {
               )
             }
 
-            await this.handleVcsAutoTransition({
+            const commitTransition = await this.handleVcsAutoTransition({
               organizationId,
               task,
               trigger: 'commit_pushed',
               context: { commitHash: hash, authorName }
             })
+            if (commitTransition?.transitioned) {
+              task.status = 'in_progress'
+            }
           }
 
           processedTickets++
@@ -849,6 +870,408 @@ export class TaskVcsService {
   }
 
   /**
+   * Core Webhook Orchestrator: Process incoming GitHub VCS event
+   */
+  async processGithubEvent(event: VcsPayloadEvent): Promise<{ processed: boolean; summary?: string }> {
+    if (!event || !event.payload) {
+      return { processed: false, summary: 'Empty or missing event payload' }
+    }
+
+    const { organizationId, eventKey, payload } = event
+    const repoFullName = payload.repository?.full_name || 'unknown/repo'
+
+    switch (eventKey) {
+      case 'ping':
+        return { processed: true, summary: 'GitHub ping received' }
+
+      case 'push':
+        return await this.handleGithubRepoPush(organizationId, repoFullName, payload)
+
+      case 'pull_request':
+        return await this.handleGithubPullRequest(organizationId, repoFullName, payload)
+
+      case 'status':
+        return await this.handleGithubCommitStatusUpdate(organizationId, payload)
+
+      default:
+        console.log(`[TaskVcsService] Unhandled GitHub event key: ${eventKey}`)
+        return { processed: false, summary: `Ignored GitHub event: ${eventKey}` }
+    }
+  }
+
+  /**
+   * Handles GitHub push events (branches and commits)
+   */
+  private async handleGithubRepoPush(
+    organizationId: string,
+    repositoryName: string,
+    payload: Record<string, any>
+  ): Promise<{ processed: boolean; summary: string }> {
+    const ref = payload.ref
+    if (!ref || typeof ref !== 'string' || !ref.startsWith('refs/heads/')) {
+      return { processed: true, summary: 'Ignored non-branch push ref' }
+    }
+
+    const branchName = ref.replace(/^refs\/heads\//, '')
+    const repoHtmlUrl = payload.repository?.html_url || `https://github.com/${repositoryName}`
+    let processedTickets = 0
+    const taskCache = new Map<string, any>()
+    const getTask = async (ticketCode: string) => {
+      const cached = taskCache.get(ticketCode)
+      if (cached) return cached
+      const t = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+      if (t) taskCache.set(ticketCode, t)
+      return t
+    }
+
+    // 1. Branch Deletion: payload.deleted === true
+    if (payload.deleted === true) {
+      const branchTickets = this.extractTicketCodes(branchName)
+      for (const ticketCode of branchTickets) {
+        const task = await getTask(ticketCode)
+        if (!task) continue
+
+        const { data: existingLink } = await supabaseAdmin
+          .from('task_vcs_links')
+          .select('id, metadata')
+          .eq('task_id', task.id)
+          .eq('provider', 'github')
+          .eq('resource_type', 'branch')
+          .eq('external_id', branchName)
+          .maybeSingle()
+
+        if (existingLink) {
+          await supabaseAdmin
+            .from('task_vcs_links')
+            .update({
+              status: 'DELETED',
+              metadata: {
+                ...(existingLink.metadata || {}),
+                deleted_at: new Date().toISOString()
+              }
+            })
+            .eq('id', existingLink.id)
+
+          processedTickets++
+        }
+      }
+      return { processed: true, summary: `Processed GitHub branch deletion for ${branchName} (${processedTickets} tickets)` }
+    }
+
+    // 2. Branch Creation: payload.created === true
+    if (payload.created === true) {
+      const branchTickets = this.extractTicketCodes(branchName)
+      for (const ticketCode of branchTickets) {
+        const task = await getTask(ticketCode)
+        if (!task) continue
+
+        await this.syncVcsResource(organizationId, task.id, {
+          provider: 'github',
+          resource_type: 'branch',
+          external_id: branchName,
+          repository_name: repositoryName,
+          title: branchName,
+          url: `${repoHtmlUrl}/tree/${encodeURIComponent(branchName)}`,
+          status: 'ACTIVE',
+          metadata: {
+            target_hash: payload.after,
+            repository: repositoryName
+          }
+        })
+
+        const branchTransition = await this.handleVcsAutoTransition({
+          organizationId,
+          task,
+          trigger: 'branch_created',
+          provider: 'github',
+          context: { branchName }
+        })
+        if (branchTransition?.transitioned) {
+          task.status = 'in_progress'
+        }
+
+        processedTickets++
+      }
+    }
+
+    // 3. Commits & Worklogs Detection
+    const commits = Array.isArray(payload.commits) && payload.commits.length > 0
+      ? payload.commits
+      : (payload.head_commit ? [payload.head_commit] : [])
+
+    for (const commit of commits) {
+      const hash = commit.id
+      if (!hash) continue
+
+      const message = commit.message || ''
+      const commitUrl = commit.url || `${repoHtmlUrl}/commit/${hash}`
+      const authorName = commit.author?.name || commit.author?.username || commit.committer?.name || 'Desarrollador Git'
+      const commitTickets = this.extractTicketCodes(message)
+      const worklogHours = this.extractWorklogHours(message)
+
+      for (const ticketCode of commitTickets) {
+        const task = await getTask(ticketCode)
+        if (!task) continue
+
+        // Idempotency: Check if commit was already linked for this task
+        const { data: existingLink } = await supabaseAdmin
+          .from('task_vcs_links')
+          .select('id')
+          .eq('task_id', task.id)
+          .eq('provider', 'github')
+          .eq('resource_type', 'commit')
+          .eq('external_id', hash)
+          .maybeSingle()
+
+        await this.syncVcsResource(organizationId, task.id, {
+          provider: 'github',
+          resource_type: 'commit',
+          external_id: hash,
+          repository_name: repositoryName,
+          title: message.trim().split('\n')[0] || `Commit ${hash.slice(0, 7)}`,
+          url: commitUrl,
+          status: 'COMMITTED',
+          metadata: {
+            hash,
+            author: authorName,
+            date: commit.timestamp,
+            worklog_hours: worklogHours > 0 ? worklogHours : undefined
+          }
+        })
+
+        if (!existingLink) {
+          if (worklogHours > 0) {
+            const currentActual = Number(task.actual_hours) || 0
+            const updatedActual = Math.round((currentActual + worklogHours) * 100) / 100
+            task.actual_hours = updatedActual
+
+            await supabaseAdmin
+              .from('task_items')
+              .update({
+                actual_hours: updatedActual,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', task.id)
+
+            await logTaskAuditComment(
+              organizationId,
+              task.id,
+              `⏱️ Registro de trabajo vía Commit Git (${hash.slice(0, 7)}): +${worklogHours}h (Total: ${updatedActual}h) — "${message.trim()}"`,
+              'GitHub VCS'
+            )
+          }
+
+          const commitTransition = await this.handleVcsAutoTransition({
+            organizationId,
+            task,
+            trigger: 'commit_pushed',
+            provider: 'github',
+            context: { commitHash: hash, authorName }
+          })
+          if (commitTransition?.transitioned) {
+            task.status = 'in_progress'
+          }
+        }
+
+        processedTickets++
+      }
+    }
+
+    return { processed: true, summary: `Processed GitHub push with ${processedTickets} ticket associations.` }
+  }
+
+  /**
+   * Handles GitHub pull_request events (opened, reopened, synchronize, closed)
+   */
+  private async handleGithubPullRequest(
+    organizationId: string,
+    repositoryName: string,
+    payload: Record<string, any>
+  ): Promise<{ processed: boolean; summary: string }> {
+    const pr = payload.pull_request
+    if (!pr) return { processed: false, summary: 'No pull_request data in GitHub payload' }
+
+    const action = payload.action
+    const prId = String(pr.number || pr.id)
+    const prTitle = pr.title || ''
+    const prUrl = pr.html_url || `https://github.com/${repositoryName}/pull/${prId}`
+    const sourceBranch = pr.head?.ref || ''
+    const destBranch = pr.base?.ref || ''
+    const authorName = pr.user?.login || pr.user?.name || 'Desarrollador'
+    const isMerged = pr.merged === true
+
+    const ticketCodes = Array.from(
+      new Set([
+        ...this.extractTicketCodes(prTitle),
+        ...this.extractTicketCodes(sourceBranch)
+      ])
+    )
+
+    let processedCount = 0
+
+    if (action === 'opened' || action === 'reopened' || action === 'synchronize') {
+      for (const code of ticketCodes) {
+        const task = await this.findTaskByCode(organizationId, code, repositoryName)
+        if (!task) continue
+
+        await this.syncVcsResource(organizationId, task.id, {
+          provider: 'github',
+          resource_type: 'pull_request',
+          external_id: prId,
+          repository_name: repositoryName,
+          title: prTitle,
+          url: prUrl,
+          status: (pr.state || 'OPEN').toUpperCase(),
+          metadata: {
+            id: prId,
+            source_branch: sourceBranch,
+            destination_branch: destBranch,
+            author: authorName,
+            comment_count: pr.comments || 0
+          }
+        })
+
+        await this.handleVcsAutoTransition({
+          organizationId,
+          task,
+          trigger: 'pr_opened',
+          provider: 'github',
+          context: { prId, prTitle, authorName, branchName: sourceBranch }
+        })
+
+        processedCount++
+      }
+
+      return { processed: true, summary: `Processed GitHub PR #${prId} (${action}) for ${processedCount} tasks.` }
+    }
+
+    if (action === 'closed' && isMerged) {
+      for (const code of ticketCodes) {
+        const task = await this.findTaskByCode(organizationId, code, repositoryName)
+        if (!task) continue
+
+        const { data: existingPrLink } = await supabaseAdmin
+          .from('task_vcs_links')
+          .select('id, status')
+          .eq('task_id', task.id)
+          .eq('provider', 'github')
+          .eq('resource_type', 'pull_request')
+          .eq('external_id', prId)
+          .maybeSingle()
+
+        const wasAlreadyMerged = existingPrLink?.status === 'MERGED'
+
+        await this.syncVcsResource(organizationId, task.id, {
+          provider: 'github',
+          resource_type: 'pull_request',
+          external_id: prId,
+          repository_name: repositoryName,
+          title: prTitle,
+          url: prUrl,
+          status: 'MERGED',
+          metadata: {
+            id: prId,
+            source_branch: sourceBranch,
+            destination_branch: destBranch,
+            merged_by: pr.merged_by?.login || authorName,
+            merged_at: pr.merged_at || new Date().toISOString()
+          }
+        })
+
+        if (!wasAlreadyMerged) {
+          await this.handleVcsAutoTransition({
+            organizationId,
+            task,
+            trigger: 'pr_merged',
+            provider: 'github',
+            context: { prId, prTitle, authorName, branchName: sourceBranch }
+          })
+        }
+
+        processedCount++
+      }
+
+      return { processed: true, summary: `Processed merged GitHub PR #${prId} for ${processedCount} tasks.` }
+    }
+
+    if (action === 'closed' && !isMerged) {
+      for (const code of ticketCodes) {
+        const task = await this.findTaskByCode(organizationId, code, repositoryName)
+        if (!task) continue
+
+        await this.syncVcsResource(organizationId, task.id, {
+          provider: 'github',
+          resource_type: 'pull_request',
+          external_id: prId,
+          repository_name: repositoryName,
+          title: prTitle,
+          url: prUrl,
+          status: 'DECLINED',
+          metadata: {
+            id: prId,
+            source_branch: sourceBranch,
+            destination_branch: destBranch,
+            declined_at: new Date().toISOString()
+          }
+        })
+
+        await logTaskAuditComment(
+          organizationId,
+          task.id,
+          `❌ Pull Request #${prId} ("${prTitle}") fue cerrado en GitHub sin fusionar.`,
+          'GitHub VCS'
+        )
+
+        processedCount++
+      }
+
+      return { processed: true, summary: `Processed closed unmerged GitHub PR #${prId} for ${processedCount} tasks.` }
+    }
+
+    return { processed: false, summary: `Ignored GitHub PR action: ${action}` }
+  }
+
+  /**
+   * Handles GitHub commit status updates
+   */
+  private async handleGithubCommitStatusUpdate(
+    organizationId: string,
+    payload: Record<string, any>
+  ): Promise<{ processed: boolean; summary: string }> {
+    const commitHash = payload.sha
+    const state = payload.state // success, failure, pending, error
+    const buildUrl = payload.target_url
+    const buildName = payload.context
+
+    if (!commitHash) return { processed: false, summary: 'No commit hash in GitHub status' }
+
+    const { data: links } = await supabaseAdmin
+      .from('task_vcs_links')
+      .select('id, metadata, task_id')
+      .eq('organization_id', organizationId)
+      .eq('external_id', commitHash)
+
+    if (links && links.length > 0) {
+      for (const link of links) {
+        const metadata = {
+          ...(link.metadata || {}),
+          ci_status: typeof state === 'string' ? state.toUpperCase() : state,
+          ci_url: buildUrl,
+          ci_name: buildName,
+          ci_updated_at: new Date().toISOString()
+        }
+
+        await supabaseAdmin
+          .from('task_vcs_links')
+          .update({ metadata })
+          .eq('id', link.id)
+      }
+    }
+
+    return { processed: true, summary: `Updated build status ${state} for commit ${commitHash.slice(0, 7)}.` }
+  }
+
+  /**
    * Utility helper to update task status, progress percentage, and notify stakeholders with single audit comment
    */
   private async transitionTaskStatus(
@@ -857,7 +1280,8 @@ export class TaskVcsService {
     prevStatus: TaskStatus,
     targetStatus: TaskStatus,
     progressPercentage: number,
-    auditMessage: string
+    auditMessage: string,
+    provider: VcsProviderType = 'bitbucket'
   ): Promise<void> {
     await supabaseAdmin
       .from('task_items')
@@ -868,12 +1292,14 @@ export class TaskVcsService {
       })
       .eq('id', taskId)
 
+    const auditTag = provider === 'github' ? 'GitHub VCS' : 'Bitbucket VCS'
+
     await notifyStakeholdersOnStatusChange(
       organizationId,
       taskId,
       targetStatus,
       prevStatus,
-      'Bitbucket VCS',
+      auditTag,
       undefined,
       undefined,
       auditMessage
@@ -908,11 +1334,6 @@ export class TaskVcsService {
     if (projectVcs?.inherited_from_workspace && workspaceVcs?.enabled === false) {
       return false
     }
-
-    if (!incomingRepo) return true
-
-    const cleanIncoming = normalizeRepositorySlug(incomingRepo)
-    if (!cleanIncoming) return true
 
     const candidateRepos: string[] = []
 
@@ -949,9 +1370,19 @@ export class TaskVcsService {
     }
 
     // If no specific repositories are configured at project or workspace level, allow matching
+    // only if VCS is explicitly enabled at project or workspace level.
+    // A project or workspace without explicit enabled: true must NOT accept arbitrary incoming repository events.
     if (candidateRepos.length === 0) {
-      return true
+      if (projectVcs?.enabled === true || workspaceVcs?.enabled === true) {
+        return true
+      }
+      return false
     }
+
+    if (!incomingRepo) return true
+
+    const cleanIncoming = normalizeRepositorySlug(incomingRepo)
+    if (!cleanIncoming) return true
 
     const incomingHasSlash = cleanIncoming.includes('/')
     const incomingSlug = cleanIncoming.split('/').filter(Boolean).pop() || cleanIncoming

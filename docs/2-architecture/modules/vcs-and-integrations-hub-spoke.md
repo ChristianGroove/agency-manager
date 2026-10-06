@@ -59,10 +59,12 @@ La persistencia de artefactos de Git vinculados a los tickets de tareas se reali
 | `created_at` / `updated_at` | Timestamp | Registro temporal con disparador `moddatetime`. |
 
 ### 2.2. Flujo de Webhooks y Procesamiento Nativo
-1. **Endpoint Parametrizado:** `/api/webhooks/vcs/bitbucket/[connectionId]`
-2. **Validación Criptográfica:** Verificación de firma HMAC-SHA256 en tiempo constante (`timingSafeEqual`) contra el secret generado para la conexión.
-3. **Procesamiento Directo y Resiliente:** Siguiendo el estándar nativo de webhooks en Pixy (similar a los webhooks de Meta/Messaging), el endpoint ejecuta directamente `taskVcsService.processBitbucketEvent(...)`. La idempotencia se garantiza a nivel de base de datos (`UPSERT` con clave natural en `task_vcs_links`), ejecutando de inmediato las transiciones de estado, registro de horas en auditoría y desbloqueo en cascada sin depender de daemons externos o runners en la nube.
-4. **Worker Opcional / Background Tasks:** Para flujos que requieran reintentos desacoplados en background, se mantiene la función `processVcsBitbucketEvent` en `src/inngest/vcs-bitbucket.ts`.
+1. **Endpoints Parametrizados:**
+   - Bitbucket: `/api/webhooks/vcs/bitbucket/[connectionId]`
+   - GitHub: `/api/webhooks/vcs/github/[connectionId]`
+2. **Validación Criptográfica:** Verificación de firma HMAC-SHA256 en tiempo constante (`timingSafeEqual`) contra el secret generado para la conexión (`x-hub-signature-256`).
+3. **Procesamiento Directo y Resiliente:** Siguiendo el estándar nativo de webhooks en Pixy (similar a los webhooks de Meta/Messaging), los endpoints ejecutan directamente `taskVcsService.processBitbucketEvent(...)` o `taskVcsService.processGithubEvent(...)`. La idempotencia se garantiza a nivel de base de datos (`UPSERT` con clave natural en `task_vcs_links`), ejecutando de inmediato las transiciones de estado, registro de horas en auditoría y desbloqueo en cascada sin depender de daemons externos o runners en la nube.
+4. **Workers Opcionales / Background Tasks:** Para flujos que requieran reintentos desacoplados en background, se mantienen las funciones `processVcsBitbucketEvent` en `src/inngest/vcs-bitbucket.ts` y `processVcsGithubEvent` en `src/inngest/vcs-github.ts`.
 
 ### 2.3. Lógica de Negocio y Reglas Operativas (`TaskVcsService`)
 * **Detección de Tickets:** Expresión regular que detecta códigos con prefijos de espacios (ej: `WEB-104`, `APP-201`, `CRM-50`).
@@ -115,8 +117,10 @@ export interface CollaboratorCapabilities {
 Para permitir la incorporación inmediata de cualquier integración sin requerir desarrollos de UI a medida, el componente `DynamicIntegrationSheet` lee el esquema JSON `config_schema` almacenado en la base de datos:
 
 1. **Campos Dinámicos:** Mapea tipos `string` con formato `password` (con toggle para revelar/ocultar clave), campos de texto, descripciones y validaciones requeridas.
-2. **Auto-Recuperación (*Self-Healing*):** La constante `BUILTIN_PROVIDERS` en `types.ts` garantiza que Bitbucket siempre esté disponible en el catálogo, incluso si la base de datos de producción no ha ejecutado la migración inicial.
-3. **Gestión Completa:** Permite probar credenciales, guardar la conexión, copiar el webhook endpoint único y desinstalar la integración con revocación de tokens mediante el adaptador correspondiente.
+2. **Auto-Recuperación (*Self-Healing*):** La constante `BUILTIN_PROVIDERS` en `types.ts` garantiza que Bitbucket y GitHub siempre estén disponibles en el catálogo, incluso si la base de datos de producción no ha ejecutado la migración inicial.
+3. **Ergonomía de Placeholders (Cero Saturación UI):** Los campos del esquema separan claramente la pista sintáctica (`placeholder: "ghp_..."`, `"ej: mi-agencia"`, `"ATBB..."`) de la explicación funcional (`description`). Esto previene la duplicación de textos explicativos largos dentro del input y en el texto de ayuda inferior.
+4. **Protección Anti-Autofill del Navegador:** Los formularios y campos integran atributos de aislamiento (`autoComplete="new-password"`, `data-1p-ignore`, `data-bwignore`, `data-lpignore`, `data-form-type="other"`) y namespaces dedicados (`name="vcs_${provider}_${key}"`), impidiendo que el motor de autocompletado del navegador o gestores de contraseñas confundan el sheet de integraciones con el formulario de inicio de sesión de la plataforma e inyecten credenciales del tenant.
+5. **Gestión Completa:** Permite probar credenciales, guardar la conexión, copiar el webhook endpoint único y desinstalar la integración con revocación de tokens mediante el adaptador correspondiente (`GithubAdapter`, `BitbucketAdapter`).
 
 ---
 

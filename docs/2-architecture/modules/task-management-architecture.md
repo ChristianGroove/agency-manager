@@ -1682,6 +1682,6 @@ Las notas rápidas son estrictamente individuales y privadas para cada colaborad
    - `designer` / `specialist` / `operations` / `support`: Bloqueo total de herramientas de código (`vcs_code: false`), previniendo fugas de repositorios corporativos.
 2. **Ergonomía y Rendimiento Zero-Bundle (`TaskVcsContainer`)**:
    - Si `capabilities.vcs_code === false`, el componente retorna `null` inmediatamente, con 0 renderizado en el DOM y 0 carga de bundle para perfiles no técnicos.
-   - Acceso rápido a 1 clic para copiar comandos `git checkout` y botón directo `[ 🚀 Abrir PR en Bitbucket ]` con título y rama pre-llenados.
-3. **Doble Punto de Contacto (Hub-and-Spoke)**: Los administradores pueden conectar Bitbucket directamente desde los modales de Espacio y Proyecto mediante `DynamicIntegrationSheet` sin abandonar el módulo de Tareas.
+   - Acceso rápido a 1 clic para copiar comandos `git checkout` y botón directo `[ 🚀 Abrir PR en GitHub / Bitbucket ]` con título, rama base y rama origen pre-llenados automáticamente.
+3. **Doble Punto de Contacto (Hub-and-Spoke)**: Los administradores pueden conectar GitHub y Bitbucket directamente desde los modales de Espacio y Proyecto mediante `DynamicIntegrationSheet` sin abandonar el módulo de Tareas. El formulario cuenta con protección anti-autofill de credenciales de sesión y separación limpia de placeholders y descripciones.
 
