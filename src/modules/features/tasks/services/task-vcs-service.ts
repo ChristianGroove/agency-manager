@@ -611,12 +611,15 @@ export class TaskVcsService {
               )
             }
 
-            await this.handleVcsAutoTransition({
+            const commitTransition = await this.handleVcsAutoTransition({
               organizationId,
               task,
               trigger: 'commit_pushed',
               context: { commitHash: hash, authorName }
             })
+            if (commitTransition?.transitioned) {
+              task.status = 'in_progress'
+            }
           }
 
           processedTickets++
@@ -1058,13 +1061,16 @@ export class TaskVcsService {
             )
           }
 
-          await this.handleVcsAutoTransition({
+          const commitTransition = await this.handleVcsAutoTransition({
             organizationId,
             task,
             trigger: 'commit_pushed',
             provider: 'github',
             context: { commitHash: hash, authorName }
           })
+          if (commitTransition?.transitioned) {
+            task.status = 'in_progress'
+          }
         }
 
         processedTickets++
@@ -1329,11 +1335,6 @@ export class TaskVcsService {
       return false
     }
 
-    if (!incomingRepo) return true
-
-    const cleanIncoming = normalizeRepositorySlug(incomingRepo)
-    if (!cleanIncoming) return true
-
     const candidateRepos: string[] = []
 
     // 1. Project-level multi-repo
@@ -1377,6 +1378,11 @@ export class TaskVcsService {
       }
       return false
     }
+
+    if (!incomingRepo) return true
+
+    const cleanIncoming = normalizeRepositorySlug(incomingRepo)
+    if (!cleanIncoming) return true
 
     const incomingHasSlash = cleanIncoming.includes('/')
     const incomingSlug = cleanIncoming.split('/').filter(Boolean).pop() || cleanIncoming

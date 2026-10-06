@@ -25,6 +25,7 @@ export async function getTaskVcsLinksAction(taskId: string): Promise<TaskVcsLink
  * Delete a VCS link from a task
  */
 export async function unlinkVcsResourceAction(linkId: string, taskId: string): Promise<{ success: boolean; error?: string }> {
+  if (!linkId) return { success: false, error: 'ID de recurso VCS requerido' }
   const orgId = await getCurrentOrganizationId()
   if (!orgId) return { success: false, error: 'No organization context' }
 

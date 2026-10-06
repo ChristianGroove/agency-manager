@@ -51,7 +51,8 @@ export async function POST(
             return NextResponse.json({ error: 'Missing HMAC signature header (x-hub-signature-256)' }, { status: 401 })
         }
 
-        const cleanSig = signatureHeader.startsWith('sha256=') ? signatureHeader.slice(7) : signatureHeader
+        const trimmedSig = signatureHeader.trim()
+        const cleanSig = trimmedSig.replace(/^sha256=/i, '')
         if (cleanSig.length !== 64 || !/^[a-fA-F0-9]{64}$/.test(cleanSig)) {
             return NextResponse.json({ error: 'Invalid HMAC signature format' }, { status: 401 })
         }

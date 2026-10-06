@@ -131,6 +131,34 @@ describe("task-vcs-actions - Server Actions Unit Tests", () => {
       expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 
+    it("returns error when linkId is empty or missing", async () => {
+      const result = await unlinkVcsResourceAction("", "task-100")
+      expect(result).toEqual({ success: false, error: "ID de recurso VCS requerido" })
+      expect(mocks.deleteVcsLink).not.toHaveBeenCalled()
+    })
+
+    it("allows authorized users with TASKS_MANAGE permission alone", async () => {
+      mocks.hasPermission.mockResolvedValue(true)
+      mocks.hasRole.mockResolvedValue(false)
+      mocks.deleteVcsLink.mockResolvedValue(true)
+
+      const result = await unlinkVcsResourceAction("link-1", "task-100")
+      expect(result).toEqual({ success: true })
+      expect(mocks.deleteVcsLink).toHaveBeenCalledWith("link-1", orgId)
+      expect(mocks.revalidatePath).toHaveBeenCalledWith("/operations/tasks")
+    })
+
+    it("allows authorized users with admin role alone", async () => {
+      mocks.hasPermission.mockResolvedValue(false)
+      mocks.hasRole.mockImplementation(async (role: string) => role === "admin")
+      mocks.deleteVcsLink.mockResolvedValue(true)
+
+      const result = await unlinkVcsResourceAction("link-1", "task-100")
+      expect(result).toEqual({ success: true })
+      expect(mocks.deleteVcsLink).toHaveBeenCalledWith("link-1", orgId)
+      expect(mocks.revalidatePath).toHaveBeenCalledWith("/operations/tasks")
+    })
+
     it("allows authorized users with staff role to unlink VCS resource", async () => {
       mocks.hasPermission.mockResolvedValue(false)
       mocks.hasRole.mockImplementation(async (role: string) => role === "staff")

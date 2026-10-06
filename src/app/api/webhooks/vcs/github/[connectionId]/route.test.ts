@@ -73,18 +73,16 @@ function mockSupabaseConnection(connectionData: Record<string, any> | null, erro
         if (table === 'integration_connections') {
             return {
                 select: vi.fn(() => ({
-                    eq: vi.fn(() => ({
-                        eq: vi.fn(() => ({
-                            single: vi.fn(async () => ({
-                                data: connectionData,
-                                error,
-                            })),
-                        })),
-                        neq: vi.fn(() => ({
-                            single: vi.fn(async () => ({
-                                data: connectionData,
-                                error,
-                            })),
+                    eq: vi.fn((col1: string, _val1: any) => ({
+                        eq: vi.fn((col2: string, val2: any) => ({
+                            single: vi.fn(async () => {
+                                if (error) return { data: null, error }
+                                if (!connectionData) return { data: null, error: { message: 'Not found' } }
+                                if (col2 === 'status' && connectionData.status !== val2) {
+                                    return { data: null, error: { message: 'Row not found or status inactive' } }
+                                }
+                                return { data: connectionData, error: null }
+                            }),
                         })),
                     })),
                 })),
@@ -207,6 +205,26 @@ describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
         })
 
         const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-missing' }) })
+        expect(response.status).toBe(404)
+        const json = await response.json()
+        expect(json.error).toContain('Connection not found or inactive')
+    })
+
+    it('returns 404 when connection exists but has inactive status in DB', async () => {
+        const { POST } = await import('./route')
+        mockSupabaseConnection({
+            id: 'conn-inactive-1',
+            organization_id: 'org-tenant-1',
+            status: 'inactive',
+            credentials: {},
+        })
+
+        const request = createSignedRequest({
+            connectionId: 'conn-inactive-1',
+            body: JSON.stringify({ action: 'opened' }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-inactive-1' }) })
         expect(response.status).toBe(404)
         const json = await response.json()
         expect(json.error).toContain('Connection not found or inactive')
@@ -361,5 +379,68 @@ describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
             organizationId: 'org-tenant-100',
             payload: payloadObj,
         })
+    })
+
+    it('authenticates valid HMAC when signature header has uppercase SHA256= prefix and whitespace', async () => {
+        const { POST } = await import('./route')
+
+        const secret = 'valid-case-secret'
+        mockSupabaseConnection({
+            id: 'conn-gh-case',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
+        mocks.processGithubEvent.mockResolvedValue({ processed: true })
+
+        const body = JSON.stringify({ ref: 'refs/heads/main' })
+        const hmac = crypto.createHmac('sha256', secret).update(body).digest('hex')
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-case',
+            body,
+            signatureOverride: `  SHA256=${hmac}  `,
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-case' }) })
+        expect(response.status).toBe(200)
+    })
+
+    it('validates HMAC and succeeds for payloads containing multibyte UTF-8 Unicode characters', async () => {
+        const { POST } = await import('./route')
+
+        const secret = 'valid-unicode-secret'
+        mockSupabaseConnection({
+            id: 'conn-gh-unicode',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
+        mocks.processGithubEvent.mockResolvedValue({ processed: true })
+
+        const payloadObj = {
+            ref: 'refs/heads/feature/PIX-200-español',
+            commits: [
+                { id: 'c123', message: 'Corrección de autenticación 🚀 en producción — ñ y acentos' }
+            ]
+        }
+        const body = JSON.stringify(payloadObj)
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-unicode',
+            secret,
+            body,
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-unicode' }) })
+        expect(response.status).toBe(200)
+        const json = await response.json()
+        expect(json.received).toBe(true)
     })
 })

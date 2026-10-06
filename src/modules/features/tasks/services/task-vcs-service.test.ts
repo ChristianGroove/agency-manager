@@ -645,6 +645,75 @@ describe("TaskVcsService - Unit Tests", () => {
       )
     })
 
+    it("Bitbucket push with 2 commits for same task on existing branch triggers auto-transition and notification only once", async () => {
+      const taskPIX198 = {
+        id: "task-198",
+        ticket_code: "PIX-198",
+        title: "Multi Commit Push",
+        status: "todo",
+        progress_percentage: 0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-198" ? taskPIX198 : null),
+        })
+      )
+
+      const multiCommitPayload = {
+        repository: { full_name: "acme/backend" },
+        push: {
+          changes: [
+            {
+              closed: false,
+              new: {
+                type: "branch",
+                name: "main",
+                target: { hash: "commit2" },
+              },
+              commits: [
+                {
+                  hash: "commit1",
+                  message: "PIX-198: first commit on branch",
+                  author: "Dev",
+                  date: new Date().toISOString(),
+                },
+                {
+                  hash: "commit2",
+                  message: "PIX-198: second commit on branch",
+                  author: "Dev",
+                  date: new Date().toISOString(),
+                },
+              ],
+            },
+          ],
+        },
+      }
+
+      const result = await service.processBitbucketEvent({
+        provider: "bitbucket",
+        eventKey: "repo:push",
+        connectionId: "conn-1",
+        organizationId: orgId,
+        payload: multiCommitPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledTimes(1)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledWith(
+        orgId,
+        "task-198",
+        "in_progress",
+        "todo",
+        "Bitbucket VCS",
+        undefined,
+        undefined,
+        expect.stringContaining("commit1")
+      )
+    })
+
     it("handles pullrequest:rejected (declined PR) without advancing task and logs audit comment", async () => {
       const taskPIX103 = {
         id: "task-103",
@@ -1400,6 +1469,8 @@ describe("TaskVcsService - Unit Tests", () => {
       expect(service.matchesRepository("acme/repo", {}, {})).toBe(false)
       expect(service.matchesRepository("acme/repo", { enabled: false }, undefined)).toBe(false)
       expect(service.matchesRepository("acme/repo", undefined, { enabled: false })).toBe(false)
+      expect(service.matchesRepository("", undefined, undefined)).toBe(false)
+      expect(service.matchesRepository(undefined, undefined, undefined)).toBe(false)
     })
   })
 
@@ -1477,6 +1548,70 @@ describe("TaskVcsService - Unit Tests", () => {
         undefined,
         undefined,
         expect.stringContaining("feature/PIX-501-github-support")
+      )
+    })
+
+    it("GitHub push with 2 commits for same task on existing branch triggers auto-transition and notification only once", async () => {
+      const taskPIX500 = {
+        id: "task-500",
+        ticket_code: "PIX-500",
+        title: "Multi Commit GitHub Push",
+        status: "todo",
+        progress_percentage: 0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-500" ? taskPIX500 : null),
+        })
+      )
+
+      const pushPayload = {
+        ref: "refs/heads/main",
+        created: false,
+        deleted: false,
+        repository: {
+          name: "agency-manager",
+          full_name: "pixy/agency-manager",
+          html_url: "https://github.com/pixy/agency-manager",
+        },
+        commits: [
+          {
+            id: "commit-gh-first",
+            message: "PIX-500: first commit",
+            timestamp: new Date().toISOString(),
+            author: { name: "Octocat", username: "octocat" },
+          },
+          {
+            id: "commit-gh-second",
+            message: "PIX-500: second commit",
+            timestamp: new Date().toISOString(),
+            author: { name: "Octocat", username: "octocat" },
+          },
+        ],
+      }
+
+      const result = await service.processGithubEvent({
+        provider: "github",
+        eventKey: "push",
+        connectionId: "conn-gh-1",
+        organizationId: orgId,
+        payload: pushPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledTimes(1)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledWith(
+        orgId,
+        "task-500",
+        "in_progress",
+        "todo",
+        "GitHub VCS",
+        undefined,
+        undefined,
+        expect.stringContaining("commit-gh-first")
       )
     })
 
