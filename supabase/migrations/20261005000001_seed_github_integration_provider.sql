@@ -11,9 +11,9 @@ VALUES (
     '{
         "required": ["token"],
         "properties": {
-            "token": { "type": "string", "title": "Personal Access Token", "description": "Token clásico con scopes repo y admin:org_hook, o Fine-grained token", "format": "password" },
-            "owner": { "type": "string", "title": "Owner / Organización (Opcional)", "description": "Usuario u organización de GitHub por defecto (ej: mi-agencia)" },
-            "webhook_secret": { "type": "string", "title": "Webhook Secret (Opcional)", "description": "Clave secreta HMAC-SHA256 para validación criptográfica de webhooks", "format": "password" }
+            "token": { "type": "string", "title": "Personal Access Token", "placeholder": "ghp_... o github_pat_...", "description": "Token clásico con scopes repo y admin:org_hook, o Fine-grained token", "format": "password" },
+            "owner": { "type": "string", "title": "Owner / Organización (Opcional)", "placeholder": "ej: mi-organizacion", "description": "Usuario u organización de GitHub por defecto donde residen tus repositorios" },
+            "webhook_secret": { "type": "string", "title": "Webhook Secret (Opcional)", "placeholder": "Opcional", "description": "Clave secreta HMAC-SHA256 para validación criptográfica de webhooks", "format": "password" }
         }
     }'::jsonb
 )

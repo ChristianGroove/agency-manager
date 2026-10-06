@@ -137,6 +137,11 @@ export function ConnectionWizard({ open, onOpenChange, provider }: ConnectionWiz
                             <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="password"
+                                autoComplete="new-password"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                data-bwignore="true"
+                                data-form-type="other"
                                 placeholder="Global API Key"
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
@@ -179,6 +184,11 @@ export function ConnectionWizard({ open, onOpenChange, provider }: ConnectionWiz
                                 <Key className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     type="password"
+                                    autoComplete="new-password"
+                                    data-lpignore="true"
+                                    data-1p-ignore="true"
+                                    data-bwignore="true"
+                                    data-form-type="other"
                                     placeholder="EAAG..."
                                     value={apiKey} // Reusing apiKey state
                                     onChange={(e) => setApiKey(e.target.value)}
@@ -250,6 +260,11 @@ export function ConnectionWizard({ open, onOpenChange, provider }: ConnectionWiz
                         <Input
                             id="apikey"
                             type="password"
+                            autoComplete="new-password"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            data-bwignore="true"
+                            data-form-type="other"
                             placeholder="sk_..."
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}

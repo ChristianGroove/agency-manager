@@ -431,7 +431,15 @@ export function DynamicIntegrationSheet({
                             </div>
                         ) : (
                             /* CONFIGURATION / INSTALLATION FORM */
-                            <form onSubmit={handleInstall} className="space-y-5 animate-in fade-in duration-200">
+                            <form
+                                onSubmit={handleInstall}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                data-bwignore="true"
+                                data-form-type="other"
+                                className="space-y-5 animate-in fade-in duration-200"
+                            >
                                 {isInstalled && (
                                     <div className="flex items-center justify-between pb-2 border-b border-border/40">
                                         <span className="text-xs font-semibold text-foreground">
@@ -462,10 +470,22 @@ export function DynamicIntegrationSheet({
                                             key.toLowerCase().includes("key")
                                         const isRevealed = showPassword[key] ?? false
 
+                                        const resolvePlaceholder = () => {
+                                            if (prop.placeholder) return prop.placeholder
+                                            if (key === 'token') {
+                                                if (provider?.key === 'github') return 'ghp_... o github_pat_...'
+                                                if (provider?.key === 'bitbucket') return 'ATBB...'
+                                                return '••••••••••••••••'
+                                            }
+                                            if (key.toLowerCase().includes('secret') || key.toLowerCase().includes('password')) return 'Opcional'
+                                            if (key === 'owner' || key === 'workspace') return 'ej: mi-organizacion'
+                                            return ''
+                                        }
+
                                         return (
                                             <div key={key} className="space-y-1.5">
                                                 <div className="flex items-center justify-between">
-                                                    <Label htmlFor={`field-${key}`} className="text-xs font-medium text-foreground">
+                                                    <Label htmlFor={`field-${provider?.key || 'vcs'}-${key}`} className="text-xs font-medium text-foreground">
                                                         {prop.title || key}
                                                         {isRequired && <span className="text-red-500 ml-1">*</span>}
                                                     </Label>
@@ -493,14 +513,19 @@ export function DynamicIntegrationSheet({
 
                                                 <div className="relative">
                                                     <Input
-                                                        id={`field-${key}`}
-                                                        name={key}
+                                                        id={`field-${provider?.key || 'vcs'}-${key}`}
+                                                        name={`vcs_${provider?.key || 'integration'}_${key}`}
                                                         type={isSecret && !isRevealed ? "password" : "text"}
+                                                        autoComplete={isSecret ? "new-password" : "off"}
+                                                        data-lpignore="true"
+                                                        data-1p-ignore="true"
+                                                        data-bwignore="true"
+                                                        data-form-type="other"
                                                         value={formData[key] || ""}
                                                         onChange={(e) => handleInputChange(key, e.target.value)}
-                                                        placeholder={prop.description || prop.title || key}
+                                                        placeholder={resolvePlaceholder()}
                                                         required={isRequired}
-                                                        className="text-xs font-mono h-9 pr-8"
+                                                        className="text-xs font-mono h-9 pr-8 placeholder:text-muted-foreground/50 placeholder:font-sans"
                                                     />
                                                 </div>
 

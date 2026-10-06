@@ -22,6 +22,7 @@ export interface ConfigSchema {
         type: string
         title: string
         description?: string
+        placeholder?: string
         format?: string
         default?: any
     }>
@@ -78,18 +79,21 @@ export const BUILTIN_PROVIDERS: IntegrationProvider[] = [
             properties: {
                 workspace: {
                     type: 'string',
-                    title: 'Bitbucket Workspace Slug',
-                    description: 'Slug del workspace en Bitbucket (ej: mi-agencia)'
+                    title: 'Workspace Slug',
+                    placeholder: 'ej: mi-agencia',
+                    description: 'Identificador único del espacio de trabajo en Bitbucket'
                 },
                 token: {
                     type: 'string',
                     title: 'Workspace Access Token',
+                    placeholder: 'ATBB...',
                     description: 'Token con permisos de lectura de repositorios, webhooks y pull requests',
                     format: 'password'
                 },
                 webhook_secret: {
                     type: 'string',
                     title: 'Webhook Secret (Opcional)',
+                    placeholder: 'Opcional',
                     description: 'Clave secreta HMAC-SHA256 para validación criptográfica de webhooks',
                     format: 'password'
                 }
@@ -115,17 +119,20 @@ export const BUILTIN_PROVIDERS: IntegrationProvider[] = [
                 token: {
                     type: 'string',
                     title: 'Personal Access Token',
+                    placeholder: 'ghp_... o github_pat_...',
                     description: 'Token clásico con scopes repo y admin:org_hook, o Fine-grained token',
                     format: 'password'
                 },
                 owner: {
                     type: 'string',
                     title: 'Owner / Organización (Opcional)',
-                    description: 'Usuario u organización de GitHub por defecto (ej: mi-agencia)'
+                    placeholder: 'ej: mi-organizacion',
+                    description: 'Usuario u organización de GitHub donde residen tus repositorios'
                 },
                 webhook_secret: {
                     type: 'string',
                     title: 'Webhook Secret (Opcional)',
+                    placeholder: 'Opcional',
                     description: 'Clave secreta HMAC-SHA256 para validación criptográfica de webhooks',
                     format: 'password'
                 }

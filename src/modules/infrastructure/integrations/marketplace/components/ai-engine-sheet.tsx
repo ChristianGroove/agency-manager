@@ -546,6 +546,11 @@ function ProviderCard({ item, providers, isExpanded, onToggleExpand }: any) {
                                     <div className="flex gap-2">
                                         <Input
                                             type="password"
+                                            autoComplete="new-password"
+                                            data-lpignore="true"
+                                            data-1p-ignore="true"
+                                            data-bwignore="true"
+                                            data-form-type="other"
                                             placeholder={isActive ? "••••••••••••••••" : "sk-..."}
                                             value={apiKey}
                                             onChange={e => setApiKey(e.target.value)}
