@@ -59,7 +59,26 @@ function createChainableMock(handlers?: {
       maybeSingle: vi.fn(async () => {
         if (table === "task_items" && handlers?.findTask) {
           const task = handlers.findTask(currentTaskCode)
-          return { data: task || null, error: null }
+          if (!task) return { data: null, error: null }
+          if (task.project?.settings?.vcs && task.project.settings.vcs.enabled === undefined) {
+            return {
+              data: {
+                ...task,
+                project: {
+                  ...task.project,
+                  settings: {
+                    ...task.project.settings,
+                    vcs: {
+                      ...task.project.settings.vcs,
+                      enabled: true,
+                    },
+                  },
+                },
+              },
+              error: null,
+            }
+          }
+          return { data: task, error: null }
         }
         if (table === "task_vcs_links" && handlers?.findExistingLink) {
           const link = handlers.findExistingLink(currentExternalId)
@@ -560,6 +579,69 @@ describe("TaskVcsService - Unit Tests", () => {
         undefined,
         undefined,
         expect.stringContaining("feature/PIX-102-profile-screen")
+      )
+    })
+
+    it("Bitbucket branch creation with commits calls notifyStakeholdersOnStatusChange only once", async () => {
+      const taskPIX199 = {
+        id: "task-199",
+        ticket_code: "PIX-199",
+        title: "User Profile Screen Dedup",
+        status: "todo",
+        progress_percentage: 0,
+        organization_id: orgId,
+        project: { settings: { vcs: { auto_transitions: true } } },
+      }
+
+      mocks.supabaseFrom.mockImplementation(
+        createChainableMock({
+          findTask: (code) => (code === "PIX-199" ? taskPIX199 : null),
+        })
+      )
+
+      const branchWithCommitsPayload = {
+        repository: { full_name: "acme/backend" },
+        push: {
+          changes: [
+            {
+              closed: false,
+              new: {
+                type: "branch",
+                name: "feature/PIX-199-profile-screen",
+                target: { hash: "hash123456" },
+              },
+              commits: [
+                {
+                  hash: "hash123456",
+                  message: "PIX-199: initial commit on branch",
+                  author: "Dev",
+                  date: new Date().toISOString(),
+                },
+              ],
+            },
+          ],
+        },
+      }
+
+      const result = await service.processBitbucketEvent({
+        provider: "bitbucket",
+        eventKey: "repo:push",
+        connectionId: "conn-1",
+        organizationId: orgId,
+        payload: branchWithCommitsPayload,
+      })
+
+      expect(result.processed).toBe(true)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledTimes(1)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledWith(
+        orgId,
+        "task-199",
+        "in_progress",
+        "todo",
+        "Bitbucket VCS",
+        undefined,
+        undefined,
+        expect.stringContaining("feature/PIX-199-profile-screen")
       )
     })
 
@@ -1312,6 +1394,13 @@ describe("TaskVcsService - Unit Tests", () => {
       )
       expect(matches).toBe(false)
     })
+
+    it("returns false when neither project nor workspace has VCS enabled (non-technical project isolation)", () => {
+      expect(service.matchesRepository("acme/repo", undefined, undefined)).toBe(false)
+      expect(service.matchesRepository("acme/repo", {}, {})).toBe(false)
+      expect(service.matchesRepository("acme/repo", { enabled: false }, undefined)).toBe(false)
+      expect(service.matchesRepository("acme/repo", undefined, { enabled: false })).toBe(false)
+    })
   })
 
   describe("processGithubEvent - GitHub VCS Integration Lifecycle", () => {
@@ -1377,7 +1466,8 @@ describe("TaskVcsService - Unit Tests", () => {
       expect(commitLink.provider).toBe("github")
       expect(commitLink.external_id).toBe("commit-gh-1")
 
-      // Auto-transitioned to in_progress with audit tag 'GitHub VCS'
+      // Auto-transitioned to in_progress with audit tag 'GitHub VCS' - called exactly once (no double notification)
+      expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledTimes(1)
       expect(mocks.notifyStakeholdersOnStatusChange).toHaveBeenCalledWith(
         orgId,
         "task-501",
@@ -1704,7 +1794,7 @@ describe("TaskVcsService - Unit Tests", () => {
         blocked_by_task_id: "task-blocker-99",
         checklist: [],
         organization_id: orgId,
-        project: { settings: { vcs: { auto_transitions: true } } },
+        project: { settings: { vcs: { enabled: true, auto_transitions: true } } },
       }
 
       let updatedProgress: number | undefined

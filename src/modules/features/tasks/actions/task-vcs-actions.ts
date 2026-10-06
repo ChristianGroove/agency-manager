@@ -28,6 +28,21 @@ export async function unlinkVcsResourceAction(linkId: string, taskId: string): P
   const orgId = await getCurrentOrganizationId()
   if (!orgId) return { success: false, error: 'No organization context' }
 
+  let canManage = false
+  try {
+    const [canManageTasks, isAdmin, isStaff] = await Promise.all([
+      hasPermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE).catch(() => false),
+      hasRole('admin').catch(() => false),
+      hasRole('staff').catch(() => false)
+    ])
+    canManage = Boolean(canManageTasks || isAdmin || isStaff)
+  } catch {
+    canManage = false
+  }
+  if (!canManage) {
+    return { success: false, error: 'No autorizado para desvincular recursos de control de versiones' }
+  }
+
   const success = await taskVcsService.deleteVcsLink(linkId, orgId)
   if (success) {
     revalidatePath('/operations/tasks')

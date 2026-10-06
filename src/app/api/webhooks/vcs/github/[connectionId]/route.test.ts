@@ -74,6 +74,12 @@ function mockSupabaseConnection(connectionData: Record<string, any> | null, erro
             return {
                 select: vi.fn(() => ({
                     eq: vi.fn(() => ({
+                        eq: vi.fn(() => ({
+                            single: vi.fn(async () => ({
+                                data: connectionData,
+                                error,
+                            })),
+                        })),
                         neq: vi.fn(() => ({
                             single: vi.fn(async () => ({
                                 data: connectionData,
@@ -97,12 +103,24 @@ afterEach(() => {
 })
 
 describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
-    it('answers instant ping handshake without querying db or requiring HMAC', async () => {
+    it('returns 200 for ping event only AFTER connection lookup and valid HMAC verification', async () => {
         const { POST } = await import('./route')
+
+        const secret = 'webhook-secret-ping-123'
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
 
         const request = createSignedRequest({
             connectionId: 'conn-gh-123',
             eventKey: 'ping',
+            secret,
             body: JSON.stringify({ zen: 'Keep it logically awesome.', hook_id: 123456 }),
         })
 
@@ -112,7 +130,57 @@ describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
         const json = await response.json()
         expect(json.ok).toBe(true)
         expect(json.zen).toBe('Keep it logically awesome.')
-        expect(mocks.supabaseFrom).not.toHaveBeenCalled()
+        expect(mocks.supabaseFrom).toHaveBeenCalled()
+    })
+
+    it('returns 401 for ping event when HMAC is invalid', async () => {
+        const { POST } = await import('./route')
+
+        const secret = 'webhook-secret-ping-123'
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            eventKey: 'ping',
+            secret: 'wrong-secret',
+            body: JSON.stringify({ zen: 'Keep it logically awesome.', hook_id: 123456 }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(401)
+
+        const json = await response.json()
+        expect(json.error).toContain('Invalid HMAC signature')
+    })
+
+    it('returns 500 when webhook secret is not configured on connection', async () => {
+        const { POST } = await import('./route')
+
+        mockSupabaseConnection({
+            id: 'conn-gh-123',
+            organization_id: 'org-tenant-1',
+            status: 'active',
+            credentials: {},
+        })
+        mocks.resolveConnectionCredentials.mockResolvedValue({})
+
+        const request = createSignedRequest({
+            connectionId: 'conn-gh-123',
+            body: JSON.stringify({ action: 'opened' }),
+        })
+
+        const response = await POST(request, { params: Promise.resolve({ connectionId: 'conn-gh-123' }) })
+        expect(response.status).toBe(500)
+        const json = await response.json()
+        expect(json.error).toBe('Webhook secret not configured on connection')
     })
 
     it('returns 400 when connectionId param is missing', async () => {
@@ -129,7 +197,7 @@ describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
         expect(json.error).toContain('Missing connectionId')
     })
 
-    it('returns 404 when connection does not exist or is deleted in DB', async () => {
+    it('returns 404 when connection does not exist or is inactive in DB', async () => {
         const { POST } = await import('./route')
         mockSupabaseConnection(null, { message: 'Not found' })
 
@@ -223,16 +291,20 @@ describe('Webhook Route: /api/webhooks/vcs/github/[connectionId]', () => {
     it('returns 400 when body is invalid JSON', async () => {
         const { POST } = await import('./route')
 
+        const secret = 'test-json-secret'
         mockSupabaseConnection({
             id: 'conn-gh-123',
             organization_id: 'org-tenant-1',
             status: 'active',
             credentials: {},
         })
-        mocks.resolveConnectionCredentials.mockResolvedValue({})
+        mocks.resolveConnectionCredentials.mockResolvedValue({
+            webhook_secret: secret,
+        })
 
         const request = createSignedRequest({
             connectionId: 'conn-gh-123',
+            secret,
             body: '{ broken json ',
         })
 

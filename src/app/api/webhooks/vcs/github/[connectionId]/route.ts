@@ -19,7 +19,53 @@ export async function POST(
         const rawBody = await request.text()
         const eventKey = request.headers.get('x-github-event') || request.headers.get('x-event-key') || 'unknown'
 
-        // 1. Instant Ping Handshake Response for GitHub Webhook ping events
+        // 1. O(1) Connection Lookup in database
+        const { data: connection, error: connError } = await supabaseAdmin
+            .from('integration_connections')
+            .select('id, organization_id, credentials, config, metadata, status')
+            .eq('id', connectionId)
+            .eq('status', 'active')
+            .single()
+
+        if (connError || !connection) {
+            return NextResponse.json({ error: 'Connection not found or inactive' }, { status: 404 })
+        }
+
+        // 2. Resolve credentials to extract webhook secret
+        let credentials: Record<string, any> = {}
+        try {
+            credentials = await resolveConnectionCredentials(connection.credentials)
+        } catch {
+            credentials = decryptObject(connection.credentials) || {}
+        }
+
+        const webhookSecret = credentials.webhook_secret || credentials.secret || connection.config?.webhook_secret || connection.metadata?.webhook_secret
+
+        if (!webhookSecret) {
+            return NextResponse.json({ error: 'Webhook secret not configured on connection' }, { status: 500 })
+        }
+
+        // 3. HMAC-SHA256 Constant-Time Verification
+        const signatureHeader = request.headers.get('x-hub-signature-256') || request.headers.get('X-Hub-Signature-256')
+        if (!signatureHeader) {
+            return NextResponse.json({ error: 'Missing HMAC signature header (x-hub-signature-256)' }, { status: 401 })
+        }
+
+        const cleanSig = signatureHeader.startsWith('sha256=') ? signatureHeader.slice(7) : signatureHeader
+        if (cleanSig.length !== 64 || !/^[a-fA-F0-9]{64}$/.test(cleanSig)) {
+            return NextResponse.json({ error: 'Invalid HMAC signature format' }, { status: 401 })
+        }
+
+        const expectedSig = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
+
+        const sigBuf = Buffer.from(cleanSig, 'hex')
+        const expBuf = Buffer.from(expectedSig, 'hex')
+
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+            return NextResponse.json({ error: 'Invalid HMAC signature' }, { status: 401 })
+        }
+
+        // 4. Ping Handshake Response for GitHub Webhook ping events (executed AFTER connection lookup & HMAC verification)
         if (eventKey === 'ping') {
             let pingPayload: Record<string, any> = {}
             try {
@@ -31,50 +77,6 @@ export async function POST(
                 ok: true,
                 zen: pingPayload?.zen || 'pong'
             }, { status: 200 })
-        }
-
-        // 2. O(1) Connection Lookup in database
-        const { data: connection, error: connError } = await supabaseAdmin
-            .from('integration_connections')
-            .select('id, organization_id, credentials, config, metadata, status')
-            .eq('id', connectionId)
-            .neq('status', 'deleted')
-            .single()
-
-        if (connError || !connection) {
-            return NextResponse.json({ error: 'Connection not found or inactive' }, { status: 404 })
-        }
-
-        // 3. Resolve credentials to extract webhook secret
-        let credentials: Record<string, any> = {}
-        try {
-            credentials = await resolveConnectionCredentials(connection.credentials)
-        } catch {
-            credentials = decryptObject(connection.credentials) || {}
-        }
-
-        const webhookSecret = credentials.webhook_secret || credentials.secret || connection.config?.webhook_secret || connection.metadata?.webhook_secret
-
-        // 4. HMAC-SHA256 Constant-Time Verification
-        if (webhookSecret) {
-            const signatureHeader = request.headers.get('x-hub-signature-256') || request.headers.get('X-Hub-Signature-256')
-            if (!signatureHeader) {
-                return NextResponse.json({ error: 'Missing HMAC signature header (x-hub-signature-256)' }, { status: 401 })
-            }
-
-            const cleanSig = signatureHeader.startsWith('sha256=') ? signatureHeader.slice(7) : signatureHeader
-            if (cleanSig.length !== 64 || !/^[a-fA-F0-9]{64}$/.test(cleanSig)) {
-                return NextResponse.json({ error: 'Invalid HMAC signature format' }, { status: 401 })
-            }
-
-            const expectedSig = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
-
-            const sigBuf = Buffer.from(cleanSig, 'hex')
-            const expBuf = Buffer.from(expectedSig, 'hex')
-
-            if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-                return NextResponse.json({ error: 'Invalid HMAC signature' }, { status: 401 })
-            }
         }
 
         // 5. Parse JSON payload

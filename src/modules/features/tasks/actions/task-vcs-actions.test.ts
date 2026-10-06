@@ -118,6 +118,30 @@ describe("task-vcs-actions - Server Actions Unit Tests", () => {
       expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 
+    it("rejects unauthorized users lacking TASKS_MANAGE permission or admin/staff role", async () => {
+      mocks.hasPermission.mockResolvedValue(false)
+      mocks.hasRole.mockResolvedValue(false)
+
+      const result = await unlinkVcsResourceAction("link-1", "task-100")
+      expect(result).toEqual({
+        success: false,
+        error: "No autorizado para desvincular recursos de control de versiones",
+      })
+      expect(mocks.deleteVcsLink).not.toHaveBeenCalled()
+      expect(mocks.revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it("allows authorized users with staff role to unlink VCS resource", async () => {
+      mocks.hasPermission.mockResolvedValue(false)
+      mocks.hasRole.mockImplementation(async (role: string) => role === "staff")
+      mocks.deleteVcsLink.mockResolvedValue(true)
+
+      const result = await unlinkVcsResourceAction("link-1", "task-100")
+      expect(result).toEqual({ success: true })
+      expect(mocks.deleteVcsLink).toHaveBeenCalledWith("link-1", orgId)
+      expect(mocks.revalidatePath).toHaveBeenCalledWith("/operations/tasks")
+    })
+
     it("deletes link and revalidates /operations/tasks on success", async () => {
       mocks.deleteVcsLink.mockResolvedValue(true)
 

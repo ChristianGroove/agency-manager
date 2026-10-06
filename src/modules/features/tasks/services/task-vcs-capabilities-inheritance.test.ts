@@ -304,7 +304,7 @@ describe("Collaborator Capabilities & Multi-Repo Inheritance Unit Tests", () => 
         ).toBe(true)
       })
 
-      it("returns true when no repository restrictions exist at project or workspace level", () => {
+      it("returns true when no repository restrictions exist at project or workspace level but VCS is enabled", () => {
         expect(
           service.matchesRepository(
             "my-workspace/random-repo",
@@ -317,9 +317,19 @@ describe("Collaborator Capabilities & Multi-Repo Inheritance Unit Tests", () => 
           service.matchesRepository(
             "my-workspace/random-repo",
             undefined,
-            undefined
+            { enabled: true }
           )
         ).toBe(true)
+      })
+
+      it("returns false when neither project nor workspace has VCS enabled", () => {
+        expect(
+          service.matchesRepository(
+            "my-workspace/random-repo",
+            undefined,
+            undefined
+          )
+        ).toBe(false)
       })
     })
 

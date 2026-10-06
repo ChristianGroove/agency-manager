@@ -455,6 +455,14 @@ export class TaskVcsService {
   ): Promise<{ processed: boolean; summary: string }> {
     const changes = Array.isArray(payload.push?.changes) ? payload.push.changes : []
     let processedTickets = 0
+    const taskCache = new Map<string, any>()
+    const getTask = async (ticketCode: string) => {
+      const cached = taskCache.get(ticketCode)
+      if (cached) return cached
+      const t = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+      if (t) taskCache.set(ticketCode, t)
+      return t
+    }
 
     for (const change of changes) {
       // 1. Branch Deletion: change.closed === true must NOT trigger branch_created transitions
@@ -463,7 +471,7 @@ export class TaskVcsService {
         if (deletedBranchName) {
           const branchTickets = this.extractTicketCodes(deletedBranchName)
           for (const ticketCode of branchTickets) {
-            const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+            const task = await getTask(ticketCode)
             if (!task) continue
 
             const { data: existingLink } = await supabaseAdmin
@@ -500,7 +508,7 @@ export class TaskVcsService {
         const branchTickets = this.extractTicketCodes(branchName)
 
         for (const ticketCode of branchTickets) {
-          const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+          const task = await getTask(ticketCode)
           if (!task) continue
 
           await this.syncVcsResource(organizationId, task.id, {
@@ -517,12 +525,15 @@ export class TaskVcsService {
             }
           })
 
-          await this.handleVcsAutoTransition({
+          const branchTransition = await this.handleVcsAutoTransition({
             organizationId,
             task,
             trigger: 'branch_created',
             context: { branchName }
           })
+          if (branchTransition?.transitioned) {
+            task.status = 'in_progress'
+          }
 
           processedTickets++
         }
@@ -548,7 +559,7 @@ export class TaskVcsService {
         const worklogHours = this.extractWorklogHours(message)
 
         for (const ticketCode of commitTickets) {
-          const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+          const task = await getTask(ticketCode)
           if (!task) continue
 
           // Idempotency: Check if commit was already linked for this task
@@ -901,12 +912,20 @@ export class TaskVcsService {
     const branchName = ref.replace(/^refs\/heads\//, '')
     const repoHtmlUrl = payload.repository?.html_url || `https://github.com/${repositoryName}`
     let processedTickets = 0
+    const taskCache = new Map<string, any>()
+    const getTask = async (ticketCode: string) => {
+      const cached = taskCache.get(ticketCode)
+      if (cached) return cached
+      const t = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+      if (t) taskCache.set(ticketCode, t)
+      return t
+    }
 
     // 1. Branch Deletion: payload.deleted === true
     if (payload.deleted === true) {
       const branchTickets = this.extractTicketCodes(branchName)
       for (const ticketCode of branchTickets) {
-        const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+        const task = await getTask(ticketCode)
         if (!task) continue
 
         const { data: existingLink } = await supabaseAdmin
@@ -940,7 +959,7 @@ export class TaskVcsService {
     if (payload.created === true) {
       const branchTickets = this.extractTicketCodes(branchName)
       for (const ticketCode of branchTickets) {
-        const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+        const task = await getTask(ticketCode)
         if (!task) continue
 
         await this.syncVcsResource(organizationId, task.id, {
@@ -957,13 +976,16 @@ export class TaskVcsService {
           }
         })
 
-        await this.handleVcsAutoTransition({
+        const branchTransition = await this.handleVcsAutoTransition({
           organizationId,
           task,
           trigger: 'branch_created',
           provider: 'github',
           context: { branchName }
         })
+        if (branchTransition?.transitioned) {
+          task.status = 'in_progress'
+        }
 
         processedTickets++
       }
@@ -985,7 +1007,7 @@ export class TaskVcsService {
       const worklogHours = this.extractWorklogHours(message)
 
       for (const ticketCode of commitTickets) {
-        const task = await this.findTaskByCode(organizationId, ticketCode, repositoryName)
+        const task = await getTask(ticketCode)
         if (!task) continue
 
         // Idempotency: Check if commit was already linked for this task
@@ -1347,8 +1369,13 @@ export class TaskVcsService {
     }
 
     // If no specific repositories are configured at project or workspace level, allow matching
+    // only if VCS is explicitly enabled at project or workspace level.
+    // A project or workspace without explicit enabled: true must NOT accept arbitrary incoming repository events.
     if (candidateRepos.length === 0) {
-      return true
+      if (projectVcs?.enabled === true || workspaceVcs?.enabled === true) {
+        return true
+      }
+      return false
     }
 
     const incomingHasSlash = cleanIncoming.includes('/')
