@@ -6,6 +6,7 @@ import { createClient } from '@/modules/core/database/supabase-server'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { requireOrgRole } from '@/modules/core/iam/services/org-roles'
+import { isSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 
 export type MetaDeliveryRow = {
     id: string
@@ -19,6 +20,8 @@ export type MetaDeliveryRow = {
 }
 
 async function requireDeliveryOperator() {
+    const isPlatformAdmin = await isSuperAdmin()
+    if (!isPlatformAdmin) throw new Error('Unauthorized: Super Admin access required')
     const organizationId = await getCurrentOrganizationId()
     if (!organizationId) redirect('/login')
     await requireOrgRole('admin')

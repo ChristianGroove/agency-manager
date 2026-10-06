@@ -1,7 +1,14 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { isSuperAdmin } from '@/modules/core/iam/services/platform-roles'
 import { getMetaDeliveryOverview, reconcileUnknownMetaDelivery } from '@/modules/features/messaging/actions/meta-delivery'
 
 export default async function MetaDeliveryPage({ searchParams }: { searchParams: Promise<{ resolved?: string }> }) {
+    const isPlatformAdmin = await isSuperAdmin()
+    if (!isPlatformAdmin) {
+        redirect('/platform/integrations')
+    }
+
     const { counts, rows } = await getMetaDeliveryOverview()
     const { resolved } = await searchParams
     return <main className="mx-auto max-w-5xl space-y-6 p-6">

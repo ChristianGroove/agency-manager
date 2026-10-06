@@ -1,5 +1,4 @@
 import { Suspense } from "react"
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { hasRole } from "@/modules/core/iam/services/org-roles"
 import { hasPermission } from "@/modules/core/iam/services/role-service"
@@ -27,11 +26,7 @@ export default async function Page() {
         getTenantAIGovernanceContext(),
     ])
 
-    const canReviewDelivery = isAdmin
-
     return (
-        <>
-        {canReviewDelivery && <div className="mb-4 flex justify-end"><Link href="/platform/integrations/meta-delivery" className="text-sm underline">Estado de entregas Meta</Link></div>}
         <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
             <MarketplacePage
                 providers={providers}
@@ -41,6 +36,5 @@ export default async function Page() {
                 aiGovernance={aiGovernance}
             />
         </Suspense>
-        </>
     )
 }
