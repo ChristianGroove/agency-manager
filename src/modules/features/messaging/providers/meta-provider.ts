@@ -16,6 +16,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin";
 import { ChannelResolver } from '@/modules/features/messaging/channel-resolver';
 import { randomUUID } from 'crypto';
 import { PRIVATE_CHAT_MEDIA_BUCKET } from '@/modules/features/messaging/constants';
+import { assertWhatsAppAudioFormat } from '@/modules/infrastructure/audio/services/whatsapp-audio';
 
 const PUBLIC_WHATSAPP_SEND_ERROR = 'WhatsApp message could not be sent';
 const PUBLIC_SOCIAL_SEND_ERROR = 'Social message could not be sent';
@@ -682,7 +683,7 @@ export class MetaProvider implements MessagingProvider {
             }
             // Sanitize MIME type (Meta strict validation rejects "audio/ogg; codecs=opus" or "audio/webm")
             mimeType = mimeType.split(';')[0].trim();
-            if (mimeType === 'audio/webm') mimeType = 'audio/mp4'; // Fallback if somehow webm bypassed
+            if (type === 'audio') assertWhatsAppAudioFormat(buffer, mimeType);
 
             const ext = mimeType.split('/')[1] || (type === 'image' ? 'jpg' : 'bin');
             // Use native File instead of Blob so FormData preserves the filename and type perfectly in Node.js >= 20
@@ -691,7 +692,7 @@ export class MetaProvider implements MessagingProvider {
             // 2. Prepare Form Data
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('type', type);
+            formData.append('type', type === 'audio' ? mimeType : type);
             formData.append('messaging_product', 'whatsapp');
 
             // 3. Upload
@@ -845,8 +846,14 @@ export class MetaProvider implements MessagingProvider {
                     for (const msg of eventMessages) {
                         const from = msg.from;
                         if (!msg.id || !from) continue;
-                        const contact = value.contacts?.find((c: any) => c.wa_id === from);
-                        const senderName = contact?.profile?.name || 'WhatsApp User';
+                        const businessPhone = String(value.metadata?.display_phone_number || '').replace(/\D/g, '');
+                        const isEcho = msg.is_echo === true || (Boolean(businessPhone) && from === businessPhone);
+                        if (isEcho && !msg.to && !msg._threadId) continue;
+                        const customerId = isEcho ? (msg.to || msg._threadId) : from;
+                        const customerUserId = isEcho ? msg.to_user_id : msg.from_user_id;
+                        const contact = value.contacts?.find((c: any) => c.wa_id === customerId || c.user_id === customerId
+                            || (customerUserId && c.user_id === customerUserId));
+                        const senderName = contact?.profile?.name?.trim() || contact?.profile?.username?.trim() || undefined;
 
                         let type = msg.type;
                         let text = '';
@@ -876,16 +883,13 @@ export class MetaProvider implements MessagingProvider {
                             mediaUrl = await this.processMedia(mediaId, mimeType, phoneNumberId);
                         }
 
-                        const businessPhone = String(value.metadata?.display_phone_number || '').replace(/\D/g, '');
-                        const isEcho = msg.is_echo === true || (Boolean(businessPhone) && from === businessPhone);
-                        if (isEcho && !msg.to && !msg._threadId) continue;
                         if (isEcho) logMetaProviderInfo('[MetaProvider] Echo detected for WA message', { messageId: msg.id });
 
                         messages.push({
                             id: msg.id,
                             externalId: msg.id,
                             channel: 'whatsapp',
-                            from: isEcho ? (msg.to || msg._threadId) : from,
+                            from: customerId,
                             senderName,
                             buttonId,
                             content: { type: type === 'interactive' ? 'interactive' : (['image','video','audio','document','sticker'].includes(type) ? type : 'text'), text, mediaUrl },

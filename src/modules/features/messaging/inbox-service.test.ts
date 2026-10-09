@@ -68,6 +68,44 @@ afterEach(() => {
 })
 
 describe('InboxService', () => {
+    it.each(['WhatsApp User', '573001234567', '', null])('enriches placeholder name %s within its tenant without changing lead status', async name => {
+        const updates: any[] = []
+        const filters: any[] = []
+        const client: any = { from: (table: string) => {
+            const query: any = {
+                select: () => query, order: () => query, is: (key: string, value: any) => { filters.push([table, key, value]); return query },
+                eq: (key: string, value: any) => { filters.push([table, key, value]); return query },
+                update: (value: any) => { updates.push([table, value]); query.updated = true; return query },
+                limit: () => query,
+                then: (resolve: any) => Promise.resolve({ data: query.updated ? null : table === 'leads'
+                    ? [{ id: 'lead', name, phone: '573001234567' }]
+                    : [{ id: 'conversation', state: 'active', metadata: {}, last_message_at: '2026-06-10T15:00:00Z' }], error: null }).then(resolve),
+            }
+            return query
+        } }
+        const { InboxService } = await import('./inbox-service')
+        await (new InboxService() as any).resolveMetadataContext(incomingMessage({ from: '573001234567', senderName: 'Ana' }),
+            { organizationId: 'tenant', connectionId: 'connection' }, client)
+        expect(updates.filter(([table]) => table === 'leads')).toEqual([['leads', { name: 'Ana' }]])
+        expect(filters).toContainEqual(['leads', 'organization_id', 'tenant'])
+        expect(filters).toContainEqual(['leads', 'name', name])
+        expect(updates.every(([, update]) => !('status' in update))).toBe(true)
+    })
+    it.each(['Ana CRM', 'Cliente 573001234567'])('preserves a curated contact name %s', async name => {
+        const updateLead = vi.fn()
+        const client: any = { from: (table: string) => {
+            const query: any = { select: () => query, eq: () => query, order: () => query, limit: () => query,
+                update: (value: any) => { if (table === 'leads') updateLead(value); query.updated = true; return query },
+                then: (resolve: any) => Promise.resolve({ data: query.updated ? null : table === 'leads'
+                    ? [{ id: 'lead', name, phone: '573001234567' }]
+                    : [{ id: 'conversation', state: 'active', metadata: {} }], error: null }).then(resolve) }
+            return query
+        } }
+        const { InboxService } = await import('./inbox-service')
+        await (new InboxService() as any).resolveMetadataContext(incomingMessage({ from: '573001234567', senderName: 'Ana Meta' }),
+            { organizationId: 'tenant', connectionId: 'connection' }, client)
+        expect(updateLead).not.toHaveBeenCalled()
+    })
     it('does not expose unmatched inbound message details in production logs', async () => {
         vi.stubEnv('VERCEL_ENV', 'production')
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)

@@ -36,7 +36,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         onScrollToBottom: (index) => {
             requestAnimationFrame(() => {
                 virtuosoRef.current?.scrollToIndex({
-                    index: index !== undefined ? index : logic.messages.length - 1,
+                    index: index !== undefined ? index : 'LAST',
                     align: 'end',
                     behavior: 'smooth'
                 })
@@ -135,8 +135,10 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 </div>
                 
                 <MessageList
+                    key={conversationId}
                     ref={virtuosoRef}
                     messages={logic.messages}
+                    firstItemIndex={logic.firstItemIndex}
                     loadingOlder={logic.loadingOlder}
                     hasMoreMessages={logic.hasMoreMessages}
                     onLoadOlder={logic.loadOlderMessages}

@@ -36,8 +36,10 @@ export function useChatLogic(conversationId: string) {
     
     // Core State
     const [messages, setMessages] = useState<Message[]>([])
+    const [firstItemIndex, setFirstItemIndex] = useState(1000000)
     const [conversation, setConversation] = useState<Conversation | null>(null)
     const conversationRef = useRef<Conversation | null>(null)
+    const activeConversationIdRef = useRef(conversationId)
     
     // Sincronizar ref para el listener
     useEffect(() => {
@@ -83,7 +85,7 @@ export function useChatLogic(conversationId: string) {
             .eq('id', conversationId)
             .single()
 
-        if (data) {
+        if (data && activeConversationIdRef.current === conversationId) {
             setConversation(data as any)
             
             // Instantly hide the unread bubble in the sidebar UI regardless of backend sync state
@@ -116,19 +118,19 @@ export function useChatLogic(conversationId: string) {
             .order('created_at', { ascending: false })
             .limit(MESSAGE_PAGE_SIZE)
 
-        if (data) {
+        if (data && activeConversationIdRef.current === conversationId) {
             const sorted = data.reverse()
             setMessages(prev => {
                 if (forceRefetch || prev.length === 0 || prev[0]?.conversation_id !== conversationId) {
                     return sorted
                 }
+                const latest = new Map(sorted.map(m => [m.id, m]))
                 const existingIds = new Set(prev.map(m => m.id))
-                const onlyNew = sorted.filter(m => !existingIds.has(m.id))
-                if (onlyNew.length === 0) return prev
-                return [...prev, ...onlyNew].sort((a, b) => 
+                return [...prev.map(m => latest.get(m.id) || m), ...sorted.filter(m => !existingIds.has(m.id))].sort((a, b) =>
                     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
                 )
             })
+            if (forceRefetch) setFirstItemIndex(1000000)
             setHasMoreMessages(data.length === MESSAGE_PAGE_SIZE)
         }
     }
@@ -146,8 +148,10 @@ export function useChatLogic(conversationId: string) {
             .order('created_at', { ascending: false })
             .limit(MESSAGE_PAGE_SIZE)
 
+        if (activeConversationIdRef.current !== conversationId) return
         if (data && data.length > 0) {
             const sorted = data.reverse()
+            setFirstItemIndex(prev => prev - sorted.length)
             setMessages(prev => [...sorted, ...prev])
             setHasMoreMessages(data.length === MESSAGE_PAGE_SIZE)
         } else {
@@ -159,6 +163,12 @@ export function useChatLogic(conversationId: string) {
     // Effects for Realtime/Listeners
     useEffect(() => {
         if (!conversationId) return;
+        activeConversationIdRef.current = conversationId
+        setMessages([])
+        setConversation(null)
+        setFirstItemIndex(1000000)
+        setLoadingOlder(false)
+        setHasMoreMessages(false)
         
         fetchConversation()
         fetchMessages(true)
@@ -174,21 +184,31 @@ export function useChatLogic(conversationId: string) {
                     filter: `conversation_id=eq.${conversationId}`
                 },
                 (payload: any) => {
+                    if (activeConversationIdRef.current !== conversationId) return
                     const newMsg = payload.new as Message
                     setMessages((prev) => {
-                        if (prev.some(m => m.id === newMsg.id)) return prev
+                        if (prev.some(m => m.id === newMsg.id)) return prev.map(m => m.id === newMsg.id ? newMsg : m)
                         return [...prev, newMsg]
                     })
                     if (newMsg.direction === 'inbound') debouncedMarkAsRead(conversationId)
                 }
             )
+            .on('postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+                (payload: any) => {
+                    if (activeConversationIdRef.current !== conversationId) return
+                    const updatedMsg = payload.new as Message
+                    setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m))
+                }
+            )
             .on('broadcast', { event: 'system_message_inserted' }, (payload: any) => {
-                // Fetch the latest messages to catch the system message
-                fetchMessages(true)
+                // Merge system messages without discarding history or its scroll anchor.
+                fetchMessages()
             })
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'conversations' },
                 (payload: any) => {
+                    if (activeConversationIdRef.current !== conversationId) return
                     const updatedConv = payload.new as any
                     if (updatedConv.id === conversationId) {
                         setConversation((prev: any) => {
@@ -209,6 +229,7 @@ export function useChatLogic(conversationId: string) {
                 }
             )
             .on('broadcast', { event: 'incoming_call' }, (payload: any) => {
+                if (activeConversationIdRef.current !== conversationId) return
                 setIncomingCall(payload.payload)
                 setTimeout(() => setIncomingCall(null), 30000)
             })
@@ -242,6 +263,7 @@ export function useChatLogic(conversationId: string) {
 
     return {
         messages,
+        firstItemIndex,
         setMessages,
         conversation,
         hasMoreMessages,
