@@ -1682,6 +1682,43 @@ Las notas rápidas son estrictamente individuales y privadas para cada colaborad
    - `designer` / `specialist` / `operations` / `support`: Bloqueo total de herramientas de código (`vcs_code: false`), previniendo fugas de repositorios corporativos.
 2. **Ergonomía y Rendimiento Zero-Bundle (`TaskVcsContainer`)**:
    - Si `capabilities.vcs_code === false`, el componente retorna `null` inmediatamente, con 0 renderizado en el DOM y 0 carga de bundle para perfiles no técnicos.
-   - Acceso rápido a 1 clic para copiar comandos `git checkout` y botón directo `[ 🚀 Abrir PR en GitHub / Bitbucket ]` con título, rama base y rama origen pre-llenados automáticamente.
+   - Acceso rápido a 1 clic para copiar comandos `git checkout` y botón directo `[ Abrir PR en GitHub / Bitbucket ]` con título, rama base y rama origen pre-llenados automáticamente.
 3. **Doble Punto de Contacto (Hub-and-Spoke)**: Los administradores pueden conectar GitHub y Bitbucket directamente desde los modales de Espacio y Proyecto mediante `DynamicIntegrationSheet` sin abandonar el módulo de Tareas. El formulario cuenta con protección anti-autofill de credenciales de sesión y separación limpia de placeholders y descripciones.
+
+---
+
+## 43. Guardián de Tareas Estancadas y Telemetría de Horas Hábiles
+
+### A. Principio de Detección Activa y Motor de Horas Hábiles (`business-hours-utils.ts`)
+Para evitar cuellos de botella operativos y tickets abandonados en los flujos de sprint, el sistema incorpora el Guardián de Tareas Estancadas (*Stalled Task Watchdog*), un mecanismo de supervisión proactiva basado en horas hábiles efectivas:
+1. **Regla de Negocio de Horas Hábiles**: Se contabilizan únicamente las horas transcurridas de lunes a viernes (24 horas continuas por día hábil), descontando rigurosamente los fines de semana completos (sábados y domingos).
+2. **Eliminación de Falsos Positivos de Lunes por la Mañana**: Una tarea tocada el viernes a las 18:00 no acumula tiempo de inactividad durante el sábado ni el domingo; al llegar el lunes a las 09:00, solo registra 15 horas hábiles acumuladas, impidiendo alarmas prematuras e imprecisas.
+3. **Umbral Estándar Configurable**: El umbral predeterminado de estancamiento es de 48 horas hábiles continuas de inactividad (equivalente a 2 días hábiles completos sin mutación en `updated_at`). Admite umbrales personalizados (ej. 72h) mediante parámetros de consulta.
+4. **Estados Supervisados y Criterios de Exclusión**:
+   - Estados bajo supervisión: `in_progress` (en curso), `in_review` (en revisión de QA), `blocked` (bloqueado).
+   - Exclusiones estrictas: Reuniones sincrónicas (`type: 'meeting'`), requerimientos finalizados (`done`), requerimientos planificados aún no iniciados (`todo`) y tareas en cartera preliminar (`backlog`).
+
+### B. Endpoint de Automatización y Cron Idempotente (`/api/cron/tasks-watchdog`)
+El escaneo recurrente del sistema se orquesta mediante una ruta cron especializada:
+1. **Autenticación Robusta**: El endpoint valida la cabecera `Authorization: Bearer <CRON_SECRET>` a través del guardián `requireCronSecret(req)`.
+2. **Aislamiento Multi-Tenant**: Admite el parámetro opcional `org_id` para escaneos por organización, o evalúa de manera transversal todas las organizaciones activas si no se especifica.
+3. **Modo Simulación (`dry_run=true`)**: Permite auditoría y telemetría diagnóstica sin persistir registros ni alterar comentarios en la base de datos.
+4. **Regla de Idempotencia Anti-Spam**: Antes de registrar una alerta, el sistema consulta los comentarios de auditoría existentes con `author_type: 'system'` que contengan la firma `[Guardián de Tareas Estancadas]`. Si la última alerta fue emitida hace menos del umbral de horas hábiles (ej. menos de 48h hábiles), la nueva alerta es omitida automáticamente.
+5. **Generación de Alertas sin Emojis**: Las alertas del sistema se redactan en español puro y formal, asociadas al autor de sistema `Guardián de Tareas`, identificando con precisión el código del ticket, su título, el tiempo exacto transcurrido formateado (ej. `2d 4h hábiles`) y su estado actual.
+
+### C. Server Actions y Flujo Operativo (`task-watchdog-actions.ts`)
+1. **`resolveOrgId` Seguro**: Validación estricta contra ataques de referencia directa a objetos (IDOR), verificando membresía en `organization_members` antes de permitir consultas sobre un tenant específico.
+2. **`getStalledTasksWatchdog`**: Consulta optimizada de tareas estancadas con relaciones completas (proyectos, espacios de trabajo, responsable asignado, QA y dependencias de bloqueo), ordenadas descendentemente por severidad del estancamiento.
+3. **`runWatchdogManualScanAction`**: Permite a directores y Project Managers activar barridos bajo demanda desde el panel de control, con opción de generar alertas del sistema en lote y revalidación de caché (`/operations/tasks`).
+4. **`nudgeStalledTaskAction`**: Acción de seguimiento activo que permite al PM registrar un recordatorio formal en el hilo de discusión del ticket y actualiza de inmediato la columna `updated_at` en `task_items`, certificando actividad viva y reiniciando el temporizador del Guardián.
+
+### D. Experiencia de Usuario y Señalización Visual
+El Guardián se integra de forma transversal y simétrica en todas las vistas del ecosistema de tareas:
+1. **Tablero Kanban (`TaskKanbanBoard`)**: Badge ámbar con el ícono `Hourglass` y la etiqueta `48h+ inactiva` en las tarjetas de requerimientos retrasados, con tooltip detallado del tiempo transcurrido.
+2. **Vista de Lista (`TaskListView`)**: Indicador visual alineado junto a las subtareas de cada fila.
+3. **Puesto de Mando PM (`TaskPmOperationsDashboard`)**: Pestaña dedicada `Estancadas (48h+)` en la consola de triage, con conteo en vivo de tickets críticos y acceso a acciones de reactivación.
+4. **Modal de Detalle PM (`TaskDetailModal`)**: Banner de advertencia destacado en la cabecera del modal para administradores y gestores, con botón interactivo de seguimiento para reactivar el ticket.
+5. **Portal de Colaboradores (`TaskCollaboratorPortal` & `TaskPortalDetailModal`)**:
+   - Vistas Grid, Compacta y de Lista: Incorporación del badge de 48h+ inactiva en las tarjetas y filas de colaboradores para visibilidad inmediata de impedimentos.
+   - Modal de Detalle del Portal: Banner informativo que instruye al colaborador sobre la inactividad del requerimiento y sugiere reportar avances o registrar comentarios en el hilo unificado.
 

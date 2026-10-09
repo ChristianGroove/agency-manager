@@ -26,6 +26,8 @@ import {
   GitBranch,
   Copy,
   Check,
+  Hourglass,
+  Loader2,
 } from "lucide-react"
 import type {
   TaskItem,
@@ -38,7 +40,8 @@ import type {
   TaskAttachment,
   RecurrenceInterval,
 } from "../../types"
-import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, resolveCollaboratorCapabilities } from "../../types"
+import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, resolveCollaboratorCapabilities, TASK_STATUS_LABELS } from "../../types"
+import { getTaskStalledInfo } from "../../utils/business-hours-utils"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { TaskMeetingConsole } from "../meetings/task-meeting-console"
@@ -58,6 +61,7 @@ import {
   updateChecklistItemAssignee,
   toggleChecklistItem,
 } from "../../actions/task-actions"
+import { nudgeStalledTaskAction } from "../../actions/task-watchdog-actions"
 import { toast } from "sonner"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -531,6 +535,42 @@ export function TaskDetailModal({
 
   const canViewVcs = activeCapabilities ? activeCapabilities.vcs_code !== false : isLeadOrPm
 
+  const stalledInfo = useMemo(() => {
+    return task ? getTaskStalledInfo(task) : { isStalled: false, businessHours: 0, formattedTime: "0h habiles" }
+  }, [task])
+
+  const [isNudging, setIsNudging] = useState(false)
+
+  const handleNudgeStalledTask = async () => {
+    if (!task) return
+    setIsNudging(true)
+    try {
+      const res = await nudgeStalledTaskAction(task.id)
+      if (res.success) {
+        toast.success("Seguimiento registrado", {
+          description: "Se ha publicado el recordatorio en el hilo de discusión y actualizado la actividad del ticket.",
+        })
+        loadComments(task.id)
+        if (onTaskUpdated) {
+          onTaskUpdated({
+            ...task,
+            updated_at: new Date().toISOString(),
+          })
+        }
+      } else {
+        toast.error("Error al registrar seguimiento", {
+          description: res.error || "No fue posible registrar la intervención.",
+        })
+      }
+    } catch (e: any) {
+      toast.error("Error de conexión", {
+        description: e.message || "Ocurrió un error inesperado al enviar seguimiento.",
+      })
+    } finally {
+      setIsNudging(false)
+    }
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -631,6 +671,41 @@ export function TaskDetailModal({
                     setActualHours(updated.actual_hours || 0)
                   }}
                 />
+              )}
+
+              {/* Alerta del Guardian de Tareas Estancadas */}
+              {stalledInfo.isStalled && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-3 flex-1">
+                    <Hourglass className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <div className="font-bold text-amber-900 dark:text-amber-200">
+                        Guardián de Tareas Estancadas: {stalledInfo.formattedTime} inactiva
+                      </div>
+                      <p className="text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                        Este ticket acumula más de 48 horas hábiles en estado "{TASK_STATUS_LABELS[status] || status}" sin actualizaciones registradas. Se recomienda registrar avances, comentar en el hilo de discusión o destrabar impedimentos.
+                      </p>
+                    </div>
+                  </div>
+                  {isLeadOrPm && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isNudging}
+                      onClick={handleNudgeStalledTask}
+                      className="shrink-0 h-8 px-3 text-xs font-semibold border-amber-500/30 text-amber-800 dark:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 cursor-pointer shadow-none self-end sm:self-center"
+                    >
+                      {isNudging ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                          Enviando...
+                        </>
+                      ) : (
+                        "Enviar Seguimiento"
+                      )}
+                    </Button>
+                  )}
+                </div>
               )}
 
               {/* Title */}

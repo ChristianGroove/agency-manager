@@ -59,6 +59,7 @@ import {
   Video,
   GitBranch,
   Copy,
+  Hourglass,
 } from "lucide-react"
 import { TaskBlockerSelector } from "../shared/task-blocker-selector"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
@@ -80,6 +81,7 @@ import type {
   TaskMeetingAttendee,
 } from "../../types"
 import { parseTaskChecklist, RECURRENCE_INTERVAL_LABELS, TASK_STATUS_LABELS, parseSystemAuditNote, MEETING_PRESETS, resolveCollaboratorCapabilities } from "../../types"
+import { getTaskStalledInfo } from "../../utils/business-hours-utils"
 import {
   portalCreateTask,
   portalUpdateTask,
@@ -851,6 +853,10 @@ export function TaskPortalDetailModal({
     })
   }
 
+  const stalledInfo = useMemo(() => {
+    return task ? getTaskStalledInfo(task) : { isStalled: false, businessHours: 0, formattedTime: "0h habiles" }
+  }, [task])
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -1000,6 +1006,14 @@ export function TaskPortalDetailModal({
             <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <span>
               <strong>Requerimiento en Backlog:</strong> Este ticket está en espera de evaluación, estimación y aprobación por parte del Gestor de Proyecto (PM). No se pueden registrar horas ni avances hasta su aprobación formal.
+            </span>
+          </div>
+        )}
+        {!isCreating && stalledInfo.isStalled && task && (
+          <div className="px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+            <Hourglass className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              <strong>Guardián de Tareas Estancadas:</strong> Este ticket acumula <strong>{stalledInfo.formattedTime}</strong> sin actualizaciones en estado "{TASK_STATUS_LABELS[task.status] || task.status}". Por favor reporta tu avance o comunica si tienes bloqueos pendientes.
             </span>
           </div>
         )}

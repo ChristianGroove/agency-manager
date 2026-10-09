@@ -63,6 +63,9 @@ import {
   ChevronDown,
   FolderPlus,
   Video,
+  Hourglass,
+  Mail,
+  Bell,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -74,6 +77,7 @@ import { cn } from "@/modules/infrastructure/utils/utils"
 import type { TaskItem, TaskPriority, TaskStatus, TaskWorkspace, TaskSprint } from "../../types"
 import { getTaskMemberHours, parseTaskChecklist } from "../../types"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { isTaskStalled, getTaskStalledInfo } from "../../utils/business-hours-utils"
 import { TaskSprintModal } from "../modals/task-sprint-modal"
 import { startSprint } from "../../actions/task-sprint-actions"
 import { toast } from "sonner"
@@ -302,7 +306,7 @@ export function TaskPmOperationsDashboard({
   const [workloadChartMode, setWorkloadChartMode] = useState<"tickets" | "hours">("tickets")
 
   // Interactive triage deck state
-  const [activeTriageTab, setActiveTriageTab] = useState<"critical" | "overbudget" | "qa" | "done" | "backlog">("critical")
+  const [activeTriageTab, setActiveTriageTab] = useState<"critical" | "stalled" | "overbudget" | "qa" | "done" | "backlog">("critical")
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -480,7 +484,7 @@ export function TaskPmOperationsDashboard({
   const hoursEfficiencyDelta = Math.round((totalEstimatedHours - totalActualHours) * 10) / 10
 
   // Overdue / Stalled Risk (strictly within Sprint, never backlog!)
-  const now = new Date()
+  const now = useMemo(() => new Date(), [lastRefreshedAt])
   const overdueTasks = useMemo(
     () =>
       sprintTasks.filter((t) => {
@@ -489,18 +493,11 @@ export function TaskPmOperationsDashboard({
         if (!t.due_date) return false
         return new Date(t.due_date) < now
       }),
-    [sprintTasks]
+    [sprintTasks, now]
   )
   const stalledTasks = useMemo(
-    () =>
-      sprintTasks.filter((t) => {
-        if (t.status === "done" || t.status === "todo") return false
-        if (t.type === "meeting") return false
-        if (!t.updated_at) return false
-        const diffHours = (now.getTime() - new Date(t.updated_at).getTime()) / (1000 * 60 * 60)
-        return diffHours > 48 // 48h without movement
-      }),
-    [sprintTasks]
+    () => sprintTasks.filter((t) => isTaskStalled(t, now)),
+    [sprintTasks, now]
   )
   const criticalRiskCount = overdueTasks.length + blockedTasks.length
 
@@ -610,6 +607,9 @@ export function TaskPmOperationsDashboard({
       }
       return list
     }
+    if (activeTriageTab === "stalled") {
+      return stalledTasks
+    }
     if (activeTriageTab === "overbudget") {
       return overbudgetTasks
     }
@@ -620,7 +620,7 @@ export function TaskPmOperationsDashboard({
       return completedTasks
     }
     return backlogTasks
-  }, [activeTriageTab, blockedTasks, overdueTasks, overbudgetTasks, qaQueueTasks, completedTasks, backlogTasks])
+  }, [activeTriageTab, blockedTasks, overdueTasks, stalledTasks, overbudgetTasks, qaQueueTasks, completedTasks, backlogTasks])
 
   const projectMap = useMemo(() => {
     const map = new Map<string, { id: string; name: string; color?: string }>()
@@ -1629,6 +1629,29 @@ export function TaskPmOperationsDashboard({
           </button>
 
           <button
+            onClick={() => setActiveTriageTab("stalled")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border",
+              activeTriageTab === "stalled"
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-xs"
+                : "bg-zinc-100/70 dark:bg-white/5 border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Hourglass className="w-3.5 h-3.5 text-amber-500" />
+            <span>Estancadas</span>
+            <span
+              className={cn(
+                "px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                stalledTasks.length > 0
+                  ? "bg-amber-500 text-white font-bold"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-muted-foreground"
+              )}
+            >
+              {stalledTasks.length}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTriageTab("overbudget")}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border",
@@ -1717,6 +1740,8 @@ export function TaskPmOperationsDashboard({
               <p className="text-sm font-bold text-foreground">
                 {activeTriageTab === "critical"
                   ? "No hay tickets en riesgo ni bloqueos activos"
+                  : activeTriageTab === "stalled"
+                  ? "No hay tickets estancados sin actividad reciente"
                   : activeTriageTab === "overbudget"
                   ? "No hay tickets con horas excedidas sobre su estimación"
                   : activeTriageTab === "qa"
@@ -1730,6 +1755,8 @@ export function TaskPmOperationsDashboard({
                   ? currentSprint
                     ? "Excelente: el sprint fluye sin retrasos críticos"
                     : "Excelente: las operaciones fluyen sin retrasos críticos"
+                  : activeTriageTab === "stalled"
+                  ? "Excelente: no hay tareas activas con más de 48 horas hábiles sin movimiento"
                   : activeTriageTab === "overbudget"
                   ? "Excelente: todo el consumo de tiempo está dentro del presupuesto planificado"
                   : "Todos los flujos de trabajo se encuentran sincronizados"}
@@ -1742,6 +1769,7 @@ export function TaskPmOperationsDashboard({
               const project = projectMap.get(task.project_id)
               const member = task.assigned_staff_id ? memberMap.get(task.assigned_staff_id) : null
               const isOverdue = task.status !== "done" && task.due_date && new Date(task.due_date) < now
+              const stalledInfo = getTaskStalledInfo(task, now)
 
               return (
                 <div
@@ -1809,12 +1837,79 @@ export function TaskPmOperationsDashboard({
                         >
                           {STATUS_LABELS[task.status] || task.status}
                         </span>
+
+                        {(activeTriageTab === "stalled" || stalledInfo.isStalled) && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 shrink-0"
+                            title={`Sin movimiento durante ${stalledInfo.formattedTime}`}
+                          >
+                            <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                            <span>{stalledInfo.formattedTime} inactiva</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Assignee, Due Date & Progress */}
-                  <div className="flex items-center gap-4 sm:gap-6 shrink-0 self-end sm:self-center">
+                  <div className="flex items-center gap-3 sm:gap-4 shrink-0 self-end sm:self-center">
+                    {/* Acciones contextuales para tareas estancadas */}
+                    {activeTriageTab === "stalled" && (
+                      <div className="shrink-0 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {task.status === "in_progress" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-[11px] rounded-xl border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 gap-1.5 font-medium cursor-pointer shadow-none"
+                            onClick={() => {
+                              if (member?.email) {
+                                window.open(
+                                  `mailto:${member.email}?subject=Seguimiento ticket ${task.ticket_code}: ${encodeURIComponent(task.title)}&body=Hola ${member.first_name}, necesitamos revisar el estado de este ticket estancado (${stalledInfo.formattedTime} sin movimiento).`
+                                )
+                              } else {
+                                onSelectTask?.(task)
+                                toast.info(`Abre el ticket para registrar seguimiento con ${member ? member.first_name : "el responsable"}`)
+                              }
+                            }}
+                          >
+                            <Mail className="w-3 h-3 text-amber-500" />
+                            <span>Contactar asignado</span>
+                          </Button>
+                        )}
+                        {task.status === "in_review" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-[11px] rounded-xl border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 gap-1.5 font-medium cursor-pointer shadow-none"
+                            onClick={() => {
+                              const qaMember = task.qa_staff_id ? memberMap.get(task.qa_staff_id) : null
+                              if (qaMember?.email) {
+                                window.open(
+                                  `mailto:${qaMember.email}?subject=Recordatorio QA ticket ${task.ticket_code}: ${encodeURIComponent(task.title)}&body=Hola ${qaMember.first_name}, este ticket se encuentra pendiente de revision tecnica (${stalledInfo.formattedTime} en cola).`
+                                )
+                              } else {
+                                onSelectTask?.(task)
+                                toast.info("Abre el ticket para registrar un recordatorio al equipo de QA")
+                              }
+                            }}
+                          >
+                            <Bell className="w-3 h-3 text-amber-500" />
+                            <span>Recordar a QA</span>
+                          </Button>
+                        )}
+                        {task.status === "blocked" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-[11px] rounded-xl border-rose-500/30 text-rose-700 dark:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 gap-1.5 font-medium cursor-pointer shadow-none"
+                            onClick={() => onSelectTask?.(task)}
+                          >
+                            <AlertCircle className="w-3 h-3 text-rose-500" />
+                            <span>Resolver impedimento</span>
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     {member && (
                       <div className="flex items-center gap-2">
                         <Avatar className="w-6 h-6 border border-background shadow-xs" style={{ backgroundColor: brandColor }}>

@@ -101,11 +101,13 @@ import {
   Video,
   MapPin,
   UserX,
+  Hourglass,
 } from "lucide-react"
 import { ShimmerText } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import type { TaskItem, TaskStatus, TaskPriority, TaskType, TaskChecklistItem, TaskComment, TaskWorkspace, TaskProject, TaskProgressAuditSummary, TaskSprint, TaskCollaborator, TaskQuickNote } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS, parseSystemAuditNote, isDisallowedStatusRegression } from "../../types"
 import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
+import { getTaskStalledInfo } from "../../utils/business-hours-utils"
 import type { CollaboratorPortalData } from "../../actions/collaborator-portal-actions"
 import {
   portalUpdateTaskProgress,
@@ -3582,6 +3584,7 @@ export function TaskCollaboratorPortal({
                 const checklistTotal = safeChecklist.length
                 const checklistDone = safeChecklist.filter((c) => c.completed).length
                 const isPastMeetingDisabled = task.type === "meeting" && isMeetingPast(task) && !isLeadOrPm
+                const stalledInfo = getTaskStalledInfo(task)
 
                 return (
                   <motion.div
@@ -3659,6 +3662,21 @@ export function TaskCollaboratorPortal({
                           )
                         ) : (
                           <>
+                            {stalledInfo.isStalled && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0 shadow-2xs cursor-help">
+                                      <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                                      <span>48h+ inactiva</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="text-xs">
+                                    Esta tarea no ha tenido movimiento en más de 48 horas hábiles ({stalledInfo.formattedTime} transcurridas).
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                             {task.priority === "urgent" && (
                               <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 text-[10px] px-2 py-0.5 font-bold rounded-lg">
                                 Urgente
@@ -4073,7 +4091,9 @@ export function TaskCollaboratorPortal({
         {viewMode === "compact" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
-              {paginatedTasks.map((task) => (
+              {paginatedTasks.map((task) => {
+                const stalledInfo = getTaskStalledInfo(task)
+                return (
                 <motion.div
                   key={task.id}
                   layout
@@ -4097,41 +4117,58 @@ export function TaskCollaboratorPortal({
                           </span>
                         )}
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] px-1.5 py-0 rounded-md font-semibold",
-                          task.status === "done"
-                            ? "text-emerald-600 border-emerald-500/20 bg-emerald-500/10"
-                            : task.status === "in_review"
-                            ? "text-amber-600 border-amber-500/20 bg-amber-500/10"
-                            : task.status === "in_progress"
-                            ? "text-indigo-600 border-indigo-500/20 bg-indigo-500/10"
-                            : task.status === "blocked"
-                            ? "text-rose-600 border-rose-500/20 bg-rose-500/10"
-                            : task.status === "backlog"
-                            ? "text-slate-600 border-slate-500/20 bg-slate-500/10"
-                            : "text-sky-600 border-sky-500/20 bg-sky-500/10"
+                      <div className="flex items-center gap-1 shrink-0">
+                        {stalledInfo.isStalled && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0 shadow-2xs cursor-help">
+                                  <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                                  <span>48h+</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs">
+                                Esta tarea no ha tenido movimiento en más de 48 horas hábiles ({stalledInfo.formattedTime} transcurridas).
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
-                      >
-                        {task.status === "done"
-                          ? "Listo"
-                          : task.status === "in_review"
-                          ? "QA"
-                          : task.status === "in_progress"
-                          ? "Curso"
-                          : task.status === "blocked"
-                          ? "Bloqueado"
-                          : task.status === "backlog"
-                          ? "Backlog"
-                          : "Por Hacer"}
-                      </Badge>
-                      {task.assigned_staff_id !== staff.id && Array.isArray(task.checklist) && task.checklist.some((c: any) => c.assigned_staff_id === staff.id) && (
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/25 text-[10px] px-1.5 py-0 font-bold rounded-md flex items-center gap-1">
-                          <UserCheck className="w-2.5 h-2.5" />
-                          Tu subtarea
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 rounded-md font-semibold",
+                            task.status === "done"
+                              ? "text-emerald-600 border-emerald-500/20 bg-emerald-500/10"
+                              : task.status === "in_review"
+                              ? "text-amber-600 border-amber-500/20 bg-amber-500/10"
+                              : task.status === "in_progress"
+                              ? "text-indigo-600 border-indigo-500/20 bg-indigo-500/10"
+                              : task.status === "blocked"
+                              ? "text-rose-600 border-rose-500/20 bg-rose-500/10"
+                              : task.status === "backlog"
+                              ? "text-slate-600 border-slate-500/20 bg-slate-500/10"
+                              : "text-sky-600 border-sky-500/20 bg-sky-500/10"
+                          )}
+                        >
+                          {task.status === "done"
+                            ? "Listo"
+                            : task.status === "in_review"
+                            ? "QA"
+                            : task.status === "in_progress"
+                            ? "Curso"
+                            : task.status === "blocked"
+                            ? "Bloqueado"
+                            : task.status === "backlog"
+                            ? "Backlog"
+                            : "Por Hacer"}
                         </Badge>
-                      )}
+                        {task.assigned_staff_id !== staff.id && Array.isArray(task.checklist) && task.checklist.some((c: any) => c.assigned_staff_id === staff.id) && (
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/25 text-[10px] px-1.5 py-0 font-bold rounded-md flex items-center gap-1">
+                            <UserCheck className="w-2.5 h-2.5" />
+                            Tu subtarea
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-1.5">
@@ -4222,7 +4259,8 @@ export function TaskCollaboratorPortal({
                     </Button>
                   </div>
                 </motion.div>
-              ))}
+              )
+            })}
             </AnimatePresence>
           </div>
         )}
@@ -4296,6 +4334,7 @@ export function TaskCollaboratorPortal({
                         const resolvedProject = task.project || projects.find((p) => p.id === task.project_id)
                         const isSelected = selectedTaskIds.has(task.id)
                         const isPastMeetingDisabled = task.type === "meeting" && isMeetingPast(task) && !isLeadOrPm
+                        const stalledInfo = getTaskStalledInfo(task)
                         return (
                           <tr
                             key={task.id}
@@ -4373,6 +4412,21 @@ export function TaskCollaboratorPortal({
                                         taskType={task.type}
                                         onClick={() => openTaskDetail(task)}
                                       />
+                                      {stalledInfo.isStalled && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0 shadow-2xs cursor-help">
+                                                <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                                                <span>48h+ inactiva</span>
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="text-xs">
+                                              Esta tarea no ha tenido movimiento en más de 48 horas hábiles ({stalledInfo.formattedTime} transcurridas).
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
                                       {task.tags && task.tags.length > 0 && (
                                         <div className="flex items-center gap-1 shrink-0 flex-wrap">
                                           {task.tags.map((tag) => {

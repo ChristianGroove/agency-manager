@@ -27,10 +27,12 @@ import {
   UserX,
   CheckCircle2,
   Lock,
+  Hourglass,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority, TaskQuickNote } from "../../types"
 import { SYSTEM_STAGE_TAGS } from "../../types"
 import { getMeetingModalityBadgeLabel } from "../../utils/recurrence-utils"
+import { getTaskStalledInfo } from "../../utils/business-hours-utils"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
@@ -281,6 +283,7 @@ export function TaskListView({
               ) : (
                 paginatedTasks.map((task) => {
                   const isSelected = selectedTaskIds.has(task.id)
+                  const stalledInfo = getTaskStalledInfo(task)
                   return (
                     <tr
                       key={task.id}
@@ -353,6 +356,21 @@ export function TaskListView({
                                 taskType={task.type}
                                 onClick={() => onSelectTask(task)}
                               />
+                              {stalledInfo.isStalled && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0 shadow-2xs cursor-help">
+                                        <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                                        <span>48h+ inactiva</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="text-xs">
+                                      Esta tarea no ha tenido movimiento en más de 48 horas hábiles ({stalledInfo.formattedTime} transcurridas).
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                               {task.tags && task.tags.length > 0 && (
                                 <div className="flex items-center gap-1 shrink-0">
                                   {task.tags.map((tag) => {

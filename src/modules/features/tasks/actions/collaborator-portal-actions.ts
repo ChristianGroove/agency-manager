@@ -1534,6 +1534,16 @@ export async function portalAddTaskComment(
       .single();
 
     if (error) throw error;
+
+    // Actualizar updated_at en task_items para registrar actividad viva y evitar falsos positivos de estancamiento
+    await supabaseAdmin
+      .from("task_items")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", taskId)
+      .eq("organization_id", staff.organization_id);
+
+    safeRevalidateOperations();
+
     return { success: true, comment: comment as TaskComment };
   } catch (err: any) {
     console.error("Portal comment error:", err);

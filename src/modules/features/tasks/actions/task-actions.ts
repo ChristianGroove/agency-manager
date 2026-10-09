@@ -2106,6 +2106,13 @@ export async function addTaskComment(data: {
 
     if (error) throw error;
 
+    // Actualizar updated_at en task_items para registrar actividad viva y evitar falsos positivos de estancamiento
+    await supabaseAdmin
+      .from("task_items")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", data.taskId)
+      .eq("organization_id", orgId);
+
     revalidatePath("/operations/tasks");
     return { success: true, comment: newComment as TaskComment };
   } catch (err: any) {

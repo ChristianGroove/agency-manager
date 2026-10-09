@@ -30,6 +30,7 @@ import {
   Ban,
   Timer,
   Video,
+  Hourglass,
 } from "lucide-react"
 import type { TaskItem, TaskStatus, TaskPriority } from "../../types"
 import { parseTaskChecklist, SYSTEM_STAGE_TAGS } from "../../types"
@@ -53,6 +54,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { getTaskStalledInfo } from "../../utils/business-hours-utils"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 
 const KANBAN_INITIAL_ITEMS_PER_COLUMN = 25
@@ -180,6 +182,7 @@ const SortableTaskCard = React.memo(
     task.due_date &&
     new Date(task.due_date) < new Date() &&
     task.status !== "done"
+  const stalledInfo = getTaskStalledInfo(task)
 
   return (
     <div
@@ -240,7 +243,23 @@ const SortableTaskCard = React.memo(
           )}
         </div>
 
-        <div>
+        <div className="flex items-center gap-1 shrink-0">
+          {stalledInfo.isStalled && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0 shadow-2xs cursor-help">
+                    <Hourglass className="w-2.5 h-2.5 shrink-0" />
+                    <span>48h+ inactiva</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  Esta tarea no ha tenido movimiento en más de 48 horas hábiles ({stalledInfo.formattedTime} transcurridas).
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {task.priority === "urgent" ? (
             <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 text-[10px] px-1.5 py-0 font-bold rounded-md">
               Urgente
