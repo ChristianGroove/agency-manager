@@ -3,6 +3,38 @@ import { MetaProvider } from './meta-provider'
 const provider=new MetaProvider('','','')
 function payload(field:string,value:any){return {object:'whatsapp_business_account',entry:[{id:'waba',changes:[{field,value:{metadata:{phone_number_id:'phone-id',display_phone_number:'+57 3001234567'},...value}}]}]}}
 describe('official coexistence payloads',()=>{
+    it('uses the inbound profile name, with username as a fallback', async () => {
+        for (const profile of [{ name: 'Ana', username: 'ana.wa' }, { username: 'ana.wa' }]) {
+            const result = await provider.parseWebhook(payload('messages', {
+                contacts: [{ wa_id: '573009876543', profile }],
+                messages: [{ id: 'inbound', from: '573009876543', timestamp: '1700000000', type: 'text', text: { body: 'Hola' } }],
+            }))
+            expect(result[0]).toMatchObject({ senderName: 'name' in profile ? 'Ana' : 'ana.wa' })
+        }
+    })
+    it('resolves user_id contacts without inventing a generic name', async () => {
+        const result = await provider.parseWebhook(payload('messages', {
+            contacts: [{ user_id: 'customer-id', profile: { name: 'Ana' } }],
+            messages: [{ id: 'inbound', from: 'customer-id', timestamp: '1700000000', type: 'text', text: { body: 'Hola' } }],
+        }))
+        expect(result[0]).toMatchObject({ senderName: 'Ana' })
+        const phoneWithUserId = await provider.parseWebhook(payload('messages', {
+            contacts: [{ user_id: 'customer-id', profile: { name: 'Ana' } }],
+            messages: [{ id: 'with-user-id', from: '573009876543', from_user_id: 'customer-id', timestamp: '1700000000', type: 'text', text: { body: 'Hola' } }],
+        }))
+        expect(phoneWithUserId[0]).toMatchObject({ senderName: 'Ana', from: '573009876543' })
+        const unnamed = await provider.parseWebhook(payload('messages', {
+            messages: [{ id: 'unnamed', from: '573009876543', timestamp: '1700000000', type: 'text', text: { body: 'Hola' } }],
+        }))
+        expect('senderName' in unnamed[0] && unnamed[0].senderName).toBeUndefined()
+    })
+    it('names an app echo using the customer profile, never the business profile', async () => {
+        const result = await provider.parseWebhook(payload('smb_message_echoes', {
+            contacts: [{ wa_id: '573001234567', profile: { name: 'Business' } }, { wa_id: '573009876543', profile: { name: 'Ana' } }],
+            message_echoes: [{ id: 'echo', from: '573001234567', to: '573009876543', timestamp: '1700000000', type: 'text', text: { body: 'Hola' } }],
+        }))
+        expect(result[0]).toMatchObject({ from: '573009876543', origin: 'outbound', senderName: 'Ana' })
+    })
     it('mirrors app echoes as outbound to the customer',async()=>{
         const result=await provider.parseWebhook(payload('smb_message_echoes',{message_echoes:[{id:'wamid.echo',from:'573001234567',to:'573009876543',timestamp:'1700000000',type:'text',text:{body:'Hola'}}]}))
         expect(result).toHaveLength(1); expect(result[0]).toMatchObject({origin:'outbound',from:'573009876543',metadata:{source:'business_app'}})

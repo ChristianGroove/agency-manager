@@ -56,8 +56,13 @@ export function AudioRecorder({ onSend, onCancel }: AudioRecorderProps) {
             const mimeType = [
                 'audio/ogg;codecs=opus',
                 'audio/webm;codecs=opus',
-                'audio/webm'
-            ].find(type => MediaRecorder.isTypeSupported(type)) || 'audio/webm'
+                'audio/webm',
+                'audio/mp4'
+            ].find(type => MediaRecorder.isTypeSupported(type))
+            if (!mimeType) {
+                stream.getTracks().forEach(track => track.stop())
+                throw new Error('Su navegador no soporta un formato de grabación compatible')
+            }
 
             const mediaRecorder = new MediaRecorder(stream, {
                 mimeType,

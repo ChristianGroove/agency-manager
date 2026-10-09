@@ -2,20 +2,46 @@ import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 import { Message } from "@/modules/features/messaging/hooks/use-chat-logic"
 import { MessageBubble } from "../message-bubble"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
-import { ForwardedRef, forwardRef } from "react"
+import { ForwardedRef, forwardRef, useCallback, useRef } from "react"
 
 interface MessageListProps {
     messages: Message[]
+    firstItemIndex: number
     loadingOlder: boolean
     hasMoreMessages: boolean
     onLoadOlder: () => void
 }
 
+function MessageListHeader({ context }: { context?: { loadingOlder: boolean; hasMoreMessages: boolean } }) {
+    return context?.loadingOlder ? (
+        <div className="flex justify-center py-3">
+            <div className="h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+        </div>
+    ) : context?.hasMoreMessages ? (
+        <div className="flex justify-center py-2">
+            <span className="text-[10px] text-muted-foreground/50">Scroll para cargar más</span>
+        </div>
+    ) : null
+}
+
+const LIST_COMPONENTS = { Header: MessageListHeader }
+
 export const MessageList = forwardRef((
-    { messages, loadingOlder, hasMoreMessages, onLoadOlder }: MessageListProps,
+    { messages, firstItemIndex, loadingOlder, hasMoreMessages, onLoadOlder }: MessageListProps,
     ref: ForwardedRef<VirtuosoHandle>
 ) => {
     const { t } = useTranslation()
+    const virtuosoRef = useRef<VirtuosoHandle | null>(null)
+    const atBottomRef = useRef(true)
+    const setVirtuosoRef = useCallback((handle: VirtuosoHandle | null) => {
+        virtuosoRef.current = handle
+        if (typeof ref === 'function') ref(handle)
+        else if (ref) ref.current = handle
+    }, [ref])
+    const followMediaResize = useCallback(() => {
+        // Keep reading history undisturbed; media arriving at the bottom should stay in view.
+        if (atBottomRef.current) virtuosoRef.current?.autoscrollToBottom()
+    }, [])
 
     if (messages.length === 0) {
         return (
@@ -27,33 +53,25 @@ export const MessageList = forwardRef((
 
     return (
         <Virtuoso
-            ref={ref}
+            ref={setVirtuosoRef}
             className="scrollbar-thin"
             style={{ height: '100%' }}
             totalCount={messages.length}
             data={messages}
-            firstItemIndex={1000000 - messages.length}
-            initialTopMostItemIndex={1000000 - 1}
+            firstItemIndex={firstItemIndex}
+            initialTopMostItemIndex={{ index: 'LAST', align: 'end' }}
             computeItemKey={(index, item) => item.id}
             alignToBottom
             followOutput="auto"
             atBottomThreshold={50}
+            atBottomStateChange={atBottom => { atBottomRef.current = atBottom }}
             startReached={() => {
                 if (hasMoreMessages && !loadingOlder) onLoadOlder()
             }}
-            components={{
-                Header: () => loadingOlder ? (
-                    <div className="flex justify-center py-3">
-                        <div className="h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                    </div>
-                ) : hasMoreMessages ? (
-                    <div className="flex justify-center py-2">
-                        <span className="text-[10px] text-muted-foreground/50">Scroll para cargar más</span>
-                    </div>
-                ) : null
-            }}
+            context={{ loadingOlder, hasMoreMessages }}
+            components={LIST_COMPONENTS}
             itemContent={(index: number, msg: Message) => {
-                const localIndex = messages.indexOf(msg)
+                const localIndex = index - firstItemIndex
                 const currentDate = msg?.created_at ? new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : ''
                 const prevMsg = localIndex > 0 ? messages[localIndex - 1] : null
                 const prevDate = prevMsg?.created_at ? new Date(prevMsg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
@@ -67,11 +85,12 @@ export const MessageList = forwardRef((
                 }
 
                 if (content.mediaUrl && !content.url) {
-                    content.url = content.mediaUrl
+                    content = { ...content, url: content.mediaUrl }
                 }
 
                 return (
-                    <div className="px-2 md:px-8 py-1 max-w-[1400px] mx-auto w-full">
+                    <div className="px-2 md:px-8 py-1 max-w-[1400px] mx-auto w-full"
+                        onLoadCapture={followMediaResize} onLoadedMetadataCapture={followMediaResize}>
                         {showDateSeparator && (
                             <div className="flex justify-center my-4 opacity-100">
                                 <div className="bg-black/5 dark:bg-white/5 text-muted-foreground text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-medium">

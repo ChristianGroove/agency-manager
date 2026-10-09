@@ -256,7 +256,19 @@ export class InboxService {
         if (foundLeads && foundLeads.length > 0) {
             lead = foundLeads[0]
             logInboxInfo('[InboxService] Existing lead found', { leadId: lead.id });
-            // ... (rest of update logic)
+            // Enrich only WhatsApp placeholders; preserve names curated in the CRM.
+            const currentName = lead.name?.trim() || ''
+            const incomingName = msg.senderName?.trim()
+            if (msg.channel === 'whatsapp' && incomingName && incomingName !== 'WhatsApp User'
+                && (!currentName || /^whatsapp user$/i.test(currentName)
+                    || (/^[+\d\s().-]+$/.test(currentName) && normalizePhone(currentName) === normalizedPhone))) {
+                let update = supabase.from('leads').update({ name: incomingName })
+                    .eq('id', lead.id).eq('organization_id', organizationId)
+                // A concurrent manual edit must win over profile enrichment.
+                update = lead.name === null ? update.is('name', null) : update.eq('name', lead.name)
+                const { error } = await update
+                if (error) throw new Error('Could not enrich WhatsApp contact name')
+            }
         } else {
             logInboxInfo('[InboxService] Lead not found. Creating new lead', { phone: normalizedPhone, organizationId });
             const { data: newLead, error: leadInsertError } = await supabase.from('leads').insert({

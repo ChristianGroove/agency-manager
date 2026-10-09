@@ -1,132 +1,171 @@
-/**
- * Ultimate Surgical WebM (Opus) to OGG (Opus) transcoder.
- * Version 4: Mono, 48kHz, Minimalist (No OpusTags, 1 packet per page for first 10 pages).
- */
-
-const CRC_TABLE = new Uint32Array(256);
+/** Remux MediaRecorder's WebM/Opus packets into Ogg without re-encoding audio. */
+const CRC_TABLE = new Uint32Array(256)
 for (let i = 0; i < 256; i++) {
-    let r = i << 24;
-    for (let j = 0; j < 8; j++) {
-        r = (r & 0x80000000) ? (r << 1) ^ 0x04C11DB7 : (r << 1);
-    }
-    CRC_TABLE[i] = r;
+    let crc = i << 24
+    for (let bit = 0; bit < 8; bit++) crc = crc & 0x80000000 ? (crc << 1) ^ 0x04c11db7 : crc << 1
+    CRC_TABLE[i] = crc >>> 0
 }
 
-function calcOggCrc(data: Uint8Array): number {
-    let crc = 0;
-    for (let i = 0; i < data.length; i++) {
-        crc = (crc << 8) ^ CRC_TABLE[((crc >>> 24) ^ data[i]) & 0xff];
+function readVint(data: Uint8Array, offset: number, keepMarker = false) {
+    const first = data[offset]
+    if (!first) throw new Error('Grabación WebM inválida o incompleta')
+    const length = 8 - Math.floor(Math.log2(first))
+    if (offset + length > data.length) throw new Error('Grabación WebM incompleta')
+    let value = keepMarker ? first : first & (0xff >> length)
+    let unknown = !keepMarker && value === (0xff >> length)
+    for (let i = 1; i < length; i++) {
+        value = value * 256 + data[offset + i]
+        unknown = unknown && data[offset + i] === 255
     }
-    return crc >>> 0;
+    if (!unknown && !Number.isSafeInteger(value)) throw new Error('Tamaño WebM inválido')
+    return { value, length, unknown }
+}
+
+interface Element { id: number; start: number; end: number }
+function elements(data: Uint8Array, start: number, end: number): Element[] {
+    const result: Element[] = []
+    for (let offset = start; offset < end;) {
+        const id = readVint(data, offset, true)
+        const size = readVint(data, offset + id.length)
+        const contentStart = offset + id.length + size.length
+        const contentEnd = size.unknown ? end : contentStart + size.value
+        if (contentStart > end || contentEnd > end) throw new Error('Grabación WebM incompleta')
+        result.push({ id: id.value, start: contentStart, end: contentEnd })
+        offset = contentEnd
+    }
+    return result
+}
+
+function uint(data: Uint8Array) {
+    return data.reduce((value, byte) => value * 256 + byte, 0)
+}
+
+/** Matroska blocks can contain several packets. Never truncate packets at 255 bytes. */
+function blockPackets(block: Uint8Array, trackNumber: number): Uint8Array[] {
+    const track = readVint(block, 0)
+    if (track.value !== trackNumber) return []
+    let offset = track.length + 3 // track, signed timestamp, flags
+    if (offset >= block.length) throw new Error('Bloque de audio vacío')
+    const lacing = (block[offset - 1] >> 1) & 3
+    if (!lacing) return [block.slice(offset)]
+    const count = block[offset++] + 1
+    const sizes: number[] = []
+    if (lacing === 2) {
+        const size = (block.length - offset) / count
+        if (!Number.isInteger(size)) throw new Error('Bloque de audio inválido')
+        sizes.push(...Array<number>(count).fill(size))
+    } else {
+        for (let i = 0; i < count - 1; i++) {
+            let size = 0
+            if (lacing === 1) {
+                let byte: number
+                do {
+                    if (offset >= block.length) throw new Error('Bloque de audio incompleto')
+                    byte = block[offset++]
+                    size += byte
+                } while (byte === 255)
+            } else {
+                const value = readVint(block, offset)
+                offset += value.length
+                size = i === 0 ? value.value : sizes[i - 1] + value.value - (2 ** (7 * value.length - 1) - 1)
+            }
+            sizes.push(size)
+        }
+        sizes.push(block.length - offset - sizes.reduce((sum, size) => sum + size, 0))
+    }
+    return sizes.map(size => {
+        if (size <= 0 || offset + size > block.length) throw new Error('Bloque de audio inválido')
+        const packet = block.slice(offset, offset + size)
+        offset += size
+        return packet
+    })
+}
+
+/** Opus TOC defines duration at the Ogg clock rate of 48 kHz (RFC 6716). */
+function packetSamples(packet: Uint8Array) {
+    const config = packet[0] >> 3
+    const frameSamples = config >= 16 ? 120 * 2 ** (config & 3)
+        : config >= 12 ? 480 * 2 ** (config & 1)
+            : (config & 3) === 3 ? 2880 : 480 * 2 ** (config & 3)
+    const code = packet[0] & 3
+    const frames = code === 0 ? 1 : code === 3 ? (packet[1] || 0) & 63 : 2
+    const samples = frames * frameSamples
+    if (!samples || samples > 5760) throw new Error('Paquete Opus inválido')
+    return samples
+}
+
+function oggPage(packet: Uint8Array, flags: number, granule: number, serial: number, sequence: number) {
+    const segments = Math.floor(packet.length / 255) + 1
+    if (segments > 255) throw new Error('Paquete Opus demasiado grande')
+    const page = new Uint8Array(27 + segments + packet.length)
+    const view = new DataView(page.buffer)
+    page.set([0x4f, 0x67, 0x67, 0x53])
+    page[5] = flags
+    view.setBigUint64(6, BigInt(granule), true)
+    view.setUint32(14, serial, true)
+    view.setUint32(18, sequence, true)
+    page[26] = segments
+    page.fill(255, 27, 27 + segments - 1)
+    page[27 + segments - 1] = packet.length % 255
+    page.set(packet, 27 + segments)
+    let crc = 0
+    for (const byte of page) crc = (crc << 8) ^ CRC_TABLE[((crc >>> 24) ^ byte) & 255]
+    view.setUint32(22, crc >>> 0, true)
+    return page
 }
 
 export async function convertWebmToOgg(webmBlob: Blob): Promise<Blob> {
-    const buffer = await webmBlob.arrayBuffer();
-    const data = new Uint8Array(buffer);
-    
-    const opusPackets: Uint8Array[] = [];
-    let pos = 0;
-    
-    function readVint(buf: Uint8Array, start: number) {
-        const firstByte = buf[start];
-        if (firstByte === undefined || firstByte === 0) return null;
-        const length = 8 - Math.floor(Math.log2(firstByte));
-        let value = firstByte & (0xFF >> length);
-        for (let i = 1; i < length; i++) {
-            value = (value << 8) | buf[start + i];
+    const data = new Uint8Array(await webmBlob.arrayBuffer())
+    const roots = elements(data, 0, data.length)
+    const segment = roots.find(element => element.id === 0x18538067)
+    if (!segment || roots[0]?.id !== 0x1a45dfa3) throw new Error('La grabación no es WebM/Opus')
+    const children = elements(data, segment.start, segment.end)
+    const tracks = children.find(element => element.id === 0x1654ae6b)
+    if (!tracks) throw new Error('La grabación no contiene pistas de audio')
+    let trackNumber = 0
+    let opusHead: Uint8Array | undefined
+    for (const track of elements(data, tracks.start, tracks.end).filter(element => element.id === 0xae)) {
+        const fields = elements(data, track.start, track.end)
+        const codec = fields.find(element => element.id === 0x86)
+        if (!codec || new TextDecoder().decode(data.slice(codec.start, codec.end)) !== 'A_OPUS') continue
+        const number = fields.find(element => element.id === 0xd7)
+        const privateData = fields.find(element => element.id === 0x63a2)
+        if (number && privateData) {
+            trackNumber = uint(data.slice(number.start, number.end))
+            opusHead = data.slice(privateData.start, privateData.end)
+            break
         }
-        return { value, length };
     }
-
-    while (pos < data.length) {
-        const id = readVint(data, pos);
-        if (!id) break;
-        pos += id.length;
-        const size = readVint(data, pos);
-        if (!size) break;
-        pos += size.length;
-
-        if (id.value === 0xA3) { // SimpleBlock
-            const blockData = data.slice(pos, pos + size.value);
-            const track = readVint(blockData, 0);
-            if (track) {
-                const packet = blockData.slice(track.length + 3);
-                if (packet.length > 0) opusPackets.push(packet);
+    if (!trackNumber || !opusHead || opusHead.length < 19
+        || new TextDecoder().decode(opusHead.slice(0, 8)) !== 'OpusHead') {
+        throw new Error('La grabación no contiene audio Opus válido')
+    }
+    const packets: Uint8Array[] = []
+    function collectCluster(cluster: Element) {
+        for (const element of elements(data, cluster.start, cluster.end)) {
+            // A streaming WebM cluster may have unknown length and contain later clusters.
+            if (element.id === 0x1f43b675) collectCluster(element)
+            if (element.id === 0xa3) packets.push(...blockPackets(data.slice(element.start, element.end), trackNumber))
+            if (element.id === 0xa0) {
+                for (const block of elements(data, element.start, element.end).filter(item => item.id === 0xa1)) {
+                    packets.push(...blockPackets(data.slice(block.start, block.end), trackNumber))
+                }
             }
         }
-        if (id.value === 0x1F43B675 || id.value === 0x18538067 || id.value === 0x1654AE6B || id.value === 0x1C53BB6B) {
-            // Traverse containers
-        } else {
-            pos += size.value;
-        }
     }
-
-    if (opusPackets.length === 0) return webmBlob;
-
-    const oggPages: Uint8Array[] = [];
-    let granulePos = 0;
-    let seqNum = 0;
-    const serial = Math.floor(Math.random() * 0x7FFFFFFF);
-
-    function createOggPage(packets: Uint8Array[], flags = 0, isAudio = true) {
-        const segments = packets.length;
-        const pageHeader = new Uint8Array(27 + segments);
-        const view = new DataView(pageHeader.buffer);
-        
-        pageHeader.set([0x4F, 0x67, 0x67, 0x53], 0); // "OggS"
-        pageHeader[4] = 0; // version
-        pageHeader[5] = flags;
-        
-        if (isAudio) {
-             granulePos += packets.length * 960;
-        }
-
-        view.setBigUint64(6, BigInt(granulePos), true);
-        view.setUint32(14, serial, true);
-        view.setUint32(18, seqNum++, true);
-        pageHeader[26] = segments;
-        
-        const payloadLength = packets.reduce((a, b) => a + b.length, 0);
-        const fullPage = new Uint8Array(27 + segments + payloadLength);
-        fullPage.set(pageHeader, 0);
-        
-        let offset = 27;
-        let pOffset = 27 + segments;
-        for (const p of packets) {
-            fullPage[offset++] = Math.min(p.length, 255);
-            fullPage.set(p.slice(0, 255), pOffset);
-            pOffset += Math.min(p.length, 255);
-        }
-
-        new DataView(fullPage.buffer).setUint32(22, 0); // Clear CRC field
-        new DataView(fullPage.buffer).setUint32(22, calcOggCrc(fullPage), true);
-        return fullPage;
+    for (const cluster of children.filter(element => element.id === 0x1f43b675)) collectCluster(cluster)
+    if (!packets.length) throw new Error('La grabación no contiene paquetes de audio')
+    const vendor = new TextEncoder().encode('Pixy')
+    const tags = new Uint8Array(16 + vendor.length)
+    tags.set(new TextEncoder().encode('OpusTags'))
+    new DataView(tags.buffer).setUint32(8, vendor.length, true)
+    tags.set(vendor, 12)
+    const serial = crypto.getRandomValues(new Uint32Array(1))[0]
+    const pages = [oggPage(opusHead, 2, 0, serial, 0), oggPage(tags, 0, 0, serial, 1)]
+    let granule = 0
+    for (let i = 0; i < packets.length; i++) {
+        granule += packetSamples(packets[i])
+        pages.push(oggPage(packets[i], i === packets.length - 1 ? 4 : 0, granule, serial, i + 2))
     }
-
-    // OpusHead: Mono, 48kHz.
-    const idHeader = new Uint8Array([
-        0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64,
-        0x01, 0x01, 0x00, 0x00, 0x80, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00
-    ]);
-
-    // OpusTags: Required by WhatsApp/Meta strict parsers
-    const tagsHeader = new Uint8Array([
-        0x4F, 0x70, 0x75, 0x73, 0x54, 0x61, 0x67, 0x73, // "OpusTags"
-        0x08, 0x00, 0x00, 0x00, // Vendor string length (8)
-        0x50, 0x69, 0x78, 0x79, 0x41, 0x70, 0x70, 0x00, // "PixyApp\0"
-        0x00, 0x00, 0x00, 0x00  // Comment count (0)
-    ]);
-
-    oggPages.push(createOggPage([idHeader], 0x02, false)); // BOS
-    oggPages.push(createOggPage([tagsHeader], 0x00, false)); // OpusTags mandatory second page
-
-
-    // Send packets (WhatsApp sometimes prefers 1-10 packets per page for better streaming)
-    for (let i = 0; i < opusPackets.length; i += 20) {
-        const chunk = opusPackets.slice(i, i + 20);
-        const isLast = i + 20 >= opusPackets.length;
-        oggPages.push(createOggPage(chunk, isLast ? 0x04 : 0x00, true));
-    }
-
-    return new Blob(oggPages as any, { type: 'audio/ogg; codecs=opus' });
+    return new Blob(pages as BlobPart[], { type: 'audio/ogg;codecs=opus' })
 }

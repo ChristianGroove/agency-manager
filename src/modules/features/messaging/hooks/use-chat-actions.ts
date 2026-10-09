@@ -147,9 +147,14 @@ export function useChatActions(params: {
             let mime = 'audio/webm';
 
             if (isWhatsApp) {
-                if (mimeType.includes('mp4') || mimeType.includes('m4a') || mimeType.includes('aac')) {
+                if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
                     // Safari typically records in mp4 natively, which Meta accepts. Do not transcode!
                     ext = 'mp4'; mime = 'audio/mp4';
+                } else if (mimeType.includes('aac')) {
+                    ext = 'aac'; mime = 'audio/aac';
+                } else if (mimeType.includes('ogg')) {
+                    // Firefox may record native Ogg/Opus; do not parse it as WebM.
+                    ext = 'ogg'; mime = 'audio/ogg';
                 } else {
                     const { convertWebmToOgg } = await import("@/modules/infrastructure/audio/services/webm-to-ogg")
                     finalBlob = await convertWebmToOgg(blob)
@@ -172,7 +177,7 @@ export function useChatActions(params: {
             const { error: uploadError } = await supabase.storage.from(PRIVATE_CHAT_MEDIA_BUCKET).upload(fileName, finalBlob, { contentType: mime })
             if (uploadError) throw uploadError
 
-            await handleSend({ inputValue: "", setInputValue: () => {}, type: 'audio', mediaUrl: `/api/media/chat/${fileName}` })
+            await handleSend({ inputValue: "", setInputValue: () => {}, type: 'audio', mediaUrl: `/api/media/chat/${fileName}`, extraContent: { duration } })
         } catch (error: any) {
             toast.error("Error al enviar audio: " + error.message)
         } finally {
