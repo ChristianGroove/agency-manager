@@ -428,7 +428,7 @@ export async function getSequences(campaignId?: string) {
         // Sort steps by order_index
         const sequences = data?.map(seq => ({
             ...seq,
-            steps: seq.steps?.sort((a: any, b: any) => a.order_index - b.order_index)
+            steps: seq.steps?.sort((a: any, b: any) => a.order_index - b.order_index || a.id.localeCompare(b.id))
         }))
 
         return { success: true, sequences: sequences as Sequence[] }

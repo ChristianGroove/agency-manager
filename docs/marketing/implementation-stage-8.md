@@ -1,5 +1,7 @@
 # Etapa 8: campañas WhatsApp con un recorrido simple
 
+Continuación: [etapa 9, reordenamiento y filtros avanzados](implementation-stage-9.md). Resuelve los controles de orden y fechas/asignación que este reporte dejaba pendientes.
+
 10 de octubre de 2026. Rama `codex/marketing-campaign-hardening`; continuación de la auditoría aprobada en `58cb936f`. Implementación local: no despliegue, push, cambios de secretos, conexiones reales ni activación de campañas.
 
 ## Resultado

@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ access: vi.fn(), rpc: vi.fn() }))
 vi.mock('./marketing-access', () => ({ requireMarketingAccess: mocks.access }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-import { getMarketingCampaignPage, getCampaignAudience, saveCampaignAudience, getMarketingAudiencePage } from './marketing-workspace-actions'
+import { getMarketingCampaignPage, getCampaignAudience, saveCampaignAudience, getMarketingAudiencePage, reorderCampaignSteps, getMarketingAssignees } from './marketing-workspace-actions'
 const id = '16000000-0000-4000-8000-000000000001'
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ organizationId: 'own-org', session: { rpc: mocks.rpc } }); mocks.rpc.mockResolvedValue({ data: { rows: [], next: null }, error: null }) })
 describe('Marketing workspace boundaries', () => {
-    it.each([() => getMarketingCampaignPage(), () => getCampaignAudience(id), () => saveCampaignAudience(id, {}), () => getMarketingAudiencePage()])('rejects unauthorized calls before any RPC', async call => {
+    it.each([() => getMarketingCampaignPage(), () => getCampaignAudience(id), () => saveCampaignAudience(id, {}), () => getMarketingAudiencePage(), () => getMarketingAssignees(), () => reorderCampaignSteps({ campaignId: id, sequenceId: id, expected: [id], order: [id] })])('rejects unauthorized calls before any RPC', async call => {
         mocks.access.mockRejectedValue(new Error('Access denied'))
         expect((await call()).success).toBe(false); expect(mocks.rpc).not.toHaveBeenCalled()
     })
@@ -29,5 +29,34 @@ describe('Marketing workspace boundaries', () => {
         mocks.rpc.mockResolvedValue({ error: { message: 'private database token' }, data: null })
         const result = await getMarketingCampaignPage()
         expect(result.success).toBe(false); expect(JSON.stringify(result)).not.toContain('private database token')
+    })
+    it('uses session tenant and the exact expected order in one reorder RPC', async () => {
+        const other = '16000000-0000-4000-8000-000000000002'
+        mocks.rpc.mockResolvedValue({ data: true, error: null })
+        expect((await reorderCampaignSteps({ campaignId: id, sequenceId: id, expected: [id, other], order: [other, id] })).success).toBe(true)
+        expect(mocks.access).toHaveBeenCalledWith('manage')
+        expect(mocks.rpc).toHaveBeenCalledWith('reorder_marketing_steps', { p_org: 'own-org', p_campaign: id, p_sequence: id, p_expected: [id, other], p_order: [other, id] })
+    })
+    it('rejects duplicate, incomplete, foreign or client-tenant step payloads without touching the database', async () => {
+        const other = '16000000-0000-4000-8000-000000000002'
+        for (const input of [
+            { expected: [id, other], order: [id, id] }, { expected: [id, other], order: [other] },
+            { expected: [id], order: [other] }, { expected: [id], order: [id], organizationId: 'foreign' },
+        ]) expect((await reorderCampaignSteps({ campaignId: id, sequenceId: id, ...input })).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
+    })
+    it('does not expose underlying lock or private database errors during reorder', async () => {
+        mocks.rpc.mockResolvedValue({ data: null, error: { message: 'private token in lock error' } })
+        const result = await reorderCampaignSteps({ campaignId: id, sequenceId: id, expected: [id], order: [id] })
+        expect(result.success).toBe(false); expect(JSON.stringify(result)).not.toContain('private token')
+    })
+    it('queries names with a bounded tenant-derived assignee cursor', async () => {
+        expect((await getMarketingAssignees({ search: ' Ana ', cursor: id, selected: id })).success).toBe(true)
+        expect(mocks.rpc).toHaveBeenCalledWith('read_marketing_assignees', { p_org: 'own-org', p_search: 'Ana', p_after: id, p_selected: id })
+    })
+    it('rejects reversed dates or scores before saving audience filters', async () => {
+        for (const filters of [{ score_min: 10, score_max: 1 }, { created_after: '2026-01-02T00:00:00Z', created_before: '2026-01-01T00:00:00Z' }, { last_activity_after: '2026-01-02T00:00:00Z', last_activity_before: '2026-01-01T00:00:00Z' }])
+            expect((await saveCampaignAudience(id, filters)).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
     })
 })

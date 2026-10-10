@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireMarketingAccess } from './marketing-access'
 import { audienceFiltersSchema, publicMarketingError } from './marketing-contracts'
-import { campaignPageSchema, CampaignPage, CampaignPageInput, audiencePageSchema, AudiencePage } from './marketing-workspace'
+import { campaignPageSchema, CampaignPage, CampaignPageInput, audiencePageSchema, AudiencePage, stepOrderSchema, assigneePageSchema, AssigneePage } from './marketing-workspace'
 
 export async function getMarketingCampaignPage(input: CampaignPageInput = {}) {
     try {
@@ -52,5 +52,32 @@ export async function saveCampaignAudience(campaignId: string, filters: unknown)
         if (result.error || !result.data) throw new Error('No se pudieron guardar los destinatarios. Revisa los permisos y el estado del borrador.')
         revalidatePath(`/crm/marketing/campaigns/${campaignId}`)
         return { success: true as const }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
+
+export async function reorderCampaignSteps(input: z.input<typeof stepOrderSchema>) {
+    try {
+        const access = await requireMarketingAccess('manage')
+        const data = stepOrderSchema.parse(input)
+        const result = await access.session.rpc('reorder_marketing_steps', {
+            p_org: access.organizationId,
+            p_campaign: data.campaignId, p_sequence: data.sequenceId, p_expected: data.expected, p_order: data.order
+        })
+        if (result.error || result.data !== true) throw new Error('No se pudo cambiar el orden. Recarga el borrador y revisa sus permisos y estado antes de reintentar.')
+        revalidatePath(`/crm/marketing/campaigns/${data.campaignId}`)
+        return { success: true as const }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
+
+export async function getMarketingAssignees(input: z.input<typeof assigneePageSchema> = {}) {
+    try {
+        const access = await requireMarketingAccess('view')
+        const data = assigneePageSchema.parse(input)
+        const result = await access.session.rpc('read_marketing_assignees', {
+            p_org: access.organizationId,
+            p_search: data.search, p_after: data.cursor, p_selected: data.selected
+        })
+        if (result.error || !result.data) throw new Error('No se pudieron consultar los responsables de esta organización.')
+        return { success: true as const, page: result.data as AssigneePage }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }

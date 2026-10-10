@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { parsePhoneNumberFromString } from 'libphonenumber-js/max'
 
-export const audienceFiltersSchema = z.object({
+const audienceFilterFields = z.object({
     status: z.string().max(100).optional(), source: z.string().max(100).optional(),
     has_phone: z.boolean().optional(), has_email: z.boolean().optional(),
     score_min: z.number().finite().optional(), score_max: z.number().finite().optional(),
@@ -10,6 +10,19 @@ export const audienceFiltersSchema = z.object({
     last_activity_after: z.string().datetime({ offset: true }).optional(), last_activity_before: z.string().datetime({ offset: true }).optional(),
     assigned_to: z.union([z.string().uuid(), z.literal('')]).optional(),
 }).strict()
+
+export function audienceRangeIssues(filters: z.infer<typeof audienceFilterFields>) {
+    const issues: string[] = []
+    if (filters.score_min !== undefined && filters.score_max !== undefined && filters.score_min > filters.score_max)
+        issues.push('El puntaje máximo debe ser igual o mayor que el mínimo.')
+    for (const [start, end, label] of [['created_after', 'created_before', 'creación'], ['last_activity_after', 'last_activity_before', 'última actividad']] as const)
+        if (filters[start] && filters[end] && Date.parse(filters[start]) > Date.parse(filters[end]))
+            issues.push(`La fecha final de ${label} debe ser igual o posterior a la inicial.`)
+    return issues
+}
+export const audienceFiltersSchema = audienceFilterFields.superRefine((filters, context) => {
+    for (const message of audienceRangeIssues(filters)) context.addIssue({ code: 'custom', message })
+})
 
 export function applyAudienceFilters<T>(query: T, input: unknown): T {
     const filters = audienceFiltersSchema.parse(input || {})

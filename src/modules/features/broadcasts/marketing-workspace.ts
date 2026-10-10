@@ -20,6 +20,18 @@ export interface CampaignPage { rows: CampaignRow[]; next: { createdAt: string; 
 export const audiencePageSchema = campaignPageSchema.pick({ search: true, cursor: true }).strict()
 export interface AudiencePage { rows: Array<{ id: string; name: string; createdAt: string; filters: Record<string, unknown> }>; next: CampaignPage['next'] }
 
+export const stepOrderSchema = z.object({
+    campaignId: z.string().uuid(), sequenceId: z.string().uuid(),
+    expected: z.array(z.string().uuid()).min(1).max(500), order: z.array(z.string().uuid()).min(1).max(500),
+}).strict().refine(value => new Set(value.order).size === value.order.length &&
+    new Set(value.expected).size === value.expected.length && value.order.length === value.expected.length &&
+    value.order.every(id => value.expected.includes(id)), 'El orden debe contener todos los pasos una sola vez.')
+export const assigneePageSchema = z.object({
+    search: z.string().trim().max(100).default(''),
+    cursor: z.string().uuid().nullable().default(null), selected: z.string().uuid().nullable().default(null),
+}).strict()
+export interface AssigneePage { rows: Array<{ id: string; name: string }>; next: string | null; selected: { id: string; name: string; active: boolean } | null }
+
 /** These are recipient processing states, not message delivery percentages. */
 export function campaignProgress(row: Pick<CampaignRow, 'recipients' | 'completed' | 'failed' | 'cancelled'>) {
     return row.recipients ? Math.min(100, Math.round(100 * (row.completed + row.failed + row.cancelled) / row.recipients)) : 0

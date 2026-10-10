@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { getCampaign, getSequences, getCampaignStats, updateCampaign, createSequence, setPrincipalSequence, addStepToSequence, updateStep, deleteStep, Sequence, MarketingStep } from '../marketing-actions'
-import { getCampaignAudience, saveCampaignAudience } from '../marketing-workspace-actions'
+import { getCampaignAudience, saveCampaignAudience, reorderCampaignSteps } from '../marketing-workspace-actions'
+import { adjacentStepOrder } from '../marketing-editor-utils'
 import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
 import { campaignStateLabels } from '../marketing-workspace'
 import type { CampaignMetrics } from '../marketing-metrics'
@@ -116,6 +117,15 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
         if (!result.success) { if (mounted.current) setError('No se pudo actualizar el diseño. Recarga antes de seguir editando.'); throw new Error(result.error) }
         if (mounted.current) { setSequences(result.sequences || []); setRevision(value => value + 1) }
     }
+    async function moveStep(index: number, direction: -1 | 1) {
+        const expected = steps.map(item => item.id)
+        const order = adjacentStepOrder(expected, index, direction)
+        if (!order) return
+        const result = await reorderCampaignSteps({ campaignId, sequenceId, expected, order })
+        if (!result.success) throw new Error(result.error)
+        if (!mounted.current) return
+        await refreshSteps(); toast.success('Orden guardado. Revisa la secuencia antes de activar.')
+    }
     async function saveEmitter() {
         if (!connectionId) throw new Error('Elige un número emisor.')
         const result = await updateCampaign(campaignId, { connection_id: connectionId })
@@ -194,7 +204,10 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
                 {sequence && !sequence.is_active && <p role="alert" className="text-sm text-amber-700">Estás viendo una secuencia que no se ejecutará. La revisión final usa la principal.</p>}
                 {!savedConnection || savedConnection !== connectionId ? <p role="alert" className="rounded-lg border p-4 text-sm">Selecciona y guarda el emisor en Destinatarios antes de configurar plantillas.</p> : <>
                     {!steps.length && <div className="rounded-xl border p-8 text-center space-y-3"><h3 className="font-semibold">¿Qué mensaje recibirán?</h3><p className="text-sm text-muted-foreground">Selecciona una plantilla aprobada y completa sus variables.</p><Button disabled={!editable} onClick={() => openStep('whatsapp')}>Configurar mensaje</Button></div>}
-                    <ol className="space-y-3">{steps.map((item, index) => <li key={item.id} className="rounded-xl border bg-white dark:bg-zinc-900 p-4"><div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-medium">{index + 1}. {item.type === 'delay' ? 'Esperar' : item.name}</h4><p className="text-sm text-muted-foreground mt-1">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.content?.template_name || 'Plantilla pendiente de configurar'}</p></div><div className="flex gap-2"><Button disabled={!editable} variant="outline" size="sm" onClick={() => openStep(item.type, item)}>Editar</Button><Button disabled={!editable} variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Eliminar este paso del borrador?')) void edit(async () => { const r = await deleteStep(item.id); if (!r.success) throw new Error(r.error); await refreshSteps() }) }}>Eliminar</Button></div></div></li>)}</ol>
+                    <ol className="space-y-3">{steps.map((item, index) => <li key={item.id} className="rounded-xl border bg-white dark:bg-zinc-900 p-4"><div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-medium">{index + 1}. {item.type === 'delay' ? 'Esperar' : item.name}</h4><p className="text-sm text-muted-foreground mt-1">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.content?.template_name || 'Plantilla pendiente de configurar'}</p></div><div className="flex flex-wrap gap-2">
+                        <Button disabled={!editable || index === 0} aria-label={`Subir paso ${index + 1}`} variant="ghost" size="sm" onClick={() => void edit(() => moveStep(index, -1))}>Subir</Button>
+                        <Button disabled={!editable || index === steps.length - 1} aria-label={`Bajar paso ${index + 1}`} variant="ghost" size="sm" onClick={() => void edit(() => moveStep(index, 1))}>Bajar</Button>
+                        <Button disabled={!editable} variant="outline" size="sm" onClick={() => openStep(item.type, item)}>Editar</Button><Button disabled={!editable} variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Eliminar este paso del borrador?')) void edit(async () => { const r = await deleteStep(item.id); if (!r.success) throw new Error(r.error); await refreshSteps() }) }}>Eliminar</Button></div></div></li>)}</ol>
                     {!!steps.length && <details open={followup || steps.length > 1} onToggle={event => setFollowup(event.currentTarget.open)} className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">Añadir seguimiento opcional</summary><p className="text-xs text-muted-foreground mt-2">La secuencia es lineal. Añade una espera antes de un mensaje posterior si quieres separarlos en el tiempo.</p><div className="flex gap-2 mt-3"><Button disabled={!editable} variant="outline" onClick={() => openStep('delay')}>Añadir espera</Button><Button disabled={!editable} variant="outline" onClick={() => openStep('whatsapp')}>Añadir mensaje</Button></div></details>}
                 </>}
                 <div className="flex justify-between"><Button variant="outline" onClick={() => setTab('recipients')}>← Destinatarios</Button><Button variant="outline" onClick={() => setTab('schedule')}>Continuar a programación →</Button></div>
