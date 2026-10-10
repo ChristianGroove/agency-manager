@@ -1506,7 +1506,7 @@ export const es = {
     },
     marketing: {
         dashboard: {
-            preparation_notice: "Marketing está en preparación. Puedes diseñar borradores; los envíos masivos y la importación se habilitarán al completar la validación de canal, consentimiento y ejecución.",
+            preparation_notice: "Puedes preparar borradores e importar contactos con evidencia de autorización. Los envíos masivos requieren revisión final y que el motor esté habilitado.",
             title_insights: "Meta Insights",
             title_marketing: "Marketing Masivo",
             subtitle_insights: "Análisis de rendimiento de Meta Ads y conversiones",

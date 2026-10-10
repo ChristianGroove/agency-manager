@@ -350,7 +350,7 @@ export async function linkAudienceToCampaign(campaignId: string, audienceId: str
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
-export async function enrollAudienceInCampaign(campaignId: string) {
+export async function enrollAudienceInCampaign(campaignId: string, confirmation?: { token: string; confirmed: boolean }) {
     try {
         const access = await requireMarketingAccess('execute')
 
@@ -358,6 +358,7 @@ export async function enrollAudienceInCampaign(campaignId: string) {
         if (process.env.MARKETING_EXECUTION_ENABLED !== 'true') return {
             success: false, enrolled: 0, error: 'El motor de campañas aún no está habilitado en este entorno.'
         }
+        const confirmed = z.object({ token: z.string().uuid(), confirmed: z.literal(true) }).strict().parse(confirmation)
         z.string().uuid().parse(campaignId)
         const visible = await access.session.from('marketing_campaigns').select('connection_id')
             .eq('organization_id', access.organizationId).eq('id', campaignId).single()
@@ -371,8 +372,8 @@ export async function enrollAudienceInCampaign(campaignId: string) {
             && ['paused', 'active'].includes(prepared.data.review.campaign.status)
         const issues = campaignDesignIssues(prepared.data.review, existingRecipients)
         if (issues.length) return { success: false, enrolled: 0, error: issues.join(' ') }
-        const activated = await supabaseAdmin.rpc('activate_marketing_campaign', { p_org: access.organizationId,
-            p_campaign: campaignId, p_fingerprint: prepared.data.fingerprint, p_actor: access.userId })
+        const activated = await supabaseAdmin.rpc('confirm_marketing_activation_review', { p_org: access.organizationId,
+            p_campaign: campaignId, p_ticket: confirmed.token, p_actor: access.userId })
         if (activated.error || !activated.data) throw new Error('No se pudo activar. El diseño o los permisos pudieron cambiar; revisa de nuevo.')
         revalidatePath('/crm/marketing')
         return { success: true, enrolled: activated.data.enrolled, resumed: activated.data.resumed }

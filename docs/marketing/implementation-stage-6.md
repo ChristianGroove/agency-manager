@@ -64,3 +64,5 @@ El historial integral queda implementado con los límites anteriores. Siguen pen
 Otra deuda existente de retención: `marketing_enrollments.contact_id` conserva `ON DELETE CASCADE` hacia contactos. El reporte consulta las inscripciones que existen; eliminar físicamente un contacto puede eliminar su inscripción y reducir el historial. Esta etapa no cambia esa semántica compartida. Una solución independiente debe definir retención e invalidación auditada y preservar eventos mínimos de campaña con referencia opcional al contacto, respetando la política de eliminación elegida; no conservar datos personales indefinidamente por defecto.
 
 No se añadieron cobros, presupuesto, límites comerciales, notificaciones automáticas ni despliegues.
+
+La revisión de importación, renovación de autorizaciones y confirmación final se documenta en [la etapa 7](implementation-stage-7.md).

@@ -8,13 +8,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CampaignPreflight, recordMarketingPermission, reviewCampaign } from '../marketing-preflight-actions'
 import { toast } from 'sonner'
+import { MarketingRenewal } from './marketing-renewal'
 
-export function CampaignReadiness({ campaignId, revision }: { campaignId: string; revision: number }) {
+export function CampaignReadiness({ campaignId, revision, canExecute = false }: { campaignId: string; revision: number; canExecute?: boolean }) {
     const [review, setReview] = useState<CampaignPreflight | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [open, setOpen] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [renewalOpen, setRenewalOpen] = useState(false)
     const [form, setForm] = useState({ phone: '', source: '', evidence: '', date: '', confirmed: false })
     const requestEpoch = useRef(0)
     useEffect(() => {
@@ -47,8 +49,9 @@ export function CampaignReadiness({ campaignId, revision }: { campaignId: string
     return <section className="rounded-xl border p-5 space-y-4 bg-white dark:bg-zinc-900">
         <div className="flex flex-wrap justify-between gap-3">
             <div><h4 className="font-semibold">Revisión previa de campaña</h4><p className="text-xs text-muted-foreground">Guarda primero tus cambios. Esta revisión no inscribe contactos ni envía mensajes.</p></div>
-            <div className="flex gap-2"><Button variant="outline" onClick={() => setOpen(true)}>Registrar autorización</Button><Button onClick={check} disabled={loading}>{loading ? 'Revisando…' : 'Revisar campaña'}</Button></div>
+            <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!canExecute} onClick={() => setOpen(true)}>Registrar autorización</Button><Button variant="outline" disabled={!canExecute} onClick={() => setRenewalOpen(true)}>Renovar después de una baja</Button><Button onClick={check} disabled={loading}>{loading ? 'Revisando…' : 'Revisar campaña'}</Button></div>
         </div>
+        {renewalOpen && <MarketingRenewal onClose={() => setRenewalOpen(false)} onSaved={() => { setRenewalOpen(false); toast.success('Nueva autorización registrada.'); void check() }} />}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         {review?.audience && <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             {Object.entries({ 'Contactos del filtro': review.audience.matched, 'Destinatarios con autorización': review.audience.eligible,

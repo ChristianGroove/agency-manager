@@ -1506,7 +1506,7 @@ export const en = {
     },
     marketing: {
         dashboard: {
-            preparation_notice: "Marketing is being prepared. You can design drafts; bulk sending and imports will be enabled after channel, consent and execution validation.",
+            preparation_notice: "You can prepare drafts and import contacts with consent evidence. Bulk sending requires final review and an enabled execution engine.",
             title_insights: "Meta Insights",
             title_marketing: "Mass Marketing",
             subtitle_insights: "Meta Ads and conversions performance analysis",

@@ -61,6 +61,7 @@ env.production
 !supabase/migrations/*.sql
 !supabase/migrations/**/*.sql
 !scripts/tests/marketing-security.sql
+!scripts/tests/marketing-reviewed-operations.sql
 
 # Ignore large local SQL dumps
 *restore*.sql

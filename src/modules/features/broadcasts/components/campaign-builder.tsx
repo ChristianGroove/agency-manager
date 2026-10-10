@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { refreshMarketingChannelHealth, acknowledgeMarketingHold } from '../marketing-health-actions'
-import { Campaign, Sequence, Audience, getSequences, createSequence, setPrincipalSequence, addStepToSequence, deleteStep, updateCampaign, getAudiences, createAudience, deleteAudience, previewAudienceCount, importLeads, getCampaign, getCampaignStats, updateStep, deleteSequence, linkAudienceToCampaign, enrollAudienceInCampaign } from '../marketing-actions'
+import { Campaign, Sequence, Audience, getSequences, createSequence, setPrincipalSequence, addStepToSequence, deleteStep, updateCampaign, getAudiences, createAudience, deleteAudience, previewAudienceCount, getCampaign, getCampaignStats, updateStep, deleteSequence, linkAudienceToCampaign } from '../marketing-actions'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
     Plus, GitMerge, Clock, Mail, MessageSquare, Play, Sparkles,
     AlertCircle, Trash2, X, Settings, Users, Shield, Zap, Lock,
-    Activity, BarChart2, Edit2, MoreVertical, Filter, Upload, FileSpreadsheet, Search, RefreshCw
+    Activity, BarChart2, Edit2, MoreVertical, Filter, Upload, Search, RefreshCw
 } from 'lucide-react'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -38,12 +39,17 @@ import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-acti
 import type { CampaignMetrics } from '../marketing-metrics'
 import { CampaignHistory } from './campaign-history'
 
+const CampaignImport = dynamic(() => import('./campaign-import').then(module => module.CampaignImport))
+const CampaignActivationReview = dynamic(() => import('./campaign-activation-review').then(module => module.CampaignActivationReview))
+
 interface CampaignBuilderProps {
     campaignId: string
     campaignName: string
 }
 
 export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderProps) {
+    const loadEpoch = useRef(0)
+    const currentCampaign = useRef(campaignId)
     const { t } = useTranslation()
     const [sequences, setSequences] = useState<Sequence[]>([])
     const [loading, setLoading] = useState(true)
@@ -60,6 +66,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [scheduledFor, setScheduledFor] = useState<string>('')
     const [isEnrolling, setIsEnrolling] = useState(false)
     const [executionEnabled, setExecutionEnabled] = useState(false)
+    const [canExecute, setCanExecute] = useState(false)
+    const [canImport, setCanImport] = useState(false)
 
     // Insights State
     const [checkingHealth, setCheckingHealth] = useState(false)
@@ -89,16 +97,23 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [audienceFilters, setAudienceFilters] = useState({ status: '', tags: [] as string[], has_phone: true })
     const [audiencePreviewCount, setAudiencePreviewCount] = useState<number | null>(null)
     const [isImportOpen, setIsImportOpen] = useState(false)
+    const [activationOpen, setActivationOpen] = useState(false)
+    const [savedConfig, setSavedConfig] = useState('')
 
     useEffect(() => {
-        loadData()
+        currentCampaign.current = campaignId
+        void loadData()
+        return () => { loadEpoch.current++ }
     }, [campaignId])
 
     async function loadData() {
+        if (currentCampaign.current !== campaignId) return
+        const request = ++loadEpoch.current
         setLoading(true)
         setLoadError('')
         setHoldReviewed(false)
         setExecutionEnabled(false)
+        setCanExecute(false); setCanImport(false)
         try {
         const [seqResult, audResult, campResult, statsResult, setupResult] = await Promise.all([
             getSequences(campaignId),
@@ -107,17 +122,16 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             getCampaignStats(campaignId),
             getMarketingSetup()
         ])
+        if (request !== loadEpoch.current || currentCampaign.current !== campaignId) return
 
         if (![seqResult, audResult, campResult, statsResult].every(result => result.success)) setLoadError('No se pudo cargar toda la campaña. Reintenta antes de editarla.')
 
         setRevision(value => value + 1)
-        if (setupResult.success) { setChannels(setupResult.channels); setSetupError('') } else setSetupError(setupResult.error)
+        if (setupResult.success) { setChannels(setupResult.channels); setCanExecute(setupResult.canExecute); setCanImport(setupResult.canImport); setSetupError('') } else setSetupError(setupResult.error)
         if (seqResult.success) {
             let loadedSeqs = seqResult.sequences!
             setSequences(loadedSeqs)
-            if (loadedSeqs.length > 0 && !activeSequence) {
-                setActiveSequence(loadedSeqs[0].id)
-            }
+            setActiveSequence(current => loadedSeqs.some(sequence => sequence.id === current) ? current : loadedSeqs[0]?.id || null)
         }
         if (audResult.success) {
             setAudiences(audResult.audiences || [])
@@ -136,14 +150,16 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             // Load linked audience
             setSelectedAudienceId((campResult.campaign as any).audience_id || null)
             const date = campResult.campaign.scheduled_for ? new Date(campResult.campaign.scheduled_for) : null
-            setScheduledFor(date ? new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,16) : '')
+            const localDate = date ? new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,16) : ''
+            setScheduledFor(localDate)
+            setSavedConfig(JSON.stringify({ connectionId: campResult.campaign.connection_id || '', scheduledFor: localDate, deliveryConfig: { mode: dbConfig?.mode || deliveryConfig.mode, humanize: dbConfig?.humanize ?? deliveryConfig.humanize, timezone: dbConfig?.timezone || 'America/Bogota', schedule_window: dbConfig?.schedule_window || deliveryConfig.schedule_window } }))
         }
         if (!statsResult.success) setStats(null)
         if (statsResult.success) {
             setStats(statsResult)
         }
-        } catch { setLoadError('No se pudo cargar la campaña. Reintenta.') }
-        finally { setLoading(false) }
+        } catch { if (request === loadEpoch.current) setLoadError('No se pudo cargar la campaña. Reintenta.') }
+        finally { if (request === loadEpoch.current) setLoading(false) }
     }
 
     async function handleToggleStatus() {
@@ -151,24 +167,10 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         setIsEnrolling(true)
         try {
         if (newStatus === 'active') {
-            // When activating, enroll the linked audience
-            if (!selectedAudienceId) {
-                toast.error('Primero selecciona una audiencia en la pestaña Configuración')
-                return
+            if (JSON.stringify({ connectionId, scheduledFor, deliveryConfig }) !== savedConfig) {
+                toast.error('Guarda la configuraci\u00f3n antes de revisar la activaci\u00f3n.'); return
             }
-
-            toast.info(campaignStatus === 'paused' ? 'Revalidando la campaña...' : 'Validando el diseño guardado y los destinatarios...')
-
-            const enrollResult = await enrollAudienceInCampaign(campaignId)
-
-            if (!enrollResult.success) {
-                toast.error(enrollResult.error || 'Error al inscribir')
-                return
-            }
-
-            toast.success(enrollResult.resumed ? 'Campaña reanudada con sus destinatarios originales.' : `Campaña activada: ${enrollResult.enrolled} destinatarios únicos inscritos.`)
-            setCampaignStatus('active')
-            loadData() // Refresh stats
+            setActivationOpen(true)
         } else {
             // Pausing is simple
             const result = await updateCampaign(campaignId, { status: 'paused' })
@@ -267,49 +269,6 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         }
     }
 
-    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        const reader = new FileReader()
-        reader.onload = async (event) => {
-            const text = event.target?.result as string
-            const lines = text.split('\n').filter(l => l.trim())
-            if (lines.length < 2) return toast.error('Archivo vacío o sin datos')
-
-            // Simple header detection
-            const headers = lines[0].toLowerCase().split(',').map(h => h.trim())
-            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('nombre'))
-            const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('tel') || h.includes('cel'))
-            const emailIdx = headers.findIndex(h => h.includes('email') || h.includes('correo'))
-
-            if (phoneIdx === -1 && emailIdx === -1) {
-                return toast.error('No se detectó columna de Teléfono o Email. Formato: Nombre, Telefono, Email')
-            }
-
-            const leads = lines.slice(1).map(line => {
-                const cols = line.split(',').map(c => c.trim())
-                return {
-                    name: nameIdx !== -1 ? cols[nameIdx] : 'Unknown',
-                    phone: phoneIdx !== -1 ? cols[phoneIdx] : null,
-                    email: emailIdx !== -1 ? cols[emailIdx] : null
-                }
-            })
-
-            const toastId = toast.loading(`Importando ${leads.length} contactos...`)
-            const result = await importLeads(leads)
-            toast.dismiss(toastId)
-
-            if (result.success) {
-                toast.success(`${result.count} Contactos procesados correctamente`)
-                setIsImportOpen(false)
-            } else {
-                toast.error(result.error)
-            }
-        }
-        reader.readAsText(file)
-    }
-
     function openAddStep() {
         setEditingStepId(null)
         setStepTemplate(null)
@@ -374,6 +333,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     async function handleSaveConfig() {
         const result = await updateCampaign(campaignId, { connection_id: connectionId || null, delivery_config: deliveryConfig, scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null })
         if (result.success) {
+            setSavedConfig(JSON.stringify({ connectionId, scheduledFor, deliveryConfig }))
             toast.success('Configuración guardada')
             setRevision(value => value + 1)
         } else {
@@ -405,16 +365,18 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 <div className="flex gap-2">
                     <Button
                         onClick={handleToggleStatus}
-                        disabled={isEnrolling || loading || !!loadError || (campaignStatus !== 'active' && (!executionEnabled || stats?.channelHealth?.ready !== true || !['draft', 'paused'].includes(campaignStatus)))}
+                        disabled={isEnrolling || loading || !!loadError || (campaignStatus !== 'active' && (!canExecute || !['draft', 'paused'].includes(campaignStatus)))}
                         title={executionEnabled ? 'Activa o reanuda el diseño guardado, previa validación del servidor.' : t("marketing.dashboard.preparation_notice")}
                         className={cn("transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-brand-pink text-white hover:bg-brand-pink/90")}
                     >
-                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> {t("marketing.campaign_builder.pause_funnel")}</> : <><Play className="w-4 h-4 mr-2" /> {campaignStatus === 'paused' ? 'Reanudar campaña' : 'Activar diseño guardado'}</>}
+                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> {t("marketing.campaign_builder.pause_funnel")}</> : <><Play className="w-4 h-4 mr-2" /> {campaignStatus === 'paused' ? 'Reanudar campaña' : 'Revisar activación'}</>}
                     </Button>
                 </div>
             </div>
 
             {loadError && <p role="alert" className="text-sm text-red-600 mb-3">{loadError} <button type="button" className="underline" onClick={loadData}>Reintentar</button></p>}
+
+            {activationOpen && <CampaignActivationReview key={`${campaignId}:${revision}`} campaignId={campaignId} onClose={() => setActivationOpen(false)} onActivated={() => { setActivationOpen(false); void loadData() }} />}
 
             {/* Main Tabs */}
             <Tabs defaultValue="design" className="flex-1 flex flex-col overflow-hidden">
@@ -579,7 +541,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                         <p className="text-sm text-muted-foreground">{t("marketing.campaign_builder.manage_segments")}</p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" onClick={() => setIsImportOpen(true)} className="dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-700"><Upload className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.import_csv")}</Button>
+                                        <Button variant="outline" disabled={!canImport || loading} title={canImport ? 'Revisar CSV con evidencia de autorización' : 'Requiere permisos de importación y ejecución de Marketing'} onClick={() => setIsImportOpen(true)} className="dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-700"><Upload className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.import_csv")}</Button>
                                         <Button onClick={() => setIsCreateAudienceOpen(true)} className="bg-brand-pink text-white hover:bg-brand-pink/90"><Plus className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.new_audience")}</Button>
                                     </div>
                                 </div>
@@ -674,25 +636,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                         </DialogContent>
                     </Dialog>
 
-                    {/* Placeholder for CSV Import Dialog - To be implemented next step if verified */}
-                    <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-                        <DialogContent className="dark:bg-zinc-900 dark:border-zinc-800">
-                            <DialogHeader><DialogTitle className="dark:text-white">{t("marketing.campaign_builder.import_contacts")}</DialogTitle></DialogHeader>
-                            <div className="py-8 flex flex-col items-center justify-center text-center border-2 border-dashed dark:border-zinc-700 rounded-lg bg-slate-50 dark:bg-zinc-950/50 relative group hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors">
-                                <FileSpreadsheet className="w-12 h-12 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
-                                <p className="font-medium text-lg dark:text-gray-100">{t("marketing.campaign_builder.drag_file")}</p>
-                                <p className="text-sm text-muted-foreground mb-4">{t("marketing.campaign_builder.csv_format")}</p>
-                                <Label htmlFor="csv-upload" className="cursor-pointer">
-                                    <div className="bg-white dark:bg-zinc-800 border dark:border-zinc-700 rounded-md px-4 py-2 hover:bg-gray-50 dark:hover:bg-zinc-700 shadow-sm font-medium dark:text-white">{t("marketing.campaign_builder.select_file")}</div>
-                                    <Input id="csv-upload" type="file" className="hidden" accept=".csv" onChange={handleFileUpload} />
-                                </Label>
-                            </div>
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded text-xs text-yellow-800 dark:text-yellow-400 border border-yellow-100 dark:border-yellow-900/50 flex gap-2">
-                                <AlertCircle className="w-4 h-4 shrink-0" />
-                                {t("marketing.campaign_builder.import_warning")}
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    {isImportOpen && <CampaignImport key={campaignId} onClose={() => setIsImportOpen(false)} />}
                 </TabsContent>
 
                 {/* --- SETTINGS TAB (Smart Guard) --- */}
@@ -707,7 +651,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                         </div>
                         <ScrollArea className="flex-1">
                             <div className="flex flex-col gap-8 p-6 pb-16 max-w-[1400px]">
-                                <CampaignReadiness campaignId={campaignId} revision={revision} />
+                                <CampaignReadiness key={campaignId} campaignId={campaignId} revision={revision} canExecute={canExecute} />
                                 {/* Top Section: Basic & Advanced Settings in 2 columns */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Audience Selector */}
