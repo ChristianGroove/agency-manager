@@ -35,6 +35,14 @@ beforeEach(() => {
 async function wizard() { render(<CampaignBuilder campaignId={id} campaignName="Campaña de prueba" />); await waitFor(() => expect(screen.queryByText('Cargando campaña…')).not.toBeInTheDocument()) }
 function tab(name: string) { fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0, ctrlKey: false }) }
 describe('Simple campaign workspace', () => {
+    it('keeps an old frequency absent and saves an explicit inter-campaign wait', async () => {
+        await wizard()
+        expect(screen.getByLabelText(/Espera entre campañas para un mismo contacto/)).toHaveValue(0)
+        expect(mocks.update).not.toHaveBeenCalled()
+        fireEvent.change(screen.getByLabelText(/Espera entre campañas para un mismo contacto/), { target: { value: '48' } })
+        fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }))
+        await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(id, expect.objectContaining({ delivery_config: expect.objectContaining({ recipient_cooldown_hours: 48 }) })))
+    })
     it('presents the commercial order and keeps targeting and scheduling collapsed without discarding saved criteria', async () => {
         await wizard()
         expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent).slice(0, 3)).toEqual(['1. Canal', '2. Mensaje', '3. Destinatarios'])

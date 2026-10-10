@@ -2,6 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import { applyAudienceFilters, deliveryConfigSchema, normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
 
 describe('Marketing contracts', () => {
+    it('accepts explicit zero frequency and rejects invalid inter-campaign waits without changing old configs', () => {
+        const base = { mode: 'growth', humanize: false }
+        expect(deliveryConfigSchema.parse(base)).not.toHaveProperty('recipient_cooldown_hours')
+        expect(deliveryConfigSchema.parse({ ...base, recipient_cooldown_hours: 0 })).toMatchObject({ recipient_cooldown_hours: 0 })
+        expect(deliveryConfigSchema.parse({ ...base, recipient_cooldown_hours: 24 })).toMatchObject({ recipient_cooldown_hours: 24 })
+        for (const value of [-1, 0.5, 721, '24']) expect(() => deliveryConfigSchema.parse({ ...base, recipient_cooldown_hours: value })).toThrow()
+    })
     it('does not silently expand an imported list into the full CRM on legacy REST queries', () => {
         expect(() => applyAudienceFilters({}, { list_id: '21000000-0000-4000-8000-000000000001' })).toThrow('listas requieren')
         expect(() => applyAudienceFilters({}, { list_id: 'invalid' })).toThrow()

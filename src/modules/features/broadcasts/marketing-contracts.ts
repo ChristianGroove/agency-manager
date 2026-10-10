@@ -51,6 +51,7 @@ export function normalizeMarketingPhone(phone: unknown): string | null {
 
 export const deliveryConfigSchema = z.object({
     mode: z.enum(['stealth', 'growth', 'turbo']), humanize: z.boolean(),
+    recipient_cooldown_hours: z.number().int().min(0).max(720).optional(),
     timezone: z.string().refine(value => {
         try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false }
     }, 'Zona horaria inválida').default('America/Bogota'),

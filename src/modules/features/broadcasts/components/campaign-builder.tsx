@@ -30,7 +30,7 @@ const CampaignActivationReview = dynamic(() => import('./campaign-activation-rev
 const CampaignResults = dynamic(() => import('./campaign-results').then(module => module.CampaignResults))
 const CampaignContactLists = dynamic(() => import('./campaign-contact-lists').then(module => module.CampaignContactLists))
 const CampaignSavedSegments = dynamic(() => import('./campaign-saved-segments').then(module => module.CampaignSavedSegments))
-const defaultDelivery: DeliveryConfig = { mode: 'growth', humanize: true, timezone: 'America/Bogota', schedule_window: { start: 9, end: 18 } }
+const defaultDelivery: DeliveryConfig = { mode: 'growth', humanize: true, timezone: 'America/Bogota', recipient_cooldown_hours: 24, schedule_window: { start: 9, end: 18 } }
 const localInput = (iso: string | null) => iso ? new Date(Date.parse(iso) - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const emptyStep = { id: null as string | null, type: 'whatsapp', name: '', delay: '1', unit: 'days' }
 type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived'
@@ -108,7 +108,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
             setCanManage(setup.canManage); setCanExecute(setup.canExecute); setCanImport(setup.canImport); setChannels(setup.channels)
             const emitter = stored.connection_id || '', date = localInput(stored.scheduled_for || null)
             const storedDelivery = stored.delivery_config
-            const config: DeliveryConfig = storedDelivery ? { mode: storedDelivery.mode || defaultDelivery.mode, humanize: storedDelivery.humanize ?? defaultDelivery.humanize, timezone: storedDelivery.timezone || 'America/Bogota', schedule_window: storedDelivery.schedule_window } : defaultDelivery
+            const config: DeliveryConfig = storedDelivery ? { mode: storedDelivery.mode || defaultDelivery.mode, humanize: storedDelivery.humanize ?? defaultDelivery.humanize, timezone: storedDelivery.timezone || 'America/Bogota', recipient_cooldown_hours: storedDelivery.recipient_cooldown_hours, schedule_window: storedDelivery.schedule_window } : defaultDelivery
             setConnectionId(emitter); setSavedConnection(emitter); setDelivery(config); setScheduledFor(date)
             savedSchedule.current = { input: date, iso: stored.scheduled_for || null }
             setSavedConfig(JSON.stringify({ connectionId: emitter, scheduledFor: date, delivery: config }))
@@ -323,6 +323,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     {scheduledFor ? <Button disabled={!editable} variant="ghost" size="sm" className="h-6 px-0 text-[11px]" onClick={() => setScheduledFor('')}>Empezar al confirmar</Button> : <p className="text-[11px] text-muted-foreground">Al confirmar, dentro del horario permitido.</p>}
                                 </div>
                                 <label className="flex gap-2 text-xs"><input type="checkbox" disabled={!editable} checked={!!delivery.schedule_window} onChange={event => setDelivery({ ...delivery, schedule_window: event.target.checked ? { start: 9, end: 18 } : undefined })} />Limitar a una ventana diaria</label>
+                                <div className="space-y-2"><Label htmlFor="campaign-recipient-frequency">Espera entre campañas para un mismo contacto · horas</Label><Input id="campaign-recipient-frequency" type="number" min={0} max={720} step={1} disabled={!editable} value={delivery.recipient_cooldown_hours ?? 0} onChange={event => setDelivery({ ...delivery, recipient_cooldown_hours: Number(event.target.value) })} /><p className="text-[11px] text-muted-foreground">Compartida entre números de tu organización. Se respeta la mayor espera de ambas campañas. 0 desactiva la espera de esta campaña. Si el contacto responde, se detienen sus seguimientos pendientes.</p></div>
                                 {delivery.schedule_window && <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1"><Label htmlFor="campaign-window-start">Desde · hora 0–23</Label><Input className="h-9 rounded-xl" id="campaign-window-start" type="number" min={0} max={23} disabled={!editable} value={delivery.schedule_window.start} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, start: Number(event.target.value) } })} /></div>
                                     <div className="space-y-1"><Label htmlFor="campaign-window-end">Hasta · hora 1–24</Label><Input className="h-9 rounded-xl" id="campaign-window-end" type="number" min={1} max={24} disabled={!editable} value={delivery.schedule_window.end} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, end: Number(event.target.value) } })} /></div>

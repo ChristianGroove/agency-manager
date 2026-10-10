@@ -15,9 +15,17 @@ const enrollment={...claim,status:'active',recipient:'573006705958',
     step:{id:'step-a',sequence_id:'sequence-a',organization_id:'tenant-a',type:'whatsapp',order_index:0,content:{template_name:'welcome'}},
     lead:{id:'lead-a',organization_id:'tenant-a',phone:'573006705958',marketing_opted_out:false},
 }
-beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true');mocks.rpc.mockImplementation(async name => ({data:name==='claim_marketing_enrollments'?[claim]:0,error:null}))})
+beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true');mocks.rpc.mockImplementation(async name => ({data:name==='claim_marketing_enrollments'?[claim]:name==='stop_marketing_followups_on_reply'?false:0,error:null}))})
 afterEach(() => vi.unstubAllEnvs())
 describe('Marketing worker safety',()=>{
+    it('stops even a delay step after a reply without sending or advancing the enrollment', async () => {
+        mocks.rpc.mockImplementation(async name => ({ data: name === 'claim_marketing_enrollments' ? [claim] : name === 'stop_marketing_followups_on_reply' ? true : 0, error: null }))
+        mocks.from.mockReturnValueOnce(query({ data: { ...enrollment, step: { ...enrollment.step, type: 'delay', delay_config: { value: 1, unit: 'days' } } }, error: null }))
+        expect(await runMarketingCycle()).toMatchObject({ processed: 1, failed: 0 })
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect(mocks.from).toHaveBeenCalledTimes(1)
+        expect(mocks.rpc).toHaveBeenCalledWith('stop_marketing_followups_on_reply', { p_org: 'tenant-a', p_connection: 'channel-a', p_operation: 'campaign:enrollment-a:step-a' })
+    })
     it('does not hide a failure of the bounded campaign finalization sweep', async () => {
         mocks.rpc.mockResolvedValueOnce({ data: [], error: null }).mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } })
         await expect(runMarketingCycle()).rejects.toThrow('cierre')
@@ -32,6 +40,17 @@ describe('Marketing worker safety',()=>{
     const selection = { template_id: '08000000-0000-4000-8000-000000000001', template_name: 'promo', template_language: 'es', bindings: { 'body.1': '{{nombre}}' } }
     const prepared = { ...enrollment, step: { ...enrollment.step, content: selection }, lead: { ...enrollment.lead, name: 'Ana' } }
     const template = { id: selection.template_id, channel_id: 'channel-a', name: 'promo', language: 'es', status: 'APPROVED', category: 'MARKETING', meta_id: 'fixture', components: [{ type: 'BODY', text: 'Hola {{1}}' }] }
+    it('preserves a concurrent reply cancellation when the accepted send finishes checkpointing', async () => {
+        const saved = query({ data: null, error: null })
+        const cancelled = query({ data: { status: 'cancelled', last_error: 'El contacto respondió; seguimientos detenidos.' }, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce({ data: 'conversation-a', error: null })
+        mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
+            .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(saved).mockReturnValueOnce(cancelled)
+        mocks.send.mockResolvedValue({ success: true, externalId: 'wamid.race' })
+        expect(await runMarketingCycle()).toMatchObject({ processed: 1, failed: 0 })
+        expect(cancelled.eq).toHaveBeenCalledWith('organization_id', 'tenant-a')
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+    })
     it('does not use a session client and does not hide claim failures as an empty successful cycle',async()=>{
         mocks.rpc.mockResolvedValueOnce({data:null,error:{message:'RLS failure'}})
         await expect(runMarketingCycle()).rejects.toThrow('adquirir')
@@ -78,7 +97,7 @@ describe('Marketing worker safety',()=>{
     })
     it('cancels a recipient without consent before creating a conversation or emitting', async () => {
         const saved = query({ data: { id: claim.id }, error: null })
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: false, error: null })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null })).mockReturnValueOnce(saved)
         expect(await runMarketingCycle()).toMatchObject({ processed: 1 })
         expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }))
@@ -87,7 +106,7 @@ describe('Marketing worker safety',()=>{
     })
     it('passes a complete validated template through the existing outbox service', async () => {
         const saved = query({ data: { id: claim.id }, error: null })
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null })
             .mockResolvedValueOnce({ data: 'conversation-a', error: null })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
             .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(saved)
@@ -99,20 +118,20 @@ describe('Marketing worker safety',()=>{
     it.each(['queued', 'sending'])('defers a known %s operation without failing or advancing its step', async status => {
         const saved = query({ data: { id: claim.id }, error: null })
         const retryAt = new Date(Date.now() + 180_000).toISOString()
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null })
             .mockResolvedValueOnce({ data: 'conversation-a', error: null })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
-            .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(query({ data: { status, available_at: retryAt }, error: null }))
+            .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(query({ data: { status, available_at: retryAt, error_kind: status === 'queued' ? 'recipient_frequency' : null }, error: null }))
             .mockReturnValueOnce(saved)
         mocks.send.mockResolvedValue({ success: false, error: 'Deferred' })
         expect(await runMarketingCycle()).toMatchObject({ processed: 0, deferred: 1, failed: 0 })
-        expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ next_run_at: retryAt, claim_token: null }))
+        expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ next_run_at: retryAt, claim_token: null, last_error: status === 'queued' ? 'En espera entre campañas para este contacto.' : null }))
         expect(saved.update.mock.calls[0][0]).not.toHaveProperty('current_step_id')
         expect(saved.update.mock.calls[0][0]).not.toHaveProperty('status')
     })
     it.each(['unknown', 'failed'])('holds a %s result for review without a blind retry', async status => {
         const saved = query({ data: { id: claim.id }, error: null })
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null })
             .mockResolvedValueOnce({ data: 'conversation-a', error: null })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
             .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(query({ data: { status }, error: null }))
@@ -124,7 +143,7 @@ describe('Marketing worker safety',()=>{
     })
     it('uses the activated recipient data while still checking the current lead for a revoked permission', async () => {
         const saved = query({ data: { id: claim.id }, error: null })
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null })
             .mockResolvedValueOnce({ data: 'conversation-a', error: null })
         mocks.from.mockReturnValueOnce(query({ data: { ...prepared, recipient_snapshot: { name: 'Original' } }, error: null }))
             .mockReturnValueOnce(query({ data: null, error: null })).mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(saved)
@@ -133,14 +152,14 @@ describe('Marketing worker safety',()=>{
         expect(mocks.send).toHaveBeenCalledWith('conversation-a', expect.objectContaining({ templateComponents: [{ type: 'body', parameters: [{ type: 'text', text: 'Original' }] }] }), 'whatsapp', 'channel-a', 'System', 'campaign:enrollment-a:step-a')
     })
     it('does not emit when Meta pauses the selected template', async () => {
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
             .mockReturnValueOnce(query({ data: { ...template, status: 'PAUSED' }, error: null })).mockReturnValueOnce(query({ data: { id: claim.id }, error: null }))
         expect(await runMarketingCycle()).toMatchObject({ failed: 1 })
         expect(mocks.send).not.toHaveBeenCalled()
     })
     it('fails closed if the consent store is unavailable', async () => {
-        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } })
         mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
             .mockReturnValueOnce(query({ data: { id: claim.id }, error: null }))
         expect(await runMarketingCycle()).toMatchObject({ failed: 1 })

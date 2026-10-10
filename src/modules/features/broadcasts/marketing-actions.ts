@@ -120,6 +120,7 @@ export async function createCampaign(data: { name: string, description?: string,
                 name: data.name,
                 description: data.description,
                 goal: data.goal,
+                delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota', recipient_cooldown_hours: 24 },
                 created_by: user.id
             })
             .select().eq('organization_id', access.organizationId)
@@ -153,7 +154,7 @@ export async function createQuickCampaign(input: {
             template_language: data.template_language, bindings: data.bindings }, data.connection_id)
         const result = await access.session.rpc('create_marketing_quick_draft', { p_org: access.organizationId, p_name: data.name,
             p_connection: data.connection_id, p_template: data.template_id, p_content: content, p_filters: data.filters,
-            p_delivery: data.delivery_config || { mode: 'growth', humanize: true, timezone: 'America/Bogota' } })
+            p_delivery: data.delivery_config || { mode: 'growth', humanize: true, timezone: 'America/Bogota', recipient_cooldown_hours: 24 } })
         if (result.error || !result.data) throw new Error('No se pudo guardar el borrador completo. No se crearon registros parciales.')
         revalidatePath('/crm/marketing')
         return { success: true as const, campaign: result.data }

@@ -4,6 +4,7 @@ import { deliveryConfigSchema } from './marketing-contracts'
 export interface DeliveryConfig {
     mode: 'stealth' | 'growth' | 'turbo'
     humanize: boolean
+    recipient_cooldown_hours?: number
     timezone?: string
     schedule_window?: {
         start: number

@@ -42,17 +42,38 @@ beforeEach(() => {
     vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true')
     mocks.assertSend.mockResolvedValue(undefined)
     mocks.sendEvent.mockResolvedValue(undefined)
-    mocks.rpc.mockResolvedValue({ data: true, error: null })
+    mocks.rpc.mockImplementation(async name => ({ data: name === 'stop_marketing_followups_on_reply' ? false : true, error: null }))
     mocks.signedUrl.mockResolvedValue({ data: { signedUrl: 'https://storage.test/signed/image' }, error: null })
 })
 afterEach(() => vi.unstubAllEnvs())
 
 describe('Meta outbound outbox', () => {
+    it('cancels a queued campaign followup on reply before looking up an adapter', async () => {
+        mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:e:s' }, error: null }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe('failed')
+        expect(mocks.rpc).toHaveBeenCalledWith('stop_marketing_followups_on_reply', { p_org: 'tenant-a', p_connection: 'channel-a', p_operation: 'campaign:e:s' })
+        expect(mocks.getAdapter).not.toHaveBeenCalled()
+    })
+    it('finishes its claimed followup as cancelled when a reply arrives before final reservation', async () => {
+        const row = { ...queued, operation_key: 'campaign:e:s' }
+        const sendMessage = vi.fn()
+        mocks.getAdapter.mockReturnValue({ sendMessage })
+        mocks.rpc.mockImplementation(async name => ({ data: name === 'stop_marketing_followups_on_reply' ? false : name === 'reserve_marketing_dispatch' ? { allowed: false, cancelled: true, reason: 'campaign_replied' } : true, error: null }))
+        mocks.from.mockReturnValueOnce(query({ data: row })).mockReturnValueOnce(query({ data: connection }))
+            .mockReturnValueOnce(query({ data: { ...row, status: 'sending' } }))
+            .mockReturnValueOnce(query({ data: { status: 'active' } })).mockReturnValueOnce(query({ data: {} }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound(row.id)).status).toBe('failed')
+        expect(mocks.rpc).toHaveBeenCalledWith('finish_meta_outbound', expect.objectContaining({ p_error_kind: 'campaign_replied' }))
+        expect(sendMessage).not.toHaveBeenCalled()
+    })
     it.each([true, false])('isolates confirmed rejection handling to campaigns: %s', async campaignOnly => {
         const { MetaGraphRejection } = await import('@/modules/infrastructure/meta/services/graph-rejection')
         const row = { ...queued, operation_key: campaignOnly ? 'campaign:e:s' : 'agent:message-a' }
         mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn(async () => { throw new MetaGraphRejection(131048, 400) }) })
-        mocks.rpc.mockImplementation(async name => ({ data: name === 'reserve_marketing_dispatch' ? { allowed: true } : true, error: null }))
+        mocks.rpc.mockImplementation(async name => ({ data: name === 'reserve_marketing_dispatch' ? { allowed: true } : name === 'stop_marketing_followups_on_reply' ? false : true, error: null }))
         mocks.from.mockReturnValueOnce(query({ data: row })).mockReturnValueOnce(query({ data: connection }))
             .mockReturnValueOnce(query({ data: { ...row, status: 'sending' } }))
             .mockReturnValueOnce(query({ data: { status: 'active' } })).mockReturnValueOnce(query({ data: {} }))
@@ -82,7 +103,7 @@ describe('Meta outbound outbox', () => {
         const sendMessage = vi.fn(async () => ({ messageId: 'wamid-campaign' }))
         mocks.getAdapter.mockReturnValue({ sendMessage })
         const retryAt = new Date(Date.now() + 30_000).toISOString()
-        mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce(state === 'unavailable'
+        mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce(state === 'unavailable'
             ? { data: null, error: { message: 'database unavailable' } }
             : { data: { allowed: state === 'reserved', retryAt }, error: null })
         const deferred = query({ data: null, error: null })
@@ -97,13 +118,13 @@ describe('Meta outbound outbox', () => {
             p_org: 'tenant-a', p_connection: 'channel-a', p_operation: 'campaign:e:s', p_outbox: 'outbox-1',
         })
         expect(sendMessage).toHaveBeenCalledTimes(state === 'reserved' ? 1 : 0)
-        if (state === 'waiting') expect(deferred.update).toHaveBeenCalledWith({ status: 'queued', claimed_at: null, available_at: retryAt })
+        if (state === 'waiting') expect(deferred.update).toHaveBeenCalledWith({ status: 'queued', claimed_at: null, available_at: retryAt, error_kind: null })
     })
     it('does not recover a queued campaign operation when its campaign is paused', async () => {
         const sendMessage = vi.fn()
         mocks.getAdapter.mockReturnValue({ sendMessage })
         const deferred = query({ data: null, error: null })
-        mocks.rpc.mockResolvedValueOnce({ data: false, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: false, error: null })
         mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:enrollment-a:step-a' }, error: null }))
             .mockReturnValueOnce(deferred)
         const { dispatchMetaOutbound } = await import('./meta-outbox')
@@ -114,7 +135,7 @@ describe('Meta outbound outbox', () => {
     })
 
     it('fails closed when campaign permission cannot be checked', async () => {
-        mocks.rpc.mockResolvedValueOnce({ data: null, error: {message:'database unavailable'} })
+        mocks.rpc.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: null, error: {message:'database unavailable'} })
         mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:enrollment-a:step-a' }, error: null }))
         const { dispatchMetaOutbound } = await import('./meta-outbox')
         await expect(dispatchMetaOutbound('outbox-1')).rejects.toThrow('marketing dispatch')

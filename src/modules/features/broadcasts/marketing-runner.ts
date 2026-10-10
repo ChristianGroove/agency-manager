@@ -27,8 +27,12 @@ export async function runMarketingCycle() {
             const checkpoint = await db.from('marketing_enrollments').update({
                 status: 'failed', last_error: error instanceof MarketingExecutionIssue ? error.message : 'No se pudo ejecutar el paso. Requiere revisión antes de reintentar.',
                 claim_token: null, claimed_until: null, last_run_at: new Date().toISOString(),
-            }).eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).select('id').single()
-            if (checkpoint.error || !checkpoint.data) throw new Error('No se pudo persistir el resultado del trabajo de Marketing.')
+            }).eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).select('id').maybeSingle()
+            if (checkpoint.error) throw new Error('No se pudo persistir el resultado del trabajo de Marketing.')
+            if (!checkpoint.data) {
+                if (await replyWasCancelled(db, claim)) { processed++; continue }
+                throw new Error('No se pudo persistir el resultado del trabajo de Marketing.')
+            }
             failed++
         }
     }
@@ -40,8 +44,15 @@ export async function runMarketingCycle() {
 async function checkpoint(db: any, claim: any, data: Record<string, unknown>) {
     const result = await db.from('marketing_enrollments').update({ ...data, claim_token: null, claimed_until: null })
         .eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token)
-        .select('id').single()
-    if (result.error || !result.data) throw new Error('No se pudo guardar el avance de la campaña.')
+        .select('id').maybeSingle()
+    if (result.error) throw new Error('No se pudo guardar el avance de la campaña.')
+    if (!result.data && !(await replyWasCancelled(db, claim))) throw new Error('No se pudo guardar el avance de la campaña.')
+}
+
+async function replyWasCancelled(db: any, claim: any) {
+    const result = await db.from('marketing_enrollments').select('status,last_error')
+        .eq('id', claim.id).eq('organization_id', claim.organization_id).maybeSingle()
+    return !result.error && result.data?.status === 'cancelled' && result.data.last_error === 'El contacto respondió; seguimientos detenidos.'
 }
 
 async function processClaim(db: any, claim: any): Promise<'processed' | 'deferred'> {
@@ -67,6 +78,10 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
         await checkpoint(db, claim, { status: 'cancelled', next_run_at: null, last_error: 'Consentimiento revocado.' })
         return 'processed'
     }
+    const reply = await db.rpc('stop_marketing_followups_on_reply', { p_org: row.organization_id,
+        p_connection: campaign.connection_id, p_operation: `campaign:${row.id}:${step.id}` })
+    if (reply.error) throw new Error('No se pudo comprobar si el contacto respondió.')
+    if (reply.data === true) return 'processed'
     const nextAllowed = enforceScheduleWindow(new Date(), campaign.delivery_config || {mode:'growth',humanize:false})
     if (nextAllowed.getTime() > Date.now() + 1000) {
         await checkpoint(db, claim, { next_run_at: nextAllowed.toISOString() })
@@ -103,9 +118,12 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
                 .eq('organization_id', row.organization_id).eq('connection_id', campaign.connection_id)
                 .eq('operation_key', `campaign:${row.id}:${step.id}`).maybeSingle()
             if (delivery.error || !delivery.data) throw new Error('No se confirmó la aceptación del envío.')
+            if (delivery.data.status === 'failed' && delivery.data.error_kind === 'campaign_replied') return 'processed'
             if (['queued', 'sending'].includes(delivery.data.status)) {
                 await checkpoint(db, claim, { next_run_at: new Date(Math.max(Date.now() + 30_000,
-                    Date.parse(delivery.data.available_at) || 0)).toISOString(), last_error: null })
+                    Date.parse(delivery.data.available_at) || 0)).toISOString(), last_error:
+                        delivery.data.error_kind === 'recipient_frequency' ? 'En espera entre campañas para este contacto.' :
+                        delivery.data.error_kind === 'recipient_unconfirmed' ? 'En espera: otro envío a este contacto no tiene resultado confirmado.' : null })
                 return 'deferred'
             }
             if (delivery.data.status !== 'accepted' || !delivery.data.external_id) {

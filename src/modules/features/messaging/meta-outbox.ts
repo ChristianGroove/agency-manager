@@ -86,6 +86,11 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
             if (deferred.error) throw new Error('Could not defer disabled campaign operation')
             return { outboxId, messageId: pending.message_id, status: 'queued', externalId: null }
         }
+        const reply = await supabaseAdmin.rpc('stop_marketing_followups_on_reply', {
+            p_org: pending.organization_id, p_connection: pending.connection_id, p_operation: pending.operation_key,
+        })
+        if (reply.error) throw new Error('Could not verify campaign reply state')
+        if (reply.data === true) return { outboxId, messageId: pending.message_id, status: 'failed', externalId: null }
         const gate = await supabaseAdmin.rpc('marketing_outbound_allowed', {
             p_org: pending.organization_id, p_connection: pending.connection_id, p_operation: pending.operation_key,
         })
@@ -163,9 +168,14 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
             p_org: claimed.organization_id, p_connection: claimed.connection_id,
             p_operation: claimed.operation_key, p_outbox: outboxId,
         })
+        if (!gate.error && gate.data?.cancelled === true && gate.data.reason === 'campaign_replied') {
+            await finish(outboxId, 'failed', undefined, 'campaign_replied')
+            return { outboxId, messageId: claimed.message_id, status: 'failed', externalId: null }
+        }
         if (process.env.MARKETING_EXECUTION_ENABLED !== 'true' || gate.error || gate.data?.allowed !== true) {
             const deferred = await supabaseAdmin.from('meta_outbound_outbox')
-                .update({ status: 'queued', claimed_at: null, available_at: gate.data?.retryAt || new Date(Date.now() + 5 * 60_000).toISOString() })
+                .update({ status: 'queued', claimed_at: null, available_at: gate.data?.retryAt || new Date(Date.now() + 5 * 60_000).toISOString(),
+                    error_kind: ['recipient_frequency', 'recipient_unconfirmed'].includes(gate.data?.reason) ? gate.data.reason : null })
                 .eq('id', outboxId).eq('status', 'sending')
             if (deferred.error) throw new Error('Could not defer claimed campaign operation')
             return { outboxId, messageId: claimed.message_id, status: 'queued', externalId: null }

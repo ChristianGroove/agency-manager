@@ -66,6 +66,7 @@ env.production
 !scripts/tests/marketing-editor-controls.sql
 !scripts/tests/marketing-contact-lists.sql
 !scripts/tests/marketing-simple-lists.sql
+!scripts/tests/marketing-recipient-followups.sql
 
 # Ignore large local SQL dumps
 *restore*.sql
