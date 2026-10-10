@@ -48,6 +48,19 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs())
 
 describe('Meta outbound outbox', () => {
+    it.each([true, false])('isolates confirmed rejection handling to campaigns: %s', async campaignOnly => {
+        const { MetaGraphRejection } = await import('@/modules/infrastructure/meta/services/graph-rejection')
+        const row = { ...queued, operation_key: campaignOnly ? 'campaign:e:s' : 'agent:message-a' }
+        mocks.getAdapter.mockReturnValue({ sendMessage: vi.fn(async () => { throw new MetaGraphRejection(131048, 400) }) })
+        mocks.rpc.mockImplementation(async name => ({ data: name === 'reserve_marketing_dispatch' ? { allowed: true } : true, error: null }))
+        mocks.from.mockReturnValueOnce(query({ data: row })).mockReturnValueOnce(query({ data: connection }))
+            .mockReturnValueOnce(query({ data: { ...row, status: 'sending' } }))
+            .mockReturnValueOnce(query({ data: { status: 'active' } })).mockReturnValueOnce(query({ data: {} }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound(row.id)).status).toBe(campaignOnly ? 'failed' : 'unknown')
+        expect(mocks.rpc).toHaveBeenCalledWith('finish_meta_outbound', expect.objectContaining({ p_error_kind: campaignOnly ? 'meta_131048' : 'graph_or_reconciliation' }))
+    })
+
     it('keeps campaign recovery disabled without changing other operation types', async () => {
         vi.stubEnv('MARKETING_EXECUTION_ENABLED', '')
         mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:e:s' }, error: null }))

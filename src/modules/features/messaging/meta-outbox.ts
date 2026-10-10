@@ -1,3 +1,4 @@
+import { MetaGraphRejection } from '@/modules/infrastructure/meta/services/graph-rejection'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { assertMetaSendAllowed } from '@/modules/infrastructure/meta/services/send-policy'
 import { integrationRegistry } from '@/modules/infrastructure/integrations/registry'
@@ -175,7 +176,8 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
     const convMeta = conversation?.metadata || {}
     const metadata = claimed.channel === 'whatsapp'
         ? { channel: 'whatsapp', phoneNumberId: connMeta.asset_id || connMeta.phone_number_id,
-            organizationId: claimed.organization_id }
+            organizationId: claimed.organization_id,
+            ...(claimed.operation_key?.startsWith('campaign:') ? { marketingCampaign: true } : {}) }
         : claimed.channel === 'messenger'
             ? { channel: 'messenger', pageId: connMeta.asset_id || connMeta.page_id }
             : { channel: 'instagram', pageId: connMeta.asset_id || convMeta.instagramBusinessId || connMeta.instagram_business_id }
@@ -198,6 +200,10 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
         await finish(outboxId, 'accepted', sent.messageId)
         return { outboxId, messageId: claimed.message_id, status: 'accepted', externalId: sent.messageId }
     } catch (error) {
+        if (claimed.operation_key?.startsWith('campaign:') && error instanceof MetaGraphRejection) {
+            await finish(outboxId, 'failed', undefined, 'meta_' + error.code)
+            return { outboxId, messageId: claimed.message_id, status: 'failed', externalId: null }
+        }
         // A timeout or lost ACK can mean Meta accepted the send. Never retry it blindly.
         try { await finish(outboxId, 'unknown', undefined, 'graph_or_reconciliation') }
         catch { console.error('[MetaOutbox] Could not mark an ambiguous send for reconciliation') }

@@ -1,3 +1,4 @@
+import { MetaGraphRejection } from '@/modules/infrastructure/meta/services/graph-rejection'
 
 import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
@@ -428,7 +429,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
         const { globalCircuitBreaker } = await import('@/modules/infrastructure/resilience/circuit-breaker');
 
-        return await globalCircuitBreaker.execute('meta_api', async () => {
+        const executeSend = async () => {
             const makeRequest = async (p: any) => {
                 const resp = await fetch(url, {
                     method: 'POST',
@@ -452,6 +453,10 @@ export class MetaAdapter implements IntegrationAdapter {
                 } else {
                     console.error('[MetaAdapter] Failed Payload summary:', summarizeMetaPayload(payload));
                 }
+                if (metadata?.marketingCampaign === true && response.status >= 400 && response.status < 500
+                    && Number.isSafeInteger(err.error?.code) && err.error.code > 0) {
+                    throw new MetaGraphRejection(err.error.code, response.status)
+                }
                 throw new Error(metaSendErrorMessage(err, response.statusText))
             }
 
@@ -460,6 +465,10 @@ export class MetaAdapter implements IntegrationAdapter {
                 messageId: data.messages?.[0]?.id || data.message_id || '',
                 metadata: data
             }
-        });
+        }
+        // Campaign failures must not open the shared Inbox/automation circuit.
+        // Marketing has durable, connection-scoped dispatch holds in SQL.
+        return metadata?.marketingCampaign === true ? executeSend()
+            : globalCircuitBreaker.execute('meta_api', executeSend)
     }
 }

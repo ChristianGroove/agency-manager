@@ -48,3 +48,5 @@ Estas verificaciones no equivalen a una prueba de carga, una prueba de entrega r
 | P2 | Presupuesto opcional | Estimación separada de cargos reales, únicamente si se solicita; los pagos del canal permanecen en Meta. |
 
 La ejecución sigue deshabilitada por defecto. Esta etapa cierra la captura/reintento automático de bajas, las métricas agregadas reales y la finalización básica; no declara listo todo el módulo para producción.
+
+La [etapa 5](implementation-stage-5.md) implementa después los mecanismos de comprobación del número, restricciones, equidad y evidencia del motor, y verifica concurrencia local. Conserva pendientes la validación real de Meta y la configuración del programador en producción; la tabla anterior registra el estado al cerrar esta etapa 4.

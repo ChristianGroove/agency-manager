@@ -1,9 +1,10 @@
+import { observeMarketingRun } from '@/modules/features/broadcasts/marketing-runtime'
 import { NextRequest, NextResponse } from 'next/server'
 import { runMarketingCycle } from '@/modules/features/broadcasts/marketing-runner'
 import { isProductionRuntime, requireCronSecret } from '@/app/api/_guards/request-guards'
 
 export const dynamic = 'force-dynamic' // Ensure no caching for Cron
-export const maxDuration = 60 // Allow longer processing (Vercel max for Hobby)
+export const maxDuration = 60 // Runtime budget; also used by the Coolify worker launcher
 
 const PUBLIC_MARKETING_ERROR = 'Marketing runner failed'
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (unauthorized) return unauthorized
 
     try {
-        const result = await runMarketingCycle()
+        const result = await observeMarketingRun(runMarketingCycle)
         return NextResponse.json(sanitizeMarketingResult(result))
     } catch (error: any) {
         logMarketingError('Marketing Runner Failed:', error)

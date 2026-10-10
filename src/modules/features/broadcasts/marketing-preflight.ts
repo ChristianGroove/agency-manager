@@ -6,6 +6,7 @@ export function campaignDesignIssues(input: any, existingRecipients = false): st
     const { campaign, channel, sequences, templates, audience, missingData } = input
     const issues: string[] = []
     if (!channel || channel.status !== 'active' || !['whatsapp_cloud', 'meta_whatsapp'].includes(channel.provider)) issues.push('Selecciona y guarda un número WhatsApp activo.')
+    if (channel?.health && !channel.health.ready) issues.push('Comprueba la calidad del número y revisa sus restricciones en Resultados antes de activar.');
     if (!existingRecipients) {
         if (!audience) issues.push('Vincula una audiencia guardada.')
         else if (!audience.eligible) issues.push('La audiencia no contiene destinatarios con autorización vigente.')

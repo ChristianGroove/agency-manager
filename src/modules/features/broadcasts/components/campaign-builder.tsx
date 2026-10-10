@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { refreshMarketingChannelHealth, acknowledgeMarketingHold } from '../marketing-health-actions'
 import { Campaign, Sequence, Audience, getSequences, createSequence, setPrincipalSequence, addStepToSequence, deleteStep, updateCampaign, getAudiences, createAudience, deleteAudience, previewAudienceCount, importLeads, getCampaign, getCampaignStats, updateStep, deleteSequence, linkAudienceToCampaign, enrollAudienceInCampaign } from '../marketing-actions'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [executionEnabled, setExecutionEnabled] = useState(false)
 
     // Insights State
+    const [checkingHealth, setCheckingHealth] = useState(false)
+    const [holdReviewed, setHoldReviewed] = useState(false)
     const [stats, setStats] = useState<CampaignMetrics | null>(null)
 
     // Safety Config State
@@ -93,6 +96,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     async function loadData() {
         setLoading(true)
         setLoadError('')
+        setHoldReviewed(false)
         setExecutionEnabled(false)
         try {
         const [seqResult, audResult, campResult, statsResult, setupResult] = await Promise.all([
@@ -400,7 +404,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 <div className="flex gap-2">
                     <Button
                         onClick={handleToggleStatus}
-                        disabled={isEnrolling || loading || !!loadError || (campaignStatus !== 'active' && (!executionEnabled || !['draft', 'paused'].includes(campaignStatus)))}
+                        disabled={isEnrolling || loading || !!loadError || (campaignStatus !== 'active' && (!executionEnabled || stats?.channelHealth?.ready !== true || !['draft', 'paused'].includes(campaignStatus)))}
                         title={executionEnabled ? 'Activa o reanuda el diseño guardado, previa validación del servidor.' : t("marketing.dashboard.preparation_notice")}
                         className={cn("transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-brand-pink text-white hover:bg-brand-pink/90")}
                     >
@@ -901,6 +905,50 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                     ] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="text-2xl font-semibold">{value ?? '—'}</dd></div>)}
                                 </dl>
                                 {!!stats?.delivery.unknown && <p role="status" className="text-sm text-amber-700">Hay envíos sin resultado confirmado. Requieren revisión; no se reenvían automáticamente y la campaña permanece abierta.</p>}
+                            </Card>
+
+                            <Card className="p-5 space-y-3">
+                                <h4 className="font-semibold">Número emisor y actividad del motor</h4>
+                                <p role="status" className="text-sm">
+                                    {stats?.channelHealth?.ready ? 'Comprobación del número vigente para Marketing.' : 'El número necesita comprobación o revisión antes de emitir campañas.'}
+                                    {stats?.channelHealth?.quality && ` Calidad: ${stats.channelHealth.quality}.`}
+                                    {stats?.channelHealth?.checkedAt && ` Comprobado: ${new Date(stats.channelHealth.checkedAt).toLocaleString()}.`}
+                                </p>
+                                {stats?.channelHealth?.quality === 'YELLOW' && <p className="text-sm text-amber-700">La calidad del número requiere atención. Revisa la audiencia y las respuestas antes de ampliar el volumen.</p>}
+                                {!!stats?.channelHealth?.holdCode && <p className="text-sm text-amber-700">Meta rechazó un envío con el código {stats.channelHealth.holdCode}. {stats.channelHealth.holdUntil ? `Espera al menos hasta ${new Date(stats.channelHealth.holdUntil).toLocaleString()}.` : 'Los siguientes envíos de Marketing están bloqueados hasta revisar la restricción.'}</p>}
+                                <Button variant="outline" disabled={checkingHealth || !connectionId || !!loadError} onClick={async () => {
+                                    setCheckingHealth(true)
+                                    try {
+                                        const result = await refreshMarketingChannelHealth(connectionId)
+                                        if (!result.success) toast.error(result.error)
+                                        else toast.success('Comprobación registrada. Consulta las restricciones pendientes.')
+                                        await loadData()
+                                    } catch { toast.error('No se pudo completar la comprobación. Reintenta antes de activar.') }
+                                    finally { setCheckingHealth(false) }
+                                }}>{checkingHealth ? 'Comprobando…' : 'Comprobar número en Meta'}</Button>
+                                {!!stats?.channelHealth?.holdCode && !stats.channelHealth.holdUntil && <div className="space-y-2">
+                                    <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={holdReviewed} onChange={event => setHoldReviewed(event.target.checked)} />Revisé y resolví esta restricción en Meta. La comprobación de calidad por sí sola no confirma su resolución.</label>
+                                    <Button variant="outline" disabled={!holdReviewed || checkingHealth || !stats.channelHealth.holdAt} onClick={async () => {
+                                        if (!stats?.channelHealth?.holdAt) return
+                                        setCheckingHealth(true)
+                                        try {
+                                            const result = await acknowledgeMarketingHold({ connectionId, holdAt: stats.channelHealth.holdAt, reviewed: holdReviewed })
+                                            if (!result.success) toast.error(result.error)
+                                            else toast.success('Revisión registrada. Los envíos fallidos no se reenvían automáticamente.')
+                                            await loadData()
+                                        } catch { toast.error('No se pudo registrar la revisión. Actualiza los resultados y reintenta.') }
+                                        finally { setCheckingHealth(false) }
+                                    }}>Registrar revisión de la restricción</Button>
+                                </div>}
+                                <p className="text-xs text-muted-foreground">
+                                    {!stats?.runtime ? 'Sin ejecuciones registradas del motor. Verifica el programador antes de habilitar envíos.'
+                                        : Date.now() - Date.parse(stats.runtime.finishedAt || stats.runtime.startedAt) > 180_000
+                                            ? 'Sin actividad reciente del motor. Revisa el programador de campañas.'
+                                            : stats.runtime.status === 'failed' ? 'El último ciclo del motor terminó con errores. Revisa los resultados.'
+                                                : stats.runtime.status === 'running' ? 'Hay un ciclo registrado en ejecución; su resultado todavía no está confirmado.'
+                                                    : `Último ciclo terminado: ${new Date(stats.runtime.finishedAt || stats.runtime.startedAt).toLocaleString()}.`}
+                                    {' La actividad corresponde al motor compartido; no certifica la entrega de esta campaña.'}
+                                </p>
                             </Card>
 
                             {/* Recent Activity */}

@@ -49,6 +49,19 @@ afterEach(() => {
 })
 
 describe('MetaAdapter', () => {
+    it.each([400, 429, 503])('only classifies structured campaign 4xx as confirmed rejection: %s', async status => {
+        vi.stubEnv('VERCEL_ENV', 'production')
+        vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":{"code":131048,"message":"private data"}}', { status })))
+        const { MetaAdapter } = await import('./meta-adapter')
+        const { MetaGraphRejection } = await import('@/modules/infrastructure/meta/services/graph-rejection')
+        const error = await new MetaAdapter().sendMessage({ accessToken: 'secret', phoneNumberId: '123' }, '573001234567',
+            { type: 'text', text: 'test' }, { channel: 'whatsapp', marketingCampaign: true }).catch(error => error)
+        expect(error instanceof MetaGraphRejection).toBe(status < 500)
+        expect(error.message).not.toContain('private data')
+        expect(mocks.execute).not.toHaveBeenCalled()
+    })
+
     it('checks token health without placing the credential in the URL', async () => {
         const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }))
         vi.stubGlobal('fetch', fetchMock)

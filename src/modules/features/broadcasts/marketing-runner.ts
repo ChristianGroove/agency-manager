@@ -1,3 +1,4 @@
+import { MarketingExecutionIssue } from './marketing-execution-issue'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { outboundService } from '@/modules/features/messaging/outbound-service'
 import { normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
@@ -16,14 +17,15 @@ export async function runMarketingCycle() {
     let processed = 0, failed = 0, deferred = 0
     for (const claim of result.data || []) {
         // Leave unprocessed leases to expire; never run beyond the request budget.
-        if (Date.now() - started > 45_000) break
+        // A last Graph call can take 30s; reserve that time plus the health probe and finalization.
+        if (Date.now() - started > 15_000) break
         try {
             const state = await processClaim(db, claim)
             if (state === 'processed') processed++
             else deferred++
-        } catch {
+        } catch (error) {
             const checkpoint = await db.from('marketing_enrollments').update({
-                status: 'failed', last_error: 'No se pudo ejecutar el paso. Requiere revisión antes de reintentar.',
+                status: 'failed', last_error: error instanceof MarketingExecutionIssue ? error.message : 'No se pudo ejecutar el paso. Requiere revisión antes de reintentar.',
                 claim_token: null, claimed_until: null, last_run_at: new Date().toISOString(),
             }).eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).select('id').single()
             if (checkpoint.error || !checkpoint.data) throw new Error('No se pudo persistir el resultado del trabajo de Marketing.')
@@ -97,7 +99,7 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
             'whatsapp', campaign.connection_id, 'System', `campaign:${row.id}:${step.id}`)
         if (!sent.success || !sent.externalId) {
             // A committed queue item is recoverable; an ambiguous send must never be blindly repeated.
-            const delivery = await db.from('meta_outbound_outbox').select('status,available_at,external_id')
+            const delivery = await db.from('meta_outbound_outbox').select('status,available_at,external_id,error_kind')
                 .eq('organization_id', row.organization_id).eq('connection_id', campaign.connection_id)
                 .eq('operation_key', `campaign:${row.id}:${step.id}`).maybeSingle()
             if (delivery.error || !delivery.data) throw new Error('No se confirmó la aceptación del envío.')
@@ -107,7 +109,8 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
                 return 'deferred'
             }
             if (delivery.data.status !== 'accepted' || !delivery.data.external_id) {
-                throw new Error('El envío requiere revisión antes de reintentar.')
+                const code = /^meta_([0-9]{1,9})$/.exec(delivery.data.error_kind || '')
+                throw new MarketingExecutionIssue(code ? Number(code[1]) : undefined)
             }
         }
     }
