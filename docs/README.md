@@ -22,6 +22,9 @@ Guías prácticas para el equipo técnico.
 * **`integrations/`**: Manuales de conexión de Webhooks, configuración de WhatsApp/Meta API y ejemplos de metadatos.
 * **`operations/`**: Manuales de operaciones como la creación de nuevos espacios (tenants).
 
+### [Campañas masivas: cierre y operación](./marketing/README.md)
+Alcance vigente de WhatsApp, interfaz, listas, controles de ejecución, evidencia de pruebas y preparación pendiente de producción. Correo/SMS quedan aplazados. Los reportes por etapa conservan el historial; la arquitectura vigente está en [Broadcasts](./2-architecture/modules/broadcasts-architecture.md).
+
 ### [4. Histórico y Auditorías (Archive)](./4-history/)
 Archivos que sirven de bitácora pero que no interfieren con el desarrollo activo.
 * **`audits/`**: Reportes pasados sobre estabilización, reportes de salud de la arquitectura y auditorías de código.
