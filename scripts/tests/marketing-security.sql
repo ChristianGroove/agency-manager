@@ -304,4 +304,79 @@ SELECT pg_temp.expect_error($q$SELECT public.store_marketing_channel_probe('0100
 SELECT pg_temp.expect_error($q$SELECT public.marketing_outbound_allowed_before_health('01000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001','campaign:fake')$q$,'permission denied');
 SELECT pg_temp.expect_error($q$SELECT public.record_marketing_worker_run()$q$,'permission denied');
 RESET ROLE;
+-- Stage 6: keyset reports cover all recipients without returning private payloads or raw logs.
+SET LOCAL request.jwt.claims='{"role":"service_role"}';
+INSERT INTO public.marketing_campaigns(id,organization_id,name,connection_id) VALUES
+ ('02000000-0000-4000-8000-000000000006','01000000-0000-4000-8000-000000000001','History fixture','03000000-0000-4000-8000-000000000001');
+INSERT INTO public.marketing_sequences(id,organization_id,campaign_id,name,trigger_type,is_active) VALUES
+ ('04000000-0000-4000-8000-000000000006','01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006','History sequence','manual',true);
+INSERT INTO public.marketing_steps(id,organization_id,sequence_id,name,type,content) VALUES
+ ('05000000-0000-4000-8000-000000000006','01000000-0000-4000-8000-000000000001','04000000-0000-4000-8000-000000000006','First template','whatsapp','{"template_name":"synthetic_template"}'),
+ ('05000000-0000-4000-8000-000000000007','01000000-0000-4000-8000-000000000001','04000000-0000-4000-8000-000000000006','Wait','delay','{}'),
+ ('05000000-0000-4000-8000-000000000008','01000000-0000-4000-8000-000000000001','04000000-0000-4000-8000-000000000006','Last template','whatsapp','{"template_name":"synthetic_template"}');
+INSERT INTO public.marketing_enrollments(id,organization_id,campaign_id,sequence_id,current_step_id,contact_id,recipient,recipient_snapshot,status,last_error,execution_logs)
+SELECT ('17000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'01000000-0000-4000-8000-000000000001',
+ '02000000-0000-4000-8000-000000000006','04000000-0000-4000-8000-000000000006','05000000-0000-4000-8000-000000000007',
+ '06000000-0000-4000-8000-000000000001','1999'||lpad(n::text,7,'0'),jsonb_build_object('name','Immutable recipient '||n),
+ CASE WHEN n=1 THEN 'failed' ELSE 'active' END,'private_access_token=never_export','[{"secret":"never_export"}]' FROM generate_series(1,1105) n;
+SELECT set_config('marketing.test_history',public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_limit=>100)::text,true);
+SELECT pg_temp.assert_true((current_setting('marketing.test_history')::jsonb->>'total')::int=1105,'history count is not truncated at 1000');
+SELECT pg_temp.assert_true(jsonb_array_length(current_setting('marketing.test_history')::jsonb->'items')=100,'recipient page remains bounded');
+SELECT pg_temp.assert_true(current_setting('marketing.test_history')::jsonb->>'nextCursor'='17000000-0000-4000-8000-000000000100','keyset cursor is the last visible row');
+SELECT pg_temp.assert_true(position('never_export' IN current_setting('marketing.test_history'))=0,'raw error logs are not serialized');
+SELECT pg_temp.assert_true(public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_after=>'17000000-0000-4000-8000-000000000100',p_limit=>100)->'items'->0->>'id'='17000000-0000-4000-8000-000000000101','second page neither skips nor duplicates cursor row');
+DO $$ DECLARE page jsonb; cursor uuid; seen uuid[]:='{}'; item jsonb; BEGIN
+ LOOP
+  page:=public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_after=>cursor,p_limit=>100);
+  FOR item IN SELECT * FROM jsonb_array_elements(page->'items') LOOP
+   IF (item->>'id')::uuid=ANY(seen) THEN RAISE EXCEPTION 'Duplicate report row'; END IF;
+   seen:=array_append(seen,(item->>'id')::uuid);
+  END LOOP;
+  EXIT WHEN NOT (page->>'hasMore')::boolean;
+  cursor:=(page->>'nextCursor')::uuid;
+ END LOOP;
+ PERFORM pg_temp.assert_true(cardinality(seen)=1105,'all rows are reachable through recipient pagination');
+END $$;
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_status=>'failed')->>'total')::int=1,'execution filter is exact');
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_search=>'%')->>'total')::int=0,'search is literal, not wildcard syntax');
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_search=>'19990001105')->>'total')::int=1,'phone search reaches rows beyond the REST page limit');
+SELECT set_config('marketing.test_steps',public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006','17000000-0000-4000-8000-000000000001',p_limit=>2)::text,true);
+SELECT pg_temp.assert_true(current_setting('marketing.test_steps')::jsonb->'items'->0->>'progress'='advanced','sequence advance is separate from delivery evidence');
+SELECT pg_temp.assert_true(current_setting('marketing.test_steps')::jsonb->'items'->0->>'delivery'='not_started','a processed step without an outbox is not invented as delivered');
+SELECT pg_temp.assert_true(jsonb_array_length(public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006','17000000-0000-4000-8000-000000000001',p_after=>current_setting('marketing.test_steps')::jsonb->'nextCursor',p_limit=>2)->'items')=1,'step keyset reaches the final step without repeating the delay');
+DO $$ DECLARE page jsonb; cursor jsonb; seen text[]:='{}'; item jsonb; row_key text; BEGIN
+ LOOP
+  page:=public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_after=>cursor,p_limit=>100);
+  FOR item IN SELECT * FROM jsonb_array_elements(page->'items') LOOP
+   row_key:=item->>'enrollment_id'||':'||(item->>'step_id');
+   IF row_key=ANY(seen) THEN RAISE EXCEPTION 'Duplicate step report row'; END IF;
+   seen:=array_append(seen,row_key);
+  END LOOP;
+  EXIT WHEN NOT (page->>'hasMore')::boolean;
+  cursor:=page->'nextCursor';
+ END LOOP;
+ PERFORM pg_temp.assert_true(cardinality(seen)=3315,'whole-campaign step export reaches every recipient and step');
+END $$;
+SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM jsonb_array_elements(public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000001')->'items') row WHERE row->>'error_code'='131048'),'step detail exposes numeric provider rejection only');
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',p_delivery=>'failed')->>'total')::int=1,'failed receipt is searchable after acceptance');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_history('01000000-0000-4000-8000-000000000002','02000000-0000-4000-8000-000000000006')$q$,'Campaign not found');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006','07000000-0000-4000-8000-000000000001')$q$,'Recipient not found');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_limit=>101)$q$,'Invalid report filters');
+UPDATE public.organization_members SET permissions='{"marketing.campaigns.export":false}' WHERE organization_id='01000000-0000-4000-8000-000000000001';
+SELECT set_config('request.jwt.claims',json_build_object('role','authenticated','sub',current_setting('marketing.test_user'))::text,true);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006')->>'total')::int=1105,'authorized viewer can read without export');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_export=>true)$q$,'Marketing report access denied');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_step_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_export=>true)$q$,'Marketing report access denied');
+SELECT pg_temp.expect_error($q$SELECT * FROM public.marketing_history_matches('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006','all','','all')$q$,'permission denied');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_history('01000000-0000-4000-8000-000000000002','02000000-0000-4000-8000-000000000002')$q$,'Marketing report access denied');
+RESET ROLE;
+UPDATE public.organization_members SET role='member',permissions='{"marketing.campaigns.view":true,"marketing.campaigns.export":true}' WHERE organization_id='01000000-0000-4000-8000-000000000001';
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006')$q$,'Marketing channel access denied');
+RESET ROLE;
+UPDATE public.organization_members SET permissions='{"marketing.campaigns.view":true,"marketing.campaigns.export":true,"inbox_access":["03000000-0000-4000-8000-000000000001"]}' WHERE organization_id='01000000-0000-4000-8000-000000000001';
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert_true((public.read_marketing_history('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000006',p_export=>true)->>'total')::int=1105,'assigned channel and both report permissions allow export');
+RESET ROLE;
 ROLLBACK;

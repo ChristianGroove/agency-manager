@@ -79,3 +79,5 @@ La migración `20261009200000_marketing_health_and_runtime.sql` requiere las eta
 | P2 | Presupuesto opcional | Si se solicita, estimación identificada como tal y separada del cobro real de Meta. |
 
 La ejecución continúa deshabilitada por defecto. Esta etapa cierra los mecanismos locales de salud, restricciones, equidad y evidencia de ejecución; no declara todo Marketing listo para masivos de producción.
+
+La [etapa 6](implementation-stage-6.md) implementa después el historial paginado y la exportación protegida de destinatarios/pasos. Documenta sus límites de consistencia y tamaño; los pendientes de despliegue y validación real continúan abiertos.

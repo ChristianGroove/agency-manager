@@ -39,7 +39,7 @@ export async function requireMarketingAccess(permission: MarketingPermission = '
     if (!allowsMarketing(member, role, permission)) throw new Error('No tienes permiso para esta operación de Marketing.')
     const inbox = evaluateInboxPermissions({ role: member.role, hierarchy: role?.hierarchy_level,
         permissions: { ...role?.permissions, ...member.permissions } })
-    return { organizationId, userId: user.id, session, inbox }
+    return { organizationId, userId: user.id, session, inbox, canExport: allowsMarketing(member, role, 'export') }
 }
 
 export function assertMarketingChannelAccess(access: Awaited<ReturnType<typeof requireMarketingAccess>>, connectionId: string) {

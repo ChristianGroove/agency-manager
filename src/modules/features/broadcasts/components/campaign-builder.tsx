@@ -36,6 +36,7 @@ import { CampaignReadiness } from './campaign-readiness'
 import { TemplateSelection } from '../marketing-template-contract'
 import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
 import type { CampaignMetrics } from '../marketing-metrics'
+import { CampaignHistory } from './campaign-history'
 
 interface CampaignBuilderProps {
     campaignId: string
@@ -950,6 +951,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                     {' La actividad corresponde al motor compartido; no certifica la entrega de esta campaña.'}
                                 </p>
                             </Card>
+
+                            <CampaignHistory key={campaignId} campaignId={campaignId} />
 
                             {/* Recent Activity */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
