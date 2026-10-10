@@ -1,245 +1,50 @@
 'use client'
-
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-    Folder,
-    MoreHorizontal,
-    Trash2,
-    Clock,
-    Megaphone,
-    ArrowRight,
-    Plus
-} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { createCampaign, getCampaigns, deleteCampaign, Campaign } from '../marketing-actions'
-import { toast } from 'sonner'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useTranslation } from "@/modules/core/i18n/use-translation"
-
-export function CampaignsList() {
-    const { t } = useTranslation()
-    const router = useRouter()
-    const [campaigns, setCampaigns] = useState<Campaign[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [isCreateOpen, setIsCreateOpen] = useState(false)
-    const [newCampaignName, setNewCampaignName] = useState('')
-
-    useEffect(() => {
-        loadCampaigns()
-    }, [])
-
-    async function loadCampaigns() {
-        setLoading(true)
-        setError(null)
-        const result = await getCampaigns()
-        if (result.success) {
-            setCampaigns(result.campaigns!)
-        } else {
-            setError(result.error || 'No se pudieron cargar las campañas.')
-        }
-        setLoading(false)
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getMarketingCampaignPage } from '../marketing-workspace-actions'
+import { CampaignPage, campaignStates, campaignStateLabels, campaignProgress } from '../marketing-workspace'
+import { deleteCampaign, updateCampaign } from '../marketing-actions'
+import type { MarketingChannel } from '../marketing-preflight-actions'
+const defaults = { search: '', status: 'all' as 'all' | typeof campaignStates[number], channel: null as string | null }
+const date = (v: string | null) => v ? new Date(v).toLocaleString() : 'Al confirmar, dentro del horario'
+export function CampaignsList({ channels = [], canManage = false, canExecute = false, onChanged }: { channels?: MarketingChannel[]; canManage?: boolean; canExecute?: boolean; onChanged?: () => void }) {
+    const [draft, setDraft] = useState(defaults), [filters, setFilters] = useState(defaults)
+    const [cursor, setCursor] = useState<CampaignPage['next']>(null), [previous, setPrevious] = useState<Array<CampaignPage['next']>>([])
+    const [page, setPage] = useState<CampaignPage | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false)
+    const [changedAt, setChangedAt] = useState<string | null>(null); const epoch = useRef(0)
+    const load = useCallback(async (background = false) => {
+        const request = ++epoch.current; if (!background) setLoading(true)
+        try { const r = await getMarketingCampaignPage({ ...filters, cursor }); if (request !== epoch.current) return; if (!r.success) { setError(r.error); return } setPage(r.page); setError(''); setChangedAt(new Date().toLocaleTimeString()) }
+        catch { if (request === epoch.current) setError('No se pudo actualizar la lista. Los datos mostrados pueden estar desactualizados.') }
+        finally { if (request === epoch.current) setLoading(false) }
+    }, [filters, cursor])
+    useEffect(() => { setPage(null); void load(); return () => { epoch.current++ } }, [load])
+    const running = page?.rows.some(r => r.status === 'active') === true
+    useEffect(() => { if (!running || busy) return; const timer = setInterval(() => { if (document.visibilityState === 'visible') void load(true) }, 20000); return () => clearInterval(timer) }, [running, busy, load])
+    async function remove(id: string, isDraft: boolean) {
+        if (!window.confirm(isDraft ? '¿Eliminar este borrador y su diseño?' : '¿Archivar esta campaña? Su historial se conservará.')) return
+        setBusy(true)
+        try { const r = isDraft ? await deleteCampaign(id) : await updateCampaign(id, { status: 'archived' }); if (!r.success) { setError(r.error || 'No se pudo completar la acción.'); return } await load(); onChanged?.() }
+        catch { setError('No se pudo confirmar la acción. Actualiza antes de reintentar.') }
+        finally { setBusy(false) }
     }
-
-    async function handleCreate() {
-        if (!newCampaignName.trim()) return
-
-        const result = await createCampaign({ name: newCampaignName })
-        if (result.success) {
-            toast.success(t("marketing.campaigns_list.created"))
-            setIsCreateOpen(false)
-            setNewCampaignName('')
-            // Auto-redirect to builder
-            router.push(`/crm/marketing/campaigns/${result.campaign!.id}`)
-        } else {
-            toast.error(result.error)
-        }
-    }
-
-    async function handleEdit(id: string) {
-        router.push(`/crm/marketing/campaigns/${id}`)
-    }
-
-    async function handleDelete(id: string) {
-        if (!confirm(t("marketing.campaigns_list.confirm_delete"))) return
-        const result = await deleteCampaign(id)
-        if (result.success) {
-            toast.success(t("marketing.campaigns_list.deleted"))
-            loadCampaigns()
-        } else {
-            toast.error(result.error)
-        }
-    }
-
-    if (loading) {
-        return <div className="p-8 text-center text-gray-500">{t("marketing.campaigns_list.loading")}</div>
-    }
-
-    if (error) return <div role="alert" className="p-8 text-center text-red-600"><p>{error}</p><Button variant="outline" onClick={loadCampaigns} className="mt-4">{t("marketing.campaign_builder.refresh")}</Button></div>
-
-    if (campaigns.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 bg-slate-50 dark:bg-zinc-900/50 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                <div className="p-6 bg-gradient-to-tr from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full mb-6 relative">
-                    <Megaphone className="w-12 h-12 text-brand-pink" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("marketing.campaigns_list.empty_title")}</h2>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md text-center mb-8">
-                    {t("marketing.campaigns_list.empty_desc")}
-                </p>
-
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-brand-pink text-white hover:bg-brand-pink/90">{t("marketing.campaigns_list.advanced_campaign")}</Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>{t("marketing.campaigns_list.create_campaign")}</DialogTitle>
-                            <DialogDescription>
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="name" className="text-right">
-                                    {t("marketing.campaigns_list.name_label")}
-                                </Label>
-                                <Input
-                                    id="name"
-                                    value={newCampaignName}
-                                    onChange={(e) => setNewCampaignName(e.target.value)}
-                                    placeholder={t("marketing.campaigns_list.name_placeholder")}
-                                    className="col-span-3"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end">
-                            <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white" disabled={!newCampaignName.trim()}>
-                                {t("marketing.campaigns_list.create_campaign")}
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
-        )
-    }
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white"></h2>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-brand-pink text-white hover:bg-brand-pink/90">
-                            <Plus className="w-4 h-4 mr-2" />
-                            {t("marketing.campaigns_list.create_campaign")}
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>{t("marketing.campaigns_list.create_campaign")}</DialogTitle>
-                            <DialogDescription>
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="name2" className="text-right">
-                                    {t("marketing.campaigns_list.name_label")}
-                                </Label>
-                                <Input
-                                    id="name2"
-                                    value={newCampaignName}
-                                    onChange={(e) => setNewCampaignName(e.target.value)}
-                                    placeholder={t("marketing.campaigns_list.name_placeholder")}
-                                    className="col-span-3"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end">
-                            <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white" disabled={!newCampaignName.trim()}>
-                                {t("marketing.campaigns_list.create_campaign")}
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {campaigns.map(campaign => (
-                    <Card key={campaign.id} className="glass-card group hover:-translate-y-1 transition-all overflow-hidden">
-                        <div className="p-5">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20 transition-colors text-blue-600 dark:text-blue-400">
-                                        <Folder className="w-5 h-5 fill-current" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 dark:text-white truncate max-w-[150px]">{campaign.name}</h4>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                            <Clock className="w-3 h-3" />
-                                            {formatDistanceToNow(new Date(campaign.created_at), { addSuffix: true, locale: es })}
-                                        </p>
-                                    </div>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600">
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => handleEdit(campaign.id)}>
-                                            {t("common.edit")}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDelete(campaign.id)} className="text-red-600">
-                                            <Trash2 className="w-4 h-4 mr-2" /> {t("common.delete")}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
-                                    <p className="text-xs text-muted-foreground mb-1">{t("marketing.campaigns_list.impacted")}</p>
-                                    <p className="text-lg font-bold text-gray-900 dark:text-white">{campaign.total_enrolled}</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
-                                    <p className="text-xs text-muted-foreground mb-1">{t("marketing.dashboard.kpis.engagement")}</p>
-                                    <p className="text-lg font-bold text-gray-900 dark:text-white">{campaign.engagement_score}%</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                                    {campaign.status === 'draft' ? t("marketing.campaigns_list.draft") : t("marketing.campaigns_list.active")}
-                                </Badge>
-                                <Link href={`/crm/marketing/campaigns/${campaign.id}`}>
-                                    <Button size="sm" variant="ghost" className="h-7 hover:bg-blue-50 hover:text-blue-600 px-2 -mr-2">
-                                        {t("marketing.campaigns_list.view_details")} <ArrowRight className="w-3 h-3 ml-1" />
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                        {/* Progress Bar (Fake for now) */}
-                        <div className="h-1 w-full bg-gray-100 dark:bg-white/5">
-                            <div className="h-full bg-blue-500 w-[0%] transition-all" />
-                        </div>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    )
+    return <section className="space-y-3">
+        <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); setCursor(null); setPrevious([]); setFilters({ ...draft }) }}>
+            <div className="flex-1 min-w-48"><Label htmlFor="campaign-search">Buscar campaña</Label><Input id="campaign-search" maxLength={100} value={draft.search} onChange={e => setDraft({ ...draft, search: e.target.value })} /></div>
+            <div><Label>Estado</Label><Select value={draft.status} onValueChange={status => setDraft({ ...draft, status: status as typeof draft.status })}><SelectTrigger aria-label="Estado de campaña" className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{campaignStates.map(s => <SelectItem key={s} value={s}>{campaignStateLabels[s]}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Número emisor</Label><Select value={draft.channel || 'all'} onValueChange={channel => setDraft({ ...draft, channel: channel === 'all' ? null : channel })}><SelectTrigger aria-label="Filtrar por emisor" className="w-56"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem>{channels.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+            <Button disabled={loading || busy}>Aplicar</Button><Button type="button" variant="outline" disabled={loading || busy} onClick={() => void load()}>Actualizar</Button>
+        </form>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        <div aria-busy={loading} className="overflow-x-auto rounded-xl border bg-white dark:bg-zinc-900"><table className="w-full text-sm"><thead className="bg-muted/40 text-left"><tr>{['Campaña', 'Estado', 'Emisor / inicio', 'Destinatarios', 'Mensajes', 'Acciones'].map(l => <th key={l} className="p-3 font-medium">{l}</th>)}</tr></thead><tbody>
+            {page?.rows.map(r => <tr key={r.id} className="border-t align-top"><td className="p-3"><Link className="font-medium hover:underline" href={`/crm/marketing/campaigns/${r.id}`}>{r.name}</Link></td><td className="p-3"><Badge variant={r.status === 'active' ? 'default' : 'secondary'}>{campaignStateLabels[r.status] || 'Estado desconocido'}</Badge></td><td className="p-3"><p>{r.channelName || 'Sin emisor'}</p><p className="text-xs text-muted-foreground mt-1">{date(r.scheduledFor)}</p></td><td className="p-3"><p>{r.recipients} inscritos</p>{r.recipients > 0 && <p className="text-xs text-muted-foreground">{campaignProgress(r)}% procesados · {r.failed} fallidos · {r.cancelled} cancelados</p>}</td><td className="p-3"><p>{r.accepted} aceptados · {r.delivered} entregados</p><p className="text-xs text-muted-foreground">{r.read} leídos · {r.deliveryFailed} fallidos · {r.unknown} sin confirmar</p></td><td className="p-3"><div className="flex gap-2"><Button variant="outline" size="sm" asChild><Link href={`/crm/marketing/campaigns/${r.id}`}>Abrir</Link></Button>{(r.status === 'draft' ? canManage : canExecute && r.status !== 'archived') && <Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => void remove(r.id, r.status === 'draft')}>{r.status === 'draft' ? 'Eliminar' : 'Archivar'}</Button>}</div></td></tr>)}
+            {!page?.rows.length && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">{loading ? 'Cargando campañas…' : error ? 'No se pudo consultar esta página.' : 'No hay campañas para estos filtros.'}</td></tr>}
+        </tbody></table></div>
+        <div className="flex flex-wrap justify-between items-center gap-2 text-xs text-muted-foreground"><p>{changedAt ? `Actualizado: ${changedAt}. ` : ''}La entrega incluye mensajes leídos. Procesado no equivale a entregado.</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={!previous.length || loading || busy} onClick={() => { setCursor(previous[previous.length - 1]); setPrevious(previous.slice(0, -1)) }}>Anterior</Button><Button size="sm" variant="outline" disabled={!page?.next || loading || busy} onClick={() => { if (page?.next) { setPrevious([...previous, cursor]); setCursor(page.next) } }}>Siguiente</Button></div></div>
+    </section>
 }

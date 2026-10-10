@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
 import { CampaignTemplate, describeCampaignTemplate, TemplateSelection } from '../marketing-template-contract'
+import { previewMarketingTemplate } from '../marketing-template-preview'
 
-export function MarketingTemplateEditor({ connectionId, onConnectionChange, value, onChange }: {
+export function MarketingTemplateEditor({ connectionId, onConnectionChange, value, onChange, disabled = false }: {
     connectionId: string; onConnectionChange?: (id: string) => void;
     value: TemplateSelection | null; onChange: (selection: TemplateSelection | null) => void;
+    disabled?: boolean;
 }) {
     const [channels, setChannels] = useState<MarketingChannel[]>([])
     const [templates, setTemplates] = useState<CampaignTemplate[]>([])
@@ -32,7 +34,7 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
     return <div className="space-y-4">
         {onConnectionChange && <div className="space-y-2">
             <Label>Número emisor de WhatsApp</Label>
-            <Select value={connectionId} disabled={loading} onValueChange={id => { onChange(null); onConnectionChange(id) }}>
+            <Select value={connectionId} disabled={disabled || loading} onValueChange={id => { onChange(null); onConnectionChange(id) }}>
                 <SelectTrigger aria-label="Número emisor de WhatsApp"><SelectValue placeholder="Selecciona el canal conectado" /></SelectTrigger>
                 <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent>
             </Select>
@@ -42,7 +44,7 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
         {loading && <p role="status" className="text-sm text-muted-foreground">Consultando canales y plantillas…</p>}
         <div className="space-y-2">
             <Label>Plantilla de marketing</Label>
-            <Select value={value?.template_id || ''} disabled={!connectionId || loading || !!error} onValueChange={id => {
+            <Select value={value?.template_id || ''} disabled={disabled || !connectionId || loading || !!error} onValueChange={id => {
                 const selected = templates.find(item => item.id === id)
                 if (selected) onChange({ template_id: id, template_name: selected.name, template_language: selected.language, bindings: {} })
             }}>
@@ -55,14 +57,14 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
         {description?.issues.map(issue => <p key={issue} role="alert" className="text-sm text-amber-700">{issue}</p>)}
         {!!description?.fields.length && <p className="text-xs text-muted-foreground">Completa todas las variables. Puedes usar {'{{nombre}}'}, {'{{empresa}}'} y {'{{telefono}}'} para personalizar; la revisión señalará datos faltantes.</p>}
         {description?.fields.map(field => <div className="space-y-1" key={field.key}>
-            <Label htmlFor={`binding-${field.key}`}>{field.label}</Label>
-            <Input id={`binding-${field.key}`} value={value?.bindings[field.key] || ''} placeholder={field.kind === 'media' ? 'https://…' : field.kind === 'payload' ? 'Ejemplo: BAJA_PROMOCIONES' : 'Valor o variable de contacto'}
+            <Label htmlFor={`binding-${field.key}`}>{field.label.replace('BODY', 'Mensaje').replace('HEADER', 'Encabezado')}</Label>
+            <Input disabled={disabled} id={`binding-${field.key}`} value={value?.bindings[field.key] || ''} placeholder={field.kind === 'media' ? 'https://…' : field.kind === 'payload' ? 'Ejemplo: BAJA_PROMOCIONES' : 'Valor o variable de contacto'}
                 onChange={event => { if (value) onChange({ ...value, bindings: { ...value.bindings, [field.key]: event.target.value } }) }} />
         </div>)}
         {template && <div className="rounded-lg bg-green-50 dark:bg-green-950/30 p-3 text-sm whitespace-pre-wrap">
-            <p className="text-xs text-muted-foreground mb-2">Vista previa del texto · no es un envío</p>
-            {template.components.find(component => component.type === 'BODY')?.text?.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
-                (match, key) => value?.bindings[`body.${key}`] || match)}
+            <p className="text-xs text-muted-foreground mb-2">Vista previa con contacto ficticio · no es un envío</p>
+            {previewMarketingTemplate(template, value).map((part, index) => <div key={index} className="mb-2"><p className="text-xs text-muted-foreground">{part.label}</p><p>{part.text}</p></div>)}
+            {template.components.filter(component => component.type === 'BUTTONS').flatMap(component => component.buttons || []).map((button, index) => <p className="border rounded p-2 mt-1 text-center text-xs" key={index}>{button.text || 'Botón'}</p>)}
         </div>}
     </div>
 }

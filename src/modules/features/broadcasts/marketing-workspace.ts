@@ -1,0 +1,26 @@
+import { z } from 'zod'
+
+export const campaignStates = ['draft', 'active', 'paused', 'completed', 'archived'] as const
+export const campaignStateLabels: Record<string, string> = {
+    draft: 'Borrador', active: 'Activa', paused: 'Pausada', completed: 'Completada', archived: 'Archivada',
+}
+export const campaignPageSchema = z.object({
+    search: z.string().trim().max(100).default(''), status: z.enum(['all', ...campaignStates]).default('all'),
+    channel: z.string().uuid().nullable().default(null),
+    cursor: z.object({ createdAt: z.string().datetime({ offset: true }), id: z.string().uuid() }).strict().nullable().default(null),
+}).strict()
+export type CampaignPageInput = z.input<typeof campaignPageSchema>
+export interface CampaignRow {
+    id: string; name: string; status: string; createdAt: string; scheduledFor: string | null;
+    channel: string | null; channelName: string | null;
+    recipients: number; completed: number; failed: number; cancelled: number;
+    accepted: number; delivered: number; read: number; deliveryFailed: number; unknown: number;
+}
+export interface CampaignPage { rows: CampaignRow[]; next: { createdAt: string; id: string } | null }
+export const audiencePageSchema = campaignPageSchema.pick({ search: true, cursor: true }).strict()
+export interface AudiencePage { rows: Array<{ id: string; name: string; createdAt: string; filters: Record<string, unknown> }>; next: CampaignPage['next'] }
+
+/** These are recipient processing states, not message delivery percentages. */
+export function campaignProgress(row: Pick<CampaignRow, 'recipients' | 'completed' | 'failed' | 'cancelled'>) {
+    return row.recipients ? Math.min(100, Math.round(100 * (row.completed + row.failed + row.cancelled) / row.recipients)) : 0
+}

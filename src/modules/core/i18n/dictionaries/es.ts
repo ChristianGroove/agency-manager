@@ -1507,9 +1507,7 @@ export const es = {
     marketing: {
         dashboard: {
             preparation_notice: "Puedes preparar borradores e importar contactos con evidencia de autorización. Los envíos masivos requieren revisión final y que el motor esté habilitado.",
-            title_insights: "Meta Insights",
             title_marketing: "Marketing Masivo",
-            subtitle_insights: "Análisis de rendimiento de Meta Ads y conversiones",
             subtitle_marketing: "Gestiona campañas, automatizaciones y envíos masivos",
             run_cycle: "Run Cycle",
             quick_campaign: "Campaña Rápida",

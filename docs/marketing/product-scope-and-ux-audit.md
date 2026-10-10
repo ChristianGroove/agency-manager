@@ -1,5 +1,7 @@
 # Marketing masivo: alcance, escala comercial y simplificación
 
+Ejecución posterior del orden aprobado: [etapa 8, simplificación y paginación](implementation-stage-8.md). Este documento conserva el diagnóstico previo; el reporte de etapa 8 distingue lo resuelto de las validaciones y deuda pendientes.
+
 Revisión del 10 de octubre de 2026, sobre `1fe7a68e` en `codex/marketing-campaign-hardening`. Auditoría de código y contratos; no cambia funcionalidades, base de datos ni producción, y no activa envíos. La herramienta de navegador falló al iniciar en esta sesión: no se presenta esta revisión como una nueva validación visual o de usabilidad con usuarios.
 
 ## Veredicto

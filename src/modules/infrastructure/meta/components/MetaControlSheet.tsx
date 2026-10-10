@@ -9,7 +9,6 @@ import {
     Bot,
     Smartphone,
     Phone,
-    TrendingUp,
     CheckCircle,
     X,
     Settings
@@ -18,7 +17,6 @@ import {
 // Import tab content components
 import CallingTab from './tabs/CallingTab';
 import AppReviewTab from './tabs/AppReviewTab';
-import MarketingTab from './tabs/MarketingTab';
 import FlowsTab from './tabs/FlowsTab';
 import InfraTab from './tabs/InfraTab';
 import AiTab from './tabs/AiTab';
@@ -68,7 +66,7 @@ export default function MetaControlSheet({
                     {/* Tab Navigation */}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0">
                         <div className="sticky top-[73px] z-10 bg-background border-b px-6 py-2">
-                            <TabsList className={`grid ${reviewerTabEnabled ? 'grid-cols-7' : 'grid-cols-6'} w-full h-auto`}>
+                            <TabsList className={`grid ${reviewerTabEnabled ? 'grid-cols-6' : 'grid-cols-5'} w-full h-auto`}>
                                 <TabsTrigger
                                     value="infrastructure"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -96,13 +94,6 @@ export default function MetaControlSheet({
                                 >
                                     <Phone className="w-4 h-4" />
                                     <span className="text-xs">{t("meta.tabs.calling")}</span>
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="marketing"
-                                    className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                                >
-                                    <TrendingUp className="w-4 h-4" />
-                                    <span className="text-xs">{t("meta.tabs.marketing")}</span>
                                 </TabsTrigger>
                                 {reviewerTabEnabled && (
                                     <TabsTrigger
@@ -139,10 +130,6 @@ export default function MetaControlSheet({
 
                             <TabsContent value="calling" className="mt-0">
                                 <CallingTab />
-                            </TabsContent>
-
-                            <TabsContent value="marketing" className="mt-0">
-                                <MarketingTab />
                             </TabsContent>
 
                             {reviewerTabEnabled && (

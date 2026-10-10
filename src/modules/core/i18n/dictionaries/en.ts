@@ -1507,9 +1507,7 @@ export const en = {
     marketing: {
         dashboard: {
             preparation_notice: "You can prepare drafts and import contacts with consent evidence. Bulk sending requires final review and an enabled execution engine.",
-            title_insights: "Meta Insights",
             title_marketing: "Mass Marketing",
-            subtitle_insights: "Meta Ads and conversions performance analysis",
             subtitle_marketing: "Manage campaigns, automations, and mass broadcasts",
             run_cycle: "Run Cycle",
             quick_campaign: "Quick Campaign",
